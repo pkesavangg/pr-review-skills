@@ -28,6 +28,7 @@ struct ScaleSetupStrings {
     static let errorCode: (String) -> String = { errorCode in
         "Error Code: \(errorCode)"
     }
+    static let setupWifiLater = "Setup WiFi Later"
     
     struct UserNumberSelectionViewStrings {
         static let title = "Choose your user number."

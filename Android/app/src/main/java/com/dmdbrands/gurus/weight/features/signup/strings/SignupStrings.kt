@@ -28,7 +28,7 @@ object SignupStrings {
   // Goal step strings
   const val goalStepTitle = "Set a goal!"
   const val goalStepSubtitle =
-    "This can be a helpful feature to utilize on your journey. Goals can always be changed in the app settings."
+    "This can be helpful feature to utilize on your journey. Goals can always be changed in the app settings."
   const val goalStepMaintain = "Maintain"
   const val goalStepLoseGain = "Lose/Gain"
   const val goalStepUseMetric = "Use Metric Units"
@@ -84,5 +84,9 @@ object SignupStrings {
       "Something went wrong. Please try again. If the problem continues, contact customer service."
     const val MessageNoConn = "Unable to find a network connection at this time. Please try again later."
     const val accountExist = "Email address is already in use"
+      const val blank = "must not be left blank"
+      const val maxName = "maximum value should be 100"
+      const val maxZipcode = "maximum value should be 20"
+      const val required = "this field is required"
   }
 }

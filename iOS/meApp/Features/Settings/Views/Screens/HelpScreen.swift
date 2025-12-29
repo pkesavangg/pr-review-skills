@@ -79,9 +79,19 @@ struct HelpScreen: View {
     private func digitalManualSection() -> some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
             Group {
-                Text(lang.digitalManualTitle)
-                    .fontOpenSans(.heading4)
-                    .foregroundColor(theme.textHeading)
+                HStack{
+                    Text(lang.digitalManualTitle)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                    
+                    Spacer()
+                    Button(action:{
+                        helpStore.openHelp()
+                    }, label: {
+                        AppIconView(icon: AppAssets.helpCircle)
+                            .foregroundColor(theme.actionPrimary)
+                    })
+                }
                 Text(lang.digitalManualSub)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)

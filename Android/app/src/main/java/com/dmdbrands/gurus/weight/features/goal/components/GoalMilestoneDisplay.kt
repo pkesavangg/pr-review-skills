@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -20,6 +19,7 @@ import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.features.common.components.AnnotationPosition
 import com.dmdbrands.gurus.weight.features.common.components.AppLinearProgressIndicator
 import com.dmdbrands.gurus.weight.features.common.components.AppLinearProgressType
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
@@ -79,7 +79,7 @@ fun GoalMilestoneDisplay(
   Column(
     modifier = modifier
       .fillMaxWidth(),
-    horizontalAlignment = Alignment.CenterHorizontally,
+    horizontalAlignment = Alignment.Start,
   ) {
     // Goal Type Specific Display
     when (goalType) {
@@ -184,25 +184,26 @@ private fun MaintainGoalDisplay(
       }
     }
 
+  val fullText = "$distanceText ${weightUnit.label} ${GoalStrings.To} ${displayWeight(goalWeight)} ${weightUnit.label} ${GoalStrings.GoalWeight}"
+
   AppStyledCard(
     modifier =
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(vertical = 20.dp, horizontal = spacing.sm),
+        .padding(vertical = 35.dp, horizontal = 14.dp),
   ) {
     Row(
       verticalAlignment = Alignment.Bottom,
-      horizontalArrangement = Arrangement.Center,
+      horizontalArrangement = Arrangement.Start,
     ) {
       AppText(
-        textType = TextType.CardTitle,
-        text = distanceText,
-      )
-      AppText(
-        text = "  ${weightUnit.label} ${GoalStrings.To} ${displayWeight(goalWeight)} ${GoalStrings.GoalWeight}",
+        text = fullText,
+        annotatedText = distanceText,
+        annotationPosition = AnnotationPosition.Start,
+        spanStyle = MeTheme.typography.heading3.toSpanStyle().copy(color = colorScheme.textHeading),
         textType = TextType.ListSubtitle,
-        modifier = Modifier.padding(bottom = spacing.xs),
+        maxLines = 2,
       )
     }
   }
@@ -228,6 +229,11 @@ private fun LoseGainGoalDisplay(
   val isLoseGoal = displayGoalWeight < displayCurrentWeight
   if (isLoseGoal) GoalType.LOSE else GoalType.GAIN
   var toGoal = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight, weightless)
+  val toGoalText = if (progressPercentage >= 100) {
+    toGoal = 0.toString()
+    toGoal
+  } else toGoal
+  val fullGoalText = "$toGoalText $weightUnit ${GoalStrings.Goal}"
    fun displayWeight(weight: Double): String {
      val processedWeight = if (isWeightlessOn && weightlessWeight != null) {
        weight - weightlessWeight
@@ -252,44 +258,37 @@ private fun LoseGainGoalDisplay(
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(top = spacing.sm, bottom = 21.dp),
+        .padding(vertical = 35.dp),
   ) {
     Row(
       verticalAlignment = Alignment.Bottom,
       horizontalArrangement = Arrangement.SpaceBetween,
       modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = spacing.sm),
+        .padding(horizontal = 14.dp),
     ) {
-      Row(verticalAlignment = Alignment.Bottom) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
+          horizontalArrangement = Arrangement.SpaceBetween) {
         AppText(
-          text =
-            if (progressPercentage >= 100) {
-              toGoal = 0.toString()
-              toGoal
-            } else toGoal,
-          textType = TextType.CardTitle,
-          // Always show negative for lose goal
-          color = colorScheme.textHeading,
-          modifier = Modifier.offset(y = 5.dp),
-        )
-        AppText(
-          text = " $weightUnit ${GoalStrings.Goal}",
+          text = fullGoalText,
+          annotatedText = toGoalText,
+          annotationPosition = AnnotationPosition.Start,
+          spanStyle = MeTheme.typography.heading3.toSpanStyle().copy(color = colorScheme.textHeading),
           textType = TextType.ListSubtitle,
-          color = colorScheme.textBody,
-          modifier = Modifier.padding(bottom = spacing.x4s),
+          maxLines = 2,
         )
+        if(progressPercentage >= 100) {
+          AppText(
+            text = GoalStrings.GoalReached,
+            textType = TextType.ListSubtitle,
+            color = colorScheme.textSubheading,
+            textAlign = TextAlign.End,
+            modifier = Modifier.padding(bottom = spacing.x2s),
+          )
+        }
       }
-      if(progressPercentage >= 100) {
-        AppText(
-          text = GoalStrings.GoalReached,
-          textType = TextType.ListSubtitle,
-          color = colorScheme.textBody,
-          textAlign = TextAlign.End,
-          modifier = Modifier.padding(bottom = spacing.x4s),
-          // .padding(top = spacing.x3s),
-        )
-      }
+
     }
       // Progress Slider using AppLinearProgressIndicator
     AppLinearProgressIndicator(
@@ -299,24 +298,23 @@ private fun LoseGainGoalDisplay(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(start = spacing.sm, end = spacing.sm, top = spacing.x3s, bottom = spacing.x4s),
+          .padding(start = 14.dp, end = 14.dp, top = spacing.x3s, bottom = spacing.x4s),
     )
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = spacing.sm),
+        .padding(horizontal = 14.dp),
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         AppText(
-          text = displayWeight(account.initialWeight),
+          text = "${displayWeight(account.initialWeight) } $weightUnit",
           textType = TextType.ListSubtitle,
-          color = colorScheme.textHeading,
+          color = colorScheme.textSubheading,
         )
-
         AppText(
-          text = displayWeight(goalWeight),
+          text = "${displayWeight(goalWeight)} $weightUnit",
           textType = TextType.ListSubtitle,
-          color = colorScheme.textHeading,
+          color = colorScheme.textSubheading,
         )
     }
   }

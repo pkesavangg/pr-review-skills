@@ -49,13 +49,13 @@ object DashboardString {
     const val CurrentStreak = "current streak"
     const val LongestStreak = "longest streak"
     const val LbsPerWeek = "lbs/week"
-    const val KgsPerWeek = "kgs/week"
+    const val KgsPerWeek = "kg/week"
     const val LbsPerMonth = "lbs/month"
-    const val KgsPerMonth = "kgs/month"
+    const val KgsPerMonth = "kg/month"
     const val LbsPerYear = "lbs/year"
-    const val KgsPerYear = "kgs/year"
+    const val KgsPerYear = "kg/year"
     const val LbsTotal = "lbs/total"
-    const val KgsTotal = "kgs/total"
+    const val KgsTotal = "kg/total"
   }
 
   object Loader {

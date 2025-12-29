@@ -67,6 +67,15 @@ struct NameStepView: View {
             .padding(.bottom, .spacing3XL)
         }
         .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
+        .onChange(of: focusedField) { oldValue, newValue in
+            // Mark fields as touched when they lose focus
+            if oldValue == .firstName && newValue != .firstName {
+                signupStore.signupForm.firstName.markAsTouched()
+            }
+            if oldValue == .lastName && newValue != .lastName {
+                signupStore.signupForm.lastName.markAsTouched()
+            }
+        }
     }
 }
 

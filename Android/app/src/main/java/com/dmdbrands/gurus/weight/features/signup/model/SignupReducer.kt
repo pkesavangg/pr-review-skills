@@ -11,6 +11,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.weightValidator
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
+import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -61,7 +63,7 @@ data class SignupFormControls(
       if (currentGoalType == GoalType.MAINTAIN.value) {
         null
       } else {
-        FormValidations.required().invoke(value)
+        FormValidations.required(SignupStrings.Error.required).invoke(value)
       }
     }
 
@@ -77,55 +79,54 @@ data class SignupFormControls(
             FormControl.create(
               signupData.firstName,
               listOf(
-                FormValidations.required(),
+                FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH),
+                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH, customMessage = SignupStrings.Error.maxName),
               ),
             ),
           lastName =
             FormControl.create(
               signupData.lastName,
               listOf(
-                FormValidations.required(),
+                FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH),
+                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH,customMessage = SignupStrings.Error.maxName),
               ),
             ),
           email =
             FormControl.create(
               signupData.email,
               listOf(
-                FormValidations.required(),
-                FormValidations.email(),
-                FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
+          FormValidations.email(),
+          FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, LoginStrings.Errors.maxLengthEmail),
               ),
             ),
           password =
             FormControl.create(
               signupData.password,
               listOf(
-                FormValidations.required(),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password"),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = LoginStrings.Errors.passwordlen),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword),
               ),
             ),
           confirmPassword =
             FormControl.create(
               signupData.confirmPassword,
               listOf(
-                FormValidations.required(),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword"),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = LoginStrings.Errors.passwordlen),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword),
               ),
             ),
           zipcode =
             FormControl.create(
               signupData.zipcode,
               listOf(
-                FormValidations.required(),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.minLength(AppValidatorConfig.ZipCode.MIN_LENGTH),
-              FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH),
+              FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH,customMessage = SignupStrings.Error.maxZipcode),
               ),
             ),
           birthday =
@@ -155,12 +156,12 @@ data class SignupFormControls(
           currentWeight =
             FormControl.create(
               signupData.currentWeight,
-              emptyList(), // Dynamic validator will be added after formGroup creation
+              emptyList(), // Dynamic validators will be added after formGroup creation
             ),
           goalWeight =
             FormControl.create(
               signupData.goalWeight,
-              listOf(FormValidations.required()), // Dynamic validator will be added after formGroup creation
+              listOf(FormValidations.required(SignupStrings.Error.required)), // Dynamic validator will be added after formGroup creation
             ),
           useMetric =
             FormControl.create(
@@ -173,7 +174,16 @@ data class SignupFormControls(
 
       // Add dynamic weight validators that update based on metric setting
       controls.currentWeight.addValidator(createDynamicWeightValidator { formGroup })
+      controls.currentWeight.addValidator(createRequiredCurrentWeightValidator { formGroup })
       controls.goalWeight.addValidator(createDynamicWeightValidator { formGroup })
+
+      // Add weight match validator for lose/gain goal types
+      controls.goalWeight.addValidator(
+        FormValidations.weightMatchValidator(
+          currentWeightControl = controls.currentWeight,
+          goalTypeControl = controls.goalType
+        )
+      )
 
       // Add password matching validation only to confirm password field
       controls.confirmPassword.addValidator(createConfirmPasswordValidator { formGroup })
@@ -183,6 +193,28 @@ data class SignupFormControls(
         if (controls.confirmPassword.value.isNotEmpty()) {
           controls.confirmPassword.validate()
         }
+      }
+
+      // Set up validation triggers for weight match validator
+      // When goal type changes, validate goal weight
+      controls.goalType.onValueChangeListener { _, _ ->
+        if (controls.goalWeight.value.isNotEmpty() && controls.currentWeight.value.isNotEmpty()) {
+          controls.goalWeight.validate()
+        }
+      }
+
+      // When current weight changes, validate goal weight (for lose/gain goals)
+      controls.currentWeight.onValueChangeListener { _, _ ->
+        val goalType = controls.goalType.value
+        if ((goalType == GoalType.LOSE.value || goalType == GoalType.GAIN.value || goalType == GoalType.LOSE_GAIN.value) &&
+            controls.goalWeight.value.isNotEmpty()) {
+          controls.goalWeight.validate()
+        }
+      }
+
+      // When goal weight changes, validate it (already handled by onValueChange, but ensure it's validated)
+      controls.goalWeight.onValueChangeListener { _, _ ->
+        // Validation is already triggered by onValueChange, but this ensures weight match validator runs
       }
 
       // Set up metric toggle validation trigger
@@ -407,27 +439,42 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
   ): SignupState =
     when (intent) {
       is SignupIntent.Next -> {
-        if (state.isLastStep) {
-          // On submit, if goal type is maintain, clear starting weight (currentWeight)
-          val controls = state.form.controls
-          if (controls.goalType.value == GoalType.MAINTAIN.value) {
-            controls.currentWeight.reset("")
-          }
-          state.copy(isLoading = true, error = null)
+        if(!state.isLastStep){
+          val updatedState =
+            if (state.currentStep == SignupStep.GOAL) {
+              state.copy(goalSkipped = false)
+            } else {
+              state
+            }
+          val nextIndex = (updatedState.currentStepIndex + 1)
+            .coerceAtMost(updatedState.steps.lastIndex)
+
+          val newStep = updatedState.steps[nextIndex]
+          updatedState.copy(
+            currentStep = newStep,
+            error = null
+          )
         } else {
-          val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
-          val newStep = state.steps[nextIndex]
-          state.copy(currentStep = newStep, error = null)
+          state.copy(isLoading = false, error = null)
         }
       }
 
       is SignupIntent.Back -> {
-        val prevIndex = (state.currentStepIndex - 1).coerceAtLeast(0)
-        state.copy(currentStep = state.steps[prevIndex], error = null)
+        val updatedState = if (state.currentStep == SignupStep.GOAL || state.currentStep == SignupStep.EMAIL) {
+          state.copy(goalSkipped = false)
+        } else {
+          state
+        }
+
+        val prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
+        updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
       }
 
       is SignupIntent.Skip -> {
         if (state.currentStep == SignupStep.GOAL) {
+          state.form.controls.currentWeight.reset()
+          state.form.controls.goalWeight.reset()
+          state.form.controls.goalType.reset()
           val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
           state.copy(
             currentStep = state.steps[nextIndex],
@@ -476,11 +523,6 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
  */
 
 /**
- * Gets the current weight unit based on metric setting
- */
-fun SignupFormControls.getCurrentWeightUnit(): WeightUnit = if (useMetric.value) WeightUnit.KG else WeightUnit.LB
-
-/**
  * Converts weight value between units when metric setting changes.
  * Preserves one decimal place precision to prevent accumulation errors.
  *
@@ -492,7 +534,7 @@ fun convertWeightValue(
   fromMetric: Boolean,
   toMetric: Boolean,
 ): String {
-  if (value.isBlank() || fromMetric == toMetric) return value
+  if (value.isBlank()) return value
 
   return try {
     // Convert integer format (e.g., "605") to decimal format (e.g., "60.5")

@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SelectButton
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupForm
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.WifiItem
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiModes
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScaleSetupState
@@ -253,26 +254,15 @@ fun WifiScaleSetupScreenContent(
             WifiScaleSetupStep.WIFI_MODE -> {
               // Show different buttons based on the flow type
               val wifiButtons = when {
-                state.isGetMACSetup -> {
-                  // MAC setup flow: Only AP mode available
-                  listOf(
-                    SelectButtonItem(
-                      id = "wifi_ap_mode",
-                      displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
-                      emitValue = "apmode",
-                      isSelected = state.selectedWifiMode == "apmode",
-                    ),
-                  )
-                }
-
-                state.permissionsSkipped -> {
+                state.isGetMACSetup || state.permissionsSkipped -> {
+                  val image = if (state.sku == "0384") AppIcons.Setup.WifiAPModeFilled0384 else AppIcons.Setup.WifiAPModeSelected
                   // Permission skipped flow: Only AP mode available
                   listOf(
                     SelectButtonItem(
                       id = "wifi_ap_mode",
-                      displayValue = SelectButtonDisplayValue.Image(AppIcons.Setup.WifiAPMode),
-                      emitValue = "apmode",
-                      isSelected = state.selectedWifiMode == "apmode",
+                      displayValue = SelectButtonDisplayValue.Image(image),
+                      emitValue = WifiModes.AP_MODE.value,
+                      isSelected = true,
                     ),
                   )
                 }
@@ -309,9 +299,13 @@ fun WifiScaleSetupScreenContent(
                 isSelectable = true,
                 sku = state.sku,
                 onItemSelected = { value ->
+                  if(state.permissionsSkipped || state.isGetMACSetup){
+                    onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = WifiModes.AP_MODE.value))
+                  }
+                  else
                   onIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = value))
                 },
-                noteMessage = if (state.isApMode) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
+                noteMessage = if (state.permissionsSkipped || state.isGetMACSetup) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
                 supportingButtonLabel = WifiScaleSetupStrings.Note.NavigateToErrorSlide,
                 onSupportingButtonClick = {
                   // Navigate to error guide step
@@ -373,7 +367,7 @@ fun WifiScaleSetupScreenContent(
                       onClick = {
                         onIntent(WifiScaleSetupIntent.GoToWifiSettings)
                       },
-                      label = "Go to wi-fi settings",
+                      label = WifiScaleSetupStrings.SwitchWifi.goToWifiSettings,
                       type = ButtonType.PrimaryFilled,
                       size = ButtonSize.Large,
                       enabled = true,
@@ -387,13 +381,11 @@ fun WifiScaleSetupScreenContent(
                       } else {
                         WifiScaleSetupStrings.SwitchWifi.ChangeNetwork
                       },
-                      isConfigured = !state.scaleNetworkForm.ssid.value.isEmpty(),
+                      isConfigured = false,
                       index = 0,
                       total = 1,
                       onClick = {
-                        if (state.scaleNetworkForm.ssid.value.isEmpty()) {
-                          onIntent(WifiScaleSetupIntent.GoToWifiSettings)
-                        }
+                        onIntent(WifiScaleSetupIntent.GoToWifiSettings)
                       },
                     )
                   }

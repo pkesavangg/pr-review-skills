@@ -72,16 +72,7 @@ fun AppsyncScaleSetupScreenContent(
 
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
-    if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
-      isAnimating.value = true
-      try {
-        pagerState.animateScrollToPage(state.currentStepIndex)
-      } finally {
-        delay(100)
-        isAnimating.value = false
-      }
-    }
-
+    // Skip pager animation for OPEN_CAMERA step since we launch a separate activity
     if (state.currentStep == AppsyncScaleSetupStep.OPEN_CAMERA) {
       isScanning = true
       coroutineScope.launch {
@@ -102,6 +93,17 @@ fun AppsyncScaleSetupScreenContent(
           // Handle error
         } finally {
           isScanning = false
+        }
+      }
+    } else {
+      // Only animate pager for non-camera steps
+      if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
+        isAnimating.value = true
+        try {
+          pagerState.animateScrollToPage(state.currentStepIndex)
+        } finally {
+          delay(100)
+          isAnimating.value = false
         }
       }
     }

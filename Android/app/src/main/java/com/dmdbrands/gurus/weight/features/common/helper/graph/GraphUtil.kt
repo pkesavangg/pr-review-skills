@@ -20,6 +20,7 @@ import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
@@ -37,6 +38,7 @@ object GraphUtil {
   // region Constants
   /** Number of milliseconds in one day. */
   const val ONE_DAY_MILLIS = 24 * 60 * 60 * 1000L // 86,400,000 milliseconds
+
   // endregion
 
   // region Cached Formatters
@@ -46,10 +48,10 @@ object GraphUtil {
   private val monthFormatter = SimpleDateFormat("MMM", Locale.ENGLISH)
   // endregion
 
-  // region Data Transformation
-
   /**
    * Converts a list of [PeriodBodyScaleSummary] to a [GraphLine] for weight.
+   * entryTimestamp is already in local time from database, so we use a simple conversion.
+   *
    * @return [GraphLine] representing weight over time.
    */
   fun List<PeriodBodyScaleSummary>.toWeightGraphPoints(): GraphLine =
@@ -60,8 +62,8 @@ object GraphUtil {
           GraphPoint(
             x =
               Label(
-                value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
-                label = entry.period,
+                value = DateTimeConverter.isoToTimestamp (entry.entryTimestamp),
+            label = entry.period,
               ),
             y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight.rounded() ?: 0}"),
           )
@@ -197,13 +199,175 @@ object GraphUtil {
     }
 
   fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
-    val immediatePoint = graphLines.points.firstOrNull { it.x.value.toLong() > timeStamp }
+    // Find the point with the minimum timestamp that is still greater than the search timestamp
+    // This works regardless of list order (ascending or descending)
+    val immediatePoint = graphLines.points
+      .filter { it.x.value.toLong() > timeStamp }
+      .minByOrNull { it.x.value.toLong() }
     return immediatePoint?.y?.value?.toLong()
   }
 
   fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
-    val previousPoint = graphLines.points.lastOrNull { it.x.value.toLong() < timeStamp }
+    // Find the point with the maximum timestamp that is still less than the search timestamp
+    // This works regardless of list order (ascending or descending)
+    val previousPoint = graphLines.points
+      .filter { it.x.value.toLong() < timeStamp }
+      .maxByOrNull { it.x.value.toLong() }
     return previousPoint?.y?.value?.toLong()
+  }
+
+  /**
+   * Normalizes secondary metric values to the weight Y-axis range (iOS-style normalization).
+   * Maps metric values proportionally to the weight scale for visual comparison.
+   * Matches iOS generateNormalizedMetricSeriesWithDomain implementation.
+   *
+   * Formula: normalizedValue = weightMin + (clampedValue - effectiveMetricMin) ×
+   *                            (weightMax - weightMin) / (effectiveMetricMax - effectiveMetricMin)
+   *
+   * @param metricGraphLine The secondary metric graph line to normalize
+   * @param weightMin Minimum value of weight Y-axis domain
+   * @param weightMax Maximum value of weight Y-axis domain
+   * @param minX Minimum X timestamp for visible range
+   * @param maxX Maximum X timestamp for visible range
+   * @param metricKey The metric key to determine static ranges for single points (iOS-style).
+   *                  If null, falls back to fixed padding (backward compatibility).
+   * @return GraphLine with normalized Y values mapped to weight scale
+   */
+  fun normalizeMetricToWeightRange(
+    metricGraphLine: GraphLine,
+    weightMin: Double,
+    weightMax: Double,
+    minX: Long,
+    maxX: Long,
+  ): GraphLine {
+
+    if (metricGraphLine.points.isEmpty()) {
+      return metricGraphLine
+    }
+
+    // Validate input parameters are finite (matching iOS defensive checks)
+    if (!weightMin.isFinite() || !weightMax.isFinite() || weightMin >= weightMax) {
+      return metricGraphLine
+    }
+
+    // Get all metric values (including previous/next for range calculation)
+    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Number }
+      .map { it.toDouble() }
+      .filter { it.isFinite() } // Filter out NaN/Infinity values
+
+    if (allMetricValues.isEmpty()) {
+      return metricGraphLine
+    }
+
+    // Get visible and bracketing points for range calculation
+    val visiblePoints = metricGraphLine.points.filter {
+      it.x.value.toLong() in minX..maxX
+    }
+    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
+    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
+
+
+    val metricValuesForRange = buildList {
+      previousPoint?.let { add(it.toDouble()) }
+      addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
+      nextPoint?.let { add(it.toDouble()) }
+    }
+
+    if (metricValuesForRange.isEmpty()) {
+      return metricGraphLine
+    }
+
+    // Calculate metric range
+    val metricMin = metricValuesForRange.minOrNull() ?: return metricGraphLine
+    val metricMax = metricValuesForRange.maxOrNull() ?: return metricGraphLine
+
+    val metricRange = metricMax - metricMin
+    // Handle single point or minimal variation (matching iOS: metricRange < 0.01)
+    val isSingleMetricPoint = metricRange < 0.01
+    val effectiveMetricMin: Double
+    val effectiveMetricMax: Double
+
+    if (isSingleMetricPoint) {
+        val padding = 1.0
+        effectiveMetricMin = metricMin - padding
+        effectiveMetricMax = metricMax + padding
+    } else {
+      // Add 5% padding (matching iOS implementation)
+      val padding = metricRange * 0.05
+      effectiveMetricMin = metricMin - padding
+      effectiveMetricMax = metricMax + padding
+    }
+
+    val metricRangeSpan = effectiveMetricMax - effectiveMetricMin
+    if (metricRangeSpan <= 0) {
+      return metricGraphLine
+    }
+
+    val yAxisSpan = weightMax - weightMin
+    val epsilon = yAxisSpan * 0.001 // 0.1% margin for safety bounds
+
+    // Calculate safe fallback value once (middle of weight range)
+    // Validate it's finite to use as fallback (matching iOS defensive checks)
+    val safeFallbackValue = (weightMin + weightMax) / 2.0
+    val useFallback = safeFallbackValue.isFinite()
+
+    // Normalize each point
+    val normalizedPoints = metricGraphLine.points.mapIndexedNotNull { index, point ->
+      val metricValue = (point.y.value as? Number)?.toDouble()
+
+      // Skip points with null or non-finite metric values (matching iOS: skip missing/invalid values)
+      if (metricValue == null || !metricValue.isFinite()) {
+        return@mapIndexedNotNull null
+      }
+
+      val normalizedPoint = if (isSingleMetricPoint) {
+        val positionInRange = weightMin + (yAxisSpan * 0.7)
+        // Validate position is finite before using (matching iOS guard checks)
+        if (positionInRange.isFinite()) {
+          point.copy(
+            y = point.y.copy(value = positionInRange)
+          )
+        } else if (useFallback) {
+          // Fallback to middle of weight range (validated above)
+          point.copy(
+            y = point.y.copy(value = safeFallbackValue)
+          )
+        } else {
+          // If fallback is also invalid, skip this point entirely
+          null
+        }
+      } else {
+        // Clamp value to effective range
+        val clampedValue = maxOf(effectiveMetricMin, minOf(effectiveMetricMax, metricValue))
+
+        // Normalize to weight range
+        val normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
+                              yAxisSpan / metricRangeSpan
+
+        // Apply safety bounds (keep slightly inside bounds)
+        val safeMin = weightMin + epsilon
+        val safeMax = weightMax - epsilon
+        val finalValue = maxOf(safeMin, minOf(safeMax, normalizedValue))
+
+        // Ensure finite value (matching iOS guard checks)
+        if (finalValue.isFinite()) {
+          point.copy(
+            y = point.y.copy(value = finalValue)
+          )
+        } else if (useFallback) {
+          // Fallback to middle of weight range (validated above)
+          point.copy(
+            y = point.y.copy(value = safeFallbackValue)
+          )
+        } else {
+          // If fallback is also invalid, skip this point entirely
+          null
+        }
+      }
+      normalizedPoint
+    }
+
+    return metricGraphLine.copy(points = normalizedPoints)
   }
 
   fun averageYValuesInRange(
@@ -289,7 +453,6 @@ object GraphUtil {
     val endDateTime = Instant.ofEpochMilli(endTimestamp).atZone(zone)
     val startDate = startDateTime.toLocalDate()
     val endDate = endDateTime.toLocalDate()
-
     return when (segment) {
       GraphSegment.YEAR -> {
         if (startDate.month == Month.JANUARY) {
@@ -366,6 +529,44 @@ object GraphUtil {
       GraphSegment.WEEK -> DateTimeConverter.getWeekEnd(timeStamp)
       GraphSegment.MONTH -> DateTimeConverter.getMonthEnd(timeStamp)
       GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearEnd(timeStamp)
+    }
+  }
+
+  /**
+   * Gets the rolling window start timestamp calculated backwards from latest entry using fixed durations.
+   * This ensures the window shows exactly the period duration (7 days, 30 days, 365 days) ending at the latest entry.
+   * The initial scroll position will be at the latest entry (end of window) to show data without empty space.
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param endTimeStamp Latest entry timestamp in milliseconds
+   * @return Rolling window start timestamp, or null if endTimeStamp is null or segment is TOTAL
+   */
+  fun getRollingWindowStart(segment: GraphSegment, endTimeStamp: Long?): Long? = endTimeStamp?.let {
+    when (segment) {
+      GraphSegment.WEEK -> {
+        // Show 7 days total: latest - 6 days to latest (inclusive)
+        Calendar.getInstance().apply {
+          timeInMillis = endTimeStamp
+          add(Calendar.DAY_OF_YEAR, -6)
+        }.timeInMillis
+      }
+      GraphSegment.MONTH -> {
+        // Show 31 days total: latest - 30 days to latest (inclusive)
+        // This ensures day 1 of 31-day months is always included in the window
+        Calendar.getInstance().apply {
+          timeInMillis = endTimeStamp
+          add(Calendar.DAY_OF_YEAR, -28)
+        }.timeInMillis
+      }
+      GraphSegment.YEAR -> {
+        // Show 12 months total: latest - 11 months to latest (inclusive)
+        // This includes the latest entry month as the 12th month
+        // (e.g., Dec 20, 2024 -> Jan 20, 2024 = 12 months: Jan, Feb, ..., Dec)
+        Calendar.getInstance().apply {
+          timeInMillis = endTimeStamp
+          add(Calendar.MONTH, -11)
+        }.timeInMillis
+      }
+      GraphSegment.TOTAL -> null // Keep existing ±6 months logic
     }
   }
 

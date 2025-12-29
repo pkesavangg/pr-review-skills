@@ -133,7 +133,6 @@ private fun LoginContent(
               .semantics { contentType = ContentType.Username }
               .focusRequester(emailFocusRequester),
         )
-        Spacer(Modifier.height(spacing.sm))
         AppInput(
           formControl = state.form.controls.password,
           label = LoginStrings.PasswordLabel,

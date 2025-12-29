@@ -30,7 +30,6 @@ internal fun rememberDefaultMarker(
   segment: GraphSegment,
   onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit
 ): CartesianMarker {
-
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
     val data = state.data.filter {
       DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == state.markerIndex?.toDouble()

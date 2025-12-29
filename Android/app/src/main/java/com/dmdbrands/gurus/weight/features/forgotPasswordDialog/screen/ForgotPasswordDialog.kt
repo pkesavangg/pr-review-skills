@@ -1,24 +1,18 @@
 package com.dmdbrands.gurus.weight.features.forgotPasswordDialog.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -29,7 +23,6 @@ import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.model.ForgotPass
 import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.strings.ForgotPasswordDialogStrings
 import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.viewmodel.ForgotPasswordDialogViewModel
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
@@ -53,25 +46,6 @@ fun PasswordResetModal(
     LaunchedEffect(Unit) {
         viewModel.setInitialEmail(email)
     }
-
-    Dialog(
-        onDismissRequest = {
-            viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
-            onDismiss()
-        },
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
-    ) {
-        Box(
-          modifier = Modifier
-                .fillMaxSize()
-                .background(color = MeTheme.colorScheme.glow),
-        ) {
-            Box(modifier = Modifier.align(Alignment.Center)) {
                 BaseModal(
                     title = ForgotPasswordDialogStrings.Title,
                     body = ForgotPasswordDialogStrings.Subtitle,
@@ -111,9 +85,6 @@ fun PasswordResetModal(
                         modifier = Modifier,
                     )
                 }
-            }
-        }
-    }
 }
 
 @PreviewTheme

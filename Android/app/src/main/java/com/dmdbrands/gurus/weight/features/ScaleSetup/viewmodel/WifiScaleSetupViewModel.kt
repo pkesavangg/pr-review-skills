@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiModes
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.SetupPath
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.WifiScalePasswordFormControls
@@ -86,9 +87,9 @@ constructor(
   init {
     // Convert wifiSetupTypeString to WifiSetupType enum
     wifiSetupType = when (wifiSetupTypeString) {
-      "espTouchWifi" -> WifiSetupType.ESP_TOUCH_WIFI
-      "join" -> WifiSetupType.JOIN
-      "change" -> WifiSetupType.CHANGE
+      WifiModes.ESP_TOUCH_WIFI.value -> WifiSetupType.ESP_TOUCH_WIFI
+     WifiModes.JOIN.value -> WifiSetupType.JOIN
+      WifiModes.CHANGE.value -> WifiSetupType.CHANGE
       else -> WifiSetupType.FIRST
     }
     // Set setup in progress when initialization starts
@@ -190,9 +191,6 @@ constructor(
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
               if (areRequiredPermissionsEnabled) {
                 handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.WIFI_PASSWORD))
-              } else {
-                // Automatically request disabled permissions when entering PERMISSIONS step
-                permissionAccess()
               }
               updateNetworkStatus()
             }
@@ -210,7 +208,6 @@ constructor(
 
             WifiScaleSetupStep.ACTIVATE_SCALE -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
               handleIntent(WifiScaleSetupIntent.SetShowError(false))
               handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
             }
@@ -218,9 +215,8 @@ constructor(
             WifiScaleSetupStep.WIFI_MODE -> {
               if (currentState.isGetMACSetup || currentState.permissionsSkipped) {
                 // Only AP mode available for MAC setup and permission skipped flows
-                val canProceed = currentState.selectedWifiMode == "apmode"
+                val canProceed = currentState.selectedWifiMode == WifiModes.AP_MODE.value
                 handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
               } else {
                 // Normal flow - both modes available
                 val canProceed = isWifiModeSelected()
@@ -235,12 +231,11 @@ constructor(
               } else {
                 handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
               }
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             WifiScaleSetupStep.MAC_ADDRESS -> {
               if (currentState.isGetMACSetup) {
-                if (currentState.selectedWifiMode == "apmode") {
+                if (currentState.selectedWifiMode == WifiModes.AP_MODE.value) {
                   viewModelScope.launch {
                     try {
                       val macAddress = getMacAddress()
@@ -262,12 +257,10 @@ constructor(
 
             WifiScaleSetupStep.SCALE_COUNTS -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             WifiScaleSetupStep.STEP_ON -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             WifiScaleSetupStep.SETUP_FINISHED -> {
@@ -287,7 +280,6 @@ constructor(
 
             WifiScaleSetupStep.ERROR_GUIDE -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(false))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Next"))
             }
 
             else -> {
@@ -309,33 +301,6 @@ constructor(
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to open WiFi settings", e)
     }
-  }
-
-  /**
-   * Handles permission access for WiFi scale setup.
-   * Gets all disabled permissions and requests them one by one.
-   */
-  private fun permissionAccess() {
-    // val currentPermissions = state.value.permissions
-    // val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
-    //   permissionMap = currentPermissions,
-    //   setupType = ScaleSetupType.Wifi,
-    // )
-    //
-    // if (disabledPermissions.isEmpty()) {..
-    //   AppLog.d(TAG, "All required permissions are enabled")
-    //   return
-    // }
-    //
-    // AppLog.d(TAG, "Found ${disabledPermissions.size} disabled permissions: $disabledPermissions")
-    //
-    // // Request permissions one by one
-    // disabledPermissions.forEach { permissionType ->
-    //   if (permissionType != CustomPermissionType.WIFI_SWITCH_LOCATION.value) {
-    //     AppLog.d(TAG, "Requesting permission: $permissionType")
-    //     requestPermission(permissionType)
-    //   }
-    // }
   }
 
   /**
@@ -545,7 +510,6 @@ constructor(
       while (!isDestroyed) {
         try {
           updateNetworkStatus()
-
           if (scaleToken.isNullOrEmpty()) {
             getScaleToken()
           }
@@ -662,12 +626,10 @@ constructor(
           },
           onError = { error ->
             AppLog.e(TAG, "Connection failed: $error")
-            handleIntent(WifiScaleSetupIntent.SetConnectionError(error))
           },
         )
       } catch (e: Exception) {
         AppLog.e(TAG, "startSmartConnect - Error starting connect", e)
-        handleIntent(WifiScaleSetupIntent.SetConnectionError(e.message ?: "Unknown error"))
       }
     }
   }
@@ -692,7 +654,6 @@ constructor(
           },
           onError = { error ->
             AppLog.e(TAG, "AP Mode connection failed: $error")
-            handleIntent(WifiScaleSetupIntent.SetConnectionError(error))
           },
         )
       } catch (e: Exception) {
@@ -703,7 +664,7 @@ constructor(
           delay(5000) // 5 seconds delay
           startApMode(count + 1)
         } else {
-          handleIntent(WifiScaleSetupIntent.SetConnectionError("AP Mode failed after 5 attempts"))
+          AppLog.e(TAG, "AP Mode failed after 5 attempts")
         }
       }
     }
@@ -734,26 +695,19 @@ constructor(
     val currentState = state.value
     val currentStep = currentState.currentStep
     val currentStepIndex = currentState.currentStepIndex
-
-    // Check if permissions are currently enabled (regardless of skip history)
     val arePermissionsCurrentlyEnabled = AppPermissionsHelper
       .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
-
     val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
-
     if (shouldAutoPopulate) {
-      // Check if we're on early steps (index < 3) - equivalent to TypeScript condition
       val isEarlyStep = currentStepIndex < 3
       if (isEarlyStep) {
-        // On early steps (index < 3), only fill WiFi password form
-        // Update WiFi password form SSID if on relevant steps
         if (currentStep == WifiScaleSetupStep.WIFI_PASSWORD || currentStep == WifiScaleSetupStep.SCALE_INFO) {
           handleIntent(WifiScaleSetupIntent.SetWifiPasswordFormSsid(ssid))
-          AppLog.d(TAG, "Early step detected - filled WiFi password form with SSID: $ssid")
         }
       } else if (currentStep == WifiScaleSetupStep.SWITCH_WIFI) {
-        handleIntent(WifiScaleSetupIntent.SetScaleNetworkFormSsid(ssid))
-        AppLog.d(TAG, "WiFi switching context detected - filled scale network form with SSID: $ssid")
+        if( ssid.contains("gg_SmartScaleSetup",ignoreCase = true)){
+          handleIntent(WifiScaleSetupIntent.SetScaleNetworkFormSsid(ssid))
+        }
       } else {
         if (currentStep == WifiScaleSetupStep.WIFI_PASSWORD || currentStep == WifiScaleSetupStep.SCALE_INFO) {
           handleIntent(WifiScaleSetupIntent.SetWifiPasswordFormSsid(ssid))
@@ -831,23 +785,12 @@ constructor(
   private fun onNext() {
     val currentState = state.value
 
-    // Prevent double-clicks during navigation
-    if (currentState.isNavigating || currentState.isLoading) {
-      AppLog.d(TAG, "Ignoring next click - navigation in progress")
-      return
-    }
-
 
     AppLog.d(TAG, "Moving to next step from: ${currentState.currentStep}")
 
     // Handle actions that need to happen before/during navigation
     when (currentState.currentStep) {
-      WifiScaleSetupStep.SCALE_INFO -> {
-        state.value.copy(
-          isGetMACSetup = false,
-          shouldGetMacAddress = false
-        )
-      }
+
       WifiScaleSetupStep.PERMISSIONS -> {
         if (!checkScaleToken()) {
           return
@@ -861,10 +804,11 @@ constructor(
       }
 
       WifiScaleSetupStep.WIFI_MODE -> {
-        when (currentState.selectedWifiMode) {
-          "apmode" -> {
-            handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
-          }
+        if(state.value.permissionsSkipped || state.value.isGetMACSetup){
+          handleIntent(WifiScaleSetupIntent.SelectWifiMode(wifiMode = WifiModes.AP_MODE.value))
+        }
+        if(state.value.selectedWifiMode == WifiModes.AP_MODE.value){
+          handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
         }
         startSmartConnect()
         return
@@ -875,10 +819,6 @@ constructor(
           // For normal setup, start AP mode
           startApMode()
         }
-      }
-
-      WifiScaleSetupStep.WIFI_MODE -> {
-
       }
 
       WifiScaleSetupStep.SCALE_COUNTS -> {
@@ -897,7 +837,6 @@ constructor(
       WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
         // Clear error state and exit
         handleIntent(WifiScaleSetupIntent.SetShowError(false))
-        handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
         startExitSetup(true)
         return
       }
@@ -1087,16 +1026,6 @@ constructor(
     AppLog.d(TAG, "Scale WiFi connection check - is connected: $isConnected")
     return isConnected
   }
-
-  /**
-   * Updates the connection status to scale's WiFi.
-   * This should be called when the WiFi connection status changes.
-   */
-  fun updateScaleWifiConnectionStatus(isConnected: Boolean) {
-    AppLog.d(TAG, "Updating scale WiFi connection status: $isConnected")
-    handleIntent(WifiScaleSetupIntent.SetConnectedToScaleWifi(isConnected))
-  }
-
 
   /**
    * Shows permission revoked alert.

@@ -31,7 +31,6 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.BtWifiScaleSetup
 import com.dmdbrands.gurus.weight.features.ScaleUsers.components.ScaleUserList
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
-import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
@@ -151,7 +150,7 @@ fun BtWifiScaleSetupScreenContent(
               type = ButtonType.TextPrimary,
               label = ScaleSetupStrings.backButton,
               size = ButtonSize.Small,
-              enabled = !state.isFirstStep && state.currentStep != BtWifiSetupStep.DUPLICATES_FOUND,
+              enabled = !state.isFirstStep && state.currentStep != BtWifiSetupStep.DUPLICATES_FOUND && state.currentStep != BtWifiSetupStep.AVAILABLE_WIFI_LIST,
               onClick = { onIntent(BtWifiScaleSetupIntent.Back) },
             )
           }

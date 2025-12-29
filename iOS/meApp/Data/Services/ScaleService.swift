@@ -176,6 +176,16 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         
         // Step 3: Refresh published scales
         await refreshScalesFromLocal()
+        
+        // Step 4: Update connection status from connected devices map
+        // This ensures connection status is accurate after sync, especially for newly saved scales
+        // where connection status might have been lost during server sync
+        do {
+            try await updateAllScalesStatus()
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update scales status after sync: \(error.localizedDescription)")
+        }
+        
         isSyncing = false
         
         // Log scale count and info after sync

@@ -115,8 +115,8 @@ final class GoalAlertService: ObservableObject {
         // Check entries count
         guard entryCount >= 3 else { return }
         
-        // Check if popup has been shown before
-        let storageKey = goalCardStatusStorageKey(for: account.accountId)
+        // Check if popup has been shown before - use centralized storage key
+        let storageKey = KvStorageKeys.setAGoalModalFlagKey(for: account.accountId)
         if let hasBeenShown = kv.getValue(forKey: storageKey) as? Bool, hasBeenShown {
             return
         }
@@ -125,27 +125,24 @@ final class GoalAlertService: ObservableObject {
         await presentSetGoalCard(accountId: account.accountId)
     }
     
-    private func goalCardStatusStorageKey(for accountId: String) -> String {
-        return "\(accountId)-goalCardStatus"
-    }
-    
     private func presentSetGoalCard(accountId: String) async {
         isShowingAlert = true
         
-        let storageKey = goalCardStatusStorageKey(for: accountId)
+        // Use centralized storage key to match BottomTabBarViewModel
+        let storageKey = KvStorageKeys.setAGoalModalFlagKey(for: accountId)
+        
+        // Set flag immediately when showing modal to prevent race conditions with BottomTabBarViewModel
+        // This matches the behavior in BottomTabBarViewModel.checkSetGoalCardPrompt()
+        kv.setValue(true, forKey: storageKey)
         
         let cardView = SetAGoalCardView(
             onClose: { [weak self] in
                 guard let self else { return }
-                // Mark as shown when user closes the modal
-                self.kv.setValue(true, forKey: storageKey)
                 self.notificationService.dismissModal()
                 self.isShowingAlert = false
             },
             onSetGoal: { [weak self] in
                 guard let self else { return }
-                // Mark as shown when user taps "Set Goal"
-                self.kv.setValue(true, forKey: storageKey)
                 self.notificationService.dismissModal()
                 self.isShowingAlert = false
                 self.handleNewGoalAction()

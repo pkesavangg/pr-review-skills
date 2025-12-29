@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.signup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -96,6 +97,9 @@ constructor(
 
         basicFieldsValid
       } else {
+        if(stateValue.form.controls.goalType.value == GoalType.MAINTAIN.value){
+          stateValue.form.controls.currentWeight.setValue(stateValue.form.controls.goalWeight.value)
+        }
         // When goal is not skipped, validate all fields
         stateValue.form.validate()
       }

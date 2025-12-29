@@ -29,9 +29,6 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update primary Y-axis */
   data class UpdatePrimaryYAxis(val yRangeValues: CartesianRangeValues) : GraphIntent
 
-  /** Update secondary Y-axis */
-  data class UpdateSecondaryYAxis(val yRangeValues: CartesianRangeValues) : GraphIntent
-
   /** Update marker index */
   data class UpdateMarkerIndex(val markerIndex: Double?) : GraphIntent
 

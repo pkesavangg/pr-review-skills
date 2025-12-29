@@ -77,7 +77,7 @@ class ChangePasswordForm: ObservableForm {
         }
         if control === confirmNewPassword,
            formErrors[.passwordMatch] {
-            return FormErrorMessages.bothPasswordsMatch
+            return FormErrorMessages.passwordMatch
         }
 
         return nil

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.manualEntry.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,7 +63,10 @@ fun ExpandableMetricsCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clickable { expanded = !expanded },
+                    .clickable(
+                      interactionSource = remember { MutableInteractionSource() },
+                      indication = null
+                    ) { expanded = !expanded},
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {

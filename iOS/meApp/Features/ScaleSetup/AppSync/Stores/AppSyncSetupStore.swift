@@ -12,6 +12,7 @@ final class AppSyncSetupStore: ObservableObject {
     @Injector private var accountService: AccountService
     // Permissions
     @Injector private var permissionsService: PermissionsService
+    @Injector private var bluetoothService: BluetoothService
     
     // MARK: - Public state
     @Published var currentStepIndex: Int = 0 {
@@ -95,6 +96,9 @@ final class AppSyncSetupStore: ObservableObject {
         // Reset navigation indices.
         currentStepIndex = 0
         currentStep = steps.first ?? .intro
+        
+        // Set setup in progress flag to prevent goal modals during setup
+        bluetoothService.isSetupInProgress = true
         
         // Evaluate initial button state based on current permissions
         updateNextEnabled()
@@ -253,10 +257,15 @@ final class AppSyncSetupStore: ObservableObject {
                 // Post notification that scale was added
                 NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
                 
+                // Clear setup in progress flag after scale is saved
+                bluetoothService.isSetupInProgress = false
+                
                 self.dismissAction?()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
+                // Clear setup in progress flag even on error
+                bluetoothService.isSetupInProgress = false
             }
         }
     }
@@ -283,6 +292,8 @@ final class AppSyncSetupStore: ObservableObject {
     func cleanUp() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+        // Clear setup in progress flag when setup is dismissed
+        bluetoothService.isSetupInProgress = false
     }
     
     deinit {

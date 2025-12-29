@@ -18,8 +18,8 @@ import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
-import com.dmdbrands.gurus.weight.features.common.components.debounceClick
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -88,7 +88,7 @@ fun HistoryItem(
                 Text(
                     text = buildString {
                         append(item.avgWeightPrefix ?: "")
-                        append(item.avgWeight?.toString() ?: "")
+                        append(formatWeightValue(item.avgWeight))
                         append(" ${item.unit ?: "lbs"}")
                     },
                     style = MeTheme.typography.body2,
@@ -115,7 +115,7 @@ fun HistoryItem(
                             append("+")
                           }
                         }
-                        append(item.change.toString())
+                        append(formatWeightValue(item.change))
                         append(" ${item.unit ?: "lbs"}")
                     },
                     style = MeTheme.typography.body2,

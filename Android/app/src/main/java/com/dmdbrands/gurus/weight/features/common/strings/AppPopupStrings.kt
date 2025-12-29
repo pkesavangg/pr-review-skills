@@ -12,6 +12,7 @@ object AppPopupStrings {
     const val Title = "Confirm"
     const val ManualEntryTitle = "Your entry has not been saved!"
     const val Message = "Are you sure you want to leave?"
+    const val ManualEntryMessage = "Are you sure you want to exit?"
     const val Return = "Return"
     const val Exit = "Exit"
   }
@@ -85,7 +86,7 @@ object AppPopupStrings {
 
       GGPermissionType.NEARBY_DEVICE ->
         "Android requires apps that connect to a Bluetooth LE device ask for permission that determines " +
-          "the relative location of nearby devices. Sorry for the inconvenience, but we don\\'t store or use any of this information."
+          "the relative location of nearby devices. Sorry for the inconvenience, but we don't store or use any of this information."
 
       GGPermissionType.LOCATION_SWITCH ->
         "Android requires any app that connects to a Bluetooth / Wi-Fi device to ask " +

@@ -15,10 +15,10 @@ import kotlinx.coroutines.flow.asSharedFlow
  * Implements [IAppNavigationService].
  */
 class AppNavigationService : IAppNavigationService {
-  private val _navigationIntent = MutableSharedFlow<NavigationIntent>(replay = 1)
+  private val _navigationIntent = MutableSharedFlow<NavigationIntent>()
 
   // Auth event flow for authentication events (login, logout, etc.)
-  private val _authEvent = MutableSharedFlow<AuthState>(replay = 1)
+  private val _authEvent = MutableSharedFlow<AuthState>()
   override val authEvent: SharedFlow<AuthState> = _authEvent.asSharedFlow()
 
   /**

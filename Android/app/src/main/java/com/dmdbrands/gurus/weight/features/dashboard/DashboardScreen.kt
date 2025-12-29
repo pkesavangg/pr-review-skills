@@ -211,6 +211,8 @@ private fun DashboardScreenContent(
           inEditMode = inEditMode,
           hasGoal = state.progress.goal?.account != null && state.progress.goal.account.goalType != null,
           onResetClick = {
+            // Clear secondary metric selection when reset button is clicked (before confirmation)
+            handleIntent(DashboardIntent.SetSelectedStat(null))
             handleIntent(
               DashboardIntent.ResetDashboard(
                 onConfirm = {
@@ -220,7 +222,10 @@ private fun DashboardScreenContent(
             )
           },
           onEditClick = { editMode ->
-            if (!editMode && inEditMode) {
+            if (editMode && !inEditMode) {
+              // Clear secondary metric selection when entering edit mode
+              handleIntent(DashboardIntent.SetSelectedStat(null))
+            } else if (!editMode && inEditMode) {
               // Save dashboard metrics and milestones when exiting edit mode
               val allVisibleKeys =
                 currentVisibleMetrics + currentVisibleMilestones

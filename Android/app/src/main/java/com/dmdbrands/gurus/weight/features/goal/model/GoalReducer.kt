@@ -67,15 +67,6 @@ data class GoalFormControls(
             ),
         )
 
-      // Explicitly clear any errors to prevent showing errors on initial form load
-      // Fields are not touched yet, so errors shouldn't be displayed
-      if (!controls.startingWeight.touched) {
-        controls.startingWeight.reset(controls.startingWeight.value)
-      }
-      if (!controls.goalWeight.touched) {
-        controls.goalWeight.reset(controls.goalWeight.value)
-      }
-
       return controls
     }
 
@@ -94,11 +85,11 @@ data class GoalFormControls(
         validators = listOf(FormValidations.required()),
       )
 
-      val startingWeightValidators = mutableListOf<Validator<String>>()
-      if (goalType == GoalType.LOSE_GAIN) {
-        startingWeightValidators.add(FormValidations.required())
+      val startingWeightValidators = if (goalType == GoalType.LOSE_GAIN) {
+       listOf(FormValidations.required(), FormValidations.weightValidator(weightUnit))
+      } else {
+        listOf(FormValidations.weightValidator(weightUnit))
       }
-      startingWeightValidators.add(FormValidations.weightValidator(weightUnit))
 
       val startingWeightControl = FormControl.create(
         initialValue = initialStartingWeight,
@@ -122,15 +113,6 @@ data class GoalFormControls(
       // Set up cross-field validation: when goal type changes, re-validate goal weight
       goalTypeControl.onValueChangeListener { _, _ ->
         goalWeightControl.validate()
-      }
-
-      // Explicitly clear any errors to prevent showing errors on initial form load
-      // Fields are not touched yet, so errors shouldn't be displayed
-      if (!startingWeightControl.touched) {
-        startingWeightControl.reset(startingWeightControl.value)
-      }
-      if (!goalWeightControl.touched) {
-        goalWeightControl.reset(goalWeightControl.value)
       }
 
       return GoalFormControls(
@@ -245,16 +227,6 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
           // Add required validator for lose/gain mode
           controls.startingWeight.addValidator(FormValidations.required())
         }
-
-        // Clear errors for startingWeight and goalWeight to prevent showing errors
-        // when switching goal types without user interaction
-        if (!controls.startingWeight.touched) {
-          controls.startingWeight.reset(controls.startingWeight.value)
-        }
-        if (!controls.goalWeight.touched) {
-          controls.goalWeight.reset(controls.goalWeight.value)
-        }
-
         state.copy() // same form reference; UI observes updated controls
       }
 

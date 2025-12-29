@@ -78,6 +78,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let existingAccount = try await localRepo.fetchAccount(byId: response.account.id)
             let isSameAccount = existingAccount?.accountId == activeAccount?.accountId
             
+            // Disconnect connected scales if switching to a different account
+            if !isSameAccount, activeAccount != nil {
+                await bluetoothService.disconnectConnectedScales()
+            }
+            
             // Break reference to old object BEFORE any context changes
             if isSameAccount {
                 activeAccount = nil
@@ -134,6 +139,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             // Check if logging in with same account
             let existingAccount = try await localRepo.fetchAccount(byId: response.account.id)
             let isSameAccount = existingAccount?.accountId == activeAccount?.accountId
+            
+            // Disconnect connected scales if switching to a different account
+            if !isSameAccount, activeAccount != nil {
+                await bluetoothService.disconnectConnectedScales()
+            }
             
             // Break reference to old object BEFORE any context changes
             if isSameAccount {
@@ -261,8 +271,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .info, tag: tag, message: "Switch account requested to accountId=\(account.accountId)")
             let responseAccount = try await refreshAccount(accountId: account.accountId)
-            activeAccount = nil
             await bluetoothService.disconnectConnectedScales()
+            activeAccount = nil
             try await setActiveAccount(responseAccount)
             logger.log(level: .info, tag: tag, message: "Switched active account to accountId=\(responseAccount.accountId)")
         } catch {

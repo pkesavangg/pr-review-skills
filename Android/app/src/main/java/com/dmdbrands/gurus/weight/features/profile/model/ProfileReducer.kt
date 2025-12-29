@@ -6,7 +6,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
-import com.dmdbrands.gurus.weight.features.profile.strings.ProfileStrings
+import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
+import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 
 /**
  * Controls for Profile form.
@@ -33,7 +34,7 @@ data class ProfileFormControls(
               validators = listOf(
                     FormValidations.required(),
                     FormValidations.noWhiteSpace(),
-              FormValidations.maxLength(50, ProfileStrings.FirstNameLabel),
+              FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH, customMessage = SignupStrings.Error.maxName),
                 ),
             ),
             lastName = FormControl.create(
@@ -41,14 +42,14 @@ data class ProfileFormControls(
                 validators = listOf(
                     FormValidations.required(),
                     FormValidations.noWhiteSpace(),
-                    FormValidations.maxLength(50, ProfileStrings.LastNameLabel),
+                    FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH, customMessage = SignupStrings.Error.maxName),
                 ),
             ),
             email = FormControl.create(
                 initialValue = email,
                 validators = listOf(
-                    FormValidations.required(),
-                    FormValidations.maxLength(100, ProfileStrings.EmailLabel),
+                    FormValidations.required(LoginStrings.Errors.emailBlank),
+                    FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, LoginStrings.Errors.maxLengthEmail),
                     FormValidations.email(),
                 ),
             ),
@@ -57,7 +58,7 @@ data class ProfileFormControls(
                 validators = listOf(
                     FormValidations.required(),
                     FormValidations.noWhiteSpace(),
-                    FormValidations.maxLength(20, ProfileStrings.ZipcodeLabel),
+                    FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH,customMessage = SignupStrings.Error.maxZipcode),
                 ),
             ),
             birthday =

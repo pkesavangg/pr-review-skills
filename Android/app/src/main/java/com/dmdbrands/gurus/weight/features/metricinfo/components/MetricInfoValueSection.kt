@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
-import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -23,14 +22,14 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param unit The unit of the metric value.
  */
 @Composable
-fun MetricInfoValueSection(subText : String , value: String? = null, unit: String? = null) {
+fun MetricInfoValueSection(subText : String , value: String? = null, unit: String? = null, valuePrefix: String? = null) {
   Column(
     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
     horizontalAlignment = Alignment.Start,
   ) {
     Row(verticalAlignment = Alignment.Bottom) {
       Text(
-        text = value ?: "--",
+        text = value ?: if(valuePrefix?.isNotEmpty() == true) "$valuePrefix --" else "--",
         style = MeTheme.typography.heading2,
         color = MeTheme.colorScheme.textBody,
       )

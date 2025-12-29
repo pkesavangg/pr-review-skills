@@ -62,7 +62,8 @@ fun GraphView(
     }
   }
 
-  val initialStartX = GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
+  val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
+    ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
@@ -88,10 +89,12 @@ fun GraphView(
       ),
     ),
   )
+
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
     )
+
 
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
@@ -117,11 +120,7 @@ fun GraphView(
     }
   }
 
-  // LaunchedEffect(Unit) {
-  //   scrollState.interactionEvents.collect {
-  //     if (it is ChartInteractionEvent.)
-  //   }
-  // }
+
 
   LaunchedEffect(scrollState.value) {
     if (state.markerIndex != null) {
@@ -194,24 +193,23 @@ fun GraphView(
       }
     },
   )
-
-  CartesianChartHost(
-    chart = chart,
-    modelProducer = state.modelProducer,
-    modifier = modifier.height(chartHeight),
-    scrollState = scrollState,
-    animateIn = true,
-    zoomState = rememberVicoZoomState(zoomEnabled = false),
-    onScrollStopped = { range ->
-      if (range != null) {
-        val min = range.visibleXRange.start
-        val max = range.visibleXRange.endInclusive
-        onScrollUpdate(min.toLong(), max.toLong())
-        if (!state.isEmptyGraph)
-          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
-      }
-    },
-  )
+    CartesianChartHost(
+      chart = chart,
+      modelProducer = state.modelProducer,
+      modifier = modifier.height(chartHeight),
+      scrollState = scrollState,
+      animateIn = true,
+      zoomState = rememberVicoZoomState(zoomEnabled = false),
+      onScrollStopped = { range ->
+        if (range != null) {
+          val min = range.visibleXRange.start
+          val max = range.visibleXRange.endInclusive
+          onScrollUpdate(min.toLong(), max.toLong())
+          if (!state.isEmptyGraph)
+            viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
+        }
+      },
+    )
 }
 
 fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment): List<Double> {

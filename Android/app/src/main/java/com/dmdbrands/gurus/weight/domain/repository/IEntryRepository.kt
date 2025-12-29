@@ -43,7 +43,7 @@ interface IEntryRepository {
    * @param accountId The account ID.
    * @return The latest valid entry, or null if not found.
    */
-  suspend fun getLatestEntry(accountId: String): Flow<Entry>?
+  suspend fun getLatestEntry(accountId: String): Flow<Entry?>
 
   /**
    * Gets all valid entries for an account.
@@ -166,6 +166,14 @@ interface IEntryRepository {
    * @return Flow of list of all monthly aggregated data
    */
   fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>>
+
+  /**
+   * Gets monthly history for an account for the last 365 days.
+   * This method automatically filters entries from the last 365 days, groups by month, and calculates averages.
+   * @param accountId The account ID
+   * @return Flow of list of monthly history for the last 365 days
+   */
+  fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>>
 
   /**
    * Gets the operation count for an account.

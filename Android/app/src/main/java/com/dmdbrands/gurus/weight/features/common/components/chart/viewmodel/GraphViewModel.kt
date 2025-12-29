@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -62,6 +63,7 @@ class GraphViewModel @AssistedInject constructor(
     }
   }
 
+
   @AssistedFactory
   interface Factory {
     fun create(segment: GraphSegment): GraphViewModel
@@ -75,17 +77,15 @@ class GraphViewModel @AssistedInject constructor(
 
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
+  private var renormalizationJob: Job? = null
 
   init {
+    // Set loading state immediately to prevent blank screen
     initializeWeightUnit()
     initializeImmediateData()
     observeDataChanges()
     subscribeWeightUnit()
   }
-
-  private fun initInialize() {
-  }
-
   /**
    * Initializes the graph with immediate data from services without suspension.
    * This provides instant initialization while the async flows are being set up.
@@ -94,7 +94,14 @@ class GraphViewModel @AssistedInject constructor(
     try {
       // Get immediate data from services (excluding EntryService and AccountService as requested)
       val immediateData = dataFlow.value
-      val immediateGoal = accountService.activeAccount.value.toGoal()
+      val currentAccount = accountService.activeAccount.value
+      val rawGoal = currentAccount?.toGoal()
+      // Process goal with current unit and weightless mode to ensure correct unit conversion
+      val immediateGoal = rawGoal?.let { goal ->
+        val weightUnit = currentAccount.weightUnit
+        val weightless = currentAccount.toWeightless()
+        goal.process(weightUnit, weightless)
+      }
       val immediateSecondaryKey = dashboardService.getCurrentSelectedKey()
       super.handleIntent(GraphIntent.UpdateData(immediateData))
       super.handleIntent(GraphIntent.UpdateGoal(immediateGoal))
@@ -169,35 +176,39 @@ class GraphViewModel @AssistedInject constructor(
     scrollDebounceJob?.cancel()
 
     // Setup chart model producer
-    if (data.isNotEmpty())
+    if (data.isNotEmpty()) {
       setupChartModelProducer(data, secondaryKey, goal)
-    else
+    }
+    else {
       setupEmptyModelProducer(goal)
+    }
   }
 
   /**
    * Sets up an empty chart model producer when no data is available.
-  Sets up an empty chart model producer when no data is available.
+   * Optimized to set empty state immediately and update model producer asynchronously.
    */
   private fun setupEmptyModelProducer(goal: Goal?) {
     val currentState = state.value
     // Cancel any existing model producer job
     currentModelProducerJob?.cancel()
 
-    // Set empty model producer
+    // Set empty state immediately to avoid blank screen
+    handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
+    val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
+    val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
+    if (startx != null && endx != null) {
+      super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
+    }
+    super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
+
+    // Set empty model producer asynchronously
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         // Check if job is still active before running transaction
         if (isActive) {
           val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
-          handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
-          val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
-          val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
-          if (startx != null && endx != null) {
-            super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
-          }
-          super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
           val graphMeta = if (goal != null) generateNiceScale(
             goal.goalWeight.div(10.0) - 10.0,
             goal.goalWeight.div(10.0) + 10.0,
@@ -208,27 +219,25 @@ class GraphViewModel @AssistedInject constructor(
           if (graphMeta != null) {
             handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
           }
-          currentState.modelProducer.runTransaction {
-            lineSeries {
-              series(
-                listOf(0.0), listOf(0.0),
-                ranges = CartesianRangeValues(
-                  minY = graphMeta?.min ?: 2.0,
-                  maxY = graphMeta?.max ?: 3.0,
-                  minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-                  maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
-                ),
-              )
+          withContext(Dispatchers.Main) {
+            currentState.modelProducer.runTransaction {
+              lineSeries {
+                series(
+                  listOf(0.0), listOf(0.0),
+                  ranges = CartesianRangeValues(
+                    minY = graphMeta?.min ?: 2.0,
+                    maxY = graphMeta?.max ?: 3.0,
+                    minX = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                    maxX = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)?.toDouble(),
+                  ),
+                )
+              }
             }
           }
         }
       } catch (e: Exception) {
         // Log error but don't crash the UI
         Log.e("GraphViewModel", "Error setting up empty chart model producer", e)
-        // Clear loading state on error
-        withContext(Dispatchers.Main) {
-          super.handleIntent(GraphIntent.UpdateIsLoading(false))
-        }
       }
     }
   }
@@ -263,7 +272,7 @@ class GraphViewModel @AssistedInject constructor(
       }
       start to end
     } else {
-      val start = _state.value.minTarget ?: GraphUtil.getStartRange(
+      val start = _state.value.minTarget ?: GraphUtil.getRollingWindowStart(
         segment,
         endTimeStamp,
       ) ?: calendar.timeInMillis
@@ -287,53 +296,74 @@ class GraphViewModel @AssistedInject constructor(
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-
         // Get weightless mode before entering transaction
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
-        // Pre-calculate Y-axis ranges on background thread
-        val primaryYAxisRange =
-          calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
-        val secondaryYAxisRange = if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
-          handleIntent(
-            GraphIntent.UpdateSecondaryYAxis(
-              yRangeValues = CartesianRangeValues(minY = null, maxY = null),
-            ),
-          )
-          calculateYAxisRange(
-            secondaryGraphLines,
-            goal,
-            isWeightlessMode = isWeightlessMode,
-            isSecondary = true,
-            min = startX,
-            max = endX,
+        // Pre-calculate Y-axis range for weight (primary) only
+        val primaryYAxisRange = calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
+        val normalizedSecondaryGraphLines = if (secondaryGraphLines != null &&
+                                                   secondaryGraphLines.points.isNotEmpty() &&
+                                                   primaryYAxisRange.minY != null &&
+                                                   primaryYAxisRange.maxY != null &&
+                                                   primaryYAxisRange.minY!!.isFinite() &&
+                                                   primaryYAxisRange.maxY!!.isFinite() &&
+                                                   primaryYAxisRange.minY!! < primaryYAxisRange.maxY!!) {
+          // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
+          GraphUtil.normalizeMetricToWeightRange(
+            metricGraphLine = secondaryGraphLines,
+            weightMin = primaryYAxisRange.minY!!,
+            weightMax = primaryYAxisRange.maxY!!,
+            minX = startX,
+            maxX = endX,
           )
         } else null
 
+
         // Pre-calculate series data on background thread
-        val primaryXData = xLabels.map { it.value as Long }
-        val primaryYData = ySeries.map { it.value as Double }
+        val primaryYDataPairs = xLabels.zip(ySeries).mapNotNull { (xLabel, yLabel) ->
+          val xValue = xLabel.value as? Long
+          val yValue = yLabel.value as? Double
+          if (xValue != null && yValue != null && yValue.isFinite()) {
+            Pair(xValue, yValue)
+          } else null
+        }
+        val primaryXDataFiltered = primaryYDataPairs.map { it.first }
+        val primaryYDataFiltered = primaryYDataPairs.map { it.second }
 
         // Check if job is still active before running transaction
-        if (isActive) {
+        if (isActive && primaryXDataFiltered.isNotEmpty() && primaryYDataFiltered.isNotEmpty() &&
+            primaryXDataFiltered.size == primaryYDataFiltered.size) {
           // Switch to main thread for UI updates
           currentState.modelProducer.runTransaction {
             lineSeries {
               series(
-                x = primaryXData,
-                y = primaryYData,
+                x = primaryXDataFiltered,
+                y = primaryYDataFiltered,
                 ranges = primaryYAxisRange,
               )
             }
-            if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
-              val secondaryXData = secondaryGraphLines.points.map { it.x.value as Long }
-              val secondaryYData = secondaryGraphLines.points.map { it.y.value }
-              lineSeries {
-                series(
-                  x = secondaryXData,
-                  y = secondaryYData,
-                  ranges = secondaryYAxisRange!!,
-                )
+            // Secondary metrics now use the same Y-axis range as primary (normalized values)
+            if (normalizedSecondaryGraphLines != null && normalizedSecondaryGraphLines.points.isNotEmpty()) {
+              // Filter out NaN/Infinity values from secondary Y data (matching iOS defensive checks)
+              val secondaryDataPairs = normalizedSecondaryGraphLines.points.mapNotNull { point ->
+                val xValue = point.x.value as? Long
+                val yValue = (point.y.value as? Number)?.toDouble()
+                if (xValue != null && yValue != null && yValue.isFinite()) {
+                  Pair(xValue, yValue)
+                } else null
+              }
+              val secondaryXDataFiltered = secondaryDataPairs.map { it.first }
+              val secondaryYDataFiltered = secondaryDataPairs.map { it.second }
+
+              if (secondaryXDataFiltered.isNotEmpty() && secondaryYDataFiltered.isNotEmpty() &&
+                  secondaryXDataFiltered.size == secondaryYDataFiltered.size) {
+                lineSeries {
+                  series(
+                    x = secondaryXDataFiltered,
+                    y = secondaryYDataFiltered,
+                    ranges = primaryYAxisRange, // Use same range as primary (weight)
+                  )
+                }
               }
             }
           }
@@ -343,10 +373,6 @@ class GraphViewModel @AssistedInject constructor(
       } catch (e: Exception) {
         // Log error but don't crash the UI
         Log.e("GraphViewModel", "Error setting up chart model producer", e)
-        // Clear loading state on error
-        withContext(Dispatchers.Main) {
-          super.handleIntent(GraphIntent.UpdateIsLoading(false))
-        }
       }
     }
   }
@@ -375,14 +401,33 @@ class GraphViewModel @AssistedInject constructor(
         visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
         listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max, isSecondary)?.toDouble())
 
-    if (paddedValues.isNotEmpty()) {
+    // Filter out NaN and infinite values before calculating min/max
+    val validPaddedValues = paddedValues.filter { it.isFinite() }
+
+    if (validPaddedValues.isNotEmpty()) {
+      val minValue = floor(validPaddedValues.min())
+      val maxValue = ceil(validPaddedValues.max())
+
       val graphMeta = generateNiceScale(
-        minValue = floor(paddedValues.min()),
-        maxValue = ceil(paddedValues.max()),
-        goalWeight = goal?.goalWeight ?: 0.0,
-        isWeightLessMode = isWeightlessMode,
+        minValue = minValue,
+        maxValue = maxValue,
+        goalWeight = goal?.goalWeight ?: 0.0, isWeightLessMode = isWeightlessMode,
         targetTickCount = 5,
       )
+
+      // Validate graphMeta values are finite
+      if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
+        // Return default range if graphMeta is invalid
+        return CartesianRangeValues(
+          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
+            segment,
+            Calendar.getInstance().timeInMillis,
+          )?.toDouble(),
+          minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
+            ?.toDouble(),
+        )
+      }
+
       if (!isSecondary) {
         super.handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
       }
@@ -410,6 +455,7 @@ class GraphViewModel @AssistedInject constructor(
   /**
    * Handles scroll events and updates the visible range.
    * Optimized with debouncing and background processing.
+   * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
 
@@ -441,21 +487,17 @@ class GraphViewModel @AssistedInject constructor(
             max = max,
             isWeightlessMode = isWeightlessMode,
           )
-          val secondaryYAxis = if (currentState.secondaryGraphLines != null) {
-            calculateYAxisRange(
-              currentState.secondaryGraphLines,
-              min = min,
-              max = max,
-              isSecondary = true,
-              isWeightlessMode = isWeightlessMode,
-            )
-          } else null
+
+
+          // This triggers renormalization when Y-axis domain changes
+          withContext(Dispatchers.Main) {
+            // Directly call renormalization with current scroll range to avoid reading stale state values
+            handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis, min = min, max = max)
+            super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
+          }
+
 
           // Update UI on main thread
-          super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
-          if (secondaryYAxis != null) {
-            super.handleIntent(GraphIntent.UpdateSecondaryYAxis(yRangeValues = secondaryYAxis))
-          }
         }
       } catch (e: Exception) {
         Log.e("GraphViewModel", "Error handling scroll", e)
@@ -465,10 +507,129 @@ class GraphViewModel @AssistedInject constructor(
 
   override fun provideInitialState(): GraphState = GraphState()
 
+  /**
+   * Handles renormalization when cached Y-axis domain changes (iOS-style).
+   * Regenerates normalized secondary metric series with new Y-axis domain.
+   *
+   * @param newYAxisRange The new Y-axis range to use for normalization.
+   *                      If null, reads from current state.
+   * @param min Optional minimum X-axis range. If null, reads from state.
+   * @param max Optional maximum X-axis range. If null, reads from state.
+   */
+  private fun handleRenormalizationOnYAxisChange(
+    newYAxisRange: CartesianRangeValues? = null,
+    min: Long? = null,
+    max: Long? = null
+  ) {
+    val currentState = _state.value
+    val secondaryKey = currentState.secondaryKey
+    val data = currentState.data
+
+    // Use provided Y-axis or fallback to cached from state
+    val cachedYAxis = newYAxisRange
+
+    // Only renormalize if we have secondary metrics and Y-axis
+    // Validate Y-axis values are finite before use (matching iOS defensive checks)
+    if (secondaryKey == null || data.isEmpty() || cachedYAxis == null ||
+        cachedYAxis.minY == null || cachedYAxis.maxY == null ||
+        !cachedYAxis.minY!!.isFinite() || !cachedYAxis.maxY!!.isFinite() ||
+        cachedYAxis.minY!! >= cachedYAxis.maxY!!) {
+      return
+    }
+
+    // Cancel any existing renormalization job
+    renormalizationJob?.cancel()
+
+    renormalizationJob = viewModelScope.launch(Dispatchers.IO) {
+      try {
+        val graphLines = data.getWeightGraphPoints()
+        val secondaryGraphLines = data.toGraphPoints((secondaryKey as DashboardKey.Metric).key)
+
+        // Use provided min/max or fallback to state values
+        val startX = min ?: currentState.minTarget ?: graphLines.points.minOfOrNull { it.x.value.toLong() }
+          ?: Calendar.getInstance().timeInMillis
+        val endX = max ?: currentState.maxTarget ?: graphLines.points.maxOfOrNull { it.x.value.toLong() }
+          ?: Calendar.getInstance().timeInMillis
+
+        // Renormalize secondary metrics with cached Y-axis (iOS-style)
+        // Y-axis values already validated above, safe to use here
+        val normalizedSecondaryGraphLines = if (secondaryGraphLines.points.isNotEmpty()) {
+          val originalValues = secondaryGraphLines.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+
+          // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
+          val normalized = GraphUtil.normalizeMetricToWeightRange(
+            metricGraphLine = secondaryGraphLines,
+            weightMin = cachedYAxis.minY!!,
+            weightMax = cachedYAxis.maxY!!,
+            minX = startX,
+            maxX = endX,
+          )
+
+          val normalizedValues = normalized.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+          normalized
+        } else null
+
+        // Update chart model producer with renormalized values
+        if (isActive && normalizedSecondaryGraphLines != null && normalizedSecondaryGraphLines.points.isNotEmpty()) {
+          // Filter out NaN/Infinity values from primary Y data (matching iOS defensive checks)
+          val primaryDataPairs = graphLines.points.mapNotNull { point ->
+            val xValue = point.x.value as? Long
+            val yValue = point.y.value as? Double
+            if (xValue != null && yValue != null && yValue.isFinite()) {
+              Pair(xValue, yValue)
+            } else null
+          }
+          val primaryXData = primaryDataPairs.map { it.first }
+          val primaryYData = primaryDataPairs.map { it.second }
+
+          // Filter out NaN/Infinity values from secondary Y data (matching iOS defensive checks)
+          val secondaryDataPairs = normalizedSecondaryGraphLines.points.mapNotNull { point ->
+            val xValue = point.x.value as? Long
+            val yValue = (point.y.value as? Number)?.toDouble()
+            if (xValue != null && yValue != null && yValue.isFinite()) {
+              Pair(xValue, yValue)
+            } else null
+          }
+          val secondaryXData = secondaryDataPairs.map { it.first }
+          val secondaryYData = secondaryDataPairs.map { it.second }
+
+          // Only update chart if we have valid data pairs
+          if (primaryXData.isNotEmpty() && primaryYData.isNotEmpty() &&
+              primaryXData.size == primaryYData.size) {
+            currentState.modelProducer.runTransaction {
+              // Update primary series
+              lineSeries {
+                series(
+                  x = primaryXData,
+                  y = primaryYData,
+                  ranges = cachedYAxis,
+                )
+              }
+              // Update secondary series with renormalized values (only if valid)
+              if (secondaryXData.isNotEmpty() && secondaryYData.isNotEmpty() &&
+                  secondaryXData.size == secondaryYData.size) {
+                lineSeries {
+                  series(
+                    x = secondaryXData,
+                    y = secondaryYData,
+                    ranges = cachedYAxis, // Use cached Y-axis (same as primary)
+                  )
+                }
+              }
+            }
+          }
+        }
+      } catch (e: Exception) {
+        Log.e("GraphViewModel", "Error renormalizing on Y-axis change", e)
+      }
+    }
+  }
+
   override fun onCleared() {
     super.onCleared()
     // Cancel any running jobs
     currentModelProducerJob?.cancel()
     scrollDebounceJob?.cancel()
+    renormalizationJob?.cancel()
   }
 }

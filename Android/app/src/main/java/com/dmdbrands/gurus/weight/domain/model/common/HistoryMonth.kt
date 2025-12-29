@@ -4,9 +4,6 @@ import androidx.room.Ignore
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 data class HistoryMonth(
     val entryTimestamp: String? = null,
@@ -20,7 +17,6 @@ data class HistoryMonth(
     var avgWeightPrefix: String? = null
 
     override fun process(unit: WeightUnit?, weightLess: Weightless?): HistoryMonth {
-        val monthYear = entryTimestamp?.parseToMonthYear()
         val toUnit = unit ?: WeightUnit.LB
 
         val convertedAvg = avgWeight?.convertToUnit(toUnit)
@@ -29,7 +25,7 @@ data class HistoryMonth(
         val finalAvg = convertedAvg?.applyWeightless(weightLess)
 
         val result = this.copy(
-            entryTimestamp = monthYear,
+            entryTimestamp = entryTimestamp,
             avgWeight = finalAvg?.rounded(),
             entryCount = entryCount,
             change = convertedChange?.rounded()
@@ -37,14 +33,6 @@ data class HistoryMonth(
         result.unit = toUnit.label
         result.avgWeightPrefix = if (weightLess?.isWeightlessOn == true && finalAvg?.isPositive() == true) "+" else ""
         return result
-    }
-
-    // Extension functions for better readability
-    private fun String.parseToMonthYear(): String = try {
-        DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)
-            .format(ZonedDateTime.parse(this))
-    } catch (e: Exception) {
-        this
     }
 
     private fun Double.convertToUnit(toUnit: WeightUnit): Double =

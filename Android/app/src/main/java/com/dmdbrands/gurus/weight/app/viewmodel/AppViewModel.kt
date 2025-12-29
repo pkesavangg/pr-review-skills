@@ -116,8 +116,10 @@ constructor(
   private var syncScaleJob: Job? = null
   private var deviceSubscribeJob: Job? = null
   private var iamDialogListenerJob: Job? = null
+  private var pairedScalesSubscribeJob: Job? = null
   private var initialized = false
   private var isPermissionAlertShown = false
+  private var latestPairedScales: List<Device> = emptyList()
 
   init {
     // Initialize and maintain currentAccountId globally
@@ -252,6 +254,7 @@ constructor(
           is AuthState.LoggedOut -> {
             if (authState.isActiveAccount) {
               routeToLandingOrApp()
+              dialogQueueService.clear()
             }
             stopScan()
           }
@@ -295,6 +298,7 @@ constructor(
               )
             }
             stopScan()
+            dashboardService.setSelectedKey(null)
             initLoadingData(authState.account, true)
           }
 
@@ -387,6 +391,7 @@ constructor(
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
         syncScaleJob?.cancel()
+        pairedScalesSubscribeJob?.cancel()
         accountService.subscribeAccount()
         entryService.updateAccountId(account.id)
         dashboardService.setAccountId(account.id)
@@ -402,6 +407,7 @@ constructor(
         updateUnRead()
         subscribePermissions()
         subscribeDeviceCallback()
+        subscribePairedScales()
         syncScales()
       } else {
         routeToLandingOrApp()
@@ -473,6 +479,22 @@ constructor(
 
           else -> null
         }
+      }
+    }
+  }
+
+  /**
+   * Subscribes to paired scales flow and stores the latest value.
+   * This ensures we always have the most up-to-date paired scales for weight-only mode checks.
+   */
+  private fun subscribePairedScales() {
+    pairedScalesSubscribeJob?.cancel()
+    pairedScalesSubscribeJob = viewModelScope.launch {
+      deviceService.pairedScales.collect { pairedScales ->
+        latestPairedScales = pairedScales
+        AppLog.d(TAG, "Updated latest paired scales: ${pairedScales.size} devices")
+        // Check if weight-only mode alert should be shown when paired scales are updated
+        checkCanShowWeightOnlyModeAlert()
       }
     }
   }
@@ -609,7 +631,6 @@ constructor(
                       val scaleToken = userList.find { user -> user.name == device.preferences?.displayName }?.token
                       ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
                         if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
-
                           viewModelScope.launch {
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
                               navigationService.navigateTo(
@@ -662,17 +683,18 @@ constructor(
         return@launch
       }
       val accountId = currentAccountId ?: return@launch
+      //During setup scale list will be empty so ignoring this check during setup and allow all entries.
+      val isSetupInProgress = deviceService.isSetupInProgress()
       val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId)
-      if (device == null) {
-        return@launch
-      }
+
+      if (device == null && !isSetupInProgress) return@launch
 
       // Get user height for BMI calculation
       val activeAccount = accountService.activeAccountFlow.first()
       val userHeight = activeAccount?.height
 
       val entry = ggEntry.map { ggScaleEntry ->
-        val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device.id)
+        val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device?.id ?: "")
 
         // Check if BMI is 0.0 or null and calculate it if user height is available
         if ((scaleEntry.scale.scaleEntry.bmi == null || scaleEntry.scale.scaleEntry.bmi == 0.0) && userHeight != null) {
@@ -696,11 +718,13 @@ constructor(
 
       try {
         entryService.addEntry(entry)
-        dialogQueueService.showToast(
-          Toast(
-            message = "entry saved successfully",
-          ),
-        )
+        if(!isSetupInProgress){
+          dialogQueueService.showToast(
+            Toast(
+              message = "entry saved successfully",
+            ),
+          )
+        }
         // Check for account flags after entry is saved
         checkAccountFlags("entry")
       } catch (e: Exception) {
@@ -821,11 +845,14 @@ constructor(
   /**
    * Checks if weight-only mode alert should be shown and emits appropriate events.
    * Similar to checkCanShowWeightOnlyModeAlert() in Angular BluetoothService.
+   * Uses the latest paired scales collected from the flow.
    */
   private fun checkCanShowWeightOnlyModeAlert() {
     viewModelScope.launch {
       try {
-        val pairedScales = deviceService.pairedScales.first()
+        // Use the latest paired scales collected from the flow
+        // This ensures we always have the most up-to-date data
+        val pairedScales = latestPairedScales
         pairedScales.forEach { device ->
           AppLog.d(
             TAG,
@@ -835,7 +862,7 @@ constructor(
           )
         }
 
-        val connectedScales = pairedScales.filter { it.connectionStatus == BLEStatus.CONNECTED }
+        val connectedScales = pairedScales.filter { it.connectionStatus == BLEStatus.CONNECTED && it.sku == "0412" }
         val weightOnlyScales = connectedScales.filter { it.isWeighOnlyModeEnabledByOthers }
 
         val hasWeightOnlyModeScale = weightOnlyScales.isNotEmpty()

@@ -9,7 +9,7 @@ import SwiftUI
 // MARK: - Base Input Field
 
 struct BaseInputField: View {
-    @Environment(\.appTheme) private var theme
+    @EnvironmentObject var themeManager: Theme
     
     // Configuration
     var inputType: TextFieldType
@@ -29,10 +29,40 @@ struct BaseInputField: View {
     // Internal state for password visibility
     @State private var isSecureTextVisible: Bool = false
     @FocusState private var isFocused: Bool
+    @State private var themeRefreshId: String = ""
     
     // Constants
     let focusedTopPadding: CGFloat = 15
     let trailingPadding: CGFloat = 40
+    
+    // Computed property for theme palette (derived from themeManager)
+    private var theme: AppColors.Palette {
+        AppColors.Theme.primary.palette
+    }
+    
+    // Computed property for text color that updates with theme
+    private var textColor: Color {
+        theme.textBody.opacity(isDisabled ? 0.38 : 1)
+    }
+    
+    // Theme identifier that changes when theme changes
+    private var themeId: String {
+        "\(themeManager.appearanceMode.rawValue)-\(themeManager.systemColorScheme == .dark ? "dark" : "light")"
+    }
+    
+    // Helper function to handle theme changes and preserve focus
+    private func handleThemeChange() {
+        let wasFocused = isFocused
+        themeRefreshId = themeId
+        
+        // Restore focus after TextField is recreated on next run loop
+        if wasFocused {
+            DispatchQueue.main.async {
+                isFocused = true
+                focusedField = fieldType
+            }
+        }
+    }
     
     var body: some View {
         Group {
@@ -47,9 +77,10 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
+        .id("\(fieldType)-\(themeRefreshId)")
         .padding(.top, (isFocused || !value.isEmpty) ? focusedTopPadding : 0)
         .padding(.trailing, trailingPadding)
-        .foregroundColor(theme.textBody.opacity(isDisabled ? 0.38 : 1))
+        .foregroundStyle(textColor)
         .focused($isFocused)
         .autocorrectionDisabled(true)
         .autocapitalization(inputType == .email || inputType == .password ? .none : .sentences)
@@ -61,6 +92,17 @@ struct BaseInputField: View {
         }
         .onChange(of: focusedField) {
             isFocused = focusedField == fieldType
+        }
+        .onChange(of: themeManager.appearanceMode) { _, _ in
+            handleThemeChange()
+        }
+        .onChange(of: themeManager.systemColorScheme) { _, _ in
+            if themeManager.appearanceMode == .system {
+                handleThemeChange()
+            }
+        }
+        .onAppear {
+            themeRefreshId = themeId
         }
         .onSubmit {
             onCommit?()
@@ -88,7 +130,6 @@ struct BaseInputField: View {
 // MARK: - Base Input Field Preview
 struct BaseInputTestView: View {
     @EnvironmentObject var themeManager: Theme
-    @Environment(\.appTheme) private var theme
     @State var text: String = ""
     @State var focusedField: FocusField?
     

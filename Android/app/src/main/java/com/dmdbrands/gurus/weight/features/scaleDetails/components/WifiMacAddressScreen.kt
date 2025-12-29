@@ -29,7 +29,7 @@ fun WifiMacAddressScreen(
   ) {
     WifiMacAddress(
       title = WifiMacAddressStrings.Title,
-      macAddress = state.scale?.device?.macAddress ?: "",
+      macAddress = state.wifiMacAddress ?: "",
       onCopyMacAddress = {
         handleIntent(ScaleDetailsIntent.OnCopyMacAddress(it))
       }

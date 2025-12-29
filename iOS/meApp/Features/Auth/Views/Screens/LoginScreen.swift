@@ -36,8 +36,8 @@ struct LoginScreen: View {
                     Button {
                         store.openHelp()
                     } label: {
-                        Image(AppAssets.helpCircle)
-                            .frame(width: 24, height: 24)
+                        AppIconView(icon: AppAssets.helpCircle,  size: IconSize(width: 24, height: 24))
+                            .foregroundColor(theme.statusIconPrimary)
                     }
                 },
                 onLeadingTap: {
@@ -81,6 +81,12 @@ struct LoginScreen: View {
                                         store.setEmailTouched()
                                         focusedField = .password
                                     }
+                                    .onChange(of: focusedField) { oldValue, newValue in
+                                        // Mark email as touched when focus moves away from it
+                                        if oldValue == .email && newValue != .email {
+                                            store.setEmailTouched()
+                                        }
+                                    }
                                     
                                     // Password Input Field
                                     AppInputField(
@@ -102,6 +108,12 @@ struct LoginScreen: View {
                                                 hideKeyboard()
                                                 await store.logIn()
                                             }
+                                        }
+                                    }
+                                    .onChange(of: focusedField) { oldValue, newValue in
+                                        // Mark password as touched when focus moves away from it
+                                        if oldValue == .password && newValue != .password {
+                                            store.setPasswordTouched()
                                         }
                                     }
                                 }

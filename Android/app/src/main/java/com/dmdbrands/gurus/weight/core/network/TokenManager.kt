@@ -182,7 +182,6 @@ constructor(
         AppLog.v(TAG, "Loading all tokens from UserDataStore")
         accountTokens.clear()
         val allAccounts = userDataStore.getData().accounts
-      AppLog.v(TAG, "all accounts hello $allAccounts")
         allAccounts.forEach { (id, userAccount) ->
             accountTokens[id] =
                 Token(

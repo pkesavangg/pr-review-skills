@@ -66,6 +66,12 @@ struct DashboardScreen: View {
                 metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
+        // Update metric info entry when time period changes
+        .task(id: store.state.graph.selectedPeriod) {
+            if let wrapper = openMetricInfoWithoutSelection {
+                metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
+            }
+        }
         .task(id: store.state.ui.selectedMetricLabel) {
             store.handleSelectedMetricLabelChange(store.state.ui.selectedMetricLabel)
         }

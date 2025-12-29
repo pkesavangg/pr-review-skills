@@ -152,14 +152,16 @@ sealed class DateTimeValue() {
             set(Calendar.MINUTE, minute)
           }.timeInMillis
 
-      is DateTime ->
-        Calendar
-          .getInstance()
-          .apply {
-            timeInMillis = millis
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-          }.timeInMillis
+      is DateTime -> {
+        val now = Calendar.getInstance()
+        Calendar.getInstance().apply {
+          timeInMillis = millis
+          set(Calendar.HOUR_OF_DAY, hour)
+          set(Calendar.MINUTE, minute)
+          set(Calendar.SECOND, now.get(Calendar.SECOND))
+          set(Calendar.MILLISECOND, now.get(Calendar.MILLISECOND))
+        }.timeInMillis
+      }
     }
 
   companion object {
@@ -262,6 +264,7 @@ object DateTimeInputDefaults {
       headlineContentColor = colorScheme.textBody,
       dateTextFieldColors =
         TextFieldDefaults.colors(
+          errorContainerColor = colorScheme.primaryBackground,
           focusedContainerColor = colorScheme.primaryBackground,
           unfocusedContainerColor = colorScheme.primaryBackground,
           unfocusedTextColor = colorScheme.textBody,
@@ -412,6 +415,7 @@ fun DateTimeInput(
           ?: (localState as? DateTimeValue.DateTime)?.millis
           ?: System.currentTimeMillis(),
       onCancel = { isDateDialogOpen = false },
+      hasError = isError,
       onOk = { millis ->
         isToday = DateUtils.isToday(millis)
         isDateDialogOpen = false
@@ -459,6 +463,7 @@ fun DateTimeInput(
           },
       isToday = isToday,
       onCancel = { isTimeDialogOpen = false },
+      hasError = isError,
       onOk = { hour, minute ->
         isTimeDialogOpen = false
         val (clampedHour, clampedMinute) = if (isToday) clampTime(hour, minute, minTime, maxTime) else Pair(

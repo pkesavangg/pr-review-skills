@@ -143,7 +143,11 @@ constructor(
           mapOf(
             "email" to loginEmail,
           ),
-        onDismiss = {},
+        onDismiss = {
+          dialogQueueService.dismissCurrent()
+        },
+        dismissOnBackPress = false,
+        dismissOnClickOutside = false,
       ),
     )
   }

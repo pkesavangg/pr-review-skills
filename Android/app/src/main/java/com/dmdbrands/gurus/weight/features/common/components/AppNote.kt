@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -40,6 +41,7 @@ fun AppNote(
   icon: Int? = null,
   iconType: AppIconType = AppIconType.Primary,
   messageType: TextType = TextType.SubHeading,
+  isCenter: Boolean = false,
   buttonText: String? = null,
   onButtonClick: (() -> Unit)? = null,
 ) {
@@ -73,6 +75,7 @@ fun AppNote(
         // Title or message
         Column(
           modifier = Modifier.weight(1f),
+          horizontalAlignment = if (isCenter) Alignment.CenterHorizontally else Alignment.Start,
           verticalArrangement = Arrangement.Center,
         ) {
           if (title != null) {

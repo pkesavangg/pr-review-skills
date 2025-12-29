@@ -147,6 +147,7 @@ fun AppText(
   textAlign: TextAlign = TextAlign.Start,
   softWrap: Boolean = true,
   textOverflow: TextOverflow = TextOverflow.Clip,
+  maxLines: Int = Int.MAX_VALUE,
   color: Color? = null,
   onClick: (() -> Unit)? = null,
   onAnnotationClick: ((String) -> Unit)? = null,
@@ -156,7 +157,7 @@ fun AppText(
   val ANNOTATION_TAG = "ANNOTATED_CLICK"
 
   val finalText = remember(text, annotatedText, spanStyle) {
-    if (annotatedText != null && spanStyle != null) {
+     if (annotatedText != null && spanStyle != null) {
       buildAnnotatedString {
         when (annotationPosition) {
           AnnotationPosition.Start -> {
@@ -225,7 +226,8 @@ fun AppText(
               onAnnotationClick(annotation.item)
             }
         },
-        overflow = textOverflow
+        overflow = textOverflow,
+        maxLines = maxLines,
       )
     } else {
       Text(
@@ -235,6 +237,7 @@ fun AppText(
         textAlign = textAlign,
         softWrap = softWrap,
         overflow = textOverflow,
+        maxLines = maxLines,
         modifier =
           modifier.then(
             if (onClick != null) Modifier.debounceClick { onClick() } else Modifier,
@@ -244,6 +247,8 @@ fun AppText(
     Spacer(modifier = Modifier.height(spacing))
   }
 }
+
+
 
 @PreviewTheme
 @Composable

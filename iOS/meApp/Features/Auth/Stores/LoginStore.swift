@@ -94,12 +94,12 @@ final class LoginStore: ObservableObject {
     var passwordError: String? { loginForm.getError(for: loginForm.password) }
 
     func setEmailTouched() {
-        loginForm.email.markAsDirty()
+        loginForm.email.markAsTouched()
         objectWillChange.send()
     }
 
     func setPasswordTouched() {
-        loginForm.password.markAsDirty()
+        loginForm.password.markAsTouched()
         objectWillChange.send()
     }
 

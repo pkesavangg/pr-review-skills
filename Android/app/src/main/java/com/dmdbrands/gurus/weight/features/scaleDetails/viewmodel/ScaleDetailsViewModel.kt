@@ -5,7 +5,6 @@ import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
-import com.dmdbrands.gurus.weight.core.shared.utilities.NameUtils
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -108,6 +107,7 @@ constructor(
 
       ScaleDetailsIntent.OpenWiFiSetup -> openWiFiSetup()
 
+
       ScaleDetailsIntent.ShowScaleNameModal -> openScaleNameModal()
       ScaleDetailsIntent.UpdateScaleName -> updateScaleName()
       is ScaleDetailsIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
@@ -152,8 +152,31 @@ constructor(
         ggDeviceService.getConnectedWifiSSID(state.value.scale!!.toGGBTDevice()) { ssid ->
           handleIntent(ScaleDetailsIntent.SetConnectedSSID(if (ssid.isEmpty()) null else ssid.cleanCorruptedChars()))
         }
+        fetchWifiMacAddress()
       } catch (e: Exception) {
         handleIntent(ScaleDetailsIntent.SetConnectedSSID(null))
+      }
+    }
+  }
+
+  /**
+   * Fetches the WiFi MAC address from the connected R4 scale.
+   * Only fetches if the scale is an R4 scale and is connected.
+   */
+  private fun fetchWifiMacAddress() {
+    viewModelScope.launch {
+      val scale = state.value.scale
+      if (scale != null &&
+          scale.deviceType == ScaleSetupType.BtWifiR4.value &&
+          scale.connectionStatus == BLEStatus.CONNECTED) {
+        try {
+          ggDeviceService.getConnectedWifiMacAddress(scale.toGGBTDevice()) { macAddress ->
+            handleIntent(ScaleDetailsIntent.SetWifiMacAddress(macAddress))
+          }
+        } catch (e: Exception) {
+          AppLog.e("ScaleDetailsViewModel", "Failed to fetch WiFi MAC address", e)
+          handleIntent(ScaleDetailsIntent.SetWifiMacAddress(""))
+        }
       }
     }
   }

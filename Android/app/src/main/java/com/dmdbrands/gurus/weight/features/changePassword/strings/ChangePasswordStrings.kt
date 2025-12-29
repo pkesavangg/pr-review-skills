@@ -12,6 +12,7 @@ object ChangePasswordStrings {
     const val LoaderMessage = "Saving..."
     const val SuccessMessage = "Password Updated."
     const val ErrorMessage = "Failed to change password"
-
+    const val PasswordMin = "Password must be 6 characters long"
+    const val PasswordMax = "maximum value should be 50"
     const val SaveButton = "Save"
 }

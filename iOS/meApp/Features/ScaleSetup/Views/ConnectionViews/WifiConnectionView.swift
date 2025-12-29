@@ -115,7 +115,7 @@ struct WifiConnectionView: View {
                             )
                             
                             ButtonView(
-                                text:  commonStrings.support,
+                                text: state == .noNetworks ? scaleSetupStrings.setupWifiLater : commonStrings.support,
                                 type: .inlineTextPrimary,
                                 size: .large,
                                 isDisabled: false,

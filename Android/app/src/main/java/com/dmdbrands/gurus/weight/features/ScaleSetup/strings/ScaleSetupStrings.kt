@@ -25,7 +25,7 @@ object ScaleSetupStrings {
   object ExitSetupAlert {
     const val Title = "Are you sure you want to exit?"
     fun Message(isConnected: Boolean) = if (isConnected)
-      "If you exit early, you may not be able to \naccess some features until set up."
+      "If you exit early, you may not be able to access some features until set up."
     else "The scale will not be connected."
 
     const val Back = "Back"

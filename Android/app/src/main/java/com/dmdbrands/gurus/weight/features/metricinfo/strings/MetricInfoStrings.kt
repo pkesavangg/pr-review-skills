@@ -7,7 +7,7 @@ import java.time.format.DateTimeFormatter
  * Strings used in the Metric Info screen.
  */
 object MetricInfoStrings {
-  const val AppBarTitle = "Metric Info"
+  const val AppBarTitle = "Body Metrics"
   const val MeasurementNotTaken = "no measurement available"
 
   const val ResourcesTitle = "Resources"
@@ -116,7 +116,7 @@ object MetricInfoDescriptions {
       resources = metricInfoResources[MetricKey.WEIGHT] ?: emptyList(),
     ),
     MetricKey.BMI to MetricInfoContent(
-      title = "BMI (Body Mass Index)",
+      title = "BMI",
       description = "BMI, or body mass index, is a numerical assessment of general body fat that compares weight and height. This metric can be helpful as a screening tool via categories, such as: underweight, normal, overweight, or obese—although there are intrinsic health factors such as muscle mass that BMI does not account for.\n\nAccording to the CDC, basic categories of BMI are as follows: <18.4 is underweight, 18.5-24.9 is normal, 25-29.9 is overweight, and >30 is obese. BMI can help in observing similar health risks as weight.",
       resources = metricInfoResources[MetricKey.BMI] ?: emptyList(),
     ),

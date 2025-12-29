@@ -395,11 +395,7 @@ constructor(
         _checkIntegrations.value = false
         return true
       }
-      val anyExpired = loggedInAccounts.any { it.isExpired }
-      if (anyExpired) {
-        AppLog.d(TAG, "At least one logged-in account is expired in local DB. Returning false.")
-        return true
-      }
+
       AppLog.d(TAG, "All logged-in accounts are valid in local DB. Returning true.")
       // Emit true to trigger integration checks
       return true
@@ -418,7 +414,10 @@ constructor(
         _checkIntegrations.value = false
         return true
       }
-      for (account in loggedInAccounts) {
+      val filterLoggedInAccounts = loggedInAccounts.filter { !it.isExpired }
+
+      // Run account checks in parallel with timeout to avoid blocking UI
+      for (account in filterLoggedInAccounts) {
         try {
           AppLog.d(TAG, "Checking login status for account: ${account.id}")
           // Get account info from API and update tokens for background operations

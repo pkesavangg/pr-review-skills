@@ -94,14 +94,22 @@ class DashboardStore: ObservableObject {
         // Sync metrics manager state to centralized state
         metricsManager.$state
             .sink { [weak self] metricsState in
-                self?.state.metrics = metricsState
+                guard let self = self else { return }
+                // Suppress UI updates during reset to prevent flickering
+                if !self.state.ui.isResettingDashboard {
+                    self.state.metrics = metricsState
+                }
             }
             .store(in: &cancellables)
         
         // Sync streak manager state to centralized state
         streakManager.$state
             .sink { [weak self] streakState in
-                self?.state.streak = streakState
+                guard let self = self else { return }
+                // Suppress UI updates during reset to prevent flickering
+                if !self.state.ui.isResettingDashboard {
+                    self.state.streak = streakState
+                }
             }
             .store(in: &cancellables)
         
@@ -1284,23 +1292,17 @@ class DashboardStore: ObservableObject {
         // Ensure loader is visible via global notification system
         notificationService.showLoader(LoaderModel(text: lang.saving))
         
-        state.ui.selectedMetricLabel = nil
-        state.ui.isEditMode = false
-        state.ui.resetDragState()
+        // Set flag to suppress UI updates during reset to prevent flickering
+        state.ui.isResettingDashboard = true
         
         // Reset the saved order to restore default order
         resetGridOrder()
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.state.ui.isLoading = false
-                self.state.ui.loaderOverride = nil
-                self.notificationService.dismissLoader()
-                
-                // Delegate reset operations to managers
-                Task {
-                    try? await self.metricsManager.resetMetricsToDefaults()
-                    try? await self.streakManager.resetStreakData()
+            Task { @MainActor in
+                do {
+                    try await self.metricsManager.resetMetricsToDefaults()
+                    try await self.streakManager.resetStreakData()
                     
                     // Reset metrics to their original body metrics order
                     self.metricsManager.resetOrderToDefault()
@@ -1310,35 +1312,57 @@ class DashboardStore: ObservableObject {
                         try? await self.metricsManager.updateMetrics(with: latestEntry)
                     }
                     
+                    try await self.streakManager.refreshStreakData()
+                    self.syncRemovalStateFromMetricsManager()
+                    self.syncRemovalStateFromStreakManager()
+                    
                     // Save the reset configuration to API
-                    try? await self.metricsManager.saveMetricsToAPI()
-                }
-                
-                self.state.ui.isGoalCardRemoved = false
-                
-                Task {
-                    do {
-                        try await self.streakManager.refreshStreakData()
-                        try await self.metricsManager.saveMetricsToAPI()
-                        
-                        // Sync the removal state from both managers after reset
-                        await MainActor.run {
-                            self.syncRemovalStateFromMetricsManager()
-                            self.syncRemovalStateFromStreakManager()
-                        }
-                    } catch {
-                        self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
+                    try await self.metricsManager.saveMetricsToAPI()
+                    
+                    // Now manually sync manager states to UI state since we suppressed updates
+                    self.state.metrics = self.metricsManager.state
+                    self.state.streak = self.streakManager.state
+                    
+                    // Now batch all UI state changes together to prevent flickering
+                    // Clear the reset flag as part of the batched update
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.state.ui.isLoading = false
+                        self.state.ui.loaderOverride = nil
+                        self.state.ui.isGoalCardRemoved = false
+                        self.state.ui.selectedMetricLabel = nil
+                        self.state.graph.clearSelection()
+                        self.state.ui.isEditMode = false
+                        self.state.ui.resetDragState()
+                        self.state.ui.isResettingDashboard = false
+                        self.hasEditSnapshot = false
                     }
+                    
+                    self.notificationService.dismissLoader()
+                    
+                    // Single UI update after all state changes are complete
+                    self.objectWillChange.send()
+                } catch {
+                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
+                    
+                    // Manually sync manager states even on error
+                    self.state.metrics = self.metricsManager.state
+                    self.state.streak = self.streakManager.state
+                    
+                    // Clear the reset flag as part of the batched update
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.state.ui.isLoading = false
+                        self.state.ui.loaderOverride = nil
+                        self.state.ui.isGoalCardRemoved = false
+                        self.state.ui.selectedMetricLabel = nil
+                        self.state.graph.clearSelection()
+                        self.state.ui.isEditMode = false
+                        self.state.ui.resetDragState()
+                        self.state.ui.isResettingDashboard = false
+                        self.hasEditSnapshot = false
+                    }
+                    self.notificationService.dismissLoader()
+                    self.objectWillChange.send()
                 }
-                
-                self.state.ui.selectedMetricLabel = nil
-                self.state.graph.clearSelection()
-                self.state.ui.isEditMode = false
-                self.state.ui.resetDragState()
-                self.hasEditSnapshot = false
-                
-                // Force UI update to reflect the reset state
-                self.objectWillChange.send()
             }
         }
     }
@@ -1574,27 +1598,15 @@ class DashboardStore: ObservableObject {
 
     private func formatYearRangeLabel(from start: Date, to end: Date) -> String {
         let cal = Calendar.current
-        let sameYear = cal.isDate(start, equalTo: end, toGranularity: .year)
-        if sameYear {
-            // Full calendar year (Jan..Dec) → show just "yyyy"
-            let startMonth = cal.component(.month, from: start)
-            let endMonth = cal.component(.month, from: end)
-            if startMonth == 1 && endMonth == 12 {
-                return DateTimeTools.formatter("yyyy").string(from: start)
-            }
-            // Same calendar year partial → "MMM - MMM, yyyy" (or "MMM yyyy" if same month)
-            let sameMonth = cal.isDate(start, equalTo: end, toGranularity: .month)
-            if sameMonth {
-                return DateTimeTools.formatter("MMM yyyy").string(from: start)
-            }
-            let startStr = DateTimeTools.formatter("MMM").string(from: start)
-            let endStr = DateTimeTools.formatter("MMM, yyyy").string(from: end)
-            return "\(startStr) - \(endStr)"
+        let startMonth = cal.component(.month, from: start)
+        if startMonth == 1 {
+            return DateTimeTools.formatter("yyyy").string(from: start)
         }
-        // Cross-year → "MMM yyyy - MMM, yyyy"
-        let s = DateTimeTools.formatter("MMM yyyy").string(from: start)
-        let e = DateTimeTools.formatter("MMM, yyyy").string(from: end)
-        return "\(s) - \(e)"
+        
+        // Otherwise show "MMM yyyy – MMM yyyy"
+        let startStr = DateTimeTools.formatter("MMM yyyy").string(from: start)
+        let endStr = DateTimeTools.formatter("MMM yyyy").string(from: end)
+        return "\(startStr) – \(endStr)"
     }
 
     
@@ -1634,29 +1646,73 @@ class DashboardStore: ObservableObject {
 
     private func formatMonthRangeLabel(from start: Date, to end: Date) -> String {
         let calendar = Calendar.current
-        let sameYear = calendar.isDate(start, equalTo: end, toGranularity: .year)
-        let sameMonth = calendar.isDate(start, equalTo: end, toGranularity: .month)
+        let startDay = calendar.component(.day, from: start)
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: end)
+        let startMonth = calendar.component(.month, from: start)
+        let endMonth = calendar.component(.month, from: end)
+        let endDay = calendar.component(.day, from: end)
 
-        // Cross-year: include years on both sides
-        if !sameYear {
-            let fmt = DateTimeTools.formatter("MMM d, yyyy")
-            return "\(fmt.string(from: start)) - \(fmt.string(from: end))"
-        }
-
-        // Same month (within same year): always show "MMM yyyy"
-        if sameMonth {
+        // Match Android: if start day is 1st, show "MMM yyyy"
+        if startDay == 1 {
             return DateTimeTools.formatter("MMM yyyy").string(from: start)
         }
 
-        // Cross-month within same year: omit year on sides → "MMM d - MMM d"
-        let fmt = DateTimeTools.formatter("MMM d")
-        return "\(fmt.string(from: start)) - \(fmt.string(from: end))"
+        // Cross-year: "MMM d, yyyy – MMM d, yyyy"
+        if startYear != endYear {
+            let fmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
+        }
+
+        // Cross-month within same year: "MMM d – MMM d, yyyy"
+        if startMonth != endMonth {
+            let startFmt = DateTimeTools.formatter("MMM d")
+            let endFmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(startFmt.string(from: start)) – \(endFmt.string(from: end))"
+        }
+
+        // Same month: "MMM d – d, yyyy"
+        let startFmt = DateTimeTools.formatter("MMM d")
+        return "\(startFmt.string(from: start)) – \(endDay), \(startYear)"
     }
 
     private func defaultRangeLabel(for period: TimePeriod, lastScrollPosition: Date) -> String {
         let minDate = lastScrollPosition
         let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: period))
-        return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+        switch period {
+        case .week:
+            return formatWeekRangeLabel(from: minDate, to: maxDate)
+        default:
+            // For other periods, use existing methods
+            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+        }
+    }
+    
+    private func formatWeekRangeLabel(from start: Date, to end: Date) -> String {
+        let calendar = Calendar.current
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: end)
+        let startMonth = calendar.component(.month, from: start)
+        let endMonth = calendar.component(.month, from: end)
+        let endDay = calendar.component(.day, from: end)
+
+        // Match Android WEEK formatting logic
+        // Cross-year: "MMM d, yyyy – MMM d, yyyy"
+        if startYear != endYear {
+            let fmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
+        }
+
+        // Cross-month: "MMM d – MMM d, yyyy"
+        if startMonth != endMonth {
+            let startFmt = DateTimeTools.formatter("MMM d")
+            let endFmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(startFmt.string(from: start)) – \(endFmt.string(from: end))"
+        }
+
+        // Same month: "MMM d – d, yyyy"
+        let startFmt = DateTimeTools.formatter("MMM d")
+        return "\(startFmt.string(from: start)) – \(endDay), \(startYear)"
     }
 
     // Delegate weight formatting to GoalManager
@@ -1695,7 +1751,14 @@ class DashboardStore: ObservableObject {
         // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
         let numericScalars = raw.unicodeScalars.filter { DashboardStore.allowedNumericCharacters.contains($0) }
         let numericChars = String(String.UnicodeScalarView(numericScalars))
-        if let number = Double(numericChars), number == 0 {
+        // Check if value is placeholder or zero
+        let isPlaceholder = raw == DashboardStrings.placeholder || (numericChars.isEmpty == false && Double(numericChars) == 0)
+        
+        if isPlaceholder {
+            // If there's a preLabel (e.g., "Lv." for visceral fat), show "Lv. --" instead of just "--"
+            if let preLabel = metric.preLabel {
+                return "\(preLabel) \(DashboardStrings.placeholder)"
+            }
             return DashboardStrings.placeholder
         }
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
@@ -1785,9 +1848,27 @@ class DashboardStore: ObservableObject {
                 let v = Int(x.rounded())
                 return v == 0 ? nil : v
             }
-            func scaled10OrNil(_ x: Double?) -> Int? {
+            func scaled10OrNil(_ x: Double?, metricLabel: String) -> Int? {
                 guard let x = x else { return nil }
-                let v = Int((x * 10.0).rounded())
+
+                if let metricItem = state.metrics.metrics.first(where: { $0.label == metricLabel }) {
+                    let tileValue = metricItem.value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if tileValue == DashboardStrings.placeholder || tileValue == "0" || tileValue == "0.0" {
+                        return nil
+                    }
+                }
+
+                // For BMR and visceral fat: x is in stored format (scaled by 10) from BathScaleWeightSummary
+                // Divide by 10 to get display format before formatting to properly detect zero values
+                // This aligns with how MetricDetailView displays these values
+                let displayValue = x / 10.0
+                let formatted = BodyMetricsConvertor.convert(displayValue, shouldCompose: false, wholeNumber: true)
+
+                if formatted == "0" || formatted == "0.0" || formatted == "--" {
+                    return nil
+                }
+                // x is already in stored format (scaled by 10), so convert to Int directly
+                let v = Int(x.rounded())
                 return v == 0 ? nil : v
             }
 
@@ -1808,13 +1889,13 @@ class DashboardStore: ObservableObject {
                 source: "dashboard"
             )
             entry.scaleEntryMetric = BathScaleMetric(
-                bmr: scaled10OrNil(point.bmr),
+                bmr: scaled10OrNil(point.bmr, metricLabel: DashboardStrings.bmrKcal),
                 metabolicAge: intOrNil(point.metabolicAge),
                 proteinPercent: intOrNil(point.proteinPercent),
                 pulse: intOrNil(point.pulse),
                 skeletalMusclePercent: intOrNil(point.skeletalMusclePercent),
                 subcutaneousFatPercent: intOrNil(point.subcutaneousFatPercent),
-                visceralFatLevel: scaled10OrNil(point.visceralFatLevel),
+                visceralFatLevel: scaled10OrNil(point.visceralFatLevel, metricLabel: DashboardStrings.visceralFat),
                 boneMass: intOrNil(point.boneMass),
                 impedance: nil,
                 unit: nil
@@ -1938,10 +2019,20 @@ class DashboardStore: ObservableObject {
 
         // Weight average in stored units
         let avgStoredWeightOpt: Int? = {
-            let ws = ops.map { Double($0.weight) }
-            guard let mean = avg(ws) else { return dataManager.state.latestWeightStored == 0 ? nil : dataManager.state.latestWeightStored }
-            let v = Int(mean.rounded())
-            return v == 0 ? nil : v
+            // Convert each weight to display format and calculate average
+            let weightValues = ops.map { goalManager.convertWeightToDisplay(Int($0.weight)) }
+            guard !weightValues.isEmpty else { 
+                return dataManager.state.latestWeightStored == 0 ? nil : dataManager.state.latestWeightStored 
+            }
+            let sum = weightValues.reduce(0, +)
+            let average = sum / Double(weightValues.count)
+
+            let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
+            
+            // Convert back to stored format
+            let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+            let stored = ConversionTools.convertDisplayToStored(roundedAverage, isMetric: unit == .kg)
+            return stored == 0 ? nil : stored
         }()
 
         // Build scaleEntry from averages (convert display doubles to stored Ints where appropriate)
@@ -1959,13 +2050,13 @@ class DashboardStore: ObservableObject {
         )
 
         // Metric entry: visceralFat and bmr are stored scaled by 10
-        let avgBmr = scaled10OrNil(avg(ops.map { $0.bmr }))
+        let avgBmr = intOrNil(avg(ops.map { $0.bmr }))
         let avgMetAge = intOrNil(avg(ops.map { $0.metabolicAge }))
         let avgProtein = intOrNil(avg(ops.map { $0.proteinPercent }))
         let avgPulse = intOrNil(avg(ops.map { $0.pulse }))
         let avgSkel = intOrNil(avg(ops.map { $0.skeletalMusclePercent }))
         let avgSubFat = intOrNil(avg(ops.map { $0.subcutaneousFatPercent }))
-        let avgVisceral = scaled10OrNil(avg(ops.map { $0.visceralFatLevel }))
+        let avgVisceral = intOrNil(avg(ops.map { $0.visceralFatLevel }))
         let avgBone = intOrNil(avg(ops.map { $0.boneMass }))
 
         entry.scaleEntryMetric = BathScaleMetric(

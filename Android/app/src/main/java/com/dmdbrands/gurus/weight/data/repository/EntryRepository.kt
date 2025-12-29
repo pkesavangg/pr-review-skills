@@ -15,7 +15,6 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.conver
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -73,8 +72,8 @@ class EntryRepository @Inject constructor(
   /**
    * Gets the latest valid entry for an account.
    */
-  override suspend fun getLatestEntry(accountId: String): Flow<Entry>? =
-    entryDao.getLatestEntry(accountId)?.mapNotNull { it.toEntry() }
+  override suspend fun getLatestEntry(accountId: String): Flow<Entry?> =
+    entryDao.getLatestEntry(accountId).map { it?.toEntry() }
 
   /**
    * Gets all valid entries for an account.
@@ -85,6 +84,7 @@ class EntryRepository @Inject constructor(
   /**
    * Gets valid entries for an account within a time range.
    */
+  //TODO: This is not used at the moment and is retained for possible future requirements
   override fun getEntriesByTimeRange(
     accountId: String,
     startTime: String,
@@ -108,6 +108,7 @@ class EntryRepository @Inject constructor(
    * @param days Number of days to look back
    * @return Flow of list of Entry objects
    */
+  //TODO: This is not used at the moment and is retained for possible future requirements
   override fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
     val calendar = Calendar.getInstance()
     val endDate = calendar.timeInMillis.toString()
@@ -204,6 +205,14 @@ class EntryRepository @Inject constructor(
    */
   override fun getMonthlyAverage(accountId: String): Flow<List<HistoryMonth>> {
     return entryDao.getMonthlyHistory(accountId).map { list -> list.map { it.convertToDisplay() } }
+  }
+
+  /**
+   * Gets monthly history for an account for the last 365 days.
+   * This method automatically filters entries from the last 365 days, groups by month, and calculates averages.
+   */
+  override fun getMonthlyHistoryLastYear(accountId: String): Flow<List<HistoryMonth>> {
+    return entryDao.getMonthlyHistoryLastYear(accountId).map { list -> list.map { it.convertToDisplay() } }
   }
 
   /**

@@ -775,7 +775,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             
-            // Add timeout to prevent continuation leaks if SDK callback never fires
             let details = try await withTimeout(seconds: 10) {
                 await self.ggBleSDK.getDeviceInfo(ggDevice)
             }

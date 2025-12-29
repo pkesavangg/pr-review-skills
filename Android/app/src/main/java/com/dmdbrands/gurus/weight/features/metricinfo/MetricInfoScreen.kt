@@ -240,7 +240,6 @@ fun MetricInfoScreenContent(
         else
           MetricInfoStrings.MeasurementNotTaken
 
-
         Column(
           modifier = modifier
             .fillMaxSize()
@@ -250,6 +249,7 @@ fun MetricInfoScreenContent(
         ) {
           MetricInfoValueSection(
             value = currentStat.getDisplayValue(),
+            valuePrefix = currentStat.valuePrefix,
             unit = currentStat.unit,
             subText = measurementTakenString,
           )

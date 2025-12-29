@@ -56,7 +56,6 @@ object DateTimeConverter {
           localDate.atStartOfDay(defaultZone)
         }
       }
-
       zonedDateTime.toInstant().toEpochMilli()
     } catch (e: Exception) {
       AppLog.e("DateTimeConverter", "Failed to convert date string to timestamp: $isoString", e.toString())

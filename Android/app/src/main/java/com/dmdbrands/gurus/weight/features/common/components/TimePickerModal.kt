@@ -31,6 +31,7 @@ fun TimePickerDialogContent(
   minValue: DateTimeValue? = null,
   maxValue: DateTimeValue? = null,
   isToday: Boolean = false,
+  hasError: Boolean = false,
 ) {
   val currentTime = Calendar.getInstance()
   val hour = initial?.hour ?: currentTime.get(Calendar.HOUR_OF_DAY)
@@ -73,6 +74,7 @@ fun TimePickerDialogContent(
     },
     minTime = minTime,
     maxTime = maxTime,
+    hasError = hasError,
   )
 }
 
@@ -85,6 +87,7 @@ fun TimePickerDialog(
   minTime: DateTimeValue.Time? = null,
   maxTime: DateTimeValue.Time? = null,
   isToday: Boolean = false,
+  hasError: Boolean = false,
 ) {
   var constraintTriggered by remember { mutableStateOf(false) }
   val timerColors = DateTimeInputDefaults.getTimePickerColor()
@@ -143,7 +146,7 @@ fun TimePickerDialog(
       primaryAction =
         ActionButton(
           text = "OK",
-          enabled = !constraintTriggered,
+          enabled = !constraintTriggered && !hasError,
           action = {
             onConfirm()
           },

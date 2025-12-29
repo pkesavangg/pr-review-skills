@@ -28,6 +28,32 @@ import java.util.Map.entry
  */
 @Dao
 interface EntryDao {
+  companion object {
+    /**
+     * SQLite datetime modifier constants.
+     */
+    const val UTC = "'utc'"
+    const val LOCAL_TIME = "'localtime'"
+    const val START_OF_DAY = "'start of day'"
+    const val START_OF_MONTH = "'start of month'"
+
+    /**
+     * Month abbreviation constants for SQL CASE statements.
+     */
+    const val MONTH_JAN = "'Jan'"
+    const val MONTH_FEB = "'Feb'"
+    const val MONTH_MAR = "'Mar'"
+    const val MONTH_APR = "'Apr'"
+    const val MONTH_MAY = "'May'"
+    const val MONTH_JUN = "'Jun'"
+    const val MONTH_JUL = "'Jul'"
+    const val MONTH_AUG = "'Aug'"
+    const val MONTH_SEP = "'Sep'"
+    const val MONTH_OCT = "'Oct'"
+    const val MONTH_NOV = "'Nov'"
+    const val MONTH_DEC = "'Dec'"
+  }
+
   /**
    * Insert an Entry with related BpmEntry and BodyScaleEntry in a single transaction.
    * @param entry The complete entry data to insert
@@ -104,7 +130,7 @@ interface EntryDao {
    */
   @Transaction
   @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
-  fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry>?
+  fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry?>
 
   /**
    * Get all entries with their related details for a specific account.
@@ -332,8 +358,8 @@ interface EntryDao {
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-        AND strftime('%Y-%m', datetime(entryTimestamp)) = :month
-        ORDER BY datetime(entryTimestamp) DESC
+        AND strftime('%Y-%m', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME})) = :month
+        ORDER BY datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}) DESC
     """,
   )
   fun getMonthDetail(accountId: String, month: String): Flow<List<PopulatedActiveEntry>>
@@ -379,22 +405,22 @@ interface EntryDao {
   @Query(
     """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
-          datetime(MIN(e.entryTimestamp), 'start of month') AS entryTimestamp,
-          AVG(bse.weight) AS weight,
-          AVG(bse.bodyFat) AS bodyFat,
-          AVG(bse.muscleMass) AS muscleMass,
-          AVG(bse.water) AS water,
-          AVG(bse.bmi) AS bmi,
-          AVG(bsem.bmr) AS bmr,
-          AVG(bsem.metabolicAge) AS metabolicAge,
-          AVG(bsem.proteinPercent) AS proteinPercent,
-          AVG(bsem.pulse) AS pulse,
-          AVG(bsem.skeletalMusclePercent) AS skeletalMusclePercent,
-          AVG(bsem.subcutaneousFatPercent) AS subcutaneousFatPercent,
-          AVG(bsem.visceralFatLevel) AS visceralFatLevel,
-          AVG(bsem.boneMass) AS boneMass,
-          AVG(bsem.impedance) AS impedance,
+          strftime('%Y-%m', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
+          datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_MONTH}) AS entryTimestamp,
+          AVG(CASE WHEN bse.weight > 0 THEN bse.weight ELSE NULL END) AS weight,
+          AVG(CASE WHEN bse.bodyFat > 0 THEN bse.bodyFat ELSE NULL END) AS bodyFat,
+          AVG(CASE WHEN bse.muscleMass > 0 THEN bse.muscleMass ELSE NULL END) AS muscleMass,
+          AVG(CASE WHEN bse.water > 0 THEN bse.water ELSE NULL END) AS water,
+          AVG(CASE WHEN bse.bmi > 0 THEN bse.bmi ELSE NULL END) AS bmi,
+          AVG(CASE WHEN bsem.bmr > 0 THEN bsem.bmr ELSE NULL END) AS bmr,
+          AVG(CASE WHEN bsem.metabolicAge > 0 THEN bsem.metabolicAge ELSE NULL END) AS metabolicAge,
+          AVG(CASE WHEN bsem.proteinPercent > 0 THEN bsem.proteinPercent ELSE NULL END) AS proteinPercent,
+          AVG(CASE WHEN bsem.pulse > 0 THEN bsem.pulse ELSE NULL END) AS pulse,
+          AVG(CASE WHEN bsem.skeletalMusclePercent > 0 THEN bsem.skeletalMusclePercent ELSE NULL END) AS skeletalMusclePercent,
+          AVG(CASE WHEN bsem.subcutaneousFatPercent > 0 THEN bsem.subcutaneousFatPercent ELSE NULL END) AS subcutaneousFatPercent,
+          AVG(CASE WHEN bsem.visceralFatLevel > 0 THEN bsem.visceralFatLevel ELSE NULL END) AS visceralFatLevel,
+          AVG(CASE WHEN bsem.boneMass > 0 THEN bsem.boneMass ELSE NULL END) AS boneMass,
+          AVG(CASE WHEN bsem.impedance > 0 THEN bsem.impedance ELSE NULL END) AS impedance,
           MAX(e.unit) AS unit
         FROM entry_view AS e
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
@@ -418,7 +444,7 @@ interface EntryDao {
   @Query(
     """
         SELECT
-          strftime('%Y-%m', datetime(e.entryTimestamp)) AS period,
+          strftime('%Y-%m', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
           e.entryTimestamp,
           bse.weight,
           bse.bodyFat,
@@ -443,7 +469,7 @@ interface EntryDao {
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m', datetime(entryTimestamp))
+            GROUP BY strftime('%Y-%m', datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}))
           )
         ORDER BY period DESC
     """,
@@ -455,28 +481,28 @@ interface EntryDao {
   @Query(
     """
     SELECT
-      strftime('%Y-%m-%d', e.entryTimestamp) AS period,
-      datetime(MIN(e.entryTimestamp), 'start of day') AS entryTimestamp,
-      AVG(bse.weight) AS weight,
-      AVG(bse.bodyFat) AS bodyFat,
-      AVG(bse.muscleMass) AS muscleMass,
-      AVG(bse.water) AS water,
-      AVG(bse.bmi) AS bmi,
-      AVG(bsem.bmr) AS bmr,
-      AVG(bsem.metabolicAge) AS metabolicAge,
-      AVG(bsem.proteinPercent) AS proteinPercent,
-      AVG(bsem.pulse) AS pulse,
-      AVG(bsem.skeletalMusclePercent) AS skeletalMusclePercent,
-      AVG(bsem.subcutaneousFatPercent) AS subcutaneousFatPercent,
-      AVG(bsem.visceralFatLevel) AS visceralFatLevel,
-      AVG(bsem.boneMass) AS boneMass,
-      AVG(bsem.impedance) AS impedance,
+      strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS period,
+      datetime(MIN(e.entryTimestamp),${UTC}, ${LOCAL_TIME},${START_OF_DAY}) AS entryTimestamp,
+      AVG(CASE WHEN bse.weight > 0 THEN bse.weight ELSE NULL END) AS weight,
+      AVG(CASE WHEN bse.bodyFat > 0 THEN bse.bodyFat ELSE NULL END) AS bodyFat,
+      AVG(CASE WHEN bse.muscleMass > 0 THEN bse.muscleMass ELSE NULL END) AS muscleMass,
+      AVG(CASE WHEN bse.water > 0 THEN bse.water ELSE NULL END) AS water,
+      AVG(CASE WHEN bse.bmi > 0 THEN bse.bmi ELSE NULL END) AS bmi,
+      AVG(CASE WHEN bsem.bmr > 0 THEN bsem.bmr ELSE NULL END) AS bmr,
+      AVG(CASE WHEN bsem.metabolicAge > 0 THEN bsem.metabolicAge ELSE NULL END) AS metabolicAge,
+      AVG(CASE WHEN bsem.proteinPercent > 0 THEN bsem.proteinPercent ELSE NULL END) AS proteinPercent,
+      AVG(CASE WHEN bsem.pulse > 0 THEN bsem.pulse ELSE NULL END) AS pulse,
+      AVG(CASE WHEN bsem.skeletalMusclePercent > 0 THEN bsem.skeletalMusclePercent ELSE NULL END) AS skeletalMusclePercent,
+      AVG(CASE WHEN bsem.subcutaneousFatPercent > 0 THEN bsem.subcutaneousFatPercent ELSE NULL END) AS subcutaneousFatPercent,
+      AVG(CASE WHEN bsem.visceralFatLevel > 0 THEN bsem.visceralFatLevel ELSE NULL END) AS visceralFatLevel,
+      AVG(CASE WHEN bsem.boneMass > 0 THEN bsem.boneMass ELSE NULL END) AS boneMass,
+      AVG(CASE WHEN bsem.impedance > 0 THEN bsem.impedance ELSE NULL END) AS impedance,
       MAX(e.unit) AS unit
     FROM entry_view AS e
     LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
     LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
     WHERE e.accountId = :accountId
-    GROUP BY strftime('%Y-%m-%d', e.entryTimestamp)
+    GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
     ORDER BY period DESC
   """,
   )
@@ -495,7 +521,7 @@ interface EntryDao {
     """
 WITH daily_entries AS (
   SELECT
-    strftime('%Y-%m-%d', datetime(e.entryTimestamp)) AS day,
+    strftime('%Y-%m-%d', datetime(e.entryTimestamp,${UTC}, ${LOCAL_TIME})) AS day,
     e.entryTimestamp,
     e.unit,
     bse.weight,
@@ -601,7 +627,7 @@ ORDER BY d.day DESC
         SELECT
             e.entryTimestamp,
             bse.weight,
-            strftime('%Y-%m', datetime(e.entryTimestamp)) AS period
+            strftime('%Y-%m', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME})) AS period
         FROM entry_view e
         LEFT JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
@@ -628,7 +654,20 @@ ORDER BY d.day DESC
         LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
     )
     SELECT
-        firstTimestamp AS entryTimestamp,
+        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+            WHEN 1 THEN $MONTH_JAN
+            WHEN 2 THEN $MONTH_FEB
+            WHEN 3 THEN $MONTH_MAR
+            WHEN 4 THEN $MONTH_APR
+            WHEN 5 THEN $MONTH_MAY
+            WHEN 6 THEN $MONTH_JUN
+            WHEN 7 THEN $MONTH_JUL
+            WHEN 8 THEN $MONTH_AUG
+            WHEN 9 THEN $MONTH_SEP
+            WHEN 10 THEN $MONTH_OCT
+            WHEN 11 THEN $MONTH_NOV
+            WHEN 12 THEN $MONTH_DEC
+        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
         avgWeight,
         entryCount,
         CASE
@@ -641,6 +680,77 @@ ORDER BY d.day DESC
     """,
   )
   fun getMonthlyHistory(
+    accountId: String
+  ): Flow<List<HistoryMonth>>
+
+  /**
+   * Get monthly history for an account for the last 365 days.
+   * This method automatically filters entries from the last 365 days, groups by month, and calculates averages.
+   * @param accountId The account ID
+   * @return Flow of list of monthly history for the last 365 days
+   */
+  @Query(
+    """
+    WITH entries_with_period AS (
+        SELECT
+            e.entryTimestamp,
+            bse.weight,
+            strftime('%Y-%m', datetime(e.entryTimestamp,${UTC},${LOCAL_TIME})) AS period
+        FROM entry_view e
+        LEFT JOIN body_scale_entry bse ON e.id = bse.id
+        WHERE e.accountId = :accountId
+          AND bse.weight IS NOT NULL
+          AND datetime(e.entryTimestamp) >= datetime('now', '-365 days')
+          AND datetime(e.entryTimestamp) <= datetime('now')
+    ),
+    first_last AS (
+        SELECT
+            period,
+            MIN(entryTimestamp) AS firstTimestamp,
+            MAX(entryTimestamp) AS lastTimestamp
+        FROM entries_with_period
+        GROUP BY period
+    ),
+    joined AS (
+        SELECT
+            fl.period,
+            fl.firstTimestamp,
+            fl.lastTimestamp,
+            first_entry.weight AS firstWeight,
+            last_entry.weight AS lastWeight,
+            (SELECT AVG(weight) FROM entries_with_period WHERE period = fl.period) AS avgWeight,
+            (SELECT COUNT(*) FROM entries_with_period WHERE period = fl.period) AS entryCount
+        FROM first_last fl
+        LEFT JOIN entries_with_period first_entry ON fl.firstTimestamp = first_entry.entryTimestamp
+        LEFT JOIN entries_with_period last_entry ON fl.lastTimestamp = last_entry.entryTimestamp
+    )
+    SELECT
+        CASE CAST(strftime('%m', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS INTEGER)
+            WHEN 1 THEN $MONTH_JAN
+            WHEN 2 THEN $MONTH_FEB
+            WHEN 3 THEN $MONTH_MAR
+            WHEN 4 THEN $MONTH_APR
+            WHEN 5 THEN $MONTH_MAY
+            WHEN 6 THEN $MONTH_JUN
+            WHEN 7 THEN $MONTH_JUL
+            WHEN 8 THEN $MONTH_AUG
+            WHEN 9 THEN $MONTH_SEP
+            WHEN 10 THEN $MONTH_OCT
+            WHEN 11 THEN $MONTH_NOV
+            WHEN 12 THEN $MONTH_DEC
+        END || ' ' || strftime('%Y', datetime(firstTimestamp, ${UTC}, ${LOCAL_TIME})) AS entryTimestamp,
+        avgWeight,
+        entryCount,
+        CASE
+            WHEN firstWeight IS NOT NULL AND lastWeight IS NOT NULL
+            THEN lastWeight - firstWeight
+            ELSE NULL
+        END AS change
+    FROM joined
+    ORDER BY period DESC
+    """,
+  )
+  fun getMonthlyHistoryLastYear(
     accountId: String
   ): Flow<List<HistoryMonth>>
 
@@ -660,11 +770,12 @@ ORDER BY d.day DESC
    */
   @Query(
     """
-        SELECT entryTimestamp
+         SELECT
+        strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
         FROM entry_view
         WHERE accountId = :accountId
-        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
-        ORDER BY entryTimestamp DESC
+        GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME}))
+        ORDER BY datetime(entryTimestamp,${UTC},${LOCAL_TIME}) DESC
         """,
   )
   suspend fun getStreakData(accountId: String): List<String>
@@ -686,10 +797,10 @@ ORDER BY d.day DESC
     """
         WITH RECURSIVE dates AS (
             SELECT
-                strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime')) AS date
+                strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS date
             FROM entry_view
             WHERE accountId = :accountId
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp, 'localtime'))
+            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
             ORDER BY date ASC
         ),
         streak_calc AS (
@@ -738,9 +849,9 @@ ORDER BY d.day DESC
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-          AND datetime(entryTimestamp) >= datetime(:startDate)
-          AND datetime(entryTimestamp) <= datetime(:endDate)
-        ORDER BY datetime(entryTimestamp) DESC
+          AND datetime(entryTimestamp, "utc","localtime") >= datetime(:startDate)
+          AND datetime(entryTimestamp, "utc","localtime") <= datetime(:endDate)
+        ORDER BY datetime(entryTimestamp, "utc","localtime") DESC
     """,
   )
   suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<PopulatedActiveEntry>

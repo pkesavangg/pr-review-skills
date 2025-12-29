@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
+import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
@@ -56,6 +57,7 @@ import javax.inject.Inject
 class SettingsViewModel
 @Inject
 constructor(
+  private val entryService: IEntryService,
   private val accountService: IAccountService,
   private val exportService: IExportService,
   private val bodyCompositionService: IBodyCompositionService,
@@ -81,6 +83,7 @@ constructor(
     loadCurrentThemeMode()
     loadMacAddressSettings()
     initFeedNotificationListener()
+    checkExportEnabled()
   }
 
   fun getUserProfile() {
@@ -1085,6 +1088,26 @@ constructor(
       }
     } else {
       "Off"
+    }
+  }
+
+  /**
+   * Checks if export should be enabled based on latest entry.
+   * Export is enabled if there is at least one entry (latestEntry != null).
+   */
+  private fun checkExportEnabled() {
+    viewModelScope.launch {
+      try {
+        entryService.latestEntry.collect { latestEntry ->
+          val isEnabled = latestEntry != null
+          handleIntent(SettingsIntent.SetExportEnabled(isEnabled))
+          AppLog.d(TAG, "Export enabled: $isEnabled (latestEntry: ${latestEntry != null})")
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error checking export enabled state", e.toString())
+        // Default to disabled on error
+        handleIntent(SettingsIntent.SetExportEnabled(false))
+      }
     }
   }
 
