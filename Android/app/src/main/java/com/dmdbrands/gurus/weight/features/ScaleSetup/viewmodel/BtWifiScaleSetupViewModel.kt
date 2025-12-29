@@ -1509,7 +1509,7 @@ constructor(
     AppLog.d(TAG, "All required permissions are enabled")
   }
 
-  private fun updateWifiDetails() {
+  private suspend fun updateWifiDetails() {
     val supervisorJob = SupervisorJob()
     val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
     discoveredScale = discoveredScale?.copy(
