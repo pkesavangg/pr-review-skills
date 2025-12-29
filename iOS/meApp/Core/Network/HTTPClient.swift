@@ -13,6 +13,7 @@ final class HTTPClient {
     @Injector var notificationHelperService: NotificationHelperService
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
+    @Atomic private var lastToastShownTime: Date?
 
     private init() {}
     
@@ -229,15 +230,22 @@ final class HTTPClient {
     
     // MARK: - Connectivity Check
     private func checkConnectivity() async throws {
-        if await !NetworkMonitor.shared.isConnected {
+        let isConnected = await NetworkMonitor.shared.getCurrentConnectionStatus()
+        if !isConnected {
             if !skipCheckNetwork {
-                await notificationHelperService.showToast(ToastModel(
-                    message: ToastStrings.unableToConnect
-                ))
+                await showToastIfNeeded(ToastStrings.unableToConnect)
             }
             throw HTTPError.noInternet
         }
     }
+    
+    private func showToastIfNeeded(_ message: String) async {
+        let now = Date()
+        guard lastToastShownTime == nil || now.timeIntervalSince(lastToastShownTime!) >= 2.0 else { return }
+        lastToastShownTime = now
+        await notificationHelperService.showToast(ToastModel(message: message))
+    }
+    
 }
 
 // MARK: - USAGE GUIDE

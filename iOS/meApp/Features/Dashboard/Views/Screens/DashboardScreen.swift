@@ -138,6 +138,7 @@ store.restartWiggleAnimations()
                 if store.state.ui.isEditMode || (!store.allContentRemoved && store.state.data.hasAnyEntries) {
                     DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
                 }
+
                 if store.state.data.hasAnyEntries {
                     actionButtons()
                         .padding(.top, store.allContentRemoved || !store.state.data.hasAnyEntries ? .spacingLG : .spacingSM)
