@@ -276,6 +276,34 @@ class HealthConnectService @Inject constructor(
   }
 
   /**
+   * Checks if Health Connect is integrated with the current account.
+   * Compares the assignedTo value with the current account ID.
+   *
+   * @return true if Health Connect is assigned to the current account, false otherwise
+   */
+  override suspend fun checkIntegrated(): Boolean {
+    return try {
+      val accountId = currentAccountId
+      if (accountId == null) {
+        AppLog.w(tag, "No active account found for integration check")
+        return false
+      }
+
+      val allAccountData = healthConnectRepository.getAccountDataMap()
+      val assignedToAccountId = allAccountData.values
+        .firstOrNull { it.hasAssignedTo() }
+        ?.assignedTo
+
+      val isIntegrated = assignedToAccountId == accountId
+      AppLog.d(tag, "Health Connect integrated check for account $accountId: $isIntegrated")
+      return isIntegrated
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to check Health Connect integrated status", e)
+      false
+    }
+  }
+
+  /**
    * Handles new intents for privacy policy and permissions rationale.
    * This method forwards the intent to the HealthConnect library for processing.
    * The library will handle the callback appropriately based on the intent action.

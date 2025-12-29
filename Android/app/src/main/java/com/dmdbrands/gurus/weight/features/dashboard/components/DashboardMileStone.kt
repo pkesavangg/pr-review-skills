@@ -91,8 +91,7 @@ fun DashboardMilestone(
       visibleMilestones.filterNot { it.key == milestoneKey }
     } else {
       // Moving from hidden to visible - find the milestone from allMilestones by key
-      val milestoneToAdd = allMilestones.find { it.key == milestoneKey } ?: milestone
-      visibleMilestones + milestoneToAdd
+      visibleMilestones + milestone
     }.reorderGrid(
       spanCount = spanCount,
     )

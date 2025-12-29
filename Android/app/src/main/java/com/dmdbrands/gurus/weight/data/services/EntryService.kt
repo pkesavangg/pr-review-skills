@@ -149,7 +149,6 @@ constructor(
             AppLog.d("EntryService", "User has only  scale entries, not enough for goal card")
           }
           // Set up collector to refresh entry data when lastUpdated changes
-         refreshEntryData()
         } catch (e: Exception) {
           AppLog.e("EntryService", "Error checking entries for goal card in init", e.toString())
         }
@@ -214,7 +213,7 @@ constructor(
 
   private suspend fun updateLast7Days(accountId: String) {
     val endDate = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
-    val startDate = endDate.minusDays(7)
+    val startDate = java.time.ZonedDateTime.now().minusDays(7).toInstant()
     val entries = entryRepository.getEntriesInRange(
       accountId,
       startDate.toString(),
@@ -596,8 +595,8 @@ constructor(
 
   private suspend fun updateLatestEntry(accountId: String) {
     try {
-      entryRepository.getLatestEntry(accountId)?.collect { latest ->
-        _latestEntry.value = latest
+      entryRepository.getLatestEntry(accountId).collect { latest ->
+          _latestEntry.value = latest
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating latest entry", e)
@@ -664,7 +663,6 @@ constructor(
       var total: Double? = null
       var startingWeight: Double? = null
       var oldestEntry: Entry? = null
-
       // Get initial entries for each period
       initWeek = if (last7Days.isNotEmpty()) last7Days.last() else null
       initMonth = if (last30Days.isNotEmpty()) last30Days.last() else null
@@ -693,7 +691,6 @@ constructor(
         total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeight
       }
 
-
       val thirtyDaysAgoDate = Calendar.getInstance().apply {
         add(Calendar.DAY_OF_YEAR, -30) // Fixed: subtract 30 days, not add
       }
@@ -705,7 +702,9 @@ constructor(
           val initYearDate = yearMonthFormat.parse(initYear.entryTimestamp)
 
           val initYearCalendar = Calendar.getInstance().apply {
-            time = initYearDate
+            if (initYearDate != null) {
+              time = initYearDate
+            }
             // Set to first day of the month for comparison
             set(Calendar.DAY_OF_MONTH, 1)
           }
@@ -726,6 +725,7 @@ constructor(
               year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
             }
           }
+
         } catch (e: Exception) {
           AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e)
           // Fallback: use initYear for year calculation if parsing fails
@@ -813,6 +813,10 @@ constructor(
   private suspend fun tryLocalIntegration(entry: Entry) {
     AppLog.d("EntryService", "Operation: tryLocalIntegration called", entry.toString())
     try {
+      val isIntegrated = healthConnectService.checkIntegrated()
+      if (!isIntegrated) {
+        return
+      }
       if (entry is ScaleEntry) {
         val summary = entry.toPeriodBodyScaleSummary()
         if (summary != null) {

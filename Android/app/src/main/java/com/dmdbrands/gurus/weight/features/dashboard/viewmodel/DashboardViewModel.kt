@@ -60,6 +60,7 @@ constructor(
       subscribeLatestWeight()
       subscribeIsEmpty()
       subscribeWeightLess()
+      subscribeLastOp()
     }
   }
 
@@ -133,15 +134,19 @@ constructor(
     }
   }
 
+  private fun subscribeLastOp(){
+    viewModelScope.launch {
+      entryService.lastUpdated.collect{
+        entryService.refreshEntryData()
+      }
+    }
+  }
+
   private fun subscribeProgress() {
     viewModelScope.launch {
       entryService.progress.collect {
+        Log.d("progress","$it")
         handleIntent(DashboardIntent.SetProgress(it))
-      }
-
-      entryService.lastUpdated.collect {
-        Log.d("HELLO", "IAMTRGGER")
-        entryService.refreshEntryData()
       }
     }
   }
