@@ -148,7 +148,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
                 presentedView: AnyView(IAMFeedModalView(feedItem: feedItem, onClose: {
                     self.notificationService.dismissModal()
                 })),
-                backdropDismiss: false
+                backdropDismiss: true
             ))
         }
     }

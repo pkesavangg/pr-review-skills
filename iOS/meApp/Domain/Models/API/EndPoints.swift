@@ -30,6 +30,7 @@ enum Endpoint {
     case updateStreak
     case updateDashboardType
     case updateDashboardMetrics
+    case updateProgressMetrics
     case updateNotifications
     case updateDeviceInfo
     case operations(startTimestamp: String?)
@@ -86,6 +87,8 @@ enum Endpoint {
             return request(path: "/account/dashboard-type")
         case .updateDashboardMetrics:
             return request(path: "/account/dashboard-metrics")
+        case .updateProgressMetrics:
+            return request(path: "/account/progress-metrics")
         case .updateNotifications:
             return request(path: "/account/notification")
         case .updateDeviceInfo:

@@ -15,40 +15,57 @@ import Combine
 final class NetworkMonitor: ObservableObject {
     static let shared = NetworkMonitor()
     
-    @Published var isConnected = true
-    @Published var connectionType: NWInterface.InterfaceType?
+    @Published private(set) var isConnected = false
+    @Published private(set) var connectionType: NWInterface.InterfaceType?
     
     private let monitor = NWPathMonitor()
-    private let queue = DispatchQueue.global(qos: .background)
-    private var previousWifiState: Bool? = nil
+    private let monitorQueue = DispatchQueue.global(qos: .utility)
+    private var previousConnectionState: Bool?
+    private var isMonitoring = false
     
     private init() {
+        let currentPath = monitor.currentPath
+        let initialStatus = currentPath.status == .satisfied
+        self.isConnected = initialStatus
+        self.connectionType = initialStatus ? currentPath.availableInterfaces.first?.type : nil
+        self.previousConnectionState = initialStatus
         startMonitoring()
     }
     
-    private func startMonitoring() {
-        monitor.pathUpdateHandler = { [weak self] path in
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                
-                let wasWifi = self.previousWifiState ?? (self.connectionType == .wifi)
-                self.isConnected = path.status == .satisfied
-                self.connectionType = path.availableInterfaces.first?.type
-                
-                // Check if WiFi interface is available
-                let isWifi = path.availableInterfaces.contains { $0.type == .wifi }
-                let isWifiActive = self.connectionType == .wifi && self.isConnected
-                
-                // Check if WiFi status changed
-                if wasWifi != isWifi {
-                    self.previousWifiState = isWifi
-                }
-            }
-        }
-        monitor.start(queue: queue)
+    deinit {
+        monitor.cancel()
     }
     
-    func stopMonitoring() {
+    private func startMonitoring() {
+        guard !isMonitoring else { return }
+        monitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                self?.handlePathUpdate(path)
+            }
+        }
+        monitor.start(queue: monitorQueue)
+        isMonitoring = true
+    }
+    
+    nonisolated func stopMonitoring() {
         monitor.cancel()
+    }
+    
+    private func handlePathUpdate(_ path: NWPath) {
+        let newConnectionStatus = path.status == .satisfied
+        let newConnectionType = path.availableInterfaces.first?.type
+        let statusChanged = previousConnectionState == nil || previousConnectionState != newConnectionStatus
+        
+        if statusChanged {
+            previousConnectionState = newConnectionStatus
+            isConnected = newConnectionStatus
+            connectionType = newConnectionStatus ? newConnectionType : nil
+        } else if isConnected && connectionType != newConnectionType {
+            connectionType = newConnectionType
+        }
+    }
+    
+    func getCurrentConnectionStatus() -> Bool {
+        return monitor.currentPath.status == .satisfied
     }
 }
