@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 
 /**
@@ -47,8 +48,8 @@ data class ProfileFormControls(
             email = FormControl.create(
                 initialValue = email,
                 validators = listOf(
-                    FormValidations.required(SignupStrings.Error.emailBlank),
-                    FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, SignupStrings.Error.maxLengthEmail),
+                    FormValidations.required(LoginStrings.Errors.emailBlank),
+                    FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, LoginStrings.Errors.maxLengthEmail),
                     FormValidations.email(),
                 ),
             ),

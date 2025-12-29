@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.weightValidator
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
+import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import kotlin.math.round
 import kotlin.math.roundToInt
@@ -96,34 +97,34 @@ data class SignupFormControls(
             FormControl.create(
               signupData.email,
               listOf(
-                FormValidations.required(SignupStrings.Error.emailBlank),
-                FormValidations.email(),
-                FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, SignupStrings.Error.maxLengthEmail),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
+          FormValidations.email(),
+          FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, LoginStrings.Errors.maxLengthEmail),
               ),
             ),
           password =
             FormControl.create(
               signupData.password,
               listOf(
-                FormValidations.required(SignupStrings.Error.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = SignupStrings.Error.passwordlen),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = SignupStrings.Error.maxLengthPassword),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = LoginStrings.Errors.passwordlen),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword),
               ),
             ),
           confirmPassword =
             FormControl.create(
               signupData.confirmPassword,
               listOf(
-                FormValidations.required(SignupStrings.Error.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = SignupStrings.Error.passwordlen),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = SignupStrings.Error.maxLengthPassword),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = LoginStrings.Errors.passwordlen),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword),
               ),
             ),
           zipcode =
             FormControl.create(
               signupData.zipcode,
               listOf(
-                FormValidations.required(SignupStrings.Error.emailBlank),
+                FormValidations.required(LoginStrings.Errors.emailBlank),
                 FormValidations.noWhiteSpace(),
               FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH,customMessage = SignupStrings.Error.maxZipcode),
               ),
