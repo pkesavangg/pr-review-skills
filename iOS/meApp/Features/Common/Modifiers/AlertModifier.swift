@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import UIKit
 
 /// A view modifier that presents a customizable alert with optional input and multiple buttons.
 ///
@@ -38,69 +39,79 @@ struct AlertModifier: ViewModifier {
     @Binding var alertData: AlertModel?
 
     var isAlertPresented: Binding<Bool> {
-        Binding<Bool>(
+        Binding(
             get: { alertData != nil },
-            set: { newValue in
-                if !newValue {
-                    alertData = nil
-                }
-            }
+            set: { if !$0 { alertData = nil } }
         )
     }
 
     func body(content: Content) -> some View {
         content
-            .alert(
-                alertData?.title ?? "",
-                isPresented: isAlertPresented
-            ) {
-                if let alert = alertData {
-                    if let inputField = alert.inputField {
-                        let binding = Binding(
-                            get: { alertData?.inputField?.value ?? "" },
-                            set: { alertData?.inputField?.value = $0 }
-                        )
-
-                        Group {
-                            if inputField.type == .password {
-                                SecureField(inputField.placeholder, text: binding)
-                            } else {
-                                TextField(inputField.placeholder, text: binding)
-                                    .keyboardType(inputField.type == .email ? .emailAddress : .default)
-                                    .textInputAutocapitalization(.never)
-                                    .autocorrectionDisabled(true)
-                            }
-                        }
-                        .autocapitalization(.none)
-                    }
-                    
-                    ForEach(alert.buttons.indices, id: \.self) { index in
-                        let button = alert.buttons[index]
-                        Button(button.title.uppercased(), role: buttonRole(for: button.type)) {
-                            let inputValue = button.type == .primary ? alertData?.inputField?.value : nil
-                            button.action(inputValue)
-                            alertData = nil
-                        }
-                        .disabled(isPrimaryButtonInvalidEmail(button))
-                        .if(button.type == .primary)  { view in
-                            view.keyboardShortcut(.defaultAction)
-                        }
-                    }
-                }
-            } message: {
-                if let alert = alertData {
-                    if let input = alert.inputField, input.type == .email {
-                        let value = alert.inputField?.value ?? ""
-                        if !value.isEmpty && !isValidEmail(value) {
-                            Text(FormErrorMessages.email)
-                        } else if let msg = alert.message {
-                            Text(msg)
-                        }
-                    } else if let message = alert.message {
-                        Text(message)
-                    }
+            .onChange(of: alertData != nil) { wasNil, isPresented in
+                if !wasNil && isPresented, alertData?.inputField != nil {
+                    focusTextFieldInAlert()
                 }
             }
+            .alert(alertData?.title ?? "", isPresented: isAlertPresented) {
+                alertContent
+            } message: {
+                alertMessage
+            }
+    }
+    
+    @ViewBuilder
+    private var alertContent: some View {
+        if let alert = alertData {
+            if let inputField = alert.inputField {
+                inputFieldView(for: inputField)
+            }
+            ForEach(alert.buttons.indices, id: \.self) { index in
+                alertButton(alert.buttons[index])
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func inputFieldView(for inputField: AlertInputField) -> some View {
+        let binding = Binding(
+            get: { alertData?.inputField?.value ?? "" },
+            set: { alertData?.inputField?.value = $0 }
+        )
+        
+        if inputField.type == .password {
+            SecureField(inputField.placeholder, text: binding)
+        } else {
+            TextField(inputField.placeholder, text: binding)
+                .keyboardType(inputField.type == .email ? .emailAddress : .default)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+        }
+    }
+    
+    private func alertButton(_ button: AlertButtonModel) -> some View {
+        Button(button.title.uppercased(), role: buttonRole(for: button.type)) {
+            let inputValue = button.type == .primary ? alertData?.inputField?.value : nil
+            button.action(inputValue)
+            alertData = nil
+        }
+        .disabled(isPrimaryButtonInvalidEmail(button))
+        .if(button.type == .primary) { $0.keyboardShortcut(.defaultAction) }
+    }
+    
+    @ViewBuilder
+    private var alertMessage: some View {
+        if let alert = alertData {
+            if let input = alert.inputField, input.type == .email {
+                let value = alert.inputField?.value ?? ""
+                if !value.isEmpty && !isValidEmail(value) {
+                    Text(FormErrorMessages.email)
+                } else if let msg = alert.message {
+                    Text(msg)
+                }
+            } else if let message = alert.message {
+                Text(message)
+            }
+        }
     }
     
     private func buttonRole(for type: AlertButtonType) -> ButtonRole? {
@@ -117,14 +128,36 @@ struct AlertModifier: ViewModifier {
     private func isPrimaryButtonInvalidEmail(_ button: AlertButtonModel) -> Bool {
         guard button.type == .primary,
               let field = alertData?.inputField,
-              field.type == .email
-        else { return false }
-        let value = field.value
-        // Require non-empty and valid email
-        return value.isEmpty || !isValidEmail(value)
+              field.type == .email else { return false }
+        return field.value.isEmpty || !isValidEmail(field.value)
     }
 
     private func isValidEmail(_ value: String) -> Bool {
         Validator<String>.email.fn(value)
+    }
+    
+    private func focusTextFieldInAlert() {
+        let delays: [TimeInterval] = [0.15, 0.3, 0.5, 0.7]
+        
+        for delay in delays {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                guard self.alertData != nil,
+                      let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
+                
+                for window in windowScene.windows {
+                    if let textField = self.findTextField(in: window), !textField.isFirstResponder {
+                        textField.becomeFirstResponder()
+                        return
+                    }
+                }
+            }
+        }
+    }
+    
+    private func findTextField(in view: UIView) -> UITextField? {
+        if let textField = view as? UITextField, textField.isUserInteractionEnabled {
+            return textField
+        }
+        return view.subviews.compactMap { findTextField(in: $0) }.first
     }
 }

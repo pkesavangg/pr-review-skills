@@ -19,6 +19,8 @@ class AccountsStore: ObservableObject {
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
     
+    private let networkMonitor = NetworkMonitor.shared
+    
     let alertStrings = AlertStrings.self
     let appConstants = AppConstants.self
     let toastLang = ToastStrings.self
@@ -122,7 +124,8 @@ class AccountsStore: ObservableObject {
             do {
                 try await accountService.switchAccount(to: account)
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountId)")
-                notificationService.showToast(ToastModel(message: toastLang.switchingAccount(account.firstName ?? "")))
+                let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
+                notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch active account", data: error.localizedDescription)
                 switch error {
@@ -158,6 +161,12 @@ class AccountsStore: ObservableObject {
             return
         }
         
+        guard networkMonitor.isConnected else {
+            notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+            logger.log(level: .error, tag: tag, message: "Cannot remove account while offline")
+            return
+        }
+        
         Task {
             notificationService.showLoader(LoaderModel(text: "Removing user..."))
             do {
@@ -165,6 +174,12 @@ class AccountsStore: ObservableObject {
                 logger.log(level: .info, tag: tag, message: "Removed user \(user.name) from account \(account.accountId)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to remove user \(user.name)", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet:
+                    notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+                default:
+                    notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
+                }
             }
             notificationService.dismissLoader()
         }
