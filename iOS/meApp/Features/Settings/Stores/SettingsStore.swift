@@ -68,6 +68,9 @@ class SettingsStore: ObservableObject {
     // MARK: - Log Out All Accounts
     @Published var canShowLogOutAllItems = false
     
+    // MARK: - Entry State
+    @Published var hasEntries: Bool = false
+    
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
         Binding(
@@ -142,6 +145,20 @@ class SettingsStore: ObservableObject {
             .store(in: &cancellables)
         
         self.observeNotificationBadgeChanges()
+        Task { await self.checkEntries() }
+        
+        // Listen to entry changes to update hasEntries
+        entryService.entrySaved
+            .sink { [weak self] _ in
+                Task { await self?.checkEntries() }
+            }
+            .store(in: &cancellables)
+        
+        entryService.entryDeleted
+            .sink { [weak self] _ in
+                Task { await self?.checkEntries() }
+            }
+            .store(in: &cancellables)
     }
     
     func handleLogout() {
@@ -317,10 +334,15 @@ class SettingsStore: ObservableObject {
         switch activeAccount?.weightSettings?.weightUnit {
         case .kg: // Metric preference – show centimeters
             let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
-            return "\(cm) cm"
+            // Clamp to valid range (100-299 cm) for display
+            let clampedCm = max(100, min(299, cm))
+            return "\(clampedCm) cm"
         case .lb: // Imperial preference – show feet & inches
             let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            return "\(feet[0])' \(feet[1])”"  // → 5'8”
+            // Clamp to valid range (2'0" to 7'11") for display
+            let clampedFeet = max(2, min(7, feet[0]))
+            let clampedInches = max(0, min(11, feet[1]))
+            return "\(clampedFeet)' \(clampedInches)\""  // → 5'8"
         case .none:
             return ""
         }
@@ -375,13 +397,11 @@ class SettingsStore: ObservableObject {
     }
     
     var isGoalFormValid: Bool {
-        guard goalForm.isDirty else { return false }
-        
-        if goalForm.goalType.value == GoalTypeSegment.losegainValue {
-            return !goalForm.isInvalid
-        } else {
-            return !goalForm.goalWeight.isInvalid
-        }
+        goalForm.isValidForSave()
+    }
+    
+    func isGoalFormValid(focusedField: FocusField?) -> Bool {
+        goalForm.isValidForSave(focusedField: focusedField)
     }
     
     var isWeightLessFormValid: Bool {
@@ -523,7 +543,41 @@ class SettingsStore: ObservableObject {
         populateEditFormIfNeeded()
     }
     
-    // MARK: - Change Password Helpers
+    // MARK: - Field Touch / Validation
+    
+    /// Marks a specific field as touched and triggers validation.
+    /// Used by input views to show field errors as soon as the user leaves a field
+    /// or presses the keyboard "Next/Done" button.
+    func touchAndValidate(field: FocusField) {
+        switch field {
+        case .currentPassword:
+            changePasswordForm.currentPassword.markAsTouched()
+            changePasswordForm.currentPassword.validate()
+        case .newPassword:
+            changePasswordForm.newPassword.markAsTouched()
+            changePasswordForm.newPassword.validate()
+        case .confirmNewPassword:
+            changePasswordForm.confirmNewPassword.markAsTouched()
+            changePasswordForm.confirmNewPassword.validate()
+        default:
+            break
+        }
+    }
+    
+    /// Call this from `onEditingChanged` for fields where we want to validate on blur.
+    func handleEditingChanged(_ isEditing: Bool, field: FocusField) {
+        guard !isEditing else { return }
+        
+        switch field {
+        case .currentPassword where changePasswordForm.currentPassword.isTouched,
+             .newPassword where changePasswordForm.newPassword.isTouched,
+             .confirmNewPassword where changePasswordForm.confirmNewPassword.isTouched:
+            return
+        default:
+            break
+        }
+        touchAndValidate(field: field)
+    }
     
     /// Presents a Change-Password exit confirmation alert using shared strings.
     /// - Parameters:
@@ -1054,13 +1108,32 @@ class SettingsStore: ObservableObject {
     ///   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
     ///   - values: Picker column values chosen by the user.
     func updateHeight(fromMetric: Bool, values: [String]) {
+        // Validate height before updating
+        guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
+            logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
+            notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
+            return
+        }
+        
         let storedHeight: Int
         if fromMetric {
             let cm = Int(values.joined()) ?? 178
+            // Double-check cm is valid
+            guard ConversionTools.isValidHeightCm(cm) else {
+                logger.log(level: .error, tag: tag, message: "Invalid cm height rejected: \(cm)")
+                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
+                return
+            }
             storedHeight = ConversionTools.convertCmToStoredHeight(cm)
         } else {
             let feet = Int(values[0]) ?? 5
             let inches = Int(values[1]) ?? 10
+            // Double-check feet/inches is valid
+            guard ConversionTools.isValidHeightInches(feet: feet, inches: inches) else {
+                logger.log(level: .error, tag: tag, message: "Invalid feet/inches height rejected: \(feet)'\(inches)\"")
+                notificationService.showToast(ToastModel(title: toastLang.errorUpdatingHeight, message: toastLang.pleaseTryAgain))
+                return
+            }
             let totalInches = (feet * 12) + inches
             storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
         }
@@ -1294,6 +1367,8 @@ class SettingsStore: ObservableObject {
             goalForm.goalType.value = newGoalTypeValue
             // Explicitly mark as dirty to ensure the form recognizes the change
             goalForm.goalType.markAsDirty()
+            // Mark as touched so form is considered interacted with
+            goalForm.goalType.markAsTouched()
         }
         
         // Force form validation to update computed properties
@@ -1348,7 +1423,7 @@ class SettingsStore: ObservableObject {
                 notificationService.showToast(
                     ToastModel(
                         title: toastLang.success,
-                        message: toastLang.forgotPassword(trimmedEmail)
+                        message: toastLang.passwordResetSuccessMessage(trimmedEmail)
                     )
                 )
             } catch {
@@ -1362,23 +1437,27 @@ class SettingsStore: ObservableObject {
     // MARK: - Multiple Accounts Educational Modal
     /// Presents the *Add Multiple Accounts* educational modal if the user has only one account and has not seen the modal before.
     func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>) {
-        // Ensure we have exactly one account logged in
         guard accountService.allAccounts.count == 1 else { return }
         
-        // Check persistent flag – bail if user has already seen the modal
         let flagKey = hasSeenAddMultipleAccountsModalKey
         let hasSeen = (kvStore.getValue(forKey: flagKey) as? Bool) ?? false
         guard !hasSeen else { return }
         
-        // We need an initial to render inside the icon cluster
-        guard let initialChar = activeAccount?.firstName?.first else { return }
-        let initial = String(initialChar)
+        guard accountService.activeAccount != nil,
+              let initialChar = activeAccount?.firstName?.first else {
+            return
+        }
         
-        // Set the flag immediately to avoid repeated triggers
-        kvStore.setValue(true, forKey: flagKey)
-        
-        // Delay presentation by 1 second
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            guard self.accountService.allAccounts.count == 1,
+                  let activeAccount = self.accountService.activeAccount,
+                  let initialChar = activeAccount.firstName?.first else {
+                return
+            }
+            
+            let initial = String(initialChar)
+            self.kvStore.setValue(true, forKey: flagKey)
+            
             let modalView = AddMultipleAccountsModalView(
                 initial: initial,
                 onClose: {
@@ -1390,9 +1469,7 @@ class SettingsStore: ObservableObject {
                 }
             )
             
-            if let account = self.accountService.activeAccount {
-                self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
-            }
+            self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
         }
     }
     
@@ -1401,6 +1478,16 @@ class SettingsStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowFeedNotificationBadge, on: self)
             .store(in: &cancellables)
+    }
+    
+    // MARK: - Entry Check
+    private func checkEntries() async {
+        do {
+            let months = try await entryService.getMonthsAll()
+            hasEntries = !months.isEmpty
+        } catch {
+            hasEntries = false
+        }
     }
 
     // MARK: - Picker Presentation Helpers

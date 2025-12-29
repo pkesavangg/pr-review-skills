@@ -143,7 +143,7 @@ class GoalCardCell: UICollectionViewCell {
                         isDropTarget: store.state.ui.dropHoverId == "goalCard",
                         rowIndex: rowIndex,
                         disableWiggle: store.state.ui.isGoalCardRemoved,
-                        iconOffset: CGSize(width: 12, height: -20),
+                        iconOffset: CGSize(width: 20, height: -28),
                         dimWhenRemoved: true
                     )
             )

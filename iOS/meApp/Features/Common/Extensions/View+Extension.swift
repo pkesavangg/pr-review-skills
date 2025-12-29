@@ -255,7 +255,7 @@ extension View {
         isDropTarget: Bool = false,
         rowIndex: Int = 0,
         disableWiggle: Bool = false,
-        iconOffset: CGSize = CGSize(width:15, height: -15),
+        iconOffset: CGSize = CGSize(width: 20, height: -26),
         dimWhenRemoved: Bool = true
     ) -> some View {
         modifier(EditModeOverlay(

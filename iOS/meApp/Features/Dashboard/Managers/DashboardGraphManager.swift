@@ -30,6 +30,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
     
+    // Flag to prevent ensureLatestEntriesVisible from overriding scroll position during period changes
+    private var isChangingPeriod: Bool = false
+    
     // Chart data caching for scroll performance
     private var cachedChartSeriesData: [GraphSeries] = []
     private var lastCachedScrollPosition: Date?
@@ -50,9 +53,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
     
     func updateScrollPosition(to date: Date) {
-        guard !state.isScrolling else {
-            return
-        }
+        // Always allow scroll position updates, even during scrolling
+        // This ensures period changes and initialization always work correctly
         state.xScrollPosition = date
     }
     
@@ -907,6 +909,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
     
     func updateSelectedPeriod(_ period: TimePeriod) {
+        // Set flag to prevent ensureLatestEntriesVisible from overriding position during period change
+        isChangingPeriod = true
+        
         state.selectedPeriod = period
         state.clearSelection()
         
@@ -914,6 +919,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         clearChartDataCache()
         
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
+        
+        // Clear the flag after a brief delay to allow scroll position to be set
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.isChangingPeriod = false
+        }
     }
     
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
@@ -1143,14 +1153,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
     
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
-        guard let latestDate = operations.map(\.date).max() else {
+        guard operations.map(\.date).max() != nil else {
             return
         }
         guard !state.isScrolling else {
             return
         }
-        let boundedPosition = enforceScrollBoundaries(latestDate, from: operations)
-        updateScrollPosition(to: boundedPosition)
+        // Prevent overriding scroll position during period changes
+        // This ensures the optimal position set during period change is not overridden
+        guard !isChangingPeriod else {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Skipping ensureLatestEntriesVisible during period change")
+            return
+        }
+        // Use the same optimal scroll position calculation as initialization
+        // This ensures consistent snapping behavior and prevents extra days being added
+        let optimalPosition = calculateOptimalScrollPosition(
+            for: state.selectedPeriod,
+            from: operations,
+            showingLatest: true
+        )
+        updateScrollPosition(to: optimalPosition)
     }
     
     
@@ -1299,36 +1321,43 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return xAxisValues
     }
     
-    /// Calculates the proper scroll position for chart initialization or segment changes
-    /// This ensures the scroll position aligns with the computed X-axis values
+    /// Calculates optimal scroll position for chart initialization or period changes
+    /// Snaps relative to latest entry with right-side buffer
     func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
         let allDates: [Date] = operations.map { $0.date }
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
             return Date()
         }
         
-        let domainLength = visibleDomainLength(for: period)
-        
         if showingLatest {
-            // For showing latest entries, start from the end and work backwards
-            // Calculate what the leftmost position should be to show recent data properly aligned
-            let targetEndDate = overallMaxDate
-            let targetStartDate = targetEndDate.addingTimeInterval(-domainLength * 0.75) // Show recent 75% of the domain
+            let latestEntry = overallMaxDate
+            let domainLength = visibleDomainLength(for: period)
+            let scrollPosition: Date
             
-            // Generate X-axis values for this range to find proper alignment
-            let tempScrollPosition = targetStartDate.addingTimeInterval(domainLength / 2) // Center position for generateXAxis logic
-            let xAxisValues = generateXAxisValuesForAlignment(for: period, from: operations, centerPosition: tempScrollPosition)
-            
-            //Find the right most date and subract the period visisble length
-            let rightMostDate = xAxisValues.max()
-            let rightMostDateMinusPeriod = rightMostDate?.addingTimeInterval(-visibleDomainLength(for: period))
-            if let rightMostDateMinusPeriod = rightMostDateMinusPeriod {
-                return rightMostDateMinusPeriod
+            switch period {
+            case .week:
+                let rightEdgeWithBuffer = latestEntry.addingTimeInterval(2 * DashboardConstants.TimeInterval.day)
+                scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+                
+            case .month:
+                let rightEdgeWithBuffer = latestEntry.addingTimeInterval(DashboardConstants.TimeInterval.week)
+                scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+                
+            case .year:
+                if let oneMonthAfter = calendar.date(byAdding: .month, value: 1, to: latestEntry),
+                   let scrollPos = calendar.date(byAdding: .month, value: -12, to: oneMonthAfter) {
+                    scrollPosition = scrollPos
+                } else {
+                    let rightEdgeWithBuffer = latestEntry.addingTimeInterval(DashboardConstants.TimeInterval.month)
+                    scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+                }
+                
+            case .total:
+                scrollPosition = overallMinDate
             }
-            // Fallback to calculated position
-            return max(overallMinDate, targetStartDate)
+            
+            return max(overallMinDate, scrollPosition)
         } else {
-            // For other cases, use the beginning of data
             return overallMinDate
         }
     }
@@ -1573,60 +1602,52 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
             }
         }
-        
         // Special handling for month: snap range to actual month boundaries based on the center
         if period == .month {
-            let span = endDate.timeIntervalSince(startDate)
-            let center = startDate.addingTimeInterval(max(0, span / 2))
-            
-            if let monthInterval = calendar.dateInterval(of: .month, for: center) {
-                let startOfMonth = monthInterval.start
-                let inclusiveEndOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
-                
-                let startDay = calendar.component(.day, from: startOfMonth)
-                let endDay = calendar.component(.day, from: inclusiveEndOfMonth)
-                let startMonth = DateTimeTools.formatter("LLL").string(from: startOfMonth).lowercased()
-                let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndOfMonth).lowercased()
-                let endYear = calendar.component(.year, from: inclusiveEndOfMonth)
-                
-                return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
+            let startDay = calendar.component(.day, from: startDate)
+            if startDay == 1 {
+                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
             }
+
+            let startYear = calendar.component(.year, from: startDate)
+            let endYear = calendar.component(.year, from: endDate)
+            let startMonth = calendar.component(.month, from: startDate)
+            let endMonth = calendar.component(.month, from: endDate)
+            let endDay = calendar.component(.day, from: endDate)
+
+            if startYear != endYear {
+                let fmt = DateTimeTools.formatter("MMM d, yyyy")
+                return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
+            }
+
+            if startMonth != endMonth {
+                let startFmt = DateTimeTools.formatter("MMM d")
+                let endFmt = DateTimeTools.formatter("MMM d, yyyy")
+                return "\(startFmt.string(from: startDate)) – \(endFmt.string(from: endDate))"
+            }
+
+            let startFmt = DateTimeTools.formatter("MMM d")
+            return "\(startFmt.string(from: startDate)) – \(endDay), \(startYear)"
         }
-        
-        // For year: clamp to full month boundaries inside the visible window
+
         if period == .year {
-            // Robust: derive the label purely from the mid-point year, ignoring phantom edges
-            let span = endDate.timeIntervalSince(startDate)
-            let mid = startDate.addingTimeInterval(max(0, span / 2))
-            let year = calendar.component(.year, from: mid)
-            
-            // Jan 1 of the year and Dec 1 of the same year
-            let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? minDate
-            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startOfYear).lowercased()
-            let startYear = year
-            
-            let decOfYear = calendar.date(from: DateComponents(year: year, month: 12, day: 1)) ?? maxDate
-            let endMonthStr = DateTimeTools.formatter("LLL").string(from: decOfYear).lowercased()
-            let endYear = year
-            
-            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+            let startMonth = calendar.component(.month, from: startDate)
+            if startMonth == 1 {
+                return DateTimeTools.formatter("yyyy").string(from: startDate)
+            }
+
+            let startFmt = DateTimeTools.formatter("MMM yyyy")
+            return "\(startFmt.string(from: startDate)) – \(startFmt.string(from: endDate))"
         }
         
-        // For total: snap both ends to month starts for stability (independent of any phantom months)
+
         if period == .total {
-            let startMonthStart = (calendar.dateInterval(of: .month, for: startDate)?.start) ?? startDate
-            var endMonthStart = (calendar.dateInterval(of: .month, for: endDate)?.start) ?? endDate
-            
-            if endMonthStart < startMonthStart {
-                endMonthStart = startMonthStart
+            if calendar.isDate(startDate, equalTo: endDate, toGranularity: .month) {
+                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
             }
-            
-            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthStart).lowercased()
-            let startYear = calendar.component(.year, from: startMonthStart)
-            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthStart).lowercased()
-            let endYear = calendar.component(.year, from: endMonthStart)
-            
-            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+
+            let fmt = DateTimeTools.formatter("MMM yyyy")
+            return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
         }
         
         // Default (week) with inclusive end-day handling

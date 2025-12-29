@@ -207,7 +207,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         .onChange(of: dashboardStore.currentUnit) { _, _ in
-            // ViewModel will invalidate cache in handleSettingsChange()
+            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
             viewModel.handleSettingsChange()
             // Update local cache since display values changed
             DispatchQueue.main.async {
@@ -219,7 +219,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
-            // ViewModel will invalidate cache in handleSettingsChange()
+            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
             viewModel.handleSettingsChange()
             // Update local cache since display values changed
             DispatchQueue.main.async {

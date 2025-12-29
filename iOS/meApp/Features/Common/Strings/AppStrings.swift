@@ -60,6 +60,7 @@ struct CommonStrings {
     static let emailAlreadyInUse = "Email already in use"
     static let why = "Why?"
     static let back = "Back"
+    static let returnButton = "return"
 }
 
 /// Constants for entry strings used in the app
@@ -145,7 +146,7 @@ struct ToastStrings {
     static let scaleNameUpdated = "Scale name updated."
     static let copiedToClipboard = "Copied to clipboard"
     static let logsSent = "Logs sent to Greater Goods"
-    static let synced = "Entries successfully resynced."
+    static let synced = "Entries resynced."
     static let resyncError = "Unable to resync entries. Please check your Wi-Fi connection and try again."
     static let resyncErrorTitle = "Not Connected to Wi-Fi"
     static let internetRequiredTitle = "Internet Required"
@@ -249,16 +250,17 @@ struct FormErrorMessages {
     static let required = "must not be left blank"
     static let leaveBlank = "must not leave blank"
     static let email = "must use a valid email"
-    static let emailMaxLength = "Email should not exceed 100 characters"
+    static let emailMaxLength = "email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
     static let passwordMinLength = "password must be 6 characters long"
+    static let signupPasswordMinLength = "minimum of 6 characters needed"
     static let minLength = { (length: Int) in "minimum value should be \(length)" }
     static let maxLength = { (length: Int) in "maximum value should be \(length)" }
     static let min = { (value: Int) in "value must be at least \(value)" }
     static let max = { (value: Int) in "value must not exceed \(value)" }
     static let noWhiteSpace = "must not be left blank"
     static let futureDate = "future dates not accepted"
-    static let passwordMatch = "Both passwords must match"
+    static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
     static let minWeightKg = "value should be greater than 0 kg"
     static let minWeightLb = "value should be greater than 0 lbs"
@@ -269,7 +271,7 @@ struct FormErrorMessages {
     static let maxValue = {(value: Int) in "value should be less than \(value)"}
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
-    static let modelNumberInvalid = "Model Number Invalid"
+    static let modelNumberInvalid = "model number invalid"
     static let duplicate = "the scale can’t have duplicate user names"
     static let namePattern = "please enter a valid name"
     static let userNameUnavailable = "user name is unavailable"
@@ -324,8 +326,8 @@ struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let returnButton = "Return"
-        static let exitButton = "Exit"
+        static let returnButton = "Go back"
+        static let exitButton = "Yes, exit"
     }
 
     struct ResetPasswordAlert {
@@ -427,8 +429,8 @@ struct AlertStrings {
     struct LoginExitAlert {
         static let title = "Confirm"
         static let message = "Are you sure you want to leave?"
-        static let returnButton = "Return"
-        static let exitButton = "Exit"
+        static let returnButton = "Go back"
+        static let exitButton = "Yes, exit"
     }
 
     struct DeleteUserAlert {
@@ -586,7 +588,7 @@ struct AlertStrings {
         static let wifiDisabledMessage = "1. Open Settings on your phone\n2. Tap Wi-Fi\n3. Toggle Wi-Fi on\n4. Return to this app"
 
         // MARK: - Camera
-        static let cameraDisabledTitle = "Camera Access is Disabled"
+        static let cameraDisabledTitle = "You have not given permission to access camera"
         static let cameraDisabledMessage = "You will not be able to pair or sync with your AppSync scale. Please enable Camera access in Settings."
 
         // MARK: - Notification

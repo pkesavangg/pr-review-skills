@@ -59,6 +59,7 @@ struct ModalViewModifier: ViewModifier {
             
             ForEach(Array(modalStack.enumerated()), id: \.element.id) { index, modal in
                 ZStack {
+                    // Backdrop - tappable everywhere
                     theme.supportOverlay
                         .ignoresSafeArea()
                         .contentShape(Rectangle())
@@ -72,9 +73,12 @@ struct ModalViewModifier: ViewModifier {
                         }
                         .transition(.opacity)
                     
+                    // Modal content - centered and blocks taps within its bounds
                     modal.presentedView
-                    .frame(width: UIScreen.main.bounds.width * 0.75)
-                        .padding(.horizontal)
+                        .frame(width: UIScreen.main.bounds.width * 0.75)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .contentShape(Rectangle())
+                        .allowsHitTesting(true)
                         .transition(.scale)
                 }
                 .zIndex(Double(index))

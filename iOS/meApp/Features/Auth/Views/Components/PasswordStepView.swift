@@ -30,10 +30,15 @@ struct PasswordStepView: View {
                         focusField: .password
                     ),
                     value: $signupStore.signupForm.password.value,
-                    focusedField: $focusedField
-                ) {
-                    focusedField = .confirmPassword // Move focus to confirm password field
-                }
+                    focusedField: $focusedField,
+                    onCommit: {
+                        signupStore.touchAndValidate(field: .password)
+                        focusedField = .confirmPassword // Move focus to confirm password field
+                    },
+                    onEditingChanged: { isEditing in
+                        signupStore.handleEditingChanged(isEditing, field: .password)
+                    }
+                )
                 
                 AppInputField(
                     config: TextInputConfig(
@@ -43,10 +48,15 @@ struct PasswordStepView: View {
                         focusField: .confirmPassword
                     ),
                     value: $signupStore.signupForm.confirmPassword.value,
-                    focusedField: $focusedField
-                ) {
-                    focusedField = .zipCode // Move focus to zip code field
-                }
+                    focusedField: $focusedField,
+                    onCommit: {
+                        signupStore.touchAndValidate(field: .confirmPassword)
+                        focusedField = .zipCode // Move focus to zip code field
+                    },
+                    onEditingChanged: { isEditing in
+                        signupStore.handleEditingChanged(isEditing, field: .confirmPassword)
+                    }
+                )
                 
                 AppInputField(
                     config: TextInputConfig(
@@ -56,16 +66,21 @@ struct PasswordStepView: View {
                         focusField: .zipCode
                     ),
                     value: $signupStore.signupForm.zipcode.value,
-                    focusedField: $focusedField
-                ) {
-                    focusedField = nil // Clear focus
-                    
-                    if signupStore.isNextEnabled {
-                        Task {
-                            await signupStore.createUser()
+                    focusedField: $focusedField,
+                    onCommit: {
+                        signupStore.touchAndValidate(field: .zipCode)
+                        focusedField = nil // Clear focus
+                        
+                        if signupStore.isNextEnabled {
+                            Task {
+                                await signupStore.createUser()
+                            }
                         }
+                    },
+                    onEditingChanged: { isEditing in
+                        signupStore.handleEditingChanged(isEditing, field: .zipCode)
                     }
-                }
+                )
             }
             .padding(.top, .spacingLG)
             Spacer()
