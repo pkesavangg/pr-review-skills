@@ -215,29 +215,55 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         let refetched = try await entryRepo.refetchEntriesOnMainActor(entryIds: idSet)
         
+        // Store IDs before accessing SwiftData properties
+        let latestEntryId = latestEntry.id
+        let weekStartId = weekEntries.first?.id
+        let monthStartId = monthEntries.first?.id
+        let firstEntryId = sortedEntries.first?.id
+        
         // Helper: Safe extraction utilities
         func safe<T>(_ id: UUID?) -> T? { id.flatMap { refetched[$0] as? T } }
         func sync<T>(_ block: @Sendable () throws -> T) async rethrows -> T { try await MainActor.run(body: block) }
         
         // Extract relevant weights and DTOs in a MainActor context
-        let ext: (latestEntry: Entry, weekStart: Entry?, monthStart: Entry?, firstEntry: Entry?) = try await sync {
-            (
-                latestEntry: refetched[latestEntry.id] ?? latestEntry,
-                weekStart: safe(weekEntries.first?.id) as Entry?,
-                monthStart: safe(monthEntries.first?.id) as Entry?,
-                firstEntry: safe(sortedEntries.first?.id) as Entry?
+        // All SwiftData property access must happen on MainActor to avoid crashes
+        let ext: (
+            latestWeight: Int,
+            weekStartWeight: Int?,
+            monthStartWeight: Int?,
+            firstEntryWeight: Int?,
+            weekDTO: BathScaleOperationDTO?,
+            monthDTO: BathScaleOperationDTO?,
+            firstDTO: BathScaleOperationDTO?,
+            latestDTO: BathScaleOperationDTO
+        ) = try await sync {
+            guard let latestEntry = refetched[latestEntryId] else {
+                throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Latest entry not found in refetched entries"])
+            }
+            let weekStart = safe(weekStartId) as Entry?
+            let monthStart = safe(monthStartId) as Entry?
+            let firstEntry = safe(firstEntryId) as Entry?
+            
+            return (
+                latestWeight: latestEntry.scaleEntry?.weight ?? 0,
+                weekStartWeight: weekStart?.scaleEntry?.weight,
+                monthStartWeight: monthStart?.scaleEntry?.weight,
+                firstEntryWeight: firstEntry?.scaleEntry?.weight,
+                weekDTO: weekStart?.toOperationDTO(),
+                monthDTO: monthStart?.toOperationDTO(),
+                firstDTO: firstEntry?.toOperationDTO(),
+                latestDTO: latestEntry.toOperationDTO()
             )
         }
         
-        let latestWeight = ext.latestEntry.scaleEntry?.weight ?? 0
-        let weekStartWeight = ext.weekStart?.scaleEntry?.weight
-        let monthStartWeight = ext.monthStart?.scaleEntry?.weight
-        let firstEntryWeight = ext.firstEntry?.scaleEntry?.weight
-        
-        let weekDTO = ext.weekStart?.toOperationDTO()
-        let monthDTO = ext.monthStart?.toOperationDTO()
-        let firstDTO = ext.firstEntry?.toOperationDTO()
-        let latestDTO = ext.latestEntry.toOperationDTO()
+        let latestWeight = ext.latestWeight
+        let weekStartWeight = ext.weekStartWeight
+        let monthStartWeight = ext.monthStartWeight
+        let firstEntryWeight = ext.firstEntryWeight
+        let weekDTO = ext.weekDTO
+        let monthDTO = ext.monthDTO
+        let firstDTO = ext.firstDTO
+        let latestDTO = ext.latestDTO
         
         let weekDelta = latestWeight - (weekStartWeight ?? latestWeight)
         let monthDelta = latestWeight - (monthStartWeight ?? latestWeight)

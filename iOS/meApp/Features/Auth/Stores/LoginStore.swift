@@ -26,6 +26,7 @@ final class LoginStore: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var alertData: AlertModel? = nil
     @Published var loaderOverride: LoaderModel? = nil
+    @Published var isPasswordResetAlertVisible: Bool = false
 
     // MARK: - In-App Browser State
     @Published var showPrivacyBrowser: Bool = false
@@ -74,6 +75,8 @@ final class LoginStore: ObservableObject {
     var onOpenTerms: (() -> Void)?
     var onOpenHelp: (() -> Void)?
     var onAccountSwitchingExit: (() -> Void)?
+    /// Callback to clear focus when password reset alert is dismissed
+    var onPasswordResetAlertDismissed: (() -> Void)?
 
     // Services (inject as needed)
     @Injector var accountService: AccountService
@@ -192,15 +195,24 @@ final class LoginStore: ObservableObject {
         resetEmail = emailValue
         showResetPrompt = true
         resetError = nil
+        isPasswordResetAlertVisible = true
         let alertData = AlertModel(
             title: alertLang.ResetPasswordAlert.passwordResetTitle,
             message: alertLang.ResetPasswordAlert.enterEmailMessage,
             buttons: [
-                AlertButtonModel(title: commonLang.cancel, type: .secondary) { _ in },
+                AlertButtonModel(title: commonLang.cancel, type: .secondary) { [weak self] _ in
+                    guard let self = self else { return }
+                    self.isPasswordResetAlertVisible = false
+                    // Clear focus when alert is dismissed via cancel
+                    self.onPasswordResetAlertDismissed?()
+                },
                 AlertButtonModel(title: commonLang.submit, type: .primary) { [weak self] input in
                     guard let self = self else { return }
                     let email = input ?? self.resetEmail
+                    self.isPasswordResetAlertVisible = false
                     Task { await self.handlePasswordReset(email: email) }
+                    // Clear focus after submit
+                    self.onPasswordResetAlertDismissed?()
                 }
             ],
             inputField: AlertInputField(placeholder: inputFieldLabels.email, value: emailValue.isEmpty ? "" : emailValue, type: .email)
