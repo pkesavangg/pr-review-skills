@@ -28,7 +28,7 @@ final class NotificationSettings {
 
     init(accountId: String,
          shouldSendEntryNotifications: Bool = true,
-         shouldSendWeightInEntryNotifications: Bool = true,
+         shouldSendWeightInEntryNotifications: Bool = false,
          isSynced: Bool? = false) {
         self.id = UUID().uuidString
         self.accountId = accountId

@@ -74,7 +74,7 @@ struct PickerView<T: Hashable>: View {
                         text: commonLang.save,
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: false
+                        isDisabled: !isHeightValid
                     ) {
                         updateValues?(tempSelectedValues)
                     }
@@ -155,6 +155,18 @@ struct PickerView<T: Hashable>: View {
         default:
             return nil // flexible width to avoid text truncation
         }
+    }
+    
+    /// Validates if the current height picker selection is valid.
+    /// Returns true for non-height pickers or when height is valid.
+    private var isHeightValid: Bool {
+        guard pickerType == .heightInches || pickerType == .heightCm else {
+            return true // Not a height picker, always valid
+        }
+        
+        let stringValues = tempSelectedValues.map { displayValue($0) }
+        let fromMetric = pickerType == .heightCm
+        return ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: stringValues)
     }
 }
 
