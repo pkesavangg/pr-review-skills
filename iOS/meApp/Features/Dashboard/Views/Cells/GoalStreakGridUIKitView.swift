@@ -179,6 +179,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let streakOrder = store.state.ui.streakGridOrder
         let isGoalCardRemoved = store.state.ui.isGoalCardRemoved
         let isEditMode = store.state.ui.isEditMode
+        let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
+        let hasStreaks = !allStreaks.isEmpty
+        let hasValidGoal = !isGoalCardRemoved && store.hasGoalSet
+        if !hasStreaks && !hasValidGoal {
+            return MileStoneGridModel(mileStones: [])
+        }
 
         func orderedStreaks(from all: [MetricItem], using order: [String]) -> [MetricItem] {
             if isEditMode {
@@ -190,7 +196,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return ordered
             } else {
                 // In non-edit mode, only show streaks that are in the order (removed streaks already filtered by streakItemsToShow)
-                guard !order.isEmpty else { return all }
+                guard !order.isEmpty else {
+                    return hasLoadedProgressMetrics ? all : []
+                }
                 return order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
             }
         }
@@ -249,8 +257,13 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widgets.append(contentsOf: activeStreaks.map { .streak($0) })
             } else {
                 let streakCount = activeStreaks.count
+                // Only show goal card if there are streaks OR if goal is set (has data)
+                // This prevents empty white cards from appearing before data loads
                 if streakCount == 0 {
-                    widgets.append(.goalCard)
+                    // Only add goal card if goal data is actually available
+                    if store.hasGoalSet {
+                        widgets.append(.goalCard)
+                    }
                 } else {
                     let columns = DevicePlatform.isTablet ? 4 : 2
                     let hasRemovedStreaks = !removedStreaks.isEmpty

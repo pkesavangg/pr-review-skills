@@ -30,16 +30,15 @@ struct DashboardMetricsSection: View {
                 }
             }
 
-            if !store.metricsToShow.isEmpty {
+            if store.hasBodyMetrics {
                 metricsGridSection()
             }
             
-            if store.state.ui.isEditMode ||
-                (!store.metricsToShow.isEmpty && (!store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty)) {
+            if store.shouldShowDivider {
                 dividerSection()
             }
 
-            if !store.state.ui.isGoalCardRemoved || !store.streakItemsToShow.isEmpty {
+            if store.shouldShowGoalStreakSection {
                 goalStreakSection()
             }
             
@@ -61,10 +60,8 @@ struct DashboardMetricsSection: View {
         }
         .onChange(of: parentView) { _, newValue in
             if newValue == .R4ScaleSetup {
-                store.state.ui.isEditMode = true
-                Task {
-                    try? await store.streakManager.refreshStreakData()
-                    await store.loadProgressMetricsFromAccount()
+                if !store.state.ui.isEditMode {
+                    store.state.ui.isEditMode = true
                 }
             }
         }

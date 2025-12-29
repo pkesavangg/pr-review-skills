@@ -27,13 +27,15 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     }
 
     // MARK: - Initialization
-    init(initialState: StreakState = StreakState()) {
+    init(initialState: StreakState = StreakState(), skipInitialSetup: Bool = false) {
         self.state = initialState
-        setupInitialStreakItems()
+        if !skipInitialSetup {
+            setupInitialStreakItems()
+        }
     }
 
     // MARK: - Setup Methods
-    private func setupInitialStreakItems() {
+    func setupInitialStreakItems() {
         state.streakItems = originalStreakItems.map {
             MetricItem(value: $0.value, label: $0.label, unit: $0.unit, preLabel: $0.preLabel, icon: $0.icon)
         }
