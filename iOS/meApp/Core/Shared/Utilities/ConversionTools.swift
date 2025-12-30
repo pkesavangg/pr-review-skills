@@ -51,12 +51,12 @@ final class ConversionTools {
     
     /// Converts stored weight (tenths of lbs) to kg
     static func convertStoredToKg(_ stored: Int) -> Double {
-        return rounded(Double(stored) / 22.046, toPlaces: 1)
+        return rounded(Double(stored) / 22.0462, toPlaces: 1)
     }
     
     /// Converts kg to stored weight (tenths of lbs)
     static func convertKgToStored(_ kgs: Double) -> Int {
-        return Int(round(kgs * 2.2046 * 10))
+        return Int(round(kgs * 2.20462 * 10))
     }
     
     /// Converts display value to stored value (tenths of lbs), metric or imperial
@@ -79,8 +79,9 @@ final class ConversionTools {
     
     /// Converts Bluetooth scale kg value to stored value (tenths of lbs)
     static func convertBluetoothToStored(_ btKg: Double) -> Double {
-        // Bluetooth scales: .2 lbs resolution, special formula
-        return Double(rounded(btKg * 1.1023 * 2 * 10, toPlaces: 0) / 10)
+        let lbs = btKg * 2.20462
+        let roundedToNearestPointTwo = round(lbs / 0.2) * 0.2
+        return roundedToNearestPointTwo
     }
     
     /// Appsync display to stored (kg to lbs, more precision)
