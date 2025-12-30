@@ -9,6 +9,7 @@ struct WeightlessScreen: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
+    @State private var focusedField: FocusField?
     
     private let strings = WeightlessStrings.self
     private let toast = ToastStrings.self
@@ -20,7 +21,13 @@ struct WeightlessScreen: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        // Ensure form is synced with account state before rendering (only when pristine)
+        let _ = {
+            // Sync form with account state - this will only populate if form is not dirty
+            settingsStore.populateWeightlessFormIfNeeded()
+        }()
+        
+        return VStack(spacing: 0) {
             NavbarHeaderView(
                 title: strings.title,
                 leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
@@ -63,12 +70,15 @@ struct WeightlessScreen: View {
                             inputType: .metric,
                             errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight,  unit: weightUnit),
                             isDisabled: !settingsStore.weightlessForm.isOn.value,
+                            focusField: .weight,
                             maxLength: 4,
                             maxValue: 999.9
                         ),
                         value: $settingsStore.weightlessForm.weight.value,
-                        focusedField: .constant(nil)
-                    )
+                        focusedField: $focusedField
+                    ) {
+                        focusedField = nil
+                    }
                     .disabled(!settingsStore.weightlessForm.isOn.value)
                 }
                 .padding(.horizontal, .spacingSM)
@@ -77,6 +87,7 @@ struct WeightlessScreen: View {
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onAppear {
+            // Populate form synchronously immediately when screen appears
             settingsStore.populateWeightlessFormIfNeeded()
 
             registerDeactivation {
@@ -100,6 +111,16 @@ struct WeightlessScreen: View {
         .onDisappear {
             // Remove deactivation handler when leaving the screen.
             registerDeactivation { true }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(commonLang.done) {
+                    withAnimation {
+                        focusedField = nil
+                    }
+                }
+            }
         }
         .navigationBarHidden(true)
     }

@@ -231,14 +231,23 @@ extension Account {
         if let zipcode = response.zipcode {
             self.zipcode = zipcode
         }
-        if let isWeightlessOn = response.isWeightlessOn {
-            self.weightlessSettings?.isWeightlessOn = isWeightlessOn
+            
+        if let weightlessWeight = response.weightlessWeight {
+        self.weightlessSettings?.weightlessWeight = weightlessWeight
+        self.weightlessSettings?.isWeightlessOn = response.isWeightlessOn ?? true
+        } else {
+            self.weightlessSettings?.weightlessWeight = nil
+            self.weightlessSettings?.isWeightlessOn = false
+            self.weightlessSettings?.weightlessTimestamp = nil
+        }
+
+        if response.isWeightlessOn == false {
+            self.weightlessSettings?.weightlessWeight = nil
+            self.weightlessSettings?.weightlessTimestamp = nil
+            self.weightlessSettings?.isWeightlessOn = false
         }
         if let weightlessTimestamp = response.weightlessTimestamp {
             self.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
-        }
-        if let weightlessWeight = response.weightlessWeight {
-            self.weightlessSettings?.weightlessWeight = weightlessWeight
         }
         if let isStreakOn = response.isStreakOn {
             self.streaksSettings?.isStreakOn = isStreakOn
