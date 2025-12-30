@@ -337,7 +337,7 @@ constructor(
         params = mapOf(
           "onSetGoal" to {
             AppLog.d(TAG, "User confirmed Set Goal popup - navigating to goal screen")
-            CoroutineScope(Dispatchers.IO).launch {
+            CoroutineScope(Dispatchers.Main).launch {
               appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
             }
             dialogQueueService.dismissCurrent()
@@ -393,7 +393,7 @@ constructor(
         cancelText = GoalStrings.SetNewGoalButton,
         onConfirm = {
           dialogQueueService.dismissCurrent()
-          CoroutineScope(Dispatchers.IO).launch {
+          CoroutineScope(Dispatchers.Main).launch {
             handleGoalMet(true)
           }
           isShowingAlert = false
@@ -401,7 +401,7 @@ constructor(
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
+          CoroutineScope(Dispatchers.Main).launch {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
             handleGoalMet(false)
           }
@@ -424,14 +424,14 @@ constructor(
         onConfirm = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
+          CoroutineScope(Dispatchers.Main).launch {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
           }
         },
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
+          CoroutineScope(Dispatchers.Main).launch {
             handleGoalLeave(updateGoal = false)
           }
         },
