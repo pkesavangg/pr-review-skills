@@ -849,9 +849,9 @@ ORDER BY d.day DESC
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-          AND datetime(entryTimestamp, "utc","localtime") >= datetime(:startDate)
-          AND datetime(entryTimestamp, "utc","localtime") <= datetime(:endDate)
-        ORDER BY datetime(entryTimestamp, "utc","localtime") DESC
+          AND datetime(entryTimestamp) >= datetime(:startDate)
+          AND datetime(entryTimestamp) <= datetime(:endDate)
+        ORDER BY datetime(entryTimestamp) DESC
     """,
   )
   suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<PopulatedActiveEntry>

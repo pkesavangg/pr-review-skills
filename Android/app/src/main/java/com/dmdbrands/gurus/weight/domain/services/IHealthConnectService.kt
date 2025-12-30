@@ -55,6 +55,14 @@ interface IHealthConnectService {
     suspend fun checkIfAlreadyUsed(): Boolean
 
     /**
+     * Checks if Health Connect is integrated with the current account.
+     * Compares the assignedTo value with the current account ID.
+     *
+     * @return true if Health Connect is assigned to the current account, false otherwise
+     */
+    suspend fun checkIntegrated(): Boolean
+
+    /**
      * Opens the Health Connect app or settings.
      */
     suspend fun openHealthConnect(isFromSetup: Boolean = false): Boolean

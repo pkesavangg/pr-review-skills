@@ -50,30 +50,47 @@ fun DashboardMilestone(
   }
   var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
 
-  val milestoneKeys = localVisibleKeys.mapNotNull { key ->
-    when (key) {
-      is DashboardKey.Milestone -> key.key
-      is DashboardKey.Metric -> null
+  val milestoneKeys = remember(localVisibleKeys) {
+    localVisibleKeys.mapNotNull { key ->
+      when (key) {
+        is DashboardKey.Milestone -> key.key
+        is DashboardKey.Metric -> null
+      }
     }
   }
-  val visibleMilestones = StatHelper.getMilestone(
-    progress = progress,
-    visibleKeys = milestoneKeys,
-    filterNulls = false,
-    unit = progress.unit,
-  ).reorderGrid(
-    spanCount = spanCount,
-  )
-  val allMilestones = StatHelper.getMilestone(progress = progress, visibleKeys = null, filterNulls = false,unit = progress.unit,)
-  val hiddenMilestones = allMilestones.filter { it !in visibleMilestones }
+
+  // Recalculate milestones when progress changes - use remember with progress as key
+  val visibleMilestones = remember(progress, milestoneKeys, spanCount) {
+    StatHelper.getMilestone(
+      progress = progress,
+      visibleKeys = milestoneKeys,
+      filterNulls = false,
+      unit = progress.unit,
+    ).reorderGrid(
+      spanCount = spanCount,
+    )
+  }
+
+  val allMilestones = remember(progress) {
+    StatHelper.getMilestone(progress = progress, visibleKeys = null, filterNulls = false)
+  }
+
+  // Compare by key instead of object equality to handle progress updates gracefully
+  val visibleMilestoneKeys = remember(visibleMilestones) {
+    visibleMilestones.map { it.key }.toSet()
+  }
+
+  val hiddenMilestones = remember(allMilestones, visibleMilestoneKeys) {
+    allMilestones.filter { milestone -> milestone.key !in visibleMilestoneKeys }
+  }
 
   val onMilestoneMoved = { isAdded: Boolean, milestone: Stat ->
     val milestoneKey = milestone.key
     val newStats = if (!isAdded) {
-      // Moving from visible to hidden
+      // Moving from visible to hidden - filter by key comparison
       visibleMilestones.filterNot { it.key == milestoneKey }
     } else {
-      // Moving from hidden to visible
+      // Moving from hidden to visible - find the milestone from allMilestones by key
       visibleMilestones + milestone
     }.reorderGrid(
       spanCount = spanCount,
