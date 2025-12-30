@@ -406,7 +406,9 @@ class DashboardStore: ObservableObject {
     }
     
     var weightlessAnchorWeight: Double? {
-        guard let weightlessWeight = accountService.activeAccount?.weightlessSettings?.weightlessWeight else {
+        guard let weightlessSettings = accountService.activeAccount?.weightlessSettings,
+              weightlessSettings.isWeightlessOn,
+              let weightlessWeight = weightlessSettings.weightlessWeight else {
             return nil
         }
         return goalManager.convertWeightToDisplay(Int(weightlessWeight))

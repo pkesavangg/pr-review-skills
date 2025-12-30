@@ -36,11 +36,13 @@ struct HistoryMonthListScreen: View {
     private func toggleEntry(_ entry: Entry) {
         let id = entry.id.uuidString
         
-        // iOS 17 fix: Immediate toggle for better responsiveness on repeated navigation
-        if historyStore.expandedEntries.contains(id) {
-            historyStore.expandedEntries.remove(id)
-        } else {
-            historyStore.expandedEntries.insert(id)
+        // Animate the expansion/collapse transition
+        withAnimation(.easeInOut(duration: 0.25)) {
+            if historyStore.expandedEntries.contains(id) {
+                historyStore.expandedEntries.remove(id)
+            } else {
+                historyStore.expandedEntries.insert(id)
+            }
         }
     }
     
