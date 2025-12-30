@@ -159,6 +159,7 @@ constructor(
 
       BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
       BtWifiScaleSetupIntent.OpenAccucheckModal -> openAccucheckModel()
+      BtWifiScaleSetupIntent.OpenBiaModal -> openBiaModel()
       is BtWifiScaleSetupIntent.DeleteUser -> deleteUser(intent.user)
       BtWifiScaleSetupIntent.ClearWifiPasswordForm -> clearWifiPasswordForm()
       else -> {}
@@ -1747,6 +1748,18 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.AccucheckModal,
+      ),
+    )
+  }
+
+  /**
+   * Opens the BIA (Bioelectrical Impedance Analysis) modal.
+   */
+  private fun openBiaModel() {
+    AppLog.d(TAG, "Opening BIA modal")
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.BiaModal,
       ),
     )
   }

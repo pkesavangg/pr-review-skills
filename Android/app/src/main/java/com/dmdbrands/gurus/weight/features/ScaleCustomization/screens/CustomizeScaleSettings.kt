@@ -346,7 +346,7 @@ fun CustomizeScaleSettings(
               isHeartRateOn = newHeartRateState
             },
             onBioimpedanceClick = {
-              // Handle bioimpedance modal - can be implemented if needed
+              onIntent(BtWifiScaleSetupIntent.OpenBiaModal)
             },
           )
         }
