@@ -43,7 +43,7 @@ fun EmptyGoal(
 ) {
   Column(
     modifier = modifier
-      .fillMaxWidth().height(122.dp),
+      .fillMaxWidth().height(GoalConstants.cardHeight),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     AppStyledCard(
