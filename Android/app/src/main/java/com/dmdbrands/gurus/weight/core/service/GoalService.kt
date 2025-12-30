@@ -389,23 +389,22 @@ constructor(
       DialogModel.Confirm(
         title = GoalStrings.GoalMetTitle,
         message = GoalStrings.GoalMetMessage,
-        confirmText = GoalStrings.SetNewGoalButton,
-        cancelText = GoalStrings.MaintainButton,
+        confirmText = GoalStrings.MaintainButton,
+        cancelText = GoalStrings.SetNewGoalButton,
         onConfirm = {
-          dialogQueueService.dismissCurrent()
-
-          isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
-            appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
-            handleGoalMet(false)
-          }
-        },
-        onCancel = {
           dialogQueueService.dismissCurrent()
           CoroutineScope(Dispatchers.IO).launch {
             handleGoalMet(true)
           }
           isShowingAlert = false
+        },
+        onCancel = {
+          dialogQueueService.dismissCurrent()
+          isShowingAlert = false
+          CoroutineScope(Dispatchers.IO).launch {
+            appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
+            handleGoalMet(false)
+          }
         },
       ),
     )
