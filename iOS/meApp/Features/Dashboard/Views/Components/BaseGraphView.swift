@@ -73,6 +73,29 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         return goal != nil
     }
 
+    // MARK: - Coordinated Animation
+    /// Computes the appropriate animation for chart updates
+    /// Ensures line and point marks animate together (or not at all)
+    private var coordinatedChartAnimation: Animation? {
+        // During scrolling: no animation
+        if viewModel.isScrolling {
+            return nil
+        }
+        // During scroll-end transition: no animation (data is settling)
+        if isInScrollEndTransition {
+            return nil
+        }
+        // Normal state: use standard chart animation if enabled
+        if enableYAxisAnimation && viewModel.shouldAnimateChartData {
+            return .easeInOut(duration: 0.25)
+        }
+        // Y-axis animation only
+        if enableYAxisAnimation {
+            return .easeInOut(duration: 0.3)
+        }
+        return nil
+    }
+
     // MARK: - Equatable Implementation
     static func == (lhs: BaseGraphView, rhs: BaseGraphView) -> Bool {
         // Only compare essential properties that should trigger re-renders
@@ -156,10 +179,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         )
                 )
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
-                // Disable animations during scroll and scroll-end transition to prevent stutter
-                .animation((enableYAxisAnimation && !isInScrollEndTransition) ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
-                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData && !isInScrollEndTransition) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
-                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData && !isInScrollEndTransition) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
+                // Coordinated animation for line and point marks
+                // - During scroll: no animation
+                // - During scroll-end transition: no animation (data settling)
+                // - Normal state: standard animations
+                .animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)
+                .animation(coordinatedChartAnimation, value: seriesAnimationToken)
+                .animation(coordinatedChartAnimation, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 .conditionalTouchModifiers(
@@ -223,14 +249,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         .onChange(of: viewModel.isScrolling) { oldValue, newValue in
             // Detect scroll end (was scrolling, now not)
             if oldValue && !newValue {
-                // Increment rebuild token to force chart identity change
+                // Enter transition state - disable animations briefly while scroll state settles
+                isInScrollEndTransition = true
                 chartRebuildToken += 1
 
-                // Enter transition state - disable animations and force rebuild
-                isInScrollEndTransition = true
-
-                // Exit transition state after Y-axis has settled (match the processing delay)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                // Exit transition state quickly - Y-axis updates at 0.6s will animate smoothly
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     isInScrollEndTransition = false
                 }
             }
