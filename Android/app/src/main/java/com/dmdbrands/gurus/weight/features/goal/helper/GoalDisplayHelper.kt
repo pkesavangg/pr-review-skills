@@ -42,24 +42,18 @@ object GoalDisplayHelper {
    * Mirrors the Angular logic with proper weightless support.
    *
    * @param goalWeight Goal weight value in stored format
-   * @param latestEntryWeight Latest entry weight value in stored format (can be null or 0.0)
-   * @param initialWeight Initial/starting weight value in stored format
+   * @param latestEntryWeight Latest entry weight value in stored format
+   * @param goalType Goal type (maintain, lose, gain, etc.)
    * @param weightless Weightless settings (null if weightless mode is off)
-   * @return Distance to goal as formatted string
+   * @return Distance to goal as number (not formatted string)
    */
   fun computeToGoal(
     goalWeight: Double,
-    latestEntryWeight: Double?,
-    initialWeight: Double,
+    latestEntryWeight: Double,
     weightless: Weightless? = null,
   ): String {
-    // If latest entry is null or 0.0, use initialWeight - goalWeight
-    val toGoal = if (latestEntryWeight == null || latestEntryWeight == 0.0) {
-      goalWeight - initialWeight
-    } else {
-      goalWeight - latestEntryWeight
-    }
-    // Return toGoal formatted to 1 decimal place
+    val toGoal = goalWeight - latestEntryWeight
+    // For lose/gain goals, return toGoal formatted to 1 decimal place
     return transformWeight(
       value = toGoal,
       showSymbol = true,

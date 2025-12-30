@@ -157,16 +157,13 @@ private fun MaintainGoalDisplay(
   val weightUnit = account.weightUnit
   val displayCurrentWeight = AccountHelper.processStoredWeightToDisplay((currentWeight * 10), weightUnit)
   val displayGoalWeight = AccountHelper.processStoredWeightToDisplay(goalWeight, weightUnit)
-  val displayInitialWeight = AccountHelper.processStoredWeightToDisplay(account.initialWeight, weightUnit)
 
   val weightless = Weightless(isWeightlessOn, weightlessWeight ?: 0.0f)
-  val latestEntryWeight = if (isFromMilestone) currentWeight else displayCurrentWeight
   val distanceText =
     GoalDisplayHelper.computeToGoal(
-      goalWeight = displayGoalWeight,
-      latestEntryWeight = if (latestEntryWeight == 0.0) null else latestEntryWeight,
-      initialWeight = displayInitialWeight,
-      weightless = weightless,
+      displayGoalWeight,
+      if(isFromMilestone) currentWeight else displayCurrentWeight,
+      weightless,
     )
     fun displayWeight(weight: Double): String {
       val processedWeight = if (isWeightlessOn && weightlessWeight != null) {
@@ -193,7 +190,7 @@ private fun MaintainGoalDisplay(
   AppStyledCard(
     modifier =
       Modifier
-        .height(122.dp)
+        .height(GoalConstants.cardHeight)
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
         .padding(horizontal = 14.dp),
@@ -232,15 +229,9 @@ private fun LoseGainGoalDisplay(
   val weightless = Weightless(isWeightlessOn, weightlessWeight ?: 0.0f)
   val displayGoalWeight = AccountHelper.processStoredWeightToDisplay(goalWeight, account.weightUnit)
   val displayCurrentWeight = AccountHelper.processStoredWeightToDisplay(currentWeight * 10, account.weightUnit)
-  val displayInitialWeight = AccountHelper.processStoredWeightToDisplay(account.initialWeight, account.weightUnit)
   val isLoseGoal = displayGoalWeight < displayCurrentWeight
   if (isLoseGoal) GoalType.LOSE else GoalType.GAIN
-  var toGoal = GoalDisplayHelper.computeToGoal(
-    goalWeight = displayGoalWeight,
-    latestEntryWeight = if (displayCurrentWeight == 0.0) null else displayCurrentWeight,
-    initialWeight = displayInitialWeight,
-    weightless = weightless,
-  )
+  var toGoal = GoalDisplayHelper.computeToGoal(displayGoalWeight, displayCurrentWeight, weightless)
   val toGoalText = if (progressPercentage >= 100) {
     toGoal = 0.toString()
     toGoal
