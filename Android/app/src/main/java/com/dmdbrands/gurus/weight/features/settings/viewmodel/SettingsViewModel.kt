@@ -360,6 +360,7 @@ constructor(
           RadioButtonOption(Gender.FEMALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Female),
         ),
       selectedItem = state.value.account?.gender,
+      confirmText = RadioGroupModalStrings.Button.Ok,
       onConfirm = { selectedSex ->
         AppLog.d(TAG, "Biological sex modal onConfirm called with: $selectedSex")
         selectedSex?.let { gender ->
@@ -470,6 +471,7 @@ constructor(
           ),
         ),
       selectedItem = state.value.account?.activityLevel,
+      confirmText = RadioGroupModalStrings.Button.Ok,
       onConfirm = { selectedActivityLevel ->
         selectedActivityLevel?.let { activityLevel ->
           onActivityLevelUpdate(activityLevel)
@@ -524,6 +526,7 @@ constructor(
         state.value.account
           ?.weightUnit
           ?.value,
+      confirmText = RadioGroupModalStrings.Button.Ok,
       onConfirm = { selectedUnitType ->
         selectedUnitType?.let { unitType ->
           onUnitTypeUpdate(unitType)
@@ -762,6 +765,7 @@ constructor(
         RadioButtonOption("SYSTEM", RadioGroupModalStrings.Appearance.System),
       ),
       selectedItem = getCurrentThemeModeString(),
+      confirmText = RadioGroupModalStrings.Button.Ok,
       onConfirm = { selectedTheme ->
         selectedTheme?.let { themeValue ->
           onAppearanceUpdate(themeValue.toString())
@@ -906,6 +910,7 @@ constructor(
           state.value.account?.shouldSendEntryNotifications == true -> "On"
           else -> "Off"
         },
+      confirmText = RadioGroupModalStrings.Button.Ok,
       onConfirm = { selectedNotification ->
         selectedNotification?.let { notificationOption ->
           onNotificationUpdate(notificationOption)

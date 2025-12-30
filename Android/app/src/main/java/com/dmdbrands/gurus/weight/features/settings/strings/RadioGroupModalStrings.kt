@@ -18,6 +18,7 @@ object RadioGroupModalStrings {
 
     object Button {
       const val Save = "Save"
+      const val Ok = "OK"
       const val Cancel = "Cancel"
     }
 
