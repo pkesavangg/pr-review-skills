@@ -41,6 +41,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     @State private var isInScrollEndTransition: Bool = false
     /// Counter that increments on scroll end to force chart identity change
     @State private var chartRebuildToken: Int = 0
+    /// Tracks previous Y-axis domain to detect domain-only changes
+    @State private var previousYAxisDomain: ClosedRange<Double>?
+    /// Tracks previous data hash to detect data changes
+    @State private var previousDataHash: Int?
+    /// Flag indicating if current change is domain-only (no data change)
+    @State private var isDomainChangeOnly: Bool = false
 
     // MARK: - Cached Chart Data (Performance Optimization)
     @State private var cachedChartPoints: [GraphSeries] = []
@@ -83,6 +89,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         }
         // During scroll-end transition: no animation (data is settling)
         if isInScrollEndTransition {
+            return nil
+        }
+        // Domain-only changes: no animation to prevent metrics from elongating unnaturally
+        // Metrics should only animate when actual data changes, not when Y-axis domain recalculates
+        if isDomainChangeOnly {
             return nil
         }
         // Normal state: use standard chart animation if enabled
@@ -182,6 +193,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 // Coordinated animation for line and point marks
                 // - During scroll: no animation
                 // - During scroll-end transition: no animation (data settling)
+                // - Domain-only changes: no animation (prevents metrics from elongating unnaturally)
                 // - Normal state: standard animations
                 .animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)
                 .animation(coordinatedChartAnimation, value: seriesAnimationToken)
@@ -305,12 +317,26 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         }
         // Rebuild cached points when Y-axis domain or ticks change so normalized metric points
         // are re-plotted against the latest domain
-        .onChange(of: viewModel.yAxisDomain) { _, _ in
+        .onChange(of: viewModel.yAxisDomain) { oldDomain, newDomain in
+            // Check if this is a domain-only change (domain changed but data hash didn't)
+            // This prevents metrics from animating/stretching when only Y-axis domain recalculates
+            let wasDomainChangeOnly = previousYAxisDomain != nil &&
+                                     previousYAxisDomain != newDomain &&
+                                     lastDataHash == (previousDataHash ?? 0)
+
+            // Set flag synchronously so transaction modifier can use it
+            isDomainChangeOnly = wasDomainChangeOnly
+            previousYAxisDomain = newDomain
+
             DispatchQueue.main.async {
                 // Use throttled update to prevent excessive updates during scroll
                 self.updateCachedChartDataThrottled()
                 // Clear Y-axis label cache since domain change affects tick values
                 self.cachedYAxisLabels.removeAll()
+                // Reset flag after a brief delay to allow transaction to complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.isDomainChangeOnly = false
+                }
             }
         }
         // Conditional scroll position syncing
@@ -436,6 +462,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                              : theme.actionSecondary)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
+            // Set zIndex below x-axis ticks to ensure ticks render on top when graph line extends beyond x-axis
+            .zIndex(-2)
 
             // Visible point mark
             PointMark(
@@ -446,6 +474,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             .foregroundStyle(point.series == DashboardStrings.weight
                              ? theme.actionPrimary
                              : theme.actionSecondary)
+            // Set zIndex below x-axis ticks to ensure ticks render on top
+            .zIndex(-2)
         }
     }
 
@@ -585,6 +615,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     PlottedGraphSeries(original: point, xDate: viewModel.plotXDate(for: point.date))
                 }
             }
+            previousDataHash = lastDataHash
             lastDataHash = newHash
         }
     }
