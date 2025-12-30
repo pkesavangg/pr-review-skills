@@ -79,9 +79,9 @@ final class ConversionTools {
     
     /// Converts Bluetooth scale kg value to stored value (tenths of lbs)
     static func convertBluetoothToStored(_ btKg: Double) -> Double {
-           // Bluetooth scales: .2 lbs resolution, special formula
-           return Double(rounded(btKg * 1.1023 * 2 * 10, toPlaces: 0) / 10)
-       }
+        // Bluetooth scales: .2 lbs resolution, special formula
+        return Double(rounded(btKg * 1.1023 * 2 * 10, toPlaces: 0) / 10)
+    }
     
     /// Appsync display to stored (kg to lbs, more precision)
     static func convertAppsyncDisplayToStored(_ display: Double) -> Int {
