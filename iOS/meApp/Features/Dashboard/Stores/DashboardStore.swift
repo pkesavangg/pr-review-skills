@@ -348,13 +348,15 @@ class DashboardStore: ObservableObject {
             return cached
         }
 
-        // Check if cached data is still valid (same period, same data count, same metric)
+        // Check if cached data is still valid (same period, same data count, same metric, same Y-axis domain)
         let ops = continuousOperations
+        let currentYAxisDomain = yAxisDomain
         if let cached = cachedChartSeriesData,
            !cached.isEmpty,
            cachedChartSeriesPeriod == state.graph.selectedPeriod,
            cachedChartSeriesMetric == state.ui.selectedMetricLabel,
-           cachedChartSeriesCount == ops.count {
+           cachedChartSeriesCount == ops.count,
+           lastCachedYAxisDomain == currentYAxisDomain {
             return cached
         }
 
@@ -374,6 +376,7 @@ class DashboardStore: ObservableObject {
         cachedChartSeriesPeriod = state.graph.selectedPeriod
         cachedChartSeriesMetric = state.ui.selectedMetricLabel
         cachedChartSeriesCount = ops.count
+        lastCachedYAxisDomain = currentYAxisDomain
 
         return seriesData
     }
@@ -383,6 +386,8 @@ class DashboardStore: ObservableObject {
     private var cachedChartSeriesPeriod: TimePeriod?
     private var cachedChartSeriesMetric: String?
     private var cachedChartSeriesCount: Int = 0
+    // Track cached Y-axis domain to detect changes and invalidate metric series cache
+    private var lastCachedYAxisDomain: ClosedRange<Double>?
 
     // Cache visible operations to prevent excessive calls to graph manager during scroll
     private var cachedVisibleOperations: [BathScaleWeightSummary] = []
@@ -910,6 +915,7 @@ class DashboardStore: ObservableObject {
 
             // Clear caches to force recalculation
             self.cachedChartSeriesData = nil
+            self.lastCachedYAxisDomain = nil
             self.cachedVisibleOperations = []
             self.lastVisibleOperationsCacheTime = Date.distantPast
 
@@ -1545,6 +1551,7 @@ class DashboardStore: ObservableObject {
         }
 
         // Apply cache update in a transaction that disables animations to prevent layout jumps
+        let previousYAxisDomain = state.graph.cachedYAxisDomain
         graphManager.calculateAndCacheYAxisDomain(
             from: operationsForYAxis,
             goalWeight: goalWeightForDisplay,
@@ -1553,11 +1560,19 @@ class DashboardStore: ObservableObject {
             convertWeight: goalManager.convertWeightToDisplay,
             chartHeight: state.graph.chartHeight
         )
-
-        // NOTE: We no longer invalidate cachedChartSeriesData here
-        // The chart series data is now validated by period/metric/count
-        // Y-axis domain changes don't require regenerating the weight series
-        // This prevents expensive regeneration on every Y-axis update
+        
+        // Invalidate cached chart series data if Y-axis domain changed
+        // This is necessary because metric normalization depends on the Y-axis domain
+        // Weight series don't need regeneration, but metrics do
+        if let newYAxisDomain = state.graph.cachedYAxisDomain,
+           let previousDomain = previousYAxisDomain,
+           newYAxisDomain != previousDomain {
+            // Y-axis domain changed - invalidate cached chart series to force metric recalculation
+            cachedChartSeriesData = nil
+            lastCachedYAxisDomain = nil
+            logger.log(level: .debug, tag: "DashboardStore", 
+                      message: "Y-axis domain changed from \(previousDomain) to \(newYAxisDomain), invalidating cached chart series")
+        }
 
         // Force a UI refresh so Charts read the updated cached domain/ticks immediately
         objectWillChange.send()
@@ -2365,6 +2380,7 @@ class DashboardStore: ObservableObject {
         cachedChartSeriesData = nil
         cachedChartSeriesPeriod = nil
         cachedChartSeriesMetric = nil
+        lastCachedYAxisDomain = nil
         cachedChartSeriesCount = 0
         cachedVisibleOperations = []
         lastVisibleOperationsCacheTime = Date.distantPast

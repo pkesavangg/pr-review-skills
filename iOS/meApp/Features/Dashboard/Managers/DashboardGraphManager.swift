@@ -484,11 +484,28 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         // Add selected metric series using Y-axis domain for normalization
+        // Calculate operations used for Y-axis calculation to ensure consistency
+        // This matches the logic in DashboardStore.updateYAxisCache
+        let operationsForYAxis: [BathScaleWeightSummary]
+        if state.selectedPeriod == .total {
+            operationsForYAxis = allOperations
+        } else {
+            let bracketingOperations = getBracketingOperations(from: allOperations)
+            var combinedOperations = visibleOperations
+            for bracketOp in bracketingOperations {
+                if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
+                    combinedOperations.append(bracketOp)
+                }
+            }
+            operationsForYAxis = combinedOperations.isEmpty ? allOperations : combinedOperations
+        }
+        
         if let selectedMetric = selectedMetric, selectedMetric != DashboardStrings.weight {
             let normalizedMetricSeries = generateNormalizedMetricSeriesWithDomain(
                 for: selectedMetric,
                 from: allOperations,
                 visibleOperations: visibleOperations,
+                operationsForYAxis: operationsForYAxis,
                 toWeightDomain: yAxisDomain,
                 isWeightlessMode: isWeightlessMode,
                 anchorWeight: anchorWeight,
@@ -676,10 +693,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     /// Generates normalized metric series using the provided Y-axis domain for consistency
     /// This ensures metric normalization matches the visible Y-axis range
+    /// - Parameter operationsForYAxis: The same operations set used for Y-axis domain calculation
+    ///                                (visibleOperations + bracketingOperations for non-total periods)
     private func generateNormalizedMetricSeriesWithDomain(
         for selectedMetric: String,
         from allOperations: [BathScaleWeightSummary],
         visibleOperations: [BathScaleWeightSummary],
+        operationsForYAxis: [BathScaleWeightSummary],
         toWeightDomain yAxisDomain: ClosedRange<Double>,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
@@ -696,15 +716,22 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return []
         }
 
-        // Use visible operations + bracketing operations for metric range calculation
-        // This ensures metric lines don't "jump" when bracketing segments become visible during scrolling
-        let bracketingOperations = getBracketingOperations(from: allOperations)
-        var operationsForMetricRange = visibleOperations
+        // Use the same operations set that was used for Y-axis domain calculation
+        // This ensures metric normalization is consistent with the Y-axis domain
+        // For non-total periods, this should be visibleOperations + bracketingOperations
+        // For total period, this should be allOperations
+        let operationsForMetricRange = operationsForYAxis
 
-        // Add bracketing operations if they're not already included
-        for bracketOp in bracketingOperations {
-            if !operationsForMetricRange.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
-                operationsForMetricRange.append(bracketOp)
+        // Validate that operationsForYAxis matches expected pattern
+        // Log warning if there's a potential mismatch (for debugging)
+        if state.selectedPeriod != .total {
+            let expectedBracketing = getBracketingOperations(from: allOperations)
+            let expectedCombined = visibleOperations + expectedBracketing.filter { bracketOp in
+                !visibleOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp })
+            }
+            if operationsForYAxis.count != expectedCombined.count {
+                logger.log(level: .info, tag: "DashboardGraphManager",
+                          message: "Potential operation set mismatch: operationsForYAxis has \(operationsForYAxis.count) items, expected \(expectedCombined.count) for metric normalization")
             }
         }
 
@@ -744,6 +771,32 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // This allows metrics to scale with the visible data range like weight lines
         let weightMin = yAxisDomain.lowerBound
         let weightMax = yAxisDomain.upperBound
+        
+        // Validate that the Y-axis domain is appropriate for the operations
+        // Check if weight values in operationsForYAxis are within reasonable range of the domain
+        let weightValues = operationsForMetricRange.compactMap { summary -> Double? in
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { return nil }
+                let currentWeight = convertWeight(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertWeight(Int(summary.weight))
+            }
+        }
+        
+        if let minWeight = weightValues.min(), let maxWeight = weightValues.max() {
+            // Check if weight range significantly exceeds domain (potential mismatch)
+            let weightRange = maxWeight - minWeight
+            let domainRange = weightMax - weightMin
+            if weightRange > 0 && domainRange > 0 {
+                let rangeRatio = weightRange / domainRange
+                // If weight range is more than 120% of domain, log a warning
+                if rangeRatio > 1.2 {
+                    logger.log(level: .info, tag: "DashboardGraphManager",
+                              message: "Potential domain-operation mismatch: weight range (\(minWeight)...\(maxWeight)) may exceed Y-axis domain (\(weightMin)...\(weightMax)) for metric \(selectedMetric)")
+                }
+            }
+        }
 
         var normalizedSeries: [GraphSeries] = []
 
@@ -788,8 +841,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let yAxisSpan = weightMax - weightMin
             let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) * yAxisSpan / metricRangeSpan
 
-            // Keep slightly inside bounds (prevents edge bleeding)
-            let epsilon = yAxisSpan * 0.001 // 0.1% of y-axis span
+            // Keep well inside bounds to account for edge buffers applied to Y-axis domain
+            // Edge buffers extend the domain, so we use a more conservative margin (1.5% of span)
+            // to ensure metrics stay within visible bounds even when domain has been extended
+            let epsilon = yAxisSpan * 0.015 // 1.5% of y-axis span (increased from 0.1% to account for edge buffers)
             let safeMin = weightMin + epsilon
             let safeMax = weightMax - epsilon
             let clampedFinalValue = max(safeMin, min(safeMax, normalizedValue))
