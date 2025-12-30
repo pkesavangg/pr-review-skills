@@ -215,6 +215,14 @@ final class SignupStore: ObservableObject {
         case .zipCode:
             signupForm.zipcode.markAsTouched()
             signupForm.zipcode.validate()
+        case .currentWeight:
+            signupForm.currentWeight.markAsTouched()
+            signupForm.currentWeight.validate()
+            signupForm.validate()
+        case .goalWeight:
+            signupForm.goalWeight.markAsTouched()
+            signupForm.goalWeight.validate()
+            signupForm.validate()
         default:
             break
         }

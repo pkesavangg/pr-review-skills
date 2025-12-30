@@ -40,7 +40,7 @@ struct PermissionsStrings {
     static let pageHeaderTitle = "Permission Settings"
     static let cameraPermissionDescription = "Weight Gurus needs camera permissions to scan your scale."
     static let bluetoothPermissionDescription = "Weight Gurus needs Bluetooth permissions to connect with your scale."
-    static let locationPermissionDescription = "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
+    static let locationPermissionDescription = "Weight Gurus needs Location permissions to connect to your scale."
 
     // Kept for backward compatibility with existing code references (will be removed once view is updated)
     static let locationAccessNotAuthorized = "Authorize location access"
