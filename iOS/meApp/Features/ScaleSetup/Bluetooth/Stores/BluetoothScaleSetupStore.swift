@@ -186,14 +186,25 @@ final class BluetoothScaleSetupStore: ObservableObject {
     
     /// Presents a confirmation alert before abandoning the setup flow.
     func handleExit() {
-        /// For the last step, simply dismiss the setup.
         let alertLang = AlertStrings.ExitSetupAlert.self
+        
+        // Check if we're on the last step (setupFinished)
+        let isLastStep = currentStep == .setupFinished
+        let shouldSaveScale = isLastStep && discoveredScale != nil && discoveryEvent != nil
+        
         let alert = AlertModel(
             title: alertLang.title,
             message: alertLang.message,
             buttons: [
                 AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
-                    self?.dismissAction?()
+                    guard let self = self else { return }
+                    // If on last step and scale is ready, save it before dismissing
+                    if shouldSaveScale {
+                        self.saveDiscoveredScale()
+                    } else {
+                        // For other steps, just dismiss without saving
+                        self.dismissAction?()
+                    }
                 },
                 AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
             ]
