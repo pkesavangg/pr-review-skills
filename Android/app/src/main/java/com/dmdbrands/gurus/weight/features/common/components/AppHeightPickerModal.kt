@@ -1,23 +1,17 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.serialization.Serializable
 
@@ -154,30 +148,6 @@ fun AppHeightPickerModal(
   // State to control dialog visibility
 
   val itemHeight = (spacing.sm * 2) + 24.dp
-  Dialog(
-    onDismissRequest = onCancel,
-    properties = DialogProperties(
-      dismissOnBackPress = true,
-      dismissOnClickOutside = true,
-      usePlatformDefaultWidth = false,
-      decorFitsSystemWindows = false,
-    ),
-  ) {
-    Dialog(
-      onDismissRequest = onCancel,
-      properties = DialogProperties(
-        dismissOnBackPress = true,
-        dismissOnClickOutside = true,
-        usePlatformDefaultWidth = false,
-        decorFitsSystemWindows = false,
-      ),
-    ) {
-      Box(
-        modifier = Modifier
-          .fillMaxSize()
-          .background(MeTheme.colorScheme.glow),
-      ) {
-        Box(modifier = Modifier.align(Alignment.Center)) {
           BaseModal(
             title = "Height",
             primaryAction =
@@ -234,10 +204,6 @@ fun AppHeightPickerModal(
             }
           }
         }
-      }
-    }
-  }
-}
 
 @PreviewTheme
 @Composable

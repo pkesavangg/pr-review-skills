@@ -1,12 +1,8 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,8 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
@@ -24,7 +18,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
@@ -42,21 +35,7 @@ fun AppsyncEntryPopup(
 ) {
 
   val scaleEntry = entry.scale.scaleEntry
-  Dialog(
-    onDismissRequest = {}, //TODO: Need to call with back method
-    properties = DialogProperties(
-      dismissOnBackPress = true,
-      dismissOnClickOutside = true,
-      usePlatformDefaultWidth = false,
-      decorFitsSystemWindows = false,
-    ),
-  ) {
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
-    ) {
-      Box(modifier = Modifier.align(Alignment.Center).clickable(enabled = false) { }) {
+
         BaseModal {
           Column(
             modifier = Modifier
@@ -130,9 +109,6 @@ fun AppsyncEntryPopup(
           }
         }
       }
-    }
-  }
-}
 
 @PreviewTheme
 @Composable

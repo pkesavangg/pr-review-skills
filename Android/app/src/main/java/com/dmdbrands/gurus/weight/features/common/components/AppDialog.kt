@@ -42,12 +42,18 @@ fun AppDialog(
       Box(
         modifier = Modifier
           .fillMaxSize()
-          .background(MeTheme.colorScheme.overlay)
-          .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = dismissActionEvent
-          ),
+          .background(MeTheme.colorScheme.glow).then(
+          if (properties.dismissOnClickOutside) {
+            Modifier.clickable(
+              interactionSource = remember { MutableInteractionSource() },
+              indication = null,
+              onClick = dismissActionEvent,
+            )
+          } else {
+            Modifier
+          },
+        )
+
       )
 
       // Modal content - positioned on top of overlay
