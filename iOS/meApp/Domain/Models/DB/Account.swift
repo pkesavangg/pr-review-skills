@@ -232,22 +232,25 @@ extension Account {
             self.zipcode = zipcode
         }
             
-        if let weightlessWeight = response.weightlessWeight {
-        self.weightlessSettings?.weightlessWeight = weightlessWeight
-        self.weightlessSettings?.isWeightlessOn = response.isWeightlessOn ?? true
+        // Consolidated weightless settings update logic
+        if let isWeightlessOn = response.isWeightlessOn, isWeightlessOn == false {
+            // Explicitly turned off: clear weight and timestamp
+            self.weightlessSettings?.isWeightlessOn = false
+            self.weightlessSettings?.weightlessWeight = nil
+            self.weightlessSettings?.weightlessTimestamp = nil
+        } else if let weightlessWeight = response.weightlessWeight {
+            // Weight provided and not explicitly off: store weight and set state
+            self.weightlessSettings?.weightlessWeight = weightlessWeight
+            self.weightlessSettings?.isWeightlessOn = response.isWeightlessOn ?? false
+            // Set timestamp if provided
+            if let weightlessTimestamp = response.weightlessTimestamp {
+                self.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
+            }
         } else {
+            // No weight provided and not explicitly off: default to off
             self.weightlessSettings?.weightlessWeight = nil
             self.weightlessSettings?.isWeightlessOn = false
             self.weightlessSettings?.weightlessTimestamp = nil
-        }
-
-        if response.isWeightlessOn == false {
-            self.weightlessSettings?.weightlessWeight = nil
-            self.weightlessSettings?.weightlessTimestamp = nil
-            self.weightlessSettings?.isWeightlessOn = false
-        }
-        if let weightlessTimestamp = response.weightlessTimestamp {
-            self.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
         }
         if let isStreakOn = response.isStreakOn {
             self.streaksSettings?.isStreakOn = isStreakOn

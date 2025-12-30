@@ -365,7 +365,7 @@ class SettingsStore: ObservableObject {
         }
         
         guard let storedWeight = storedWeight else {
-            return commonLang.on
+            return "\(commonLang.on) - Not Set"
         }
         
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
