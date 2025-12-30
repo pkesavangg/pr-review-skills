@@ -92,9 +92,15 @@ class SignupForm: ObservableForm {
         goalType.isDirty || currentWeight.isDirty || goalWeight.isDirty
         guard isAnyGoalFieldDirty else { return false }
         
-        guard isTouched || goalType.isDirty else { return false }
-        
         let isMaintainMode = goalType.value == GoalType.maintain.rawValue
+        
+        // For maintain mode, only goal weight needs to be dirty/touched
+        // For lose/gain mode, both weights need to be dirty/touched
+        if isMaintainMode {
+            guard isTouched || goalType.isDirty || goalWeight.isDirty else { return false }
+        } else {
+            guard isTouched || goalType.isDirty || (currentWeight.isDirty && goalWeight.isDirty) else { return false }
+        }
         
         if !isMaintainMode, formErrors[.weightEqual] {
             return false

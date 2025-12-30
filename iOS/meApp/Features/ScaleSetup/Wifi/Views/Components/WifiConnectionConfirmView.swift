@@ -140,10 +140,11 @@ struct WifiConnectionConfirmView: View {
     
     private var apModeImage: some View {
         let displaySku = sku == sku0384 ? sku0384 : sku0396
+        let shouldUseFilled = mode == .apModeOnly ? true : (selectedOption == .apMode)
         return Image(
             appAssets.apModeImageName(
                 sku: displaySku,
-                isFilled: selectedOption == .apMode,
+                isFilled: shouldUseFilled,
                 isDarkMode: themeManager.isDarkMode
             )
         )

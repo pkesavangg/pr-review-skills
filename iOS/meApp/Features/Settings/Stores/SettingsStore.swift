@@ -358,11 +358,25 @@ class SettingsStore: ObservableObject {
     
     var weightlessText: String {
         let isOn = activeAccount?.weightlessSettings?.isWeightlessOn ?? false
-        guard isOn else { return commonLang.off }
+        let storedWeight = activeAccount?.weightlessSettings?.weightlessWeight
+        
+        guard isOn else {
+            return commonLang.off
+        }
+        
+        guard let storedWeight = storedWeight else {
+            return "\(commonLang.on) - Not Set"
+        }
+        
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
-        let value = Double(weightlessForm.weight.value) ?? 0
-        let unitLabel = WeightValueConvertor.unitForDisplay(value: value, unit: unit)
-        return "\(commonLang.on) - \(weightlessForm.weight.value) \(unitLabel)"
+        let display: Double = unit == .kg
+            ? ConversionTools.convertStoredToKg(Int(storedWeight))
+            : ConversionTools.convertStoredToLbs(Int(storedWeight))
+        
+        let formattedValue = String(format: "%.1f", display)
+        let unitLabel = WeightValueConvertor.unitForDisplay(value: display, unit: unit)
+        let result = "\(commonLang.on) - \(formattedValue) \(unitLabel)"
+        return result
     }
     
     var notificationsOnText: String {
@@ -1049,21 +1063,43 @@ class SettingsStore: ObservableObject {
     
     /// Populates the Weightless settings form with the current account values (only once, when pristine).
     func populateWeightlessFormIfNeeded() {
-        guard let account = activeAccount else { return }
-        
-        if let isOn = account.weightlessSettings?.isWeightlessOn {
-            weightlessForm.isOn.value = isOn
+        guard let account = activeAccount else {
+            // Clear form when no account
+            weightlessForm.isOn.value = false
+            weightlessForm.weight.value = ""
             weightlessForm.isOn.markAsPristine()
+            weightlessForm.weight.markAsPristine()
+            return
         }
         
-        if let storedWeight = account.weightlessSettings?.weightlessWeight {
+        // Skip if user has already started editing (keep any in-flight changes).
+        guard !weightlessForm.isDirty else { return }
+        
+        // If weightlessWeight is null, toggle should be OFF regardless of isWeightlessOn
+        // This handles cases where API returns inconsistent data
+        let hasWeight = account.weightlessSettings?.weightlessWeight != nil
+        let isWeightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
+        
+        // Toggle should be ON only if both isWeightlessOn is true AND weightlessWeight exists
+        let shouldBeOn = isWeightlessOn && hasWeight
+        
+        weightlessForm.isOn.value = shouldBeOn
+        weightlessForm.isOn.markAsPristine()
+        
+        // Set weight field value
+        if let storedWeight = account.weightlessSettings?.weightlessWeight, shouldBeOn {
             // Convert stored tenths-of-lbs value to display unit.
             let unit = account.weightSettings?.weightUnit ?? .lb
             let display: Double = unit == .kg
             ? ConversionTools.convertStoredToKg(Int(storedWeight))
             : ConversionTools.convertStoredToLbs(Int(storedWeight))
             
-            weightlessForm.weight.value = account.weightlessSettings?.isWeightlessOn ?? false ? String(format: "%.1f", display) : ""
+            let formattedValue = String(format: "%.1f", display)
+            weightlessForm.weight.value = formattedValue
+            weightlessForm.weight.markAsPristine()
+        } else {
+            // Clear weight field when weightlessWeight is null or toggle is OFF
+            weightlessForm.weight.value = ""
             weightlessForm.weight.markAsPristine()
         }
         let maxWeight = account.weightSettings?.weightUnit ?? .lb == .kg ? 450.0 : 999.0
