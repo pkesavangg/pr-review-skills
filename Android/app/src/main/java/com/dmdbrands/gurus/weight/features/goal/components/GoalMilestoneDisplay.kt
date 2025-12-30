@@ -193,7 +193,7 @@ private fun MaintainGoalDisplay(
   AppStyledCard(
     modifier =
       Modifier
-        .height(122.dp)
+        .height(GoalConstants.cardHeight)
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
         .padding(horizontal = 14.dp),
