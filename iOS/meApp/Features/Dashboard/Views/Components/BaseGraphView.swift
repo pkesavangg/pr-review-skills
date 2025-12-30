@@ -716,6 +716,11 @@ extension View {
                                     Task {
                                         await dashboardStore.handleChartSelection(at: dateToSend)
                                     }
+                                } else {
+                                    // Clear any previous selection in the store
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: nil)
+                                    }
                                 }
                             }
                         }
@@ -775,6 +780,11 @@ extension View {
                                     let dateToSend = viewModel.preferredSelectedDate ?? date
                                     Task {
                                         await dashboardStore.handleChartSelection(at: dateToSend)
+                                    }
+                                } else {
+                                    // Clear any previous selection in the store
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: nil)
                                     }
                                 }
                             }
