@@ -28,7 +28,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.util.Log
 
 /**
  * ViewModel for the dashboard, managing state and handling dashboard intents.
@@ -60,7 +59,6 @@ constructor(
       subscribeLatestWeight()
       subscribeIsEmpty()
       subscribeWeightLess()
-      subscribeLastOp()
     }
   }
 
@@ -134,18 +132,9 @@ constructor(
     }
   }
 
-  private fun subscribeLastOp(){
-    viewModelScope.launch {
-      entryService.lastUpdated.collect{
-        entryService.refreshEntryData()
-      }
-    }
-  }
-
   private fun subscribeProgress() {
     viewModelScope.launch {
       entryService.progress.collect {
-        Log.d("progress","$it")
         handleIntent(DashboardIntent.SetProgress(it))
       }
     }

@@ -24,7 +24,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.coroutines.resume
-import android.util.Log
 
 /**
  * ViewModel for the entry feature, managing state and handling entry intents.
@@ -250,7 +249,6 @@ constructor(
       val scaleEntry =
         _state.value.form.forms
           .toScaleEntry(_state.value.weightMode)
-      Log.d("CHECKINGSCALEENTRY","$scaleEntry")
       try {
         entryService.addEntry(entry = scaleEntry)
 
