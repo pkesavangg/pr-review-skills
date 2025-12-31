@@ -280,7 +280,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 chartRebuildToken += 1
 
                 // Exit transition state quickly - Y-axis updates at 0.6s will animate smoothly
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.005) {
                     isInScrollEndTransition = false
                 }
             }
