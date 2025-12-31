@@ -20,26 +20,26 @@ struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @EnvironmentObject private var accountService: AccountService
     @Environment(\.appTheme) private var theme
-    
+
     // Section view models
     @StateObject private var totalSectionViewModel = TotalSectionViewModel()
     @StateObject private var yearSectionViewModel = YearSectionViewModel()
     @StateObject private var monthSectionViewModel = MonthSectionViewModel()
     @StateObject private var weekSectionViewModel = WeekSectionViewModel()
-    
+
     // Reset chart identity on period switches to avoid stale animations/state
     @State private var chartIdentity: UUID = UUID()
-    
+
     // Check if there are any entries to display
     private var hasEntries: Bool {
         return !dashboardStore.continuousOperations.isEmpty
     }
-    
+
     // Get the appropriate empty state message
     private var emptyStateMessage: String {
         return DashboardStrings.noEntriesMessage
     }
-    
+
     // Whether the selection callout is currently visible for the active period
     private var isShowingSelectionCallout: Bool {
         switch dashboardStore.state.graph.selectedPeriod {
@@ -67,18 +67,18 @@ struct GraphView: View {
                 .padding(.vertical, .spacingXS)
                 chartView
                     .id(chartIdentity)
-            
+
         }
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // Clear crosshair and selection when time period changes
             dashboardStore.clearSelection()
-            
+
             // Also clear local selection in all section view models
             totalSectionViewModel.clearSelection()
             yearSectionViewModel.clearSelection()
             monthSectionViewModel.clearSelection()
             weekSectionViewModel.clearSelection()
-            
+
             // Reconfigure active section view model with fresh store state
             switch newValue {
             case .week:
@@ -90,7 +90,7 @@ struct GraphView: View {
             case .total:
                 totalSectionViewModel.configure(with: dashboardStore)
             }
-            
+
             // Ensure most recent entries are shown for the selected period
             // Use cached bounds for O(1) lookup
             let optimal = dashboardStore.graphManager.calculateOptimalScrollPosition(
@@ -101,10 +101,12 @@ struct GraphView: View {
             )
             dashboardStore.graphManager.updateScrollPosition(to: optimal)
             dashboardStore.updateSelectedPeriod(newValue)
-            
+
             // Force the active view model to sync with the optimal position after a brief delay
             // This ensures the chart binding gets the correct position
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Get the position from the store after updateSelectedPeriod has set it
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                let optimal = dashboardStore.state.graph.xScrollPosition
                 switch newValue {
                 case .week:
                     weekSectionViewModel.forceScrollPositionUpdate(to: optimal)
@@ -116,7 +118,7 @@ struct GraphView: View {
                     break // Total view is not scrollable
                 }
             }
-            
+
             // Recalculate and cache Y-axis based on the new visible region
             dashboardStore.updateYAxisCache()
         }
@@ -126,7 +128,7 @@ struct GraphView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
-    
+
     // MARK: - Chart View
     private var chartView: some View {
         return HStack(spacing: 0) {
@@ -155,19 +157,19 @@ struct GraphView: View {
             }
         }
     }
-    
+
     // MARK: - Empty State View
     private var emptyStateView: some View {
         VStack(spacing: .spacingMD) {
             Spacer()
-            
+
             Text(emptyStateMessage)
                 .fontOpenSans(.heading5)
                 .foregroundColor(theme.textHeading)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, .spacingLG)
-            
+
             Spacer()
         }
         .graphViewStyle(canAddPadding: true)

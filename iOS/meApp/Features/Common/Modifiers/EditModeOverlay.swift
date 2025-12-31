@@ -61,10 +61,16 @@ struct EditModeOverlay: ViewModifier {
                     // Rectangular background overlay to improve tap target
                     Rectangle()
                         .fill(Color.clear)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 60, height: 60)
+                        .onTapGesture {
+                            onToggleRemoval()
+                        }
 
                     ThemedImage(name: iconName, isSingleMode: true)
                         .frame(width: 28, height: 28)
+                }
+                .onTapGesture {
+                    onToggleRemoval()
                 }
                 .offset(x: iconOffset.width, y: iconOffset.height)
                 .wiggling(shouldWiggle, rowIndex: rowIndex)
@@ -72,9 +78,6 @@ struct EditModeOverlay: ViewModifier {
                 .animation(.easeInOut(duration: 0.2), value: iconOpacity)
                 .allowsHitTesting(isEditMode)
                 .zIndex(999)
-                .onTapGesture {
-                    onToggleRemoval()
-                }
             }
         }
     }

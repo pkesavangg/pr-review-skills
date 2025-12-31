@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,44 +36,46 @@ fun ModalDialog(
             dismissOnBackPress = config.dismissOnBackPress,
             dismissOnClickOutside = config.dismissOnClickOutside,
             usePlatformDefaultWidth = config.usePlatformDefaultWidth,
-            decorFitsSystemWindows = config.decorFitsSystemWindows,
+            decorFitsSystemWindows = config.decorFitsSystemWindows, // Ensure dialog respects system windows for keyboard
         ),
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Background overlay - only clickable on areas not covered by modal
+            // Background overlay - clickable when dismissOnClickOutside is enabled
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MeTheme.colorScheme.overlay)
+                    .background(MeTheme.colorScheme.glow)
                     .then(
                         if (config.dismissOnClickOutside) {
                             Modifier.clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                                onClick = onDismiss
+                                onClick = onDismiss,
                             )
                         } else {
                             Modifier
-                        }
+                        },
                     ),
             )
 
             // Modal content - positioned on top of overlay with click blocking
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { /* Block clicks from reaching the overlay */ }
-                    )
-            ) {
+            // Adjusts position when keyboard appears using imePadding
+          Box(
+            modifier = Modifier
+              .align(Alignment.Center)
+              .imePadding() // Adjust padding when keyboard appears
+              .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { /* Block clicks from reaching the overlay */ }
+              )
+          ) {
                 content()
+              }
             }
         }
-    }
 }
 
 /**

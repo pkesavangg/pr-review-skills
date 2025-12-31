@@ -33,7 +33,7 @@ struct GoalSettingScreen: View {
                         text: commonLang.save,
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: !settingsStore.isGoalFormValid,
+                        isDisabled: !settingsStore.isGoalFormValid(focusedField: focusedField),
                     ) {
                         hideKeyboard()
                         settingsStore.saveGoal(router: router)

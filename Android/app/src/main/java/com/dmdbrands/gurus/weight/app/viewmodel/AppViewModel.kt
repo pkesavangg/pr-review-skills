@@ -298,6 +298,7 @@ constructor(
               )
             }
             stopScan()
+            dashboardService.setSelectedKey(null)
             initLoadingData(authState.account, true)
           }
 

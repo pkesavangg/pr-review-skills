@@ -19,10 +19,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 
     // MARK: - Local State
     @State private var localSelectedXValue: Date?
-    @State private var hasDetectedScrollInCurrentGesture = false
-    @State private var touchInteractionMode: TouchInteractionMode = .none
-    @State private var initialTouchPoint: CGPoint = .zero
-    @State private var decisionTimer: Timer?
     // Enable Y-axis animation only after first render to avoid blank-first-frame
     @State private var enableYAxisAnimation: Bool = false
     // Scroll position debouncing
@@ -159,7 +155,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     isScrollable: isScrollable,
                     viewModel: viewModel,
                     localSelectedXValue: $localSelectedXValue,
-                    touchInteractionMode: touchInteractionMode,
                     dashboardStore: dashboardStore,
                     theme: theme,
                     getCachedXAxisLabel: getCachedXAxisLabel
@@ -202,11 +197,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 .conditionalTouchModifiers(
                     isScrollable: isScrollable,
-                    touchInteractionMode: $touchInteractionMode,
-                    initialTouchPoint: $initialTouchPoint,
-                    decisionTimer: $decisionTimer,
                     localSelectedXValue: $localSelectedXValue,
-                    hasDetectedScrollInCurrentGesture: $hasDetectedScrollInCurrentGesture,
                     dashboardStore: dashboardStore
                 )
 
@@ -280,7 +271,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         .onChange(of: dashboardStore.currentUnit) { _, _ in
-            // ViewModel will invalidate cache in handleSettingsChange()
+            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
             viewModel.handleSettingsChange()
             // Update local cache since display values changed
             DispatchQueue.main.async {
@@ -292,7 +283,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             }
         }
         .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
-            // ViewModel will invalidate cache in handleSettingsChange()
+            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
             viewModel.handleSettingsChange()
             // Update local cache since display values changed
             DispatchQueue.main.async {
@@ -462,8 +453,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                              : theme.actionSecondary)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
-            // Set zIndex below x-axis ticks to ensure ticks render on top when graph line extends beyond x-axis
-            .zIndex(-2)
 
             // Visible point mark
             PointMark(
@@ -474,8 +463,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             .foregroundStyle(point.series == DashboardStrings.weight
                              ? theme.actionPrimary
                              : theme.actionSecondary)
-            // Set zIndex below x-axis ticks to ensure ticks render on top
-            .zIndex(-2)
         }
     }
 
@@ -808,7 +795,6 @@ extension View {
         isScrollable: Bool,
         viewModel: ViewModel,
         localSelectedXValue: Binding<Date?>,
-        touchInteractionMode: TouchInteractionMode,
         dashboardStore: DashboardStore,
         theme: AppColors.Palette,
         getCachedXAxisLabel: @escaping (Date) -> String?
@@ -894,17 +880,40 @@ extension View {
                             viewModel.clearSelection()
                             return
                         }
-                        // Only handle selection if not in scroll mode and not actively scrolling
-                        if touchInteractionMode != .scrolling && !viewModel.isScrolling {
-                            // Only update selection if we have a valid value
-                            if let selectedDate = newValue {
-                                localSelectedXValue.wrappedValue = newValue
-                                viewModel.handleChartSelection(at: newValue)
-                                // If the view-model decided there is no value at this position,
-                                // do not show crosshair nor propagate a selection to the store.
+                        // Only handle selection if not actively scrolling
+                        guard !viewModel.isScrolling else { return }
+                        // Only update selection if we have a valid value
+                        if let selectedDate = newValue {
+                            localSelectedXValue.wrappedValue = newValue
+                            viewModel.handleChartSelection(at: newValue)
+                            // If the view-model decided there is no value at this position,
+                            // do not show crosshair nor propagate a selection to the store.
+                            if viewModel.showCrosshair {
+                                // Use view model's preferredSelectedDate if provided, else fallback to raw selection
+                                let dateToSend = viewModel.preferredSelectedDate ?? selectedDate
+                                Task {
+                                    await dashboardStore.handleChartSelection(at: dateToSend)
+                                }
+                            } else {
+                                // Clear any previous selection in the store
+                                Task {
+                                    await dashboardStore.handleChartSelection(at: nil)
+                                }
+                            }
+                        }
+                    }
+                ))
+                // Immediate tap selection - bypasses scroll/selection disambiguation delay
+                .chartGesture { proxy in
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            guard !viewModel.chartOperations.isEmpty else { return }
+                            guard !viewModel.isScrolling else { return }
+                            if let date: Date = proxy.value(atX: value.location.x) {
+                                localSelectedXValue.wrappedValue = date
+                                viewModel.handleChartSelection(at: date)
                                 if viewModel.showCrosshair {
-                                    // Use view model's preferredSelectedDate if provided, else fallback to raw selection
-                                    let dateToSend = viewModel.preferredSelectedDate ?? selectedDate
+                                    let dateToSend = viewModel.preferredSelectedDate ?? date
                                     Task {
                                         await dashboardStore.handleChartSelection(at: dateToSend)
                                     }
@@ -916,8 +925,7 @@ extension View {
                                 }
                             }
                         }
-                    }
-                ))
+                }
         } else {
             // For non-scrollable (Total) view
             self
@@ -961,6 +969,28 @@ extension View {
                         }
                     }
                 ))
+                // Immediate tap selection - bypasses scroll/selection disambiguation delay
+                .chartGesture { proxy in
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            guard !viewModel.chartOperations.isEmpty else { return }
+                            if let date: Date = proxy.value(atX: value.location.x) {
+                                localSelectedXValue.wrappedValue = date
+                                viewModel.handleChartSelection(at: date)
+                                if viewModel.showCrosshair {
+                                    let dateToSend = viewModel.preferredSelectedDate ?? date
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: dateToSend)
+                                    }
+                                } else {
+                                    // Clear any previous selection in the store
+                                    Task {
+                                        await dashboardStore.handleChartSelection(at: nil)
+                                    }
+                                }
+                            }
+                        }
+                }
         }
     }
 
@@ -994,11 +1024,7 @@ extension View {
     @ViewBuilder
     func conditionalTouchModifiers(
         isScrollable: Bool,
-        touchInteractionMode: Binding<TouchInteractionMode>,
-        initialTouchPoint: Binding<CGPoint>,
-        decisionTimer: Binding<Timer?>,
         localSelectedXValue: Binding<Date?>,
-        hasDetectedScrollInCurrentGesture: Binding<Bool>,
         dashboardStore: DashboardStore
     ) -> some View {
         if isScrollable {
@@ -1006,7 +1032,6 @@ extension View {
                 .modifier(
                     ScrollDetectionModifier(
                         dashboardStore: dashboardStore,
-                        hasDetectedScrollInCurrentGesture: hasDetectedScrollInCurrentGesture,
                         selectedXValue: localSelectedXValue
                     )
                 )

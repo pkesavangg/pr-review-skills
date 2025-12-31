@@ -304,7 +304,8 @@ fun BtWifiScaleSetupScreenContent(
                 { onIntent(BtWifiScaleSetupIntent.Skip) }
               } else null,
               indicatorIcon = LoaderIconType.Wifi,
-              showIndicationOnly = true,
+              showIndicationOnly = state.currentStepConnectionState is ConnectionState.Loading,
+              scaleImageSku = if(state.currentStepConnectionState is ConnectionState.Failed) "0412" else null,
             )
           }
 

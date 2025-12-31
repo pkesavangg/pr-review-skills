@@ -1,12 +1,9 @@
 package com.dmdbrands.gurus.weight.features.integration.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,8 +16,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -48,21 +43,7 @@ fun OutOfSyncScreen(
     onSecondaryAction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-  Dialog(
-    onDismissRequest = onClose,
-    properties = DialogProperties(
-      dismissOnBackPress = true,
-      dismissOnClickOutside = true,
-      usePlatformDefaultWidth = false,
-      decorFitsSystemWindows = false,
-    ),
-  ) {
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
-    ) {
-      Box(modifier = Modifier.align(Alignment.Center).clickable(enabled = false) { }) {
+
         BaseModal {
           Box {
             AppIcon(
@@ -120,9 +101,6 @@ fun OutOfSyncScreen(
           }
         }
       }
-    }
-  }
-}
 
 @Preview(showBackground = true)
 @Composable

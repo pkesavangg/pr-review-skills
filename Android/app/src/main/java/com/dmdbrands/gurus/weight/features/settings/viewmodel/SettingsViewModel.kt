@@ -622,8 +622,9 @@ constructor(
           }
         },
         onDismiss = {
-          AppLog.d(TAG, "Height picker cancelled")
+          dialogQueueService.dismissCurrent()
         },
+
       ),
     )
   }

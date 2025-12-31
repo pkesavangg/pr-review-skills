@@ -28,6 +28,11 @@ struct GoalStepView: View {
                 )
                 .onChange(of: selectedSegment) { oldValue, newValue in
                     signupStore.signupForm.goalType.value = newValue.goalTypeValue
+                    // Mark as dirty and touched when goal type changes
+                    signupStore.signupForm.goalType.markAsDirty()
+                    signupStore.signupForm.goalType.markAsTouched()
+                    // Trigger validation to clear form-level errors when switching modes
+                    signupStore.signupForm.validate()
                 }
                 
                 VStack(spacing: 4) {
@@ -47,7 +52,11 @@ struct GoalStepView: View {
                             value: $signupStore.signupForm.currentWeight.value,
                             focusedField: $focusedField,
                             onCommit: {
+                                signupStore.touchAndValidate(field: .currentWeight)
                                 focusedField = .goalWeight
+                            },
+                            onEditingChanged: { isEditing in
+                                signupStore.handleEditingChanged(isEditing, field: .currentWeight)
                             }
                         )
                     }
@@ -65,7 +74,11 @@ struct GoalStepView: View {
                         value: $signupStore.signupForm.goalWeight.value,
                         focusedField: $focusedField,
                         onCommit: {
+                            signupStore.touchAndValidate(field: .goalWeight)
                             focusedField = nil
+                        },
+                        onEditingChanged: { isEditing in
+                            signupStore.handleEditingChanged(isEditing, field: .goalWeight)
                         }
                     )
                 }

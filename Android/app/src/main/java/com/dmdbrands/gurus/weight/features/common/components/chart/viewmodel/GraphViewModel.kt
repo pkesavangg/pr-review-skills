@@ -272,7 +272,7 @@ class GraphViewModel @AssistedInject constructor(
       }
       start to end
     } else {
-      val start = _state.value.minTarget ?: GraphUtil.getStartRange(
+      val start = _state.value.minTarget ?: GraphUtil.getRollingWindowStart(
         segment,
         endTimeStamp,
       ) ?: calendar.timeInMillis
@@ -296,7 +296,6 @@ class GraphViewModel @AssistedInject constructor(
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-
         // Get weightless mode before entering transaction
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 

@@ -4,8 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.features.common.components.AppPopup
 import com.dmdbrands.gurus.weight.features.common.components.AppPopupModal
-import com.dmdbrands.gurus.weight.features.common.components.ModalConfigs
-import com.dmdbrands.gurus.weight.features.common.components.ModalDialog
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.scaleMode.strings.ScaleModeStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -20,10 +18,6 @@ fun BiaModal(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  ModalDialog(
-    onDismiss = onClose,
-    config = ModalConfigs.Informational, // Perfect for help/info modals
-  ) {
     AppPopupModal {
       AppPopup(
         visible = true,
@@ -33,7 +27,6 @@ fun BiaModal(
         onClose = onClose,
       )
     }
-  }
 }
 
 @PreviewTheme

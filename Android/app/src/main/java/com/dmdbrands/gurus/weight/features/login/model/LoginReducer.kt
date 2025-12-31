@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.login.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
+import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
@@ -15,23 +16,25 @@ data class LoginFormControls(
   val password: FormControl<String>,
 ) {
   companion object {
-    fun create(email: String = "") = LoginFormControls(
+    fun create(
+      email: String = "",
+    ) = LoginFormControls(
       email =
         FormControl.create(
           initialValue = email,
           validators = listOf(
-            FormValidations.required(),
-            FormValidations.maxLength(100, LoginStrings.EmailLabel),
-            FormValidations.email(),
+            FormValidations.required(LoginStrings.Errors.emailBlank),
+            FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, LoginStrings.EmailLabel, LoginStrings.Errors.maxLengthEmail),
+            FormValidations.email(LoginStrings.Errors.invalidemail),
           ),
         ),
       password =
         FormControl.create(
           initialValue = "",
           validators = listOf(
-            FormValidations.required(),
-            FormValidations.minLength(6, LoginStrings.PasswordLabel),
-            FormValidations.maxLength(50, LoginStrings.PasswordLabel),
+            FormValidations.required(LoginStrings.Errors.emailBlank),
+            FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, LoginStrings.PasswordLabel, LoginStrings.Errors.passwordlen),
+            FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH, LoginStrings.PasswordLabel, LoginStrings.Errors.maxLengthPassword),
           ),
         ),
     )

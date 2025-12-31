@@ -279,20 +279,20 @@ private fun PreviewScaleSetupLoaderConnectionError() {
   }
 }
 
-// @PreviewTheme
-// @Composable
-// private fun PreviewScaleSetupLoaderWifiConnecting() {
-//   MeAppTheme {
-//     ScaleSetupLoader(
-//       scaleImageSku = "0397",
-//       title = "Connecting to WiFi",
-//       subtitle = "Please wait while we connect your scale to WiFi",
-//       connectionState = ConnectionState.Loading,
-//       showIndicationOnly = true,
-//       indicatorIcon = LoaderIconType.Wifi,
-//     )
-//   }
-// }
+@PreviewTheme
+@Composable
+private fun PreviewScaleSetupLoaderWifiConnecting() {
+  MeAppTheme {
+    ScaleSetupLoader(
+      scaleImageSku = "0397",
+      title = "Connecting to WiFi",
+      subtitle = "Please wait while we connect your scale to WiFi",
+      connectionState = ConnectionState.Failed.Error,
+      showIndicationOnly = true,
+      indicatorIcon = LoaderIconType.Wifi,
+    )
+  }
+}
 //
 // @PreviewTheme
 // @Composable

@@ -50,25 +50,26 @@ struct SettingsScreen: View {
             }
             .onAppear {
                 tabViewModel.showTabBar = true
-                // Ensure this is the actively selected tab before evaluating modal presentation
                 if tabViewModel.selectedTab == .settings {
                     settingsStore.presentAddAccountModalIfNeeded(router: router)
-                    
-                    // Handle any pending navigation request coming from BottomTabBarViewModel (e.g. Apple Health Connect)
                     handlePendingSettingsNavigation()
                 }
                 
-                // Register reselect handler to pop to root when settings tab is tapped
                 tabViewModel.registerReselectHandler(for: .settings) {
-                    // Clear the source tab so we don't return to the original tab
                     tabViewModel.clearSettingsNavigationSource()
                     router.navigateToRoot()
                 }
             }
+            .onChange(of: tabViewModel.selectedTab) { oldTab, newTab in
+                if newTab == .settings && oldTab != .settings {
+                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                }
+            }
             .onChange(of: router.stack) { _, newStack in
-                // If we're back to the root settings screen and there's a source tab to return to
-                if newStack.isEmpty && tabViewModel.settingsNavigationSourceTab != nil {
-                    tabViewModel.returnToSettingsSourceTab()
+                if newStack.isEmpty && tabViewModel.selectedTab == .settings {
+                    if tabViewModel.settingsNavigationSourceTab != nil {
+                        tabViewModel.returnToSettingsSourceTab()
+                    }
                 }
             }
             .onChange(of: tabViewModel.pendingSettingsNavigation, { _, _ in
@@ -203,9 +204,14 @@ struct SettingsScreen: View {
                 router.navigate(to: .integrations)
             }))
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.exportData, chevronType: .none, onTap: {
-                settingsStore.handleExport()
-            }))
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.exportData,
+                chevronType: .none,
+                isDisabled: !settingsStore.hasEntries,
+                onTap: {
+                    settingsStore.handleExport()
+                }
+            ))
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword,
                                                             onTap: {

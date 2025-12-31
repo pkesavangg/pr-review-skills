@@ -34,7 +34,7 @@ public struct WifiScaleSetupStrings {
             isApModeAlone ? "Wait for the scale to show it is in AP Mode." : "Wait for the screen on your scale to change and tap the image that matches."
         }
         static let subtitle = "Once your scale displays that it is in AP mode, tap NEXT."
-        static let boldWords = ["NEXT"]
+        static let boldWords = ["NEXT", "AP"]
         static let note = "It can take up to two minutes for your scale to enter AP mode."
     }
     

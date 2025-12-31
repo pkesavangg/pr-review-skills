@@ -188,6 +188,7 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
 
   object TryAgain : BtWifiScaleSetupIntent
   object OpenAccucheckModal : BtWifiScaleSetupIntent
+  object OpenBiaModal : BtWifiScaleSetupIntent
   object RefreshNetworks : BtWifiScaleSetupIntent
   object HandlePasswordNetworkStatus : BtWifiScaleSetupIntent
   object ClearWifiPasswordForm : BtWifiScaleSetupIntent

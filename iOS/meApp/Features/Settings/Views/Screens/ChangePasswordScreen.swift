@@ -57,10 +57,15 @@ struct ChangePasswordScreen: View {
                             focusField: .currentPassword
                         ),
                         value: $settingsStore.changePasswordForm.currentPassword.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = .newPassword
-                    }
+                        focusedField: $focusedField,
+                        onCommit: {
+                            settingsStore.touchAndValidate(field: .currentPassword)
+                            focusedField = .newPassword
+                        },
+                        onEditingChanged: { isEditing in
+                            settingsStore.handleEditingChanged(isEditing, field: .currentPassword)
+                        }
+                    )
 
                     // New password
                     AppInputField(
@@ -71,10 +76,15 @@ struct ChangePasswordScreen: View {
                             focusField: .newPassword
                         ),
                         value: $settingsStore.changePasswordForm.newPassword.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = .confirmNewPassword
-                    }
+                        focusedField: $focusedField,
+                        onCommit: {
+                            settingsStore.touchAndValidate(field: .newPassword)
+                            focusedField = .confirmNewPassword
+                        },
+                        onEditingChanged: { isEditing in
+                            settingsStore.handleEditingChanged(isEditing, field: .newPassword)
+                        }
+                    )
 
                     // Confirm new password
                     AppInputField(
@@ -85,10 +95,15 @@ struct ChangePasswordScreen: View {
                             focusField: .confirmNewPassword
                         ),
                         value: $settingsStore.changePasswordForm.confirmNewPassword.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = nil
-                    }
+                        focusedField: $focusedField,
+                        onCommit: {
+                            settingsStore.touchAndValidate(field: .confirmNewPassword)
+                            focusedField = nil
+                        },
+                        onEditingChanged: { isEditing in
+                            settingsStore.handleEditingChanged(isEditing, field: .confirmNewPassword)
+                        }
+                    )
                 }               
                 .padding(.top, .spacingXS)
                 ButtonView(text: screenLang.forgotPassword, type: .inlineTextPrimary, size: .large, isDisabled: false) {

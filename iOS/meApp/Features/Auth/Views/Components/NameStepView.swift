@@ -39,10 +39,15 @@ struct NameStepView: View {
                             focusField: .firstName
                         ),
                         value: $signupStore.signupForm.firstName.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = .lastName
-                    }
+                        focusedField: $focusedField,
+                        onCommit: {
+                            signupStore.touchAndValidate(field: .firstName)
+                            focusedField = .lastName
+                        },
+                        onEditingChanged: { isEditing in
+                            signupStore.handleEditingChanged(isEditing, field: .firstName)
+                        }
+                    )
                     
                     // Last Name Input Field
                     AppInputField(
@@ -53,13 +58,18 @@ struct NameStepView: View {
                             focusField: .lastName
                         ),
                         value: $signupStore.signupForm.lastName.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = nil
-                        if signupStore.isNextEnabled {
-                            signupStore.moveToNextStep()
+                        focusedField: $focusedField,
+                        onCommit: {
+                            signupStore.touchAndValidate(field: .lastName)
+                            focusedField = nil
+                            if signupStore.isNextEnabled {
+                                signupStore.moveToNextStep()
+                            }
+                        },
+                        onEditingChanged: { isEditing in
+                            signupStore.handleEditingChanged(isEditing, field: .lastName)
                         }
-                    }
+                    )
                 }
                 .padding(.top, .spacingLG)
                 Spacer()
@@ -67,15 +77,6 @@ struct NameStepView: View {
             .padding(.bottom, .spacing3XL)
         }
         .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
-        .onChange(of: focusedField) { oldValue, newValue in
-            // Mark fields as touched when they lose focus
-            if oldValue == .firstName && newValue != .firstName {
-                signupStore.signupForm.firstName.markAsTouched()
-            }
-            if oldValue == .lastName && newValue != .lastName {
-                signupStore.signupForm.lastName.markAsTouched()
-            }
-        }
     }
 }
 

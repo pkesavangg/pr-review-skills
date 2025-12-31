@@ -17,7 +17,7 @@ object GoalStrings {
 
   // Status Messages
   const val SaveErrorMessage = "Failed to save goal"
-  const val GoalMetTitle = "Congratulations!You've hit your goal weight!"
+  const val GoalMetTitle = "Congratulations! You've hit your goal weight!"
   const val GoalMetMessage =
     "Would you like to set a new goal or maintain this goal weight?"
   const val MaintainButton = "Maintain"

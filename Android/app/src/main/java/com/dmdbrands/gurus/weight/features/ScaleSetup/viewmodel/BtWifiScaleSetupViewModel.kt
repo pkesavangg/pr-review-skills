@@ -159,6 +159,7 @@ constructor(
 
       BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
       BtWifiScaleSetupIntent.OpenAccucheckModal -> openAccucheckModel()
+      BtWifiScaleSetupIntent.OpenBiaModal -> openBiaModel()
       is BtWifiScaleSetupIntent.DeleteUser -> deleteUser(intent.user)
       BtWifiScaleSetupIntent.ClearWifiPasswordForm -> clearWifiPasswordForm()
       else -> {}
@@ -1277,12 +1278,7 @@ constructor(
         viewModelScope.launch {
 
           AppLog.d(TAG, "Network gathering successful")
-          handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.GATHERING_NETWORK,
-              ConnectionState.Success,
-            ),
-          )
+
           val canRequestNotifPermission =
             AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
           if (canRequestNotifPermission) {
@@ -1423,7 +1419,10 @@ constructor(
               }
             }
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
-              navigateBack()
+              if (!isAlreadyExited) {
+                isAlreadyExited = true
+                onExitSetup(true)
+              }
               return@launch
             }
             onNext()
@@ -1509,7 +1508,7 @@ constructor(
     AppLog.d(TAG, "All required permissions are enabled")
   }
 
-  private fun updateWifiDetails() {
+  private suspend fun updateWifiDetails() {
     val supervisorJob = SupervisorJob()
     val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
     discoveredScale = discoveredScale?.copy(
@@ -1747,6 +1746,18 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.AccucheckModal,
+      ),
+    )
+  }
+
+  /**
+   * Opens the BIA (Bioelectrical Impedance Analysis) modal.
+   */
+  private fun openBiaModel() {
+    AppLog.d(TAG, "Opening BIA modal")
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.BiaModal,
       ),
     )
   }

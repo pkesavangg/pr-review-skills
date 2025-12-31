@@ -34,6 +34,8 @@ interface IEntryService {
     deleteOps: List<Entry> = emptyList()
   )
 
+  suspend fun refreshEntryData()
+
   fun getEntriesByDeviceType(accountId: String, deviceType: String): Flow<List<Entry>>
 
   /**

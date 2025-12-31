@@ -29,6 +29,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     public var lastXAxisValues: [Date] = []
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
+    
+    // Flag to prevent ensureLatestEntriesVisible from overriding scroll position during period changes
+    private var isChangingPeriod: Bool = false
 
     // Chart data caching for scroll performance
     private var cachedChartSeriesData: [GraphSeries] = []
@@ -50,9 +53,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func updateScrollPosition(to date: Date) {
-        guard !state.isScrolling else {
-            return
-        }
+        // Always allow scroll position updates, even during scrolling
+        // This ensures period changes and initialization always work correctly
         state.xScrollPosition = date
     }
 
@@ -499,7 +501,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
             operationsForYAxis = combinedOperations.isEmpty ? allOperations : combinedOperations
         }
-        
+
         if let selectedMetric = selectedMetric, selectedMetric != DashboardStrings.weight {
             let normalizedMetricSeries = generateNormalizedMetricSeriesWithDomain(
                 for: selectedMetric,
@@ -771,7 +773,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // This allows metrics to scale with the visible data range like weight lines
         let weightMin = yAxisDomain.lowerBound
         let weightMax = yAxisDomain.upperBound
-        
+
         // Validate that the Y-axis domain is appropriate for the operations
         // Check if weight values in operationsForYAxis are within reasonable range of the domain
         let weightValues = operationsForMetricRange.compactMap { summary -> Double? in
@@ -783,7 +785,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 return convertWeight(Int(summary.weight))
             }
         }
-        
+
         if let minWeight = weightValues.min(), let maxWeight = weightValues.max() {
             // Check if weight range significantly exceeds domain (potential mismatch)
             let weightRange = maxWeight - minWeight
@@ -962,6 +964,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func updateSelectedPeriod(_ period: TimePeriod) {
+        // Set flag to prevent ensureLatestEntriesVisible from overriding position during period change
+        isChangingPeriod = true
+
         state.selectedPeriod = period
         state.clearSelection()
 
@@ -969,6 +974,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         clearChartDataCache()
 
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
+
+        // Clear the flag after a brief delay to allow scroll position to be set
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.isChangingPeriod = false
+        }
     }
 
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
@@ -1209,14 +1219,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
-        guard let latestDate = operations.map(\.date).max() else {
+        guard operations.map(\.date).max() != nil else {
             return
         }
         guard !state.isScrolling else {
             return
         }
-        let boundedPosition = enforceScrollBoundaries(latestDate, from: operations)
-        updateScrollPosition(to: boundedPosition)
+        // Prevent overriding scroll position during period changes
+        // This ensures the optimal position set during period change is not overridden
+        guard !isChangingPeriod else {
+            logger.log(level: .debug, tag: "DashboardGraphManager", message: "Skipping ensureLatestEntriesVisible during period change")
+            return
+        }
+        // Use the same optimal scroll position calculation as initialization
+        // This ensures consistent snapping behavior and prevents extra days being added
+        let optimalPosition = calculateOptimalScrollPosition(
+            for: state.selectedPeriod,
+            from: operations,
+            showingLatest: true
+        )
+        updateScrollPosition(to: optimalPosition)
     }
 
 
@@ -1367,29 +1389,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     /// Calculates the proper scroll position for chart initialization or segment changes
     /// This ensures the scroll position aligns with the computed X-axis values
-    /// - Parameters:
-    ///   - period: Time period for the chart
-    ///   - operations: Pre-sorted operations (used for fallback if bounds not provided)
-    ///   - showingLatest: Whether to show the latest entries
-    ///   - cachedBounds: Optional cached min/max date bounds for O(1) lookup
-    func calculateOptimalScrollPosition(
-        for period: TimePeriod,
-        from operations: [BathScaleWeightSummary],
-        showingLatest: Bool = true,
-        cachedBounds: (min: Date, max: Date)? = nil
-    ) -> Date {
-        // Use cached bounds if available (O(1)), otherwise use first/last of pre-sorted array (O(1))
-        let overallMinDate: Date
-        let overallMaxDate: Date
-
-        if let bounds = cachedBounds {
-            overallMinDate = bounds.min
-            overallMaxDate = bounds.max
-        } else if let first = operations.first?.date, let last = operations.last?.date {
-            // Operations are pre-sorted, so first/last gives min/max
-            overallMinDate = first
-            overallMaxDate = last
-        } else {
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
+        let allDates: [Date] = operations.map { $0.date }
+        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
             return Date()
         }
 
@@ -1414,7 +1416,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // Fallback to calculated position
             return max(overallMinDate, targetStartDate)
         } else {
-            // For other cases, use the beginning of data
             return overallMinDate
         }
     }

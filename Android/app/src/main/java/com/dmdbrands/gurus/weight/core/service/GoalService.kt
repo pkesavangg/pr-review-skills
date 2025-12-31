@@ -337,7 +337,7 @@ constructor(
         params = mapOf(
           "onSetGoal" to {
             AppLog.d(TAG, "User confirmed Set Goal popup - navigating to goal screen")
-            CoroutineScope(Dispatchers.IO).launch {
+            CoroutineScope(Dispatchers.Main).launch {
               appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
             }
             dialogQueueService.dismissCurrent()
@@ -389,23 +389,22 @@ constructor(
       DialogModel.Confirm(
         title = GoalStrings.GoalMetTitle,
         message = GoalStrings.GoalMetMessage,
-        confirmText = GoalStrings.SetNewGoalButton,
-        cancelText = GoalStrings.MaintainButton,
+        confirmText = GoalStrings.MaintainButton,
+        cancelText = GoalStrings.SetNewGoalButton,
         onConfirm = {
           dialogQueueService.dismissCurrent()
-
-          isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
-            appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
-            handleGoalMet(false)
-          }
-        },
-        onCancel = {
-          dialogQueueService.dismissCurrent()
-          CoroutineScope(Dispatchers.IO).launch {
+          CoroutineScope(Dispatchers.Main).launch {
             handleGoalMet(true)
           }
           isShowingAlert = false
+        },
+        onCancel = {
+          dialogQueueService.dismissCurrent()
+          isShowingAlert = false
+          CoroutineScope(Dispatchers.Main).launch {
+            appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
+            handleGoalMet(false)
+          }
         },
       ),
     )
@@ -425,14 +424,14 @@ constructor(
         onConfirm = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
+          CoroutineScope(Dispatchers.Main).launch {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
           }
         },
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.IO).launch {
+          CoroutineScope(Dispatchers.Main).launch {
             handleGoalLeave(updateGoal = false)
           }
         },

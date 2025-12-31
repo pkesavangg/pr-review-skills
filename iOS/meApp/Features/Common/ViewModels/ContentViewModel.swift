@@ -64,6 +64,14 @@ final class ContentViewModel: ObservableObject {
             contentViewState = .initializing
             let loggedIn = await checkLoginStatus()
             if loggedIn {
+                // Refresh account data to sync weightless settings and other account data
+                do {
+                    try await accountService.refreshAccount()
+                    logger.log(level: .info, tag: "ContentViewModel", message: "Account data refreshed successfully during initialization")
+                } catch {
+                    logger.log(level: .error, tag: "ContentViewModel", message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
+                }
+                
                 // Capture dependencies to use off the main actor
                 let entryService = self.entryService
                 let feedService = self.feedService

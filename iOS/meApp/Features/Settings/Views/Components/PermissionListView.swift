@@ -84,19 +84,19 @@ struct PermissionListView: View {
             title: PermissionsStrings.bluetooth,
             rows: [
                 (
-                    viewModel.bluetoothAuthorized
-                        ? PermissionsStrings.bluetoothAccessAuthorized
-                        : PermissionsStrings.authorizeBluetoothAccess,
-                    viewModel.bluetoothAuthorized,
-                    .bluetooth
-                ),
-                (
                     viewModel.bluetoothPoweredOn
                         ? PermissionsStrings.bluetoothTurnedOn
                         : PermissionsStrings.turnOnBluetooth,
                     viewModel.bluetoothPoweredOn,
                     .bluetoothSwitch
-                )
+                ),
+                (
+                    viewModel.bluetoothAuthorized
+                        ? PermissionsStrings.bluetoothAccessAuthorized
+                        : PermissionsStrings.authorizeBluetoothAccess,
+                    viewModel.bluetoothAuthorized,
+                    .bluetooth
+                )                
             ],
             category: .bluetooth
         )
@@ -173,7 +173,7 @@ struct PermissionListView: View {
     
     private var notificationSection: some View {
         sectionView(
-            title: PermissionsStrings.notifications,
+            title: PermissionsStrings.notification,
             rows: [
                 (
                     viewModel.notificationsEnabled
@@ -207,7 +207,7 @@ struct PermissionListView: View {
         }
     }
     
-    private func statusIcon(for isEnabled: Bool, required: Bool) -> AnyView {
+    private func statusIcon(for isEnabled: Bool, required: Bool, showsChevron: Bool = false) -> AnyView {
         // Choose icon: checkmark for enabled, minus for disabled.
         let icon = isEnabled ? AppAssets.checkMarkCircle : AppAssets.minusCircleClear
         
@@ -217,7 +217,8 @@ struct PermissionListView: View {
         //  - Disabled & optional  ➜ utility / grey
         let colour: Color = {
             if isEnabled { return theme.actionPrimary }
-            return required ? theme.statusError : theme.statusUtilityPrimary
+            if showsChevron || required { return theme.statusError }
+            return theme.statusUtilityPrimary
         }()
         
         return AnyView(
@@ -254,13 +255,15 @@ struct PermissionListView: View {
                         !viewModel.locationServicesEnabled &&
                         (permissionType == .location || permissionType == .wifiSwitch)
                     )
+                    let showsChevron = !isEnabled
 
                     ActionListItemView(config: ActionListItemConfig(
                         title: label,
-                        chevronType: isRowDisabled ? .none : (isEnabled ? .none : .right),
+                        chevronType: isEnabled ? .none : .right,
                         leadingIcon: statusIcon(
                             for: isRowDisabled ? false : isEnabled,
-                            required: isRowDisabled ? false : isRequired(category)
+                            required: isRowDisabled ? false : isRequired(category),
+                            showsChevron: showsChevron
                         ),
                         onTap: {
                             if !isEnabled && !isRowDisabled {

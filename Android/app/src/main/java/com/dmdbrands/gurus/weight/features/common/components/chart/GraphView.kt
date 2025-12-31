@@ -62,7 +62,8 @@ fun GraphView(
     }
   }
 
-  val initialStartX = GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
+  val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
+    ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)

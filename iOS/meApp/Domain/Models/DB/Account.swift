@@ -144,7 +144,7 @@ final class Account {
         // Create associated NotificationSettings
         let notificationSettings = NotificationSettings(
             accountId: dto.id,
-            shouldSendEntryNotifications: dto.shouldSendEntryNotifications ?? false,
+            shouldSendEntryNotifications: dto.shouldSendEntryNotifications ?? true,
             shouldSendWeightInEntryNotifications: dto.shouldSendWeightInEntryNotifications ?? false,
             isSynced: false
         )
@@ -154,6 +154,7 @@ final class Account {
         let dashboardSettings = DashboardSettings(
             accountId: dto.id,
             dashboardMetrics: dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ","),
+            progressMetrics: dto.progressMetrics?.joined(separator: ","),
             dashboardType: dto.dashboardType != nil ? String(describing: dto.dashboardType!) : nil,
             isSynced: false
         )
@@ -192,6 +193,7 @@ final class Account {
             streakTimestamp: self.streaksSettings?.streakTimestamp,
             dashboardType: self.dashboardSettings?.dashboardType.flatMap { DashboardType(rawValue: $0) },
             dashboardMetrics: self.dashboardSettings?.dashboardMetrics?.split(separator: ",").compactMap { BodyMetric(rawValue: String($0)) },
+            progressMetrics: self.dashboardSettings?.progressMetrics?.split(separator: ",").map { String($0) },
             goalType: self.goalSettings?.goalType,
             goalWeight: self.goalSettings?.goalWeight.flatMap { Double($0) },
             goalPercent: self.goalSettings?.goalPercent,
@@ -229,14 +231,26 @@ extension Account {
         if let zipcode = response.zipcode {
             self.zipcode = zipcode
         }
-        if let isWeightlessOn = response.isWeightlessOn {
-            self.weightlessSettings?.isWeightlessOn = isWeightlessOn
-        }
-        if let weightlessTimestamp = response.weightlessTimestamp {
-            self.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
-        }
-        if let weightlessWeight = response.weightlessWeight {
+            
+        // Consolidated weightless settings update logic
+        if let isWeightlessOn = response.isWeightlessOn, isWeightlessOn == false {
+            // Explicitly turned off: clear weight and timestamp
+            self.weightlessSettings?.isWeightlessOn = false
+            self.weightlessSettings?.weightlessWeight = nil
+            self.weightlessSettings?.weightlessTimestamp = nil
+        } else if let weightlessWeight = response.weightlessWeight {
+            // Weight provided and not explicitly off: store weight and set state
             self.weightlessSettings?.weightlessWeight = weightlessWeight
+            self.weightlessSettings?.isWeightlessOn = response.isWeightlessOn ?? false
+            // Set timestamp if provided
+            if let weightlessTimestamp = response.weightlessTimestamp {
+                self.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
+            }
+        } else {
+            // No weight provided and not explicitly off: default to off
+            self.weightlessSettings?.weightlessWeight = nil
+            self.weightlessSettings?.isWeightlessOn = false
+            self.weightlessSettings?.weightlessTimestamp = nil
         }
         if let isStreakOn = response.isStreakOn {
             self.streaksSettings?.isStreakOn = isStreakOn
@@ -247,6 +261,9 @@ extension Account {
         if let dashboardSettings = self.dashboardSettings {
             if let dashboardMetrics = response.dashboardMetrics {
                 dashboardSettings.dashboardMetrics = dashboardMetrics.map { String(describing: $0) }.joined(separator: ",")
+            }
+            if let progressMetrics = response.progressMetrics {
+                dashboardSettings.progressMetrics = progressMetrics.joined(separator: ",")
             }
             if let dashboardType = response.dashboardType {
                 dashboardSettings.dashboardType = String(describing: dashboardType)

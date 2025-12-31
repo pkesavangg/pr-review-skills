@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -189,12 +190,14 @@ private fun MaintainGoalDisplay(
   AppStyledCard(
     modifier =
       Modifier
+        .height(GoalConstants.cardHeight)
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(vertical = 35.dp, horizontal = 14.dp),
+        .padding(horizontal = 14.dp),
   ) {
     Row(
-      verticalAlignment = Alignment.Bottom,
+      modifier = Modifier.fillMaxSize(),
+      verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Start,
     ) {
       AppText(
@@ -258,7 +261,7 @@ private fun LoseGainGoalDisplay(
       Modifier
         .clip(shape = RoundedCornerShape(MeTheme.borderRadius.sm))
         .background(colorScheme.primaryBackground)
-        .padding(vertical = 35.dp),
+        .padding(vertical = 21.dp),
   ) {
     Row(
       verticalAlignment = Alignment.Bottom,
@@ -288,7 +291,6 @@ private fun LoseGainGoalDisplay(
           )
         }
       }
-
     }
       // Progress Slider using AppLinearProgressIndicator
     AppLinearProgressIndicator(
@@ -338,7 +340,7 @@ fun GoalMilestoneDisplayPreview() {
           height = 700,
           activityLevel = "normal",
           goalType = "maintain",
-          goalWeight = 140.0,
+          goalWeight = 450.0,
           initialWeight = 160.0,
           goalPercent = 100.0,
           isWeightlessOn = false,
@@ -348,11 +350,11 @@ fun GoalMilestoneDisplayPreview() {
       // Maintain Goal Preview
       GoalMilestoneDisplay(
         account = previewAccount,
-        latestWeight = 150.0,
+        latestWeight = 450.0,
         modifier = Modifier.padding(spacing.md),
       )
 
-      Spacer(modifier = Modifier.height(spacing.lg))
+      Spacer(modifier = Modifier.height(spacing.xs))
 
       // Lose/Gain Goal Preview
       val loseGainAccount =
@@ -362,7 +364,7 @@ fun GoalMilestoneDisplayPreview() {
         )
       GoalMilestoneDisplay(
         account = loseGainAccount,
-        latestWeight = 150.0,
+        latestWeight = 450.0,
         modifier = Modifier.padding(spacing.md),
       )
     }

@@ -10,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.window.Dialog
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -45,7 +44,11 @@ fun AppHeightInput(
         }
     }
     if (isModalTriggered) {
-        Dialog(onDismissRequest = { isModalTriggered = false }) {
+        ModalDialog(
+          onDismiss = {
+            isModalTriggered = false
+          },
+        ) {
             AppHeightPickerModal(
                 value = currentValue,
                 onCancel = {

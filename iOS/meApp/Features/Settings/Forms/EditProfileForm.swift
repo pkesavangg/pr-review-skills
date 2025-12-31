@@ -19,7 +19,7 @@ class EditProfileForm: ObservableForm {
         let defaultDate = Calendar.current.date(from: DateComponents(year: 2000, month: 1, day: 1)) ?? Date()
         return FormControl(defaultDate, validators: [.futureDate])
     }()
-    var email     = FormControl("", validators: [.required, .email, .maxLength(200)])
+    var email     = FormControl("", validators: [.required, .email, .maxLength(100)])
     var zipcode   = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
 
     // MARK: - Change publisher
@@ -55,6 +55,9 @@ class EditProfileForm: ObservableForm {
         if control.errors[.futureDate] { return FormErrorMessages.futureDate }
 
         if control.errors[.maxLength], let max = control.errors.value(for: .maxLength) as? Int {
+            if control === email && max == 100 {
+                return FormErrorMessages.emailMaxLength
+            }
             return FormErrorMessages.maxLength(max)
         }
 

@@ -49,7 +49,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
 
 @Composable
@@ -152,10 +151,7 @@ fun AddScaleScreenContent(
           label = AddScaleScreenStrings.CantFindModelNumber,
           type = ButtonType.TextPrimary,
           onClick = { handleIntent(AddScaleIntent.OpenScaleChooser) },
-          modifier = Modifier
-            .align(Alignment.CenterHorizontally)
-            .fillMaxWidth().padding(bottom = spacing.x4s),
-          maxLines = 2,
+          modifier = Modifier.align(Alignment.CenterHorizontally),
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         if (state.savedScales.isNotEmpty()) {

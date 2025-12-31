@@ -20,6 +20,7 @@ import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.reflect.KProperty1
@@ -528,6 +529,44 @@ object GraphUtil {
       GraphSegment.WEEK -> DateTimeConverter.getWeekEnd(timeStamp)
       GraphSegment.MONTH -> DateTimeConverter.getMonthEnd(timeStamp)
       GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getYearEnd(timeStamp)
+    }
+  }
+
+  /**
+   * Gets the rolling window start timestamp calculated backwards from latest entry using fixed durations.
+   * This ensures the window shows exactly the period duration (7 days, 30 days, 365 days) ending at the latest entry.
+   * The initial scroll position will be at the latest entry (end of window) to show data without empty space.
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param endTimeStamp Latest entry timestamp in milliseconds
+   * @return Rolling window start timestamp, or null if endTimeStamp is null or segment is TOTAL
+   */
+  fun getRollingWindowStart(segment: GraphSegment, endTimeStamp: Long?): Long? = endTimeStamp?.let {
+    when (segment) {
+      GraphSegment.WEEK -> {
+        // Show 7 days total: latest - 6 days to latest (inclusive)
+        Calendar.getInstance().apply {
+          timeInMillis = endTimeStamp
+          add(Calendar.DAY_OF_YEAR, -6)
+        }.timeInMillis
+      }
+      GraphSegment.MONTH -> {
+        // Show 31 days total: latest - 30 days to latest (inclusive)
+        // This ensures day 1 of 31-day months is always included in the window
+        Calendar.getInstance().apply {
+          timeInMillis = endTimeStamp
+          add(Calendar.DAY_OF_YEAR, -28)
+        }.timeInMillis
+      }
+      GraphSegment.YEAR -> {
+        // Show 12 months total: latest - 11 months to latest (inclusive)
+        // This includes the latest entry month as the 12th month
+        // (e.g., Dec 20, 2024 -> Jan 20, 2024 = 12 months: Jan, Feb, ..., Dec)
+        Calendar.getInstance().apply {
+          timeInMillis = endTimeStamp
+          add(Calendar.MONTH, -11)
+        }.timeInMillis
+      }
+      GraphSegment.TOTAL -> null // Keep existing ±6 months logic
     }
   }
 

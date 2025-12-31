@@ -51,12 +51,12 @@ final class ConversionTools {
     
     /// Converts stored weight (tenths of lbs) to kg
     static func convertStoredToKg(_ stored: Int) -> Double {
-        return rounded(Double(stored) / 22.046, toPlaces: 1)
+        return rounded(Double(stored) / 22.0462, toPlaces: 1)
     }
     
     /// Converts kg to stored weight (tenths of lbs)
     static func convertKgToStored(_ kgs: Double) -> Int {
-        return Int(round(kgs * 2.2046 * 10))
+        return Int(round(kgs * 2.20462 * 10))
     }
     
     /// Converts display value to stored value (tenths of lbs), metric or imperial
@@ -165,11 +165,45 @@ final class ConversionTools {
     /// Returns picker default selections (feet/in & cm arrays) given stored tenths-inch height.
     static func pickerSelections(from storedHeight: Int) -> (inches: [String], cm: [String]) {
         let feetInches = convertStoredHeightToFeet(storedHeight)
-        let inchesSel = ["\(feetInches[0])", "\(feetInches[1])"]
+        // Clamp feet to valid range (2-7)
+        let clampedFeet = max(2, min(7, feetInches[0]))
+        let clampedInches = max(0, min(11, feetInches[1]))
+        let inchesSel = ["\(clampedFeet)", "\(clampedInches)"]
 
         let cm = convertStoredHeightToCm(storedHeight)
-        let cmString = String(format: "%03d", cm)
+        // Clamp cm to valid range (100-299)
+        let clampedCm = max(100, min(299, cm))
+        let cmString = String(format: "%03d", clampedCm)
         let cmSel = cmString.map { String($0) }
         return (inchesSel, cmSel)
+    }
+    
+    // MARK: - Height Validation
+    
+    // Validates height in feet/inches (2'0" to 7'11")
+    static func isValidHeightInches(feet: Int, inches: Int) -> Bool {
+        guard feet >= 2 && feet <= 7 else { return false }
+        guard inches >= 0 && inches <= 11 else { return false }
+        let totalInches = (feet * 12) + inches
+        return totalInches >= 24 && totalInches <= 95
+    }
+    
+    // Validates height in cm (100-299)
+    static func isValidHeightCm(_ cm: Int) -> Bool {
+        return cm >= 100 && cm <= 299
+    }
+    
+    // Validates height picker values
+    static func isValidHeightPickerValues(fromMetric: Bool, values: [String]) -> Bool {
+        if fromMetric {
+            guard values.count >= 3 else { return false }
+            let cm = Int(values.joined()) ?? 0
+            return isValidHeightCm(cm)
+        } else {
+            guard values.count >= 2 else { return false }
+            let feet = Int(values[0]) ?? 0
+            let inches = Int(values[1]) ?? 0
+            return isValidHeightInches(feet: feet, inches: inches)
+        }
     }
 }
