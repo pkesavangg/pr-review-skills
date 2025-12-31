@@ -54,6 +54,29 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     @State private var cachedYAxisLabels: [Double: String] = [:]
     @State private var cachedXAxisLabels: [Date: String] = [:]
 
+    // MARK: - Consolidated Change Detection (Performance Optimization)
+    /// Tracks previous values for change detection to avoid redundant updates
+    @State private var lastDataChangeSignature: Int = 0
+    @State private var lastSettingsChangeSignature: Int = 0
+
+    /// Combined signature for data-affecting properties
+    /// When this changes, we need to refresh data and update chart
+    private var dataChangeSignature: Int {
+        var hasher = Hasher()
+        hasher.combine(dashboardStore.continuousOperations.count)
+        hasher.combine(dashboardStore.state.ui.selectedMetricLabel)
+        return hasher.finalize()
+    }
+
+    /// Combined signature for settings-affecting properties
+    /// When this changes, we need to update formatting and labels
+    private var settingsChangeSignature: Int {
+        var hasher = Hasher()
+        hasher.combine(dashboardStore.currentUnit.rawValue)
+        hasher.combine(dashboardStore.isWeightlessModeEnabled)
+        return hasher.finalize()
+    }
+
     // MARK: - Configuration
     private var yAxisLabelWidth: CGFloat {
         if viewModel.chartOperations.isEmpty && viewModel.timePeriod != .total {
@@ -262,47 +285,37 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 }
             }
         }
-        .onChange(of: dashboardStore.continuousOperations) { _, _ in
-            // ViewModel will invalidate cache in refreshData()
+        // PERFORMANCE: Consolidated data change handler
+        // Combines: continuousOperations count, selectedMetricLabel
+        // Reduces from 4 separate onChange handlers to 2
+        .onChange(of: dataChangeSignature) { _, newSignature in
+            guard newSignature != lastDataChangeSignature else { return }
+            lastDataChangeSignature = newSignature
+
+            // Refresh data and invalidate caches
             viewModel.refreshData()
+            viewModel.invalidateCache()
+
             // Update local cache since data changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
-            }
-        }
-        .onChange(of: dashboardStore.currentUnit) { _, _ in
-            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
-            viewModel.handleSettingsChange()
-            // Update local cache since display values changed
-            DispatchQueue.main.async {
-                self.updateCachedChartData()
-                // Clear label caches since unit change affects formatting
                 self.invalidateLabelCaches()
-                // Precompute labels with new formatting
                 self.precomputeLabels()
             }
         }
-        .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
-            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
+        // PERFORMANCE: Consolidated settings change handler
+        // Combines: currentUnit, isWeightlessModeEnabled
+        .onChange(of: settingsChangeSignature) { _, newSignature in
+            guard newSignature != lastSettingsChangeSignature else { return }
+            lastSettingsChangeSignature = newSignature
+
+            // ViewModel will update store's Y-axis cache and invalidate its own cache
             viewModel.handleSettingsChange()
+
             // Update local cache since display values changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
-                // Clear label caches since weightless mode affects formatting
                 self.invalidateLabelCaches()
-                // Precompute labels with new formatting
-                self.precomputeLabels()
-            }
-        }
-        .onChange(of: dashboardStore.state.ui.selectedMetricLabel) { _, _ in
-            // Invalidate cache when selected metric changes (affects chart series)
-            viewModel.invalidateCache()
-            // Update local cache since series data changed
-            DispatchQueue.main.async {
-                self.updateCachedChartData()
-                // Clear label caches since metric change may affect Y-axis range/formatting
-                self.invalidateLabelCaches()
-                // Precompute labels with new Y-axis range
                 self.precomputeLabels()
             }
         }

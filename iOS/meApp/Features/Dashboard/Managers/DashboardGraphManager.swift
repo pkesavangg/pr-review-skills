@@ -29,7 +29,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     public var lastXAxisValues: [Date] = []
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
-    
+
     // Flag to prevent ensureLatestEntriesVisible from overriding scroll position during period changes
     private var isChangingPeriod: Bool = false
 
@@ -1389,10 +1389,22 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     /// Calculates the proper scroll position for chart initialization or segment changes
     /// This ensures the scroll position aligns with the computed X-axis values
-    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
-        let allDates: [Date] = operations.map { $0.date }
-        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
-            return Date()
+    /// - Parameter cachedBounds: Optional cached date bounds for O(1) lookup performance
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true, cachedBounds: (min: Date, max: Date)? = nil) -> Date {
+        // Use cached bounds if provided for performance, otherwise calculate from operations
+        let overallMinDate: Date
+        let overallMaxDate: Date
+
+        if let cached = cachedBounds {
+            overallMinDate = cached.min
+            overallMaxDate = cached.max
+        } else {
+            let allDates: [Date] = operations.map { $0.date }
+            guard let minDate = allDates.min(), let maxDate = allDates.max() else {
+                return Date()
+            }
+            overallMinDate = minDate
+            overallMaxDate = maxDate
         }
 
         let domainLength = visibleDomainLength(for: period)
