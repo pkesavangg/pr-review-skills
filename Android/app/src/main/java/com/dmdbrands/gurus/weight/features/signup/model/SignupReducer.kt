@@ -99,7 +99,7 @@ data class SignupFormControls(
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
           FormValidations.email(),
-          FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, LoginStrings.Errors.maxLengthEmail),
+          FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, customMessage = LoginStrings.Errors.maxLengthEmail),
               ),
             ),
           password =
