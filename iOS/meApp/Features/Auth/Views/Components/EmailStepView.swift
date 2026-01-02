@@ -32,7 +32,6 @@ struct EmailStepView: View {
                     value: $signupStore.signupForm.email.value,
                     focusedField: $focusedField,
                     onCommit: {
-                        signupStore.touchAndValidate(field: .email)
                         focusedField = nil
                         if signupStore.isNextEnabled {
                             signupStore.moveToNextStep()

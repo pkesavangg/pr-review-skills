@@ -63,22 +63,24 @@ class SignupForm: ObservableForm {
         
         // Check if goal weight equals current weight when in lose/gain mode
         if goalType.value != GoalType.maintain.rawValue {
-           // Convert to Double to compare numerically
-            let current = Double(currentWeight.value) ?? 0.0
-            let goal = Double(goalWeight.value) ?? 0.0
-
-
-            if current > 0 && goal > 0 && current == goal {
-                if currentWeight.isDirty || goalWeight.isDirty || isDirty {
-                    errors.update(
-                        for: Validator<Any>(type: .weightEqual) { _ in false },
-                        value: false
-                    )
-                }
+            if hasEqualWeights {
+                errors.update(
+                    for: Validator<Any>(type: .weightEqual) { _ in false },
+                    value: false
+                )
             }
         }
         
         updateFormErrors(errors)
+    }
+    
+    // MARK: - Weight Validation Helpers
+    
+    /// Returns `true` if both weights are positive and equal.
+    var hasEqualWeights: Bool {
+        let current = Double(currentWeight.value) ?? 0.0
+        let goal = Double(goalWeight.value) ?? 0.0
+        return current > 0 && goal > 0 && current == goal
     }
     
     // MARK: - Form State Helpers
@@ -94,16 +96,16 @@ class SignupForm: ObservableForm {
         
         let isMaintainMode = goalType.value == GoalType.maintain.rawValue
         
+        if !isMaintainMode && hasEqualWeights {
+            return false
+        }
+        
         // For maintain mode, only goal weight needs to be dirty/touched
         // For lose/gain mode, both weights need to be dirty/touched
         if isMaintainMode {
             guard isTouched || goalType.isDirty || goalWeight.isDirty else { return false }
         } else {
             guard isTouched || goalType.isDirty || (currentWeight.isDirty && goalWeight.isDirty) else { return false }
-        }
-        
-        if !isMaintainMode, formErrors[.weightEqual] {
-            return false
         }
         
         return isMaintainMode
@@ -159,8 +161,8 @@ class SignupForm: ObservableForm {
             return FormErrorMessages.passwordMatch
         }
 
-        if goalType.value == GoalTypeSegment.losegainValue
-            && formErrors[.weightEqual]
+        if goalType.value != GoalType.maintain.rawValue
+            && hasEqualWeights
             && control === goalWeight
             && (goalWeight.isTouched || goalWeight.isDirty || currentWeight.isTouched || currentWeight.isDirty) {
             return FormErrorMessages.valueShouldNotBeEqual
@@ -169,7 +171,7 @@ class SignupForm: ObservableForm {
         return nil
     }
     
-    /// Resets the goal-related form fields to their default state
+    /// Resets the goal-related form fields to their default state.
     func resetGoal() {
         goalType.value = GoalTypeSegment.losegainValue
         currentWeight.value = ""
@@ -177,6 +179,5 @@ class SignupForm: ObservableForm {
         goalType.resetInteractionState()
         currentWeight.resetInteractionState()
         goalWeight.resetInteractionState()
-        validate()
     }
 }
