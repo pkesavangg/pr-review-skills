@@ -36,7 +36,7 @@ private val metricInfoResources: Map<MetricKey, List<MetricInfoResource>> = mapO
     ),
   ),
   MetricKey.BMI to listOf(
-    MetricInfoResource("CDC Guidelines", "https://www.cdc.gov/healthyweight/assessing/bmi/adult_bmi/index.html"),
+    MetricInfoResource("CDC Guidelines", "https://www.cdc.gov/bmi/index.html"),
     MetricInfoResource("Cleveland Clinic", "https://my.clevelandclinic.org/health/articles/9464-body-mass-index-bmi"),
   ),
   MetricKey.BODY_FAT to listOf(

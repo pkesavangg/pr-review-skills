@@ -24,6 +24,26 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     // Scroll position debouncing
     @State private var scrollUpdateWorkItem: DispatchWorkItem?
 
+    // MARK: - Throttling State (Performance Optimization)
+    /// Last time updateCachedChartData was called
+    @State private var lastCacheUpdateTime: Date = .distantPast
+    /// Minimum interval between cache updates during scroll (50ms)
+    private let cacheUpdateThrottle: TimeInterval = 0.05
+    /// Work item for delayed/debounced cache updates
+    @State private var cacheUpdateWorkItem: DispatchWorkItem?
+
+    // MARK: - Scroll End Transition State
+    /// Tracks if we're in post-scroll transition (to disable animations)
+    @State private var isInScrollEndTransition: Bool = false
+    /// Counter that increments on scroll end to force chart identity change
+    @State private var chartRebuildToken: Int = 0
+    /// Tracks previous Y-axis domain to detect domain-only changes
+    @State private var previousYAxisDomain: ClosedRange<Double>?
+    /// Tracks previous data hash to detect data changes
+    @State private var previousDataHash: Int?
+    /// Flag indicating if current change is domain-only (no data change)
+    @State private var isDomainChangeOnly: Bool = false
+
     // MARK: - Cached Chart Data (Performance Optimization)
     @State private var cachedChartPoints: [GraphSeries] = []
     @State private var cachedGroupedPoints: [String: [GraphSeries]] = [:]
@@ -33,6 +53,29 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     // MARK: - Cached Labels (Performance Optimization)
     @State private var cachedYAxisLabels: [Double: String] = [:]
     @State private var cachedXAxisLabels: [Date: String] = [:]
+
+    // MARK: - Consolidated Change Detection (Performance Optimization)
+    /// Tracks previous values for change detection to avoid redundant updates
+    @State private var lastDataChangeSignature: Int = 0
+    @State private var lastSettingsChangeSignature: Int = 0
+
+    /// Combined signature for data-affecting properties
+    /// When this changes, we need to refresh data and update chart
+    private var dataChangeSignature: Int {
+        var hasher = Hasher()
+        hasher.combine(dashboardStore.continuousOperations.count)
+        hasher.combine(dashboardStore.state.ui.selectedMetricLabel)
+        return hasher.finalize()
+    }
+
+    /// Combined signature for settings-affecting properties
+    /// When this changes, we need to update formatting and labels
+    private var settingsChangeSignature: Int {
+        var hasher = Hasher()
+        hasher.combine(dashboardStore.currentUnit.rawValue)
+        hasher.combine(dashboardStore.isWeightlessModeEnabled)
+        return hasher.finalize()
+    }
 
     // MARK: - Configuration
     private var yAxisLabelWidth: CGFloat {
@@ -53,6 +96,34 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         // No entries: hide labels only when goal is not set
         let goal = viewModel.goalWeight
         return goal != nil
+    }
+
+    // MARK: - Coordinated Animation
+    /// Computes the appropriate animation for chart updates
+    /// Ensures line and point marks animate together (or not at all)
+    private var coordinatedChartAnimation: Animation? {
+        // During scrolling: no animation
+        if viewModel.isScrolling {
+            return nil
+        }
+        // During scroll-end transition: no animation (data is settling)
+        if isInScrollEndTransition {
+            return nil
+        }
+        // Domain-only changes: no animation to prevent metrics from elongating unnaturally
+        // Metrics should only animate when actual data changes, not when Y-axis domain recalculates
+        if isDomainChangeOnly {
+            return nil
+        }
+        // Normal state: use standard chart animation if enabled
+        if enableYAxisAnimation && viewModel.shouldAnimateChartData {
+            return .easeInOut(duration: 0.25)
+        }
+        // Y-axis animation only
+        if enableYAxisAnimation {
+            return .easeInOut(duration: 0.3)
+        }
+        return nil
     }
 
     // MARK: - Equatable Implementation
@@ -97,7 +168,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartLegend(.hidden)
                 .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
                 .transaction { t in
-                    if viewModel.isScrolling { t.animation = nil }
+                    // Disable ALL animations during scroll and scroll-end transition
+                    if viewModel.isScrolling || isInScrollEndTransition {
+                        t.animation = nil
+                    }
                 }
                 // Conditional chart modifiers based on scrollability
                 .conditionalModifiers(
@@ -134,9 +208,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                         )
                 )
                 .conditionalPreferenceChange(isScrollable: isScrollable, dashboardStore: dashboardStore)
-                .animation(enableYAxisAnimation ? .easeInOut(duration: 0.3) : .none, value: viewModel.yAxisDomain)
-                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: seriesAnimationToken)
-                .animation((enableYAxisAnimation && viewModel.shouldAnimateChartData) ? .easeInOut(duration: 0.25) : .none, value: dashboardStore.state.ui.selectedMetricLabel)
+                // Coordinated animation for line and point marks
+                // - During scroll: no animation
+                // - During scroll-end transition: no animation (data settling)
+                // - Domain-only changes: no animation (prevents metrics from elongating unnaturally)
+                // - Normal state: standard animations
+                .animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)
+                .animation(coordinatedChartAnimation, value: seriesAnimationToken)
+                .animation(coordinatedChartAnimation, value: dashboardStore.state.ui.selectedMetricLabel)
                 .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
                 .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
                 .conditionalTouchModifiers(
@@ -188,60 +267,80 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Cancel any pending scroll updates to prevent memory leaks
             scrollUpdateWorkItem?.cancel()
             scrollUpdateWorkItem = nil
+            // Cancel any pending cache updates
+            cacheUpdateWorkItem?.cancel()
+            cacheUpdateWorkItem = nil
         }
-        .onChange(of: dashboardStore.continuousOperations) { _, _ in
-            // ViewModel will invalidate cache in refreshData()
+        // Track scroll end transition to disable animations during Y-axis recalculation
+        .onChange(of: viewModel.isScrolling) { oldValue, newValue in
+            // Detect scroll end (was scrolling, now not)
+            if oldValue && !newValue {
+                // Enter transition state - disable animations briefly while scroll state settles
+                isInScrollEndTransition = true
+                chartRebuildToken += 1
+
+                // Exit transition state quickly - Y-axis updates at 0.6s will animate smoothly
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.005) {
+                    isInScrollEndTransition = false
+                }
+            }
+        }
+        // PERFORMANCE: Consolidated data change handler
+        // Combines: continuousOperations count, selectedMetricLabel
+        // Reduces from 4 separate onChange handlers to 2
+        .onChange(of: dataChangeSignature) { _, newSignature in
+            guard newSignature != lastDataChangeSignature else { return }
+            lastDataChangeSignature = newSignature
+
+            // Refresh data and invalidate caches
             viewModel.refreshData()
+            viewModel.invalidateCache()
+
             // Update local cache since data changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
-            }
-        }
-        .onChange(of: dashboardStore.currentUnit) { _, _ in
-            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
-            viewModel.handleSettingsChange()
-            // Update local cache since display values changed
-            DispatchQueue.main.async {
-                self.updateCachedChartData()
-                // Clear label caches since unit change affects formatting
                 self.invalidateLabelCaches()
-                // Precompute labels with new formatting
                 self.precomputeLabels()
             }
         }
-        .onChange(of: dashboardStore.isWeightlessModeEnabled) { _, _ in
-            // ViewModel will update store's Y-axis cache and invalidate its own cache in handleSettingsChange()
+        // PERFORMANCE: Consolidated settings change handler
+        // Combines: currentUnit, isWeightlessModeEnabled
+        .onChange(of: settingsChangeSignature) { _, newSignature in
+            guard newSignature != lastSettingsChangeSignature else { return }
+            lastSettingsChangeSignature = newSignature
+
+            // ViewModel will update store's Y-axis cache and invalidate its own cache
             viewModel.handleSettingsChange()
+
             // Update local cache since display values changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
-                // Clear label caches since weightless mode affects formatting
                 self.invalidateLabelCaches()
-                // Precompute labels with new formatting
-                self.precomputeLabels()
-            }
-        }
-        .onChange(of: dashboardStore.state.ui.selectedMetricLabel) { _, _ in
-            // Invalidate cache when selected metric changes (affects chart series)
-            viewModel.invalidateCache()
-            // Update local cache since series data changed
-            DispatchQueue.main.async {
-                self.updateCachedChartData()
-                // Clear label caches since metric change may affect Y-axis range/formatting
-                self.invalidateLabelCaches()
-                // Precompute labels with new Y-axis range
                 self.precomputeLabels()
             }
         }
         // Rebuild cached points when Y-axis domain or ticks change so normalized metric points
         // are re-plotted against the latest domain
-        .onChange(of: viewModel.yAxisDomain) { _, _ in
+        .onChange(of: viewModel.yAxisDomain) { oldDomain, newDomain in
+            // Check if this is a domain-only change (domain changed but data hash didn't)
+            // This prevents metrics from animating/stretching when only Y-axis domain recalculates
+            let wasDomainChangeOnly = previousYAxisDomain != nil &&
+                                     previousYAxisDomain != newDomain &&
+                                     lastDataHash == (previousDataHash ?? 0)
+
+            // Set flag synchronously so transaction modifier can use it
+            isDomainChangeOnly = wasDomainChangeOnly
+            previousYAxisDomain = newDomain
+
             DispatchQueue.main.async {
-                self.updateCachedChartData()
+                // Use throttled update to prevent excessive updates during scroll
+                self.updateCachedChartDataThrottled()
                 // Clear Y-axis label cache since domain change affects tick values
                 self.cachedYAxisLabels.removeAll()
-                // Precompute Y-axis labels with new domain
-                self.precomputeLabels()
+                // Reset flag after a brief delay to allow transaction to complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.isDomainChangeOnly = false
+                }
             }
         }
         // Conditional scroll position syncing
@@ -335,10 +434,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 
     @ChartContentBuilder
     private var chartSeries: some ChartContent {
-        // Use cached grouped data to prevent re-creation of LineMark/PointMark on every scroll
-        ForEach(Array(cachedPlottedPoints.keys.sorted()), id: \.self) { seriesName in
+        // Use cached grouped data with render-time filtering
+        // This ensures ALL visible points are shown while limiting buffer points
+        ForEach(Array(cachedPlottedPoints.keys), id: \.self) { seriesName in
             if let seriesPoints = cachedPlottedPoints[seriesName] {
-                chartContentForSeries(seriesName: seriesName, seriesPoints: seriesPoints)
+                // Filter to visible + downsampled buffer for this series
+                let pointsToRender = getPointsToRender(from: seriesPoints)
+                chartContentForSeries(seriesName: seriesName, seriesPoints: pointsToRender)
             }
         }
     }
@@ -498,6 +600,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 
         // Only update cache if data actually changed
         if newHash != lastDataHash || cachedChartPoints.isEmpty {
+            // Store ALL points in cache - filtering happens during render
             cachedChartPoints = newData
 
             // Pre-group, sort, and precompute xDates
@@ -506,14 +609,80 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 seriesPoints.sorted { $0.date < $1.date }
             }
 
-            // New: Precompute plotted dates
+            // Precompute plotted dates for ALL points
             cachedPlottedPoints = cachedGroupedPoints.mapValues { points in
                 points.map { point in
                     PlottedGraphSeries(original: point, xDate: viewModel.plotXDate(for: point.date))
                 }
             }
+            previousDataHash = lastDataHash
             lastDataHash = newHash
         }
+    }
+
+    /// Returns points to render: ALL visible points + downsampled buffer
+    /// Called during render to ensure visible window always shows all points
+    private func getPointsToRender(from points: [PlottedGraphSeries]) -> [PlottedGraphSeries] {
+        // For small datasets, render everything (already sorted)
+        guard points.count > 200 else { return points }
+
+        let visibleStart = viewModel.scrollPosition
+        let visibleEnd = viewModel.scrollPosition.addingTimeInterval(viewModel.visibleDomainLength)
+
+        // Separate into visible and buffer regions
+        var visible: [PlottedGraphSeries] = []
+        var leftBuffer: [PlottedGraphSeries] = []
+        var rightBuffer: [PlottedGraphSeries] = []
+
+        for point in points {
+            let date = point.original.date
+            if date >= visibleStart && date <= visibleEnd {
+                visible.append(point)
+            } else if date < visibleStart {
+                leftBuffer.append(point)
+            } else {
+                rightBuffer.append(point)
+            }
+        }
+
+        // Keep ALL visible points
+        var result = visible
+
+        // Downsample buffers to ~30 points each for line continuity
+        let maxBufferPoints = 30
+
+        if leftBuffer.count > maxBufferPoints {
+            let step = leftBuffer.count / maxBufferPoints
+            var sampled: [PlottedGraphSeries] = []
+            for i in stride(from: 0, to: leftBuffer.count, by: step) {
+                sampled.append(leftBuffer[i])
+            }
+            // Always include the point closest to visible area
+            if let last = leftBuffer.last, sampled.last?.original.date != last.original.date {
+                sampled.append(last)
+            }
+            result.append(contentsOf: sampled)
+        } else {
+            result.append(contentsOf: leftBuffer)
+        }
+
+        if rightBuffer.count > maxBufferPoints {
+            let step = rightBuffer.count / maxBufferPoints
+            var sampled: [PlottedGraphSeries] = []
+            // Always include the point closest to visible area
+            if let first = rightBuffer.first {
+                sampled.append(first)
+            }
+            for i in stride(from: step, to: rightBuffer.count, by: step) {
+                sampled.append(rightBuffer[i])
+            }
+            result.append(contentsOf: sampled)
+        } else {
+            result.append(contentsOf: rightBuffer)
+        }
+
+        // CRITICAL: Sort by date so chart draws lines correctly
+        return result.sorted { $0.original.date < $1.original.date }
     }
 
     /// Invalidates cache when data changes externally
@@ -521,6 +690,38 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         cachedChartPoints = []
         cachedGroupedPoints = [:]
         lastDataHash = 0
+    }
+
+    // MARK: - Throttled Updates (Performance Optimization)
+
+    /// Throttled version of updateCachedChartData.
+    /// Limits how often cache updates run during rapid changes (e.g., scrolling).
+    private func updateCachedChartDataThrottled() {
+        let now = Date()
+
+        // If enough time has passed, update immediately
+        guard now.timeIntervalSince(lastCacheUpdateTime) > cacheUpdateThrottle else {
+            // Schedule a delayed update if not already scheduled
+            scheduleDelayedCacheUpdate()
+            return
+        }
+
+        lastCacheUpdateTime = now
+        updateCachedChartData()
+    }
+
+    /// Schedules a delayed cache update, cancelling any previous pending update.
+    /// Ensures cache eventually updates even during rapid changes.
+    private func scheduleDelayedCacheUpdate() {
+        cacheUpdateWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [self] in
+            self.updateCachedChartData()
+            self.precomputeLabels()
+        }
+        cacheUpdateWorkItem = workItem
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + cacheUpdateThrottle, execute: workItem)
     }
 
     // MARK: - Animation Token
@@ -624,9 +825,22 @@ extension View {
                         viewModel.scrollPosition
                     },
                     set: { newPosition in
+                        // Apply boundary clamping to prevent over-scrolling
+                        let clampedPosition: Date
+                        if let bounds = dashboardStore.dataManager.getDateBounds(for: viewModel.timePeriod) {
+                            clampedPosition = dashboardStore.graphManager.clampScrollPosition(
+                                newPosition,
+                                for: viewModel.timePeriod,
+                                minDate: bounds.min,
+                                maxDate: bounds.max
+                            )
+                        } else {
+                            clampedPosition = newPosition
+                        }
+
                         // Debounce scroll position updates to prevent multiple updates per frame
                         DispatchQueue.main.async {
-                            viewModel.handleScrollPositionChange(newPosition)
+                            viewModel.handleScrollPositionChange(clampedPosition)
                         }
                     }
                 ))

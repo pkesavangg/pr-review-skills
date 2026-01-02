@@ -1278,12 +1278,7 @@ constructor(
         viewModelScope.launch {
 
           AppLog.d(TAG, "Network gathering successful")
-          handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-              BtWifiSetupStep.GATHERING_NETWORK,
-              ConnectionState.Success,
-            ),
-          )
+
           val canRequestNotifPermission =
             AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
           if (canRequestNotifPermission) {
@@ -1424,7 +1419,10 @@ constructor(
               }
             }
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
-              navigateBack()
+              if (!isAlreadyExited) {
+                isAlreadyExited = true
+                onExitSetup(true)
+              }
               return@launch
             }
             onNext()

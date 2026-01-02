@@ -20,26 +20,29 @@ struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @EnvironmentObject private var accountService: AccountService
     @Environment(\.appTheme) private var theme
-    
+
     // Section view models
     @StateObject private var totalSectionViewModel = TotalSectionViewModel()
     @StateObject private var yearSectionViewModel = YearSectionViewModel()
     @StateObject private var monthSectionViewModel = MonthSectionViewModel()
     @StateObject private var weekSectionViewModel = WeekSectionViewModel()
-    
+
     // Reset chart identity on period switches to avoid stale animations/state
     @State private var chartIdentity: UUID = UUID()
-    
+
+    // PERFORMANCE: Cancellable task for deferred period change configuration
+    @State private var periodChangeTask: Task<Void, Never>?
+
     // Check if there are any entries to display
     private var hasEntries: Bool {
         return !dashboardStore.continuousOperations.isEmpty
     }
-    
+
     // Get the appropriate empty state message
     private var emptyStateMessage: String {
         return DashboardStrings.noEntriesMessage
     }
-    
+
     // Whether the selection callout is currently visible for the active period
     private var isShowingSelectionCallout: Bool {
         switch dashboardStore.state.graph.selectedPeriod {
@@ -67,51 +70,67 @@ struct GraphView: View {
                 .padding(.vertical, .spacingXS)
                 chartView
                     .id(chartIdentity)
-            
+
         }
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
-            // Clear crosshair and selection when time period changes
+            // PERFORMANCE: Cancel any pending period change configuration
+            periodChangeTask?.cancel()
+
+            // Immediate lightweight operations (cheap)
             dashboardStore.clearSelection()
-            
-            // Also clear local selection in all section view models
             totalSectionViewModel.clearSelection()
             yearSectionViewModel.clearSelection()
             monthSectionViewModel.clearSelection()
             weekSectionViewModel.clearSelection()
-            
-            // Reconfigure active section view model with fresh store state
-            switch newValue {
-            case .week:
-                weekSectionViewModel.configure(with: dashboardStore)
-            case .month:
-                monthSectionViewModel.configure(with: dashboardStore)
-            case .year:
-                yearSectionViewModel.configure(with: dashboardStore)
-            case .total:
-                totalSectionViewModel.configure(with: dashboardStore)
-            }
-            
-            dashboardStore.updateSelectedPeriod(newValue)
-            
-            // Force the active view model to sync with the optimal position after a brief delay
-            // This ensures the chart binding gets the correct position
-            // Get the position from the store after updateSelectedPeriod has set it
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                let optimal = dashboardStore.state.graph.xScrollPosition
+
+            // PERFORMANCE: Defer heavy configuration to prevent CPU spike
+            // Only configure the active ViewModel after a brief delay
+            periodChangeTask = Task { @MainActor in
+                // Brief delay to let the UI settle
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                guard !Task.isCancelled else { return }
+
+                // Configure only the active view model (not all 4)
                 switch newValue {
                 case .week:
-                    weekSectionViewModel.forceScrollPositionUpdate(to: optimal)
+                    weekSectionViewModel.configure(with: dashboardStore)
                 case .month:
-                    monthSectionViewModel.forceScrollPositionUpdate(to: optimal)
+                    monthSectionViewModel.configure(with: dashboardStore)
                 case .year:
-                    yearSectionViewModel.forceScrollPositionUpdate(to: optimal)
+                    yearSectionViewModel.configure(with: dashboardStore)
+                case .total:
+                    totalSectionViewModel.configure(with: dashboardStore)
+                }
+
+                // Calculate optimal scroll position
+                let optimal = dashboardStore.graphManager.calculateOptimalScrollPosition(
+                    for: newValue,
+                    from: dashboardStore.continuousOperations,
+                    showingLatest: true,
+                    cachedBounds: dashboardStore.dataManager.getDateBounds(for: newValue)
+                )
+                dashboardStore.graphManager.updateScrollPosition(to: optimal)
+                dashboardStore.updateSelectedPeriod(newValue)
+
+                // Force the active view model to sync with the optimal position
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms additional delay
+                guard !Task.isCancelled else { return }
+
+                let finalPosition = dashboardStore.state.graph.xScrollPosition
+                switch newValue {
+                case .week:
+                    weekSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
+                case .month:
+                    monthSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
+                case .year:
+                    yearSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
                 case .total:
                     break // Total view is not scrollable
                 }
+
+                // Recalculate and cache Y-axis based on the new visible region
+                dashboardStore.updateYAxisCache()
             }
-            
-            // Recalculate and cache Y-axis based on the new visible region
-            dashboardStore.updateYAxisCache()
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
@@ -119,7 +138,7 @@ struct GraphView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
-    
+
     // MARK: - Chart View
     private var chartView: some View {
         return HStack(spacing: 0) {
@@ -148,19 +167,19 @@ struct GraphView: View {
             }
         }
     }
-    
+
     // MARK: - Empty State View
     private var emptyStateView: some View {
         VStack(spacing: .spacingMD) {
             Spacer()
-            
+
             Text(emptyStateMessage)
                 .fontOpenSans(.heading5)
                 .foregroundColor(theme.textHeading)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, .spacingLG)
-            
+
             Spacer()
         }
         .graphViewStyle(canAddPadding: true)

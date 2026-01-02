@@ -60,20 +60,18 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     
     /// Full date range for X-axis domain
     override var dateRange: ClosedRange<Date> {
-        let operations = chartOperations
-        guard !operations.isEmpty else {
+        // Use cached bounds for O(1) lookup instead of O(n) map + min/max
+        guard let store = dashboardStore,
+              let bounds = store.dataManager.getDateBounds(for: timePeriod) else {
             // Empty-state: provide a non-zero domain so leading/trailing baselines render
             // Center around current scroll position to keep UX consistent with other sections
             let center = scrollPosition
             let halfWindow: TimeInterval = 24 * 60 * 60 // 1 day
             return center.addingTimeInterval(-halfWindow)...center.addingTimeInterval(halfWindow)
         }
-
-        let dates = operations.map { $0.date }
-        guard let minDate = dates.min(), let maxDate = dates.max() else {
-            let now = Date()
-            return now...now
-        }
+        
+        let minDate = bounds.min
+        let maxDate = bounds.max
 
         let calendar = Calendar.current
 
