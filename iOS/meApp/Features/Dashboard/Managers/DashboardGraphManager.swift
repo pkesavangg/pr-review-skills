@@ -1425,7 +1425,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let tempScrollPosition = targetStartDate.addingTimeInterval(domainLength / 2) // Center position for generateXAxis logic
             let xAxisValues = generateXAxisValuesForAlignment(for: period, from: operations, centerPosition: tempScrollPosition)
 
-            //Find the right most date and subract the period visisble length
+            //Find the right most date and subtract the period visible length
             let rightMostDate = xAxisValues.max()
             let rightMostDateMinusPeriod = rightMostDate?.addingTimeInterval(-visibleDomainLength(for: period))
             if let rightMostDateMinusPeriod = rightMostDateMinusPeriod {
