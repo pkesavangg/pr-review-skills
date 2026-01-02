@@ -1446,6 +1446,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             overallMaxDate = maxDate
         }
 
+        // For .total period, always return overallMinDate to show all data from the beginning
+        if period == .total {
+            return overallMinDate
+        }
+
         let domainLength = visibleDomainLength(for: period)
 
         // If anchor date is provided, center the viewport around it (temporal context preservation)
@@ -1498,7 +1503,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let tempScrollPosition = targetStartDate.addingTimeInterval(domainLength / 2) // Center position for generateXAxis logic
             let xAxisValues = generateXAxisValuesForAlignment(for: period, from: operations, centerPosition: tempScrollPosition)
 
-            //Find the right most date and subract the period visisble length
+            //Find the right most date and subtract the period visible length
             let rightMostDate = xAxisValues.max()
             let rightMostDateMinusPeriod = rightMostDate?.addingTimeInterval(-visibleDomainLength(for: period))
             if let rightMostDateMinusPeriod = rightMostDateMinusPeriod {
@@ -1752,41 +1757,37 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
 
-        // Special handling for month: snap range to actual month boundaries based on the center
+        // Special handling for month: show the actual visible range (handles spans across multiple months)
         if period == .month {
-            let span = endDate.timeIntervalSince(startDate)
-            let center = startDate.addingTimeInterval(max(0, span / 2))
+            let inclusiveEndDate: Date = calendar.date(byAdding: .day, value: -1, to: endDate) ?? endDate
+            let startDay = calendar.component(.day, from: startDate)
+            let endDay = calendar.component(.day, from: inclusiveEndDate)
+            let startMonth = DateTimeTools.formatter("LLL").string(from: startDate).lowercased()
+            let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
+            let endYear = calendar.component(.year, from: inclusiveEndDate)
 
-            if let monthInterval = calendar.dateInterval(of: .month, for: center) {
-                let startOfMonth = monthInterval.start
-                let inclusiveEndOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) ?? monthInterval.end
-
-                let startDay = calendar.component(.day, from: startOfMonth)
-                let endDay = calendar.component(.day, from: inclusiveEndOfMonth)
-                let startMonth = DateTimeTools.formatter("LLL").string(from: startOfMonth).lowercased()
-                let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndOfMonth).lowercased()
-                let endYear = calendar.component(.year, from: inclusiveEndOfMonth)
-
-                return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
-            }
+            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
         }
 
-        // For year: clamp to full month boundaries inside the visible window
+        // For year: show the actual visible range, handling multi-year spans correctly
         if period == .year {
-            // Robust: derive the label purely from the mid-point year, ignoring phantom edges
-            let span = endDate.timeIntervalSince(startDate)
-            let mid = startDate.addingTimeInterval(max(0, span / 2))
-            let year = calendar.component(.year, from: mid)
+            // Extract actual start and end years from the visible range
+            let startYear = calendar.component(.year, from: startDate)
+            let endYear = calendar.component(.year, from: endDate)
 
-            // Jan 1 of the year and Dec 1 of the same year
-            let startOfYear = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? minDate
-            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startOfYear).lowercased()
-            let startYear = year
+            // Extract actual start and end months from the visible range
+            let startMonth = calendar.component(.month, from: startDate)
+            let endMonth = calendar.component(.month, from: endDate)
 
-            let decOfYear = calendar.date(from: DateComponents(year: year, month: 12, day: 1)) ?? maxDate
-            let endMonthStr = DateTimeTools.formatter("LLL").string(from: decOfYear).lowercased()
-            let endYear = year
+            // Format start month
+            let startMonthDate = calendar.date(from: DateComponents(year: startYear, month: startMonth, day: 1)) ?? startDate
+            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthDate).lowercased()
 
+            // Format end month
+            let endMonthDate = calendar.date(from: DateComponents(year: endYear, month: endMonth, day: 1)) ?? endDate
+            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthDate).lowercased()
+
+            // Show the actual visible range (handles both single-year and multi-year spans)
             return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
         }
 
