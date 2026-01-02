@@ -39,8 +39,33 @@ struct WeightTrendView: View {
             }
         }
         // Update store period immediately without animating the whole subtree
-        .onChange(of: localSelectedPeriod) { _, newValue in
-            dashboardStore.updateSelectedPeriod(newValue)
+        // Capture anchor date using the OLD period for temporal context preservation
+        .onChange(of: localSelectedPeriod) { oldValue, newValue in
+            // Determine if we're zooming in (higher to lower granularity) or zooming out
+            // Zooming OUT (week→month, month→year): Use midpoint to center the new view
+            // Zooming IN (year→month, month→week): Use end date to show latest detail
+            let isZoomingIn = newValue.isMoreDetailedThan(oldValue)
+            
+            let anchorDate: Date?
+            if oldValue == .total {
+                anchorDate = nil
+            } else if isZoomingIn {
+                // Zooming in: anchor to the latest visible date
+                anchorDate = dashboardStore.graphManager.visibleEndDate(for: oldValue)
+            } else {
+                // Zooming out: anchor to the midpoint
+                anchorDate = dashboardStore.graphManager.visibleMidpoint(for: oldValue)
+            }
+            
+            // Debug logging
+            if let anchor = anchorDate {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+                print("DEBUG: Captured anchor date: \(formatter.string(from: anchor)) (zoomingIn=\(isZoomingIn)) when switching from \(oldValue) to \(newValue)")
+            }
+            
+            dashboardStore.updateSelectedPeriod(newValue, anchorDate: anchorDate)
         }
     }
     

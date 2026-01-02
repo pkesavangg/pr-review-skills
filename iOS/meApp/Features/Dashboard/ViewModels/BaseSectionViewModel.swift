@@ -249,18 +249,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func configure(with store: DashboardStore) {
         self.dashboardStore = store
         
-        // For scrollable periods, ensure we show recent entries by using optimal scroll position
+        // For scrollable periods, sync with the store's current scroll position
+        // The scroll position should already be set by updateSelectedPeriod (with anchor if applicable)
+        // We should NOT recalculate here as it would overwrite anchor-based positioning
         if hasXAxis {
-            // Use cached bounds for O(1) lookup
-            let optimalPosition = store.graphManager.calculateOptimalScrollPosition(
-                for: timePeriod,
-                from: store.continuousOperations,
-                showingLatest: true,
-                cachedBounds: store.dataManager.getDateBounds(for: timePeriod)
-            )
-            self.scrollPosition = optimalPosition
-            // Also update the store's scroll position to match
-            store.graphManager.updateScrollPosition(to: optimalPosition)
+            // Use the store's already-calculated scroll position
+            self.scrollPosition = store.state.graph.xScrollPosition
         } else {
             // Non-scrollable periods (Total) don't need scroll positioning
             self.scrollPosition = store.state.graph.xScrollPosition

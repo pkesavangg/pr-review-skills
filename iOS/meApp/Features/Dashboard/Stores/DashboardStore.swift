@@ -1828,7 +1828,11 @@ class DashboardStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
-    func updateSelectedPeriod(_ period: TimePeriod) {
+    /// Updates the selected time period with optional anchor date for temporal context preservation
+    /// - Parameters:
+    ///   - period: The new time period to switch to
+    ///   - anchorDate: Optional anchor date to center the viewport around (preserves user's temporal focus)
+    func updateSelectedPeriod(_ period: TimePeriod, anchorDate: Date? = nil) {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
 
@@ -1841,10 +1845,19 @@ class DashboardStore: ObservableObject {
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
         // Use cached bounds for O(1) lookup
+        // If anchorDate is provided, center the viewport around it for temporal context preservation
+        if let anchor = anchorDate {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            logger.log(level: .debug, tag: "DashboardStore",
+                      message: "Using anchor date \(formatter.string(from: anchor)) for period switch to \(period)")
+        }
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,
             from: continuousOperations,
-            showingLatest: true,
+            anchorDate: anchorDate,
+            showingLatest: anchorDate == nil, // Only show latest if no anchor
             cachedBounds: dataManager.getDateBounds(for: period)
         )
         graphManager.updateScrollPosition(to: optimalScrollPosition)
@@ -2738,7 +2751,9 @@ class DashboardStore: ObservableObject {
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: state.graph.selectedPeriod,
             from: continuousOperations,
-            showingLatest: true
+            anchorDate: nil,
+            showingLatest: true,
+            cachedBounds: nil
         )
         self.graphManager.updateScrollPosition(to: optimalScrollPosition)
         self.forceCompleteRecalculationAfterScrollPosition()

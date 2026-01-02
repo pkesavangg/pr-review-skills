@@ -1236,7 +1236,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let optimalPosition = calculateOptimalScrollPosition(
             for: state.selectedPeriod,
             from: operations,
-            showingLatest: true
+            anchorDate: nil,
+            showingLatest: true,
+            cachedBounds: nil
         )
         updateScrollPosition(to: optimalPosition)
     }
@@ -1319,6 +1321,31 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return DateTimeTools.visibleDomainLength(for: period)
     }
 
+    /// Returns the midpoint of the currently visible date range.
+    /// Used for preserving temporal context when switching between time periods.
+    var currentVisibleMidpoint: Date {
+        let domainLength = visibleDomainLength(for: state.selectedPeriod)
+        return state.xScrollPosition.addingTimeInterval(domainLength / 2)
+    }
+
+    /// Returns the midpoint of the visible date range for a specific period.
+    /// Use this when capturing the midpoint BEFORE a period change, passing the old period.
+    /// - Parameter period: The time period to calculate the midpoint for
+    /// - Returns: The midpoint date of the visible range for the given period
+    func visibleMidpoint(for period: TimePeriod) -> Date {
+        let domainLength = visibleDomainLength(for: period)
+        return state.xScrollPosition.addingTimeInterval(domainLength / 2)
+    }
+
+    /// Returns the end date (right edge) of the visible date range for a specific period.
+    /// Use this when zooming IN to a more detailed view to show the latest visible data.
+    /// - Parameter period: The time period to calculate the end for
+    /// - Returns: The end date of the visible range for the given period
+    func visibleEndDate(for period: TimePeriod) -> Date {
+        let domainLength = visibleDomainLength(for: period)
+        return state.xScrollPosition.addingTimeInterval(domainLength)
+    }
+
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
         let validSummaries = summaries.filter { summary in
@@ -1389,8 +1416,20 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     /// Calculates the proper scroll position for chart initialization or segment changes
     /// This ensures the scroll position aligns with the computed X-axis values
-    /// - Parameter cachedBounds: Optional cached date bounds for O(1) lookup performance
-    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true, cachedBounds: (min: Date, max: Date)? = nil) -> Date {
+    /// - Parameters:
+    ///   - period: Target time period
+    ///   - operations: Data operations for bounds calculation
+    ///   - anchorDate: Optional anchor date to center the viewport around (for preserving temporal context)
+    ///   - showingLatest: Whether to show latest entries (ignored if anchorDate is provided)
+    ///   - cachedBounds: Optional cached date bounds for O(1) lookup performance
+    /// - Returns: Optimal scroll position for the given parameters
+    func calculateOptimalScrollPosition(
+        for period: TimePeriod,
+        from operations: [BathScaleWeightSummary],
+        anchorDate: Date? = nil,
+        showingLatest: Bool = true,
+        cachedBounds: (min: Date, max: Date)? = nil
+    ) -> Date {
         // Use cached bounds if provided for performance, otherwise calculate from operations
         let overallMinDate: Date
         let overallMaxDate: Date
@@ -1408,6 +1447,46 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         let domainLength = visibleDomainLength(for: period)
+
+        // If anchor date is provided, center the viewport around it (temporal context preservation)
+        if let anchor = anchorDate {
+            // Calculate scroll position that centers the anchor in the viewport
+            // scrollPosition is the LEFT edge, so subtract half domain length from anchor
+            let targetScrollPosition = anchor.addingTimeInterval(-domainLength / 2)
+
+            // For anchor-based positioning, we want to preserve the anchor's visibility
+            // Snap to grid alignment, but verify the anchor remains visible after snapping
+            let snappedPosition = snapScrollPosition(targetScrollPosition, for: period)
+
+            // Check if anchor is still visible after snapping
+            let snappedViewportEnd = snappedPosition.addingTimeInterval(domainLength)
+            let anchorStillVisible = anchor >= snappedPosition && anchor <= snappedViewportEnd
+
+            // If snapping moved anchor out of view, use unsnapped position
+            let positionToUse = anchorStillVisible ? snappedPosition : targetScrollPosition
+
+            // Clamp to valid scroll boundaries
+            // IMPORTANT: When using anchor, we want to preserve the anchor's position even if it means
+            // not showing the absolute latest data. Only clamp if anchor would be completely outside bounds.
+            let clampedPosition = clampScrollPosition(
+                positionToUse,
+                for: period,
+                minDate: overallMinDate,
+                maxDate: overallMaxDate
+            )
+
+            // Final check: ensure anchor is still visible after clamping
+            let clampedViewportEnd = clampedPosition.addingTimeInterval(domainLength)
+            let anchorVisibleAfterClamp = anchor >= clampedPosition && anchor <= clampedViewportEnd
+
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            logger.log(level: .debug, tag: "DashboardGraphManager",
+                      message: "Anchor-based scroll: anchor=\(formatter.string(from: anchor)), target=\(formatter.string(from: targetScrollPosition)), snapped=\(formatter.string(from: snappedPosition)), positionToUse=\(formatter.string(from: positionToUse)), clamped=\(formatter.string(from: clampedPosition)), anchorVisible=\(anchorVisibleAfterClamp), bounds=[\(formatter.string(from: overallMinDate)), \(formatter.string(from: overallMaxDate))], period=\(period)")
+
+            return clampedPosition
+        }
 
         if showingLatest {
             // For showing latest entries, start from the end and work backwards

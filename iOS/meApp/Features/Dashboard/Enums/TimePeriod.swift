@@ -15,6 +15,24 @@ enum TimePeriod: String, CaseIterable, Identifiable {
     
     var id: String { self.rawValue }
     var displayName: String { self.rawValue }
+    
+    /// Returns the granularity level (lower = more detailed)
+    /// week = 1, month = 2, year = 3, total = 4
+    private var granularityLevel: Int {
+        switch self {
+        case .week: return 1
+        case .month: return 2
+        case .year: return 3
+        case .total: return 4
+        }
+    }
+    
+    /// Returns true if this period shows more detail than the other period.
+    /// For example, week.isMoreDetailedThan(month) returns true.
+    /// Used to determine zoom direction when switching periods.
+    func isMoreDetailedThan(_ other: TimePeriod) -> Bool {
+        return self.granularityLevel < other.granularityLevel
+    }
 }
 
 enum WeekDay: Int, CaseIterable {
