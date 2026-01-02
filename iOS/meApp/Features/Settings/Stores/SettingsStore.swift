@@ -562,19 +562,30 @@ class SettingsStore: ObservableObject {
     /// Marks a specific field as touched and triggers validation.
     /// Used by input views to show field errors as soon as the user leaves a field
     /// or presses the keyboard "Next/Done" button.
+    /// - Parameter field: The field to touch and validate.
     func touchAndValidate(field: FocusField) {
+        var didUpdate = true
+        
         switch field {
         case .currentPassword:
             changePasswordForm.currentPassword.markAsTouched()
             changePasswordForm.currentPassword.validate()
+            changePasswordForm.validate()
         case .newPassword:
             changePasswordForm.newPassword.markAsTouched()
             changePasswordForm.newPassword.validate()
+            changePasswordForm.validate()
         case .confirmNewPassword:
             changePasswordForm.confirmNewPassword.markAsTouched()
             changePasswordForm.confirmNewPassword.validate()
+            changePasswordForm.validate()
         default:
-            break
+            didUpdate = false
+        }
+        
+        // Trigger view update to show error messages only if we processed a field
+        if didUpdate {
+            objectWillChange.send()
         }
     }
     

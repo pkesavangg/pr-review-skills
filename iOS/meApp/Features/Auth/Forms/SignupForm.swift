@@ -174,7 +174,9 @@ class SignupForm: ObservableForm {
         goalType.value = GoalTypeSegment.losegainValue
         currentWeight.value = ""
         goalWeight.value = ""
-        currentWeight.markAsPristine()
-        goalWeight.markAsPristine()
+        goalType.resetInteractionState()
+        currentWeight.resetInteractionState()
+        goalWeight.resetInteractionState()
+        validate()
     }
 }

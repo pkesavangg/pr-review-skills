@@ -87,8 +87,8 @@ struct StreakCardView: View {
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
             } else {
-                VStack(alignment: .center, spacing: 2) {
-                    Text(value)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isStreakItem ? value + DashboardStrings.daySuffix : value)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)

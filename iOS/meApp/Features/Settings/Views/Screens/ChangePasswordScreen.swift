@@ -66,6 +66,11 @@ struct ChangePasswordScreen: View {
                             settingsStore.handleEditingChanged(isEditing, field: .currentPassword)
                         }
                     )
+                    .onChange(of: focusedField) { oldValue, newValue in
+                        if oldValue == .currentPassword && newValue != .currentPassword {
+                            settingsStore.touchAndValidate(field: .currentPassword)
+                        }
+                    }
 
                     // New password
                     AppInputField(
@@ -85,6 +90,11 @@ struct ChangePasswordScreen: View {
                             settingsStore.handleEditingChanged(isEditing, field: .newPassword)
                         }
                     )
+                    .onChange(of: focusedField) { oldValue, newValue in
+                        if oldValue == .newPassword && newValue != .newPassword {
+                            settingsStore.touchAndValidate(field: .newPassword)
+                        }
+                    }
 
                     // Confirm new password
                     AppInputField(
@@ -104,6 +114,11 @@ struct ChangePasswordScreen: View {
                             settingsStore.handleEditingChanged(isEditing, field: .confirmNewPassword)
                         }
                     )
+                    .onChange(of: focusedField) { oldValue, newValue in
+                        if oldValue == .confirmNewPassword && newValue != .confirmNewPassword {
+                            settingsStore.touchAndValidate(field: .confirmNewPassword)
+                        }
+                    }
                 }               
                 .padding(.top, .spacingXS)
                 ButtonView(text: screenLang.forgotPassword, type: .inlineTextPrimary, size: .large, isDisabled: false) {
@@ -118,6 +133,7 @@ struct ChangePasswordScreen: View {
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onAppear {
+            settingsStore.resetChangePasswordForm()
             registerDeactivation {
                 // If the form is pristine we can simply pop the screen and allow tab switch.
                 if !settingsStore.changePasswordForm.isDirty {
