@@ -6,33 +6,33 @@ import Foundation
 /// Manages all graph and chart operations for the dashboard
 @MainActor
 class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
-    
+
     // MARK: - Dependencies
     @Injector private var logger: LoggerService
-    
+
     // MARK: - Published Properties
     @Published var state: GraphState
-    
+
     // MARK: - Private Properties
     private let calendar = Calendar.current
-    
+
     private var lastCalculatedVisibleOps: [BathScaleWeightSummary] = []
     private var lastVisibleOpsScrollPosition: Date?
     private var lastVisibleOpsPeriod: TimePeriod?
     private var lastChartData: [GraphSeries] = []
     private var lastChartDataWeightRange: ClosedRange<Double>?
     private var lastChartDataSelectedMetric: String?
-    
+
     // Store scroll position during scroll, update state only at end
     private var latestScrollPosition: Date?
     private var lastYAxisScale: YAxisScale?
     public var lastXAxisValues: [Date] = []
     private var lastXAxisScrollPosition: Date?
     private var lastXAxisPeriod: TimePeriod?
-    
+
     // Flag to prevent ensureLatestEntriesVisible from overriding scroll position during period changes
     private var isChangingPeriod: Bool = false
-    
+
     // Chart data caching for scroll performance
     private var cachedChartSeriesData: [GraphSeries] = []
     private var lastCachedScrollPosition: Date?
@@ -40,24 +40,24 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastCachedSelectedMetric: String?
     private var lastCachedOperationsCount: Int = 0
     private var chartDataGenerationThrottle: Timer?
-    
+
     // MARK: - Constants
-    
+
     /// Position for single metric points within the Y-axis domain (0.0 = bottom, 1.0 = top)
     /// Value of 0.6 places the point at 60% height, slightly above center for optimal visibility
     /// without touching top or bottom boundaries
     private static let singleMetricPointYAxisPosition: Double = 0.6
-    
+
     init(initialState: GraphState = GraphState()) {
         self.state = initialState
     }
-    
+
     func updateScrollPosition(to date: Date) {
         // Always allow scroll position updates, even during scrolling
         // This ensures period changes and initialization always work correctly
         state.xScrollPosition = date
     }
-    
+
     func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else { return }
         if state.isScrolling {
@@ -66,7 +66,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             latestScrollPosition = nil
         }
     }
-    
+
     func handleScrollStart() {
         state.scrollEndTimer?.invalidate()
         if !state.isScrolling {
@@ -74,25 +74,25 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             state.clearSelection()
         }
     }
-    
+
     func handleChartSelection(at selectedDate: Date?) async {
         // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
-        
+
         // If no date selected, clear selection
         guard let selectedDate = selectedDate else {
             state.clearSelection()
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection cleared")
             return
         }
-        
+
         // Hide any existing crosshair first
         state.showCrosshair = false
         state.selectedXValue = selectedDate
-        
+
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Chart selection handled at date: \(selectedDate)")
     }
-    
+
     /// Handles complete chart selection including finding closest point and updating metrics
     /// This method should be called from the DashboardStore with the necessary dependencies
     func handleCompleteChartSelection(at selectedDate: Date,
@@ -102,14 +102,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                                       setMetricPlaceholders: @escaping () -> Void ) async {
         // Only handle selection if not currently scrolling
         guard !state.isScrolling else { return }
-        
+
         // Hide any existing crosshair first
         state.showCrosshair = false
         // Persist the raw selected X position so UI can render crosshair even if there's no data point
         state.selectedXValue = selectedDate
-        
+
         guard !operations.isEmpty else { return }
-        
+
         // Determine if there's an exact data point for the selected date based on the current period granularity
         let calendar = Calendar.current
         let exactPoint: BathScaleWeightSummary? = {
@@ -120,7 +120,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 return operations.first { calendar.isDate($0.date, equalTo: selectedDate, toGranularity: .month) }
             }
         }()
-        
+
         // If we have an exact point, select it and update metrics; otherwise keep selection as interpolated-only
         if let exact = exactPoint {
             updateSelectedPoint(exact)
@@ -138,11 +138,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             setMetricPlaceholders()
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "No exact point at selection; using interpolation for weight and placeholders for body metrics")
         }
-        
+
         // Always show crosshair at the selected X position, even when interpolating between points
         state.showCrosshair = true
     }
-    
+
     /// Computes an interpolated display weight at a given date using surrounding summaries.
     /// If only one side exists, falls back to that side's display weight.
     func interpolatedDisplayWeight(
@@ -153,11 +153,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         convertWeight: @escaping (Int) -> Double
     ) -> Double? {
         guard !operations.isEmpty else { return nil }
-        
+
         // 1) Sort and map to (x,y) in display space (units or weightless delta)
         let sorted = operations.sorted { $0.date < $1.date }
         let xs: [Double] = sorted.map { $0.date.timeIntervalSinceReferenceDate }
-        
+
         func mapWeight(_ w: Int) -> Double {
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return 0 }
@@ -166,18 +166,18 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return convertWeight(w)
         }
         let ys: [Double] = sorted.map { mapWeight(Int($0.weight)) }
-        
+
         let n = xs.count
         if n == 1 { return ys[0] }
-        
+
         let t = date.timeIntervalSinceReferenceDate
-        
+
         // 2) For dates outside the data range, return the edge values (clamping behavior)
         // This allows interpolation to work at the boundaries while the calling method
         // can decide whether to use these edge values or filter them out
         if t <= xs[0] { return ys[0] }
         if t >= xs[n - 1] { return ys[n - 1] }
-        
+
         // 3) Locate segment i such that xs[i] <= t <= xs[i+1]
         //    (upperBound - 1)
         var low = 0, high = n - 1
@@ -193,17 +193,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let i = max(0, min(n - 2, low - 1))
         let h_i = xs[i + 1] - xs[i]
         if h_i == 0 { return ys[i] } // degenerate
-        
+
         // 4) Slopes m[k] across all segments (needed for monotone tangents)
         var m = Array(repeating: 0.0, count: n - 1)
         for k in 0..<(n - 1) {
             let h = xs[k + 1] - xs[k]
             m[k] = h == 0 ? 0 : (ys[k + 1] - ys[k]) / h
         }
-        
+
         // 5) Compute Fritsch–Carlson tangents d[k]
         var d = Array(repeating: 0.0, count: n)
-        
+
         if n == 2 {
             // Straight line case
             d[0] = m[0]
@@ -222,7 +222,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     d[k] = (w1 + w2) / (w1 / m0 + w2 / m1)
                 }
             }
-            
+
             // Endpoints (Fritsch–Carlson one-sided)
             // d0
             do {
@@ -255,30 +255,30 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 d[n - 1] = dn1
             }
         }
-        
+
         // 6) Hermite evaluation on segment i
         let s = (t - xs[i]) / h_i
         let s2 = s * s
         let s3 = s2 * s
-        
+
         let h00 =  2 * s3 - 3 * s2 + 1
         let h10 =      s3 - 2 * s2 + s
         let h01 = -2 * s3 + 3 * s2
         let h11 =      s3 -     s2
-        
+
         let y = h00 * ys[i]
         + h10 * h_i * d[i]
         + h01 * ys[i + 1]
         + h11 * h_i * d[i + 1]
-        
+
         guard y.isFinite else { return nil }
-        
+
         // Apply same rounding logic as other weight calculations
         let roundedY = (y * 100).rounded(.toNearestOrAwayFromZero) / 100
-        
+
         return roundedY
     }
-    
+
     func findClosestPoint(to selectedDate: Date, in operations: [BathScaleWeightSummary]) -> BathScaleWeightSummary? {
         guard !operations.isEmpty else { return nil }
         return operations.min { point1, point2 in
@@ -287,7 +287,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return distance1 < distance2
         }
     }
-    
+
     func updateSelectedPoint(_ point: BathScaleWeightSummary?) {
         state.selectedPoint = point
         state.showCrosshair = point != nil
@@ -297,17 +297,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Selected point cleared")
         }
     }
-    
+
     @available(iOS 18.0, *)
     func handleScrollPhaseChange(_ phase: ScrollPhase) async {
         switch phase {
         case .idle:
             state.isScrolling = false
             state.hasDetectedScrollInCurrentGesture = false
-            
+
             // Clear selection state for better UX
             state.clearSelection()
-            
+
             if let finalPosition = self.latestScrollPosition {
                 self.state.xScrollPosition = finalPosition
                 self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Updated scroll position at end: \(finalPosition)")
@@ -328,31 +328,31 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Unknown scroll phase encountered")
         }
     }
-    
+
     func handleScrollEnd() async {
         state.scrollEndTimer?.invalidate()
         state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UI.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
-                
+
                 // Update scroll position from stored value first
                 if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
                     self.latestScrollPosition = nil
                 }
                 self.state.updateScrollState(isScrolling: false)
-                
+
                 self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll ended - all caches cleared for fresh calculation")
             }
         }
     }
-    
+
     func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries] {
         guard !operations.isEmpty else {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
         }
-        
+
         // Get weight values for current normalization check
         let weightValues = operations.map { summary -> Double in
             if isWeightlessMode {
@@ -363,7 +363,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 return convertWeight(Int(summary.weight))
             }
         }
-        
+
         // Calculate current weight range
         guard let weightMin = weightValues.min(),
               let weightMax = weightValues.max(),
@@ -371,9 +371,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "Invalid weight range for chart data")
             return []
         }
-        
+
         let currentWeightRange = weightMin...weightMax
-        
+
         // Check if we can use cached data during scrolling
         let canUseCachedData = state.isScrolling &&
         !lastChartData.isEmpty &&
@@ -381,17 +381,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             currentWeightRange: currentWeightRange,
             currentSelectedMetric: selectedMetric
         )
-        
+
         if canUseCachedData {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached chart data during scroll")
             return lastChartData
         }
-        
+
         var series: [GraphSeries] = []
-        
+
         // Use the already calculated weight range
         let weightRange = currentWeightRange
-        
+
         // Add weight series (always present)
         for summary in operations {
             let displayWeight: Double
@@ -417,19 +417,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             )
             series.append(contentsOf: normalizedMetricSeries)
         }
-        
+
         // Store the generated data and context for next call
         lastChartData = series
         lastChartDataWeightRange = currentWeightRange
         lastChartDataSelectedMetric = selectedMetric
-        
+
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Generated fresh chart data: \(series.count) points, weightRange: \(currentWeightRange), selectedMetric: \(selectedMetric ?? "none")")
         return series
     }
-    
-    
+
+
     // MARK: - Chart Data Generation with Y-Axis Domain Consistency
-    
+
     /// Generates chart data using the provided Y-axis domain for consistent metric normalization
     /// This ensures metric lines stay within the visible Y-axis range when scrolling
     /// Now includes caching and throttling for scroll performance
@@ -442,12 +442,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         convertWeight: @escaping (Int) -> Double,
         yAxisDomain: ClosedRange<Double>
     ) -> [GraphSeries] {
-        
+
         guard !allOperations.isEmpty else {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
         }
-        
+
         // Check if we can use cached data during scrolling
         if state.isScrolling && canUseCachedChartData(
             operationsCount: allOperations.count,
@@ -457,15 +457,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached chart data during scroll")
             return cachedChartSeriesData
         }
-        
+
         // During scrolling, use simplified data for better performance
         let operationsToProcess = state.isScrolling ?
         simplifyDataForScrolling(allOperations) :
         allOperations
-        
+
         // Generate fresh data
         var series: [GraphSeries] = []
-        
+
         // Add weight series (always present) from operations to show continuous line
         // removed verbose generation log to reduce noise
         for summary in operationsToProcess {
@@ -477,20 +477,37 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             } else {
                 displayWeight = convertWeight(Int(summary.weight))
             }
-            
+
             series.append(GraphSeries(
                 date: summary.date,
                 value: displayWeight,
                 series: DashboardStrings.weight
             ))
         }
-        
+
         // Add selected metric series using Y-axis domain for normalization
+        // Calculate operations used for Y-axis calculation to ensure consistency
+        // This matches the logic in DashboardStore.updateYAxisCache
+        let operationsForYAxis: [BathScaleWeightSummary]
+        if state.selectedPeriod == .total {
+            operationsForYAxis = allOperations
+        } else {
+            let bracketingOperations = getBracketingOperations(from: allOperations)
+            var combinedOperations = visibleOperations
+            for bracketOp in bracketingOperations {
+                if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
+                    combinedOperations.append(bracketOp)
+                }
+            }
+            operationsForYAxis = combinedOperations.isEmpty ? allOperations : combinedOperations
+        }
+
         if let selectedMetric = selectedMetric, selectedMetric != DashboardStrings.weight {
             let normalizedMetricSeries = generateNormalizedMetricSeriesWithDomain(
                 for: selectedMetric,
                 from: allOperations,
                 visibleOperations: visibleOperations,
+                operationsForYAxis: operationsForYAxis,
                 toWeightDomain: yAxisDomain,
                 isWeightlessMode: isWeightlessMode,
                 anchorWeight: anchorWeight,
@@ -498,7 +515,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             )
             series.append(contentsOf: normalizedMetricSeries)
         }
-        
+
         // Cache the generated data for future scroll events
         cacheChartData(
             series: series,
@@ -506,16 +523,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             yAxisDomain: yAxisDomain,
             selectedMetric: selectedMetric
         )
-        
+
         logger.log(level: .debug, tag: "DashboardGraphManager",
                    message: "Generated fresh chart data with Y-axis domain: \(series.count) points, " +
                    "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
                    "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")
         return series
     }
-    
+
     // MARK: - Chart Data Caching Validation
-    
+
     /// Determines if cached chart data can be reused based on weight range and metric selection changes
     private func shouldUseCachedData(
         currentWeightRange: ClosedRange<Double>,
@@ -526,39 +543,39 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: selected metric changed from \(lastChartDataSelectedMetric ?? "none") to \(currentSelectedMetric ?? "none")")
             return false
         }
-        
+
         // Check if weight range changed significantly
         guard let lastWeightRange = lastChartDataWeightRange else {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: no previous weight range")
             return false
         }
-        
+
         // Calculate range overlap and size changes
         let currentSpan = currentWeightRange.upperBound - currentWeightRange.lowerBound
         let lastSpan = lastWeightRange.upperBound - lastWeightRange.lowerBound
-        
+
         // Check for significant range size change (more than 25%)
         let spanChangeRatio = abs(currentSpan - lastSpan) / max(lastSpan, 0.1)
         if spanChangeRatio > 0.25 {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: weight range span changed significantly (\(spanChangeRatio * 100)%)")
             return false
         }
-        
+
         // Check for significant range position change
         let currentCenter = (currentWeightRange.upperBound + currentWeightRange.lowerBound) / 2
         let lastCenter = (lastWeightRange.upperBound + lastWeightRange.lowerBound) / 2
         let centerChange = abs(currentCenter - lastCenter)
-        
+
         // If center moved more than 50% of the range span, recalculate
         if centerChange > (max(currentSpan, lastSpan) * 0.5) {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "Cannot use cached data: weight range center moved significantly (\(centerChange))")
             return false
         }
-        
+
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Can use cached data: ranges are similar enough")
         return true
     }
-    
+
     /// Generates normalized metric series using dynamic ranges based on actual data
     /// This approach ensures the metric line properly utilizes the weight range for better visibility
     private func generateNormalizedMetricSeries(
@@ -566,29 +583,29 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         from operations: [BathScaleWeightSummary],
         toWeightRange weightRange: ClosedRange<Double>
     ) -> [GraphSeries] {
-        
+
         // Collect all metric values to calculate dynamic range
         let metricValues = operations.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
-        
+
         guard !metricValues.isEmpty else {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric)")
             return []
         }
-        
+
         // Calculate dynamic metric range from actual data
         guard let metricMin = metricValues.min(),
               let metricMax = metricValues.max() else {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "Could not determine metric range for \(selectedMetric)")
             return []
         }
-        
+
         // Ensure we have some variation in the data
         let metricRange = metricMax - metricMin
         let effectiveMetricMin: Double
         let effectiveMetricMax: Double
-        
+
         if metricRange < 0.01 { // Almost no variation
             // Use fallback static ranges for single data points or minimal variation
             let (staticMin, staticMax) = getStaticMetricRange(for: selectedMetric)
@@ -600,19 +617,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             effectiveMetricMin = metricMin - padding
             effectiveMetricMax = metricMax + padding
         }
-        
+
         let weightMin = weightRange.lowerBound
         let weightMax = weightRange.upperBound
-        
+
         var normalizedSeries: [GraphSeries] = []
-        
+
         // Generate normalized metric series
         for summary in operations {
             if let metricValue = getMetricValue(for: selectedMetric, from: summary) {
-                
+
                 // Clamp the metric value to the effective range
                 let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, metricValue))
-                
+
                 // Normalize to weight range using the dynamic approach from demo project
                 let metricRange = effectiveMetricMax - effectiveMetricMin
                 guard metricRange > 0 else {
@@ -625,10 +642,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     ))
                     continue
                 }
-                
+
                 let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
                 (weightMax - weightMin) / metricRange
-                
+
                 // Additional safety check for NaN/infinite values
                 guard normalizedValue.isFinite else {
                     let fallbackValue = (weightMin + weightMax) / 2
@@ -639,17 +656,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     ))
                     continue
                 }
-                
+
                 // Add small epsilon to keep metrics slightly inside bounds (prevents edge bleeding)
                 let epsilon = (weightMax - weightMin) * 0.001 // 0.1% of weight range
                 let safeMin = weightMin + epsilon
                 let safeMax = weightMax - epsilon
-                
+
                 // Ensure normalized value is within safe bounds
                 guard normalizedValue >= safeMin && normalizedValue <= safeMax else {
                     logger.log(level: .info, tag: "DashboardGraphManager",
                                message: "Normalized value \(normalizedValue) out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
-                    
+
                     // Use fallback value within safe bounds
                     let fallbackValue = (safeMin + safeMax) / 2
                     normalizedSeries.append(GraphSeries(
@@ -659,7 +676,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     ))
                     continue
                 }
-                
+
                 normalizedSeries.append(GraphSeries(
                     date: summary.date,
                     value: normalizedValue,
@@ -667,69 +684,79 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 ))
             }
         }
-        
+
         logger.log(level: .info, tag: "DashboardGraphManager",
                    message: "Generated normalized metric series for \(selectedMetric): \(normalizedSeries.count) points, " +
                    "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
                    "weightRange: \(weightMin)...\(weightMax)")
-        
+
         return normalizedSeries
     }
-    
+
     /// Generates normalized metric series using the provided Y-axis domain for consistency
     /// This ensures metric normalization matches the visible Y-axis range
+    /// - Parameter operationsForYAxis: The same operations set used for Y-axis domain calculation
+    ///                                (visibleOperations + bracketingOperations for non-total periods)
     private func generateNormalizedMetricSeriesWithDomain(
         for selectedMetric: String,
         from allOperations: [BathScaleWeightSummary],
         visibleOperations: [BathScaleWeightSummary],
+        operationsForYAxis: [BathScaleWeightSummary],
         toWeightDomain yAxisDomain: ClosedRange<Double>,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
         convertWeight: @escaping (Int) -> Double
     ) -> [GraphSeries] {
-        
+
         // Use all operations to find any metric values for range calculation
         let allMetricValues = allOperations.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
-        
+
         guard !allMetricValues.isEmpty else {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "No metric values found for \(selectedMetric) in entire dataset")
             return []
         }
-        
-        // Use visible operations + bracketing operations for metric range calculation
-        // This ensures metric lines don't "jump" when bracketing segments become visible during scrolling
-        let bracketingOperations = getBracketingOperations(from: allOperations)
-        var operationsForMetricRange = visibleOperations
-        
-        // Add bracketing operations if they're not already included
-        for bracketOp in bracketingOperations {
-            if !operationsForMetricRange.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
-                operationsForMetricRange.append(bracketOp)
+
+        // Use the same operations set that was used for Y-axis domain calculation
+        // This ensures metric normalization is consistent with the Y-axis domain
+        // For non-total periods, this should be visibleOperations + bracketingOperations
+        // For total period, this should be allOperations
+        let operationsForMetricRange = operationsForYAxis
+
+        // Validate that operationsForYAxis matches expected pattern
+        // Log warning if there's a potential mismatch (for debugging)
+        if state.selectedPeriod != .total {
+            let expectedBracketing = getBracketingOperations(from: allOperations)
+            let expectedCombined = visibleOperations + expectedBracketing.filter { bracketOp in
+                !visibleOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp })
+            }
+            if operationsForYAxis.count != expectedCombined.count {
+                logger.log(level: .info, tag: "DashboardGraphManager",
+                          message: "Potential operation set mismatch: operationsForYAxis has \(operationsForYAxis.count) items, expected \(expectedCombined.count) for metric normalization")
             }
         }
-        
+
         let visibleAndBracketingMetricValues = operationsForMetricRange.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
-        
+
         // If no visible+bracketing metric values, use all metric values for range calculation
         let metricValues = visibleAndBracketingMetricValues.isEmpty ? allMetricValues : visibleAndBracketingMetricValues
-        
+
         // Calculate dynamic metric range from visible data
         guard let metricMin = metricValues.min(),
               let metricMax = metricValues.max() else {
             logger.log(level: .info, tag: "DashboardGraphManager", message: "Could not determine metric range for \(selectedMetric)")
             return []
         }
-        
+
         // Ensure we have some variation in the data
         let metricRange = metricMax - metricMin
         let effectiveMetricMin: Double
         let effectiveMetricMax: Double
         let isSingleMetricPoint = metricRange < 0.01 // Almost no variation (single point or minimal variation)
-        
+
         if isSingleMetricPoint {
             // Use fallback static ranges for single data points or minimal variation
             let (staticMin, staticMax) = getStaticMetricRange(for: selectedMetric)
@@ -741,14 +768,40 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             effectiveMetricMin = metricMin - padding
             effectiveMetricMax = metricMax + padding
         }
-        
+
         // Use dynamic y-axis domain for metric normalization to enable dynamic scaling
         // This allows metrics to scale with the visible data range like weight lines
         let weightMin = yAxisDomain.lowerBound
         let weightMax = yAxisDomain.upperBound
-        
+
+        // Validate that the Y-axis domain is appropriate for the operations
+        // Check if weight values in operationsForYAxis are within reasonable range of the domain
+        let weightValues = operationsForMetricRange.compactMap { summary -> Double? in
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { return nil }
+                let currentWeight = convertWeight(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertWeight(Int(summary.weight))
+            }
+        }
+
+        if let minWeight = weightValues.min(), let maxWeight = weightValues.max() {
+            // Check if weight range significantly exceeds domain (potential mismatch)
+            let weightRange = maxWeight - minWeight
+            let domainRange = weightMax - weightMin
+            if weightRange > 0 && domainRange > 0 {
+                let rangeRatio = weightRange / domainRange
+                // If weight range is more than 120% of domain, log a warning
+                if rangeRatio > 1.2 {
+                    logger.log(level: .info, tag: "DashboardGraphManager",
+                              message: "Potential domain-operation mismatch: weight range (\(minWeight)...\(maxWeight)) may exceed Y-axis domain (\(weightMin)...\(weightMax)) for metric \(selectedMetric)")
+                }
+            }
+        }
+
         var normalizedSeries: [GraphSeries] = []
-        
+
         // Generate normalized metric series ONLY for operations that actually have metric values
         // This avoids showing a point on dates where the metric is missing (nil)
         for summary in allOperations {
@@ -790,8 +843,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let yAxisSpan = weightMax - weightMin
             let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) * yAxisSpan / metricRangeSpan
 
-            // Keep slightly inside bounds (prevents edge bleeding)
-            let epsilon = yAxisSpan * 0.001 // 0.1% of y-axis span
+            // Keep well inside bounds to account for edge buffers applied to Y-axis domain
+            // Edge buffers extend the domain, so we use a more conservative margin (1.5% of span)
+            // to ensure metrics stay within visible bounds even when domain has been extended
+            let epsilon = yAxisSpan * 0.015 // 1.5% of y-axis span (increased from 0.1% to account for edge buffers)
             let safeMin = weightMin + epsilon
             let safeMax = weightMax - epsilon
             let clampedFinalValue = max(safeMin, min(safeMax, normalizedValue))
@@ -812,16 +867,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 series: selectedMetric
             ))
         }
-        
+
         logger.log(level: .info, tag: "DashboardGraphManager",
                    message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
                    "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax) (using visible+bracketing ops), " +
                    "weightRange: \(weightMin)...\(weightMax), " +
                    "yAxisDomain: \(yAxisDomain)")
-        
+
         return normalizedSeries
     }
-    
+
     /// Interpolates a metric value for a date that doesn't have metric data
     /// Uses surrounding metric values to create a smooth line
     private func interpolateMetricValue(
@@ -838,18 +893,18 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             guard let metricValue = getMetricValue(for: selectedMetric, from: operation) else { return nil }
             return (operation.date, metricValue)
         }.sorted { $0.0 < $1.0 }
-        
+
         guard !operationsWithMetric.isEmpty else {
             // No metric data available - use middle of weight range
             return (weightMin + weightMax) / 2
         }
-        
+
         // Find the closest metric values before and after target date
         let before = operationsWithMetric.last { $0.0 <= targetDate }
         let after = operationsWithMetric.first { $0.0 >= targetDate }
-        
+
         let interpolatedMetricValue: Double
-        
+
         if let before = before, let after = after, before.0 != after.0 {
             // Interpolate between before and after values
             let timeDiff = after.0.timeIntervalSince(before.0)
@@ -866,26 +921,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // Fallback to middle of range
             return (weightMin + weightMax) / 2
         }
-        
+
         // Normalize the interpolated value to the weight range
         let clampedValue = max(effectiveMetricMin, min(effectiveMetricMax, interpolatedMetricValue))
         let metricRange = effectiveMetricMax - effectiveMetricMin
-        
+
         guard metricRange > 0 else {
             return (weightMin + weightMax) / 2
         }
-        
+
         let yAxisSpan = weightMax - weightMin
         let normalizedValue = weightMin + (clampedValue - effectiveMetricMin) * yAxisSpan / metricRange
-        
+
         // Apply safe bounds
         let epsilon = yAxisSpan * 0.001
         let safeMin = weightMin + epsilon
         let safeMax = weightMax - epsilon
-        
+
         return max(safeMin, min(safeMax, normalizedValue))
     }
-    
+
     /// Get static metric ranges as fallback for cases with minimal data variation
     private func getStaticMetricRange(for metricLabel: String) -> (min: Double, max: Double) {
         switch metricLabel {
@@ -907,25 +962,25 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return (DashboardConstants.MetricRanges.percentage.lowerBound, DashboardConstants.MetricRanges.percentage.upperBound)
         }
     }
-    
+
     func updateSelectedPeriod(_ period: TimePeriod) {
         // Set flag to prevent ensureLatestEntriesVisible from overriding position during period change
         isChangingPeriod = true
-        
+
         state.selectedPeriod = period
         state.clearSelection()
-        
+
         // Clear chart data cache when period changes
         clearChartDataCache()
-        
+
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
-        
+
         // Clear the flag after a brief delay to allow scroll position to be set
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.isChangingPeriod = false
         }
     }
-    
+
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
         let yAxisScale = YAxisCalculator.calculateYAxis(
             operations: operations,
@@ -939,7 +994,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastYAxisScale = yAxisScale
         return yAxisScale
     }
-    
+
     func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) {
         let yAxisScale = getYAxisScale(
             from: operations,
@@ -951,7 +1006,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         )
         let newDomain = yAxisScale.domain
         let newTicks = yAxisScale.ticks
-        
+
         // Skip if nothing actually changed to avoid unnecessary re-layout churn
         if let cachedDomain = state.cachedYAxisDomain,
            let cachedTicks = state.cachedYAxisTicks,
@@ -962,11 +1017,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.cachedYAxisDomain = newDomain
         state.cachedYAxisTicks = newTicks
     }
-    
+
     private func enforceScrollBoundaries(_ position: Date, from operations: [BathScaleWeightSummary]) -> Date {
         guard !operations.isEmpty else { return position }
-        let allDates = operations.map { $0.date }
-        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return position }
+        // Use first/last of pre-sorted array for O(1) min/max lookup
+        guard let minDate = operations.first?.date, let maxDate = operations.last?.date else { return position }
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
         let halfDomain = domainLength / 2
         let centeringBuffer: TimeInterval
@@ -1001,7 +1056,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         return clampedPosition
     }
-    
+
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         // During active scrolling, reuse cache ONLY if it still lies fully within the
         // current strict window boundaries. This avoids left-edge "lingering" where a
@@ -1010,12 +1065,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
             let leftEdge = state.xScrollPosition
             let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
-            
+
             // Apply the same buffer for cache validation
             let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
             let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
             let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
-            
+
             if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
                let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
                cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
@@ -1024,7 +1079,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
             // Else fall through and recompute strictly for the new window
         }
-        
+
         // Check if we can reuse cached result based on position change threshold
         if !lastCalculatedVisibleOps.isEmpty,
            let lastPosition = lastVisibleOpsScrollPosition,
@@ -1032,21 +1087,21 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
            lastPeriod == state.selectedPeriod {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
             let positionChange = abs(state.xScrollPosition.timeIntervalSince(lastPosition))
-            
+
             // More aggressive caching: only recalculate if scroll moved > 25% of domain
             // This reduces calculations from every 10% movement
             let cacheThreshold = domainLength / 10
-            
+
             if positionChange < cacheThreshold {
                 // Reuse only if cached content is still fully inside the current strict window
                 let leftEdge = state.xScrollPosition
                 let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
-                
+
                 // Apply the same buffer for cache validation
                 let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
                 let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
                 let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
-                
+
                 if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
                    let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
                    cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
@@ -1054,95 +1109,106 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 }
             }
         }
-        
-        // Only log when actually performing expensive calculation
-        let allDates = operations.map { $0.date }
-        let minDate = allDates.min() ?? Date()
-        let maxDate = allDates.max() ?? Date()
-        
-        // STRICT window: [leftEdge, rightEdge]
-        // Using strict bounds ensures symmetric inclusion/exclusion on both sides.
+
+        // Use binary search for O(log n) performance on pre-sorted data
+        // Operations are now pre-sorted by DashboardDataManager
         let leftEdge = state.xScrollPosition
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
         let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
-        
-        // Add a minimal buffer to handle timezone edge cases and ensure entries on boundary dates are included
-        // This is especially important for daily summaries where dates are normalized to start of day
-        let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer to handle timezone differences
-        let dayBufferTime: TimeInterval = 24 * 60 * 60 // 1 day buffer to include midnight-local summaries
+
+        // Add buffer to handle timezone edge cases and ensure entries on boundary dates are included
+        let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
+        let dayBufferTime: TimeInterval = 24 * 60 * 60 // 1 day buffer for midnight-local summaries
         let adjustedLeftEdge = leftEdge.addingTimeInterval(-dayBufferTime)
         let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
-        
-        let visibleStart = max(adjustedLeftEdge, minDate)
-        let visibleEnd = min(adjustedRightEdge, maxDate)
-        
-        let visibleOps = operations.filter { summary in
-            summary.date >= visibleStart && summary.date <= visibleEnd
+
+        // Use binary search helpers for O(log n) lookup instead of O(n) filter
+        guard let startIndex = binarySearchFirstIndex(in: operations, where: { $0.date >= adjustedLeftEdge }),
+              let endIndex = binarySearchLastIndex(in: operations, where: { $0.date <= adjustedRightEdge }) else {
+            // No operations in range - clear cache and return empty
+            lastCalculatedVisibleOps = []
+            lastVisibleOpsScrollPosition = state.xScrollPosition
+            lastVisibleOpsPeriod = state.selectedPeriod
+            return []
         }
-        
+
+        // Validate index range
+        guard startIndex <= endIndex else {
+            lastCalculatedVisibleOps = []
+            lastVisibleOpsScrollPosition = state.xScrollPosition
+            lastVisibleOpsPeriod = state.selectedPeriod
+            return []
+        }
+
+        let visibleOps = Array(operations[startIndex...endIndex])
+
         // Update cache
         lastCalculatedVisibleOps = visibleOps
         lastVisibleOpsScrollPosition = state.xScrollPosition
         lastVisibleOpsPeriod = state.selectedPeriod
-        
+
         // Only log actual calculations, not cache hits
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
         return visibleOps
     }
-    
+
     /// Returns operations strictly within the on-screen visible domain (no buffer)
     /// Uses the chart's configured visible domain length starting at the current left edge (xScrollPosition).
+    /// Uses binary search for O(log n) performance on pre-sorted data.
     func getStrictVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         guard !operations.isEmpty else { return [] }
-        
-        let allDates = operations.map { $0.date }
-        guard let minDate = allDates.min(), let maxDate = allDates.max() else { return [] }
-        
+
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
         // IMPORTANT: xScrollPosition in our state represents the LEFT boundary of the visible window
-        let start = max(state.xScrollPosition, minDate)
-        let end = min(state.xScrollPosition.addingTimeInterval(domainLength), maxDate)
-        
-        let strictlyVisible = operations.filter { summary in
-            summary.date >= start && summary.date <= end
+        let start = state.xScrollPosition
+        let end = state.xScrollPosition.addingTimeInterval(domainLength)
+
+        // Use binary search for O(log n) performance on pre-sorted data
+        guard let startIndex = binarySearchFirstIndex(in: operations, where: { $0.date >= start }),
+              let endIndex = binarySearchLastIndex(in: operations, where: { $0.date <= end }) else {
+            return []
         }
-        
+
+        guard startIndex <= endIndex else { return [] }
+
+        let strictlyVisible = Array(operations[startIndex...endIndex])
+
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Calculated strict visible operations: \(strictlyVisible.count) between \(start) and \(end)")
         return strictlyVisible
     }
-    
+
     /// Returns the operations that immediately bracket the current visible window
     /// - Note: Uses the store convention where `xScrollPosition` is the LEFT edge of the visible window.
     ///         When there are no points inside the visible window, these two points determine the
     ///         connecting line that traverses the window. We use them to compute a meaningful Y-axis.
     func getBracketingOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         guard !operations.isEmpty else { return [] }
-        
+
         // Determine the visible window [leftEdge, rightEdge]
         let leftEdge: Date = state.xScrollPosition
         let rightEdge: Date = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
-        
+
         // Find the last operation at or before the left edge
         let previous = operations
             .filter { $0.date <= leftEdge }
             .max(by: { $0.date < $1.date })
-        
+
         // Find the first operation at or after the right edge
         let next = operations
             .filter { $0.date >= rightEdge }
             .min(by: { $0.date < $1.date })
-        
+
         // If not found on one side, try to at least capture the closest on that side of the window
         // This helps when the rightEdge lies beyond the last entry or leftEdge before the first.
         let fallbackPrev = previous ?? operations.filter { $0.date < rightEdge }.max(by: { $0.date < $1.date })
         let fallbackNext = next ?? operations.filter { $0.date > leftEdge }.min(by: { $0.date < $1.date })
-        
+
         var result: [BathScaleWeightSummary] = []
         if let p = fallbackPrev { result.append(p) }
         if let n = fallbackNext, result.last?.date != n.date { result.append(n) }
         return result
     }
-    
+
     /// Forces recalculation of visible operations and clears cache
     /// Use this after programmatically setting scroll position
     func forceVisibleOperationsRecalculation() {
@@ -1151,7 +1217,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastVisibleOpsPeriod = nil
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Forced recalculation of visible operations after programmatic scroll position change")
     }
-    
+
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
         guard operations.map(\.date).max() != nil else {
             return
@@ -1174,13 +1240,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         )
         updateScrollPosition(to: optimalPosition)
     }
-    
-    
-    
+
+
+
     func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
         return DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
     }
-    
+
     private func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
         switch label {
         case DashboardStrings.bmi:
@@ -1211,22 +1277,22 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return nil
         }
     }
-    
+
     // MARK: - Metric Selection Support
-    
+
     /// Validates if a metric can be displayed on the chart
     func canDisplayMetric(_ metricLabel: String, from operations: [BathScaleWeightSummary]) -> Bool {
         let metricValues = operations.compactMap { summary in
             getMetricValue(for: metricLabel, from: summary)
         }
-        
+
         // Need at least 2 data points with some variation
         guard metricValues.count >= 2 else { return false }
-        
+
         let metricRange = (metricValues.max() ?? 0) - (metricValues.min() ?? 0)
         return metricRange > 0.001 // Minimum meaningful variation
     }
-    
+
     /// Gets available metrics that can be displayed for the current data
     func getAvailableMetrics(from operations: [BathScaleWeightSummary]) -> [String] {
         let allMetrics = [
@@ -1243,16 +1309,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             DashboardStrings.bmrKcal,
             DashboardStrings.metAge
         ]
-        
+
         return allMetrics.filter { metric in
             canDisplayMetric(metric, from: operations)
         }
     }
-    
+
     func visibleDomainLength(for period: TimePeriod) -> TimeInterval {
         return DateTimeTools.visibleDomainLength(for: period)
     }
-    
+
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
         let validSummaries = summaries.filter { summary in
@@ -1263,9 +1329,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let years = Set(validSummaries.map { calendar.component(.year, from: $0.date) })
         return years.count == 1
     }
-    
-    
+
+
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
+        // Use first/last of pre-sorted operations for O(1) min/max lookup
+        let minDate = operations.first?.date ?? scrollPosition
+        let maxDate = operations.last?.date ?? scrollPosition
+
         // During scrolling we usually want to keep ticks stable, but when the window
         // moves significantly or approaches dataset edges we must recompute so the
         // trailing phantom tick (extra space) appears immediately, avoiding the post-scroll
@@ -1274,29 +1344,25 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let domainLength: TimeInterval = visibleDomainLength(for: period)
             let lastPos = lastXAxisScrollPosition ?? state.xScrollPosition
             let delta = abs(scrollPosition.timeIntervalSince(lastPos))
-            
+
             // Heuristic: allow reuse unless the user moved > ~1/6 of the domain or is near edges
             let movedFar = delta > (domainLength / 6.0)
-            
+
             // Edge detection: if the right or left boundary is close to the dataset edges,
             // recompute so we include the empty trailing/leading space immediately.
-            let allDates: [Date] = operations.map { $0.date }
-            let minDate = allDates.min() ?? scrollPosition
-            let maxDate = allDates.max() ?? scrollPosition
             let leftEdge = scrollPosition
             let rightEdge = scrollPosition.addingTimeInterval(domainLength)
             let nearLeft = leftEdge <= minDate.addingTimeInterval(domainLength / 4.0)
             let nearRight = rightEdge >= maxDate.addingTimeInterval(-domainLength / 4.0)
-            
+
             if !(movedFar || nearLeft || nearRight) {
                 logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll (stable segment)")
                 return lastXAxisValues
             }
         }
-        
+
         let domainLength: TimeInterval = visibleDomainLength(for: period)
-        let allDates: [Date] = operations.map { $0.date }
-        guard let overallMinDate = allDates.min() else { return [] }
+        guard let overallMinDate = operations.first?.date else { return [] }
         let buffer: TimeInterval = domainLength * 2.0
         let currentDate = Date()
         let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
@@ -1317,63 +1383,73 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastXAxisValues = xAxisValues
         lastXAxisScrollPosition = scrollPosition
         lastXAxisPeriod = period
-        
+
         return xAxisValues
     }
-    
-    /// Calculates optimal scroll position for chart initialization or period changes
-    /// Snaps relative to latest entry with right-side buffer
-    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true) -> Date {
-        let allDates: [Date] = operations.map { $0.date }
-        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else {
-            return Date()
-        }
-        
-        if showingLatest {
-            let latestEntry = overallMaxDate
-            let domainLength = visibleDomainLength(for: period)
-            let scrollPosition: Date
-            
-            switch period {
-            case .week:
-                let rightEdgeWithBuffer = latestEntry.addingTimeInterval(2 * DashboardConstants.TimeInterval.day)
-                scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
-                
-            case .month:
-                let rightEdgeWithBuffer = latestEntry.addingTimeInterval(DashboardConstants.TimeInterval.week)
-                scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
-                
-            case .year:
-                if let oneMonthAfter = calendar.date(byAdding: .month, value: 1, to: latestEntry),
-                   let scrollPos = calendar.date(byAdding: .month, value: -12, to: oneMonthAfter) {
-                    scrollPosition = scrollPos
-                } else {
-                    let rightEdgeWithBuffer = latestEntry.addingTimeInterval(DashboardConstants.TimeInterval.month)
-                    scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
-                }
-                
-            case .total:
-                scrollPosition = overallMinDate
+
+    /// Calculates the proper scroll position for chart initialization or segment changes
+    /// This ensures the scroll position aligns with the computed X-axis values
+    /// - Note: For `.total` period, always returns the minimum date to show all data from the beginning
+    /// - Parameter cachedBounds: Optional cached date bounds for O(1) lookup performance
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true, cachedBounds: (min: Date, max: Date)? = nil) -> Date {
+        // Use cached bounds if provided for performance, otherwise calculate from operations
+        let overallMinDate: Date
+        let overallMaxDate: Date
+
+        if let cached = cachedBounds {
+            overallMinDate = cached.min
+            overallMaxDate = cached.max
+        } else {
+            let allDates: [Date] = operations.map { $0.date }
+            guard let minDate = allDates.min(), let maxDate = allDates.max() else {
+                return Date()
             }
-            
-            return max(overallMinDate, scrollPosition)
+            overallMinDate = minDate
+            overallMaxDate = maxDate
+        }
+
+        // For .total period, always return overallMinDate to show all data from the beginning
+        if period == .total {
+            return overallMinDate
+        }
+
+        let domainLength = visibleDomainLength(for: period)
+
+        if showingLatest {
+            // For showing latest entries, start from the end and work backwards
+            // Calculate what the leftmost position should be to show recent data properly aligned
+            let targetEndDate = overallMaxDate
+            let targetStartDate = targetEndDate.addingTimeInterval(-domainLength * 0.75) // Show recent 75% of the domain
+
+            // Generate X-axis values for this range to find proper alignment
+            let tempScrollPosition = targetStartDate.addingTimeInterval(domainLength / 2) // Center position for generateXAxis logic
+            let xAxisValues = generateXAxisValuesForAlignment(for: period, from: operations, centerPosition: tempScrollPosition)
+
+            //Find the right most date and subtract the period visible length
+            let rightMostDate = xAxisValues.max()
+            let rightMostDateMinusPeriod = rightMostDate?.addingTimeInterval(-visibleDomainLength(for: period))
+            if let rightMostDateMinusPeriod = rightMostDateMinusPeriod {
+                return rightMostDateMinusPeriod
+            }
+            // Fallback to calculated position
+            return max(overallMinDate, targetStartDate)
         } else {
             return overallMinDate
         }
     }
-    
+
     /// Generates X-axis values for alignment calculation (internal helper)
     private func generateXAxisValuesForAlignment(for period: TimePeriod, from operations: [BathScaleWeightSummary], centerPosition: Date) -> [Date] {
         let allDates = operations.map(\.date)
         guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
-        
+
         let domainLength = visibleDomainLength(for: period)
         let buffer: TimeInterval = domainLength * 2.0
         let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
         let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
-        
+
         switch period {
         case .week:
             return generateVisibleWeeklyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
@@ -1385,55 +1461,55 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return generateVisibleTotalXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
         }
     }
-    
+
     /// Finds the optimal leftmost date from X-axis values
     private func findOptimalLeftmostDate(from xAxisValues: [Date], targetStart: Date, domainLength: TimeInterval) -> Date? {
         let targetEnd = targetStart.addingTimeInterval(domainLength)
-        
+
         // Find X-axis values that would be visible in our target range
         let visibleXAxisValues = xAxisValues.filter { date in
             date >= targetStart && date <= targetEnd
         }
-        
+
         // If we have visible X-axis values, use the first one as our leftmost position
         // This ensures the scroll position aligns with an actual X-axis tick
         if let firstVisibleXAxis = visibleXAxisValues.first {
             return firstVisibleXAxis
         }
-        
+
         // If no X-axis values are in the target range, find the closest one before the target start
         let beforeTarget = xAxisValues.filter { $0 <= targetStart }
         if let closestBefore = beforeTarget.max() {
             return closestBefore
         }
-        
+
         // Fallback to the first available X-axis value
         return xAxisValues.first
     }
-    
+
     private func generateVisibleWeeklyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
         // Ensure dates are in correct order to prevent range errors
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
-        
+
         // Use a Sunday-start Gregorian calendar locally to avoid region differences
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = calendar.timeZone
         cal.locale = calendar.locale
         cal.firstWeekday = 1 // Sunday
-        
+
         var dates: [Date] = []
-        
+
         // Start of oldest week (Sunday 00:00 local)
         let weekStartForOldest = cal.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
         // End returned by dateInterval is exclusive (start of next week).
         // We'll compare using this exclusive boundary so Saturday is included.
         let weekEndExclusive = cal.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
-        
+
         // Calculate total weeks from start of oldest week to inclusive end of latest week
         let timeInterval = weekEndExclusive.timeIntervalSince(weekStartForOldest)
         let totalWeeks = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.week)))
-        
+
         for weekOffset in 0..<totalWeeks {
             if let currentWeekStart = cal.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
                 // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
@@ -1459,22 +1535,22 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         return dates
     }
-    
+
     private func generateVisibleMonthlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
         // Ensure dates are in correct order to prevent range errors
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
-        
+
         var dates: [Date] = []
-        
+
         // Buffer logic: show from start of month of oldest entry to end of month of latest entry
         let monthStartForOldest = calendar.dateInterval(of: .month, for: startDate)?.start ?? startDate
         let monthEndForLatest = calendar.dateInterval(of: .month, for: endDate)?.end ?? endDate
-        
+
         // Calculate total months from start of oldest month to end of latest month
         let timeInterval = monthEndForLatest.timeIntervalSince(monthStartForOldest)
         let totalMonths = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.month)))
-        
+
         for monthOffset in 0..<totalMonths {
             if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest) {
                 for weekOffset in 0..<5 {
@@ -1488,27 +1564,27 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         return dates
     }
-    
+
     private func generateVisibleYearlyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
         // Ensure dates are in correct order to prevent range errors
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
-        
+
         // Use a stable Gregorian calendar and anchor ticks at local noon
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = calendar.timeZone
         cal.locale = calendar.locale
-        
+
         var dates: [Date] = []
-        
+
         // Start of oldest year and exclusive end (start of next year)
         let yearStartForOldest = cal.dateInterval(of: .year, for: startDate)?.start ?? startDate
         let yearEndExclusive = cal.dateInterval(of: .year, for: endDate)?.end ?? endDate
-        
+
         // Calculate total years from start of oldest year to exclusive end of latest year
         let timeInterval = yearEndExclusive.timeIntervalSince(yearStartForOldest)
         let totalYears = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.year)))
-        
+
         for yearOffset in 0..<totalYears {
             if let currentYearStart = cal.date(byAdding: .year, value: yearOffset, to: yearStartForOldest) {
                 let startOfYear = cal.startOfDay(for: currentYearStart)
@@ -1522,7 +1598,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 }
             }
         }
-        
+
         // Append a phantom tick one month after the last real month to keep December visible
         if let last = dates.max() {
             let startOfLast = cal.startOfDay(for: last)
@@ -1533,7 +1609,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         return dates
     }
-    
+
     private func generateVisibleTotalXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, operations: [BathScaleWeightSummary], shouldRepeat: Bool) -> [Date] {
         // For datasets using yearly logic when entries are in same era
         if areEntriesInSameEra(operations) {
@@ -1543,25 +1619,25 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             // Ensure dates are in correct order to prevent range errors
             let startDate = min(visibleStart, visibleEnd)
             let endDate = max(visibleStart, visibleEnd)
-            
+
             var dates: [Date] = []
-            
+
             // Buffer logic: show from start of quarter of oldest entry to end of quarter of latest entry
             let quarterStartForOldest = calendar.date(from: calendar.dateComponents([.year, .month], from: startDate)) ?? startDate
-            
+
             // Calculate end of quarter for latest entry
             let endDateComponents = calendar.dateComponents([.year, .month], from: endDate)
             let endMonth = endDateComponents.month ?? 1
             let endYear = endDateComponents.year ?? calendar.component(.year, from: endDate)
-            
+
             // Find the last month of the quarter containing the end date
             let quarterEndMonth = ((endMonth - 1) / 3 + 1) * 3
             let quarterEndForLatest = calendar.date(from: DateComponents(year: endYear, month: quarterEndMonth + 1, day: 1))?.addingTimeInterval(-1) ?? endDate
-            
+
             // Calculate total quarters from start of oldest quarter to end of latest quarter
             let timeInterval = quarterEndForLatest.timeIntervalSince(quarterStartForOldest)
             let totalQuarters = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.quarter)))
-            
+
             for quarterOffset in 0..<totalQuarters {
                 if let quarterDate = calendar.date(byAdding: .month, value: quarterOffset * 3, to: quarterStartForOldest) {
                     if quarterDate >= quarterStartForOldest && quarterDate <= quarterEndForLatest {
@@ -1572,13 +1648,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return dates
         }
     }
-    
-    
+
+
     private func snapToNearestPosition() async {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Snapping to nearest position")
     }
-    
-    
+
+
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
         let formatter = DateFormatter()
         switch period {
@@ -1589,67 +1665,71 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         return formatter.string(from: date)
     }
-    
+
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
         // Normalize order to avoid inverted labels when inputs are swapped or nudged
         let startDate = min(minDate, maxDate)
         let endDate = max(minDate, maxDate)
-        
+
         // Special handling for TOTAL: if the dataset spans only one month, show just "Sep 2025"
         if period == .total {
             if calendar.isDate(startDate, equalTo: endDate, toGranularity: .month) {
                 return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
             }
         }
-        // Special handling for month: snap range to actual month boundaries based on the center
-        if period == .month {
-            let startDay = calendar.component(.day, from: startDate)
-            if startDay == 1 {
-                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
-            }
 
+        // Special handling for month: show the actual visible range (handles spans across multiple months)
+        if period == .month {
+            let inclusiveEndDate: Date = calendar.date(byAdding: .day, value: -1, to: endDate) ?? endDate
+            let startDay = calendar.component(.day, from: startDate)
+            let endDay = calendar.component(.day, from: inclusiveEndDate)
+            let startMonth = DateTimeTools.formatter("LLL").string(from: startDate).lowercased()
+            let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
+            let endYear = calendar.component(.year, from: inclusiveEndDate)
+
+            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
+        }
+
+        // For year: show the actual visible range, handling multi-year spans correctly
+        if period == .year {
+            // Extract actual start and end years from the visible range
             let startYear = calendar.component(.year, from: startDate)
             let endYear = calendar.component(.year, from: endDate)
+
+            // Extract actual start and end months from the visible range
             let startMonth = calendar.component(.month, from: startDate)
             let endMonth = calendar.component(.month, from: endDate)
-            let endDay = calendar.component(.day, from: endDate)
 
-            if startYear != endYear {
-                let fmt = DateTimeTools.formatter("MMM d, yyyy")
-                return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
-            }
+            // Format start month
+            let startMonthDate = calendar.date(from: DateComponents(year: startYear, month: startMonth, day: 1)) ?? startDate
+            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthDate).lowercased()
 
-            if startMonth != endMonth {
-                let startFmt = DateTimeTools.formatter("MMM d")
-                let endFmt = DateTimeTools.formatter("MMM d, yyyy")
-                return "\(startFmt.string(from: startDate)) – \(endFmt.string(from: endDate))"
-            }
+            // Format end month
+            let endMonthDate = calendar.date(from: DateComponents(year: endYear, month: endMonth, day: 1)) ?? endDate
+            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthDate).lowercased()
 
-            let startFmt = DateTimeTools.formatter("MMM d")
-            return "\(startFmt.string(from: startDate)) – \(endDay), \(startYear)"
+            // Show the actual visible range (handles both single-year and multi-year spans)
+            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
         }
 
-        if period == .year {
-            let startMonth = calendar.component(.month, from: startDate)
-            if startMonth == 1 {
-                return DateTimeTools.formatter("yyyy").string(from: startDate)
-            }
-
-            let startFmt = DateTimeTools.formatter("MMM yyyy")
-            return "\(startFmt.string(from: startDate)) – \(startFmt.string(from: endDate))"
-        }
-        
-
+        // For total: snap both ends to month starts for stability (independent of any phantom months)
         if period == .total {
-            if calendar.isDate(startDate, equalTo: endDate, toGranularity: .month) {
-                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
+            let startMonthStart = (calendar.dateInterval(of: .month, for: startDate)?.start) ?? startDate
+            var endMonthStart = (calendar.dateInterval(of: .month, for: endDate)?.start) ?? endDate
+
+            if endMonthStart < startMonthStart {
+                endMonthStart = startMonthStart
             }
 
-            let fmt = DateTimeTools.formatter("MMM yyyy")
-            return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
+            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthStart).lowercased()
+            let startYear = calendar.component(.year, from: startMonthStart)
+            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthStart).lowercased()
+            let endYear = calendar.component(.year, from: endMonthStart)
+
+            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
         }
-        
+
         // Default (week) with inclusive end-day handling
         let inclusiveEndDate: Date = calendar.date(byAdding: .day, value: -1, to: endDate) ?? endDate
         let startDay = calendar.component(.day, from: startDate)
@@ -1657,10 +1737,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let startMonth = DateTimeTools.formatter("LLL").string(from: startDate).lowercased()
         let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
         let endYear = calendar.component(.year, from: inclusiveEndDate)
-        
+
         return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
     }
-    
+
     func fallbackTimeLabel(for period: TimePeriod) -> String {
         let now = Date()
         let calendar = Calendar.current
@@ -1680,7 +1760,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return DateTimeTools.formatter("yyyy").string(from: now)
         }
     }
-    
+
     func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary], anchorWeight: Double?, period: TimePeriod, convertWeight: @escaping (Int) -> Double) -> Double? {
         guard let anchorWeight = anchorWeight else { return nil }
         let allOps = operations
@@ -1701,23 +1781,23 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return (weightlessValue * 100).rounded(.toNearestOrAwayFromZero) / 100
         }
     }
-    
+
     /// Generates sample dates for the visible range based on the time period
     /// These correspond to the vertical lines that are selectable in the UI
     func generateSampleDatesForVisibleRange(for period: TimePeriod) -> [Date] {
         guard period != .total else { return [] }
-        
+
         let leftEdge = state.xScrollPosition
         let domainLength = visibleDomainLength(for: period)
         let rightEdge = leftEdge.addingTimeInterval(domainLength)
-        
+
         var sampleDates: [Date] = []
-        
+
         switch period {
         case .week:
             // Daily samples - generate samples within the visible range directly
             var currentDate = leftEdge
-            
+
             while currentDate <= rightEdge {
                 sampleDates.append(currentDate)
                 if let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDate) {
@@ -1726,12 +1806,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     break // If date addition fails, exit loop
                 }
             }
-            
+
         case .month:
             // Weekly samples - generate samples within the visible range directly
             // Instead of using month boundaries, generate weekly samples within the visible window
             var currentDate = leftEdge
-            
+
             while currentDate <= rightEdge {
                 sampleDates.append(currentDate)
                 if let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDate) {
@@ -1740,11 +1820,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     break // If date addition fails, exit loop
                 }
             }
-            
+
         case .year:
             // Monthly samples - generate samples within the visible range directly
             var currentDate = leftEdge
-            
+
             while currentDate <= rightEdge {
                 sampleDates.append(currentDate)
                 if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
@@ -1753,15 +1833,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     break // If date addition fails, exit loop
                 }
             }
-            
+
         case .total:
             // Not applicable for total view
             break
         }
-        
+
         return sampleDates
     }
-    
+
     /// Calculates the average of interpolated weights for the visible range when no entries are visible
     /// This provides a meaningful weight display even when the visible window contains no actual data points
     /// Only interpolates within the actual data boundaries, returns nil if visible range is outside graph line
@@ -1771,43 +1851,43 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         isWeightlessMode: Bool,
         anchorWeight: Double?,
         convertWeight: @escaping (Int) -> Double
-    ) -> Double? {        
+    ) -> Double? {
         // Only apply to non-total periods
-        guard period != .total, !allOperations.isEmpty else { 
-            return nil 
+        guard period != .total, !allOperations.isEmpty else {
+            return nil
         }
-        
+
         // Determine the actual data boundaries (start and end of graph line)
         let sortedOperations = allOperations.sorted { $0.date < $1.date }
         guard let firstDataPoint = sortedOperations.first?.date,
               let lastDataPoint = sortedOperations.last?.date else {
             return nil
         }
-        
+
         let sampleDates = generateSampleDatesForVisibleRange(for: period)
-        guard !sampleDates.isEmpty else { 
-            return nil 
+        guard !sampleDates.isEmpty else {
+            return nil
         }
-        
+
         // Filter sample dates to only include those within the actual data boundaries
         // This prevents interpolation outside the graph line range
         // Add a small buffer (1 hour) to account for timezone differences and boundary precision
         let bufferTime: TimeInterval = 60 * 60 // 1 hour buffer
         let effectiveStartBoundary = firstDataPoint.addingTimeInterval(-bufferTime)
         let effectiveEndBoundary = lastDataPoint.addingTimeInterval(bufferTime)
-        
+
         let validSampleDates = sampleDates.filter { sampleDate in
             sampleDate >= effectiveStartBoundary && sampleDate <= effectiveEndBoundary
         }
-        
+
         // If no sample dates fall within the data boundaries, return nil
         // This means the visible range is completely outside the graph line
         guard !validSampleDates.isEmpty else {
             return nil
         }
-        
+
         var interpolatedWeights: [Double] = []
-        
+
         for sampleDate in validSampleDates {
             if let interpolatedWeight = interpolatedDisplayWeight(
                 at: sampleDate,
@@ -1819,19 +1899,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 interpolatedWeights.append(interpolatedWeight)
             }
         }
-        
-        guard !interpolatedWeights.isEmpty else { 
-            return nil 
+
+        guard !interpolatedWeights.isEmpty else {
+            return nil
         }
-        
+
         let average = interpolatedWeights.reduce(0, +) / Double(interpolatedWeights.count)
-        
+
         // Apply same rounding logic as other weight calculations
         let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
-        
+
         return roundedAverage
     }
-    
+
     func getCurrentAverageWeight(from operations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> Double {
         let weightValues = operations.map { summary -> Double in
             if isWeightlessMode {
@@ -1844,13 +1924,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         guard !weightValues.isEmpty else { return 0 }
         let average = weightValues.reduce(0, +) / Double(weightValues.count)
-        
+
         // Apply same robust rounding logic as other weight calculations
         let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
         return roundedAverage
     }
-    
-    
+
+
     func handleScrollEndOptimized(updateWeightDisplay: @escaping () -> Void, recalculateYAxis: @escaping () -> Void, updateMetrics: @escaping () -> Void) {
         state.scrollEndTimer?.invalidate()
         state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
@@ -1858,7 +1938,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 guard let self = self else { return }
                 self.state.isScrolling = false
                 self.state.hasDetectedScrollInCurrentGesture = false
-                
+
                 // Update weight display to show average of visible region
                 updateWeightDisplay()
                 recalculateYAxis()
@@ -1866,16 +1946,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
     }
-    
+
     func updateWeightDisplayForCurrentView(triggerUpdate: @escaping () -> Void) {
         triggerUpdate()
     }
-    
+
     func recalculateYAxisForVisibleData(triggerUpdate: @escaping () -> Void) {
         state.dataChangeTrigger += 1
         triggerUpdate()
     }
-    
+
     func updateMetricsForCurrentView(selectedPoint: BathScaleWeightSummary?, visibleOperations: [BathScaleWeightSummary], updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void, resetMetrics: @escaping () -> Void) {
         if let selectedPoint = selectedPoint {
             Task {
@@ -1889,20 +1969,21 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
     }
-    
+
     func endScrollingImmediately() {
         state.scrollEndTimer?.invalidate()
         state.isScrolling = false
         state.hasDetectedScrollInCurrentGesture = false
         latestScrollPosition = nil
-        
+
         // Clear chart data cache when scrolling ends to ensure fresh data on next scroll
         clearChartDataCache()
     }
-    
+
     // MARK: - Chart Data Caching for Scroll Performance
-    
+
     /// Checks if cached chart data can be used during scrolling
+    /// During scroll, we're very aggressive about using cache to prevent CPU spikes
     private func canUseCachedChartData(
         operationsCount: Int,
         yAxisDomain: ClosedRange<Double>,
@@ -1910,24 +1991,31 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> Bool {
         // Must have cached data
         guard !cachedChartSeriesData.isEmpty else { return false }
-        
-        // Operations count must match
+
+        // Operations count must match (data hasn't changed)
         guard operationsCount == lastCachedOperationsCount else { return false }
-        
+
         // Selected metric must match
         guard selectedMetric == lastCachedSelectedMetric else { return false }
-        
-        // Y-axis domain must be similar (within 5% tolerance)
+
+        // During scrolling, ALWAYS use cache regardless of Y-axis changes
+        // Y-axis domain changes are visual only and shouldn't trigger regeneration
+        // This prevents the main CPU spike during scroll
+        if state.isScrolling {
+            return true
+        }
+
+        // When not scrolling, Y-axis domain must be similar (within 10% tolerance)
         guard let lastDomain = lastCachedYAxisDomain else { return false }
-        
+
         let domainDifference = abs(yAxisDomain.lowerBound - lastDomain.lowerBound) +
         abs(yAxisDomain.upperBound - lastDomain.upperBound)
         let domainSize = max(yAxisDomain.upperBound - yAxisDomain.lowerBound, 0.1)
-        let tolerance = domainSize * 0.05 // 5% tolerance
-        
+        let tolerance = domainSize * 0.10 // 10% tolerance (was 5%)
+
         return domainDifference <= tolerance
     }
-    
+
     /// Caches chart data for reuse during scrolling
     private func cacheChartData(
         series: [GraphSeries],
@@ -1941,7 +2029,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastCachedSelectedMetric = selectedMetric
         lastCachedScrollPosition = state.xScrollPosition
     }
-    
+
     /// Clears chart data cache (called when scrolling ends or data changes)
     private func clearChartDataCache() {
         cachedChartSeriesData = []
@@ -1949,36 +2037,236 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastCachedYAxisDomain = nil
         lastCachedSelectedMetric = nil
         lastCachedOperationsCount = 0
-        
+
         // Cancel any pending throttled generation
         chartDataGenerationThrottle?.invalidate()
         chartDataGenerationThrottle = nil
     }
-    
+
     /// Simplifies data during scrolling by reducing the number of points for better performance
+    /// Only applies to very large datasets to maintain visual quality
     private func simplifyDataForScrolling(_ operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
-        // For very large datasets, sample every nth point during scrolling
-        let maxPointsDuringScroll = 50 // Limit to 50 points during scroll
-        
-        guard operations.count > maxPointsDuringScroll else {
+        // Only simplify for VERY large datasets (>2000 points)
+        // For most users, the performance benefit isn't worth the visual degradation
+        let simplificationThreshold = 2000
+        let maxPointsDuringScroll = 500 // Keep enough points for smooth visual appearance
+
+        guard operations.count > simplificationThreshold else {
             return operations
         }
-        
-        let step = operations.count / maxPointsDuringScroll
+
+        let step = max(1, operations.count / maxPointsDuringScroll)
         var simplifiedOps: [BathScaleWeightSummary] = []
-        
-        for i in stride(from: 0, to: operations.count, by: max(1, step)) {
+
+        for i in stride(from: 0, to: operations.count, by: step) {
             simplifiedOps.append(operations[i])
         }
-        
+
         // Always include the last point to maintain chart continuity
         if let lastOp = operations.last, !simplifiedOps.contains(where: { $0.date == lastOp.date }) {
             simplifiedOps.append(lastOp)
         }
-        
+
         logger.log(level: .debug, tag: "DashboardGraphManager",
                    message: "Simplified data for scrolling: \(operations.count) -> \(simplifiedOps.count) points")
-        
+
         return simplifiedOps
+    }
+
+    // MARK: - Windowed Chart Data (Performance Optimization)
+
+    /// Gets operations for chart rendering with large buffer to prevent blank pages during scroll.
+    /// Uses binary search for O(log n) performance on sorted arrays.
+    /// - Parameters:
+    ///   - allOperations: All available operations (must be pre-sorted by date)
+    ///   - scrollPosition: Current scroll position
+    ///   - period: Current time period
+    /// - Returns: Subset of operations within visible window + buffer
+    func getChartOperationsWithBuffer(
+        from allOperations: [BathScaleWeightSummary],
+        scrollPosition: Date,
+        period: TimePeriod
+    ) -> [BathScaleWeightSummary] {
+        guard !allOperations.isEmpty else { return [] }
+
+        // Only apply windowing for very large datasets (>2000 points, ~5+ years of daily data)
+        // For typical datasets, the overhead of windowing isn't worth the visual complexity
+        // This prevents any visual glitches and chart discontinuities
+        let windowingThreshold = 2000
+        if allOperations.count < windowingThreshold {
+            return allOperations
+        }
+
+        let domainLength = visibleDomainLength(for: period)
+
+        // scrollPosition is the LEFT edge of the visible window
+        // Visible window: [scrollPosition, scrollPosition + domainLength]
+        // Use very generous buffer (5x on each side) to ensure smooth scrolling
+        let bufferSize = domainLength * 5.0
+
+        let windowStart = scrollPosition.addingTimeInterval(-bufferSize)
+        let windowEnd = scrollPosition.addingTimeInterval(domainLength + bufferSize)
+
+        // Binary search for efficiency on sorted array - O(log n) instead of O(n)
+        guard let startIndex = binarySearchFirstIndex(in: allOperations, where: { $0.date >= windowStart }),
+              let endIndex = binarySearchLastIndex(in: allOperations, where: { $0.date <= windowEnd }) else {
+            // Fallback: return all if search fails
+            return allOperations
+        }
+
+        // Include extra points on each side for line continuity at buffer edges
+        let safeStartIndex = max(0, startIndex - 5)
+        let safeEndIndex = min(allOperations.count - 1, endIndex + 5)
+
+        // Validate index range
+        guard safeStartIndex <= safeEndIndex else { return allOperations }
+
+        let windowedOperations = Array(allOperations[safeStartIndex...safeEndIndex])
+
+        // If windowing only saves <30% of data, not worth the complexity - return all
+        let savingsRatio = Double(allOperations.count - windowedOperations.count) / Double(allOperations.count)
+        if savingsRatio < 0.3 {
+            return allOperations
+        }
+
+        logger.log(level: .debug, tag: "DashboardGraphManager",
+                   message: "Windowed chart data: \(allOperations.count) -> \(windowedOperations.count) operations (\(Int(savingsRatio * 100))% reduction)")
+
+        return windowedOperations
+    }
+
+    // MARK: - Binary Search Helpers
+
+    /// Binary search to find first index where predicate is true.
+    /// Assumes array is sorted and predicate transitions from false to true.
+    /// - Parameters:
+    ///   - operations: Sorted array to search
+    ///   - predicate: Condition to find first true occurrence
+    /// - Returns: First index where predicate is true, or nil if never true
+    private func binarySearchFirstIndex(
+        in operations: [BathScaleWeightSummary],
+        where predicate: (BathScaleWeightSummary) -> Bool
+    ) -> Int? {
+        guard !operations.isEmpty else { return nil }
+
+        var low = 0
+        var high = operations.count
+
+        while low < high {
+            let mid = (low + high) / 2
+            if predicate(operations[mid]) {
+                high = mid
+            } else {
+                low = mid + 1
+            }
+        }
+
+        return low < operations.count ? low : nil
+    }
+
+    /// Binary search to find last index where predicate is true.
+    /// Assumes array is sorted and predicate transitions from true to false.
+    /// - Parameters:
+    ///   - operations: Sorted array to search
+    ///   - predicate: Condition to find last true occurrence
+    /// - Returns: Last index where predicate is true, or nil if never true
+    private func binarySearchLastIndex(
+        in operations: [BathScaleWeightSummary],
+        where predicate: (BathScaleWeightSummary) -> Bool
+    ) -> Int? {
+        guard !operations.isEmpty else { return nil }
+
+        var low = 0
+        var high = operations.count
+
+        while low < high {
+            let mid = (low + high) / 2
+            if predicate(operations[mid]) {
+                low = mid + 1
+            } else {
+                high = mid
+            }
+        }
+
+        return low > 0 ? low - 1 : nil
+    }
+
+    // MARK: - Scroll Boundary Enforcement
+
+    /// Enforces scroll boundaries to prevent over-scrolling beyond data range.
+    /// - Parameters:
+    ///   - position: Requested scroll position
+    ///   - period: Current time period
+    ///   - minDate: Minimum date in dataset
+    ///   - maxDate: Maximum date in dataset
+    /// - Returns: Clamped position within valid scroll range
+    func clampScrollPosition(
+        _ position: Date,
+        for period: TimePeriod,
+        minDate: Date,
+        maxDate: Date
+    ) -> Date {
+        let domainLength = visibleDomainLength(for: period)
+
+        // Left boundary: 10% padding for visual comfort
+        let minScrollPosition = minDate.addingTimeInterval(-domainLength * 0.1)
+
+        // Right boundary: Keep last 90% of domain showing data
+        let maxScrollPosition = maxDate.addingTimeInterval(-domainLength * 0.9)
+
+        // Handle edge case where data range is smaller than visible domain
+        if minScrollPosition >= maxScrollPosition {
+            return minDate
+        }
+
+        return max(minScrollPosition, min(maxScrollPosition, position))
+    }
+
+    // MARK: - Smart Snap Mechanism
+
+    /// Snaps scroll position to nearest valid alignment point for the given period.
+    /// - Parameters:
+    ///   - position: Current scroll position
+    ///   - period: Current time period
+    /// - Returns: Snapped position aligned to period's grid
+    func snapScrollPosition(_ position: Date, for period: TimePeriod) -> Date {
+        let calendar = Calendar.current
+
+        switch period {
+        case .week:
+            // Snap to start of day (noon for plotting consistency)
+            var components = calendar.dateComponents([.year, .month, .day], from: position)
+            components.hour = 12
+            components.minute = 0
+            components.second = 0
+            return calendar.date(from: components) ?? position
+
+        case .month:
+            // Snap to start of week
+            let weekday = calendar.component(.weekday, from: position)
+            let daysToSubtract = (weekday - calendar.firstWeekday + 7) % 7
+            guard let snappedDate = calendar.date(byAdding: .day, value: -daysToSubtract, to: position) else {
+                return position
+            }
+            // Also set to start of day
+            var components = calendar.dateComponents([.year, .month, .day], from: snappedDate)
+            components.hour = 0
+            components.minute = 0
+            components.second = 0
+            return calendar.date(from: components) ?? position
+
+        case .year:
+            // Snap to start of month
+            var components = calendar.dateComponents([.year, .month], from: position)
+            components.day = 1
+            components.hour = 0
+            components.minute = 0
+            components.second = 0
+            return calendar.date(from: components) ?? position
+
+        case .total:
+            // No snapping for total view (not scrollable)
+            return position
+        }
     }
 }
