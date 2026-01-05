@@ -37,6 +37,7 @@ object DebugMenuStrings {
         const val SendLogs = "Sending logs..."
         const val Resync = "Resyncing data..."
         const val PleaseWait = "Please wait..."
+      const val SendScaleLogs = "Send Scale Log..."
     }
 
     object Success {
