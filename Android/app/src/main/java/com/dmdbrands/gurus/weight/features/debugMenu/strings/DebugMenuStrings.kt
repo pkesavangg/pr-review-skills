@@ -40,8 +40,8 @@ object DebugMenuStrings {
     }
 
     object Success {
-        const val LogSent = "Logs sent successfully"
-        const val Synced = "Data synced successfully"
+        const val LogSent = "Logs sent to Greater Goods"
+        const val Synced = "Entries resynced."
     }
 
     object Alerts {
