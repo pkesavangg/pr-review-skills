@@ -44,7 +44,7 @@
         android:theme="@style/Theme.MeApp">
         <activity
             android:name=".MainActivity"
-            android:configChanges="uiMode"
+            android:configChanges="uiMode|fontScale"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
