@@ -64,7 +64,7 @@ object SettingsScreenStrings {
 
     object LogoutDialog {
         object Logout {
-            const val Title = "Log out"
+            const val Title = "Log Out"
             const val Body = "Are you sure you want to log out?"
         }
 
