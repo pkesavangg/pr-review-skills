@@ -73,7 +73,6 @@ data class WifiScaleSetupState(
     WifiScaleSetupStep.ACTIVATE_SCALE,
     WifiScaleSetupStep.WIFI_MODE,
     WifiScaleSetupStep.SWITCH_WIFI,
-    WifiScaleSetupStep.SCALE_COUNTS,
     WifiScaleSetupStep.STEP_ON,
     WifiScaleSetupStep.SETUP_FINISHED,
     WifiScaleSetupStep.MAC_ADDRESS,
@@ -188,7 +187,6 @@ data class WifiScaleSetupState(
 
       WifiScaleSetupStep.ERROR_CODE_SELECTED,
       WifiScaleSetupStep.TROUBLE_SHOOTING,
-      WifiScaleSetupStep.SCALE_COUNTS,
       WifiScaleSetupStep.STEP_ON,
       WifiScaleSetupStep.SETUP_FINISHED ->
         // These steps can always proceed
@@ -266,6 +264,14 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
         // Handle special navigation cases first
         val nextStep = when (state.currentStep) {
+          WifiScaleSetupStep.PERMISSIONS -> {
+            if(state.isGetMACSetup) {
+              WifiScaleSetupStep.ACTIVATE_SCALE
+            } else
+              WifiScaleSetupStep.WIFI_PASSWORD
+          }
+
+
           WifiScaleSetupStep.WIFI_MODE -> {
             // Handle different WiFi mode selections - skip steps based on mode
             when (state.selectedWifiMode) {
@@ -278,7 +284,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
               else -> {
                 // Skip SWITCH_WIFI step and go directly to SCALE_COUNTS
-                WifiScaleSetupStep.SCALE_COUNTS
+                WifiScaleSetupStep.STEP_ON
               }
             }
           }
@@ -371,7 +377,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
         // Handle special back navigation cases
         val previousStep = when (state.currentStep) {
-          WifiScaleSetupStep.PERMISSIONS -> {
+          WifiScaleSetupStep.PERMISSIONS,WifiScaleSetupStep.ACTIVATE_SCALE -> {
             if (state.isGetMACSetup) {
               // Going back from permissions in MAC setup should reset MAC setup flag
               // Return to SCALE_INFO
@@ -384,7 +390,8 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
             }
           }
 
-          WifiScaleSetupStep.SCALE_COUNTS -> {
+
+          WifiScaleSetupStep.STEP_ON -> {
             // Check how we got here to determine correct back step
             if (state.selectedWifiMode != "apmode") {
               // We came directly from WIFI_MODE, skip SWITCH_WIFI
@@ -488,7 +495,6 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         state.copy(
           isGetMACSetup = true,
           shouldGetMacAddress = true,
-          currentStep = WifiScaleSetupStep.PERMISSIONS,
         )
       }
 

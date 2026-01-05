@@ -41,7 +41,6 @@ enum class WifiScaleSetupStep {
   ACTIVATE_SCALE,
   WIFI_MODE,
   SWITCH_WIFI,
-  SCALE_COUNTS,
   STEP_ON,
   SETUP_FINISHED,
   MAC_ADDRESS,

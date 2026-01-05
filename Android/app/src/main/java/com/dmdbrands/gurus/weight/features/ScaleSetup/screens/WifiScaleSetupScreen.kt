@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.screens
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,6 +49,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
+import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.delay
 
 @Composable
@@ -138,7 +140,7 @@ fun WifiScaleSetupScreenContent(
           type = ButtonType.TextPrimary,
           label = ScaleSetupStrings.backButton,
           size = ButtonSize.Small,
-          enabled = !state.isFirstStep && !state.isLoading && !state.isNavigating,
+          enabled = !state.isFirstStep && !state.isLoading && !state.isNavigating && !state.isLastStep,
           onClick = { onIntent(WifiScaleSetupIntent.Back) },
         )
       },
@@ -163,7 +165,6 @@ fun WifiScaleSetupScreenContent(
         WifiScaleSetupStep.ACTIVATE_SCALE,
         WifiScaleSetupStep.MAC_ADDRESS,
         WifiScaleSetupStep.ERROR_GUIDE,
-        WifiScaleSetupStep.SCALE_COUNTS,
         WifiScaleSetupStep.SETUP_FINISHED,
         WifiScaleSetupStep.SWITCH_WIFI,
         WifiScaleSetupStep.STEP_ON,
@@ -201,7 +202,10 @@ fun WifiScaleSetupScreenContent(
                 subtitle = WifiScaleSetupStrings.NetworkFormSlide.Subtitle,
                 label = WifiScaleSetupStrings.NetworkFormSlide.Password,
                 secondaryLabel = WifiScaleSetupStrings.NetworkFormSlide.NetworkName,
-                isWifiConnected = false,
+                onImeAction = {
+                  onIntent(WifiScaleSetupIntent.GoToWifiSettings)
+                },
+                isWifiConnected = state.wifiPasswordForm.ssid.isValueValid() && !state.permissionsSkipped,
                 hasToggle = true,
                 toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
                 toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,
@@ -348,15 +352,6 @@ fun WifiScaleSetupScreenContent(
               )
             }
 
-            WifiScaleSetupStep.SCALE_COUNTS -> {
-              SetupContent(
-                title = WifiScaleSetupStrings.ScaleCount.Title,
-                subtitle = WifiScaleSetupStrings.ScaleCount.Message,
-                isGifImage = true,
-                supportingImage = AppIcons.Setup.WifiStepOnApMode,
-              )
-            }
-
             WifiScaleSetupStep.SWITCH_WIFI -> {
               SetupContent(
                 title = WifiScaleSetupStrings.SwitchWifi.Title,
@@ -376,6 +371,7 @@ fun WifiScaleSetupScreenContent(
                   } else {
                     WifiItem(
                       borderRadius = borderRadius.sm,
+                      isWifiIcon = !state.scaleNetworkForm.ssid.value.isEmpty(),
                       ssid = if (!state.scaleNetworkForm.ssid.value.isEmpty()) {
                         state.scaleNetworkForm.ssid.value
                       } else {
@@ -387,6 +383,7 @@ fun WifiScaleSetupScreenContent(
                       onClick = {
                         onIntent(WifiScaleSetupIntent.GoToWifiSettings)
                       },
+                      modifier = Modifier.size(spacing.md)
                     )
                   }
 

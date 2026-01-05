@@ -94,6 +94,11 @@ object ScaleSetupStrings {
       const val Message = "Location permission is required to detect your WiFi network for scale setup."
       const val Enable = "Enable"
     }
+
+    object InternetRequired {
+      const val Title = "Internet Required"
+      const val Message = "Internet required to connect Wi-Fi-scales"
+    }
   }
 
   object WeightOnlyModeAlertDismiss {
