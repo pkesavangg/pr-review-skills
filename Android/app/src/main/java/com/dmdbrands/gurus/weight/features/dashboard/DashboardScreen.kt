@@ -225,6 +225,9 @@ private fun DashboardScreenContent(
               DashboardIntent.ResetDashboard(
                 onConfirm = {
                   inEditMode = false
+                  // Reset local state to match the reset state from service
+                  currentVisibleMetrics = state.visibleKeys.filter { it is DashboardKey.Metric }
+                  currentVisibleMilestones = state.visibleKeys.filter { it is DashboardKey.Milestone }
                 },
               ),
             )
