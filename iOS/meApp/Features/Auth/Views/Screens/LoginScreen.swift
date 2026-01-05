@@ -145,11 +145,7 @@ struct LoginScreen: View {
                                         isDisabled: false,
                                         action: {
                                             focusedField = nil
-                                            hideKeyboard()
-                                            Task { @MainActor in
-                                                try? await Task.sleep(nanoseconds: 100_000_000)
-                                                store.showPasswordResetPrompt()
-                                            }
+                                            store.showPasswordResetPrompt()
                                         }
                                     )
                                 }
