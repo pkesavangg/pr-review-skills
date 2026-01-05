@@ -218,12 +218,17 @@ constructor(
           ToastStrings.Error.ResetPasswordError.Message,
         )
       }
-    } catch (e: HttpException) {
+    } catch (e: Exception) {
       AppLog.e(TAG, "Failed to reset password", e)
-      showErrorToast(
-        ToastStrings.Error.ResetPasswordError.Header,
-        ToastStrings.Error.ResetPasswordError.Message,
-      )
+      if (e is HttpException) {
+        val msg =
+          when (e.code()) {
+            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.NetworkError.Message
+            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
+            else -> ToastStrings.Error.ResetPasswordError.Message
+          }
+        showErrorToast(ToastStrings.Error.ResetPasswordError.Header, msg)
+      }
     }
   }
 

@@ -10,6 +10,7 @@ object ChangePasswordStrings {
     const val ConfirmPasswordLabel = "confirm new password"
     const val ForgotPasswordLabel = "forgot password?"
     const val LoaderMessage = "Saving..."
+    const val Loading = "Loading..."
     const val SuccessMessage = "Password Updated."
     const val ErrorMessage = "Failed to change password"
     const val PasswordMin = "Password must be 6 characters long"
