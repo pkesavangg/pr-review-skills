@@ -331,21 +331,8 @@ class SettingsStore: ObservableObject {
         
         let storedHeight = Int(round(storedHeightDouble))
         
-        switch activeAccount?.weightSettings?.weightUnit {
-        case .kg: // Metric preference – show centimeters
-            let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
-            // Clamp to valid range (100-299 cm) for display
-            let clampedCm = max(100, min(299, cm))
-            return "\(clampedCm) cm"
-        case .lb: // Imperial preference – show feet & inches
-            let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            // Clamp to valid range (2'0" to 7'11") for display
-            let clampedFeet = max(2, min(7, feet[0]))
-            let clampedInches = max(0, min(11, feet[1]))
-            return "\(clampedFeet)' \(clampedInches)\""  // → 5'8"
-        case .none:
-            return ""
-        }
+        let isMetric = activeAccount?.weightSettings?.weightUnit == .kg
+        return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
     }
     
     var unitTypeText: String {

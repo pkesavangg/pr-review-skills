@@ -83,12 +83,8 @@ final class SignupStore: ObservableObject {
     }
     
     func getFormattedHeight() -> String {
-        if signupForm.useMetric.value {
-            let cm = Int(selectedHeightCm.joined()) ?? 178
-            return "\(cm) cm"
-        } else {
-            return "\(selectedHeightInches[0])' \(selectedHeightInches[1])\""
-        }
+        let storedHeight = Int(signupForm.height.value)
+        return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: signupForm.useMetric.value)
     }
     
     func updateFormHeight(fromMetric: Bool, values: [String]) {
