@@ -11,11 +11,14 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.domain.services.AuthState
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
+import java.io.IOException
+import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,6 +41,7 @@ class TokenAuthenticator @Inject constructor(
     }
 
     private var isRefreshingToken = false
+    private var ongoingRefreshDeferred: CompletableDeferred<Token?>? = null
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
 
 
@@ -65,12 +69,15 @@ class TokenAuthenticator @Inject constructor(
 
               AppLog.v(TAG, "Token expires at: $expiresAt for account: $accountId")
                 var refreshResult: Token? = null
+              if(expiresAt.isNullOrEmpty()){
+                return@runBlocking null
+              }
                 if (isTokenExpired(expiresAt)) {
                     AppLog.v(TAG, "Token expires within 5 minutes - refreshing proactively for account: $accountId")
-                    refreshResult = refreshToken(accountId)
+                    refreshResult = refreshToken(accountId, 0)
                 } else {
                     AppLog.v(TAG, "401 received - attempting reactive token refresh for account: $accountId")
-                    refreshResult = refreshToken(accountId)
+                    refreshResult = refreshToken(accountId, 0)
                 }
 
                 if (refreshResult == null) {
@@ -132,16 +139,12 @@ class TokenAuthenticator @Inject constructor(
     /**
      * Check if token is expired or will expire soon (same as Angular checkTokenExpiration)
      */
-    private fun isTokenExpired(expiresAt: String?): Boolean {
-        if (expiresAt.isNullOrEmpty()) {
-            AppLog.v(TAG, "No expiry time available - assuming token is expired")
-            return true // If no expiry time, assume expired and refresh
-        }
-
+    private fun isTokenExpired(expiresAt: String): Boolean {
         return try {
             val tokenExpires = dateFormat.parse(expiresAt)
             val currentTime = Date()
             val timeUntilExpiry = tokenExpires!!.time - currentTime.time
+            AppLog.v(TAG, "Token expires at: $expiresAt ($timeUntilExpiry ms until expiry)")
 
             val isExpired = timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_MS
 
@@ -165,80 +168,146 @@ class TokenAuthenticator @Inject constructor(
      * @param accountId The account ID to refresh token for
      * @return The new token response if successful, null if failed
      */
-    private suspend fun refreshToken(accountId: String?): Token? {
-        return refreshTokenWithRetry(accountId, 0)
+    private suspend fun refreshToken(accountId: String?, refreshAttempts: Int): Token? {
+        return tokenRefresh(accountId, refreshAttempts)
     }
 
     /**
-     * Refresh token with retry logic (same as Angular tokenRefresh with retry)
+     * Refresh token with retry logic (same as Angular tokenRefresh method)
+     * Matches Angular implementation: waits for ongoing refresh, retries on network errors
      * @param accountId The account ID to refresh token for
-     * @param retryAttempt Current retry attempt number
+     * @param refreshAttempts Current retry attempt number (default 0)
      * @return The new token response if successful, null if failed
      */
-    private suspend fun refreshTokenWithRetry(accountId: String?, retryAttempt: Int): com.dmdbrands.gurus.weight.domain.model.api.user.Token? {
-        try {
-            val refreshToken = if (accountId != null) {
-                tokenManager.getRefreshToken(accountId)
-            } else {
-                tokenManager.getRefreshToken()
-            }
-
-            if (refreshToken.isNullOrEmpty()) {
-                AppLog.e(TAG, "No refresh token available for account: $accountId")
-                return null
-            }
-
-            // Check if already refreshing to avoid multiple simultaneous refreshes
-            if (isRefreshingToken) {
-                AppLog.v(TAG, "Token refresh already in progress, waiting...")
-                return null
-            }
-
+    private suspend fun tokenRefresh(accountId: String?, refreshAttempts: Int = 0): Token? {
+        // If not refreshing and within max attempts, proceed with refresh
+        if (!isRefreshingToken && refreshAttempts < MAX_REFRESH_ATTEMPTS) {
             isRefreshingToken = true
-            AppLog.v(TAG, "Refreshing token for account: $accountId (attempt: ${retryAttempt + 1})")
+            // Emit refresh started (equivalent to tokenRefreshed.next(false) in Angular)
+            val deferred = CompletableDeferred<Token?>()
+            ongoingRefreshDeferred = deferred
+            try {
+                val refreshToken = if (accountId != null) {
+                    tokenManager.getRefreshToken(accountId)
+                } else {
+                    tokenManager.getRefreshToken()
+                }
 
-            val newTokenResponse = refreshTokenAPI.refreshToken(RefreshTokenRequest(refreshToken))
+                if (refreshToken.isNullOrEmpty()) {
+                    AppLog.e(TAG, "No refresh token available for account: $accountId")
+                    logoutUser(accountId, isCurrentAccount(accountId))
+                    isRefreshingToken = false
+                    deferred.complete(null)
+                    ongoingRefreshDeferred = null
+                    return null
+                }
 
-            if (newTokenResponse.accessToken.isEmpty()) {
-                AppLog.e(TAG, "Received empty access token from refresh response")
+                AppLog.v(TAG, "Refreshing token for account: $accountId (attempt: ${refreshAttempts + 1})")
+
+                // Make refresh token API call
+                val newTokenResponse = refreshTokenAPI.refreshToken(RefreshTokenRequest(refreshToken))
+
+              if (newTokenResponse.accessToken.isEmpty()) {
+                    AppLog.e(TAG, "Received empty access token from refresh response")
+                    isRefreshingToken = false
+                    deferred.complete(null)
+                    ongoingRefreshDeferred = null
+                    return null
+                }
+
+                // Create new token with preserved account ID
+                val newToken = Token(
+                  accountId = accountId ?: "",
+                  isActive = true,
+                  accessToken = newTokenResponse.accessToken,
+                  refreshToken = newTokenResponse.refreshToken,
+                  expiresAt = newTokenResponse.expiresAt,
+                )
+
+                // Update tokens in TokenManager (equivalent to setTokens in Angular)
+                tokenManager.setTokens(newToken)
+
+                // Emit refresh success (equivalent to tokenRefreshed.next(true) in Angular)
                 isRefreshingToken = false
-                return null
+                deferred.complete(newToken)
+                ongoingRefreshDeferred = null
+                AppLog.v(TAG, "Successfully refreshed token for account: $accountId")
+
+                return newToken
+
+            } catch (e: Exception) {
+                isRefreshingToken = false
+                AppLog.e(TAG, "Token refresh failed for account: $accountId (attempt: ${refreshAttempts + 1})", e.toString())
+
+                // Check error status (same as Angular: err.status === 401 or err.status === 0 || err.status >= 501)
+                val errorStatus = getErrorStatus(e)
+                val isTokenInvalidated = errorStatus == 401
+                val isNetworkError = errorStatus == 0 || errorStatus >= 501
+
+                if (isTokenInvalidated) {
+                    // 401 error - logout and don't retry (same as Angular)
+                    AppLog.e(TAG, "Token invalidated (401) - logging out user for account: $accountId")
+                    logoutUser(accountId, isCurrentAccount(accountId))
+                    deferred.complete(null)
+                    ongoingRefreshDeferred = null
+                    throw e
+                } else if (refreshAttempts < MAX_REFRESH_ATTEMPTS - 1 && isNetworkError) {
+                    // Network error (status 0 or >= 501) - retry (same as Angular)
+                    AppLog.v(TAG, "Network error detected - retrying token refresh for account: $accountId (attempt: ${refreshAttempts + 2})")
+                    deferred.complete(null)
+                    ongoingRefreshDeferred = null
+                    return tokenRefresh(accountId, refreshAttempts + 1)
+                } else {
+                    // Max attempts reached or other error - logout (same as Angular)
+                    AppLog.e(TAG, "Max retry attempts reached or non-retryable error for account: $accountId")
+                    logoutUser(accountId, isCurrentAccount(accountId))
+                    deferred.complete(null)
+                    ongoingRefreshDeferred = null
+                    throw e
+                }
             }
-
-            // Create new token with preserved account ID
-            val newToken = Token(
-                accountId = accountId ?: "",
-                isActive = true,
-                accessToken = newTokenResponse.accessToken,
-                refreshToken = newTokenResponse.refreshToken,
-                expiresAt = newTokenResponse.expiresAt,
-            )
-
-            // Update tokens in TokenManager
-            tokenManager.setTokens(newToken)
-            isRefreshingToken = false
-            AppLog.v(TAG, "Successfully refreshed token for account: $accountId")
-
-            return newToken
-
-        } catch (e: Exception) {
-            isRefreshingToken = false
-            AppLog.e(TAG, "Token refresh failed for account: $accountId (attempt: ${retryAttempt + 1})", e.toString())
-
-            // Check if this is a 401 error (token invalidated) or network error
-            val isTokenInvalidated = e.message?.contains("401") == true ||
-                                   e.message?.contains("Unauthorized") == true
-
-            if (isTokenInvalidated) {
-                AppLog.e(TAG, "Token invalidated (401) - not retrying for account: $accountId")
-                return null
-            } else if (retryAttempt < MAX_REFRESH_ATTEMPTS - 1) {
-                // Retry for network errors (same as Angular)
-                AppLog.v(TAG, "Retrying token refresh for account: $accountId (attempt: ${retryAttempt + 2})")
-                return refreshTokenWithRetry(accountId, retryAttempt + 1)
+        } else {
+            // Already refreshing - wait for ongoing refresh to complete (same as Angular Promise subscription)
+            AppLog.v(TAG, "Token refresh already in progress, waiting for completion...")
+            val deferred = ongoingRefreshDeferred
+            return if (deferred != null) {
+                // Wait for the ongoing refresh to complete
+                deferred.await()
             } else {
-                AppLog.e(TAG, "Max retry attempts reached for account: $accountId")
-                return null
+                // If deferred is null, refresh might have just completed, try again
+                AppLog.v(TAG, "Ongoing refresh completed, retrying...")
+                tokenRefresh(accountId, refreshAttempts)
+            }
+        }
+    }
+
+    /**
+     * Extract HTTP error status from exception (similar to Angular err.status)
+     * @param e The exception to extract status from
+     * @return HTTP status code, or 0 for network errors, or -1 if unknown
+     */
+    private fun getErrorStatus(e: Exception): Int {
+        return when (e) {
+            is IOException, is SocketTimeoutException -> 0 // Network error
+            else -> {
+                // Try to extract status from exception message or cause
+                val message = e.message ?: ""
+                when {
+                    message.contains("401") || message.contains("Unauthorized") -> 401
+                    message.contains("500") -> 500
+                    message.contains("502") -> 502
+                    message.contains("503") -> 503
+                    message.contains("504") -> 504
+                    else -> {
+                        // Check if it's a Retrofit HttpException
+                        val cause = e.cause
+                        if (cause is retrofit2.HttpException) {
+                            cause.code()
+                        } else {
+                            -1 // Unknown error
+                        }
+                    }
+                }
             }
         }
     }
