@@ -97,6 +97,7 @@ struct HistoryEntryItem: View {
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
                         HistoryMetricItem(
                             metric: BodyMetrics.config[item.metric]!,
+                            metricType: item.metric,
                             value: item.value,
                             index: index,
                             size: entry.metricItems.count,
