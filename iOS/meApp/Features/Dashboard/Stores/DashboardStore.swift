@@ -42,6 +42,7 @@ class DashboardStore: ObservableObject {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
+    private static let allProgressMetricsRemovedKey = "dashboard.allProgressMetricsRemoved"
 
     // MARK: - UI Update Batching (Performance Optimization)
     /// Prevents cascading UI updates by batching multiple state changes
@@ -1054,16 +1055,47 @@ class DashboardStore: ObservableObject {
     }
 
     func loadProgressMetricsFromAccount() async {
-        guard let account = accountService.activeAccount,
-              let progressMetricsString = account.dashboardSettings?.progressMetrics else {
+        guard let account = accountService.activeAccount else {
             await MainActor.run { setupDefaultProgressMetricsOrder() }
             return
         }
 
-        let progressMetrics = progressMetricsString.split(separator: ",").map { String($0) }
+        guard let progressMetricsString = account.dashboardSettings?.progressMetrics else {
+            await MainActor.run { setupDefaultProgressMetricsOrder() }
+            return
+        }
+        
+        let progressMetrics = progressMetricsString.isEmpty 
+            ? [] 
+            : progressMetricsString.split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
+
+        // Handle case where API defaults empty progress metrics back to all metrics
+        let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
+        let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
+        let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
+        
+        // If the flag is set and API returns the default full list, treat all as removed
+        let shouldTreatAsAllRemoved = allMetricsRemovedFlag && (progressMetrics.isEmpty || isDefaultFullList)
 
         await MainActor.run {
             let allStreaks = streakManager.state.streakItems
+            
+            // Handle case where progressMetrics is empty or should be treated as all removed
+            if progressMetrics.isEmpty || shouldTreatAsAllRemoved {
+                // All progress metrics are removed
+                state.ui.goalCardPosition = 0
+                state.ui.isGoalCardRemoved = true
+                // Preserve saved streak order in edit mode; otherwise use default order
+                if state.ui.streakGridOrder.isEmpty {
+                    // Set default order so edit mode can show removed items in order
+                    let defaultOrder = allStreaks.map { $0.id.uuidString }
+                    state.ui.streakGridOrder = defaultOrder
+                }
+                state.ui.removedStreaks = Set(allStreaks.map { $0.label })
+                scheduleUIUpdate()
+                return
+            }
+            
             guard !allStreaks.isEmpty else {
                 setupDefaultProgressMetricsOrder()
                 return
@@ -1373,35 +1405,23 @@ class DashboardStore: ObservableObject {
     /// Toggles the removal state of a streak by its label
     func toggleStreakRemoval(_ streakLabel: String) {
         // Find the streak in the current streak items array
-        if let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) {
-            // Call the underlying manager to actually reorder the array
-            Task {
-                try? await streakManager.toggleStreakVisibility(at: streakIndex)
+        guard let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) else {
+            return
+        }
+        
+        // Call the underlying manager to actually reorder the array
+        Task {
+            try? await streakManager.toggleStreakVisibility(at: streakIndex)
 
-                // Sync the UI state with the streak manager after the change
-                await MainActor.run {
-                    self.syncRemovalStateFromStreakManager()
-                    // Validate goal card position after streak removal
-                    self.validateGoalCardPosition()
-                    // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
-                    self.forceImmediateUIUpdate()
-                }
+            // Sync the UI state with the streak manager after the change
+            await MainActor.run {
+                self.syncRemovalStateFromStreakManager()
+                // Validate goal card position after streak removal
+                self.validateGoalCardPosition()
+                // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                self.forceImmediateUIUpdate()
             }
         }
-
-        // Update the UI state immediately (synchronously) to provide instant feedback
-        if state.ui.removedStreaks.contains(streakLabel) {
-            state.ui.removedStreaks.remove(streakLabel)
-        } else {
-            state.ui.removedStreaks.insert(streakLabel)
-        }
-
-        // Validate goal card position immediately
-        validateGoalCardPosition()
-
-        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
-        // This ensures the Save button gets enabled when streak items are toggled
-        forceImmediateUIUpdate()
     }
 
     func toggleGoalCardRemoval() {
@@ -1691,13 +1711,12 @@ class DashboardStore: ObservableObject {
         let allowedValues: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
         progressMetrics = progressMetrics.filter { allowedValues.contains($0) }
 
-        // If no metrics after validation, use default order
-        if progressMetrics.isEmpty {
-            progressMetrics = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
-        }
+        // Preserve saved streak order in edit mode; otherwise use default order
+        let allMetricsRemoved = progressMetrics.isEmpty
+        UserDefaults.standard.set(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
 
         // Log the order being saved for debugging
-        logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics)")
+        logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics), allRemoved: \(allMetricsRemoved)")
 
         // Save to API
         _ = try await accountService.updateProgressMetrics(metrics: progressMetrics)
