@@ -252,8 +252,9 @@ constructor(
         )
         clearBluetoothTimeout() // Cancel timeout on success
         AppLog.d(TAG, "Waiting 3 seconds after connection")
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
         saveScale()
+        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+        delay(1000)
         AppLog.d(TAG, "Waiting 2 seconds before proceeding")
         onNext()
       } catch (e: Exception) {

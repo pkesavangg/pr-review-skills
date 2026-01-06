@@ -86,7 +86,7 @@ fun LcbtScaleSetupScreenContent(
 
   ScaleSetupHeader(
     sku = sku,
-    onBack = { onIntent(ScaleSetupIntent.ExitSetup(state.isFirstStep)) },
+    onBack = { onIntent(ScaleSetupIntent.ExitSetup(state.isLastStep)) },
     onHelp = { onIntent(ScaleSetupIntent.OpenHelp) },
   ) {
     HorizontalPagerWithBottomNavigation(

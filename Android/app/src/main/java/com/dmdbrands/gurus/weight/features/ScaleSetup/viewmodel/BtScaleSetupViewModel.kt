@@ -338,6 +338,7 @@ constructor(
   }
 
   private fun successfullyPaired(){
+    viewModelScope.launch {
     try {
         AppLog.d(TAG, "Getting device info for: ${discoveredScale!!.id}")
         discoveredScale = discoveredScale!!
@@ -350,10 +351,12 @@ constructor(
         AppLog.d(TAG, "Syncing devices after successful pairing $discoveredScale")
         ggDeviceService.resumeScan()
         syncNewScale(listOf(discoveredScale?.toGGBTDevice()))
+        delay(1000)
         onNext()
     }
     catch (e: Exception){
       AppLog.d(TAG, "Failed while scale gets paired")
+    }
     }
   }
 
@@ -400,10 +403,13 @@ constructor(
     try {
       startObservingEntries { entries ->
         // Only process if we're still on STEP_ON step to prevent multiple onNext() calls
+        viewModelScope.launch {
           AppLog.d(TAG, "Measurement collected: ${entries.size} entries")
           handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
           stopObservingEntries()
+          delay(1000)
           onNext()
+        }
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during measurement", e)
