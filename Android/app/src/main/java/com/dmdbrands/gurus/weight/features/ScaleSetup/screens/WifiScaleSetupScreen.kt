@@ -167,6 +167,7 @@ fun WifiScaleSetupScreenContent(
         WifiScaleSetupStep.ERROR_GUIDE,
         WifiScaleSetupStep.SETUP_FINISHED,
         WifiScaleSetupStep.SWITCH_WIFI,
+        WifiScaleSetupStep.SCALE_COUNTS,
         WifiScaleSetupStep.STEP_ON,
         WifiScaleSetupStep.ERROR_CODE_SELECTED,
         WifiScaleSetupStep.TROUBLE_SHOOTING -> defaultButtonContent
@@ -390,6 +391,16 @@ fun WifiScaleSetupScreenContent(
                 },
               )
             }
+
+            WifiScaleSetupStep.SCALE_COUNTS -> {
+              SetupContent(
+                title = WifiScaleSetupStrings.ScaleCount.Title,
+                subtitle = WifiScaleSetupStrings.ScaleCount.Message,
+                isGifImage = true,
+                supportingImage = AppIcons.Setup.WifiStepOnApMode,
+              )
+            }
+
 
             WifiScaleSetupStep.MAC_ADDRESS -> {
               // Show MAC address component for both AP mode and MAC setup mode

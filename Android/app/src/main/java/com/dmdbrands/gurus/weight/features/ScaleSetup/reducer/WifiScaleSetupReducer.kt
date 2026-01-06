@@ -73,6 +73,7 @@ data class WifiScaleSetupState(
     WifiScaleSetupStep.ACTIVATE_SCALE,
     WifiScaleSetupStep.WIFI_MODE,
     WifiScaleSetupStep.SWITCH_WIFI,
+    WifiScaleSetupStep.SCALE_COUNTS,
     WifiScaleSetupStep.STEP_ON,
     WifiScaleSetupStep.SETUP_FINISHED,
     WifiScaleSetupStep.MAC_ADDRESS,
@@ -187,6 +188,7 @@ data class WifiScaleSetupState(
 
       WifiScaleSetupStep.ERROR_CODE_SELECTED,
       WifiScaleSetupStep.TROUBLE_SHOOTING,
+      WifiScaleSetupStep.SCALE_COUNTS,
       WifiScaleSetupStep.STEP_ON,
       WifiScaleSetupStep.SETUP_FINISHED ->
         // These steps can always proceed
