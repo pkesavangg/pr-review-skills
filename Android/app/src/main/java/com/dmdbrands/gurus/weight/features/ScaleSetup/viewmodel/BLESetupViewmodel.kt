@@ -471,7 +471,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           title = ScaleSetupStrings.ExitSetupAlert.Title,
           message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
           onConfirm = {
             AppLog.d(TAG, "User confirmed exit setup")
             onExit(isSetupFinished)

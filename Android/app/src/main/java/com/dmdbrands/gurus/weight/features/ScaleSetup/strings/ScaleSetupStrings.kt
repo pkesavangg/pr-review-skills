@@ -30,6 +30,7 @@ object ScaleSetupStrings {
 
     const val Back = "Back"
     const val Exit = "Exit"
+    const val Return = "Return"
   }
 
   object SetupButtons {

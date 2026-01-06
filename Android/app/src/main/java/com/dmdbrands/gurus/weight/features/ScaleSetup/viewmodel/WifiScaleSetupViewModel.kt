@@ -367,7 +367,7 @@ constructor(
         title = ScaleSetupStrings.ExitSetupAlert.Title,
         message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
         confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-        cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+        cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
         onConfirm = {
           navigateBack()
         },
@@ -952,7 +952,7 @@ constructor(
         title = ScaleSetupStrings.ExitSetupAlert.Title,
         message = ScaleSetupStrings.ExitSetupAlert.Message(currentState.isConnected),
         confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-        cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+        cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
         onConfirm = {
           navigateBack()
         },

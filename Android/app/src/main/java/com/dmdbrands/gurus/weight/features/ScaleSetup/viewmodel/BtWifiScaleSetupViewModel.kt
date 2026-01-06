@@ -739,7 +739,7 @@ constructor(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
           message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
           onConfirm = {
             onExit()
           },
