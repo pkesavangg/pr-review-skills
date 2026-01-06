@@ -455,11 +455,10 @@ final class WifiScaleSetupStore: ObservableObject {
                 
                 let currentSSID = self.networkForm.ssid.value
                 
-                // Track manual SSID clear or re-entry
+                // Track manual SSID clear: once user clears a non-empty SSID,
+                // remember this for the rest of the session.
                 if !self.previousSSID.isEmpty && currentSSID.isEmpty {
                     self.hasUserManuallyClearedSSID = true
-                } else if self.previousSSID.isEmpty && !currentSSID.isEmpty {
-                    self.hasUserManuallyClearedSSID = false
                 }
                 
                 self.previousSSID = currentSSID

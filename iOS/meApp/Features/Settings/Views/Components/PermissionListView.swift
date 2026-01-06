@@ -213,7 +213,7 @@ struct PermissionListView: View {
         
         // Determine colour:
         //  - Enabled  ➜ primary action colour
-        // Disabled but required → show error (red), except grey in Scale Setup
+        //  - Disabled & required  ➜ error (red), except grey in Scale Setup
         //  - Disabled & optional  ➜ utility / grey
         let colour: Color = {
             if isEnabled { return theme.actionPrimary }
