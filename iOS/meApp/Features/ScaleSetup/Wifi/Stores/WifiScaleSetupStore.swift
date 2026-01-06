@@ -36,6 +36,12 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Active subscription to the network form changes
     private var networkFormCancellable: AnyCancellable? = nil
     
+    /// Indicates if the user manually cleared the SSID field (prevents auto-fill).
+    private var hasUserManuallyClearedSSID: Bool = false
+
+    /// Stores the previous SSID to detect manual clearing.
+    private var previousSSID: String = ""
+    
     /// Tracks the step that presented `.errorSelect` so we can navigate back correctly.
     private var errorSelectSourceStep: WifiScaleSetupStep? = nil
     /// Tracks the step that presented `.stepOn` so we can navigate back correctly.
@@ -412,6 +418,9 @@ final class WifiScaleSetupStore: ObservableObject {
                     // Clear the network form SSID when permissions are skipped and mark as pristine to avoid validation errors
                     self.networkForm.clearSSIDAndMarkPristine()
                     self.wifiStatus = nil
+                    // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
+                    self.hasUserManuallyClearedSSID = false
+                    self.previousSSID = ""
                     logger.log(level: .info, tag: tag, message: "Permissions skipped - cleared WiFi password form SSID and marked as pristine")
                     // Continue to next step.
                     self.moveToNextStep()
@@ -429,15 +438,31 @@ final class WifiScaleSetupStore: ObservableObject {
         bluetoothService.isSetupInProgress = false
     }
     
-    /// Starts observing the network form changes to update the next button state.
+    /// Observes network form changes and updates Next button state.
     private func subscribeToNetworkForm() {
-        // Cancel previous subscription to avoid redundant updates
+        // Cancel existing subscription
         networkFormCancellable?.cancel()
+        
+        // Set initial SSID
+        previousSSID = networkForm.ssid.value
         
         networkFormCancellable = networkForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
-                self?.updateNextEnabled()
+                guard let self else { return }
+                
+                self.updateNextEnabled()
+                
+                let currentSSID = self.networkForm.ssid.value
+                
+                // Track manual SSID clear or re-entry
+                if !self.previousSSID.isEmpty && currentSSID.isEmpty {
+                    self.hasUserManuallyClearedSSID = true
+                } else if self.previousSSID.isEmpty && !currentSSID.isEmpty {
+                    self.hasUserManuallyClearedSSID = false
+                }
+                
+                self.previousSSID = currentSSID
             }
     }
     
@@ -467,6 +492,9 @@ final class WifiScaleSetupStore: ObservableObject {
                 // Permissions were skipped and not in Get-MAC mode - clear SSID and mark as pristine to avoid validation errors
                 self.networkForm.clearSSIDAndMarkPristine()
                 self.wifiStatus = nil
+                // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
+                self.hasUserManuallyClearedSSID = false
+                self.previousSSID = ""
                 logger.log(level: .info, tag: tag, message: "Wi-Fi permissions skipped: SSID cleared and will not be populated.")
             } else {
                 // Normal flow: update WiFi status and populate SSID
@@ -482,8 +510,13 @@ final class WifiScaleSetupStore: ObservableObject {
                 }
                 let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
                 self.wifiStatus = wifiStatus
-                self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
-                logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
+                
+                // Auto-fill SSID only if user hasn't cleared it
+                if !hasUserManuallyClearedSSID {
+                    let newSSID = self.wifiStatus?.ssid ?? ""
+                    self.networkForm.setSSID(newSSID)
+                    self.previousSSID = newSSID // Keep in sync to avoid false clears
+                }
             }
         }
     }

@@ -49,10 +49,17 @@ struct WifiPasswordEntryView: View {
                                 isDisabled: store.networkForm.networkHasNoPassword
                             ),
                             value: $store.networkForm.password.value,
-                            focusedField: $focusedField
-                        ) {
-                            hideKeyboard()
-                        }
+                            focusedField: $focusedField,
+                            onCommit: {
+                                store.networkForm.touchAndValidatePassword()
+                                hideKeyboard()
+                            },
+                            onEditingChanged: { isFocused in
+                                if !isFocused {
+                                    store.networkForm.touchAndValidatePassword()
+                                }
+                            }
+                        )
                         
                         CustomToggleView(isOn: $store.networkForm.networkHasNoPassword, text: lang.noPasswordToggle)
                             .padding(.top, 0)
