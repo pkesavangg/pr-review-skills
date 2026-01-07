@@ -482,10 +482,9 @@ final class WifiScaleSetupStore: ObservableObject {
             let kvStorage = KvStorageService.shared
             let status = await wifiScaleService.getConnectedWifiInfo()
             
-            // Check if we should auto-populate SSID
-            // Similar to Android: shouldAutoPopulate = !permissionsSkipped || isGetMACSetup || arePermissionsCurrentlyEnabled
-            // But per user requirement: if permissions were skipped, don't populate even if currently enabled (unless Get-MAC)
-            let shouldAutoPopulate = !permissionsSkipped || isForGetMac
+            /// Auto-populate SSID only when permissions allow or are currently enabled
+            let arePermissionsCurrentlyEnabled = arePermissionsEnabled()
+            let shouldAutoPopulate = !permissionsSkipped || isForGetMac || arePermissionsCurrentlyEnabled
             
             if !shouldAutoPopulate {
                 // Permissions were skipped and not in Get-MAC mode - clear SSID and mark as pristine to avoid validation errors
@@ -554,7 +553,7 @@ final class WifiScaleSetupStore: ObservableObject {
         setSkipCheckNetwork(false)
     }
     
-    private func arePermissionsEnabled() -> Bool {
+    func arePermissionsEnabled() -> Bool {
         // For WiFi setup, we need Location permission and switches enabled
         return permissionsService.getPermissionState(.LOCATION) == .ENABLED &&
         permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED &&

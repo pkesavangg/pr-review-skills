@@ -51,9 +51,9 @@ struct WifiPasswordView: View {
                                 }
                             }
                         )
-                        // If permissionsSkipped, clear the SSID value and mark as pristine to avoid validation errors
+                        // Clear SSID only if permissions were skipped and are still disabled
                         .onAppear {
-                            if store.permissionsSkipped {
+                            if store.permissionsSkipped && !store.arePermissionsEnabled() {
                                 store.networkForm.clearSSIDAndMarkPristine()
                             }
                         }
