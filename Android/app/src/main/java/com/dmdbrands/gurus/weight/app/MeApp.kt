@@ -58,22 +58,41 @@ fun MeApp() {
         NavHost(topLevelBackStack, appViewModel)
       }
     }
-    if (uiState.isScaleDiscovered && uiState.hasScanStarted) {
+    if (uiState.isScaleDiscovered && uiState .hasScanStarted) {
       val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-      LaunchedEffect(Unit) {
-        delay(15 * 1000)
-        appViewModel.handleIntent(AppIntent.OnPopUpDismiss)
+      val discoveryTimestamp = uiState.scaleDiscoveredTimestamp
+      val shouldShowModal = discoveryTimestamp?.let { timestamp ->
+        val timeSinceDiscovery = System.currentTimeMillis() - timestamp
+        // Only show modal if discovered within the last 15 seconds
+        timeSinceDiscovery <= 15 * 1000
+      } ?: false
+
+      LaunchedEffect(discoveryTimestamp) {
+        if (discoveryTimestamp != null) {
+          val timeSinceDiscovery = System.currentTimeMillis() - discoveryTimestamp
+          val remainingTime = maxOf(0, 15 * 1000 - timeSinceDiscovery)
+          if (remainingTime > 0) {
+            delay(remainingTime)
+            appViewModel.handleIntent(AppIntent.OnPopUpDismiss)
+          } else {
+            // Discovery was too old, dismiss immediately
+            appViewModel.handleIntent(AppIntent.OnPopUpDismiss)
+          }
+        }
       }
-      ModalBottomSheet(
-        sheetState = sheetState,
-        modifier = Modifier.navigationBarsPadding(),
-        onDismissRequest = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
-        containerColor = colorScheme.primaryBackground,
-        dragHandle = null
-      ) {
-        ScaleDiscoveredModal(sku = uiState.sku, onConnect = {
-          appViewModel.handleIntent(AppIntent.OnPopUpConnect)
-        }, onClose = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss)})
+
+      if (shouldShowModal) {
+        ModalBottomSheet(
+          sheetState = sheetState,
+          modifier = Modifier.navigationBarsPadding(),
+          onDismissRequest = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
+          containerColor = colorScheme.primaryBackground,
+          dragHandle = null
+        ) {
+          ScaleDiscoveredModal(sku = uiState.sku, onConnect = {
+            appViewModel.handleIntent(AppIntent.OnPopUpConnect)
+          }, onClose = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss)})
+        }
       }
     }
   }
