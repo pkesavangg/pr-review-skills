@@ -566,7 +566,7 @@ constructor(
         showNetworkErrorAndThrow()
       },
     )
-
+    dialogQueueService.showLoader("Switching account...")
     return try {
       accountRepository.getAccountFromAPI(account.id)
       // Switch to the account using the repository method
@@ -582,6 +582,9 @@ constructor(
       // Optional: handle unexpected exceptions
       AppLog.e(TAG, "Unexpected error while switching account", e)
       false
+    }
+    finally {
+      dialogQueueService.dismissLoader()
     }
   }
 
