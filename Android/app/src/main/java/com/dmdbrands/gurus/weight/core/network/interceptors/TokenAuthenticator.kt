@@ -37,7 +37,7 @@ class TokenAuthenticator @Inject constructor(
     companion object {
         private const val TAG = "TokenAuthenticator"
         private const val TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000 // Same as Angular: 5 minutes buffer in milliseconds
-        private const val MAX_REFRESH_ATTEMPTS = 3 // Same as Angular: max 3 attempts
+        private const val MAX_REFRESH_ATTEMPTS = 3
     }
 
     private var isRefreshingToken = false
@@ -46,6 +46,12 @@ class TokenAuthenticator @Inject constructor(
 
 
     override fun authenticate(route: Route?, response: Response): Request? {
+        // Already retried? Give up to prevent infinite retry loops
+        if (responseCount(response) >= MAX_REFRESH_ATTEMPTS) {
+            AppLog.w(TAG, "Token refresh already attempted - giving up to prevent infinite retry loop")
+            return null
+        }
+
         val request = response.request
         if (NetworkConfig.isPublicEndpoint(request.url.encodedPath)) {
             AppLog.v(TAG, "Skipping token refresh for public endpoint or repeated attempt")
@@ -74,10 +80,10 @@ class TokenAuthenticator @Inject constructor(
               }
                 if (isTokenExpired(expiresAt)) {
                     AppLog.v(TAG, "Token expires within 5 minutes - refreshing proactively for account: $accountId")
-                    refreshResult = refreshToken(accountId, 0)
+                    refreshResult = refreshToken(accountId)
                 } else {
                     AppLog.v(TAG, "401 received - attempting reactive token refresh for account: $accountId")
-                    refreshResult = refreshToken(accountId, 0)
+                    refreshResult = refreshToken(accountId)
                 }
 
                 if (refreshResult == null) {
@@ -164,24 +170,23 @@ class TokenAuthenticator @Inject constructor(
 
     /**
      * Refresh token for the given account (same as Angular tokenRefresh)
-     * Used for 401 handling with retry logic
+     * Used for 401 handling
      * @param accountId The account ID to refresh token for
      * @return The new token response if successful, null if failed
      */
-    private suspend fun refreshToken(accountId: String?, refreshAttempts: Int): Token? {
-        return tokenRefresh(accountId, refreshAttempts)
+    private suspend fun refreshToken(accountId: String?): Token? {
+        return tokenRefresh(accountId)
     }
 
     /**
-     * Refresh token with retry logic (same as Angular tokenRefresh method)
-     * Matches Angular implementation: waits for ongoing refresh, retries on network errors
+     * Refresh token (same as Angular tokenRefresh method)
+     * Matches Angular implementation: waits for ongoing refresh
      * @param accountId The account ID to refresh token for
-     * @param refreshAttempts Current retry attempt number (default 0)
      * @return The new token response if successful, null if failed
      */
-    private suspend fun tokenRefresh(accountId: String?, refreshAttempts: Int = 0): Token? {
-        // If not refreshing and within max attempts, proceed with refresh
-        if (!isRefreshingToken && refreshAttempts < MAX_REFRESH_ATTEMPTS) {
+    private suspend fun tokenRefresh(accountId: String?): Token? {
+        // If not refreshing, proceed with refresh
+        if (!isRefreshingToken) {
             isRefreshingToken = true
             // Emit refresh started (equivalent to tokenRefreshed.next(false) in Angular)
             val deferred = CompletableDeferred<Token?>()
@@ -202,7 +207,7 @@ class TokenAuthenticator @Inject constructor(
                     return null
                 }
 
-                AppLog.v(TAG, "Refreshing token for account: $accountId (attempt: ${refreshAttempts + 1})")
+                AppLog.v(TAG, "Refreshing token for account: $accountId")
 
                 // Make refresh token API call
                 val newTokenResponse = refreshTokenAPI.refreshToken(RefreshTokenRequest(refreshToken))
@@ -237,29 +242,22 @@ class TokenAuthenticator @Inject constructor(
 
             } catch (e: Exception) {
                 isRefreshingToken = false
-                AppLog.e(TAG, "Token refresh failed for account: $accountId (attempt: ${refreshAttempts + 1})", e.toString())
+                AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
 
-                // Check error status (same as Angular: err.status === 401 or err.status === 0 || err.status >= 501)
+                // Check error status (same as Angular: err.status === 401)
                 val errorStatus = getErrorStatus(e)
                 val isTokenInvalidated = errorStatus == 401
-                val isNetworkError = errorStatus == 0 || errorStatus >= 501
 
                 if (isTokenInvalidated) {
-                    // 401 error - logout and don't retry (same as Angular)
+                    // 401 error - logout (same as Angular)
                     AppLog.e(TAG, "Token invalidated (401) - logging out user for account: $accountId")
                     logoutUser(accountId, isCurrentAccount(accountId))
                     deferred.complete(null)
                     ongoingRefreshDeferred = null
                     throw e
-                } else if (refreshAttempts < MAX_REFRESH_ATTEMPTS - 1 && isNetworkError) {
-                    // Network error (status 0 or >= 501) - retry (same as Angular)
-                    AppLog.v(TAG, "Network error detected - retrying token refresh for account: $accountId (attempt: ${refreshAttempts + 2})")
-                    deferred.complete(null)
-                    ongoingRefreshDeferred = null
-                    return tokenRefresh(accountId, refreshAttempts + 1)
                 } else {
-                    // Max attempts reached or other error - logout (same as Angular)
-                    AppLog.e(TAG, "Max retry attempts reached or non-retryable error for account: $accountId")
+                    // Other error - logout
+                    AppLog.e(TAG, "Token refresh error for account: $accountId")
                     logoutUser(accountId, isCurrentAccount(accountId))
                     deferred.complete(null)
                     ongoingRefreshDeferred = null
@@ -276,7 +274,7 @@ class TokenAuthenticator @Inject constructor(
             } else {
                 // If deferred is null, refresh might have just completed, try again
                 AppLog.v(TAG, "Ongoing refresh completed, retrying...")
-                tokenRefresh(accountId, refreshAttempts)
+                tokenRefresh(accountId)
             }
         }
     }
@@ -310,5 +308,20 @@ class TokenAuthenticator @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Count the number of responses in the chain to prevent infinite retry loops.
+     * @param response The response to count
+     * @return The number of responses in the chain (1 for original, 2+ for retries)
+     */
+    private fun responseCount(response: Response): Int {
+        var count = 1
+        var prior = response.priorResponse
+        while (prior != null) {
+            count++
+            prior = prior.priorResponse
+        }
+        return count
     }
 }

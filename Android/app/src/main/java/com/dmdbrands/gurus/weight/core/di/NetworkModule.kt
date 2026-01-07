@@ -97,11 +97,16 @@ object NetworkModule {
 
     /**
      * Provides an authentication token interceptor for OkHttp.
+     * Proactively refreshes tokens if they expire within 5 minutes.
      */
     @Provides
     @Singleton
-    fun provideAuthTokenInterceptor(tokenManager: ITokenManager): AuthTokenInterceptor =
-        AuthTokenInterceptor(tokenManager)
+    fun provideAuthTokenInterceptor(
+        tokenManager: ITokenManager,
+        refreshTokenAPI: RefreshTokenAPI,
+        userDataStore: UserDataStore,
+    ): AuthTokenInterceptor =
+        AuthTokenInterceptor(tokenManager, refreshTokenAPI, userDataStore)
 
     /**
      * Provides a response interceptor for OkHttp.
