@@ -18,7 +18,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntr
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import kotlinx.coroutines.flow.Flow
-import java.util.Map.entry
 
 /**
  * Data Access Object (DAO) for the entry table.
@@ -842,17 +841,17 @@ ORDER BY d.day DESC
    * @param accountId The account ID
    * @param startDate The start date (ISO 8601 string)
    * @param endDate The end date (ISO 8601 string)
-   * @return List of entries in the date range
+   * @return Flow of list of entries in the date range
    */
   @Transaction
   @Query(
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
-          AND datetime(entryTimestamp) >= datetime(:startDate)
-          AND datetime(entryTimestamp) <= datetime(:endDate)
+          AND entryTimestamp >= :startDate
+          AND entryTimestamp <= :endDate
         ORDER BY datetime(entryTimestamp) DESC
     """,
   )
-  suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<PopulatedActiveEntry>
+  fun getEntriesInRange(accountId: String, startDate: String, endDate: String): Flow<List<PopulatedActiveEntry>>
 }

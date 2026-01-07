@@ -126,7 +126,7 @@ interface IEntryRepository {
    * @param days Number of days to look back
    * @return Flow of list of Entry objects
    */
-  fun getLastNDaysEntries(
+  suspend fun getLastNDaysEntries(
     accountId: String,
     days: Int,
   ): Flow<List<Entry>>

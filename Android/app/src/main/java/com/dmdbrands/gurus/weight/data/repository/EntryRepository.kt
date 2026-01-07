@@ -13,9 +13,9 @@ import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToStored
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -108,14 +108,20 @@ class EntryRepository @Inject constructor(
    * @param days Number of days to look back
    * @return Flow of list of Entry objects
    */
-  //TODO: This is not used at the moment and is retained for possible future requirements
-  override fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
-    val calendar = Calendar.getInstance()
-    val endDate = calendar.timeInMillis.toString()
-    calendar.add(Calendar.DAY_OF_YEAR, -days)
-    val startDate = calendar.timeInMillis.toString()
-    return entryDao.getEntriesByTimeRange(accountId, startDate, endDate).map { flow ->
-      flow.mapNotNull { it.toEntry() }
+  override suspend fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
+    val endInstant = java.time.Instant.now()
+    val startInstant = endInstant.minus(java.time.Duration.ofDays(days.toLong()))
+
+    // Format as ISO 8601 strings matching the format used by DateTimeConverter.timestampToIso
+    // Uses format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX" (e.g., "2025-01-15T10:30:00.000+00:00")
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    val endZonedDateTime = java.time.ZonedDateTime.ofInstant(endInstant, java.time.ZoneOffset.UTC)
+    val startZonedDateTime = java.time.ZonedDateTime.ofInstant(startInstant, java.time.ZoneOffset.UTC)
+
+    val endDate = endZonedDateTime.format(formatter)
+    val startDate = startZonedDateTime.format(formatter)
+    return entryDao.getEntriesInRange(accountId, startDate, endDate).map { list ->
+      list.mapNotNull { it.toEntry() }
     }
   }
 
@@ -288,5 +294,5 @@ class EntryRepository @Inject constructor(
    * @return List of entries in the date range
    */
   override suspend fun getEntriesInRange(accountId: String, startDate: String, endDate: String): List<Entry> =
-    entryDao.getEntriesInRange(accountId, startDate, endDate).mapNotNull { it.toEntry() }
+    entryDao.getEntriesInRange(accountId, startDate, endDate).first().mapNotNull { it.toEntry() }
 }

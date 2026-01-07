@@ -166,7 +166,7 @@ constructor(
       }
     }
 
-  override val progress: Flow<Progress> = combine(
+  override val progress: Flow<Progress> =
     combine(
       _latestEntry,
       _last7Days,
@@ -174,28 +174,26 @@ constructor(
       weightSettingsFlow,
       _monthYear
     ) { latest, last7, last30, weightSettings, monthYear ->
-      ProgressInputs(latest, last7, last30, monthYear, weightSettings)
-    },
-    _lastUpdated
-  ) { inputs, lastUpdated ->
-    calculateProgress(
-      inputs.latest?.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
-      inputs.last7.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-      inputs.last30.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-      inputs.monthYear.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-      processWeight(this.initialWeight ?: 0.0, inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
-      goal = inputs.weightSettings.goal?.copy(
-        goalWeight = processWeight(
-          inputs.weightSettings.goal.goalWeight,
-          inputs.weightSettings.weightUnit,
-          inputs.weightSettings.weightless,
+      val inputs = ProgressInputs(latest, last7, last30, monthYear, weightSettings)
+      calculateProgress(
+        inputs.latest?.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
+        inputs.last7.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+        inputs.last30.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+        inputs.monthYear.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+        processWeight(this.initialWeight ?: 0.0, inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
+        goal = inputs.weightSettings.goal?.copy(
+          goalWeight = processWeight(
+            inputs.weightSettings.goal.goalWeight,
+            inputs.weightSettings.weightUnit,
+            inputs.weightSettings.weightless,
+          ),
+          account = accountRepository.getActiveAccount().first(),
         ),
-        account = accountRepository.getActiveAccount().first(),
-      ),
-      unit = inputs.weightSettings.weightUnit ?: WeightUnit.LB,
-      lastUpdated = lastUpdated,
-    )
-  }
+        unit = inputs.weightSettings.weightUnit ?: WeightUnit.LB,
+        lastUpdated = null,
+      )
+    }
+
 
   override suspend fun monthDetails(startDate: String): Flow<List<Entry>> {
     val input = startDate
@@ -212,25 +210,27 @@ constructor(
   }
 
   private suspend fun updateLast7Days(accountId: String) {
-    val endDate = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
-    val startDate = java.time.ZonedDateTime.now().minusDays(7).toInstant()
-    val entries = entryRepository.getEntriesInRange(
-      accountId,
-      startDate.toString(),
-      endDate.toString(),
-    )
-    _last7Days.value = entries
+    try {
+      entryRepository.getLastNDaysEntries(accountId, 7).collect { entries ->
+        _last7Days.value = entries
+        AppLog.d("EntryService", "Updated last 7 days: ${entries.size} entries")
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating last 7 days", e)
+      _last7Days.value = emptyList()
+    }
   }
 
   private suspend fun updateLast30Days(accountId: String) {
-    val endDate = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
-    val startDate = endDate.minusDays(30)
-    val entries = entryRepository.getEntriesInRange(
-      accountId,
-      startDate.toString(),
-      endDate.toString(),
-    )
-    _last30Days.value = entries
+    try {
+      entryRepository.getLastNDaysEntries(accountId, 30).collect { entries ->
+        _last30Days.value = entries
+        AppLog.d("EntryService", "Updated last 30 days: ${entries.size} entries")
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating last 30 days", e)
+      _last30Days.value = emptyList()
+    }
   }
 
   private suspend fun updateMonthYear(accountId: String) {
@@ -287,6 +287,10 @@ constructor(
           _isEmpty.value = it.isEmpty()
       }
     }
+
+    repositoryScope.launch {
+      updateLatestEntry(accountId)
+    }
     repositoryScope.launch {
       updateLast7Days(accountId)
     }
@@ -295,9 +299,6 @@ constructor(
     }
     repositoryScope.launch {
       updateMonthYear(accountId)
-    }
-    repositoryScope.launch {
-      updateLatestEntry(accountId)
     }
 
     // Add new body scale data updates
