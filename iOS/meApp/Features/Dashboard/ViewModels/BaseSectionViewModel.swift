@@ -373,7 +373,6 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             return
         }
         
-        let oldScrollPosition = self.scrollPosition
         self.scrollPosition = newPosition
         
         // Update dashboard store scroll position

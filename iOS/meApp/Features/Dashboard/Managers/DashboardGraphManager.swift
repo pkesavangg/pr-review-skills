@@ -1100,8 +1100,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
             let positionChange = abs(state.xScrollPosition.timeIntervalSince(lastPosition))
 
-            // More aggressive caching: only recalculate if scroll moved > 25% of domain
-            // This reduces calculations from every 10% movement
+            // Threshold-based caching: only recalculate if scroll moved > 10% of domain
+            // This uses a 10% movement threshold for re-computation
             let cacheThreshold = domainLength / 10
             
             if positionChange < cacheThreshold {
@@ -1144,10 +1144,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let dayBufferTime: TimeInterval = 24 * 60 * 60 // 1 day buffer for midnight-local summaries
         let adjustedLeftEdge = leftEdge.addingTimeInterval(-dayBufferTime)
         let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
-        
-        // Calculate effective visible window (clamped to data bounds for logging/debugging)
-        let visibleStart = max(adjustedLeftEdge, minDate)
-        let visibleEnd = min(adjustedRightEdge, maxDate)
         
         // Use binary search helpers for O(log n) lookup instead of O(n) filter
         guard let startIndex = binarySearchFirstIndex(in: operations, where: { $0.date >= adjustedLeftEdge }),
