@@ -135,6 +135,18 @@ struct GoalSettingScreen: View {
         .onDisappear {
             registerDeactivation { true }
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                // Show Done button only when starting weight or goal weight fields are focused
+                if focusedField == .currentWeight || focusedField == .goalWeight {
+                    Spacer()
+                    Button(commonLang.done) {
+                        focusedField = nil
+                        hideKeyboard()
+                    }
+                }
+            }
+        }
         .navigationBarHidden(true)
     }
     
