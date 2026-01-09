@@ -77,7 +77,15 @@ internal fun StatCard(
           append(" " + stat.valueSuffix)
         }
       } else {
-        append("---")
+        // Handle null values based on key type
+        when {
+          !isFromSetup && stat.key is DashboardKey.Milestone && !isStreakMilestone(stat) ->
+            append("0.0")
+
+          else ->
+            append("---")
+        }
+
       }
     }
   }
@@ -88,6 +96,11 @@ internal fun StatCard(
   } else {
     // Not in setup mode, always show
     true
+  }
+  val textAlignment = if (stat.key is DashboardKey.Milestone && isStreakMilestone(stat)) {
+    TextAlign.Start
+  } else {
+    TextAlign.Center
   }
   Card(
     modifier = Modifier
@@ -112,7 +125,6 @@ internal fun StatCard(
     ) {
       if (stat.icon != null && stat.key is DashboardKey.Milestone) {
         Row(
-          modifier = Modifier.weight(1f),
           horizontalArrangement = Arrangement.Center,
           verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -150,7 +162,7 @@ internal fun StatCard(
         Text(
           text = metricLabel,
           style = MeTheme.typography.subHeading2,
-          textAlign = TextAlign.Center,
+          textAlign = textAlignment,
           color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textSubheading,
           maxLines = 2,
           minLines = 1,
