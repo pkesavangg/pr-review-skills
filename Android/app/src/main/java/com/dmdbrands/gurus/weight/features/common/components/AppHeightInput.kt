@@ -48,6 +48,7 @@ fun AppHeightInput(
           onDismiss = {
             isModalTriggered = false
           },
+          config = ModalConfigs.Critical,
         ) {
             AppHeightPickerModal(
                 value = currentValue,

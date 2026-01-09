@@ -624,7 +624,7 @@ constructor(
         onDismiss = {
           dialogQueueService.dismissCurrent()
         },
-
+        dismissOnBackPress = true
       ),
     )
   }

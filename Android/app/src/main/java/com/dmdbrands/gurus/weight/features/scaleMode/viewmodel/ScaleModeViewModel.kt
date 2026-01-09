@@ -151,6 +151,7 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.BiaModal,
+        dismissOnBackPress = true
       ),
     )
   }
