@@ -30,10 +30,12 @@ abstract class GGScanService {
         is GGScanResponse.Permission -> {
           permissionCallBackFlow.value = response.data
         }
-        else -> {
+
+        is GGScanResponse.DeviceDetail -> {
           Log.e("TAG", "startScan: $response")
           deviceCallbackFlow.value = response
         }
+        else -> {}
       }
     }
   }
