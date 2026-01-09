@@ -158,8 +158,9 @@ struct PermissionListView: View {
     
     private var internetSection: some View {
         let rowTitle = viewModel.internetConnected ? PermissionsStrings.internetNetworkConnected : PermissionsStrings.internetNetworkDisconnected
+        let sectionTitle = setupType == .btWifi ? "Network" : PermissionsStrings.internet
         return sectionView(
-            title: PermissionsStrings.internet,
+            title: sectionTitle,
             rows: [
                 (
                     rowTitle,
