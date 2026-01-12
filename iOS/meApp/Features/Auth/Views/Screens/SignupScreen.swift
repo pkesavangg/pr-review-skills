@@ -89,6 +89,9 @@ struct SignupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        .onTapGesture {
+            hideKeyboard()
+        }
     }
     
     private var footerButtons: some View {

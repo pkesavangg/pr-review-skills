@@ -107,8 +107,13 @@ struct GoalSettingScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingLG)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             settingsStore.populateGoalFormIfNeeded()
             // Sync the selected segment with the current goal type value
