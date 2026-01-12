@@ -161,8 +161,8 @@ struct BtWifiScaleSetupScreen: View {
                                type: .filledPrimary,
                                size: .small,
                                isDisabled: !setupStore.isNextEnabled,
-                               customHorizontalPadding: .spacingXS/2,
-                               customVerticalPadding: .spacingXS/4,
+                               customHorizontalPadding: .spacingXS / 2,
+                               customVerticalPadding: .spacingXS / 4,
                                action: {
                         withAnimation {
                             hideKeyboard()
@@ -177,8 +177,8 @@ struct BtWifiScaleSetupScreen: View {
                            type: .filledPrimary,
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
-                           customHorizontalPadding: .spacingXS/2,
-                           customVerticalPadding: .spacingXS/4,
+                           customHorizontalPadding: .spacingXS / 2,
+                           customVerticalPadding: .spacingXS / 4,
                            action: {
                     withAnimation {
                         hideKeyboard()
@@ -203,8 +203,8 @@ struct BtWifiScaleSetupScreen: View {
                            type: .filledPrimary,
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
-                           customHorizontalPadding: .spacingXS/2,
-                           customVerticalPadding: .spacingXS/4,
+                           customHorizontalPadding: .spacingXS / 2,
+                           customVerticalPadding: .spacingXS / 4,
                            action: {
                     withAnimation {
                         hideKeyboard()
