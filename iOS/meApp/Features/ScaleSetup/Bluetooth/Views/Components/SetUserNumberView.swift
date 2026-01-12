@@ -32,7 +32,8 @@ struct SetUserNumberView: View {
                 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.setupSetUserNumberGifName(sku), height: 250)
-                        .frame(width: 370, height: 250)
+                        .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
+                               height: DevicePlatform.isMiniPhone ? 200 : 250)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 
