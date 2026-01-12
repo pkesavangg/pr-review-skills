@@ -19,20 +19,10 @@ struct WifiPasswordEntryView: View {
     let isScaleSetup: Bool
     var labels = InputFieldLabels.self
     
-    // Calculate bottom padding for ScrollView content to prevent overlap with footer buttons
+    /// Bottom padding to keep ScrollView content visible above footer and keyboard
     private var scrollViewBottomPadding: CGFloat {
-        var padding: CGFloat = .spacingLG
-        // Add extra padding when footer buttons are shown to prevent content overlap
-        if store.isSettingsContext {
-            // Footer buttons height (~50px) + vertical padding (16px * 2) + extra spacing
-            padding += 90
-        }
-        // When keyboard is visible, add padding so content can scroll above keyboard
-        // The footer buttons will stay above keyboard automatically
-        if keyboardHeight > 0 {
-            padding += keyboardHeight
-        }
-        return padding
+        let footerPadding: CGFloat = store.isSettingsContext ? 90 : 0
+        return .spacingLG + footerPadding + max(keyboardHeight, 0)
     }
     
     var body: some View {
@@ -92,12 +82,9 @@ struct WifiPasswordEntryView: View {
             // Do not show during initial scale setup flow
             if store.isSettingsContext  {
                 settingsFooterButtons
-                    .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingSM)
-                    .background(theme.backgroundSecondary)
             }
         }
-        .keyboardObserver(keyboardHeight: $keyboardHeight)
     }
     
     private var settingsFooterButtons: some View {
