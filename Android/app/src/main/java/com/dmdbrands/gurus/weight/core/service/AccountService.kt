@@ -491,6 +491,9 @@ constructor(
     fcmToken: String?,
   ): Boolean =
     try {
+      if (!isNetworkAvailable()){
+        showNoNetworkErrorToast()
+      }
       AppLog.v(TAG, "logout() called for accountId: $accountId")
       val isActiveAccount = getCurrentAccount()?.id == accountId
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
@@ -511,6 +514,9 @@ constructor(
   override suspend fun logoutAll(): Boolean =
     try {
       AppLog.d(TAG, "logoutAll() called")
+      if (!isNetworkAvailable()){
+        showNoNetworkErrorToast()
+      }
       // Get all logged-in accounts before logging out to reset their notification alert settings
       val loggedInAccounts = getLoggedInAccounts()
       val result = accountRepository.logoutAllAccounts()
@@ -736,5 +742,15 @@ constructor(
   override suspend fun emitNavigateBackFromMyAccounts() {
     appNavigationService.emitAuthEvent(AuthState.NavigateBackFromMyAccounts)
     AppLog.d(TAG, "Emitted NavigateBackFromMyAccounts event")
+  }
+
+  private fun showNoNetworkErrorToast(){
+    dialogQueueService.showToast(
+      Toast(
+        title = null,
+        message = ToastStrings.Error.NetworkError.Message,
+        action = null,
+      ),
+    )
   }
 }
