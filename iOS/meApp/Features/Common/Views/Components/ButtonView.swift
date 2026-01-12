@@ -24,7 +24,8 @@ struct ButtonView: View {
     var customHorizontalPadding: CGFloat? = nil
     /// Optional custom vertical padding for filled primary buttons. If set, overrides default padding.
     var customVerticalPadding: CGFloat? = nil
-    /// Optional bool to control frame usage for inline text buttons. If true, uses frame; if false, no frame. Default is true for non-inline text buttons.
+    /// Optional bool to control frame usage for inline text buttons.
+    /// If true, inline text buttons will use a frame; if false, they will not. Default is false.
     var useFrameForInlineText: Bool = false
     /// Throttle interval in seconds. Default is 0.5 seconds. Set to 0 to disable throttling.
     /// With throttle, the first tap executes immediately, and subsequent taps within the interval are ignored.

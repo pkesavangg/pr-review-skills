@@ -114,8 +114,8 @@ struct SignupScreen: View {
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !signupStore.isNextEnabled,
-                       customHorizontalPadding: .spacingXS/2,
-                       customVerticalPadding: .spacingXS/4,
+                       customHorizontalPadding: .spacingXS / 2,
+                       customVerticalPadding: .spacingXS / 4,
                        action: {
                 withAnimation {
                     hideKeyboard()
