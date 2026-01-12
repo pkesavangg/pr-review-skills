@@ -18,7 +18,6 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
 import java.io.IOException
-import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -75,10 +74,8 @@ class TokenAuthenticator @Inject constructor(
 
               AppLog.v(TAG, "Token expires at: $expiresAt for account: $accountId")
                 var refreshResult: Token? = null
-              if(expiresAt.isNullOrEmpty()){
-                return@runBlocking null
-              }
-                if (isTokenExpired(expiresAt)) {
+
+                if (!expiresAt.isNullOrEmpty() &&  isTokenExpired(expiresAt)) {
                     AppLog.v(TAG, "Token expires within 5 minutes - refreshing proactively for account: $accountId")
                     refreshResult = refreshToken(accountId)
                 } else {
@@ -86,19 +83,21 @@ class TokenAuthenticator @Inject constructor(
                     refreshResult = refreshToken(accountId)
                 }
 
-                if (refreshResult == null) {
-                    AppLog.e(TAG, "Token refresh failed - logging out user for account: $accountId")
-                    logoutUser(accountId, isCurrentAccount(accountId))
-                    return@runBlocking null
-                }
-
-                // Build new request with fresh access token (retry the original request)
-                val newRequest = response.request.newBuilder()
+                if (refreshResult != null) {
+                  // Build new request with fresh access token (retry the original request)
+                  val newRequest = response.request.newBuilder()
                     .header(AppConfig.AUTHORIZATION_HEADER, "Bearer ${refreshResult.accessToken}")
                     .build()
 
-                AppLog.v(TAG, "Token refreshed successfully - retrying original request for account: $accountId")
-                return@runBlocking newRequest
+                  AppLog.v(TAG, "Token refreshed successfully - retrying original request for account: $accountId")
+                  return@runBlocking newRequest
+                }
+              else {
+                  AppLog.e(TAG, "Token refresh failed - logging out user for account: $accountId")
+                  logoutUser(accountId, isCurrentAccount(accountId))
+                  return@runBlocking null
+              }
+
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
                 // At this point, we know it's the current account (non-active accounts are skipped earlier)
@@ -130,15 +129,10 @@ class TokenAuthenticator @Inject constructor(
      */
     private suspend fun logoutUser(accountId: String?, isCurrentAccount: Boolean) {
         AppLog.w(TAG, "Logging out current user due to token refresh failure for account: $accountId")
-
-        // Emit logout event and navigate to landing screen for current account
         if (isCurrentAccount && accountId != null) {
             AppLog.i(TAG, "Current account logout - navigating to landing screen")
             appNavigationService.emitAuthEvent(AuthState.UnauthorizedLogout(accountId))
-        }
-        // Clear tokens for current account
-        if (isCurrentAccount) {
-            userDataStore.logoutCurrentAccount()
+          userDataStore.logoutCurrentAccount()
         }
     }
 
@@ -286,7 +280,7 @@ class TokenAuthenticator @Inject constructor(
      */
     private fun getErrorStatus(e: Exception): Int {
         return when (e) {
-            is IOException, is SocketTimeoutException -> 0 // Network error
+            is IOException -> 0 // Network error
             else -> {
                 // Try to extract status from exception message or cause
                 val message = e.message ?: ""

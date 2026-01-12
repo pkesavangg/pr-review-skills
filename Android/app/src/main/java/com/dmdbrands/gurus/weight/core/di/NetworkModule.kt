@@ -13,7 +13,6 @@ import com.dmdbrands.gurus.weight.core.network.interceptors.ResponseInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.TokenAuthenticator
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.qualifiers.RefreshClient
-import com.dmdbrands.gurus.weight.core.network.utility.LegacyNetworkConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
@@ -79,13 +78,9 @@ object NetworkModule {
     fun provideConnectivityObserver(
         @ApplicationContext context: Context,
     ): IConnectivityObserver =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            NetworkConnectivityObserver(context)
-        } else {
-            LegacyNetworkConnectivityObserver(context)
-        }
+      NetworkConnectivityObserver(context)
 
-    /**
+  /**
      * Provides a network interceptor that observes connectivity changes. Requires API 23+.
      */
     @RequiresApi(Build.VERSION_CODES.M)
