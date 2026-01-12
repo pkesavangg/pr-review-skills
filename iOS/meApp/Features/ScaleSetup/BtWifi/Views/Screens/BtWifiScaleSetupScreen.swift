@@ -149,6 +149,7 @@ struct BtWifiScaleSetupScreen: View {
                                type: .inlineTextPrimary,
                                size: .small,
                                isDisabled: setupStore.shouldDisableBackButton(),
+                               useFrameForInlineText: true,
                                action: {
                         withAnimation {
                             hideKeyboard()
@@ -160,6 +161,8 @@ struct BtWifiScaleSetupScreen: View {
                                type: .filledPrimary,
                                size: .small,
                                isDisabled: !setupStore.isNextEnabled,
+                               customHorizontalPadding: .spacingXS/2,
+                               customVerticalPadding: .spacingXS/4,
                                action: {
                         withAnimation {
                             hideKeyboard()
@@ -174,6 +177,8 @@ struct BtWifiScaleSetupScreen: View {
                            type: .filledPrimary,
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
+                           customHorizontalPadding: .spacingXS/2,
+                           customVerticalPadding: .spacingXS/4,
                            action: {
                     withAnimation {
                         hideKeyboard()
@@ -186,6 +191,7 @@ struct BtWifiScaleSetupScreen: View {
                            type: .inlineTextPrimary,
                            size: .small,
                            isDisabled: setupStore.shouldDisableBackButton(),
+                           useFrameForInlineText: true,
                            action: {
                     withAnimation {
                         hideKeyboard()
@@ -197,6 +203,8 @@ struct BtWifiScaleSetupScreen: View {
                            type: .filledPrimary,
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
+                           customHorizontalPadding: .spacingXS/2,
+                           customVerticalPadding: .spacingXS/4,
                            action: {
                     withAnimation {
                         hideKeyboard()
