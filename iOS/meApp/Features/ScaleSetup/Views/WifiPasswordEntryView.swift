@@ -82,9 +82,7 @@ struct WifiPasswordEntryView: View {
             // Do not show during initial scale setup flow
             if store.isSettingsContext  {
                 settingsFooterButtons
-                    .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingSM)
-                    .background(theme.backgroundSecondary)
             }
         }
         .keyboardObserver(keyboardHeight: $keyboardHeight)
