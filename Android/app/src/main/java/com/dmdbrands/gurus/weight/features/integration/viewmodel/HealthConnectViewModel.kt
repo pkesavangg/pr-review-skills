@@ -128,7 +128,9 @@ class HealthConnectViewModel @Inject constructor(
     private suspend fun handlePrimaryAction(label: HealthConnectAction) {
         when (label) {
             HealthConnectAction.CONNECT -> {
+              dialogQueueService.showLoader("Loading...")
                 handleConnect()
+              dialogQueueService.dismissLoader()
             }
             HealthConnectAction.FINISH -> {
                 handleFinish()
@@ -196,6 +198,8 @@ class HealthConnectViewModel @Inject constructor(
     /**
      * Determines the setup state based on Health Connect status, user conflict, and permissions.
      * This matches the Angular connectHealthConnectIntegration logic.
+     * Note: INSTALL_REQUIRED and UNAVAILABLE alerts are handled in IntegrationViewModel.connectHealthConnectIntegration().
+     * This method only handles INSTALLED/UPDATE_REQUIRED cases for modal setup states.
      */
     private suspend fun determineSetupState(
         status: com.greatergoods.libs.healthconnect.enums.HealthConnectStatus,
@@ -205,7 +209,9 @@ class HealthConnectViewModel @Inject constructor(
             com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.INSTALLED,
             com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.UPDATE_REQUIRED -> {
                 // Check for user conflict
-                val isAlreadyUsed = try { healthConnectService.checkIfAlreadyUsed() } catch (e: Exception) {
+                val isAlreadyUsed = try {
+                    healthConnectService.checkIfAlreadyUsed()
+                } catch (e: Exception) {
                     AppLog.e("HealthConnectViewModel", "Failed to check if Health Connect is already used", e)
                     false
                 }
@@ -220,12 +226,14 @@ class HealthConnectViewModel @Inject constructor(
                 }
             }
             com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.INSTALL_REQUIRED -> {
-                // Show install required alert/modal in UI as needed
-                return HealthConnectSetup.NONE // Or define a new setup if needed
+                // Alert is handled in IntegrationViewModel.connectHealthConnectIntegration()
+                // Return NONE as this case is handled before navigation
+                HealthConnectSetup.NONE
             }
             com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.UNAVAILABLE -> {
-                // Show unavailable alert/modal in UI as needed
-                return HealthConnectSetup.NONE // Or define a new setup if needed
+                // Alert is handled in IntegrationViewModel.connectHealthConnectIntegration()
+                // Return NONE as this case is handled before navigation
+                HealthConnectSetup.NONE
             }
         }
     }
@@ -262,7 +270,6 @@ class HealthConnectViewModel @Inject constructor(
      * Handles the connect action.
      */
     private suspend fun handleConnect(fromIncomplete: Boolean = false) {
-      dialogQueueService.showLoader("Loading...")
         try {
             healthConnectService.requestAuthorization { requestStatus ->
                 viewModelScope.launch {
@@ -291,7 +298,6 @@ class HealthConnectViewModel @Inject constructor(
             AppLog.e("HealthConnectViewModel", "Failed to handle Health Connect connection", e)
         }
         finally {
-            dialogQueueService.dismissLoader()
         }
     }
 
