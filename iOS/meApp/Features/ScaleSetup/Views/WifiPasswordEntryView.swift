@@ -13,11 +13,27 @@ struct WifiPasswordEntryView: View {
     @EnvironmentObject var store: BtWifiScaleSetupStore
     let wifiDetail: WifiDetails
     @State private var focusedField: FocusField?
+    @State private var keyboardHeight: CGFloat = 0
     let lang = BtWifiScaleSetupStrings.WifiScreenStrings.self
     let commonLang = CommonStrings.self
     let isScaleSetup: Bool
     var labels = InputFieldLabels.self
     
+    // Calculate bottom padding for ScrollView content to prevent overlap with footer buttons
+    private var scrollViewBottomPadding: CGFloat {
+        var padding: CGFloat = .spacingLG
+        // Add extra padding when footer buttons are shown to prevent content overlap
+        if store.isSettingsContext {
+            // Footer buttons height (~50px) + vertical padding (16px * 2) + extra spacing
+            padding += 90
+        }
+        // When keyboard is visible, add padding so content can scroll above keyboard
+        // The footer buttons will stay above keyboard automatically
+        if keyboardHeight > 0 {
+            padding += keyboardHeight
+        }
+        return padding
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -65,6 +81,7 @@ struct WifiPasswordEntryView: View {
                             .padding(.top, 0)
                     }
                     .padding(.top, .spacingLG)
+                    .padding(.bottom, scrollViewBottomPadding)
                     .navigationBarBackButtonHidden(true)
                 }
             }
@@ -75,11 +92,12 @@ struct WifiPasswordEntryView: View {
             // Do not show during initial scale setup flow
             if store.isSettingsContext  {
                 settingsFooterButtons
+                    .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingSM)
+                    .background(theme.backgroundSecondary)
             }
-            
-            
         }
+        .keyboardObserver(keyboardHeight: $keyboardHeight)
     }
     
     private var settingsFooterButtons: some View {
