@@ -247,7 +247,7 @@ struct HKIntegrationModalStrings {
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
-    static let required = "must not be left blank"
+    static let required = "This field is required"
     static let leaveBlank = "must not leave blank"
     static let email = "must use a valid email"
     static let emailMaxLength = "email should not exceed 100 characters"
@@ -272,9 +272,9 @@ struct FormErrorMessages {
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
     static let modelNumberInvalid = "model number invalid"
-    static let duplicate = "the scale can’t have duplicate user names"
+    static let duplicate = "the scale can't have duplicate user names"
     static let namePattern = "please enter a valid name"
-    static let userNameUnavailable = "user name is unavailable"
+    static let userNameUnavailable = "user name unavailable"
 }
 
 /// Constants for input field labels used in the app

@@ -12,6 +12,8 @@ struct ScaleUser {
 class UserNameForm: ObservableForm {
     var displayName = FormControl("", validators: [.required, .noWhiteSpace, .userNameUnavailable, .maxLength(20)])
     @Published var userList: [ScaleUser] = []
+    /// The current user's initial name
+    var currentUserName: String? = nil
     private let errorMessages = FormErrorMessages.self
     
     /// Publisher that merges all value changes in the form
@@ -47,7 +49,7 @@ class UserNameForm: ObservableForm {
         if control.errors[.noWhiteSpace] { return errorMessages.noWhiteSpace }
         if control.errors[.maxLength] { return errorMessages.maxLength(20) }
         if control.errors[.userNameUnavailable] { return errorMessages.userNameUnavailable }
-        if control.errors[.duplicate] { return errorMessages.duplicate }
+        if control.errors[.duplicate] { return errorMessages.userNameUnavailable }
         
         return nil
     }
@@ -56,11 +58,24 @@ class UserNameForm: ObservableForm {
     private func setupDuplicateValidation() {
         // Remove existing duplicate validator
         displayName.removeValidator(ofType: .duplicate)
-        
         // Add new duplicate validator with current user list
         let duplicateValidator = Validator<String>.duplicateUser {
-            self.userList.map { $0.name }
+            // Filter out the current user's name from the duplicate check
+            let currentNameLower = self.currentUserName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return self.userList
+                .map { $0.name }
+                .filter { name in
+                    // Exclude current user's name from duplicate check
+                    guard let currentName = currentNameLower else { return true }
+                    return name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != currentName
+                }
         }
         displayName.addValidator(duplicateValidator)
+    }
+    
+    /// Set the current user's name to exclude from duplicate check
+    func setCurrentUserName(_ name: String?) {
+        currentUserName = name
+        setupDuplicateValidation()
     }
 } 
