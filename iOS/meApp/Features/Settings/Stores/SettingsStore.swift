@@ -295,8 +295,8 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Computed Profile Info
     var profileInitial: String {
-        if let firstInitial = activeAccount?.firstName?.first {
-            return String(firstInitial)
+        if let firstName = activeAccount?.firstName {
+            return firstName.firstAlphabeticCharacter()
         }
         return ""
     }
@@ -1478,18 +1478,19 @@ class SettingsStore: ObservableObject {
         guard !hasSeen else { return }
         
         guard accountService.activeAccount != nil,
-              let initialChar = activeAccount?.firstName?.first else {
+              let firstName = activeAccount?.firstName,
+              !firstName.firstAlphabeticCharacter().isEmpty else {
             return
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             guard self.accountService.allAccounts.count == 1,
                   let activeAccount = self.accountService.activeAccount,
-                  let initialChar = activeAccount.firstName?.first else {
+                  let firstName = activeAccount.firstName else {
                 return
             }
             
-            let initial = String(initialChar)
+            let initial = firstName.firstAlphabeticCharacter()
             self.kvStore.setValue(true, forKey: flagKey)
             
             let modalView = AddMultipleAccountsModalView(

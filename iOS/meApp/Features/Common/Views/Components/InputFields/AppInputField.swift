@@ -18,6 +18,7 @@ import SwiftUI
 /// 5. **Focus Sync**: Keeps internal `FocusState` in sync with external `@Binding isFocused` for programmatic control.
 struct AppInputField: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var colorScheme
     // Configuration
     var config: TextInputConfig
 
@@ -80,7 +81,7 @@ struct AppInputField: View {
                 }
             )
             .overlay(content: {
-                theme.supportOverlay.opacity(config.isDisabled ? 0.2 : 0)
+                theme.supportOverlay.opacity(config.isDisabled ? (colorScheme == .dark ? 0.5 : 0.2) : 0)
                     .cornerRadius(.radiusSM)
             })
             .onTapGesture {

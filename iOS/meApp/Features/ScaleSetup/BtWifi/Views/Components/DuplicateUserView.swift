@@ -40,9 +40,15 @@ struct DuplicateUserView: View {
                                 focusField: .userName
                             ),
                             value: $store.userNameForm.displayName.value,
-                            focusedField: $focusedField
-                        ) {
-                            focusedField = .userName
+                            focusedField: $focusedField,
+                            onCommit: {
+                                focusedField = .userName
+                            }
+                        )
+                        .onChange(of: store.userNameForm.displayName.value) {
+                            // Trigger validation and update Next button state when username changes
+                            store.userNameForm.displayName.markAsDirty()
+                            store.updateNextEnabled()
                         }
                         .padding(.top, .spacingSM)
                         
