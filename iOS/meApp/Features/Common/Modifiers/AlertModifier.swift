@@ -82,9 +82,20 @@ struct AlertModifier: ViewModifier {
             SecureField(inputField.placeholder, text: binding)
         } else {
             TextField(inputField.placeholder, text: binding)
-                .keyboardType(inputField.type == .email ? .emailAddress : .default)
+                .keyboardType(keyboardTypeForInputType(inputField.type))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
+        }
+    }
+    
+    private func keyboardTypeForInputType(_ type: TextFieldType) -> UIKeyboardType {
+        switch type {
+        case .email:
+            return .emailAddress
+        case .number, .metric:
+            return .numberPad
+        case .password, .text:
+            return .default
         }
     }
     
@@ -137,16 +148,24 @@ struct AlertModifier: ViewModifier {
     }
     
     private func focusTextFieldInAlert() {
-        let delays: [TimeInterval] = [0.15, 0.3, 0.5, 0.7]
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        
+        let delays: [TimeInterval] = [0.3, 0.5, 0.7, 1.0]
         
         for delay in delays {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                guard self.alertData != nil,
-                      let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
+                guard self.alertData != nil else { return }
                 
-                for window in windowScene.windows {
-                    if let textField = self.findTextField(in: window), !textField.isFirstResponder {
-                        textField.becomeFirstResponder()
+                if let alertWindow = self.findAlertWindow() {
+                    alertWindow.makeKey()
+                    
+                    // Find and configure the alert's text field
+                    if let textField = self.findAlertTextField(in: alertWindow) {
+                        self.configureTextFieldForEmail(textField)
+                        
+                        if !textField.isFirstResponder {
+                            textField.becomeFirstResponder()
+                        }
                         return
                     }
                 }
@@ -154,10 +173,104 @@ struct AlertModifier: ViewModifier {
         }
     }
     
-    private func findTextField(in view: UIView) -> UITextField? {
-        if let textField = view as? UITextField, textField.isUserInteractionEnabled {
-            return textField
+    private func findAlertWindow() -> UIWindow? {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            
+            // Look for windows with alert-level or higher
+            for window in windowScene.windows.sorted(by: { $0.windowLevel.rawValue > $1.windowLevel.rawValue }) {
+                if window.windowLevel >= .alert {
+                    return window
+                }
+                
+                // Also check if the window contains an alert controller
+                if let rootVC = window.rootViewController {
+                    if self.findAlertController(from: rootVC) != nil {
+                        return window
+                    }
+                }
+            }
         }
-        return view.subviews.compactMap { findTextField(in: $0) }.first
+        return nil
+    }
+    
+    private func findAlertController(from viewController: UIViewController) -> UIAlertController? {
+        if let alertController = viewController as? UIAlertController {
+            return alertController
+        }
+        
+        if let presented = viewController.presentedViewController {
+            if let alert = presented as? UIAlertController {
+                return alert
+            }
+            return findAlertController(from: presented)
+        }
+        
+        for child in viewController.children {
+            if let alert = findAlertController(from: child) {
+                return alert
+            }
+        }
+        
+        return nil
+    }
+    
+    private func findAlertTextField(in window: UIWindow) -> UITextField? {
+        // First try to find via UIAlertController
+        if let rootVC = window.rootViewController,
+           let alertController = findAlertController(from: rootVC) {
+            // UIAlertController has text fields accessible via textFields property
+            if let textField = alertController.textFields?.first {
+                return textField
+            }
+        }
+        
+        // Fallback: search view hierarchy for text fields in alert views
+        return findTextFieldInAlertHierarchy(in: window)
+    }
+    
+    private func findTextFieldInAlertHierarchy(in view: UIView) -> UITextField? {
+        if let textField = view as? UITextField, textField.isUserInteractionEnabled {
+            // Verify it's in an alert by checking parent hierarchy
+            if isInAlertHierarchy(view: textField) {
+                return textField
+            }
+        }
+        
+        for subview in view.subviews {
+            if let textField = findTextFieldInAlertHierarchy(in: subview) {
+                return textField
+            }
+        }
+        
+        return nil
+    }
+    
+    private func isInAlertHierarchy(view: UIView) -> Bool {
+        var currentView: UIView? = view
+        while let v = currentView {
+            let typeName = String(describing: type(of: v))
+            if typeName.contains("Alert") || typeName.contains("_UIAlert") {
+                return true
+            }
+            currentView = v.superview
+        }
+        return false
+    }
+    
+    private func configureTextFieldForEmail(_ textField: UITextField) {
+        guard let inputType = alertData?.inputField?.type else { return }
+        
+        // Configure keyboard type
+        textField.keyboardType = keyboardTypeForInputType(inputType)
+        textField.autocapitalizationType = .none
+        textField.autocorrectionType = .no
+        textField.spellCheckingType = .no
+        
+        // Remove any input accessory view (the Done toolbar)
+        textField.inputAccessoryView = nil
+        
+        // Apply changes
+        textField.reloadInputViews()
     }
 }

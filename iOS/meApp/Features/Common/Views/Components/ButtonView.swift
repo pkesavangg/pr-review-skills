@@ -18,10 +18,15 @@ struct ButtonView: View {
     var alignment: Alignment = .center
     /// Optional override for background color for styles that support it (e.g., .filledPrimary)
     var backgroundColorOverride: Color? = nil
-    /// Optional vertical padding for filled primary buttons. Default is false.
-    var verticalPadding: Bool = false
     /// Optional horizontal padding for text buttons. Default is false.
     var padding: Bool = false
+    /// Optional custom horizontal padding for filled primary buttons. If set, overrides default padding.
+    var customHorizontalPadding: CGFloat? = nil
+    /// Optional custom vertical padding for filled primary buttons. If set, overrides default padding.
+    var customVerticalPadding: CGFloat? = nil
+    /// Optional bool to control frame usage for inline text buttons.
+    /// If true, inline text buttons will use a frame; if false, they will not. Default is false.
+    var useFrameForInlineText: Bool = false
     /// Throttle interval in seconds. Default is 0.5 seconds. Set to 0 to disable throttling.
     /// With throttle, the first tap executes immediately, and subsequent taps within the interval are ignored.
     var throttleInterval: TimeInterval = 0.5
@@ -43,7 +48,7 @@ struct ButtonView: View {
             Text(text.uppercased())
                 .fontWeight(.bold)
                 .fontOpenSans(size == .large ? .button1 : .button2)
-                .if(!type.isInlineText) { view in
+                .if(!type.isInlineText || useFrameForInlineText) { view in
                     view.frame(minWidth: size == .small ? 75 : 96, minHeight: size == .small ? 30 : 40, alignment: alignment)
                 }
                 .multilineTextAlignment(.leading)
@@ -52,8 +57,9 @@ struct ButtonView: View {
             type: type,
             size: size,
             backgroundColorOverride: backgroundColorOverride,
-            verticalPadding: verticalPadding,
-            padding: padding
+            padding: padding,
+            customHorizontalPadding: customHorizontalPadding,
+            customVerticalPadding: customVerticalPadding
         ))
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)

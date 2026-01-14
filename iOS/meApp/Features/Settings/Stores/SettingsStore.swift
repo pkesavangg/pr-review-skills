@@ -295,8 +295,8 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Computed Profile Info
     var profileInitial: String {
-        if let firstInitial = activeAccount?.firstName?.first {
-            return String(firstInitial)
+        if let firstName = activeAccount?.firstName {
+            return firstName.firstAlphabeticCharacter()
         }
         return ""
     }
@@ -331,21 +331,8 @@ class SettingsStore: ObservableObject {
         
         let storedHeight = Int(round(storedHeightDouble))
         
-        switch activeAccount?.weightSettings?.weightUnit {
-        case .kg: // Metric preference – show centimeters
-            let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
-            // Clamp to valid range (100-299 cm) for display
-            let clampedCm = max(100, min(299, cm))
-            return "\(clampedCm) cm"
-        case .lb: // Imperial preference – show feet & inches
-            let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            // Clamp to valid range (2'0" to 7'11") for display
-            let clampedFeet = max(2, min(7, feet[0]))
-            let clampedInches = max(0, min(11, feet[1]))
-            return "\(clampedFeet)' \(clampedInches)\""  // → 5'8"
-        case .none:
-            return ""
-        }
+        let isMetric = activeAccount?.weightSettings?.weightUnit == .kg
+        return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
     }
     
     var unitTypeText: String {
@@ -1491,18 +1478,19 @@ class SettingsStore: ObservableObject {
         guard !hasSeen else { return }
         
         guard accountService.activeAccount != nil,
-              let initialChar = activeAccount?.firstName?.first else {
+              let firstName = activeAccount?.firstName,
+              !firstName.firstAlphabeticCharacter().isEmpty else {
             return
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             guard self.accountService.allAccounts.count == 1,
                   let activeAccount = self.accountService.activeAccount,
-                  let initialChar = activeAccount.firstName?.first else {
+                  let firstName = activeAccount.firstName else {
                 return
             }
             
-            let initial = String(initialChar)
+            let initial = firstName.firstAlphabeticCharacter()
             self.kvStore.setValue(true, forKey: flagKey)
             
             let modalView = AddMultipleAccountsModalView(

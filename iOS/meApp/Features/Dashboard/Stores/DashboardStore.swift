@@ -2249,12 +2249,28 @@ class DashboardStore: ObservableObject {
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
 
-    // MARK: - Metric Info Date Label (for Metric Info Sheet)
-    /// Returns the period-aware label used in the Metric Info sheet, matching Dashboard behavior.
-    /// - Selection: "day average <MMM d, yyyy>" for week/month; "month average <MMM yyyy>" for year/total.
-    /// - No selection: "<period> average <visible-range-label>" using the same visible-region label as the Dashboard.
-    func metricInfoDateLabel() -> String {
+    // MARK: - Metric Info Date Label
+    
+    /// Generates date label for metric info sheet. Shows "Measurement taken [Date]" for history entries, otherwise period averages.
+    func metricInfoDateLabel(for entryDTO: BathScaleOperationDTO) -> String {
+        let isHistoryEntry = !isDashboardEntry(entryDTO)
+        guard let entryDate = parseEntryDate(from: entryDTO) else {
+            return formatMetricInfoDateLabel(entryDate: nil)
+        }
+        return formatMetricInfoDateLabel(entryDate: entryDate, isFromHistory: isHistoryEntry)
+    }
+    
+    /// Formats the date label based on entry date and context. Returns period averages if no date provided.
+    private func formatMetricInfoDateLabel(entryDate: Date? = nil, isFromHistory: Bool = false) -> String {
         let period = state.graph.selectedPeriod
+
+        if let entryDate = entryDate {
+            let prefix = isFromHistory ? "Measurement taken" : "day average"
+            let formatter = DateFormatter()
+            formatter.dateFormat = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
+            let dateText = formatter.string(from: entryDate)
+            return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
 
         if let selectedPoint = state.graph.selectedPoint {
             let prefix = selectionPrefix(for: period)
@@ -2270,6 +2286,32 @@ class DashboardStore: ObservableObject {
         let prefix = "\(period.rawValue) average"
         let dateText = weightLabel // already computed from visible region
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+    }
+    
+    // MARK: - Private Helpers
+    
+    private func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool {
+        return entryDTO.source == "dashboard"
+    }
+    
+    /// Parses date from entry DTO, handling multiple timestamp formats.
+    private func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? {
+        if let date = entryDTO.date {
+            return date
+        }
+        
+        guard let timestamp = entryDTO.entryTimestamp else {
+            return nil
+        }
+        
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: timestamp) {
+            return date
+        }
+        
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: timestamp)
     }
 
     private func selectionPrefix(for period: TimePeriod) -> String {

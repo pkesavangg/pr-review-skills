@@ -42,12 +42,13 @@ struct FlatButtonStyle: ViewModifier {
     var foregroundColor: Color
     var backgroundColor: Color
     var buttonSize: ButtonSize
-    var verticalPadding: Bool = false
+    var customHorizontalPadding: CGFloat? = nil
+    var customVerticalPadding: CGFloat? = nil
     
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, buttonSize == .small ? .spacingXS : .spacingLG)
-            .padding(.vertical, verticalPadding ? .spacingXS/4 : 0)
+            .padding(.horizontal, customHorizontalPadding ?? (buttonSize == .small ? .spacingXS : .spacingLG))
+            .padding(.vertical, customVerticalPadding ?? 0)
             .foregroundColor(foregroundColor)
             .background(backgroundColor)
             .cornerRadius(.radiusPill)
@@ -66,16 +67,18 @@ struct AppPressableButtonStyle: ButtonStyle {
     let type: ButtonType
     let size: ButtonSize
     let backgroundColorOverride: Color?
-    let verticalPadding: Bool
     let padding: Bool
+    let customHorizontalPadding: CGFloat?
+    let customVerticalPadding: CGFloat?
     @Environment(\.appTheme) private var theme
     
-    init(type: ButtonType, size: ButtonSize, backgroundColorOverride: Color? = nil, verticalPadding: Bool = false, padding: Bool = false) {
+    init(type: ButtonType, size: ButtonSize, backgroundColorOverride: Color? = nil, padding: Bool = false, customHorizontalPadding: CGFloat? = nil, customVerticalPadding: CGFloat? = nil) {
         self.type = type
         self.size = size
         self.backgroundColorOverride = backgroundColorOverride
-        self.verticalPadding = verticalPadding
         self.padding = padding
+        self.customHorizontalPadding = customHorizontalPadding
+        self.customVerticalPadding = customVerticalPadding
     }
 
     func makeBody(configuration: Configuration) -> some View {
@@ -105,7 +108,8 @@ struct AppPressableButtonStyle: ButtonStyle {
                         foregroundColor: fg,
                         backgroundColor: bg,
                         buttonSize: size,
-                        verticalPadding: verticalPadding
+                        customHorizontalPadding: customHorizontalPadding,
+                        customVerticalPadding: customVerticalPadding
                     ))
             )
 
