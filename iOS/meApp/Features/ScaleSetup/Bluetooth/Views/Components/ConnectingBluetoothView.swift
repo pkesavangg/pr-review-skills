@@ -35,7 +35,8 @@ struct ConnectingBluetoothView: View {
                 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.setupPressUnitButtonGifName(sku), height: 250)
-                        .frame(width: 370, height: 250)
+                        .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
+                               height: DevicePlatform.isMiniPhone ? 200 : 250)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 
