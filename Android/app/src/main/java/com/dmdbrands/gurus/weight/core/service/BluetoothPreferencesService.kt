@@ -37,6 +37,13 @@ class BluetoothPreferencesService @Inject constructor(
   val knownMacAddresses: List<String> = BluetoothPreferencesDataStore.KNOWN_MAC_ADDRESSES
 
   /**
+   * Session-based list of device IDs (broadcastId or MAC address) that should be skipped.
+   * Used to prevent showing popups for devices that were dismissed or disconnected.
+   * Not persisted across app restarts.
+   */
+  private val skipDevices: MutableSet<String> = mutableSetOf()
+
+  /**
    * Sets the selected MAC address locally.
    * @param macAddress The MAC address to set as selected
    */
@@ -83,5 +90,35 @@ class BluetoothPreferencesService @Inject constructor(
       AppLog.e(TAG, "Error checking device filter", e.toString())
       true // Default to showing device on error
     }
+  }
+
+  /**
+   * Adds a device ID (broadcastId or MAC address) to the skip list.
+   * Devices in the skip list will not trigger the scale discovered popup.
+   * @param deviceId The broadcastId or MAC address of the device to skip
+   */
+  fun addSkipDevice(deviceId: String) {
+    if (!skipDevices.contains(deviceId)) {
+      skipDevices.add(deviceId)
+      AppLog.d(TAG, "Added device to skip list: $deviceId")
+    }
+  }
+
+  /**
+   * Checks if a device ID (broadcastId or MAC address) is in the skip list.
+   * @param deviceId The broadcastId or MAC address to check
+   * @return True if the device is in the skip list, false otherwise
+   */
+  fun containsSkipDevice(deviceId: String): Boolean {
+    return skipDevices.contains(deviceId)
+  }
+
+  /**
+   * Clears all devices from the skip list.
+   * Used when switching accounts to reset the skip state.
+   */
+  fun clearSkipDevices() {
+    skipDevices.clear()
+    AppLog.d(TAG, "Cleared all skip devices")
   }
 }

@@ -252,7 +252,7 @@ class DebugMenuViewModel @Inject constructor(
     private fun onSendScaleLogs() {
         viewModelScope.launch {
             dialogQueueService.showLoader(
-                message = DebugMenuStrings.Loading.SendLogs,
+                message = DebugMenuStrings.Loading.SendScaleLogs,
             )
 
             try {

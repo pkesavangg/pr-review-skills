@@ -101,7 +101,7 @@ fun DatePickerDialogContent(
   val datePickerState =
     rememberDatePickerState(
       initialSelectedDateMillis = initialUtcMillis,
-      yearRange = 1922..2100,
+      yearRange = yearRange,
       selectableDates =
         object : SelectableDates {
           override fun isSelectableDate(utcTimeMillis: Long): Boolean =

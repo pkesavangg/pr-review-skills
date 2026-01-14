@@ -335,6 +335,7 @@ constructor(
           "scaleId" to (state.value.scale?.id ?: scaleId),
           "accountId" to (activeAccount?.id ?: ""),
         ),
+        dismissOnBackPress = true
       ),
     )
   }

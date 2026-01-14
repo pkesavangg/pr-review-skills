@@ -148,7 +148,7 @@ class GraphViewModel @AssistedInject constructor(
       combine(
         dataFlow,
         dashboardService.selectedKey,
-        goalService.getCurrentGoal(),
+        goalService.getCurrentGoal()
       ) { data, secondaryKey, goal ->
         Triple(data, secondaryKey, goal)
       }
@@ -272,7 +272,7 @@ class GraphViewModel @AssistedInject constructor(
       }
       start to end
     } else {
-      val start = _state.value.minTarget ?: GraphUtil.getRollingWindowStart(
+      val start = _state.value.minTarget ?: GraphUtil.getStartRange(
         segment,
         endTimeStamp,
       ) ?: calendar.timeInMillis

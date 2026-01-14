@@ -347,6 +347,7 @@ constructor(
           AppLog.d(TAG, "Set Goal popup dismissed")
           dialogQueueService.dismissCurrent()
         },
+        dismissOnBackPress = true
       ),
     )
   }

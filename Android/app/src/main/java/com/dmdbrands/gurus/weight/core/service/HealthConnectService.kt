@@ -808,6 +808,7 @@ class HealthConnectService @Inject constructor(
                       onDismiss = {
                         dialogQueueService.dismissCurrent()
                       },
+                      dismissOnBackPress = true
                     ),
                   )
                 }

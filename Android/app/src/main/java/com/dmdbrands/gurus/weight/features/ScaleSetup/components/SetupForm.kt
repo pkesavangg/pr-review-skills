@@ -147,27 +147,30 @@ fun <T> SetupForm(
       spanStyle = if (subtitleAnnotatedText.isNullOrEmpty()) null else SpanStyle(fontWeight = FontWeight.Bold),
     )
 
-    wifiNameFormControl?.let {
-      AppInput(
-        formControl = it,
-        label = secondaryLabel,
-        imeAction = ImeAction.Done,
-        onImeAction = onImeAction ?: {
-          focusManager.clearFocus()
-        },
-        enabled = true,
-        modifier = Modifier.fillMaxWidth(),
-      )
+     wifiNameFormControl?.let {
+       if(!isWifiConnected){
+         AppInput(
+           formControl = it,
+           label = secondaryLabel,
+           imeAction = ImeAction.Done,
+           onImeAction =  {
+             focusManager.clearFocus()
+           },
+           enabled = true,
+           modifier = Modifier.fillMaxWidth(),
+         )
+       }
     }
 
     if (isWifiConnected) {
       WifiItem(
         borderRadius = borderRadius.sm,
-        ssid = "greatergoods1",
+        ssid = wifiNameFormControl?.value.toString(),
         isConfigured = false,
         index = 0,
         total = 1,
-        onClick = {},
+        onClick = { onImeAction?.invoke() },
+        modifier = Modifier.size(spacing.md)
       )
       Spacer(modifier = Modifier.padding(bottom = spacing.sm))
     }

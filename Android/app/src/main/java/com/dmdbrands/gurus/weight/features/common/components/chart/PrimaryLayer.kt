@@ -91,8 +91,8 @@ internal fun rememberLineLayerWithConnection(
     }
   } else null
 
-  val lineThickness = if (segment == GraphSegment.TOTAL) 2.5.dp else 3.dp
-  val pointSize = if (segment == GraphSegment.TOTAL) 7f else 8f
+  val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
+  val pointSize = if (segment == GraphSegment.TOTAL) 5f else 8f
 
 
   return rememberLineCartesianLayer(

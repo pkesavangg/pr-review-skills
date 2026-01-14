@@ -85,7 +85,7 @@ constructor(
       if (isWeightlessOn) {
         listOf(
           com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.required(),
-          com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.weightValidator(),
+          com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.weightValidator(targetUnit),
         )
       } else {
         emptyList()

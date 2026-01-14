@@ -739,7 +739,7 @@ constructor(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
           message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
           onConfirm = {
             onExit()
           },
@@ -1746,6 +1746,7 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.AccucheckModal,
+        dismissOnBackPress = true
       ),
     )
   }
@@ -1758,6 +1759,7 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.BiaModal,
+        dismissOnBackPress = true
       ),
     )
   }
