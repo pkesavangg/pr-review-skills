@@ -549,7 +549,6 @@ class DashboardStore: ObservableObject {
             return label
         }
         let period = state.graph.selectedPeriod
-        let lastScrollPosition = graphManager.state.xScrollPosition
         switch period {
         case .total:
             return labelForTotalPeriod()
@@ -557,7 +556,10 @@ class DashboardStore: ObservableObject {
             return labelForYearGridlines()
         case .month:
             return labelForMonthGridlines()
+        case .week:
+            return labelForWeekGridlines()
         default:
+            let lastScrollPosition = graphManager.state.xScrollPosition
             return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
         }
     }
@@ -2053,73 +2055,96 @@ class DashboardStore: ObservableObject {
 
 
 
-    // New: Year label based on visible X-axis gridlines instead of chart points.
     private func labelForYearGridlines() -> String {
         let period: TimePeriod = .year
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
-        let ticks = xAxisValuesWithBuffer(for: period)
-        let inclusiveRightEdge = rightEdge.addingTimeInterval(12 * 60 * 60) // 12 hours
-        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= inclusiveRightEdge }.sorted(by: { $0 < $1 })
-        let startDate: Date
-        let endDate: Date
-        if let first = visibleTicks.first, let last = visibleTicks.last {
-            startDate = first
-            endDate = last
-        } else {
-            startDate = leftEdge
-            endDate = rightEdge
+        let calendar = Calendar.current
+
+        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        let entryMin = visibleOps.min(by: { $0.date < $1.date })?.date
+        let entryMax = visibleOps.max(by: { $0.date < $1.date })?.date
+
+        let ticks = xAxisValuesWithBuffer(for: period).sorted()
+        var visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }
+
+        // Include the next tick only if it is close and actually relevant
+        if let nextTick = ticks.first(where: { $0 > rightEdge }),
+           let lastTick = visibleTicks.last {
+            let daysGap = calendar.dateComponents([.day], from: rightEdge, to: nextTick).day ?? .max
+            let isYearBoundary =
+                calendar.component(.month, from: lastTick) == 12 &&
+                calendar.component(.month, from: nextTick) == 1 &&
+                calendar.component(.year, from: nextTick) > calendar.component(.year, from: lastTick)
+
+            if daysGap <= 35 && !isYearBoundary {
+                visibleTicks.append(nextTick)
+            }
         }
-        return formatYearRangeLabel(from: startDate, to: endDate)
+
+        let start = [entryMin, visibleTicks.first].compactMap { $0 }.min()
+        let end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
+
+        return graphManager.formatDateRange(
+            minDate: start ?? leftEdge,
+            maxDate: end ?? rightEdge,
+            for: period
+        )
     }
 
-    private func formatYearRangeLabel(from start: Date, to end: Date) -> String {
-        let cal = Calendar.current
-        let startMonth = cal.component(.month, from: start)
-        if startMonth == 1 {
-            return DateTimeTools.formatter("yyyy").string(from: start)
-        }
-
-        // Otherwise show "MMM yyyy – MMM yyyy"
-        let startStr = DateTimeTools.formatter("MMM yyyy").string(from: start)
-        let endStr = DateTimeTools.formatter("MMM yyyy").string(from: end)
-        return "\(startStr) – \(endStr)"
-    }
 
 
-
-    // New: Month label based on visible X-axis gridlines instead of chart points
     private func labelForMonthGridlines() -> String {
         let period: TimePeriod = .month
-        // Visible window boundaries (left edge + domain length)
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
 
-        // 1) If there are entries in the visible region, derive the label from the visible entries.
         let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        let entryMin = visibleOps.min(by: { $0.date < $1.date })?.date
+        let entryMax = visibleOps.max(by: { $0.date < $1.date })?.date
+
+        let visibleTicks = xAxisValuesWithBuffer(for: period)
+            .filter { $0 >= leftEdge && $0 <= rightEdge }
+            .sorted()
+
+        let start = [entryMin, visibleTicks.first].compactMap { $0 }.min()
+        let end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
+
+        return graphManager.formatDateRange(
+            minDate: start ?? leftEdge,
+            maxDate: end ?? rightEdge,
+            for: period
+        )
+    }
+
+    private func labelForWeekGridlines() -> String {
+        let period: TimePeriod = .week
+        let leftEdge = graphManager.state.xScrollPosition
+        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
+        let buffer: TimeInterval = 2 * 60 * 60
+
+        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+
         if let minDate = visibleOps.min(by: { $0.date < $1.date })?.date,
            let maxDate = visibleOps.max(by: { $0.date < $1.date })?.date {
-            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+
+            let spansWindow =
+                minDate <= leftEdge.addingTimeInterval(buffer) &&
+                maxDate >= rightEdge.addingTimeInterval(-buffer)
+
+            return graphManager.formatDateRange(
+                minDate: spansWindow ? minDate : leftEdge,
+                maxDate: spansWindow ? maxDate : rightEdge,
+                for: period
+            )
         }
 
-        // 2) If there are no entries in the visible region, fall back to X-axis ticks within the window.
-        // This keeps the label stable during empty stretches (interpolated segments).
-        let ticks = xAxisValuesWithBuffer(for: period)
-        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
-
-        if let firstTick = visibleTicks.first, let lastTick = visibleTicks.last {
-            let domainLength = graphManager.visibleDomainLength(for: period)
-            let midPoint = leftEdge.addingTimeInterval(max(0, domainLength / 2))
-            if let monthInterval = Calendar.current.dateInterval(of: .month, for: midPoint) {
-                let start = max(firstTick, monthInterval.start)
-                let end = min(lastTick, monthInterval.end)
-                return graphManager.formatDateRange(minDate: start, maxDate: end, for: period)
-            }
-            return graphManager.formatDateRange(minDate: firstTick, maxDate: lastTick, for: period)
-        }
-
-        // 3) Final fallback: use window edges.
-        return graphManager.formatDateRange(minDate: leftEdge, maxDate: rightEdge, for: period)
+        // No visible entries — rely purely on the visible window
+        return graphManager.formatDateRange(
+            minDate: leftEdge,
+            maxDate: rightEdge,
+            for: period
+        )
     }
 
     private func formatMonthRangeLabel(from start: Date, to end: Date) -> String {
@@ -2243,12 +2268,28 @@ class DashboardStore: ObservableObject {
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
 
-    // MARK: - Metric Info Date Label (for Metric Info Sheet)
-    /// Returns the period-aware label used in the Metric Info sheet, matching Dashboard behavior.
-    /// - Selection: "day average <MMM d, yyyy>" for week/month; "month average <MMM yyyy>" for year/total.
-    /// - No selection: "<period> average <visible-range-label>" using the same visible-region label as the Dashboard.
-    func metricInfoDateLabel() -> String {
+    // MARK: - Metric Info Date Label
+    
+    /// Generates date label for metric info sheet. Shows "Measurement taken [Date]" for history entries, otherwise period averages.
+    func metricInfoDateLabel(for entryDTO: BathScaleOperationDTO) -> String {
+        let isHistoryEntry = !isDashboardEntry(entryDTO)
+        guard let entryDate = parseEntryDate(from: entryDTO) else {
+            return formatMetricInfoDateLabel(entryDate: nil)
+        }
+        return formatMetricInfoDateLabel(entryDate: entryDate, isFromHistory: isHistoryEntry)
+    }
+    
+    /// Formats the date label based on entry date and context. Returns period averages if no date provided.
+    private func formatMetricInfoDateLabel(entryDate: Date? = nil, isFromHistory: Bool = false) -> String {
         let period = state.graph.selectedPeriod
+
+        if let entryDate = entryDate {
+            let prefix = isFromHistory ? "Measurement taken" : "day average"
+            let formatter = DateFormatter()
+            formatter.dateFormat = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
+            let dateText = formatter.string(from: entryDate)
+            return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
 
         if let selectedPoint = state.graph.selectedPoint {
             let prefix = selectionPrefix(for: period)
@@ -2264,6 +2305,32 @@ class DashboardStore: ObservableObject {
         let prefix = "\(period.rawValue) average"
         let dateText = weightLabel // already computed from visible region
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+    }
+    
+    // MARK: - Private Helpers
+    
+    private func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool {
+        return entryDTO.source == "dashboard"
+    }
+    
+    /// Parses date from entry DTO, handling multiple timestamp formats.
+    private func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? {
+        if let date = entryDTO.date {
+            return date
+        }
+        
+        guard let timestamp = entryDTO.entryTimestamp else {
+            return nil
+        }
+        
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: timestamp) {
+            return date
+        }
+        
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: timestamp)
     }
 
     private func selectionPrefix(for period: TimePeriod) -> String {
@@ -2754,10 +2821,12 @@ class DashboardStore: ObservableObject {
 
         // Calculate optimal scroll position based on X-axis computation logic
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
+        // Use cached bounds for O(1) lookup
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: state.graph.selectedPeriod,
             from: continuousOperations,
-            showingLatest: true
+            showingLatest: true,
+            cachedBounds: dataManager.getDateBounds(for: state.graph.selectedPeriod)
         )
         self.graphManager.updateScrollPosition(to: optimalScrollPosition)
         self.forceCompleteRecalculationAfterScrollPosition()

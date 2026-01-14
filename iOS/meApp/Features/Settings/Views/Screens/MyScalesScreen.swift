@@ -9,11 +9,13 @@ import SwiftUI
 
 struct MyScalesScreen: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject private var scaleStore = ScaleStore()
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
+    @State private var shouldMaintainKeyboardFocus = false
     
     // Consolidated sheet presentation state
     private enum ActiveSheet: Identifiable, Equatable {
@@ -248,15 +250,20 @@ struct MyScalesScreen: View {
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {
-            focusedField = nil
-            hideKeyboard()
+            if !shouldMaintainKeyboardFocus {
+                focusedField = nil
+                hideKeyboard()
+            }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(CommonStrings.done) {
-                    focusedField = nil
-                    hideKeyboard()
+        .onChange(of: scenePhase) { _, newPhase in
+            if focusedField == .modelNumber {
+                if newPhase != .active {
+                    shouldMaintainKeyboardFocus = true
+                } else if shouldMaintainKeyboardFocus {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        focusedField = .modelNumber
+                        shouldMaintainKeyboardFocus = false
+                    }
                 }
             }
         }

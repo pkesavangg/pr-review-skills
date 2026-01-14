@@ -822,9 +822,12 @@ extension View {
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: {
-                        viewModel.scrollPosition
+                        let pos = viewModel.scrollPosition
+                        return pos
                     },
-                    set: { newPosition in
+                    set: { (newPosition: Date?) in
+                        guard let newPosition = newPosition else { return }
+                        
                         // Apply boundary clamping to prevent over-scrolling
                         let clampedPosition: Date
                         if let bounds = dashboardStore.dataManager.getDateBounds(for: viewModel.timePeriod) {
@@ -837,7 +840,7 @@ extension View {
                         } else {
                             clampedPosition = newPosition
                         }
-
+                        
                         // Debounce scroll position updates to prevent multiple updates per frame
                         DispatchQueue.main.async {
                             viewModel.handleScrollPositionChange(clampedPosition)
@@ -1073,10 +1076,10 @@ extension View {
                 limitBehavior: .automatic
             )
         case .year:
-            // For year view: align to start of year (January 1st)
+            // For year view: snap to any day at noon for finer-grained boundary handling
             return .valueAligned(
-                matching: .init(day: 1, hour: 0),
-                majorAlignment: .matching(.init(month: 1, day: 1)),
+                matching: .init(hour: 12),
+                majorAlignment: .matching(.init(day: 1, hour: 12)),
                 limitBehavior: .automatic
             )
         case .total:
@@ -1098,18 +1101,18 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .onChange(of: dashboardStore.state.graph.xScrollPosition) { _, newPosition in
+                .onChange(of: dashboardStore.state.graph.xScrollPosition) { oldPosition, newPosition in
                     // Debounce to prevent multiple updates per frame
                     DispatchQueue.main.async {
                         viewModel.updateScrollPosition(to: newPosition)
                     }
                 }
-                .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
+                .onChange(of: dashboardStore.state.graph.isScrolling) { oldValue, newValue in
                     // Debounce to prevent multiple updates per frame
                     DispatchQueue.main.async {
-                        viewModel.isScrolling = isScrolling
+                        viewModel.isScrolling = newValue
                         // Immediately clear local selection when scrolling starts to remove crosshair and label
-                        if isScrolling {
+                        if newValue {
                             localSelectedXValue.wrappedValue = nil
                             // Also clear the view model's selection state immediately
                             viewModel.clearSelection()

@@ -132,4 +132,19 @@ public class FormControl<Value: Equatable>: AbstractControl {
     public func markAsTouched() {
         isTouched = true
     }
+    
+    /// Marks the control as untouched (not yet focused).
+    /// Use this when resetting a form field to its initial interaction state.
+    public func markAsUntouched() {
+        isTouched = false
+    }
+    
+    /// Resets the control to its initial interaction state.
+    /// Marks as pristine (not dirty), untouched, and re-validates.
+    /// - Note: This does not reset the value; use `value = defaultValue` separately if needed.
+    public func resetInteractionState() {
+        markAsPristine()
+        markAsUntouched()
+        validate()
+    }
 } 

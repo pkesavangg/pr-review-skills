@@ -248,6 +248,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         return activeDevices
     }
     
+    func getDevice(by deviceId: String) async throws -> Device? {
+        return try await localRepository.getDevice(deviceId)
+    }
+    
     nonisolated func getConnectedDevices() async -> [String: Any] {
         return await MainActor.run {
             let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isConnected == true })

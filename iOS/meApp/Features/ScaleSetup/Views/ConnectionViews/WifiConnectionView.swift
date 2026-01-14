@@ -89,16 +89,16 @@ struct WifiConnectionView: View {
                                 .themeDropShadow()
                         }
                         
-                        VStack {
+                        VStack(spacing: .spacingMD){
                             // Re-instantiate the loader every time the state changes so
-                            // we don’t keep the previous animation colours (e.g. red ➜ blue).
+                            // we don't keep the previous animation colours (e.g. red ➜ blue).
                             SetupLoaderView(connectionState: state)
                                 .id(state)  // Force a fresh view when the enum value flips
                             
                             ConnectionIndicatorView(
                                 image: AppAssets.wifi,
                                 isFailure: (state == .failure || state == .noNetworks),
-                                showPulsingCircle: state == .loading
+                                showPulsingCircle: false
                             )
                         }
                     }
