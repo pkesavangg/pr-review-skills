@@ -274,6 +274,7 @@ struct FormErrorMessages {
     static let modelNumberInvalid = "model number invalid"
     static let duplicate = "the scale can't have duplicate user names"
     static let namePattern = "please enter a valid name"
+    static let validInput = "please enter valid input"
     static let userNameUnavailable = "user name unavailable"
 }
 

@@ -161,7 +161,7 @@ struct BtWifiScaleSetupScreen: View {
                                type: .filledPrimary,
                                size: .small,
                                isDisabled: !setupStore.isNextEnabled,
-                               customHorizontalPadding: .spacingXS / 2,
+                               customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
                                customVerticalPadding: .spacingXS / 4,
                                action: {
                         withAnimation {
@@ -177,7 +177,7 @@ struct BtWifiScaleSetupScreen: View {
                            type: .filledPrimary,
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
-                           customHorizontalPadding: .spacingXS / 2,
+                           customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
                            customVerticalPadding: .spacingXS / 4,
                            action: {
                     withAnimation {
@@ -203,7 +203,7 @@ struct BtWifiScaleSetupScreen: View {
                            type: .filledPrimary,
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
-                           customHorizontalPadding: .spacingXS / 2,
+                           customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
                            customVerticalPadding: .spacingXS / 4,
                            action: {
                     withAnimation {
