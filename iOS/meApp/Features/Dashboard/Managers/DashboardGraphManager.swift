@@ -59,7 +59,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func handleScrollPositionChange(_ newPosition: Date?) {
-        guard let newPosition = newPosition else { return }
+        guard let newPosition = newPosition else {
+            return
+        }
         if state.isScrolling {
             latestScrollPosition = newPosition
         } else {
@@ -334,14 +336,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UI.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
-
+                
                 // Update scroll position from stored value first
                 if let finalPosition = self.latestScrollPosition {
                     self.state.xScrollPosition = finalPosition
                     self.latestScrollPosition = nil
                 }
                 self.state.updateScrollState(isScrolling: false)
-
+                
                 self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll ended - all caches cleared for fresh calculation")
             }
         }
@@ -1065,17 +1067,27 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
             let leftEdge = state.xScrollPosition
             let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
+            
+            // If scrolled past last entry, clear cache and recalculate
+            let lastEntryDate = operations.last?.date
+            if let lastEntryDate = lastEntryDate, leftEdge > lastEntryDate {
+                // Scrolled past last entry - clear cache and recalculate to return empty
+                lastCalculatedVisibleOps = []
+                lastVisibleOpsScrollPosition = nil
+                lastVisibleOpsPeriod = nil
+                // Fall through to recalculation
+            } else {
+                // Apply the same buffer for cache validation
+                let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
+                let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
+                let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
 
-            // Apply the same buffer for cache validation
-            let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
-            let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
-            let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
-
-            if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
-               let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
-               cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
-                // Cached set is still fully inside current window → safe to reuse
-                return lastCalculatedVisibleOps
+                if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
+                   let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
+                   cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
+                    // Cached set is still fully inside current window → safe to reuse
+                    return lastCalculatedVisibleOps
+                }
             }
             // Else fall through and recompute strictly for the new window
         }
@@ -1088,10 +1100,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let domainLength = visibleDomainLength(for: state.selectedPeriod)
             let positionChange = abs(state.xScrollPosition.timeIntervalSince(lastPosition))
 
-            // More aggressive caching: only recalculate if scroll moved > 25% of domain
-            // This reduces calculations from every 10% movement
+            // Threshold-based caching: only recalculate if scroll moved > 10% of domain
+            // This uses a 10% movement threshold for re-computation
             let cacheThreshold = domainLength / 10
-
+            
             if positionChange < cacheThreshold {
                 // Reuse only if cached content is still fully inside the current strict window
                 let leftEdge = state.xScrollPosition
@@ -1102,7 +1114,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
                 let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
 
-                if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
+                // If scrolled past last entry, clear cache and recalculate
+                let lastEntryDate = operations.last?.date
+                if let lastEntryDate = lastEntryDate, leftEdge > lastEntryDate {
+                    // Scrolled past last entry - clear cache and recalculate to return empty
+                    lastCalculatedVisibleOps = []
+                    lastVisibleOpsScrollPosition = nil
+                    lastVisibleOpsPeriod = nil
+                    // Fall through to recalculation
+                } else if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
                    let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
                    cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
                     return lastCalculatedVisibleOps
@@ -1115,13 +1135,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let leftEdge = state.xScrollPosition
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
         let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
-
+        
+        let minDate = operations.first?.date ?? leftEdge
+        let maxDate = operations.last?.date ?? leftEdge
+        
         // Add buffer to handle timezone edge cases and ensure entries on boundary dates are included
         let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
         let dayBufferTime: TimeInterval = 24 * 60 * 60 // 1 day buffer for midnight-local summaries
         let adjustedLeftEdge = leftEdge.addingTimeInterval(-dayBufferTime)
         let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
-
+        
         // Use binary search helpers for O(log n) lookup instead of O(n) filter
         guard let startIndex = binarySearchFirstIndex(in: operations, where: { $0.date >= adjustedLeftEdge }),
               let endIndex = binarySearchLastIndex(in: operations, where: { $0.date <= adjustedRightEdge }) else {
@@ -1141,7 +1164,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         let visibleOps = Array(operations[startIndex...endIndex])
-
+        
         // Update cache
         lastCalculatedVisibleOps = visibleOps
         lastVisibleOpsScrollPosition = state.xScrollPosition
@@ -1158,10 +1181,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func getStrictVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         guard !operations.isEmpty else { return [] }
 
+        let minDate = operations.first?.date
+        let maxDate = operations.last?.date
+        guard let minDate = minDate, let maxDate = maxDate else { return [] }
+
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
-        // IMPORTANT: xScrollPosition in our state represents the LEFT boundary of the visible window
-        let start = state.xScrollPosition
-        let end = state.xScrollPosition.addingTimeInterval(domainLength)
+        let start = max(state.xScrollPosition, minDate)
+        let end = min(state.xScrollPosition.addingTimeInterval(domainLength), maxDate)
+
+        guard start <= end else {
+            return []
+        }
 
         // Use binary search for O(log n) performance on pre-sorted data
         guard let startIndex = binarySearchFirstIndex(in: operations, where: { $0.date >= start }),
@@ -1169,7 +1199,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return []
         }
 
-        guard startIndex <= endIndex else { return [] }
+        guard startIndex <= endIndex else {
+            return []
+        }
 
         let strictlyVisible = Array(operations[startIndex...endIndex])
 
@@ -1233,15 +1265,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         // Use the same optimal scroll position calculation as initialization
         // This ensures consistent snapping behavior and prevents extra days being added
+        let allDates = operations.map { $0.date }
+        let cachedBounds = allDates.isEmpty ? nil : (min: allDates.min()!, max: allDates.max()!)
         let optimalPosition = calculateOptimalScrollPosition(
             for: state.selectedPeriod,
             from: operations,
-            showingLatest: true
+            showingLatest: true,
+            cachedBounds: cachedBounds
         )
         updateScrollPosition(to: optimalPosition)
     }
-
-
 
     func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
         return DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
@@ -1332,10 +1365,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
 
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
-        // Use first/last of pre-sorted operations for O(1) min/max lookup
         let minDate = operations.first?.date ?? scrollPosition
         let maxDate = operations.last?.date ?? scrollPosition
-
+        
         // During scrolling we usually want to keep ticks stable, but when the window
         // moves significantly or approaches dataset edges we must recompute so the
         // trailing phantom tick (extra space) appears immediately, avoiding the post-scroll
@@ -1344,7 +1376,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let domainLength: TimeInterval = visibleDomainLength(for: period)
             let lastPos = lastXAxisScrollPosition ?? state.xScrollPosition
             let delta = abs(scrollPosition.timeIntervalSince(lastPos))
-
+            
             // Heuristic: allow reuse unless the user moved > ~1/6 of the domain or is near edges
             let movedFar = delta > (domainLength / 6.0)
 
@@ -1354,7 +1386,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let rightEdge = scrollPosition.addingTimeInterval(domainLength)
             let nearLeft = leftEdge <= minDate.addingTimeInterval(domainLength / 4.0)
             let nearRight = rightEdge >= maxDate.addingTimeInterval(-domainLength / 4.0)
-
+            
             if !(movedFar || nearLeft || nearRight) {
                 logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll (stable segment)")
                 return lastXAxisValues
@@ -1362,13 +1394,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         let domainLength: TimeInterval = visibleDomainLength(for: period)
-        guard let overallMinDate = operations.first?.date else { return [] }
+        guard let overallMinDate = operations.first?.date else {
+            return []
+        }
         let buffer: TimeInterval = domainLength * 2.0
         let currentDate = Date()
         let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
         let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer))
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+        
         let xAxisValues: [Date]
         switch period {
         case .week:
@@ -1380,18 +1415,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .total:
             xAxisValues = generateVisibleTotalXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
         }
+        
         lastXAxisValues = xAxisValues
         lastXAxisScrollPosition = scrollPosition
         lastXAxisPeriod = period
-
+        
         return xAxisValues
     }
-
-    /// Calculates the proper scroll position for chart initialization or segment changes
-    /// This ensures the scroll position aligns with the computed X-axis values
+    
+    /// Calculates optimal scroll position for chart initialization or period changes
+    /// Snaps relative to latest entry with right-side buffer
     /// - Note: For `.total` period, always returns the minimum date to show all data from the beginning
     /// - Parameter cachedBounds: Optional cached date bounds for O(1) lookup performance
-    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool = true, cachedBounds: (min: Date, max: Date)? = nil) -> Date {
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool, cachedBounds: (min: Date, max: Date)?) -> Date {
         // Use cached bounds if provided for performance, otherwise calculate from operations
         let overallMinDate: Date
         let overallMaxDate: Date
@@ -1413,26 +1449,29 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return overallMinDate
         }
 
-        let domainLength = visibleDomainLength(for: period)
-
         if showingLatest {
-            // For showing latest entries, start from the end and work backwards
-            // Calculate what the leftmost position should be to show recent data properly aligned
-            let targetEndDate = overallMaxDate
-            let targetStartDate = targetEndDate.addingTimeInterval(-domainLength * 0.75) // Show recent 75% of the domain
-
-            // Generate X-axis values for this range to find proper alignment
-            let tempScrollPosition = targetStartDate.addingTimeInterval(domainLength / 2) // Center position for generateXAxis logic
-            let xAxisValues = generateXAxisValuesForAlignment(for: period, from: operations, centerPosition: tempScrollPosition)
-
-            //Find the right most date and subtract the period visible length
-            let rightMostDate = xAxisValues.max()
-            let rightMostDateMinusPeriod = rightMostDate?.addingTimeInterval(-visibleDomainLength(for: period))
-            if let rightMostDateMinusPeriod = rightMostDateMinusPeriod {
-                return rightMostDateMinusPeriod
+            let latestEntry = overallMaxDate
+            let domainLength = visibleDomainLength(for: period)
+            let scrollPosition: Date
+            
+            switch period {
+            case .week:
+                let rightEdgeWithBuffer = latestEntry.addingTimeInterval(2 * DashboardConstants.TimeInterval.day)
+                scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+                
+            case .month:
+                let rightEdgeWithBuffer = latestEntry.addingTimeInterval(DashboardConstants.TimeInterval.week)
+                scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+                
+            case .year:
+                let rightEdgeWithBuffer = latestEntry.addingTimeInterval(DashboardConstants.TimeInterval.month)
+                scrollPosition = rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+                
+            case .total:
+                scrollPosition = overallMinDate
             }
-            // Fallback to calculated position
-            return max(overallMinDate, targetStartDate)
+            
+            return scrollPosition
         } else {
             return overallMinDate
         }
@@ -1669,65 +1708,59 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
         let calendar = Calendar.current
         // Normalize order to avoid inverted labels when inputs are swapped or nudged
-        let startDate = min(minDate, maxDate)
-        let endDate = max(minDate, maxDate)
+        var startDate = min(minDate, maxDate)
+        var endDate = max(minDate, maxDate)
+
+        startDate = calendar.startOfDay(for: startDate)
+        endDate = calendar.startOfDay(for: endDate)
 
         // Special handling for TOTAL: if the dataset spans only one month, show just "Sep 2025"
         if period == .total {
             if calendar.isDate(startDate, equalTo: endDate, toGranularity: .month) {
-                return DateTimeTools.formatter("MMM yyyy").string(from: minDate)
+                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
             }
+            // Multi-month: "MMM yyyy – MMM yyyy"
+            let fmt = DateTimeTools.formatter("MMM yyyy")
+            return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
         }
-
-        // Special handling for month: show the actual visible range (handles spans across multiple months)
+        
+        // Special handling for month: show range if spanning months, otherwise show single month
         if period == .month {
-            let inclusiveEndDate: Date = calendar.date(byAdding: .day, value: -1, to: endDate) ?? endDate
-            let startDay = calendar.component(.day, from: startDate)
-            let endDay = calendar.component(.day, from: inclusiveEndDate)
-            let startMonth = DateTimeTools.formatter("LLL").string(from: startDate).lowercased()
-            let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEndDate).lowercased()
-            let endYear = calendar.component(.year, from: inclusiveEndDate)
+            let startYear = calendar.component(.year, from: startDate)
+            let startMonth = calendar.component(.month, from: startDate)
+            let endYear = calendar.component(.year, from: endDate)
+            let endMonth = calendar.component(.month, from: endDate)
+            
+            // If start and end are in the same month, show just "MMM yyyy"
+            if startYear == endYear && startMonth == endMonth {
+                return DateTimeTools.formatter("MMM yyyy").string(from: startDate)
+            }
+            
+            // Cross-year: "MMM d, yyyy – MMM d, yyyy"
+            if startYear != endYear {
+                let fmt = DateTimeTools.formatter("MMM d, yyyy")
+                return "\(fmt.string(from: startDate)) – \(fmt.string(from: endDate))"
+            }
 
-            return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(endYear)"
+            // Cross-month within same year: "MMM d – MMM d, yyyy"
+            let startFmt = DateTimeTools.formatter("MMM d")
+            let endFmt = DateTimeTools.formatter("MMM d, yyyy")
+            return "\(startFmt.string(from: startDate)) – \(endFmt.string(from: endDate))"
         }
 
-        // For year: show the actual visible range, handling multi-year spans correctly
+        // For year: show range only if spanning different years, otherwise show single year
         if period == .year {
-            // Extract actual start and end years from the visible range
             let startYear = calendar.component(.year, from: startDate)
             let endYear = calendar.component(.year, from: endDate)
-
-            // Extract actual start and end months from the visible range
-            let startMonth = calendar.component(.month, from: startDate)
-            let endMonth = calendar.component(.month, from: endDate)
-
-            // Format start month
-            let startMonthDate = calendar.date(from: DateComponents(year: startYear, month: startMonth, day: 1)) ?? startDate
-            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthDate).lowercased()
-
-            // Format end month
-            let endMonthDate = calendar.date(from: DateComponents(year: endYear, month: endMonth, day: 1)) ?? endDate
-            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthDate).lowercased()
-
-            // Show the actual visible range (handles both single-year and multi-year spans)
-            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
-        }
-
-        // For total: snap both ends to month starts for stability (independent of any phantom months)
-        if period == .total {
-            let startMonthStart = (calendar.dateInterval(of: .month, for: startDate)?.start) ?? startDate
-            var endMonthStart = (calendar.dateInterval(of: .month, for: endDate)?.start) ?? endDate
-
-            if endMonthStart < startMonthStart {
-                endMonthStart = startMonthStart
+            
+            // If start and end are in the same year, show just the year (e.g., "2026")
+            if startYear == endYear {
+                return DateTimeTools.formatter("yyyy").string(from: startDate)
             }
-
-            let startMonthStr = DateTimeTools.formatter("LLL").string(from: startMonthStart).lowercased()
-            let startYear = calendar.component(.year, from: startMonthStart)
-            let endMonthStr = DateTimeTools.formatter("LLL").string(from: endMonthStart).lowercased()
-            let endYear = calendar.component(.year, from: endMonthStart)
-
-            return "\(startMonthStr) \(startYear) - \(endMonthStr), \(endYear)"
+            
+            // Different years: show range "MMM yyyy – MMM yyyy"
+            let startFmt = DateTimeTools.formatter("MMM yyyy")
+            return "\(startFmt.string(from: startDate)) – \(startFmt.string(from: endDate))"
         }
 
         // Default (week) with inclusive end-day handling
@@ -2211,15 +2244,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Left boundary: 10% padding for visual comfort
         let minScrollPosition = minDate.addingTimeInterval(-domainLength * 0.1)
 
-        // Right boundary: Keep last 90% of domain showing data
-        let maxScrollPosition = maxDate.addingTimeInterval(-domainLength * 0.9)
-
+        // Only clamp left boundary to allow scrolling past last entry for date label updates
+        let clampedLeft = max(minScrollPosition, position)
+        
         // Handle edge case where data range is smaller than visible domain
-        if minScrollPosition >= maxScrollPosition {
+        if minScrollPosition >= maxDate {
             return minDate
         }
 
-        return max(minScrollPosition, min(maxScrollPosition, position))
+        // Don't clamp right boundary - allow scrolling past maxDate
+        return clampedLeft
     }
 
     // MARK: - Smart Snap Mechanism

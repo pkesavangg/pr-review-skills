@@ -127,7 +127,6 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
                 showCrosshair = true
             }
         }
-        // Do not compute selectedPoint here; DashboardStore updates metrics using nearest point
     }
     
 }
