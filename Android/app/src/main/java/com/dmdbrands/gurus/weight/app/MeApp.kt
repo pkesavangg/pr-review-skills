@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.app.components.NavHost
+import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.app.viewmodel.AppIntent
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
@@ -58,19 +59,19 @@ fun MeApp() {
         NavHost(topLevelBackStack, appViewModel)
       }
     }
-    if (uiState.isScaleDiscovered && uiState .hasScanStarted) {
+    if (uiState.isScaleDiscovered && uiState.hasScanStarted) {
       val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
       val discoveryTimestamp = uiState.scaleDiscoveredTimestamp
       val shouldShowModal = discoveryTimestamp?.let { timestamp ->
         val timeSinceDiscovery = System.currentTimeMillis() - timestamp
         // Only show modal if discovered within the last 15 seconds
-        timeSinceDiscovery <= 15 * 1000
+        timeSinceDiscovery <= SCALEDISCOVEREDTIMEOUT
       } ?: false
 
       LaunchedEffect(discoveryTimestamp) {
         if (discoveryTimestamp != null) {
           val timeSinceDiscovery = System.currentTimeMillis() - discoveryTimestamp
-          val remainingTime = maxOf(0, 15 * 1000 - timeSinceDiscovery)
+          val remainingTime = maxOf(0, SCALEDISCOVEREDTIMEOUT - timeSinceDiscovery)
           if (remainingTime > 0) {
             delay(remainingTime)
             appViewModel.handleIntent(AppIntent.OnPopUpDismiss)

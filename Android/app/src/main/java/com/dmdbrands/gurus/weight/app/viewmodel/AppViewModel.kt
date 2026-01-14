@@ -4,6 +4,7 @@ import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.app.components.ReconnectScale
+import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
@@ -623,7 +624,7 @@ constructor(
                 data.macAddress.let { macAddress ->
                   scaleToIgnore = macAddress
                   viewModelScope.launch {
-                    delay(15 * 1000)
+                    delay(SCALEDISCOVEREDTIMEOUT)
                     scaleToIgnore = null
                   }
                 }
