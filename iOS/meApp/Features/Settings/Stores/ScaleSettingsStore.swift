@@ -159,6 +159,33 @@ final class ScaleSettingsStore: ObservableObject {
         return fetchedUsers
     }
     
+    /// Syncs preference settings to the scale if there is a mismatch or unsynced state
+    /// - Parameters:
+    ///   - deviceInfo: The current device info from the scale
+    private func syncPreferencesIfNeeded(deviceInfo: DeviceInfo) async {
+        guard isDeviceConnected,
+              let preference = scale.r4ScalePreference
+        else {
+            return
+        }
+
+        let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
+        let hasImpedanceMismatch = preference.shouldMeasureImpedance && !impedanceSwitchState
+        let hasUnsyncedPreferences = preference.isSynced == false
+
+        guard hasImpedanceMismatch || hasUnsyncedPreferences else {
+            return
+        }
+
+        let broadcastId = scale.broadcastIdString ?? "unknown"
+        switch await bluetoothService.updateAccount(on: scale, preference: preference) {
+        case .success:
+            logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to sync preference settings to scale \(broadcastId): \(error)")
+        }
+    }
+    
     /// Checks device info and WiFi configuration for scale SKU 0412
     func getDeviceInfo() async {
         guard getScaleType() == .btWifiR4,
@@ -179,6 +206,9 @@ final class ScaleSettingsStore: ObservableObject {
             }
             self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && (scale.r4ScalePreference?.shouldMeasureImpedance ?? false)
             logger.log(level: .info, tag: tag, message: "Device info retrieved – firmware: \(deviceInfo.firmwareRevision ?? "n/a")", data: deviceInfo)
+            
+            // Sync preference settings to scale if needed (impedance mismatch or unsynced preferences)
+            await syncPreferencesIfNeeded(deviceInfo: deviceInfo)
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to get device info: \(error)")
         }

@@ -146,6 +146,16 @@ extension Validator where Value == String {
         return regex?.firstMatch(in: value, options: [], range: range) != nil
     }
     
+    /// Validator that checks if username contains only alphanumeric characters (letters and numbers only)
+    /// Pattern: ^[A-Za-z0-9]+$
+    /// Allows only letters and numbers, no spaces, underscores, or special characters
+    public static let alphanumeric = Validator(type: .alphanumeric) { value in
+        let pattern = "^[A-Za-z0-9]+$"
+        let regex = try? NSRegularExpression(pattern: pattern, options: [])
+        let range = NSRange(location: 0, length: value.count)
+        return regex?.firstMatch(in: value, options: [], range: range) != nil
+    }
+    
     /// Validator that ensures the display name is not 'guest' (case-insensitive).
     /// Returns false if the input is 'guest', which is a reserved username.
     /// In version 0412, 'guest' is used as a fallback when weight data doesn't match any user,

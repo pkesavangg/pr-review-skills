@@ -1249,6 +1249,34 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         showWeightOnlyModeAlertSubject.send(false)
     }
     
+    /// Syncs preference settings to the scale if there is a mismatch or unsynced state
+    /// - Parameters:
+    ///   - scale: The scale device to sync preferences for
+    ///   - deviceInfo: The current device info from the scale
+    private func syncPreferencesIfNeeded(for scale: Device, deviceInfo: DeviceInfo) async {
+        guard scale.isConnected == true,
+              let preference = fetchAttachedPreference(by: scale.id)
+        else {
+            return
+        }
+
+        let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
+        let hasImpedanceMismatch = preference.shouldMeasureImpedance && !impedanceSwitchState
+        let hasUnsyncedPreferences = preference.isSynced == false
+
+        guard hasImpedanceMismatch || hasUnsyncedPreferences else {
+            return
+        }
+
+        let broadcastId = scale.broadcastIdString ?? "unknown"
+        switch await updateAccount(on: scale, preference: preference) {
+        case .success:
+            logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to sync preference settings to scale \(broadcastId): \(error)")
+        }
+    }
+    
     /// Updates the weight-only mode status for a connected scale based on device info
     /// Uses the condition: !(deviceInfo.impedanceSwitchState ?? false) && (scale.r4ScalePreference?.shouldMeasureImpedance ?? false)
     private func updateWeightOnlyModeStatus(deviceDetails: GGDeviceDetails, deviceInfo: DeviceInfo) async {
@@ -1282,6 +1310,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             broadcastId: broadcastId,
             isWeightOnlyModeEnabledByOthers: isWeightOnlyModeEnabledByOthers
         )
+        
+        // Sync preference settings to scale if needed (impedance mismatch or unsynced preferences)
+        await syncPreferencesIfNeeded(for: scale, deviceInfo: deviceInfo)
         
         logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for scale \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
     }
