@@ -42,7 +42,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MeApp">
-<!--        Adding font scale for config changes to reflect-->
+<!--   Adding font scale aligns the app’s font with the device font settings -->
         <activity
             android:name=".MainActivity"
             android:configChanges="uiMode|fontScale"
