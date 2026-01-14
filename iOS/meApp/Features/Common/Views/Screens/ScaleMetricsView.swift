@@ -88,8 +88,12 @@ struct ScaleMetricsView: View {
             // Pager with metric-specific details
             TabView(selection: $selectedMetricState) {
                 ForEach(metricOrder, id: \.self) { metric in
-                    MetricDetailView(entryDTO: entryDTO, metric: metric, measurementLabel: dashboardStore.metricInfoDateLabel())
-                        .tag(metric)
+                    MetricDetailView(
+                        entryDTO: entryDTO,
+                        metric: metric,
+                        measurementLabel: dashboardStore.metricInfoDateLabel(for: entryDTO)
+                    )
+                    .tag(metric)
                 }
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))

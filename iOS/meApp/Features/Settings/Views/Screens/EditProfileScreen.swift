@@ -132,6 +132,10 @@ struct EditProfileScreen: View {
             .navigationBarHidden(true)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             settingsStore.populateEditFormIfNeeded()
 

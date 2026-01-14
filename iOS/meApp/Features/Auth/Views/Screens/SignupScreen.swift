@@ -89,6 +89,9 @@ struct SignupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        .onTapGesture {
+            hideKeyboard()
+        }
     }
     
     private var footerButtons: some View {
@@ -111,7 +114,8 @@ struct SignupScreen: View {
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !signupStore.isNextEnabled,
-                       verticalPadding: true,
+                       customHorizontalPadding: signupStore.currentStep == SignupStep.password ? .spacingXS  : .spacingXS / 2,
+                       customVerticalPadding: .spacingXS / 4,
                        action: {
                 withAnimation {
                     hideKeyboard()

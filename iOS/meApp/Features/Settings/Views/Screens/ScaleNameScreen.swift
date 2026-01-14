@@ -56,31 +56,38 @@ struct ScaleNameScreen : View {
                 canShowBorder: true
             )
 
-            VStack(spacing: .spacingMD) {
-                AppInputField(
-                    config: TextInputConfig(
-                        label: lang.scaleName,
-                        placeholder: lang.scaleName,
-                        inputType: .text,
-                        errorMessage: scaleNameForm.getError(for: .scaleName),
-                        focusField: .scaleName
-                    ),
-                    value: $editedName,
-                    focusedField: $focusedField
-                ) {
-                    // Optional: handle commit
-                }
-                .onChange(of: editedName) {
-                    scaleNameForm.setScaleName(editedName)
-                }
-                .padding(.horizontal, .spacingSM)
-                .padding(.top, .spacingMD)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: .spacingMD) {
+                    AppInputField(
+                        config: TextInputConfig(
+                            label: lang.scaleName,
+                            placeholder: lang.scaleName,
+                            inputType: .text,
+                            errorMessage: scaleNameForm.getError(for: .scaleName),
+                            focusField: .scaleName
+                        ),
+                        value: $editedName,
+                        focusedField: $focusedField
+                    ) {
+                        // Optional: handle commit
+                    }
+                    .onChange(of: editedName) {
+                        scaleNameForm.setScaleName(editedName)
+                    }
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.top, .spacingMD)
 
-                Spacer()
+                    Spacer()
+                }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             editedName = scale.nickname ?? scale.deviceName ?? ""
             scaleNameForm.setScaleName(editedName)
