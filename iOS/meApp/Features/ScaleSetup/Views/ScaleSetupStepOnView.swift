@@ -31,7 +31,8 @@ struct ScaleSetupStepOnView: View {
  
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.btStepOnGif)
-                        .frame(width: 370, height: 211)
+                        .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
+                               height: DevicePlatform.isMiniPhone ? 200 : 211)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 if let isEntrySynced = isEntrySynced {

@@ -191,6 +191,10 @@ struct LoginScreen: View {
             isPresented: store.isBrowserPresented
         )
         .keyboardObserver(keyboardHeight: $keyboardHeight)
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             store.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {

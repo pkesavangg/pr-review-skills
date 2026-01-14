@@ -88,6 +88,7 @@ struct AppSyncSetupScreen: View {
                        type: .inlineTextPrimary,
                        size: .small,
                        isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .finish,
+                       useFrameForInlineText: true,
                        action: {
                 withAnimation {
                     hideKeyboard()
@@ -101,6 +102,8 @@ struct AppSyncSetupScreen: View {
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
+                       customHorizontalPadding: .spacingXS / 2,
+                       customVerticalPadding: .spacingXS / 4,
                        action: {
                 withAnimation {
                     hideKeyboard()

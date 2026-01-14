@@ -132,6 +132,10 @@ struct ChangePasswordScreen: View {
             .padding(.bottom, .spacingXL)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             settingsStore.resetChangePasswordForm()
             registerDeactivation {
