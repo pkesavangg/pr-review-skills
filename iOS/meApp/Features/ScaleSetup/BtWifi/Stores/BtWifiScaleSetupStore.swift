@@ -804,6 +804,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Performs the restore account operation by finding and deleting the matching user on the scale
     private func performRestoreAccount() async {
+        /// Restore requires Bluetooth (internet not required)
+        guard hasAllBtPermissions() else {
+            notificationService.dismissAlert()
+            resetDiscoveryState()
+            navigateToStep(.permissions)
+            return
+        }       
         guard let scale = discoveredScale else {
             scaleSetupError = .duplicatesFound
             return
@@ -1375,6 +1382,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let missingPermissions = !hasAllBtPermissions()
         let noNetwork = !networkMonitor.isConnected
         
+        // Skip auto-navigation; restore flow handles this.
+        if scaleSetupError == .duplicatesFound && currentStep == .gatheringNetwork { return }
+        
         // For early steps (before WiFi), navigate to permissions if network/permissions are missing
         if (noNetwork || missingPermissions) && (currentStep == .wakeup || currentStep == .connectingBluetooth) {
             resetDiscoveryState()
@@ -1486,6 +1496,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Populate userNameForm with current user name and user list for validation
                 if let firstName = self.firstName {
                     userNameForm.setDisplayName(firstName)
+                    userNameForm.setCurrentUserName(firstName)
                 }
                 
                 // Convert DeviceUser list to ScaleUser list for form validation
@@ -1493,6 +1504,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     ScaleUser(name: deviceUser.name, token: deviceUser.token)
                 }
                 userNameForm.updateUserList(scaleUsers)
+                userNameForm.displayName.markAsPristine()
+                userNameForm.displayName.markAsUntouched()
                 
                 // Set error state and navigate to gathering network
                 scaleSetupError = .duplicatesFound
