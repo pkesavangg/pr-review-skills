@@ -14,7 +14,7 @@ object AddScaleScreenStrings {
 }
 
 object ChooseScaleStrings {
-  const val Header = "Choose Your Scale"
+  const val Header = "Choose your scale"
 }
 
 object PairedScaleExistsAlert {

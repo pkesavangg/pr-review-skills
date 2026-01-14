@@ -18,8 +18,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.AppsyncSetupStrings
+import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
 import com.dmdbrands.gurus.weight.features.common.components.AppText
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageDefaults
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
@@ -95,10 +97,27 @@ fun SetupContent(
 
         Spacer(modifier = Modifier.height(spacing.xs))
         if (loaderText != null &&
-          (connectionState == ConnectionState.Loading || connectionState == ConnectionState.Success)) {
+          (connectionState == ConnectionState.Loading)) {
+          Spacer(modifier = Modifier.height(spacing.xs))
           LoadingTextWithDots(
             baseText = loaderText,
             textColor = MeTheme.colorScheme.secondaryAction,
+          )
+        } else if(loaderText != null && connectionState is ConnectionState.Success ){
+          Spacer(modifier = Modifier.height(spacing.xs))
+          AppText(
+            text = loaderText,
+            textType = TextType.Subtitle,
+          )
+        }
+        else if(connectionState is ConnectionState.Failed && loaderText != null) {
+          Spacer(modifier = Modifier.height(spacing.xs))
+          AppButton(
+            label = loaderText,
+            type = ButtonType.PrimaryFilled,
+            onClick = {
+              loaderClick?.invoke()
+            },
           )
         }
       }

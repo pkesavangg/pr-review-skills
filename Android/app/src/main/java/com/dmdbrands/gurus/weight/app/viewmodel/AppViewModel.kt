@@ -4,6 +4,7 @@ import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.app.components.ReconnectScale
+import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
@@ -109,7 +110,8 @@ constructor(
 
   override fun provideInitialState(): AppState = AppState()
   private var currentAccountId: String? = null
-  private var canShowPopUp = true
+  private var canShowScaleDiscoveredModal = true
+  private var scaleToIgnore: String? = null
   private var sku: String? = null
   private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
@@ -200,8 +202,49 @@ constructor(
     super.handleIntent(intent)
   }
 
+  /**
+   * Disconnects/skips a device and prevents showing popup for 30 seconds.
+   * Similar to Angular's disconnectDevice method.
+   */
+  fun disconnectDevice(broadcastId: String) {
+    viewModelScope.launch {
+      // Add to skipDevices if not already present
+      bluetoothPreferencesService.addSkipDevice(broadcastId)
+      // Set canShowScaleDiscoveredModal to false for 30 seconds
+      canShowScaleDiscoveredModal = false
+      delay(30 * 1000)
+      canShowScaleDiscoveredModal = true
+      // Skip the device in the SDK
+      ggDeviceService.skipDevice(broadcastId, considerForSession = true)
+    }
+  }
+
+  /**
+   * Closes the scale discovered popup.
+   * Similar to Angular's closeScaleDiscoveredPopup functionality.
+   */
+  fun closeScaleDiscoveredPopup() {
+    onPopUpDismiss()
+  }
+
+  /**
+   * Resets scale discovered related properties when switching accounts.
+   * This ensures that the new account can see discovered scales without
+   * being affected by the previous account's skip/ignore state.
+   */
+  private fun resetScaleDiscoveredState() {
+    bluetoothPreferencesService.clearSkipDevices()
+    scaleToIgnore = null
+    canShowScaleDiscoveredModal = true
+    discoveredBroadcastId = null
+    sku = null
+    handleIntent(AppIntent.SetScaleDiscovered(false))
+    AppLog.d(TAG, "Reset scale discovered state for account switch")
+  }
+
   private fun onPopUpConnect() {
     viewModelScope.launch {
+      handleIntent(AppIntent.SetScaleDiscovered(false))
       if (sku == "0412") {
         navigationService.navigateTo(
           AppRoute.ScaleSetup.BtWifiScaleSetup(
@@ -228,9 +271,20 @@ constructor(
   private fun onPopUpDismiss() {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
+      // Add to skipDevices if not already present
+      discoveredBroadcastId?.let { broadcastId ->
+        bluetoothPreferencesService.addSkipDevice(broadcastId)
+      }
+      // Set canShowScaleDiscoveredModal to false for 30 seconds
+      canShowScaleDiscoveredModal = false
       delay(30 * 1000)
-      canShowPopUp = true
+      canShowScaleDiscoveredModal = true
     }
+    discoveredBroadcastId?.let { broadcastId ->
+      ggDeviceService.skipDevice(broadCastId = broadcastId, considerForSession = true)
+
+    }
+    AppLog.d(TAG, "Closed scale discovered popup ${state.value.isScaleDiscovered}")
   }
 
   private fun syncScales() {
@@ -248,6 +302,8 @@ constructor(
           is AuthState.LoggedIn -> {
             // handle login event
             stopScan()
+            // Reset scale discovered state when logging in
+            resetScaleDiscoveredState()
             initLoadingData(authState.account, true)
           }
 
@@ -281,6 +337,8 @@ constructor(
 
           is AuthState.AccountAdded -> {
             stopScan()
+            // Reset scale discovered state when adding account
+            resetScaleDiscoveredState()
             initLoadingData(authState.account)
           }
 
@@ -299,6 +357,8 @@ constructor(
             }
             stopScan()
             dashboardService.setSelectedKey(null)
+            // Reset scale discovered state when switching accounts
+            resetScaleDiscoveredState()
             initLoadingData(authState.account, true)
           }
 
@@ -468,6 +528,12 @@ constructor(
   private fun subscribeDeviceCallback() {
     deviceSubscribeJob = viewModelScope.launch {
       ggDeviceService.deviceCallbackFlow.collect { response ->
+        AppLog.d(
+          TAG,
+          "deviceCallback triggered: response type=${response.javaClass.simpleName}, response=$response"
+        )
+        // Note: Bluetooth state check is done in GGBluetoothSDKHelper before emitting
+        // This log helps track when callbacks are received in the ViewModel
         when (response) {
           is GGScanResponse.DeviceDetail -> {
             handleDeviceResponse(response)
@@ -515,9 +581,29 @@ constructor(
 
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
-          if (canShowPopUp && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
+          AppLog.d(TAG,"new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
+          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            val isSetupInProgress = deviceService.isSetupInProgress()
+
+            if (currentRoute !is AppRoute.ScaleSetup && !isSetupInProgress) {
+              // Check if device is in skipDevices list
+              val isSkipped =
+                data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||
+                data.macAddress.let { bluetoothPreferencesService.containsSkipDevice(it) }
+
+              // Check if same scale was shown recently (15 seconds)
+              val isIgnored = data.macAddress == scaleToIgnore
+
+              // Check if scale is already known (paired) - similar to Angular's isKnown logic
+              val accountId = currentAccountId ?: return@launch
+              val isKnown = data.broadcastId?.let { broadcastId ->
+                // Check against latestPairedScales list first (similar to Angular's this.scales.find)
+                latestPairedScales.any { scale ->
+                  scale.device?.broadcastId == broadcastId
+                } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
+              } == true
+
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
               val shouldShow = if (deviceSku == "0412") {
@@ -527,20 +613,42 @@ constructor(
                 true // Don't filter non-0412 scales
               }
 
-              if (shouldShow) {
+              // Only show if not skipped, not ignored, not known, and shouldShow is true
+              if (!isSkipped && !isIgnored && !isKnown && shouldShow) {
                 handleIntent(AppIntent.SetScaleDiscovered(true))
                 handleIntent(AppIntent.SetSku(deviceSku))
                 sku = deviceSku
                 discoveredBroadcastId = data.broadcastId
+
+                // Set scaleToIgnore for 15 seconds to prevent showing same scale again
+                data.macAddress.let { macAddress ->
+                  scaleToIgnore = macAddress
+                  viewModelScope.launch {
+                    delay(SCALEDISCOVEREDTIMEOUT)
+                    scaleToIgnore = null
+                  }
+                }
+
                 val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
                   device = data,
                   deviceType = ScaleSetupType.Lcbt.value,
                   sku = sku,
                 )
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
-                canShowPopUp = false
+                canShowScaleDiscoveredModal = false
               } else {
-                AppLog.d(TAG, "Filtered out 0412 scale with MAC: ${data.macAddress}")
+                if (isSkipped) {
+                  AppLog.d(TAG, "Skipped device with broadcastId: ${data.broadcastId} or MAC: ${data.macAddress}")
+                }
+                if (isIgnored) {
+                  AppLog.d(TAG, "Ignoring recently shown scale with MAC: ${data.macAddress}")
+                }
+                if (isKnown) {
+                  AppLog.d(TAG, "Known device (already paired) with broadcastId: ${data.broadcastId}")
+                }
+                if (!shouldShow) {
+                  AppLog.d(TAG, "Filtered out 0412 scale with MAC: ${data.macAddress}")
+                }
               }
             }
           }

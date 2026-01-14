@@ -17,6 +17,7 @@ data class AppState(
   val sku: String = "0412",
   val unreadFeedCount: Int = 0,
   val showUnreadFeedIndication: Boolean = false,
+  val scaleDiscoveredTimestamp: Long? = null,
 ) : IReducer.State
 
 /**
@@ -46,7 +47,10 @@ class AppReducer() : IReducer<AppState, AppIntent> {
   ): AppState? {
     return when (intent) {
       is AppIntent.SetSku -> state.copy(sku = intent.sku)
-      is AppIntent.SetScaleDiscovered -> state.copy(isScaleDiscovered = intent.isScaleDiscovered)
+      is AppIntent.SetScaleDiscovered -> state.copy(
+        isScaleDiscovered = intent.isScaleDiscovered,
+        scaleDiscoveredTimestamp = if (intent.isScaleDiscovered) System.currentTimeMillis() else null,
+      )
       is AppIntent.SetScanStatus -> state.copy(hasScanStarted = intent.hasScanStarted)
       is AppIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
       is AppIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)

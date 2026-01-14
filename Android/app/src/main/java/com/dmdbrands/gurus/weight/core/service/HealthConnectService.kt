@@ -807,6 +807,7 @@ class HealthConnectService @Inject constructor(
                       onDismiss = {
                         dialogQueueService.dismissCurrent()
                       },
+                      dismissOnBackPress = true
                     ),
                   )
                 }
@@ -926,6 +927,7 @@ class HealthConnectService @Inject constructor(
                 _outOfSyncState.value = true
               }
             },
+            dismissOnBackPress = true
           ),
         )
         healthConnectRepository.updateModalState(accountId, true)
@@ -961,6 +963,7 @@ class HealthConnectService @Inject constructor(
                   dialogQueueService.dismissCurrent()
                 }
               },
+              dismissOnBackPress = true
             ),
           )
         }
@@ -985,6 +988,7 @@ class HealthConnectService @Inject constructor(
                 }
                 dialogQueueService.dismissCurrent()
               },
+              dismissOnBackPress = true
             ),
           )
           healthConnectRepository.updateModalState(accountId, false)

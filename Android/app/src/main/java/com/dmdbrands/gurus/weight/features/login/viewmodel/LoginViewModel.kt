@@ -146,7 +146,7 @@ constructor(
         onDismiss = {
           dialogQueueService.dismissCurrent()
         },
-        dismissOnBackPress = false,
+        dismissOnBackPress = true,
         dismissOnClickOutside = false,
       ),
     )

@@ -190,16 +190,20 @@ fun AppText(
       }
     } else if (canApplyUppercaseStyle) {
       buildAnnotatedString {
-        text.split(" ").forEachIndexed { index, word ->
+        val words = text.split(" ")
+        words.forEachIndexed { index, word ->
           val isUppercase = word.any { it.isLetter() } && word == word.uppercase()
-          if (isUppercase) {
+          val isNumber = word.all { it.isDigit() }
+          val previousWordIsUppercase = index > 0 && words[index - 1].any { it.isLetter() } && words[index - 1] == words[index - 1].uppercase()
+          
+          if (isUppercase || (isNumber && previousWordIsUppercase)) {
             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
               append(word)
             }
           } else {
             append(word)
           }
-          if (index != text.lastIndex) append(" ")
+          if (index != words.lastIndex) append(" ")
         }
       }
     } else {

@@ -170,6 +170,8 @@ fun WifiItem(
   index: Int,
   total: Int,
   borderRadius: Dp = 0.dp,
+  isWifiIcon : Boolean = true,
+  modifier: Modifier = Modifier,
   onClick: (() -> Unit)? = null,
 ) {
   val shape = when {
@@ -195,12 +197,15 @@ fun WifiItem(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
-      AppIcon(
-        id = AppIcons.Connection.Wifi,
-        contentDescription = "Wifi",
-        modifier = Modifier.size(24.dp),
-        onClick = { onClick?.invoke()}
-      )
+      if(isWifiIcon){
+        AppIcon(
+          id = AppIcons.Connection.Wifi,
+          contentDescription = "Wifi",
+          modifier = Modifier.size(24.dp),
+          onClick = { onClick?.invoke()}
+        )
+      }
+
 
       AppText(
         text = ssid,
@@ -213,7 +218,7 @@ fun WifiItem(
         AppIcon(
           id = AppIcons.Default.RightCaret,
           contentDescription = "Right caret",
-          modifier = Modifier.size(16.dp),
+          modifier = modifier.size(spacing.sm),
           onClick = { onClick?.invoke()}
         )
       }

@@ -190,7 +190,7 @@ constructor(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
           message = ScaleSetupStrings.ExitSetupAlert.Message(true),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
           onConfirm = {
             AppLog.d(TAG, "User confirmed exit setup")
             navigateBack()

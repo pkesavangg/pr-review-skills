@@ -38,7 +38,6 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -72,6 +71,7 @@ fun AppsyncScaleSetupScreenContent(
 
   // Sync ViewModel state to Pager state
   LaunchedEffect(state.currentStep) {
+    val targetPage = state.currentStep.ordinal
     // Skip pager animation for OPEN_CAMERA step since we launch a separate activity
     if (state.currentStep == AppsyncScaleSetupStep.OPEN_CAMERA) {
       isScanning = true
@@ -97,13 +97,12 @@ fun AppsyncScaleSetupScreenContent(
       }
     } else {
       // Only animate pager for non-camera steps
-      if (!isAnimating.value && pagerState.currentPage != state.currentStepIndex) {
-        isAnimating.value = true
+      if (pagerState.currentPage != state.currentStepIndex) {
         try {
           pagerState.animateScrollToPage(state.currentStepIndex)
-        } finally {
-          delay(100)
-          isAnimating.value = false
+        } catch (e: Exception) {
+          // If animation fails, snap to page immediately
+          pagerState.scrollToPage(state.currentStepIndex)
         }
       }
     }
