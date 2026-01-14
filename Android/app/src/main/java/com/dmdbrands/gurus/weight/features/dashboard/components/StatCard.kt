@@ -77,7 +77,7 @@ internal fun StatCard(
           append(" " + stat.valueSuffix)
         }
       } else {
-        append("---")
+        append("--")
       }
     }
   }
