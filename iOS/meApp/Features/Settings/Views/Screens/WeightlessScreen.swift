@@ -84,8 +84,13 @@ struct WeightlessScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingMD)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             // Populate form synchronously immediately when screen appears
             settingsStore.populateWeightlessFormIfNeeded()
