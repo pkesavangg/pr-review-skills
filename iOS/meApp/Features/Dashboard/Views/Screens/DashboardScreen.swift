@@ -140,8 +140,10 @@ store.restartWiggleAnimations()
                 }
 
                 if store.state.data.hasAnyEntries {
+                    let hasNoContentToShow = store.metricsToShow.isEmpty && 
+                                           (!store.streakManager.shouldShowStreakGrid() || store.state.ui.isGoalCardRemoved)
                     actionButtons()
-                        .padding(.top, store.allContentRemoved || !store.state.data.hasAnyEntries ? .spacingLG : .spacingSM)
+                        .padding(.top, (store.allContentRemoved || hasNoContentToShow) ? .spacingLG : .spacingSM)
                 }
                 if !store.state.data.hasAnyEntries {
                     VStack {
