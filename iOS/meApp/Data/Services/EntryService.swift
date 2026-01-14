@@ -29,8 +29,35 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     @Published var dailySummaries: [BathScaleWeightSummary] = []
     @Published var monthlySummaries: [BathScaleWeightSummary] = []
     
+    private var cancellables = Set<AnyCancellable>()
+    private var lastAccountId: String? = nil
+    
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
+        
+        Task { @MainActor in
+            if let concreteAccountService = accountService as? AccountService {
+                concreteAccountService.$activeAccount
+                    .map { $0?.accountId }
+                    .removeDuplicates()
+                    .dropFirst()
+                    .receive(on: DispatchQueue.main)
+                    .sink { [weak self] accountId in
+                        guard let self = self else { return }
+                        Task { @MainActor in
+                            let accountChanged = self.lastAccountId != nil && self.lastAccountId != accountId
+                            self.lastAccountId = accountId
+                            
+                            if accountChanged, let accountId = accountId {
+                                try? await self.clearLastSyncTimestamp()
+                                await self.syncAllEntriesWithRemote()
+                                await self.loadDashboardData()
+                            }
+                        }
+                    }
+                    .store(in: &self.cancellables)
+            }
+        }
     }
     
     // MARK: - Helper
@@ -519,10 +546,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await pushUnsyncedEntriesToRemote(accountId: accountId)
             
             // 2. Fetch latest from remote and merge, using last sync timestamp
-            let lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+            let localEntries = try? await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+            var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+            
+            if localEntries?.isEmpty == true {
+                try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
+                lastSyncTimestamp = nil
+            }
+            
             let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
             await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-            
+            await loadDashboardData()
+
             // 5. Update sync timestamp and local state
             try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
             lastSyncTime = Date()
@@ -532,7 +567,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await checkGoalAlerts()
             
             await logger.log(level: .debug, tag: tag, message: "Full sync completed successfully")
-            
+
         } catch {
             await logger.log(level: .error, tag: tag, message: "Sync failed: \(error.localizedDescription)")
         }
@@ -1092,5 +1127,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Remove if no summary (empty month)
             monthlySummaries.removeAll { $0.period == monthKey }
         }
+    }
+    
+    deinit {
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
     }
 }

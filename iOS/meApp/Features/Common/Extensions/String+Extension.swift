@@ -14,4 +14,17 @@ extension String {
         let endIdx = self.index(self.startIndex, offsetBy: end)
         return String(self[startIdx..<endIdx])
     }
+    
+    /// Returns the first alphabetic character in the string.
+    /// Falls back to the first character if no letter is found.
+    func firstAlphabeticCharacter() -> String {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let firstChar = trimmed.first else { return "" }
+
+        if let letter = trimmed.first(where: { $0.isLetter }) {
+            return String(letter)
+        }
+
+        return String(firstChar)
+    }
 }

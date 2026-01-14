@@ -40,13 +40,20 @@ struct WifiPasswordView: View {
                                 focusField: .networkName
                             ),
                             value: $store.networkForm.ssid.value,
-                            focusedField: $focusedField
-                        ) {
-                            focusedField = .password
-                        }
-                        // If permissionsSkipped, clear the SSID value and mark as pristine to avoid validation errors
+                            focusedField: $focusedField,
+                            onCommit: {
+                                store.networkForm.touchAndValidateSSID()
+                                focusedField = .password
+                            },
+                            onEditingChanged: { isFocused in
+                                if !isFocused {
+                                    store.networkForm.touchAndValidateSSID()
+                                }
+                            }
+                        )
+                        // Clear SSID only if permissions were skipped and are still disabled
                         .onAppear {
-                            if store.permissionsSkipped {
+                            if store.permissionsSkipped && !store.arePermissionsEnabled() {
                                 store.networkForm.clearSSIDAndMarkPristine()
                             }
                         }
@@ -61,10 +68,17 @@ struct WifiPasswordView: View {
                                 focusField: .password,
                             ),
                             value: $store.networkForm.password.value,
-                            focusedField: $focusedField
-                        ) {
-                            hideKeyboard()
-                        }
+                            focusedField: $focusedField,
+                            onCommit: {
+                                store.networkForm.touchAndValidatePassword()
+                                hideKeyboard()
+                            },
+                            onEditingChanged: { isFocused in
+                                if !isFocused {
+                                    store.networkForm.touchAndValidatePassword()
+                                }
+                            }
+                        )
                         
                         CustomToggleView(isOn: $store.networkForm.networkHasNoPassword, text: lang.networkHasNoPassword)
                             .padding(.top, 0)

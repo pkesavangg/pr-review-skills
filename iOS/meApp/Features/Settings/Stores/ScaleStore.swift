@@ -84,12 +84,23 @@ class ScaleStore: ObservableObject {
     func determineConnectionStatus(for scale: Device) -> ScaleConnectionStatus {
         let st = ScaleTypeHelper.determineScaleType(for: scale)
         if st == .appsync { return .noStatus }
-        if st == .bluetoothR4 && scale.isConnected == true {
+        
+        // Only check for setupIncomplete if scale is actually connected
+        guard scale.isConnected == true else {
+            return .notConnected
+        }
+        
+        // For BtWifiR4 scales, check if WiFi setup is incomplete
+        if st == .bluetoothR4 {
             let wifiOk = scale.isWifiConfigured == true
             let weightOnly = !(scale.r4ScalePreference?.shouldMeasureImpedance ?? true)
-            if !wifiOk && !weightOnly { return .setupIncomplete }
+            // Only show setupIncomplete if WiFi is not configured AND scale is not in weight-only mode
+            if !wifiOk && !weightOnly {
+                return .setupIncomplete
+            }
         }
-        return scale.isConnected == true ? .connected : .notConnected
+        
+        return .connected
     }
     
     private func setupSubscriptions() {

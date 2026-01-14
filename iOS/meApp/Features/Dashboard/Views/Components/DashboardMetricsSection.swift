@@ -24,7 +24,8 @@ struct DashboardMetricsSection: View {
                         .foregroundColor(theme.textHeading)
                     VStack{
                         Text(DashboardStrings.customizeDashboardSubtitle)
-                            .foregroundColor(theme.textBody)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textHeading)
                     }
                     
                 }
