@@ -83,7 +83,7 @@ internal fun StatCard(
             append("0.0")
 
           else ->
-            append("---")
+            append("--")
         }
 
       }
@@ -255,7 +255,7 @@ fun AnimatedStatCard(
  */
 private fun formatStatValue(value: Any?): String {
   return when (value) {
-    null -> "---"
+    null -> "--"
     is String -> value
     is Number -> {
       when (value) {
