@@ -52,7 +52,7 @@ struct UserListItemView: View {
             Color.clear
                 .frame(width: iconSize, height: iconSize)
                 .background {
-                    let firstInitial = user.name.first?.uppercased() ?? ""
+                    let firstInitial = user.name.firstAlphabeticCharacter().uppercased()
                     InitialIconView(
                         character: firstInitial,
                         textColor: theme.backgroundPrimary,

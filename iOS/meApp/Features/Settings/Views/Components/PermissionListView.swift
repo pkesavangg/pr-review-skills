@@ -158,8 +158,9 @@ struct PermissionListView: View {
     
     private var internetSection: some View {
         let rowTitle = viewModel.internetConnected ? PermissionsStrings.internetNetworkConnected : PermissionsStrings.internetNetworkDisconnected
+        let sectionTitle = setupType == .btWifi ? "Network" : PermissionsStrings.internet
         return sectionView(
-            title: PermissionsStrings.internet,
+            title: sectionTitle,
             rows: [
                 (
                     rowTitle,
@@ -213,10 +214,12 @@ struct PermissionListView: View {
         
         // Determine colour:
         //  - Enabled  ➜ primary action colour
-        //  - Disabled & required  ➜ error (red)
+        //  - Disabled & required  ➜ error (red), except grey in Scale Setup
         //  - Disabled & optional  ➜ utility / grey
         let colour: Color = {
             if isEnabled { return theme.actionPrimary }
+            // In Scale Setup (setupType != .all), always show grey for disabled permissions
+            if setupType != .all { return theme.statusUtilityPrimary }
             if showsChevron || required { return theme.statusError }
             return theme.statusUtilityPrimary
         }()

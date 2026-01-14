@@ -62,21 +62,23 @@ struct EditModeOverlay: ViewModifier {
                     Rectangle()
                         .fill(Color.clear)
                         .frame(width: 60, height: 60)
-                        .onTapGesture {
-                            onToggleRemoval()
-                        }
+                        .contentShape(Rectangle())
 
                     ThemedImage(name: iconName, isSingleMode: true)
                         .frame(width: 28, height: 28)
                 }
-                .onTapGesture {
-                    onToggleRemoval()
-                }
+                .contentShape(Rectangle())
+                .gesture(
+                    SpatialTapGesture()
+                        .onEnded { _ in
+                            onToggleRemoval()
+                        }
+                )
                 .offset(x: iconOffset.width, y: iconOffset.height)
                 .wiggling(shouldWiggle, rowIndex: rowIndex)
                 .opacity(iconOpacity)
                 .animation(.easeInOut(duration: 0.2), value: iconOpacity)
-                .allowsHitTesting(isEditMode)
+                .allowsHitTesting(true)
                 .zIndex(999)
             }
         }
