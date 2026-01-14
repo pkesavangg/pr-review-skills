@@ -128,7 +128,7 @@ class HealthConnectViewModel @Inject constructor(
     private suspend fun handlePrimaryAction(label: HealthConnectAction) {
         when (label) {
             HealthConnectAction.CONNECT -> {
-              dialogQueueService.showLoader("Loading...")
+              dialogQueueService.showLoader(HealthConnectStrings.Loader.loading)
                 handleConnect()
               dialogQueueService.dismissLoader()
             }
@@ -306,7 +306,7 @@ class HealthConnectViewModel @Inject constructor(
      */
     private  fun handleFinish() {
       viewModelScope.launch {
-          dialogQueueService.showLoader("Loading...")
+          dialogQueueService.showLoader(HealthConnectStrings.Loader.loading)
         try {
           healthConnectService.turnOnIntegration()
           navigationService.navigateBack()
@@ -327,7 +327,7 @@ class HealthConnectViewModel @Inject constructor(
      */
     fun openHealthConnect() {
         viewModelScope.launch {
-          dialogQueueService.showLoader("Loading...")
+          dialogQueueService.showLoader(HealthConnectStrings.Loader.loading)
             try {
                 healthConnectService.openHealthConnect(true)
             } catch (e: Exception) {
