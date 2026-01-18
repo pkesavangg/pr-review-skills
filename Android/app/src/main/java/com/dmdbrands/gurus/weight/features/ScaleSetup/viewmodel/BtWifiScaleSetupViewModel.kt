@@ -34,6 +34,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupSt
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
@@ -1917,6 +1918,7 @@ constructor(
           message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
           confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
           cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
+          primaryActionType = ButtonType.ErrorText,
           onConfirm = {
             // Delete user and update the list
             viewModelScope.launch {
