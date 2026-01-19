@@ -43,6 +43,8 @@ class UserNameForm: ObservableForm {
     
     /// Get error message for the display name control
     func getError<T>(for control: FormControl<T>) -> String? {
+        if control.errors[.duplicate] { return errorMessages.duplicate }
+        
         guard control.isDirty else { return nil }
         
         if control.errors[.required] { return errorMessages.required }
@@ -50,7 +52,6 @@ class UserNameForm: ObservableForm {
         if control.errors[.alphanumeric] { return errorMessages.validInput }
         if control.errors[.maxLength] { return errorMessages.maxLength(20) }
         if control.errors[.userNameUnavailable] { return errorMessages.userNameUnavailable }
-        if control.errors[.duplicate] { return errorMessages.userNameUnavailable }
         
         return nil
     }

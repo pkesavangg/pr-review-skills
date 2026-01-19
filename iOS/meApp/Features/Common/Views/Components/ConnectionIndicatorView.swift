@@ -11,6 +11,8 @@ struct ConnectionIndicatorView: View {
     let image: String
     let isFailure: Bool
     let showPulsingCircle: Bool
+    let customImageSize: CGSize?
+    let showSmallCircleOverride: Bool?
     
     @State private var pulse = false
     @Environment(\.appTheme) var theme
@@ -19,10 +21,12 @@ struct ConnectionIndicatorView: View {
     private let pulsingCircleSize: CGFloat = 172
     private let minScale: CGFloat = 100 / 172
     
-    init(image: String, isFailure: Bool = false, showPulsingCircle: Bool = true) {
+    init(image: String, isFailure: Bool = false, showPulsingCircle: Bool = true, customImageSize: CGSize? = nil, showSmallCircle: Bool? = nil) {
         self.image = image
         self.isFailure = isFailure
         self.showPulsingCircle = showPulsingCircle
+        self.customImageSize = customImageSize
+        self.showSmallCircleOverride = showSmallCircle
     }
     
     // MARK: - Computed Properties for State Management
@@ -31,15 +35,18 @@ struct ConnectionIndicatorView: View {
     }
     
     var showSmallCircle: Bool {
-        !(shouldPulse && isFailure)
+        if let override = showSmallCircleOverride {
+            return override
+        }
+        return !(shouldPulse && isFailure)
     }
     
     var smallCircleColor: Color {
-        isFailure ? theme.statusError : theme.brandWgPrimary
+        isFailure ? theme.textError : theme.brandWgPrimary
     }
     
     var pulsingCircleColor: Color {
-        isFailure ? theme.statusError : theme.statusIconLoading
+        isFailure ? theme.textErrorDisabled : theme.statusIconLoading
     }
     
     var showImage: Bool {
@@ -74,7 +81,10 @@ struct ConnectionIndicatorView: View {
                 Image(image)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 89, height: 89)
+                    .frame(
+                        width: customImageSize?.width ?? 89,
+                        height: customImageSize?.height ?? 89
+                    )
                     .themeDropShadow()
             } else {
                 AppIconView(icon: image, size: IconSize(width: 59, height: 59))

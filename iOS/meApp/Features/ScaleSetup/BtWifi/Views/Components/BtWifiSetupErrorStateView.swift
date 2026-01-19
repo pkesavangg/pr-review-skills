@@ -79,9 +79,11 @@ struct BtWifiSetupErrorStateView: View {
                     // Failure visual indicator
                     VStack {
                         ConnectionIndicatorView(
-                            image: AppAssets.exclamationDanger,
+                            image: AppAssets.exclamationMarkSimple,
                             isFailure: true,
-                            showPulsingCircle: true
+                            showPulsingCircle: true,
+                            customImageSize: CGSize(width: 8.262, height: 35.393),
+                            showSmallCircle: true
                         )
                         .padding(.bottom, 180)
                     }

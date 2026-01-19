@@ -837,6 +837,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Gets the account name to restore, preferring duplicateUserName over firstName
     private func getAccountNameForRestore() -> String {
+        let formValue = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !formValue.isEmpty {
+            return formValue
+        }
         if !duplicateUserName.isEmpty {
             return duplicateUserName.trimmingCharacters(in: .whitespacesAndNewlines)
         }
@@ -878,9 +882,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Restarts the connection and navigates to the connecting step
     private func restartConnectionAndNavigate() async {
+        // Preserve the current username value from form field before resetting
+        // This ensures the username doesn't get cleared when restore account is tapped
+        let preservedUsername = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let usernameToPreserve = preservedUsername.isEmpty ? 
+            (duplicateUserName.isEmpty ? (firstName ?? "User") : duplicateUserName) :
+            preservedUsername
+        
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         scaleSetupError = .none
         await restartConnection()
+        
+        // Restore the username value after reset so it's still visible in the form
+        userNameForm.setDisplayName(usernameToPreserve)
+        duplicateUserName = usernameToPreserve
+        
         navigateToStep(.connectingBluetooth)
     }
     
@@ -1496,16 +1512,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Populate userNameForm with current user name and user list for validation
                 if let firstName = self.firstName {
                     userNameForm.setDisplayName(firstName)
-                    userNameForm.setCurrentUserName(firstName)
                 }
+                userNameForm.setCurrentUserName(nil)
                 
                 // Convert DeviceUser list to ScaleUser list for form validation
                 let scaleUsers = userList.map { deviceUser in
                     ScaleUser(name: deviceUser.name, token: deviceUser.token)
                 }
                 userNameForm.updateUserList(scaleUsers)
-                userNameForm.displayName.markAsPristine()
-                userNameForm.displayName.markAsUntouched()
+                userNameForm.displayName.markAsDirty()
+                userNameForm.displayName.validate()
                 
                 // Set error state and navigate to gathering network
                 scaleSetupError = .duplicatesFound
