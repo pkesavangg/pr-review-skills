@@ -1864,21 +1864,12 @@ class DashboardStore: ObservableObject {
         graphManager.endScrollingImmediately()
 
         // IMPORTANT: Get the correct operations for the NEW period directly from dataManager
-        // We can't use `continuousOperations` here because it checks `state.graph.selectedPeriod`
-        // which hasn't been updated yet, resulting in using the wrong dataset (e.g., daily vs monthly)
         let operationsForNewPeriod = dataManager.getContinuousOperations(for: period)
 
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
         // Use cached bounds for O(1) lookup
         // If anchorDate is provided, center the viewport around it for temporal context preservation
-        if let anchor = anchorDate {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
-            logger.log(level: .debug, tag: "DashboardStore",
-                      message: "Using anchor date \(formatter.string(from: anchor)) for period switch to \(period)")
-        }
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,
             from: operationsForNewPeriod,

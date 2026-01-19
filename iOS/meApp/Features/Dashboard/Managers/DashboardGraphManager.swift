@@ -1369,15 +1369,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return state.xScrollPosition.addingTimeInterval(domainLength / 2)
     }
 
-    /// Returns the end date (right edge) of the visible date range for a specific period.
-    /// Use this when zooming IN to a more detailed view to show the latest visible data.
-    /// - Parameter period: The time period to calculate the end for
-    /// - Returns: The end date of the visible range for the given period
-    func visibleEndDate(for period: TimePeriod) -> Date {
-        let domainLength = visibleDomainLength(for: period)
-        return state.xScrollPosition.addingTimeInterval(domainLength)
-    }
-
     private func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
         let validSummaries = summaries.filter { summary in
@@ -1529,12 +1520,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             if targetScrollPosition < minScrollPosition {
                 targetScrollPosition = minScrollPosition
             }
-
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
-            logger.log(level: .debug, tag: "DashboardGraphManager",
-                      message: "Anchor-based scroll: anchor=\(formatter.string(from: anchor)), target=\(formatter.string(from: targetScrollPosition)), bounds=[\(formatter.string(from: overallMinDate)), \(formatter.string(from: overallMaxDate))], period=\(period)")
 
             return targetScrollPosition
         }

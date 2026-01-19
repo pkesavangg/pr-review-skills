@@ -44,7 +44,7 @@ protocol DashboardGraphManaging {
     func handleScrollStart()
     func handleScrollEnd() async
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date]
-    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], anchorDate: Date?, showingLatest: Bool, cachedBounds: (min: Date, max: Date)?) -> Date
+    func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], showingLatest: Bool, anchorDate: Date?, cachedBounds: (min: Date, max: Date)?) -> Date
     func forceVisibleOperationsRecalculation()
 }
 
