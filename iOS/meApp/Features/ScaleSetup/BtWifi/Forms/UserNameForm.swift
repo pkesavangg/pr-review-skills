@@ -45,8 +45,6 @@ class UserNameForm: ObservableForm {
     func getError<T>(for control: FormControl<T>) -> String? {
         if control.errors[.duplicate] { return errorMessages.duplicate }
         
-        guard control.isDirty else { return nil }
-        
         if control.errors[.required] { return errorMessages.required }
         if control.errors[.noWhiteSpace] { return errorMessages.noWhiteSpace }
         if control.errors[.alphanumeric] { return errorMessages.validInput }
