@@ -30,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
@@ -255,10 +256,6 @@ constructor(
               }
             }
 
-            WifiScaleSetupStep.SCALE_COUNTS -> {
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-            }
-
             WifiScaleSetupStep.STEP_ON -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
             }
@@ -367,7 +364,7 @@ constructor(
         title = ScaleSetupStrings.ExitSetupAlert.Title,
         message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
         confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-        cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+        cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
         onConfirm = {
           navigateBack()
         },
@@ -672,10 +669,19 @@ constructor(
 
   /**
    * Checks if scale token is available.
+   * Shows a toast message if the token is not available.
+   * Equivalent to TypeScript checkScaleToken()
    */
   fun checkScaleToken(): Boolean {
     if (scaleToken.isNullOrEmpty()) {
       AppLog.w(TAG, "checkScaleToken - No scale token available")
+      dialogQueueService.showToast(
+        Toast(
+          title = ScaleSetupStrings.PermissionAlerts.InternetRequired.Title,
+          message = ScaleSetupStrings.PermissionAlerts.InternetRequired.Message,
+          action = null,
+        ),
+      )
       return false
     }
     return true
@@ -821,7 +827,7 @@ constructor(
         }
       }
 
-      WifiScaleSetupStep.SCALE_COUNTS -> {
+      WifiScaleSetupStep.STEP_ON -> {
         saveScale()
         notificationPermission()
       }
@@ -882,6 +888,7 @@ constructor(
       if (areRequiredPermissionsEnabled) {
         handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.SCALE_INFO))
       }
+      handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(false))
     }
 
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
@@ -952,7 +959,7 @@ constructor(
         title = ScaleSetupStrings.ExitSetupAlert.Title,
         message = ScaleSetupStrings.ExitSetupAlert.Message(currentState.isConnected),
         confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-        cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+        cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
         onConfirm = {
           navigateBack()
         },
@@ -1096,6 +1103,15 @@ constructor(
   private fun onGetScaleMacAddress() {
     AppLog.d(TAG, "MAC address setup requested")
     handleIntent(WifiScaleSetupIntent.SetShouldGetMacAddress(true))
+    val currentState = state.value
+    val arePermissionsCurrentlyEnabled = AppPermissionsHelper
+      .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
+    if(arePermissionsCurrentlyEnabled){
+        handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.ACTIVATE_SCALE))
+    }
+    else {
+      handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.PERMISSIONS))
+    }
     // The intent is already handled by the reducer to set MAC setup flags
   }
 

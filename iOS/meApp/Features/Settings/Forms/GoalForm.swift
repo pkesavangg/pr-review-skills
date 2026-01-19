@@ -43,11 +43,7 @@ final class GoalForm: ObservableForm {
     }
     
     private func validateWeightEquality(into errors: inout ValidationErrors<Any>) {
-        let current = parseWeight(currentWeight.value)
-        let goal = parseWeight(goalWeight.value)
-        
-        guard areWeightsEqual(current: current, goal: goal) else { return }
-        guard hasUserInteractedWithWeights() else { return }
+        guard hasEqualWeights else { return }
         
         errors.update(
             for: Validator<Any>(type: .weightEqual) { _ in false },
@@ -59,12 +55,10 @@ final class GoalForm: ObservableForm {
         Double(value) ?? 0.0
     }
     
-    private func areWeightsEqual(current: Double, goal: Double) -> Bool {
-        current > 0 && goal > 0 && current == goal
-    }
-    
-    private func hasUserInteractedWithWeights() -> Bool {
-        currentWeight.isDirty || goalWeight.isDirty || isDirty
+    var hasEqualWeights: Bool {
+        let current = parseWeight(currentWeight.value)
+        let goal = parseWeight(goalWeight.value)
+        return current > 0 && goal > 0 && current == goal
     }
     
     private var isLoseGainMode: Bool {
@@ -81,6 +75,10 @@ final class GoalForm: ObservableForm {
     /// - Parameter focusedField: Optional focused field to enable save while typing.
     func isValidForSave(focusedField: FocusField? = nil) -> Bool {
         guard isDirty else { return false }
+        
+        if isLoseGainMode && hasEqualWeights {
+            return false
+        }
         
         if let focused = focusedField, isValidWhileFocused(focusedField: focused) {
             return true
@@ -104,17 +102,17 @@ final class GoalForm: ObservableForm {
     }
     
     private func isValidForCurrentWeightFocused() -> Bool {
-        guard goalType.value == GoalTypeSegment.losegainValue else { return false }
+        guard isLoseGainMode else { return false }
         guard currentWeight.isDirty && currentWeight.isValid else { return false }
-        guard !formErrors[.weightEqual] else { return false }
+        guard !hasEqualWeights else { return false }
         return !goalWeight.value.isEmpty && goalWeight.isValid
     }
     
     private func isValidForGoalWeightFocused() -> Bool {
         guard goalWeight.isDirty && goalWeight.isValid else { return false }
         
-        if goalType.value == GoalTypeSegment.losegainValue {
-            guard !formErrors[.weightEqual] else { return false }
+        if isLoseGainMode {
+            guard !hasEqualWeights else { return false }
             return !currentWeight.value.isEmpty && currentWeight.isValid
         } else {
             return true
@@ -122,8 +120,8 @@ final class GoalForm: ObservableForm {
     }
     
     private func isValidForCurrentGoalType() -> Bool {
-        if goalType.value == GoalTypeSegment.losegainValue {
-            guard !formErrors[.weightEqual] else { return false }
+        if isLoseGainMode {
+            guard !hasEqualWeights else { return false }
             return currentWeight.isValid && goalWeight.isValid
         } else {
             return goalWeight.isValid
@@ -171,9 +169,10 @@ final class GoalForm: ObservableForm {
     }
     
     private func getFormLevelError<T>(for control: FormControl<T>) -> String? {
-        guard isLoseGainMode && formErrors[.weightEqual] else { return nil }
+        guard isLoseGainMode else { return nil }
         guard control === goalWeight else { return nil }
         guard goalWeight.isDirty || currentWeight.isDirty else { return nil }
+        guard hasEqualWeights else { return nil }
         
         return FormErrorMessages.valueShouldNotBeEqual
     }

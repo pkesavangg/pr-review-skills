@@ -145,11 +145,7 @@ struct LoginScreen: View {
                                         isDisabled: false,
                                         action: {
                                             focusedField = nil
-                                            hideKeyboard()
-                                            Task { @MainActor in
-                                                try? await Task.sleep(nanoseconds: 100_000_000)
-                                                store.showPasswordResetPrompt()
-                                            }
+                                            store.showPasswordResetPrompt()
                                         }
                                     )
                                 }
@@ -195,6 +191,10 @@ struct LoginScreen: View {
             isPresented: store.isBrowserPresented
         )
         .keyboardObserver(keyboardHeight: $keyboardHeight)
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             store.isFromAccountSwitching = isFromAccountSwitching
             if isFromAccountSwitching {

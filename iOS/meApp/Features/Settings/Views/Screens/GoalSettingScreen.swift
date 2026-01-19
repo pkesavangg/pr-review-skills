@@ -107,8 +107,13 @@ struct GoalSettingScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingLG)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .onTapGesture {
+            focusedField = nil
+            hideKeyboard()
+        }
         .onAppear {
             settingsStore.populateGoalFormIfNeeded()
             // Sync the selected segment with the current goal type value
@@ -134,6 +139,18 @@ struct GoalSettingScreen: View {
         }
         .onDisappear {
             registerDeactivation { true }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                // Show Done button only when starting weight or goal weight fields are focused
+                if focusedField == .currentWeight || focusedField == .goalWeight {
+                    Spacer()
+                    Button(commonLang.done) {
+                        focusedField = nil
+                        hideKeyboard()
+                    }
+                }
+            }
         }
         .navigationBarHidden(true)
     }

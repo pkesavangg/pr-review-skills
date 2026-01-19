@@ -194,7 +194,11 @@ fun SettingsScreenContent(
               },
             ),
             SettingsItem(
-              title = SettingsScreenStrings.Messages,
+              title = if (state.unreadFeedCount > 0) {
+               SettingsScreenStrings.MessagesWithCount(state.unreadFeedCount)
+              } else {
+                SettingsScreenStrings.Messages
+              },
               type = SettingsItemType.Action(),
               showUnreadIndicator = state.showUnreadFeedIndication,
               onClick = {

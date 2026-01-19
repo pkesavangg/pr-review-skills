@@ -1,8 +1,7 @@
 package com.dmdbrands.gurus.weight.features.integration.model
 
-import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-
+import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
 
 data class HealthConnectUiState(
   val healthConnectSetupState: HealthConnectSetup = HealthConnectSetup.NONE,
@@ -46,7 +45,6 @@ class HealthConnectReducer : IReducer<HealthConnectUiState, HealthConnectIntent>
             HealthConnectIntent.ConnectSuccess -> {
                 state.copy(
                     isLoading = false,
-                    healthConnectSetupState = HealthConnectSetup.FINISH_CONNECT,
                     errorMessage = null
                 )
             }
@@ -114,7 +112,6 @@ class HealthConnectReducer : IReducer<HealthConnectUiState, HealthConnectIntent>
             }
             HealthConnectAction.FINISH -> {
                 state.copy(
-                    healthConnectSetupState = HealthConnectSetup.FINISH_CONNECT
                 )
             }
             HealthConnectAction.OPEN_HEALTH_CONNECT -> {

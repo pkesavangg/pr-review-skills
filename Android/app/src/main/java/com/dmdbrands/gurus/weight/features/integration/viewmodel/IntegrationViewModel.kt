@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IIntegrationService
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -84,7 +85,7 @@ class IntegrationViewModel @Inject constructor(
       is IntegrationIntent.AddIntegration -> addIntegrations(intent.provider)
       is IntegrationIntent.RemoveIntegration -> disconnectAuthIntegration()
       is IntegrationIntent.OnBack -> onBack()
-      is IntegrationIntent.NavigateToHealthConnect -> handleHealthConnectNavigation()
+      is IntegrationIntent.NavigateToHealthConnect -> connectHealthConnectIntegration()
       is IntegrationIntent.RemoveHealthConnectIntegration -> removeHealthConnectIntegration()
       is IntegrationIntent.ToggleHealthConnectIntegration -> toggleHealthConnectIntegration(intent.integration)
       else -> {
@@ -93,8 +94,83 @@ class IntegrationViewModel @Inject constructor(
     }
   }
 
-  private fun handleHealthConnectNavigation() {
-    navigateToHealthConnect()
+  /**
+   * Connects to Health Connect integration.
+   * Checks Health Connect status and handles accordingly:
+   * - INSTALLED/UPDATE_REQUIRED: Navigates to Health Connect screen (modal will be opened there)
+   * - INSTALL_REQUIRED: Shows install alert
+   * - UNAVAILABLE: Shows unavailable alert
+   */
+  private fun connectHealthConnectIntegration() {
+    viewModelScope.launch {
+      try {
+        AppLog.d(TAG, "Connecting to Health Connect integration")
+        val status = healthConnectService.healthConnectStatus()
+
+        when (status) {
+          com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.INSTALL_REQUIRED -> {
+            // Show install required alert
+            showHealthConnectInstallAlert()
+          }
+
+          com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.UNAVAILABLE -> {
+            // Show unavailable alert
+            showHealthConnectUnavailableAlert()
+          }
+
+          com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.INSTALLED,
+          com.greatergoods.libs.healthconnect.enums.HealthConnectStatus.UPDATE_REQUIRED -> {
+            // Navigate to Health Connect screen - determineSetupState will handle the modal logic
+            navigateToHealthConnect()
+          }
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to connect Health Connect integration", e)
+      }
+    }
+  }
+
+  /**
+   * Shows alert when Health Connect installation is required.
+   */
+  private fun showHealthConnectInstallAlert() {
+    dialogQueueService.enqueue(
+      DialogModel.Confirm(
+        title = HealthConnectStrings.NotInstalledAlert.title,
+        message = HealthConnectStrings.NotInstalledAlert.description,
+        confirmText = HealthConnectStrings.ActionButtons.download,
+        cancelText = HealthConnectStrings.ActionButtons.cancel,
+        onConfirm = {
+          viewModelScope.launch {
+            try {
+              healthConnectService.openHealthConnect()
+            } catch (e: Exception) {
+              AppLog.e(TAG, "Failed to open Health Connect", e)
+            }
+          }
+          dialogQueueService.dismissCurrent()
+        },
+        onCancel = {
+          dialogQueueService.dismissCurrent()
+        },
+      ),
+    )
+  }
+
+  /**
+   * Shows alert when Health Connect is unavailable on the device.
+   */
+  private fun showHealthConnectUnavailableAlert() {
+    dialogQueueService.enqueue(
+      DialogModel.Alert(
+        title = HealthConnectStrings.NotAvailableAlert.title,
+        message = HealthConnectStrings.NotAvailableAlert.description,
+        dismissText = HealthConnectStrings.ActionButtons.close,
+        onDismiss = {
+          dialogQueueService.dismissCurrent()
+        },
+      ),
+    )
   }
 
   private fun removeHealthConnectIntegration() {
@@ -119,6 +195,7 @@ class IntegrationViewModel @Inject constructor(
         message = HealthConnectStrings.PopupStrings.removeHCIntegrationMessage,
         confirmText = HealthConnectStrings.ActionButtons.remove,
         cancelText = HealthConnectStrings.ActionButtons.cancel,
+        primaryActionType = ButtonType.ErrorText,
         onConfirm = {
           dialogQueueService.showLoader("Removing...")
           viewModelScope.launch {

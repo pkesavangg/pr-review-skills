@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.data.storage.datastore
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
@@ -12,6 +11,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
 
 /**
  * Extension property to provide BluetoothPreferences DataStore instance from Context.
@@ -46,7 +46,8 @@ class BluetoothPreferencesDataStore @Inject constructor(
       "CF:E7:04:0C:00:09",
       "CF:E7:04:0C:00:1F",
       "CF:E7:04:0C:00:08",
-      "CF:E7:04:0C:00:33"
+      "CF:E7:04:0C:00:33",
+      "CF:E8:06:14:08:12"
     )
   }
 

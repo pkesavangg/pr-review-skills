@@ -37,6 +37,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.delay
+import java.util.Locale.getDefault
 import android.content.Intent
 
 /**
@@ -147,7 +148,7 @@ private fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
     )
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
     AppText(
-      text = HelpScreenStrings.Email,
+      text = HelpScreenStrings.Email.uppercase(getDefault()),
       textType = TextType.Link,
       textAlign = TextAlign.Start,
       modifier = Modifier.clickable(true) {

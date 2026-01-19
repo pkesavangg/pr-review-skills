@@ -246,10 +246,20 @@ extension Device {
     var connectionStatus: ScaleConnectionStatus {
         let type = ScaleTypeHelper.determineScaleType(for: self)
         if type == .appsync || type == .wifi { return .noStatus }
-        if type == .bluetoothR4 && isConnected == true {
-            let wifiOk = isWifiConfigured == true
-            if !wifiOk { return .setupIncomplete }
+        
+        // Only check for setupIncomplete if scale is actually connected
+        guard isConnected == true else {
+            return .notConnected
         }
-        return isConnected == true ? .connected : .notConnected
+        
+        // For BtWifiR4 scales, check if WiFi setup is incomplete
+        if type == .bluetoothR4 {
+            let wifiOk = isWifiConfigured == true
+            if !wifiOk {
+                return .setupIncomplete
+            }
+        }
+        
+        return .connected
     }
 }

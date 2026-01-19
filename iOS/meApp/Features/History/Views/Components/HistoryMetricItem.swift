@@ -14,6 +14,7 @@ struct HistoryMetricItem: View {
     @Environment(\.appTheme) private var theme
 
     let metric: MetricData
+    let metricType: BodyMetric
     let value: Int
     let index: Int
     let size: Int
@@ -51,7 +52,7 @@ struct HistoryMetricItem: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
-              Text(BodyMetricsConvertor.convert(Double(value), shouldCompose: metric.bodyCompositionRelated, wholeNumber: metric.isWholeNumber))
+              Text(BodyMetricsConvertor.convert(Double(metricType == .visceralFatLevel ? value / 10 : value), shouldCompose: metric.bodyCompositionRelated, wholeNumber: metric.isWholeNumber))
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
 
@@ -87,6 +88,7 @@ struct HistoryMetricItem_Previews: PreviewProvider {
         VStack(spacing: 0) {
             HistoryMetricItem(
                 metric: BodyMetrics.config[.bmi]!,
+                metricType: .bmi,
                 value: 73,
                 index: 0,
                 size: 1,

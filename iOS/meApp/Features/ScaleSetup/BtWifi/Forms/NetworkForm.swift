@@ -63,11 +63,27 @@ class NetworkForm: ObservableForm {
     
     /// Get error message for any form control
     func getError<T>(for control: FormControl<T>) -> String? {
-        guard control.isDirty, !networkHasNoPassword else { return nil }
+        guard control.isDirty || control.isTouched else { return nil }
+        
+        if let passwordControl = control as? FormControl<String>,
+           passwordControl === password,
+           networkHasNoPassword {
+            return nil
+        }
         
         if control.errors[.required] { return errorMessages.required }
         
         return nil
+    }
+    
+    func touchAndValidatePassword() {
+        password.markAsTouched()
+        password.validate()
+    }
+    
+    func touchAndValidateSSID() {
+        ssid.markAsTouched()
+        ssid.validate()
     }
     
     /// Update password validation based on networkHasNoPassword toggle
@@ -76,11 +92,13 @@ class NetworkForm: ObservableForm {
             // Remove required validator and clear password
             password.removeValidator(ofType: .required)
             password.value = ""
+            password.resetInteractionState()
         } else {
             // Add required validator if not present
             if !password.validators.contains(where: { $0.type == .required }) {
                 password.addValidator(.required)
             }
+            password.resetInteractionState()
         }
     }
 } 

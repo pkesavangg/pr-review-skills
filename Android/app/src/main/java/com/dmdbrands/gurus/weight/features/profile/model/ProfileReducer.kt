@@ -49,7 +49,7 @@ data class ProfileFormControls(
                 initialValue = email,
                 validators = listOf(
                     FormValidations.required(LoginStrings.Errors.emailBlank),
-                    FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, LoginStrings.Errors.maxLengthEmail),
+                    FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, customMessage = LoginStrings.Errors.maxLengthEmail),
                     FormValidations.email(),
                 ),
             ),

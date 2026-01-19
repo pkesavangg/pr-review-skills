@@ -315,6 +315,7 @@ constructor(
 
     // 7. Store updated device list locally
     try {
+      deviceRepository.deleteAllDevicesForAccount(accountId = currentAccountId!!)
       finalDevices.forEach { device ->
         deviceRepository.saveDeviceToDb(device, currentAccountId!!)
       }

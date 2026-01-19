@@ -260,8 +260,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // Only show goal card if there are streaks OR if goal is set (has data)
                 // This prevents empty white cards from appearing before data loads
                 if streakCount == 0 {
-                    // Only add goal card if goal data is actually available
-                    if store.hasGoalSet {
+                    if store.hasGoalSet && !isGoalCardRemoved {
                         widgets.append(.goalCard)
                     }
                 } else {

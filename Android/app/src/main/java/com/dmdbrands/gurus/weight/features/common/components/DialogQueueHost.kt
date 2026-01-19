@@ -65,7 +65,7 @@ fun DialogQueueHost(
                                 dialogQueueViewModel.dismissCurrent()
                             },
                         ),
-                    properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+                    properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
                 )
             }
 
@@ -85,7 +85,7 @@ fun DialogQueueHost(
                             dialog.onCancel?.invoke()
                             dialogQueueViewModel.dismissCurrent()
                         },
-                    properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+                    properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
                 )
             }
 

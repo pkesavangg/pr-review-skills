@@ -269,6 +269,7 @@ object DateTimeInputDefaults {
           unfocusedContainerColor = colorScheme.primaryBackground,
           unfocusedTextColor = colorScheme.textBody,
           focusedTextColor = colorScheme.textBody,
+          errorTextColor = colorScheme.textBody,
           focusedIndicatorColor = colorScheme.utility,
           unfocusedIndicatorColor = colorScheme.utility,
           cursorColor = colorScheme.iconSecondaryDisabled,

@@ -14,7 +14,7 @@ data class WeightlessFormControls(
     val weightlessWeight: FormControl<String>,
 ) {
     companion object {
-        fun create() =
+        fun create(weightUnit: WeightUnit = WeightUnit.LB) =
             WeightlessFormControls(
                 weightlessWeight =
                     FormControl.create(
@@ -22,7 +22,7 @@ data class WeightlessFormControls(
                         validators =
                             listOf(
                                 FormValidations.required(),
-                                FormValidations.weightValidator(),
+                                FormValidations.weightValidator(weightUnit),
                             ),
                     ),
             )
@@ -102,12 +102,12 @@ class WeightlessReducer : IReducer<WeightlessState, WeightlessIntent> {
             is WeightlessIntent.ToggleWeightless -> {
                 val newToggleValue = !state.isWeightlessOn
 
-                // Update weight control validators based on toggle state
+                // Update weight control validators based on toggle state and current weight unit
                 val weightValidators =
                     if (newToggleValue) {
-                        listOf(FormValidations.required(), FormValidations.weightValidator())
+                        listOf(FormValidations.required(), FormValidations.weightValidator(state.weightUnit))
                     } else {
-                        listOf(FormValidations.weightValidator())
+                        listOf(FormValidations.weightValidator(state.weightUnit))
                     }
                 val updatedWeightControl =
                     FormControl.create(

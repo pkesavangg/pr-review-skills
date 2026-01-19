@@ -218,12 +218,17 @@ constructor(
           ToastStrings.Error.ResetPasswordError.Message,
         )
       }
-    } catch (e: HttpException) {
+    } catch (e: Exception) {
       AppLog.e(TAG, "Failed to reset password", e)
-      showErrorToast(
-        ToastStrings.Error.ResetPasswordError.Header,
-        ToastStrings.Error.ResetPasswordError.Message,
-      )
+      if (e is HttpException) {
+        val msg =
+          when (e.code()) {
+            HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION -> ToastStrings.Error.NetworkError.Message
+            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.MessageServError
+            else -> ToastStrings.Error.ResetPasswordError.Message
+          }
+        showErrorToast(ToastStrings.Error.ResetPasswordError.Header, msg)
+      }
     }
   }
 
@@ -486,6 +491,9 @@ constructor(
     fcmToken: String?,
   ): Boolean =
     try {
+      if (!isNetworkAvailable()){
+        showNoNetworkErrorToast()
+      }
       AppLog.v(TAG, "logout() called for accountId: $accountId")
       val isActiveAccount = getCurrentAccount()?.id == accountId
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
@@ -506,6 +514,9 @@ constructor(
   override suspend fun logoutAll(): Boolean =
     try {
       AppLog.d(TAG, "logoutAll() called")
+      if (!isNetworkAvailable()){
+        showNoNetworkErrorToast()
+      }
       // Get all logged-in accounts before logging out to reset their notification alert settings
       val loggedInAccounts = getLoggedInAccounts()
       val result = accountRepository.logoutAllAccounts()
@@ -566,7 +577,7 @@ constructor(
         showNetworkErrorAndThrow()
       },
     )
-
+    dialogQueueService.showLoader("Switching account...")
     return try {
       accountRepository.getAccountFromAPI(account.id)
       // Switch to the account using the repository method
@@ -582,6 +593,9 @@ constructor(
       // Optional: handle unexpected exceptions
       AppLog.e(TAG, "Unexpected error while switching account", e)
       false
+    }
+    finally {
+      dialogQueueService.dismissLoader()
     }
   }
 
@@ -728,5 +742,15 @@ constructor(
   override suspend fun emitNavigateBackFromMyAccounts() {
     appNavigationService.emitAuthEvent(AuthState.NavigateBackFromMyAccounts)
     AppLog.d(TAG, "Emitted NavigateBackFromMyAccounts event")
+  }
+
+  private fun showNoNetworkErrorToast(){
+    dialogQueueService.showToast(
+      Toast(
+        title = null,
+        message = ToastStrings.Error.NetworkError.Message,
+        action = null,
+      ),
+    )
   }
 }

@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.shared.utilities
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
@@ -8,6 +9,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 import java.util.Calendar
 
 /**
@@ -134,14 +136,13 @@ object DateTimeConverter {
    * @return Start of week timestamp in milliseconds
    */
   fun getWeekStart(referenceMillis: Long): Long {
-    val calendar = Calendar.getInstance()
-    calendar.timeInMillis = referenceMillis
-    calendar.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-    calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.set(Calendar.MINUTE, 0)
-    calendar.set(Calendar.SECOND, 0)
-    calendar.set(Calendar.MILLISECOND, 0)
-    return calendar.timeInMillis
+    return Instant.ofEpochMilli(referenceMillis)
+      .atZone(ZoneId.systemDefault())
+      .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+      .toLocalDate()
+      .atStartOfDay(ZoneId.systemDefault())
+      .toInstant()
+      .toEpochMilli()
   }
 
   /**

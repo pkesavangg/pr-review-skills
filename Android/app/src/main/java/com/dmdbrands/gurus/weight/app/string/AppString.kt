@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.app.string
 
 object AppString {
+  const val SCALEDISCOVEREDTIMEOUT = 15_000L
   object Alert {
     object MaxUser {
       const val title = "Scale is at Its User Limit"

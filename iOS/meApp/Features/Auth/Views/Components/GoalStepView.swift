@@ -56,9 +56,16 @@ struct GoalStepView: View {
                                 focusedField = .goalWeight
                             },
                             onEditingChanged: { isEditing in
+                                guard !signupStore.isGoalSkipped else { return }
                                 signupStore.handleEditingChanged(isEditing, field: .currentWeight)
                             }
                         )
+                        .onChange(of: focusedField) { oldValue, newValue in
+                            guard !signupStore.isGoalSkipped else { return }
+                            if oldValue == .currentWeight && newValue != .currentWeight {
+                                signupStore.touchAndValidate(field: .currentWeight)
+                            }
+                        }
                     }
                     
                     MetricInputField(
@@ -78,9 +85,17 @@ struct GoalStepView: View {
                             focusedField = nil
                         },
                         onEditingChanged: { isEditing in
+                            guard !signupStore.isGoalSkipped else { return }
                             signupStore.handleEditingChanged(isEditing, field: .goalWeight)
                         }
                     )
+                    .onChange(of: focusedField) { oldValue, newValue in
+                        guard !signupStore.isGoalSkipped else { return }
+                        // Mark goal weight as touched when focus moves away from it
+                        if oldValue == .goalWeight && newValue != .goalWeight {
+                            signupStore.touchAndValidate(field: .goalWeight)
+                        }
+                    }
                 }
                 .padding(.top, .spacingMD)
             }

@@ -11,7 +11,7 @@ object AppPermissionsScreenStrings {
   const val BluetoothHeader = "Bluetooth"
   const val LocationHeader = "Location"
   const val CameraHeader = "Camera (AppSync)"
-  const val NotificationsHeader = "Notifications"
+  const val NotificationsHeader = "Notification"
   const val NetworkHeader = "Network"
 
   // Bluetooth

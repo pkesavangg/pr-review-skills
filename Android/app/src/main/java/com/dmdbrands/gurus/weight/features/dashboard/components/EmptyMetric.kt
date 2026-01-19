@@ -25,8 +25,8 @@ fun EmptyMetric(onConnectScaleClick: () -> Unit) {
     AppText(
       text = lang.description,
       textType = TextType.Body,
-      modifier = Modifier.padding(top = MeTheme.spacing.sm, bottom = MeTheme.spacing.lg),
       textAlign = TextAlign.Center,
+      modifier = Modifier.padding(top = MeTheme.spacing.sm, bottom = MeTheme.spacing.lg),
     )
     AppButton(
       label = lang.connectScale,
