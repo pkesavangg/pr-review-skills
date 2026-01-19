@@ -11,7 +11,7 @@ struct WeightTrendView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     @State private var localSelectedPeriod: TimePeriod = .week
-    
+
     var body: some View {
         ZStack {
             VStack(alignment: .leading,spacing: 0) {
@@ -52,18 +52,10 @@ struct WeightTrendView: View {
                 anchorDate = dashboardStore.graphManager.visibleMidpoint(for: oldValue)
             }
 
-            // Debug logging
-            if let anchor = anchorDate {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .medium
-                formatter.timeStyle = .short
-                print("DEBUG: Captured anchor date (midpoint): \(formatter.string(from: anchor)) when switching from \(oldValue) to \(newValue)")
-            }
-
             dashboardStore.updateSelectedPeriod(newValue, anchorDate: anchorDate)
         }
     }
-    
+
     @ViewBuilder
     func weightInfoSection(
         dashboardStore: DashboardStore
@@ -74,7 +66,7 @@ struct WeightTrendView: View {
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .padding(.leading, .spacingSM)
-            
+
             WeightDisplayView(
                 weightText: {
                     // Prefer current selection (exact point or interpolated crosshair) when available
