@@ -1492,40 +1492,51 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         if let anchor = anchorDate {
             // Calculate scroll position that centers the anchor in the viewport
             // scrollPosition is the LEFT edge, so subtract half domain length from anchor
-            let targetScrollPosition = anchor.addingTimeInterval(-domainLength / 2)
+            var targetScrollPosition = anchor.addingTimeInterval(-domainLength / 2)
 
-            // For anchor-based positioning, we want to preserve the anchor's visibility
-            // Snap to grid alignment, but verify the anchor remains visible after snapping
-            let snappedPosition = snapScrollPosition(targetScrollPosition, for: period)
+            // Skip snapping to preserve exact centering.
+            // Snapping can shift the position significantly (e.g., up to 2 weeks for year view).
 
-            // Check if anchor is still visible after snapping
-            let snappedViewportEnd = snappedPosition.addingTimeInterval(domainLength)
-            let anchorStillVisible = anchor >= snappedPosition && anchor <= snappedViewportEnd
+            // However, we DO want to shift back if the viewport lands in a region with no data.
+            // Check if the viewport's right edge extends past the latest data entry.
+            let viewportEnd = targetScrollPosition.addingTimeInterval(domainLength)
 
-            // If snapping moved anchor out of view, use unsnapped position
-            let positionToUse = anchorStillVisible ? snappedPosition : targetScrollPosition
+            // Add a small buffer past the latest entry for visual comfort
+            let bufferPastLatest: TimeInterval
+            switch period {
+            case .week:
+                bufferPastLatest = 2 * DashboardConstants.TimeInterval.day
+            case .month:
+                bufferPastLatest = DashboardConstants.TimeInterval.week
+            case .year:
+                bufferPastLatest = DashboardConstants.TimeInterval.month
+            case .total:
+                bufferPastLatest = 0
+            }
 
-            // Clamp to valid scroll boundaries
-            // IMPORTANT: When using anchor, we want to preserve the anchor's position even if it means
-            // not showing the absolute latest data. Only clamp if anchor would be completely outside bounds.
-            let clampedPosition = clampScrollPosition(
-                positionToUse,
-                for: period,
-                minDate: overallMinDate,
-                maxDate: overallMaxDate
-            )
+            // The max allowed end for data visibility is the latest data + buffer
+            // (Calendar boundaries are for X-axis display, but we want to show actual data when zooming)
+            let maxDataEnd = overallMaxDate.addingTimeInterval(bufferPastLatest)
 
-            // Final check: ensure anchor is still visible after clamping
-            let clampedViewportEnd = clampedPosition.addingTimeInterval(domainLength)
-            let anchorVisibleAfterClamp = anchor >= clampedPosition && anchor <= clampedViewportEnd
+            if viewportEnd > maxDataEnd {
+                // Shift the viewport back so the right edge aligns with the latest data + buffer
+                let adjustment = viewportEnd.timeIntervalSince(maxDataEnd)
+                targetScrollPosition = targetScrollPosition.addingTimeInterval(-adjustment)
+            }
+
+            // Also ensure we don't go too far into the past (left boundary)
+            let minScrollPosition = overallMinDate.addingTimeInterval(-domainLength * 0.1)
+            if targetScrollPosition < minScrollPosition {
+                targetScrollPosition = minScrollPosition
+            }
 
             let formatter = DateFormatter()
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
             logger.log(level: .debug, tag: "DashboardGraphManager",
-                      message: "Anchor-based scroll: anchor=\(formatter.string(from: anchor)), target=\(formatter.string(from: targetScrollPosition)), snapped=\(formatter.string(from: snappedPosition)), positionToUse=\(formatter.string(from: positionToUse)), clamped=\(formatter.string(from: clampedPosition)), anchorVisible=\(anchorVisibleAfterClamp), bounds=[\(formatter.string(from: overallMinDate)), \(formatter.string(from: overallMaxDate))], period=\(period)")
+                      message: "Anchor-based scroll: anchor=\(formatter.string(from: anchor)), target=\(formatter.string(from: targetScrollPosition)), bounds=[\(formatter.string(from: overallMinDate)), \(formatter.string(from: overallMaxDate))], period=\(period)")
 
-            return clampedPosition
+            return targetScrollPosition
         }
 
         if showingLatest {

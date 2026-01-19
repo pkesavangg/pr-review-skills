@@ -1863,6 +1863,11 @@ class DashboardStore: ObservableObject {
         // End any scrolling immediately so new period computes fresh domain/x-axis
         graphManager.endScrollingImmediately()
 
+        // IMPORTANT: Get the correct operations for the NEW period directly from dataManager
+        // We can't use `continuousOperations` here because it checks `state.graph.selectedPeriod`
+        // which hasn't been updated yet, resulting in using the wrong dataset (e.g., daily vs monthly)
+        let operationsForNewPeriod = dataManager.getContinuousOperations(for: period)
+
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
         // Use cached bounds for O(1) lookup
@@ -1876,7 +1881,7 @@ class DashboardStore: ObservableObject {
         }
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,
-            from: continuousOperations,
+            from: operationsForNewPeriod,
             anchorDate: anchorDate,
             showingLatest: anchorDate == nil, // Only show latest if no anchor
             cachedBounds: dataManager.getDateBounds(for: period)
