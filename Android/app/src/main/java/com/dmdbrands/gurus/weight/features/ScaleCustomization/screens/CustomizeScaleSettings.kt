@@ -91,6 +91,8 @@ fun CustomizeScaleSettings(
       initialValue = state.usernameForm.username.value,
       validators = listOf(
         FormValidations.required(),
+        FormValidations.noWhiteSpace(),
+        FormValidations.maxLength(20,),
       ),
     )
   }
