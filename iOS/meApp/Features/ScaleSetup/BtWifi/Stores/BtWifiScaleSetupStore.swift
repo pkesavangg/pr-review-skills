@@ -837,10 +837,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Gets the account name to restore, preferring duplicateUserName over firstName
     private func getAccountNameForRestore() -> String {
-        let formValue = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !formValue.isEmpty {
-            return formValue
-        }
         if !duplicateUserName.isEmpty {
             return duplicateUserName.trimmingCharacters(in: .whitespacesAndNewlines)
         }
@@ -880,14 +876,27 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
     }
     
+    /// Determines which username value should be preserved when restarting the connection.
+    /// - Parameter preservedUsername: The trimmed username currently entered in the form.
+    /// - Returns: The username that should be kept visible to the user.
+    private func resolveUsernameToPreserve(from preservedUsername: String) -> String {
+        if !preservedUsername.isEmpty {
+            return preservedUsername
+        }
+        
+        if !duplicateUserName.isEmpty {
+            return duplicateUserName
+        }
+        
+        return firstName ?? "User"
+    }
+    
     /// Restarts the connection and navigates to the connecting step
     private func restartConnectionAndNavigate() async {
         // Preserve the current username value from form field before resetting
         // This ensures the username doesn't get cleared when restore account is tapped
         let preservedUsername = userNameForm.displayName.value.trimmingCharacters(in: .whitespacesAndNewlines)
-        let usernameToPreserve = preservedUsername.isEmpty ? 
-            (duplicateUserName.isEmpty ? (firstName ?? "User") : duplicateUserName) :
-            preservedUsername
+        let usernameToPreserve = resolveUsernameToPreserve(from: preservedUsername)
         
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         scaleSetupError = .none

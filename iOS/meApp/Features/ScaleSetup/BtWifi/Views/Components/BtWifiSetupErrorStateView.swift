@@ -82,8 +82,8 @@ struct BtWifiSetupErrorStateView: View {
                             image: AppAssets.exclamationMarkSimple,
                             isFailure: true,
                             showPulsingCircle: true,
-                            customImageSize: CGSize(width: 8.262, height: 35.393),
-                            showSmallCircle: true
+                            customImageSize: CGSize(width: 8, height: 35),
+                            showSmallCircleOverride: true
                         )
                         .padding(.bottom, 180)
                     }

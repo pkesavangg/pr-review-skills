@@ -21,12 +21,12 @@ struct ConnectionIndicatorView: View {
     private let pulsingCircleSize: CGFloat = 172
     private let minScale: CGFloat = 100 / 172
     
-    init(image: String, isFailure: Bool = false, showPulsingCircle: Bool = true, customImageSize: CGSize? = nil, showSmallCircle: Bool? = nil) {
+    init(image: String, isFailure: Bool = false, showPulsingCircle: Bool = true, customImageSize: CGSize? = nil, showSmallCircleOverride: Bool? = nil) {
         self.image = image
         self.isFailure = isFailure
         self.showPulsingCircle = showPulsingCircle
         self.customImageSize = customImageSize
-        self.showSmallCircleOverride = showSmallCircle
+        self.showSmallCircleOverride = showSmallCircleOverride
     }
     
     // MARK: - Computed Properties for State Management
