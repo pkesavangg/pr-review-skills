@@ -445,6 +445,15 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
 
+    struct DeleteR4ScaleUserAlert {
+        static let title = "Are you sure you want to delete?"
+        static let message: (String) -> String = { name in
+            return "Deleting \(name) will remove them as a user of the scale and they'll need to reconnect."
+        }
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
+
     struct ExpiredUserLogOutAlert {
         static let title: (String) -> String = { name in
             return "\(name) was logged out"

@@ -14,6 +14,7 @@ struct ListItemView<Trailing: View>: View {
     @EnvironmentObject var themeManager: Theme
     let leadingImage: String?
     let useThemedImage: Bool?
+    let leadingImageColor: Color?
     let title: String
     let subtitleTop: String?
     let subtitleBottom: String?
@@ -25,6 +26,7 @@ struct ListItemView<Trailing: View>: View {
     init(
         leadingImage: String? = nil,
         useThemedImage: Bool? = false,
+        leadingImageColor: Color? = nil,
         title: String,
         subtitleTop: String? = nil,
         subtitleBottom: String? = nil,
@@ -35,6 +37,7 @@ struct ListItemView<Trailing: View>: View {
     ) {
         self.leadingImage = leadingImage
         self.useThemedImage = useThemedImage
+        self.leadingImageColor = leadingImageColor
         self.title = title
         self.subtitleTop = subtitleTop
         self.subtitleBottom = subtitleBottom
@@ -46,6 +49,7 @@ struct ListItemView<Trailing: View>: View {
     init(
         leadingImage: String? = nil,
         useThemedImage: Bool = false,
+        leadingImageColor: Color? = nil,
         title: String,
         subtitle: String? = nil,
         trailing: Trailing? = nil,
@@ -56,6 +60,7 @@ struct ListItemView<Trailing: View>: View {
         self.init(
             leadingImage: leadingImage,
             useThemedImage: useThemedImage,
+            leadingImageColor: leadingImageColor,
             title: title,
             subtitleTop: nil,
             subtitleBottom: subtitle,
@@ -69,13 +74,14 @@ struct ListItemView<Trailing: View>: View {
     var body: some View {
         HStack(spacing: 12) {
             if let leadingImage {
-                if useThemedImage == true {
+                let iconColor = leadingImageColor ?? theme.actionPrimary
+                if useThemedImage == true && leadingImageColor == nil {
                     ThemedImage(name: leadingImage, isSingleMode: true)
                         .frame(width: 24, height: 24)
-                        .foregroundColor(theme.actionPrimary)
+                        .foregroundColor(iconColor)
                 } else {
                     AppIconView(icon: leadingImage)
-                        .foregroundColor(theme.actionPrimary)
+                        .foregroundColor(iconColor)
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
