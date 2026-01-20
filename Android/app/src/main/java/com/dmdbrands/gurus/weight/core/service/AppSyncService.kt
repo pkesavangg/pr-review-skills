@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,7 +60,7 @@ class AppSyncService @Inject constructor(
     try {
       entryService.addEntry(scaleEntry)
       dialogQueueService.showToast(
-        Toast(message = "Entry saved successfully!"),
+        Toast(message = EntryScreenStrings.EntryAdded),
       )
       setAppSyncDataForEditing(null)
       AppLog.d("AppSyncService", "Successfully saved AppSync entry")
