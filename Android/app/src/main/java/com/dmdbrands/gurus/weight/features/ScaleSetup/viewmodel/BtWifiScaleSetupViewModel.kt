@@ -712,7 +712,7 @@ constructor(
         title = ScaleSetupStrings.SkipBtWifiPermissions.Title,
         message = ScaleSetupStrings.SkipBtWifiPermissions.Message,
         confirmText = ScaleSetupStrings.SkipBtWifiPermissions.Skip,
-        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.Goback,
+        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.back,
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
