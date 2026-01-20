@@ -78,7 +78,7 @@ fun ScaleMetricsSettingScreen(
     val enabledBodyMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key }
     val enabledOtherMetrics = otherMetricsState.filter { it.isEnabled }.map { it.key }
     val allEnabledKeys = enabledBodyMetrics + enabledOtherMetrics
-    onMetricsChanged(allEnabledKeys)
+    // onMetricsChanged(allEnabledKeys)
   }
 
   /**
@@ -157,11 +157,10 @@ fun ScaleMetricsSettingScreen(
             isDragging = isDragging,
             dragHandleModifier = modifier,
             onToggle = { isEnabled ->
-              bodyMetricsState = handleMetricToggle(
-                metricsList = bodyMetricsState.toMutableList(),
-                metricKey = metric.key,
-                isEnabled = isEnabled,
-              )
+              bodyMetricsState  =
+                bodyMetricsState.map {
+                  if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
+                }
               emitCombinedMetrics()
             },
           )
@@ -193,11 +192,9 @@ fun ScaleMetricsSettingScreen(
             isDragging = isDragging,
             dragHandleModifier = modifier,
             onToggle = { isEnabled ->
-              otherMetricsState = handleMetricToggle(
-                metricsList = otherMetricsState.toMutableList(),
-                metricKey = metric.key,
-                isEnabled = isEnabled,
-              )
+              otherMetricsState = otherMetricsState.map {
+                if (it.key == metric.key) it.copy(isEnabled = isEnabled) else it
+              }
               emitCombinedMetrics()
             },
           )
