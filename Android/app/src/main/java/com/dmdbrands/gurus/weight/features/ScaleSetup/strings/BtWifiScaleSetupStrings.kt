@@ -34,7 +34,7 @@ object BtWifiScaleSetupStrings {
   object UpdateSettings {
     fun Title(connectionState: ConnectionState) =
       if (connectionState is ConnectionState.Failed) "Update Failed"
-      else "Updating Settings"
+      else "Updating Settings..."
   }
 
   object CollectingMeasurement {
