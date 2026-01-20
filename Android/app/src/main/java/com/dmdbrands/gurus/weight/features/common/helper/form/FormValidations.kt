@@ -19,6 +19,7 @@ object ValidationType {
   const val FUTURE_TIME = "future_time"
   const val WEIGHT_MATCH = "weightMatch"
   const val BLANK = "blank"
+  const val INVALID_SCALE_DISPLAY_NAME = "invalidScaleDisplayName"
 }
 
 object ValidationMessages {
@@ -319,6 +320,27 @@ object FormValidations {
           currentWeightValue.isNotEmpty() &&
           goalWeightValue == currentWeightValue) {
         ValidationError(ValidationType.WEIGHT_MATCH, ValidationMessages.WEIGHT_MATCH)
+      } else {
+        null
+      }
+    }
+
+  /**
+   * Validator that checks if the scale display name is "guest" (case-insensitive).
+   * This matches the Angular scaleDisplaynameValidator behavior.
+   * Returns error if the trimmed value (case-insensitive) equals "guest".
+   *
+   * @param customMessage Optional custom error message. If not provided, uses default message.
+   * @return Validator that returns error if value is "guest" (case-insensitive)
+   */
+  fun scaleDisplayNameValidator(customMessage: String? = null): Validator<String> =
+    { value ->
+      val trimmedValue = value.trim()
+      if (trimmedValue.isNotEmpty() && trimmedValue.equals("guest", ignoreCase = true)) {
+        ValidationError(
+          ValidationType.INVALID_SCALE_DISPLAY_NAME,
+          customMessage ?: "user name unavailable"
+        )
       } else {
         null
       }
