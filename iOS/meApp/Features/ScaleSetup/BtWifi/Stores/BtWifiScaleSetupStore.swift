@@ -75,10 +75,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private var liveMeasurementSubscription: AnyCancellable? = nil
     /// Task handling measurement timeout
     private var measurementTimeoutTask: Task<Void, Never>? = nil
+    /// Task handling stepOn screen timeout to auto-navigate to measurement screen
+    private var stepOnTimeoutTask: Task<Void, Never>? = nil
+    /// Task handling WiFi networks fetch - stored so we can cancel it when exiting
+    private var fetchWifiNetworksTask: Task<Void, Never>? = nil
     
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
+            // Don't update step if we're exiting
+            guard !isExiting else { return }
             currentStep = steps[currentStepIndex]
             updateNextEnabled()
         }
@@ -86,6 +92,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     @Published private(set) var currentStep: BtWifiScaleSetupStep = .intro {
         didSet {
+            // Don't handle step change if we're exiting
+            guard !isExiting else { return }
             previousStep = oldValue
             handleStepChange()
         }
@@ -527,6 +535,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Navigation Helpers
     func moveToNextStep() {
+        // Don't navigate if we're exiting
+        guard !isExiting else { return }
+        
         let nextIndex = adjustedIndex(from: currentStepIndex + 1, direction: 1)
         guard nextIndex < steps.count else {
             dismissAction?()
@@ -536,6 +547,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     func moveToPreviousStep() {
+        // Don't navigate if we're exiting
+        guard !isExiting else { return }
+        
         let previousIndex = adjustedIndex(from: currentStepIndex - 1, direction: -1)
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
@@ -631,22 +645,30 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Exit / Help
     private func performExitCleanup() {
-        // Ensure exiting flag is set
+        // Ensure exiting flag is set first to prevent any navigation
         isExiting = true
         
-        // Clear error state before exiting to prevent error screen from appearing
-        scaleSetupError = .none
-        connectionState = .success
+        // Store current step before dismissing to check if we should clear error state
+        let wasOnGatheringNetwork = currentStep == .gatheringNetwork
         
         // Post notification to refresh dashboard when setup is dismissed
         NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
         
-        // Clear setup flag and dismiss the sheet
+        // Clear setup flag and dismiss the sheet immediately
         bluetoothService.isSetupInProgress = false
         dismissAction?()
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
         checkGoalModalAfterSetup()
+        
+        // Only clear error state if we weren't on gathering network step
+        // This prevents view updates that could trigger navigation on duplicate user screen
+        if !wasOnGatheringNetwork {
+            DispatchQueue.main.async { [weak self] in
+                self?.scaleSetupError = .none
+                self?.connectionState = .success
+            }
+        }
         
         // Clean up the store to break retain cycles
         cleanup()
@@ -679,30 +701,41 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
     // Called by the ✕ button.
     func handleExit() {
-        // Settings WiFi setup: cancel WiFi and dismiss directly from WiFi list
-        if isSettingsWifiSetup && currentStep == .availableWifiList {
-            cancelWifi()
-            scaleSetupError = .none
-            dismissAction?()
-            return
-        }
-        
-        // Available WiFi list and WiFi password: dismiss immediately like settings context
-        // This prevents error screens from showing during dismissal
-        if currentStep == .availableWifiList || currentStep == .wifiPassword {
-            cancelWifi()
-            scaleSetupError = .none
-            dismissAction?()
-            return
-        }
-        
-        // Clear error state immediately to prevent error screen from appearing during exit
+        isExiting = true
+
+        // Cancel ongoing tasks
+        cancelNetworkScanTimeout()
+        fetchWifiNetworksTask?.cancel()
+        fetchWifiNetworksTask = nil
+
+        // Clear error state to avoid error screens during exit
         scaleSetupError = .none
-        
-        guard currentStep != .scaleConnected else {
+
+        // Steps that should dismiss immediately
+        let shouldDismissImmediately =
+            (isSettingsWifiSetup && currentStep == .availableWifiList) ||
+            currentStep == .availableWifiList ||
+            currentStep == .wifiPassword
+
+        if shouldDismissImmediately {
+            cancelWifi()
+            dismissAction?()
+            return
+        }
+
+        if currentStep == .gatheringNetwork {
+            cancelWifi()
             performExitCleanup()
             return
         }
+
+        // If already connected, exit directly
+        if currentStep == .scaleConnected {
+            performExitCleanup()
+            return
+        }
+
+        // Otherwise, show confirmation alert
         presentExitAlert(onConfirm: { [weak self] in
             self?.performExitCleanup()
         })
@@ -1304,6 +1337,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Invoked from the *Try Again* button of `BluetoothConnectionView` and `WifiConnectionView` failure state.
     private func tryAgainButtonHandler(isFromBtConnection: Bool = false) {
+        // Don't navigate if we're exiting
+        guard !isExiting else { return }
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             self.scaleSetupError = .none
             self.connectionState = .loading
@@ -1331,6 +1367,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Step Change Handling
     private func handleStepChange() {
+        // Don't perform step change actions if we're exiting
+        guard !isExiting else { return }
+        
         switch currentStep {
         case .wakeup:
             self.pair()
@@ -1352,8 +1391,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             if let savedScale = savedScale,
                scaleSetupError != .maxUserReached && scaleSetupError != .duplicatesFound,
                !shouldSkipFetch {
-                Task {
-                    await fetchWifiNetworks(for: savedScale)
+                // Cancel any existing fetch task
+                fetchWifiNetworksTask?.cancel()
+                fetchWifiNetworksTask = Task { [weak self] in
+                    guard let self else { return }
+                    await self.fetchWifiNetworks(for: savedScale)
                 }
             }
         case .availableWifiList:
@@ -1383,6 +1425,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             
         case .stepOn:
+            // Set skipCheckNetwork to true when entering stepOn screen to prevent network errors
+            HTTPClient.shared.skipCheckNetwork = true
+            
+            // Cancel any existing stepOn timeout
+            stepOnTimeoutTask?.cancel()
+            
             Task {
                 guard let savedScale = self.savedScale else { return }
                 // Subscribe to live measurement updates and proceed when weight > 0
@@ -1396,14 +1444,28 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             Task {
                                 await self.bluetoothService.stopLiveMeasurement(for: savedScale)
                                 self.cancelMeasurementSubscription()
+                                self.cancelStepOnTimeout()
                                 self.scaleSetupError = .none
                                 self.moveToNextStep()
                             }
                         }
                     }
                 
+                // Auto-navigate from Step On screen after 3.5 minutes (matches WeightGurus behavior)
+                stepOnTimeoutTask = Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 210 * 1_000_000_000)
+                    guard let self, !Task.isCancelled, self.currentStep == .stepOn else { return }
+                    
+                    await MainActor.run {
+                        self.cancelStepOnTimeout()
+                        self.scaleSetupError = .none
+                        self.moveToNextStep()
+                    }
+                }
             }
         case .measurement:
+            // Cancel stepOn timeout and reset skipCheckNetwork when moving to measurement screen
+            cancelStepOnTimeout()
             // Cancel any existing measurement subscription and timeout
             cancelMeasurementSubscription()
             
@@ -1433,6 +1495,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     self.moveToNextStep()
                 }
         default:
+            // Reset skipCheckNetwork for all other steps (not stepOn)
+            if previousStep == .stepOn && currentStep != .stepOn {
+                cancelStepOnTimeout()
+            }
             break
         }
     }
@@ -1440,6 +1506,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Handles permission changes during the setup flow
     /// Matches Android behavior: only show WiFi errors when on WiFi-related steps AND scale is connected
     private func handlePermissionChange() {
+        // Don't handle permission changes if we're exiting
+        guard !isExiting else { return }
+        
         let missingPermissions = !hasAllBtPermissions()
         let noNetwork = !networkMonitor.isConnected
         
@@ -1482,8 +1551,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             
         case .stepOn where scaleSetupError != .updateSettingsFailed:
-            scaleSetupError = .collectMeasurementFailed
-            moveToNextStep()
+            // Skip network checks during stepOn screen - network access is not required for collecting measurements
+            break
             
         default:
             // For other steps, don't automatically navigate
@@ -1707,6 +1776,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Fetches WiFi networks from the scale and handles error cases
     private func fetchWifiNetworks(for scale: Device) async {
+        // Don't fetch if we're exiting or task is cancelled
+        guard !isExiting, !Task.isCancelled else { return }
+        
         // Check permissions before attempting to fetch WiFi networks
         let missingPermissions = !hasAllBtPermissions()
         let noNetwork = !networkMonitor.isConnected
@@ -1714,6 +1786,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if missingPermissions || noNetwork {
             LoggerService.shared.log(level: .error, tag: tag, message: "Cannot fetch WiFi networks: permissions missing or network unavailable")
             await MainActor.run {
+                guard !self.isExiting, !Task.isCancelled else { return }
                 self.connectionState = .noNetworks
             }
             return
@@ -1721,12 +1794,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Set loading state
         await MainActor.run {
+            guard !self.isExiting, !Task.isCancelled else { return }
             self.connectionState = .loading
         }
         
         do {
+            // Check cancellation before starting network fetch
+            guard !isExiting, !Task.isCancelled else { return }
+            
             // Get connected WiFi SSID first
             let connectedSSIDResult = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
+            
+            // Check cancellation after async operation
+            guard !isExiting, !Task.isCancelled else { return }
+            
             var connectedSSID: String?
             switch connectedSSIDResult {
             case .success(let ssid):
@@ -1736,8 +1817,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 connectedSSID = nil
             }
             
+            // Check cancellation before next async operation
+            guard !isExiting, !Task.isCancelled else { return }
+            
             // Get WiFi networks list
             let wifiListResult = await bluetoothService.getWifiList(for: scale)
+            
+            // Check cancellation after async operation
+            guard !isExiting, !Task.isCancelled else { return }
+            
             var networks: [WifiDetails] = []
             switch wifiListResult {
             case .success(let wifiList):
@@ -1748,6 +1836,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             
             await MainActor.run {
+                // Don't navigate if we're exiting or task is cancelled
+                guard !self.isExiting, !Task.isCancelled else { return }
+                
                 // Cancel timeout task since we successfully fetched networks
                 self.stepTimerTask?.cancel()
                 self.stepTimerTask = nil
@@ -1778,6 +1869,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi networks: \(error.localizedDescription)")
             await MainActor.run {
+                // Don't update state if we're exiting or task is cancelled
+                guard !self.isExiting, !Task.isCancelled else { return }
+                
                 // Check if failure is due to missing permissions
                 let missingPermissions = !self.hasAllBtPermissions()
                 let noNetwork = !self.networkMonitor.isConnected
@@ -2248,7 +2342,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
         measurementTimeoutTask = nil
     }
     
+    private func cancelStepOnTimeout() {
+        stepOnTimeoutTask?.cancel()
+        stepOnTimeoutTask = nil
+        // Reset skipCheckNetwork when leaving stepOn screen
+        HTTPClient.shared.skipCheckNetwork = false
+    }
+    
     private func navigateToStep(_ step: BtWifiScaleSetupStep, delay: TimeInterval = 0) {
+        // Don't navigate if we're exiting
+        guard !isExiting else { return }
+        
         if currentStep == .gatheringNetwork && step != .gatheringNetwork {
             cancelNetworkScanTimeout()
         }
@@ -2586,6 +2690,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Clear the dismiss action to break retain cycle
         dismissAction = nil
+        
+        // Cancel all tasks
+        fetchWifiNetworksTask?.cancel()
+        fetchWifiNetworksTask = nil
         
         // Cancel all subscriptions
         deviceDiscoveryCancellable?.cancel()
