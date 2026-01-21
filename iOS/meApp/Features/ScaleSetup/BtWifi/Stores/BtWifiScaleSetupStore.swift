@@ -94,6 +94,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Track previous step to detect navigation direction
     private var previousStep: BtWifiScaleSetupStep = .intro
     
+    // Flag to prevent error screens from showing during exit
+    // Published so SwiftUI reacts immediately when it changes
+    @Published private var isExiting: Bool = false
+    
     // Connection status shown on the BluetoothConnectionView.
     @Published var connectionState: ConnectionState = .loading
     
@@ -283,6 +287,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
             case .availableWifiList:
                 // Settings WiFi setup: always show list, never show error screen
                 if isSettingsWifiSetup {
+                    return AnyView(
+                        WifiSelectionView(
+                            connectedWifiNetwork: connectedWifiNetwork,
+                            wifiNetworks: wifiNetworks,
+                            onRefresh: { [weak self] in
+                                self?.tryAgainButtonHandler()
+                            },
+                            onNetworkSelected: { [weak self] network in
+                                self?.handleNetworkSelection(network)
+                            }
+                        )
+                    )
+                }
+                
+                // Don't show error screen if we're exiting
+                if isExiting {
                     return AnyView(
                         WifiSelectionView(
                             connectedWifiNetwork: connectedWifiNetwork,
@@ -542,6 +562,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
         self.scaleItem = resolved
         
+        // Reset exiting flag when configuring
+        isExiting = false
+        
         // Store reconnect and duplicate flags
         self.isReconnect = isReconnect
         self.isDuplicated = isDuplicated
@@ -608,9 +631,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Exit / Help
     private func performExitCleanup() {
+        // Ensure exiting flag is set
+        isExiting = true
+        
         // Clear error state before exiting to prevent error screen from appearing
         scaleSetupError = .none
-        connectionState = .loading
+        connectionState = .success
         
         // Post notification to refresh dashboard when setup is dismissed
         NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
@@ -657,10 +683,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if isSettingsWifiSetup && currentStep == .availableWifiList {
             cancelWifi()
             scaleSetupError = .none
-            connectionState = .loading
             dismissAction?()
             return
         }
+        
+        // Available WiFi list and WiFi password: dismiss immediately like settings context
+        // This prevents error screens from showing during dismissal
+        if currentStep == .availableWifiList || currentStep == .wifiPassword {
+            cancelWifi()
+            scaleSetupError = .none
+            dismissAction?()
+            return
+        }
+        
+        // Clear error state immediately to prevent error screen from appearing during exit
+        scaleSetupError = .none
         
         guard currentStep != .scaleConnected else {
             performExitCleanup()
@@ -771,7 +808,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         if isSettingsWifiSetup && currentStep == .availableWifiList {
             cancelWifi()
             scaleSetupError = .none
-            connectionState = .loading
             dismissAction?()
             return
         }
@@ -2545,6 +2581,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Cleans up the store and breaks any retain cycles
     func cleanup() {
+        // Reset exiting flag
+        isExiting = false
+        
         // Clear the dismiss action to break retain cycle
         dismissAction = nil
         
