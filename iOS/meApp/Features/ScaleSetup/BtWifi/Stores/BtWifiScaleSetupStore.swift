@@ -701,41 +701,44 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
     // Called by the ✕ button.
     func handleExit() {
+        // Set exiting flag first to prevent any navigation during exit
         isExiting = true
-
-        // Cancel ongoing tasks
+        
+        // Cancel any ongoing network operations to prevent navigation
         cancelNetworkScanTimeout()
         fetchWifiNetworksTask?.cancel()
         fetchWifiNetworksTask = nil
-
-        // Clear error state to avoid error screens during exit
-        scaleSetupError = .none
-
-        // Steps that should dismiss immediately
-        let shouldDismissImmediately =
-            (isSettingsWifiSetup && currentStep == .availableWifiList) ||
-            currentStep == .availableWifiList ||
-            currentStep == .wifiPassword
-
-        if shouldDismissImmediately {
+        
+        // Settings WiFi setup: cancel WiFi and dismiss directly from WiFi list
+        if isSettingsWifiSetup && currentStep == .availableWifiList {
             cancelWifi()
+            scaleSetupError = .none
             dismissAction?()
             return
         }
-
+        
+        // Available WiFi list and WiFi password: dismiss immediately like settings context
+        // This prevents error screens from showing during dismissal
+        if currentStep == .availableWifiList || currentStep == .wifiPassword {
+            cancelWifi()
+            scaleSetupError = .none
+            dismissAction?()
+            return
+        }
+        
         if currentStep == .gatheringNetwork {
             cancelWifi()
             performExitCleanup()
             return
         }
-
-        // If already connected, exit directly
-        if currentStep == .scaleConnected {
+        
+        // Clear error state immediately to prevent error screen from appearing during exit
+        scaleSetupError = .none
+        
+        guard currentStep != .scaleConnected else {
             performExitCleanup()
             return
         }
-
-        // Otherwise, show confirmation alert
         presentExitAlert(onConfirm: { [weak self] in
             self?.performExitCleanup()
         })
