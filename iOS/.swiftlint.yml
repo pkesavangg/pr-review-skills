@@ -1,0 +1,160 @@
+# ============================================
+# Common Exclusions
+# Directories/files excluded from linting
+# ============================================
+excluded:
+  - Pods                    # CocoaPods dependencies
+  - Carthage                # Carthage dependencies
+  - DerivedData             # Xcode build artifacts
+  - .build                  # Swift Package Manager build artifacts
+  - SourcePackages          # SPM dependencies
+
+# ============================================
+# Common Disabled Rules
+# Rules that are completely disabled
+# ============================================
+disabled_rules:
+  - trailing_whitespace  # Often handled by formatters (Xcode, SwiftFormat)
+
+# ============================================
+# Common Opt-In Rules
+# Rules that must be explicitly enabled
+# ============================================
+opt_in_rules:
+  - empty_count                    # Prefer isEmpty over count == 0 (isEmpty is O(1), count can be O(n))
+  - empty_string                   # Prefer isEmpty over == "" (more idiomatic Swift)
+  - force_unwrapping               # Warn about force unwraps (!) - can crash if nil
+  - closure_spacing                # Enforce spacing around closures: map { } not map{}
+  - sorted_imports                 # Sort import statements alphabetically
+  - contains_over_filter_count     # Prefer contains(where:) over filter{}.count > 0 (performance)
+  - contains_over_filter_is_empty # Prefer !contains(where:) over filter{}.isEmpty (performance)
+  - first_where                    # Prefer first(where:) over filter{}.first (stops at first match)
+  - last_where                     # Prefer last(where:) over filter{}.last (stops at last match)
+  - multiline_arguments            # Enforce multiline formatting for long argument lists
+  - multiline_parameters           # Enforce multiline formatting for long parameter lists
+  - operator_usage_whitespace      # Require spaces around operators: a + b not a+b
+  - redundant_nil_coalescing      # Remove unnecessary ?? nil (optional is already optional)
+  - redundant_type_annotation     # Remove unnecessary type annotations (let x: Int = 5 -> let x = 5)
+  - sorted_first_last             # Warn if using first/last without sorting when order matters
+  - static_operator               # Prefer static func for operator overloads
+  - toggle_bool                   # Prefer toggle() over isEnabled = !isEnabled
+  - trailing_closure              # Prefer trailing closure syntax: map { } not map({ })
+  - unneeded_parentheses_in_closure_argument  # Remove () in closure args: { x in } not { (x) in }
+  - vertical_parameter_alignment_on_call      # Align parameters vertically in function calls
+
+# ============================================
+# Force Operations - Set as Warnings
+# Force operations are dangerous (can crash) - warn instead of error
+# ============================================
+force_cast: warning        # Warn on force cast (as!) - use optional cast (as?) instead
+force_try: warning         # Warn on force try (try!) - use do/catch or try? instead
+force_unwrapping: warning  # Warn on force unwrap (!) - use guard/if let instead
+
+# ============================================
+# Code Style Rules
+# Limits and thresholds for code organization
+# ============================================
+
+# Line length - Max characters per line
+line_length:
+  warning: 150                                    # Warn if line exceeds 150 chars
+  error: 200                                      # Error if line exceeds 200 chars
+  ignores_urls: true                             # Don't count URLs in length
+  ignores_function_declarations: true            # Don't count function declarations
+  ignores_comments: true                         # Don't count comments
+
+# File length - Max lines per file
+file_length:
+  warning: 500                    # Warn if file exceeds 500 lines
+  error: 1000                     # Error if file exceeds 1000 lines
+  ignore_comment_only_lines: true # Don't count comment-only lines
+
+# Type body length - Max lines in class/struct/enum body
+type_body_length:
+  warning: 300                    # Warn if type body exceeds 300 lines
+  error: 400                      # Error if type body exceeds 400 lines
+
+# Function body length - Max lines in function body
+function_body_length:
+  warning: 50                     # Warn if function exceeds 50 lines
+  error: 100                      # Error if function exceeds 100 lines
+
+# Function parameter count - Max number of parameters
+function_parameter_count:
+  warning: 5                      # Warn if function has more than 5 parameters
+  error: 8                        # Error if function has more than 8 parameters
+
+# Cyclomatic complexity - Measures code complexity (if/else, loops, etc.)
+cyclomatic_complexity:
+  warning: 10                     # Warn if complexity exceeds 10
+  error: 20                       # Error if complexity exceeds 20
+
+# Nesting depth - Max levels of nesting
+nesting:
+  type_level: 2                   # Max nested types (class in class in class)
+  function_level: 3               # Max nested blocks (if in if in if)
+
+# ============================================
+# Naming Rules
+# Enforce consistent naming conventions
+# ============================================
+
+# Type names - Rules for classes, structs, enums, protocols
+type_name:
+  min_length:
+    warning: 3                    # Warn if type name shorter than 3 chars (e.g., "A")
+    error: 2                      # Error if type name shorter than 2 chars
+  max_length:
+    warning: 50                   # Warn if type name longer than 50 chars
+    error: 60                     # Error if type name longer than 60 chars
+  excluded:                       # Exceptions to length rules (common abbreviations)
+    - id                          # Common identifier type
+    - URL                         # Uniform Resource Locator
+    - API                         # Application Programming Interface
+    - ID                          # Identifier
+    - OK                          # Common return status
+    - iOS                         # Operating system name
+    - OS                          # Operating System
+    - UUID                        # Universally Unique Identifier
+    - TV                          # Television/Type Variable
+    - URLSession                  # Foundation class
+    - URLRequest                  # Foundation class
+    - URLResponse                 # Foundation class
+
+# Identifier names - Rules for variables, functions, properties
+identifier_name:
+  min_length:
+    warning: 2                    # Warn if identifier shorter than 2 chars (e.g., "a")
+    error: 1                     # Error if identifier shorter than 1 char
+  max_length:
+    warning: 50                  # Warn if identifier longer than 50 chars
+    error: 60                    # Error if identifier longer than 60 chars
+  excluded:                      # Exceptions to length rules (common short names)
+    - id                         # Common identifier variable
+    - x                          # Common coordinate/loop variable
+    - y                          # Common coordinate variable
+    - z                          # Common coordinate/loop variable
+    - i                          # Common loop index
+    - j                          # Common nested loop index
+    - k                          # Common loop index
+    - URL                        # Uniform Resource Locator
+    - API                        # Application Programming Interface
+    - ok                         # Common boolean/status variable
+    - no                         # Common boolean variable
+
+# ============================================
+# General Settings
+# SwiftLint behavior configuration
+# ============================================
+
+# Don't fail if no lintable files found
+allow_zero_lintable_files: false  # Fail build if no Swift files to lint (ensures linting runs)
+
+# Treat all warnings as errors (useful for CI)
+strict: false                      # If true, warnings become errors (useful for CI/CD)
+
+# Reporter format - How SwiftLint outputs results
+reporter: "xcode"                  # Format output for Xcode (shows inline in editor)
+
+# Check for SwiftLint updates
+check_for_updates: true            # Check if newer SwiftLint version is available
