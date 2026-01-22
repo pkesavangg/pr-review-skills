@@ -1,0 +1,91 @@
+version: 2.1
+
+workflows:
+  ci:
+    jobs:
+      - build
+      - unit-tests:
+          requires:
+            - build
+      - ui-tests:
+          requires:
+            - build
+
+jobs:
+  build:
+    macos:
+      xcode: "16.0.0"
+    steps:
+      - checkout
+      - run:
+          name: Show Xcode version
+          command: xcodebuild -version
+      - run:
+          name: Resolve Swift Package Dependencies
+          command: |
+            cd iOS
+            xcodebuild -resolvePackageDependencies \
+              -project meApp.xcodeproj
+      - run:
+          name: Build project
+          command: |
+            cd iOS
+            xcodebuild build \
+              -project meApp.xcodeproj \
+              -scheme meApp \
+              -destination 'generic/platform=iOS' \
+              -configuration Debug \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              ENABLE_USER_SCRIPT_SANDBOXING=NO
+
+  unit-tests:
+    macos:
+      xcode: "16.0.0"
+    steps:
+      - checkout
+      - run:
+          name: Resolve Swift Package Dependencies
+          command: |
+            cd iOS
+            xcodebuild -resolvePackageDependencies \
+              -project meApp.xcodeproj
+      - run:
+          name: Run Unit Tests
+          command: |
+            cd iOS
+            xcodebuild test \
+              -project meApp.xcodeproj \
+              -scheme meApp \
+              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+              -only-testing:meAppTests \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              ENABLE_USER_SCRIPT_SANDBOXING=NO
+
+  ui-tests:
+    macos:
+      xcode: "16.0.0"
+    steps:
+      - checkout
+      - run:
+          name: Resolve Swift Package Dependencies
+          command: |
+            cd iOS
+            xcodebuild -resolvePackageDependencies \
+              -project meApp.xcodeproj
+      - run:
+          name: Run UI Tests
+          command: |
+            cd iOS
+            xcodebuild test \
+              -project meApp.xcodeproj \
+              -scheme meApp \
+              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+              -only-testing:meAppUITests \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              ENABLE_USER_SCRIPT_SANDBOXING=NO
