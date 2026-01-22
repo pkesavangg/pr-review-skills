@@ -399,7 +399,7 @@ final class A6ScaleSetupStore: ObservableObject {
     
     /// Shows an alert when a known scale is discovered.
     private func showKnownScaleAlert() {
-        let alertStrings = AlertStrings.knownScaleDiscoveredAlert.self
+        let alertStrings = AlertStrings.KnownScaleDiscoveredAlert.self
         let alert = AlertModel(
             title: alertStrings.title,
             message: alertStrings.message,

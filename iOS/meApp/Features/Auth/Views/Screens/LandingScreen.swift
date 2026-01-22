@@ -26,7 +26,7 @@ struct LandingScreen: View {
         RoutingView(stack: $router.stack) {
             ZStack {
                 Group {
-                    landingStore.userItems.count > 0 ? theme.backgroundSecondary : theme.actionPrimary
+                    !landingStore.userItems.isEmpty ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()
                 if landingStore.userItems.isEmpty {

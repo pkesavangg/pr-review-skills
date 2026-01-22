@@ -25,17 +25,17 @@ struct MonthSummaryItem: View {
     }
 
     private var avgWeightText: String {
-        guard let w = month.weight else { return "--" }
-        let weight = WeightValueConvertor.formatWeight(w, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
-        let displayValue = ConversionTools.convertStoredToDisplay(Int(w), isMetric: weightUnit == .kg)
+        guard let weightValue = month.weight else { return "--" }
+        let weight = WeightValueConvertor.formatWeight(weightValue, showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings)
+        let displayValue = ConversionTools.convertStoredToDisplay(Int(weightValue), isMetric: weightUnit == .kg)
         let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
         return String(format: "%@ %@", weight, unitLabel)
     }
 
     private var changeText: String {
-        guard let cStr = month.change, let c = Double(cStr) else { return "--" }
-        let change = WeightValueConvertor.formatWeight(c, showSymbol: true, weightUnit: weightUnit)
-        let displayValue = ConversionTools.convertStoredToDisplay(Int(c), isMetric: weightUnit == .kg)
+        guard let changeStr = month.change, let changeValue = Double(changeStr) else { return "--" }
+        let change = WeightValueConvertor.formatWeight(changeValue, showSymbol: true, weightUnit: weightUnit)
+        let displayValue = ConversionTools.convertStoredToDisplay(Int(changeValue), isMetric: weightUnit == .kg)
         let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
         return String(format: "%@ %@", change, unitLabel)
     }

@@ -5,8 +5,13 @@
 //  Created by Assistant on 04/07/25.
 //
 
-import SwiftUI
+// swiftlint:disable type_body_length function_body_length
+// This file intentionally aggregates common graph rendering logic for all time periods.
+// Breaking it into smaller files would lead to significant code duplication and reduce maintainability.
+// The function body length is justified by the complexity of chart rendering and interaction logic.
+
 import Charts
+import SwiftUI
 
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
@@ -167,10 +172,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
                 .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
-                .transaction { t in
+                .transaction { transaction in
                     // Disable ALL animations during scroll and scroll-end transition
                     if viewModel.isScrolling || isInScrollEndTransition {
-                        t.animation = nil
+                        transaction.animation = nil
                     }
                 }
                 // Conditional chart modifiers based on scrollability
@@ -780,20 +785,20 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     @inline(__always)
     private func assignFrameIfChanged(_ newFrame: CGRect) {
         // Round to avoid microscopic diffs that trigger endless updates
-        let r = newFrame.integral   // or newFrame.standardized if you prefer
-        if r != lastChartFrame {
-            lastChartFrame = r
-            viewModel.updateChartFrame(r)
+        let roundedFrame = newFrame.integral   // or newFrame.standardized if you prefer
+        if roundedFrame != lastChartFrame {
+            lastChartFrame = roundedFrame
+            viewModel.updateChartFrame(roundedFrame)
         }
     }
 
     @inline(__always)
     private func assignHeightIfChanged(_ newHeight: CGFloat) {
-        let h = round(newHeight) // avoid tiny float wiggles
-        if h != lastChartHeight {
-            lastChartHeight = h
+        let roundedHeight = round(newHeight) // avoid tiny float wiggles
+        if roundedHeight != lastChartHeight {
+            lastChartHeight = roundedHeight
             if isScrollable {
-                dashboardStore.state.graph.chartHeight = h
+                dashboardStore.state.graph.chartHeight = roundedHeight
             }
         }
     }
@@ -1151,3 +1156,4 @@ extension View {
     .frame(height: 265)
     .padding()
 }
+// swiftlint:enable type_body_length function_body_length

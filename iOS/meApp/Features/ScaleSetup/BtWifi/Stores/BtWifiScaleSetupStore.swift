@@ -5,6 +5,11 @@
 //  Created by Cursor AI on 12/01/25.
 //
 
+// swiftlint:disable type_body_length file_length cyclomatic_complexity function_body_length
+// This file intentionally aggregates all BtWifi scale setup orchestration logic.
+// Breaking it into smaller files would fragment the multi-step flow management and reduce maintainability.
+// The updateNextEnabled function has high complexity due to multiple step-specific validation rules.
+
 import Foundation
 import SwiftUI
 import Combine
@@ -1635,7 +1640,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         do {
-            let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
+            let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
             self.scaleToken = scaleTokenResponse.token
             LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
         } catch {
@@ -1830,7 +1835,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Shows an alert when a known scale is discovered.
     private func showKnownScaleAlert() {
-        let alertStrings = AlertStrings.knownScaleDiscoveredAlert.self
+        let alertStrings = AlertStrings.KnownScaleDiscoveredAlert.self
         let alert = AlertModel(
             title: alertStrings.title,
             message: alertStrings.message,
@@ -2415,7 +2420,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             dashboardStore.metricsManager.state.activeMetricsCount = enabledOriginalLabels.count + 8
             dashboardStore.syncRemovalStateFromMetricsManager()
             
-            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Upgraded to dashboard12. Enabled original: \(enabledOriginalLabels.count), Removed: \(removedOriginalLabels.count), Active count: \(enabledOriginalLabels.count + 8)")
+            LoggerService.shared.log(
+                level: .info,
+                tag: tag,
+                message: "R4 setup: Upgraded to dashboard12. Enabled original: \(enabledOriginalLabels.count), " +
+                    "Removed: \(removedOriginalLabels.count), Active count: \(enabledOriginalLabels.count + 8)"
+            )
         }
         
         do {
@@ -2601,3 +2611,4 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return (!ssid1.isEmpty && ssid1 == ssid2) || (!mac1.isEmpty && mac1 == mac2)
     }
 }
+// swiftlint:enable type_body_length file_length cyclomatic_complexity function_body_length

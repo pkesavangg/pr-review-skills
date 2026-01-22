@@ -1,7 +1,13 @@
+// swiftlint:disable type_body_length file_length function_body_length identifier_name line_length
 import SwiftUI
 import Charts
 import os
 import Foundation
+
+/*
+ SwiftLint exception:
+ This manager intentionally aggregates all graph and chart operations in a single class for maintainability and discoverability. The file contains complex mathematical algorithms (e.g., Hermite interpolation) that use single-letter variables following mathematical conventions. Some functions intentionally have many lines to maintain algorithm clarity. We therefore disable `type_body_length`, `file_length`, `function_body_length`, `identifier_name`, and `line_length` for this file.
+ */
 
 /// Manages all graph and chart operations for the dashboard
 @MainActor
@@ -160,68 +166,68 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let sorted = operations.sorted { $0.date < $1.date }
         let xs: [Double] = sorted.map { $0.date.timeIntervalSinceReferenceDate }
 
-        func mapWeight(_ w: Int) -> Double {
+        func mapWeight(_ weight: Int) -> Double {
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return 0 }
-                return convertWeight(w) - anchor
+                return convertWeight(weight) - anchor
             }
-            return convertWeight(w)
+            return convertWeight(weight)
         }
         let ys: [Double] = sorted.map { mapWeight(Int($0.weight)) }
 
-        let n = xs.count
-        if n == 1 { return ys[0] }
+        let pointCount = xs.count
+        if pointCount == 1 { return ys[0] }
 
-        let t = date.timeIntervalSinceReferenceDate
+        let targetTime = date.timeIntervalSinceReferenceDate
 
         // 2) For dates outside the data range, return the edge values (clamping behavior)
         // This allows interpolation to work at the boundaries while the calling method
         // can decide whether to use these edge values or filter them out
-        if t <= xs[0] { return ys[0] }
-        if t >= xs[n - 1] { return ys[n - 1] }
+        if targetTime <= xs[0] { return ys[0] }
+        if targetTime >= xs[pointCount - 1] { return ys[pointCount - 1] }
 
         // 3) Locate segment i such that xs[i] <= t <= xs[i+1]
         //    (upperBound - 1)
-        var low = 0, high = n - 1
+        var low = 0, high = pointCount - 1
         while low <= high {
             let mid = (low + high) >> 1
             // Use upperBound semantics so exact matches select the right segment (i = upperBound - 1)
-            if xs[mid] <= t {
+            if xs[mid] <= targetTime {
                 low = mid + 1
             } else {
                 high = mid - 1
             }
         }
-        let i = max(0, min(n - 2, low - 1))
-        let h_i = xs[i + 1] - xs[i]
-        if h_i == 0 { return ys[i] } // degenerate
+        let segmentIndex = max(0, min(pointCount - 2, low - 1))
+        let segmentWidth = xs[segmentIndex + 1] - xs[segmentIndex]
+        if segmentWidth == 0 { return ys[segmentIndex] } // degenerate
 
         // 4) Slopes m[k] across all segments (needed for monotone tangents)
-        var m = Array(repeating: 0.0, count: n - 1)
-        for k in 0..<(n - 1) {
-            let h = xs[k + 1] - xs[k]
-            m[k] = h == 0 ? 0 : (ys[k + 1] - ys[k]) / h
+        var slopes = Array(repeating: 0.0, count: pointCount - 1)
+        for k in 0..<(pointCount - 1) {
+            let segmentHeight = xs[k + 1] - xs[k]
+            slopes[k] = segmentHeight == 0 ? 0 : (ys[k + 1] - ys[k]) / segmentHeight
         }
 
         // 5) Compute Fritsch–Carlson tangents d[k]
-        var d = Array(repeating: 0.0, count: n)
+        var tangents = Array(repeating: 0.0, count: pointCount)
 
-        if n == 2 {
+        if pointCount == 2 {
             // Straight line case
-            d[0] = m[0]
-            d[1] = m[0]
+            tangents[0] = slopes[0]
+            tangents[1] = slopes[0]
         } else {
             // Interior points
-            for k in 1..<(n - 1) {
-                let m0 = m[k - 1], m1 = m[k]
+            for k in 1..<(pointCount - 1) {
+                let m0 = slopes[k - 1], m1 = slopes[k]
                 if m0 == 0 || m1 == 0 || m0.sign != m1.sign {
-                    d[k] = 0
+                    tangents[k] = 0
                 } else {
                     let h0 = xs[k] - xs[k - 1]
                     let h1 = xs[k + 1] - xs[k]
                     let w1 = 2 * h1 + h0
                     let w2 = h1 + 2 * h0
-                    d[k] = (w1 + w2) / (w1 / m0 + w2 / m1)
+                    tangents[k] = (w1 + w2) / (w1 / m0 + w2 / m1)
                 }
             }
 
@@ -235,43 +241,43 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 if h0 + h1 == 0 {
                     d0 = 0
                 } else {
-                    d0 = ((2 * h0 + h1) * m[0] - h0 * m[1]) / (h0 + h1)
+                    d0 = ((2 * h0 + h1) * slopes[0] - h0 * slopes[1]) / (h0 + h1)
                 }
-                if d0.sign != m[0].sign { d0 = 0 }
-                else if abs(d0) > 3 * abs(m[0]) { d0 = 3 * m[0] }
-                d[0] = d0
+                if d0.sign != slopes[0].sign { d0 = 0 }
+                else if abs(d0) > 3 * abs(slopes[0]) { d0 = 3 * slopes[0] }
+                tangents[0] = d0
             }
             // d_{n-1}
             do {
-                let hm1 = xs[n - 1] - xs[n - 2]
-                let hm2 = xs[n - 2] - xs[n - 3]
+                let hm1 = xs[pointCount - 1] - xs[pointCount - 2]
+                let hm2 = xs[pointCount - 2] - xs[pointCount - 3]
                 // Guard against division by zero when consecutive timestamps are identical
                 var dn1: Double
                 if hm1 + hm2 == 0 {
                     dn1 = 0
                 } else {
-                    dn1 = ((2 * hm1 + hm2) * m[n - 2] - hm1 * m[n - 3]) / (hm1 + hm2)
+                    dn1 = ((2 * hm1 + hm2) * slopes[pointCount - 2] - hm1 * slopes[pointCount - 3]) / (hm1 + hm2)
                 }
-                if dn1.sign != m[n - 2].sign { dn1 = 0 }
-                else if abs(dn1) > 3 * abs(m[n - 2]) { dn1 = 3 * m[n - 2] }
-                d[n - 1] = dn1
+                if dn1.sign != slopes[pointCount - 2].sign { dn1 = 0 }
+                else if abs(dn1) > 3 * abs(slopes[pointCount - 2]) { dn1 = 3 * slopes[pointCount - 2] }
+                tangents[pointCount - 1] = dn1
             }
         }
 
         // 6) Hermite evaluation on segment i
-        let s = (t - xs[i]) / h_i
-        let s2 = s * s
-        let s3 = s2 * s
+        let normalizedPosition = (targetTime - xs[segmentIndex]) / segmentWidth
+        let normalizedPosition2 = normalizedPosition * normalizedPosition
+        let normalizedPosition3 = normalizedPosition2 * normalizedPosition
 
-        let h00 =  2 * s3 - 3 * s2 + 1
-        let h10 =      s3 - 2 * s2 + s
-        let h01 = -2 * s3 + 3 * s2
-        let h11 =      s3 -     s2
+        let h00 =  2 * normalizedPosition3 - 3 * normalizedPosition2 + 1
+        let h10 =      normalizedPosition3 - 2 * normalizedPosition2 + normalizedPosition
+        let h01 = -2 * normalizedPosition3 + 3 * normalizedPosition2
+        let h11 =      normalizedPosition3 -     normalizedPosition2
 
-        let y = h00 * ys[i]
-        + h10 * h_i * d[i]
-        + h01 * ys[i + 1]
-        + h11 * h_i * d[i + 1]
+        let y = h00 * ys[segmentIndex]
+        + h10 * segmentWidth * tangents[segmentIndex]
+        + h01 * ys[segmentIndex + 1]
+        + h11 * segmentWidth * tangents[segmentIndex + 1]
 
         guard y.isFinite else { return nil }
 
@@ -1236,8 +1242,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let fallbackNext = next ?? operations.filter { $0.date > leftEdge }.min(by: { $0.date < $1.date })
 
         var result: [BathScaleWeightSummary] = []
-        if let p = fallbackPrev { result.append(p) }
-        if let n = fallbackNext, result.last?.date != n.date { result.append(n) }
+        if let previousOp = fallbackPrev { result.append(previousOp) }
+        if let nextOp = fallbackNext, result.last?.date != nextOp.date { result.append(nextOp) }
         return result
     }
 
@@ -2304,3 +2310,4 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 }
+// swiftlint:enable type_body_length file_length function_body_length identifier_name line_length

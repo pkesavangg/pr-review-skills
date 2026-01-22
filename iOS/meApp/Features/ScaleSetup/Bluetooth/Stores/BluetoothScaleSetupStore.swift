@@ -5,6 +5,10 @@
 ///  Created by Cursor AI on 18/07/25.
 ///
 
+// swiftlint:disable type_body_length
+// This file intentionally aggregates Bluetooth scale setup orchestration logic.
+// Breaking it into smaller files would fragment the multi-step flow management.
+
 import Foundation
 import SwiftUI
 import Combine
@@ -623,3 +627,4 @@ final class BluetoothScaleSetupStore: ObservableObject {
         bluetoothService.isSetupInProgress = false
     }
 }
+// swiftlint:enable type_body_length

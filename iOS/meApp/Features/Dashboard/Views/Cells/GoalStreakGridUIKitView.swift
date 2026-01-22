@@ -5,6 +5,12 @@
 //  Created by Lakshmi Priya on 07/08/25.
 //
 
+// swiftlint:disable type_body_length function_body_length cyclomatic_complexity
+// This file intentionally aggregates UIKit collection view logic for goal/streak grid.
+// Breaking it into smaller files would fragment related drag-and-drop and layout logic.
+// The handleLongPress and targetIndexPathForMoveFromItemAt functions are intentionally complex
+// to handle comprehensive drag-and-drop scenarios with boundary detection and snapping logic.
+
 import SwiftUI
 import UIKit
 
@@ -115,9 +121,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        let c = Coordinator(store: store, gridModel: buildGridModelFromStoreState())
-        c.parentView = parentView
-        return c
+        let coordinator = Coordinator(store: store, gridModel: buildGridModelFromStoreState())
+        coordinator.parentView = parentView
+        return coordinator
     }
     
     // MARK: - Private Methods
@@ -320,6 +326,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     // MARK: - Coordinator
     
+    // swiftlint:disable type_body_length function_body_length cyclomatic_complexity
+    // This Coordinator class intentionally aggregates all collection view delegate logic.
+    // Breaking it into smaller classes would fragment related drag-and-drop functionality.
+    // The handleLongPress and targetIndexPathForMoveFromItemAt functions are intentionally complex
+    // to handle comprehensive drag-and-drop scenarios with boundary detection and snapping logic.
     class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
         // Reentrancy guard for updateUIView to avoid AttributeGraph cycles
         var isUpdating: Bool = false
@@ -1013,4 +1024,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
     }
+    // swiftlint:enable type_body_length function_body_length cyclomatic_complexity
 }
+// swiftlint:enable type_body_length function_body_length cyclomatic_complexity
