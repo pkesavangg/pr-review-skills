@@ -163,6 +163,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
               focusManager.clearFocus()
               keyboardController?.hide()
             },
+            maxLength = 4,
             modifier = Modifier.focusRequester(weightFocusRequester),
           )
           Spacer(Modifier.height(spacing.lg))
