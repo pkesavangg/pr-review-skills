@@ -7,6 +7,8 @@
 
 import Foundation
 
+
+
 enum BrowserEndpoints: String {
     case privacyPolicy = "privacy-policy"
     case termsOfService = "weight-gurus-tos"
