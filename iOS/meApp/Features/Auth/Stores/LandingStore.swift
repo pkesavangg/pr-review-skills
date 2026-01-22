@@ -98,9 +98,8 @@ final class LandingStore: ObservableObject {
     /// Returns `true` if another account can be added. If the maximum number of
     /// accounts has already been reached, shows an alert and returns `false`.
     func canAddMoreAccounts() -> Bool {
-        // Only count logged-in accounts toward the limit, since logged-out accounts
-        let loggedInCount = accounts.filter { $0.isLoggedIn == true }.count
-        if loggedInCount >= appConstants.Account.maxAccounts {
+        // accounts array already contains only logged-in, non-expired accounts
+        if accounts.count >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return false
         }

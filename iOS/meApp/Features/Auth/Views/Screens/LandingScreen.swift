@@ -24,7 +24,7 @@ struct LandingScreen: View {
     
     // Check if there are any logged-in users
     var hasLoggedInUsers: Bool {
-        landingStore.accounts.filter { $0.isLoggedIn == true }.count > 0
+        !landingStore.accounts.isEmpty
     }
     
     var body: some View {

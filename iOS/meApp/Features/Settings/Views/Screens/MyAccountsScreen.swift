@@ -60,7 +60,7 @@ struct MyAccountsScreen: View {
                     swipeButtonWidth: 56,
                     onTap: { id, needsLogin in
                         if needsLogin {
-                            accountsStore.handleLoginCTA(email: account.email, isUserExpired: account.isExpired)
+                            accountsStore.handleLoginCTA(email: account.email, isUserExpired: false)
                         } else {
                             accountsStore.switchActiveAccount(to: id)
                         }
