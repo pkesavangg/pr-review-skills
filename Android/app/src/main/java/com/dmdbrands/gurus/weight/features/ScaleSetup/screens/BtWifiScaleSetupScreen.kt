@@ -370,6 +370,7 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.UpdateSettings.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
+              indicatorIcon = if(state.currentStepConnectionState is ConnectionState.Failed)  LoaderIconType.Error else LoaderIconType.Measurement,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
@@ -393,7 +394,7 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.CollectingMeasurement.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
-              indicatorIcon = LoaderIconType.Measurement,
+              indicatorIcon = if(state.currentStepConnectionState is ConnectionState.Failed)  LoaderIconType.Error else LoaderIconType.Measurement,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
