@@ -1010,6 +1010,7 @@ constructor(
       BtWifiSetupStep.UPDATE_SETTINGS -> {
         updateSettingsTimeoutJob?.cancel()
         updateSettingsTimeoutJob = null
+        goToCustomiseSettings()
       }
 
       BtWifiSetupStep.MEASUREMENT -> {
@@ -1022,6 +1023,10 @@ constructor(
         AppLog.w(TAG, "Try again called on step that doesn't support retry: ${currentState.currentStep}")
       }
     }
+  }
+
+  fun goToCustomiseSettings() {
+    handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
   }
 
   private fun navigateTo(route: AppRoute) {
