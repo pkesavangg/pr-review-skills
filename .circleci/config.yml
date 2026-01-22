@@ -6,7 +6,7 @@ orbs:
 jobs:
   build:
     macos:
-      xcode: "15.4.0"
+      xcode: "16.0.0"
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
@@ -35,7 +35,7 @@ jobs:
 
   unit-tests:
     macos:
-      xcode: "15.4.0"
+      xcode: "16.0.0"
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
@@ -65,7 +65,7 @@ jobs:
 
   ui-tests:
     macos:
-      xcode: "15.4.0"
+      xcode: "16.0.0"
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
