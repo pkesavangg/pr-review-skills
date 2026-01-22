@@ -22,14 +22,21 @@ struct LandingScreen: View {
         CGFloat(min(itemHeight * landingStore.userItems.count, itemHeight * 5))
     }
     
+    // Check if there are any logged-in users
+    var hasLoggedInUsers: Bool {
+        landingStore.accounts.filter { $0.isLoggedIn == true }.count > 0
+    }
+    
     var body: some View {
         RoutingView(stack: $router.stack) {
             ZStack {
                 Group {
-                    landingStore.userItems.count > 0 ? theme.backgroundSecondary : theme.actionPrimary
+                    // Show empty landing screen if no logged-in users exist
+                    (hasLoggedInUsers && landingStore.userItems.count > 0) ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()
-                if landingStore.userItems.isEmpty {
+                // Show empty landing screen if no logged-in users exist (even if there are logged-out accounts)
+                if !hasLoggedInUsers || landingStore.userItems.isEmpty {
                     VStack(alignment: .center) {
                         Spacer()
                             .frame(minHeight: .spacing6XL)
@@ -89,9 +96,9 @@ struct LandingScreen: View {
                                                     UserListItemView(
                                                         user: item,
                                                         openItemID: $openItemID,
-                                                        onTap: { id, isExpired in
-                                                            if isExpired {
-                                                                // If the user is expired, allow login with the same email.
+                                                        onTap: { id, needsLogin in
+                                                            if needsLogin {
+                                                                // If the user is expired or logged out, allow login with the same email.
                                                                 // If the user modifies the email and the account limit has been reached, show the max accounts alert.
                                                                 router.navigate(to: .login(item.email))
                                                             } else {
