@@ -83,11 +83,11 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         } else if yearDiff < 1 {
             // Less than 1 year → 3 months padding each side
             paddingMonths = Self.domainExpansionMonths
-        } else if yearDiff <= 10 {
-            // 1-10 years → 6 months padding each side
+        } else if yearDiff < 10 {
+            // 1 to <10 years → 6 months padding each side
             paddingMonths = 6
-        } else if yearDiff <= 50 {
-            // 10-50 years → 2.5 years (30 months) padding each side
+        } else if yearDiff < 50 {
+            // 10 to <50 years → 2.5 years (30 months) padding each side
             paddingMonths = 30
         } else {
             // 50+ years → 5 years (60 months) padding each side
