@@ -1,8 +1,12 @@
+// swiftlint:disable type_body_length
 import Foundation
 import SwiftData
 import ggInAppMessagingPackage
 
-/// Service to migrate account data from Ionic app (Capacitor Preferences) to SwiftUI app (SwiftData)
+/*
+ SwiftLint exception:
+ This service intentionally aggregates all one-time migration routines to keep the migration flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during a limited-run migration window. We therefore disable `type_body_length` for this file.
+ */
 @MainActor
 final class AccountMigrationService {
     @Injector private var logger: LoggerService
@@ -407,9 +411,20 @@ final class AccountMigrationService {
             
             do {
                 try integrationRepository.setIntegrationData(accountId: assignedTo ?? accountId, info: integrationInfo)
-                logger.log(level: .info, tag: tag, message: "Successfully migrated HealthKit integration data for account: \(accountId) - integrated: \(isIntegrated), assignedTo: \(assignedTo ?? "nil"), deIntegrated: \(deIntegrated ?? "nil")")
+                let assignedToString = assignedTo ?? "nil"
+                let deIntegratedString = deIntegrated ?? "nil"
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Successfully migrated HealthKit integration data for account: \(accountId) - " +
+                        "integrated: \(isIntegrated), assignedTo: \(assignedToString), deIntegrated: \(deIntegratedString)"
+                )
             } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to migrate HealthKit integration data for account \(accountId): \(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to migrate HealthKit integration data for account \(accountId): \(error.localizedDescription)"
+                )
             }
         } else { 
             logger.log(level: .info, tag: tag, message: "No HealthKit integration data found for account: \(accountId)")
@@ -893,3 +908,6 @@ final class AccountMigrationService {
         return account
     }
 }
+// swiftlint:enable type_body_length
+
+

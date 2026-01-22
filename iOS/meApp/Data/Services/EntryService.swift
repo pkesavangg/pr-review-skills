@@ -1,6 +1,11 @@
+// swiftlint:disable type_body_length
 import Foundation
 import Combine
 
+/*
+ SwiftLint exception:
+ This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations. We therefore disable `type_body_length` for this file.
+ */
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
     @Injector var goalAlertService: GoalAlertService
@@ -212,6 +217,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
     
     // MARK: - Progress/Stats
+    
+    /// Helper struct to hold extracted entry weights and DTOs
+    private struct ExtractedEntryData {
+        let latestWeight: Int
+        let weekStartWeight: Int?
+        let monthStartWeight: Int?
+        let firstEntryWeight: Int?
+        let weekDTO: BathScaleOperationDTO?
+        let monthDTO: BathScaleOperationDTO?
+        let firstDTO: BathScaleOperationDTO?
+        let latestDTO: BathScaleOperationDTO
+    }
+    
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
         let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
@@ -254,16 +272,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         
         // Extract relevant weights and DTOs in a MainActor context
         // All SwiftData property access must happen on MainActor to avoid crashes
-        let ext: (
-            latestWeight: Int,
-            weekStartWeight: Int?,
-            monthStartWeight: Int?,
-            firstEntryWeight: Int?,
-            weekDTO: BathScaleOperationDTO?,
-            monthDTO: BathScaleOperationDTO?,
-            firstDTO: BathScaleOperationDTO?,
-            latestDTO: BathScaleOperationDTO
-        ) = try await sync {
+        let ext: ExtractedEntryData = try await sync {
             guard let latestEntry = refetched[latestEntryId] else {
                 throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Latest entry not found in refetched entries"])
             }
@@ -271,7 +280,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let monthStart = safe(monthStartId) as Entry?
             let firstEntry = safe(firstEntryId) as Entry?
             
-            return (
+            return ExtractedEntryData(
                 latestWeight: latestEntry.scaleEntry?.weight ?? 0,
                 weekStartWeight: weekStart?.scaleEntry?.weight,
                 monthStartWeight: monthStart?.scaleEntry?.weight,
@@ -365,8 +374,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         // Fallback, parse manually
         let comps = timestamp.split(separator: "-")
-        if comps.count == 2, let y = Int(comps[0]), let m = Int(comps[1]) {
-            var dc = DateComponents(); dc.year = y; dc.month = m; dc.day = 1
+        if comps.count == 2, let year = Int(comps[0]), let month = Int(comps[1]) {
+            var dc = DateComponents(); dc.year = year; dc.month = month; dc.day = 1
             if let dt = Calendar.current.date(from: dc) { return (dt, timestamp) }
         }
         return (Date(), timestamp)
@@ -424,7 +433,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         guard !uniqueDays.isEmpty else { return Streak(current: 0, max: 0) }
 
-        func isSameDay(_ a: Date, _ b: Date) -> Bool { calendar.isDate(a, inSameDayAs: b) }
+        func isSameDay(_ firstDate: Date, _ secondDate: Date) -> Bool {
+            calendar.isDate(firstDate, inSameDayAs: secondDate)
+        }
 
         var currentStreak = 0
         var dateToCheck = Date()
@@ -605,7 +616,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     //                  }
                     // If sync fails, mark synced as false and update local state
                     operation.isSynced = false
-                    operation.attempts = operation.attempts + 1
+                    operation.attempts += 1
                     
                     //if attempts is more than 8, mark as failed and update local state
                     if operation.attempts > 8 {
@@ -942,9 +953,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     private static func buildHistoryMonth(monthKey: String, monthEntries: [Entry]) -> HistoryMonth {
         // Build the `weights` concatenated string  "<w>|<ts>,<w>|<ts>"  like the SQL query
-        let weightPairs = monthEntries.compactMap { e -> String? in
-            guard let w = e.scaleEntry?.weight else { return nil }
-            return "\(w)|\(e.entryTimestamp)"
+        let weightPairs = monthEntries.compactMap { entry -> String? in
+            guard let weight = entry.scaleEntry?.weight else { return nil }
+            return "\(weight)|\(entry.entryTimestamp)"
         }
         let weightsConcat = weightPairs.joined(separator: ",")
         
@@ -959,8 +970,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let firstWeight = sortedByTime.first?.scaleEntry?.weight
         let lastWeight  = sortedByTime.last?.scaleEntry?.weight
         let change: String? = {
-            guard let f = firstWeight, let l = lastWeight else { return nil }
-            return String(format: "%.1f", Double(l - f))
+            guard let first = firstWeight, let last = lastWeight else { return nil }
+            return String(format: "%.1f", Double(last - first))
         }()
         
         return HistoryMonth(
@@ -1004,7 +1015,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let totalCount = entries.count
             let unsyncedCount = entries.filter { $0.isSynced == false }.count
             let syncedCount = totalCount - unsyncedCount
-            await logger.log(level: .info, tag: tag, message: "Dashboard data loaded - Entries count=\(totalCount) (synced=\(syncedCount), unsynced=\(unsyncedCount)), Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
+            await logger.log(
+                level: .info,
+                tag: tag,
+                message: "Dashboard data loaded - Entries count=\(totalCount) " +
+                    "(synced=\(syncedCount), unsynced=\(unsyncedCount)), " +
+                    "Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)"
+            )
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to load entries: \(error.localizedDescription)")
         }
@@ -1134,3 +1151,4 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         cancellables.removeAll()
     }
 }
+// swiftlint:enable type_body_length

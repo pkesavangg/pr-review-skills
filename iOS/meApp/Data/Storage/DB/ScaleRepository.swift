@@ -242,7 +242,12 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                let preservedStatus = connectionStatusMap[broadcastId] {
                 device.isConnected = preservedStatus.isConnected
                 device.isWifiConfigured = preservedStatus.isWifiConfigured
-                logger.log(level: .debug, tag: "ScaleRepository", message: "Restored connection status for device \(device.id): connected=\(preservedStatus.isConnected), wifi=\(preservedStatus.isWifiConfigured)")
+                logger.log(
+                    level: .debug,
+                    tag: "ScaleRepository",
+                    message: "Restored connection status for device \(device.id): " +
+                        "connected=\(preservedStatus.isConnected), wifi=\(preservedStatus.isWifiConfigured)"
+                )
             }
             
             context.insert(device)
@@ -341,7 +346,13 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     }
 
     /// Copy device fields from a ScaleDTO to a Device.
-    private func copyDeviceFields(from dto: ScaleDTO, to device: Device, accountId: String, preserveConnectionStatus: Bool = false, connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)] = [:]) {
+    private func copyDeviceFields(
+        from dto: ScaleDTO,
+        to device: Device,
+        accountId: String,
+        preserveConnectionStatus: Bool = false,
+        connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)] = [:]
+    ) {
         device.peripheralIdentifier = dto.peripheralIdentifier ?? device.peripheralIdentifier
         device.nickname = dto.nickname ?? device.nickname
         device.sku = dto.sku ?? device.sku
@@ -470,11 +481,22 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     }
 
     /// Updates a device from a ScaleDTO, preserving relationships.
-    private func updateDeviceFromDTO(_ device: Device, from dto: ScaleDTO, accountId: String, connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)]) {
+    private func updateDeviceFromDTO(
+        _ device: Device,
+        from dto: ScaleDTO,
+        accountId: String,
+        connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)]
+    ) {
         if let serverId = dto.id {
             device.id = serverId
         }
-        copyDeviceFields(from: dto, to: device, accountId: accountId, preserveConnectionStatus: true, connectionStatusMap: connectionStatusMap)
+        copyDeviceFields(
+            from: dto,
+            to: device,
+            accountId: accountId,
+            preserveConnectionStatus: true,
+            connectionStatusMap: connectionStatusMap
+        )
         
         // Update R4 preference if server has one
         if let preferenceDTO = dto.preference {

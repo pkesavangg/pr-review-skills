@@ -56,7 +56,8 @@ struct NoteBox<Content: View>: View {
             }
         }
         NoteBox {
-            Text("**NOTE:** If you have certain medical conditions — like implanted medical devices or you are pregnant — you should not use All Body Metrics Mode without first consulting your doctor.")
+            Text("**NOTE:** If you have certain medical conditions — like implanted medical devices or you are pregnant — " +
+                "you should not use All Body Metrics Mode without first consulting your doctor.")
                 .fontOpenSans(.body3)
                 .foregroundColor(.black)
         }

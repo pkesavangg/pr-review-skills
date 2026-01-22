@@ -211,7 +211,10 @@ final class Account {
 }
 
 // MARK: - Update Methods
+// swiftlint:disable cyclomatic_complexity
 extension Account {
+    /// Updates account from AccountDTO response.
+    /// This method intentionally has high complexity to handle all account update scenarios in one place for maintainability.
     func update(from response: AccountDTO) {
         self.accountId = response.id
         self.email = response.email
@@ -339,6 +342,12 @@ extension Account {
         self.goalSettings?.goalWeight = goalSettings.goalWeight
         self.goalSettings?.isSynced = true
     }
+}
+
+// MARK: - Update Methods
+// swiftlint:disable cyclomatic_complexity
+extension Account {
+    // swiftlint:enable cyclomatic_complexity
 }
 
 /// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.

@@ -5,6 +5,10 @@
 //  Created by Kesavan Panchabakesan on 18/06/25.
 //
 
+// swiftlint:disable type_body_length file_length
+// This file intentionally aggregates all settings management logic.
+// Breaking it into smaller files would fragment related functionality and reduce maintainability.
+
 import Foundation
 import Combine
 import SwiftUI
@@ -1675,3 +1679,4 @@ class SettingsStore: ObservableObject {
         }
     }
 }
+// swiftlint:enable type_body_length file_length

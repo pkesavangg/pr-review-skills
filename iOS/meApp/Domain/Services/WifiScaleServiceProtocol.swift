@@ -9,5 +9,5 @@ protocol WifiScaleServiceProtocol {
     /// Fetches the scale token for WiFi scale operations.
     /// - Parameter r: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.
-    func getScaleToken(r: String?) async throws -> WifiScaleTokenResponse
+    func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse
 } 

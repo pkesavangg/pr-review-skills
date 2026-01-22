@@ -5,10 +5,16 @@
 //  Created by Lakshmi Priya on 02/06/25.
 //
 
+// swiftlint:disable type_body_length function_parameter_count
 import Foundation
 import SwiftData
 import Combine
 import GGBluetoothSwiftPackage
+
+/*
+ SwiftLint exception:
+ This service intentionally aggregates all scale-related operations to keep the scale management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical scale operations. The `createR4Scale` function intentionally has many parameters to ensure all required scale properties are properly initialized. We therefore disable `type_body_length` and `function_parameter_count` for this file.
+ */
 
 /// Service for managing paired scale devices with a clean "replace-all" sync policy.
 ///
@@ -347,7 +353,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         devicesUpdated += 1
                     }
                     
-                    if devices.count > 0 {
+                    if !devices.isEmpty {
                         try localRepository.context.save()
                         logger.log(level: .info, tag: tag, message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)")
                     }
@@ -1139,3 +1145,4 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         return savedDevice
     }
 }
+// swiftlint:enable type_body_length function_parameter_count

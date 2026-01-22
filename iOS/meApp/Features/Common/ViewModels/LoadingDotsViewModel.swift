@@ -72,34 +72,34 @@ class LoadingDotsViewModel: ObservableObject {
             
         case 0.4..<0.58:
             // Interpolate from 0, 0.8 to -jumpUpHeight, 1.0
-            let t = normalized(phase, in: 0.4...0.58)
+            let interpolationFactor = normalized(phase, in: 0.4...0.58)
             return (
-                lerp(from: 0, to: -jumpUpHeight, t: t),
-                lerp(from: 0.8, to: 1.0, t: t)
+                lerp(from: 0, to: -jumpUpHeight, interpolationFactor: interpolationFactor),
+                lerp(from: 0.8, to: 1.0, interpolationFactor: interpolationFactor)
             )
             
         case 0.58..<0.62:
             // Interpolate to -jumpUpHeight * 0.95, 0.95
-            let t = normalized(phase, in: 0.58...0.62)
+            let interpolationFactor = normalized(phase, in: 0.58...0.62)
             return (
-                lerp(from: -jumpUpHeight, to: -jumpUpHeight * 0.95, t: t),
-                lerp(from: 1.0, to: 0.95, t: t)
+                lerp(from: -jumpUpHeight, to: -jumpUpHeight * 0.95, interpolationFactor: interpolationFactor),
+                lerp(from: 1.0, to: 0.95, interpolationFactor: interpolationFactor)
             )
             
         case 0.62..<0.75:
             // Interpolate to jumpDownHeight, 0.85
-            let t = normalized(phase, in: 0.62...0.75)
+            let interpolationFactor = normalized(phase, in: 0.62...0.75)
             return (
-                lerp(from: -jumpUpHeight * 0.95, to: jumpDownHeight, t: t),
-                lerp(from: 0.95, to: 0.85, t: t)
+                lerp(from: -jumpUpHeight * 0.95, to: jumpDownHeight, interpolationFactor: interpolationFactor),
+                lerp(from: 0.95, to: 0.85, interpolationFactor: interpolationFactor)
             )
             
         case 0.75..<0.9:
             // Interpolate to 0, 0.8
-            let t = normalized(phase, in: 0.75...0.9)
+            let interpolationFactor = normalized(phase, in: 0.75...0.9)
             return (
-                lerp(from: jumpDownHeight, to: 0, t: t),
-                lerp(from: 0.85, to: 0.8, t: t)
+                lerp(from: jumpDownHeight, to: 0, interpolationFactor: interpolationFactor),
+                lerp(from: 0.85, to: 0.8, interpolationFactor: interpolationFactor)
             )
             
         default:
@@ -112,10 +112,10 @@ class LoadingDotsViewModel: ObservableObject {
     /// - Parameters:
     ///   - from: Starting value
     ///   - to: Ending value
-    ///   - t: Interpolation factor (0.0 to 1.0)
+    ///   - interpolationFactor: Interpolation factor (0.0 to 1.0)
     /// - Returns: Interpolated value
-    private func lerp(from: CGFloat, to: CGFloat, t: CGFloat) -> CGFloat {
-        from + (to - from) * t
+    private func lerp(from: CGFloat, to: CGFloat, interpolationFactor: CGFloat) -> CGFloat {
+        from + (to - from) * interpolationFactor
     }
     
     /// Normalizes a value within a given range

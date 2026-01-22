@@ -69,9 +69,9 @@ public enum DeviceSettingValue: Sendable, Equatable {
 
   public func toGGBTSettingValue() -> GGBTSettingValue {
         switch self {
-        case .bool(let b): return .bool(b)
-        case .int(let i): return .int(i)
-        case .string(let s): return .string(s)
+        case .bool(let boolValue): return .bool(boolValue)
+        case .int(let intValue): return .int(intValue)
+        case .string(let stringValue): return .string(stringValue)
         }
     }
 }

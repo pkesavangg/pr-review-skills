@@ -153,7 +153,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     /// Returns `true` if at least one HealthKit permission is granted.
     func checkAuthorizationStatus() -> Bool {
         let approvedPermissionList = self.getApprovedPermissionList();
-        return approvedPermissionList.count > 0
+        return !approvedPermissionList.isEmpty
     }
     
     /// Lists the granted HealthKit permission identifiers.
