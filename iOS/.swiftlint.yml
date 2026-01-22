@@ -125,7 +125,7 @@ type_name:
 identifier_name:
   min_length:
     warning: 2                    # Warn if identifier shorter than 2 chars (e.g., "a")
-    error: 1                     # Error if identifier shorter than 1 char
+    error: 2                     # Error if identifier shorter than 2 chars (e.g., "a")
   max_length:
     warning: 50                  # Warn if identifier longer than 50 chars
     error: 60                    # Error if identifier longer than 60 chars
