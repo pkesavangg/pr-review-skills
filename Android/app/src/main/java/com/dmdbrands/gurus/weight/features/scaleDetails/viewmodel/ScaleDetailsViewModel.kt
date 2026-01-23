@@ -183,16 +183,20 @@ constructor(
 
   private fun openWiFiSetup() {
     viewModelScope.launch {
-      val scale = state.value.scale
-      if (scale != null) {
-        ggDeviceService.addCacheDevice(scale.device?.broadcastId, scale)
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.BtWifiScaleSetup(
-            scale.sku ?: "0412",
-            BtWifiSetupStep.GATHERING_NETWORK,
-            scale.device?.broadcastId,
-          ),
-        )
+      try {
+        val scale = state.value.scale
+        if (scale != null) {
+          ggDeviceService.addCacheDevice(scale.device?.broadcastId, scale)
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BtWifiScaleSetup(
+              scale.sku ?: "0412",
+              BtWifiSetupStep.GATHERING_NETWORK,
+              scale.device?.broadcastId,
+            ),
+          )
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to navigate to WiFi setup", e)
       }
     }
   }
