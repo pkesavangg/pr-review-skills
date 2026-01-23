@@ -815,6 +815,7 @@ struct AppAssets {
     static let userProfile = "userProfile"
     // Newly added from image
     static let exclamationDanger = "exclamationDanger"
+    static let exclamationMarkSimple = "exclamationMarkSimple"
     static let hkIntegrationCompleteSS = "hkIntegrationCompleteSS"
     static let hkPermissionsAllowedSS = "hkPermissionsAllowedSS"
     static let hkPermissionsNotAllowedSS = "hkPermissionsNotAllowedSS"
