@@ -74,8 +74,16 @@ struct StreakCardView: View {
     
     /// Formats streak value with proper day/days pluralization.
     private var formattedStreakValue: String {
-        let streakCount = Int(value) ?? 0
-        return value + DashboardStrings.daySuffix(forStreak: streakCount)
+        // If value is placeholder, show "0 days" instead of "-- days"
+        let displayValue = value == DashboardStrings.placeholder ? "0" : value
+        let streakCount = Int(displayValue) ?? 0
+        return displayValue + DashboardStrings.daySuffix(forStreak: streakCount)
+    }
+    
+    /// Formats non-streak value, converting placeholder to "0"
+    private var formattedNonStreakValue: String {
+        // If value is placeholder, show "0" instead of "--"
+        return value == DashboardStrings.placeholder ? "0" : value
     }
     
     private func content() -> some View {
@@ -94,7 +102,7 @@ struct StreakCardView: View {
                     .foregroundColor(theme.textSubheading)
             } else {
                 VStack(alignment: isStreakItem ? .leading : .center, spacing: 2) {
-                    Text(isStreakItem ? formattedStreakValue : value)
+                    Text(isStreakItem ? formattedStreakValue : formattedNonStreakValue)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)

@@ -599,7 +599,7 @@ struct AlertStrings {
 
     struct ConfirmRestoreAlert {
         static let title = "Confirm Account Restore"
-        static let message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
+        static let message = "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
         static let restoreButton = "Restore"
         static let backButton = "Back"
     }
