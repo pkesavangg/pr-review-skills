@@ -911,8 +911,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     /// Performs the restore account operation by finding and deleting the matching user on the scale
-    /// This is a Bluetooth-only operation - WiFi/network connectivity is NOT required
-    /// Network validation is skipped for this operation (matches Android and wgApp4 behavior)
     private func performRestoreAccount() async {
         /// Restore requires Bluetooth (internet not required)
         guard hasAllBtPermissions() else {
@@ -1522,7 +1520,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         }
                     }
                 
-                // Auto-navigate from Step On screen after 3.5 minutes (matches WeightGurus behavior)
+                // Auto-navigate from Step On screen after 3.5 minutes
                 stepOnTimeoutTask = Task { [weak self] in
                     try? await Task.sleep(nanoseconds: 210 * 1_000_000_000)
                     guard let self, !Task.isCancelled, self.currentStep == .stepOn else { return }
@@ -1764,20 +1762,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 navigateToStep(.gatheringNetwork)
                 break
             case .inputDataError:
-                // Input data error can occur even when pairing succeeds (device already added).
-                LoggerService.shared.log(
-                    level: .info,
-                    tag: tag,
-                    message: "Input data error but device was added; proceeding as success: \(response)"
-                )
-
-                await saveScale()
-                connectionState = .success
-                scaleSetupError = .none
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    self.navigateToStep(.gatheringNetwork)
-                }
+                LoggerService.shared.log(level: .error, tag: tag, message: "Input data error: \(response)")
+                connectionState = .failure
                 break
 
             default:
