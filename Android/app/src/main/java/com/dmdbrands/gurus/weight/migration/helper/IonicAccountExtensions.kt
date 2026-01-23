@@ -196,7 +196,9 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
     userNumber = this.userNumber?.toString(),
     protocolType = this.type, // Using type as protocol type
     createdAt = this.createdAt,
-    isSynced = this.isTemporary ?: false,
+    // Convert isTemporary to isSynced: isTemporary=true means isSynced=false, isTemporary=false means isSynced=true
+    // If isTemporary is null, default to false (not synced/temporary)
+    isSynced = this.isTemporary == false || this.isTemporary == null,
     hasServerID = !this.id.isNullOrBlank(),
     token = this.scaleToken,
   )
@@ -252,6 +254,8 @@ private fun IonicScale.toR4ScalePreferenceEntity(): R4ScalePreferenceEntity? {
     timeFormat = preference.timeFormat,
     tzOffset = preference.tzOffset?.toInt(),
     wifiFotaScheduleTime = preference.wifiFotaScheduleTime?.toInt(),
-    isSynced = false,
+    // Convert preference.isTemporary to isSynced: isTemporary=true means isSynced=false, isTemporary=false means isSynced=true
+    // If isTemporary is null, default to false (not synced/temporary)
+    isSynced = preference.isTemporary == false,
   )
 }
