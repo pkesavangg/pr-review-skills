@@ -813,7 +813,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
     func handleNextButtonClick() {
         switch currentStep {
         case .intro:
-            navigateToStep(arePermissionsEnabled() ? .wakeup : .permissions)
+            // Check permissions and network connectivity before proceeding
+            let hasPermissions = hasAllBtPermissions()
+            let hasNetwork = networkMonitor.isConnected
+            
+            if !hasPermissions || !hasNetwork {
+                // Navigate to permissions screen if permissions or network are missing
+                navigateToStep(.permissions)
+            } else {
+                // All checks passed, proceed to wakeup
+                navigateToStep(.wakeup)
+            }
 
         case .gatheringNetwork:
             if scaleSetupError == .duplicatesFound {
@@ -1405,7 +1415,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         switch currentStep {
         case .intro:
-            break
+            // Check if all permissions are granted and network is connected
+            // Only auto-navigate to permissions if we're NOT coming back from permissions screen
+            // This allows users to go back from permissions to intro
+            if previousStep != .permissions {
+                let hasPermissions = hasAllBtPermissions()
+                let hasNetwork = networkMonitor.isConnected
+                
+                if !hasPermissions || !hasNetwork {
+                    // Use a small delay to ensure UI is ready before navigation
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.navigateToStep(.permissions)
+                    }
+                }
+            }
         case .permissions:
             break
         case .wakeup:
@@ -1586,8 +1609,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        // For wakeup step, navigate to permissions if permissions are missing (but not if only network is missing)
-        if missingPermissions && currentStep == .wakeup {
+        // For wakeup step, navigate to permissions if permissions or network are missing
+        if (missingPermissions || noNetwork) && currentStep == .wakeup {
             resetDiscoveryState()
             navigateToStep(.permissions)
             return
@@ -1597,6 +1620,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Only handle errors for steps that have been reached
         switch currentStep {
+        case .intro:
+            // If permissions or network are missing on intro, navigate to permissions screen
+            if missingPermissions || noNetwork {
+                navigateToStep(.permissions)
+            }
         case .gatheringNetwork:
             // Skip network checks when showing duplicate user screen (restore account flow)
             // Restore account is a Bluetooth-only operation and doesn't require WiFi/network
@@ -1675,27 +1703,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        // Fetch token in background; not required for Bluetooth pairing
-        Task { [weak self] in
-            guard let self else { return }
-            await self.fetchWifiScaleToken()
+        // Fetch scale token if not already cached
+        await fetchWifiScaleToken()
+        
+        guard let scaleToken = self.scaleToken else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to obtain scale token")
+            connectionState = .failure
+            return
         }
-
-        // Proceed with pairing immediately using available token (or empty)
-        await proceedWithPairing(token: scaleToken ?? "", scale: scale)
-        }
-
-        /// Proceeds with Bluetooth pairing.
-        /// Token may be empty; it is only required when saving the scale to the server.
-
-    private func proceedWithPairing(token: String, scale: Device) async {
         // Use cached display name, or duplicateUserName if handling duplicate user
         let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
-        
-        // Call confirmSmartPair - pairing can proceed even with empty token
+        // Call confirmSmartPair
         let pairResult = await bluetoothService.confirmSmartPair(
             device: scale,
-            token: token,
+            token: scaleToken,
             displayName: displayName,
             userNumber: nil
         )
@@ -1720,16 +1741,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Populate userNameForm with current user name and user list for validation
                 if let firstName = self.firstName {
                     userNameForm.setDisplayName(firstName)
+                    userNameForm.setCurrentUserName(firstName)
                 }
-                userNameForm.setCurrentUserName(nil)
                 
                 // Convert DeviceUser list to ScaleUser list for form validation
                 let scaleUsers = userList.map { deviceUser in
                     ScaleUser(name: deviceUser.name, token: deviceUser.token)
                 }
                 userNameForm.updateUserList(scaleUsers)
-                userNameForm.displayName.markAsDirty()
-                userNameForm.displayName.validate()
+                userNameForm.displayName.markAsPristine()
+                userNameForm.displayName.markAsUntouched()
                 
                 // Set error state and navigate to gathering network
                 scaleSetupError = .duplicatesFound
@@ -1773,16 +1794,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Saves the discovered scale to persistent storage.
     private func saveScale() async {
         guard let discoveryEvent = discoveryEvent,
-              let scale = discoveredScale else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "saveScale - missing required data (discoveryEvent or scale)")
+              let scale = discoveredScale,
+              let scaleToken = self.scaleToken else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveScale - missing required data")
             return
-        }
-        
-        // Use empty token if not available yet - token can be fetched and updated later
-        // This allows pairing to proceed even when network/SSL issues prevent token fetch
-        let scaleToken = self.scaleToken ?? ""
-        if scaleToken.isEmpty {
-            LoggerService.shared.log(level: .info, tag: tag, message: "Saving scale with empty token - token will be fetched and updated later")
         }
         
         do {
@@ -1848,10 +1863,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.savedScale = savedScale
             await self.scaleService.syncAllScalesWithRemote()
             
-            // Note: Connection status is managed by Bluetooth connection events (DEVICE_CONNECTED/DISCONNECTED)
-            // via updateConnectedDevices(). We don't call updateAllScalesStatus() here because it would reset
-            // the connection status we just set (isConnected: true) since getConnectedDevices() queries
-            // devices that are already marked as connected, creating a circular dependency.
+            // Ensure connection status is updated after sync completes
+            // This prevents UI flicker when navigating back to MyScalesScreen
+            do {
+                try await scaleService.updateAllScalesStatus()
+            } catch {
+                LoggerService.shared.log(level: .error, tag: tag, message: "Failed to update scales status after save: \(error.localizedDescription)")
+            }
             
             Task {
                 await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
@@ -1867,6 +1885,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Error saving scale: \(error.localizedDescription)")
+            connectionState = .failure
         }
     }
     
@@ -1877,17 +1896,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        // Ensure we're still on connectingBluetooth step before attempting fetch
-        guard currentStep == .connectingBluetooth, !isExiting else {
-            return
-        }
-        
         do {
             let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
             self.scaleToken = scaleTokenResponse.token
             LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
+            connectionState = .failure
         }
     }
     
@@ -2491,7 +2506,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func arePermissionsEnabled() -> Bool {
         // For BtWifi, we need both Bluetooth and Location permissions
         permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED &&
-        permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+        permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED && networkMonitor.isConnected
     }
     
     /// Checks if all required permissions are available
@@ -2515,8 +2530,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 Task { await permissionsService.handlePermission(.bluetoothSwitch) }
             }
             
-            // Enable the Next button only when all Bluetooth permissions are granted
-            isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled
+            // Enable the Next button only when all permissions are granted
+            isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled && networkMonitor.isConnected
         case .gatheringNetwork:
             // Enable save button only when there's a duplicate error and username is valid and changed
             if scaleSetupError == .duplicatesFound {
