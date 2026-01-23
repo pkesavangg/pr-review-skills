@@ -118,6 +118,7 @@ fun ScaleDetailsScreenContent(
       modifier = Modifier.fillMaxSize(),
       dragHandle = null,
       sheetState = sheetState,
+      sheetGesturesEnabled = false, // 👈 THIS disables swipe completely
       properties = ModalBottomSheetProperties(
         shouldDismissOnBackPress = true,
       ),
