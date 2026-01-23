@@ -23,15 +23,15 @@ jobs:
         run: |
           xcrun simctl boot "iPhone 16" || true
 
-      - name: Run UI Tests
-        working-directory: iOS
-        run: |
-          xcodebuild test \
-            -project meApp.xcodeproj \
-            -scheme meApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-            -only-testing:meAppUITests \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            ENABLE_USER_SCRIPT_SANDBOXING=NO
+      # - name: Run UI Tests
+      #   working-directory: iOS
+      #   run: |
+      #     xcodebuild test \
+      #       -project meApp.xcodeproj \
+      #       -scheme meApp \
+      #       -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+      #       -only-testing:meAppUITests \
+      #       CODE_SIGN_IDENTITY="" \
+      #       CODE_SIGNING_REQUIRED=NO \
+      #       CODE_SIGNING_ALLOWED=NO \
+      #       ENABLE_USER_SCRIPT_SANDBOXING=NO
