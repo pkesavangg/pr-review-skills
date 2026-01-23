@@ -36,21 +36,27 @@ final class LandingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
                 guard let self = self else { return }
-                self.accounts = all.filter { $0.isLoggedIn == true }
+                //Only show logged-in accounts
+                let loggedInAccounts = all.filter { 
+                    $0.isLoggedIn == true && ($0.isExpired ?? false) == false
+                }
                 
-                let sortedAccounts = self.accounts.sorted { lhs, rhs in
+                // Sort logged-in accounts by last active time
+                let sortedLoggedInAccounts = loggedInAccounts.sorted { lhs, rhs in
                     let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
                     let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
                     return lhsDate > rhsDate
                 }
                 
-                self.userItems = sortedAccounts.map { account in
-                    UserItemInfo(
+                self.accounts = sortedLoggedInAccounts
+                
+                self.userItems = sortedLoggedInAccounts.map { account in
+                    return UserItemInfo(
                         accountID: account.accountId,
                         name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
                         email: account.email,
                         isSelected: false,
-                        isExpired: account.isExpired ?? false,
+                        isExpired: false, // Only logged-in accounts are shown
                         canShowSelection: false
                     )
                 }
@@ -92,6 +98,7 @@ final class LandingStore: ObservableObject {
     /// Returns `true` if another account can be added. If the maximum number of
     /// accounts has already been reached, shows an alert and returns `false`.
     func canAddMoreAccounts() -> Bool {
+        // accounts array already contains only logged-in, non-expired accounts
         if accounts.count >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return false
