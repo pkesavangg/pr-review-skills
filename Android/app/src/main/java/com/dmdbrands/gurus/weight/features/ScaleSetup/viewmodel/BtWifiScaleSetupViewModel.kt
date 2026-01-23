@@ -77,7 +77,6 @@ import java.time.Instant
 import java.util.TimeZone
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -231,7 +230,6 @@ constructor(
     }
 
     handleIntent(BtWifiScaleSetupIntent.SetPermissions(updatedPermissions))
-    Log.d("permissionssetup", "Initial permissions: $permissions - Updated: $updatedPermissions")
   }
 
   private fun initializeSetup() {
@@ -1321,6 +1319,7 @@ constructor(
       val currentStep = state.value.currentStep
       when (currentStep) {
         BtWifiSetupStep.WAKEUP -> {
+          goToPermissionSlide()
           handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
         }
 
@@ -1332,9 +1331,23 @@ constructor(
           setMeasurementFailed()
         }
 
+        BtWifiSetupStep.WAKEUP,
+        BtWifiSetupStep.CONNECTING_BLUETOOTH,
+        BtWifiSetupStep.DUPLICATES_FOUND,
+        BtWifiSetupStep.USER_LIMIT_REACHED -> {
+          goToPermissionSlide()
+        }
+
         else -> {}
       }
     }
+  }
+
+  private fun goToPermissionSlide() {
+    if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
+      handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+    }
+    AppLog.d(TAG, "Permissions not granted, moving to permissions step")
   }
 
   /**
