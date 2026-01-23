@@ -24,8 +24,8 @@ struct ScaleStatusBanner: View {
             
             Button(action: type.onTap) {
                 Text(type.actionTitle.uppercased())
-                    .fontOpenSans(.button1)
                     .fontWeight(.bold)
+                    .fontOpenSans(DevicePlatform.isMiniPhone ? .button2 : .button1)
                     .foregroundColor(theme.statusIconPrimary)
             }
         }

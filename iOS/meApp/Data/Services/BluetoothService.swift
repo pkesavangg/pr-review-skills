@@ -776,7 +776,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             
             let details = try await withTimeout(seconds: 10) {
-                await self.ggBleSDK.getDeviceInfo(ggDevice)
+               try await self.ggBleSDK.getDeviceInfo(ggDevice)
             }
             
             return .success(DeviceInfo(sdk: details))
@@ -1843,14 +1843,14 @@ private extension BluetoothService {
     ///   - operation: The async operation to execute (can be non-throwing)
     /// - Returns: The result of the operation
     /// - Throws: BluetoothServiceError.timeout if the operation exceeds the timeout
-    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async -> T) async throws -> T {
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
         // Nanoseconds per second for Task.sleep conversion
         let nanosecondsPerSecond: UInt64 = 1_000_000_000
         
         return try await withThrowingTaskGroup(of: T.self) { group in
             // Add the actual operation
             group.addTask {
-                await operation()
+                try await operation()
             }
             
             // Add timeout task

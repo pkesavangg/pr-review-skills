@@ -51,21 +51,41 @@ class AccountsStore: ObservableObject {
             .sink { [weak self] allAccounts in
                 guard let self = self else { return }
 
-                self.accounts = allAccounts.filter { $0.isLoggedIn == true }
+                // Show all accounts except truly expired ones (expired + logged out)
                 
-                let sorted = self.accounts.sorted {
+                let accountsToShow = allAccounts.filter {
+                    !($0.isExpired == true && $0.isLoggedIn != true)
+                }
+                // Split by login state
+                let loggedInAccounts = accountsToShow.filter { $0.isLoggedIn == true }
+                let loggedOutAccounts = accountsToShow.filter { $0.isLoggedIn != true }
+                // Sort logged-in accounts by last active time (most recent first)
+                let sortedLoggedInAccounts = loggedInAccounts.sorted {
+                    (DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast) >
+                    (DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast)
+                }
+                // Sort logged-out accounts by last active time
+                let sortedLoggedOutAccounts = loggedOutAccounts.sorted {
                     let lhs = DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast
                     let rhs = DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast
                     return lhs > rhs
                 }
+                
+                // Combine: logged-in first, then logged-out
+                let allSortedAccounts = sortedLoggedInAccounts + sortedLoggedOutAccounts
+                self.accounts = allSortedAccounts
 
-                self.userItems = sorted.map {
-                    UserItemInfo(
+                self.userItems = allSortedAccounts.map {
+                    let isLoggedIn = $0.isLoggedIn == true
+                    let isExpired = $0.isExpired ?? false
+                    // Show "Log In" button for logged-out accounts or auto-logged-out accounts (expired but still marked as logged in)
+                    let needsLogin = !isLoggedIn || (isExpired && isLoggedIn)
+                    return UserItemInfo(
                         accountID: $0.accountId,
                         name: $0.firstName?.isEmpty == false ? $0.firstName! : $0.email,
                         email: $0.email,
                         isSelected: $0.isActiveAccount ?? false,
-                        isExpired: $0.isExpired ?? false,
+                        isExpired: needsLogin, // Logged-out and auto-logged-out accounts show "Log In" button
                         canShowSelection: true
                     )
                 }
@@ -79,7 +99,9 @@ class AccountsStore: ObservableObject {
     func handleLoginCTA(email: String? = nil, isUserExpired: Bool = false) {
         // If the user is expired, allow login with the same email.
         // If the user modifies the email and the account limit has been reached, show the max accounts alert.
-        if accounts.count >= appConstants.Account.maxAccounts && !isUserExpired {
+        // Only count logged-in accounts toward the limit, since logged-out accounts
+        let loggedInCount = accounts.filter { $0.isLoggedIn == true }.count
+        if loggedInCount >= appConstants.Account.maxAccounts && !isUserExpired {
             showMaxUserAccountsAlert()
             return
         }
@@ -88,7 +110,9 @@ class AccountsStore: ObservableObject {
     }
     
     func handleSignupCTA() {
-        if accounts.count >= appConstants.Account.maxAccounts {
+        // Only count logged-in accounts toward the limit
+        let loggedInCount = accounts.filter { $0.isLoggedIn == true }.count
+        if loggedInCount >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return
         }

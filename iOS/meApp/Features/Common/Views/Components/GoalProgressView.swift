@@ -104,6 +104,8 @@ struct GoalProgressView: View {
         }
         .padding(.vertical, .spacingMD)
         .padding(.horizontal, .spacingSM)
+        .padding(.leading, .spacingSM)
+        .padding(.trailing, .spacingXS) // Reduced by 8pt to accommodate longer numbers
     }
 
     // MARK: - Sub-components
