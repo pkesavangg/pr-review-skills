@@ -83,8 +83,27 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
-            // Don't update step if we're exiting
-            guard !isExiting else { return }
+            // Prevent recursive calls when reverting
+            guard !isRevertingStepIndex else { return }
+            
+            // Don't update step if we're exiting, especially from stepOn
+            if isExiting || isExitingFromStepOn {
+                // Prevent any step changes when exiting
+                if oldValue != currentStepIndex {
+                    // Immediately revert to prevent SwiperView navigation
+                    let previousIndex = oldValue
+                    isRevertingStepIndex = true
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, (self.isExiting || self.isExitingFromStepOn) else {
+                            self?.isRevertingStepIndex = false
+                            return
+                        }
+                        self.currentStepIndex = previousIndex
+                        self.isRevertingStepIndex = false
+                    }
+                }
+                return
+            }
             currentStep = steps[currentStepIndex]
             updateNextEnabled()
         }
@@ -105,6 +124,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // Flag to prevent error screens from showing during exit
     // Published so SwiftUI reacts immediately when it changes
     @Published private var isExiting: Bool = false
+    
+    // Flag to specifically prevent navigation from stepOn screen
+    private var isExitingFromStepOn: Bool = false
+    
+    // Flag to prevent recursive calls in currentStepIndex didSet
+    private var isRevertingStepIndex: Bool = false
     
     // Connection status shown on the BluetoothConnectionView.
     @Published var connectionState: ConnectionState = .loading {
@@ -467,6 +492,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
             case .stepOn:
                 return AnyView(BtWifiSetupStepOnView())
             case .measurement:
+                if isExitingFromStepOn {
+                    return AnyView(EmptyView())
+                }
                 return AnyView(
                     Group {
                         switch scaleSetupError {
@@ -551,8 +579,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Navigation Helpers
     func moveToNextStep() {
-        // Don't navigate if we're exiting
-        guard !isExiting else { return }
+        // Don't navigate if we're exiting, especially from stepOn
+        guard !isExiting && !isExitingFromStepOn else { return }
         
         let nextIndex = adjustedIndex(from: currentStepIndex + 1, direction: 1)
         guard nextIndex < steps.count else {
@@ -718,6 +746,26 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
     // Called by the ✕ button.
     func handleExit() {
+        if currentStep == .stepOn {
+            isExitingFromStepOn = true
+            cancelStepOnTimeout()
+            cancelMeasurementSubscription()
+            if let savedScale = savedScale {
+                Task.detached(priority: .userInitiated) { [weak self] in
+                    guard let self else { return }
+                    await self.bluetoothService.stopLiveMeasurement(for: savedScale)
+                }
+            }
+            scaleSetupError = .none
+            isExiting = true
+            bluetoothService.isSetupInProgress = false
+            dismissAction?()
+            DispatchQueue.main.async { [weak self] in
+                self?.performExitCleanup()
+            }
+            return
+        }
+        
         // Set exiting flag first to prevent any navigation during exit
         isExiting = true
         
@@ -1509,6 +1557,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     .sink { [weak self] liveEntry in
                         guard let self else { return }
                         
+                        // Don't navigate if we're exiting, especially from stepOn
+                        guard !self.isExiting && !self.isExitingFromStepOn else { return }
+                        
                         if liveEntry.displayWeight > 0 && savedScale.broadcastIdString == liveEntry.broadcastId {
                             Task {
                                 await self.bluetoothService.stopLiveMeasurement(for: savedScale)
@@ -1526,6 +1577,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     guard let self, !Task.isCancelled, self.currentStep == .stepOn else { return }
                     
                     await MainActor.run {
+                        // Don't navigate if we're exiting, especially from stepOn
+                        guard !self.isExiting && !self.isExitingFromStepOn else { return }
                         self.cancelStepOnTimeout()
                         self.scaleSetupError = .none
                         self.moveToNextStep()
@@ -2477,8 +2530,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     private func navigateToStep(_ step: BtWifiScaleSetupStep, delay: TimeInterval = 0) {
-        // Don't navigate if we're exiting
-        guard !isExiting else { return }
+        // Don't navigate if we're exiting, especially from stepOn
+        guard !isExiting && !isExitingFromStepOn else { return }
         
         if currentStep == .gatheringNetwork && step != .gatheringNetwork {
             cancelNetworkScanTimeout()
@@ -2728,6 +2781,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     /// Sets up dashboard metrics customization screen with proper state management
+    /// Matches Android behavior: Always loads metrics from API, no first-time pairing detection
     private func setupDashboardMetricsCustomization() async {
         let isDashboardFour = isDashboardTypeFour
         
@@ -2737,11 +2791,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
             try? await dashboardStore.streakManager.refreshStreakData()
             await dashboardStore.loadProgressMetricsFromAccount()
         } else {
-            // reloadDashboardConfiguration already calls loadProgressMetricsFromAccount via loadDashboardConfigurationFromAPI
+            // Load metrics from API - API is the source of truth (matches Android behavior)
+            // For new accounts, API will have default order set by server during R4 scale creation
+            // For existing accounts, API will have user's customized order
             await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
         }
         
         await MainActor.run {
+            // Only set default order if API truly returned empty metrics (shouldn't happen for R4 scales)
+            if dashboardStore.metricsManager.state.metrics.isEmpty {
+                dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
+            }
+            
             dashboardStore.beginEdit()
             dashboardStore.state.ui.isEditMode = true
             snapshotDashboardState()
@@ -2774,20 +2835,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
         dashboardMetricsUpdatedCancellable?.cancel()
         
         // Subscribe to dashboard metrics updated notification
+
         dashboardMetricsUpdatedCancellable = NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
                 // Only reload if we're currently on the dashboard metrics customization screen
-                if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
-                    Task {
-                        await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-                        // Update snapshot after reload to reflect new base state
-                        await MainActor.run {
-                            self.snapshotDashboardState()
-                            self.updateNextEnabled()
-                        }
-                    }
+                if self.currentStep == .viewSettings && 
+                   self.currentCustomizeSetting == .dashboardMetrics && 
+                   !self.isExiting {
                 }
             }
     }
@@ -2812,9 +2868,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Cleans up the store and breaks any retain cycles
     func cleanup() {
-        // Reset exiting flag
-        isExiting = false
-        
         // Clear the dismiss action to break retain cycle
         dismissAction = nil
         
@@ -2822,7 +2875,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         fetchWifiNetworksTask?.cancel()
         fetchWifiNetworksTask = nil
         
-        // Cancel all subscriptions
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
         networkFormCancellable?.cancel()
@@ -2833,6 +2885,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         liveMeasurementSubscription = nil
         measurementTimeoutTask?.cancel()
         measurementTimeoutTask = nil
+        stepOnTimeoutTask?.cancel()
+        stepOnTimeoutTask = nil
         stepTimerTask?.cancel()
         stepTimerTask = nil
         dashboardStoreCancellable?.cancel()
@@ -2852,6 +2906,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
         savedScale = nil
         // Re-apply skipped devices to BLE SDK, excluding paired scales
         bluetoothService.reapplySkipDevicesExcludingPaired()
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.isExiting = false
+            self?.isExitingFromStepOn = false
+        }
     }
     
     // Disconnects scale if it's not saved to ensure it shouldn't appears again in discovery.
