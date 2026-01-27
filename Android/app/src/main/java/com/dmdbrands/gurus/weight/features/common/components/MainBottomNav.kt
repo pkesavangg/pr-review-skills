@@ -1,14 +1,14 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -20,7 +20,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -90,13 +89,13 @@ fun MainBottomNav(
                   (item.route == AppRoute.Main.Settings && showUnreadFeedIndicator)
                 if (shouldShowBadge) {
                   // Dot badge
-                  Box(
-                    modifier =
-                      Modifier
+                  Badge(
+                    containerColor =MeTheme.colorScheme.danger,
+                      modifier = Modifier
+                        .padding(0.dp)
+                        .offset(y = (18).dp)
                         .size(8.dp)
                         .clip(CircleShape)
-                        .align(Alignment.BottomEnd)
-                        .background(MeTheme.colorScheme.danger),
                   )
                 }
               },

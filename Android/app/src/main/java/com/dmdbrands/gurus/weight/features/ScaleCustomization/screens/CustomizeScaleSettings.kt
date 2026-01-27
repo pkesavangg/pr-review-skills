@@ -91,6 +91,8 @@ fun CustomizeScaleSettings(
       initialValue = state.usernameForm.username.value,
       validators = listOf(
         FormValidations.required(),
+        FormValidations.noWhiteSpace(),
+        FormValidations.maxLength(20,),
       ),
     )
   }
@@ -141,7 +143,7 @@ fun CustomizeScaleSettings(
     modifier = Modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(vertical = spacing.md, horizontal = spacing.sm),
+      .padding(vertical = spacing.md),
     steps = CustomizeSettings.entries,
     containerColor = MeTheme.colorScheme.secondaryBackground,
     pagerState = pagerState,
@@ -364,6 +366,7 @@ fun CustomizeScaleSettings(
             supportingImage = AppIcons.Setup.UserNameScale,
             enableScroll = false,
             userList = userList,
+            isCustomization = true,
             onImeAction = {
               focusManager.clearFocus()
               keyboardController?.hide()
@@ -396,7 +399,7 @@ fun InitializeCustomizeScaleSettings(
 ) {
   Column(
     modifier = modifier
-      .fillMaxSize(),
+      .fillMaxSize().padding(horizontal = spacing.sm),
   ) {
     Column(
       verticalArrangement = Arrangement.spacedBy(spacing.xs),

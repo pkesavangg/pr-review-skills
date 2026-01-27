@@ -34,7 +34,7 @@ object BtWifiScaleSetupStrings {
   object UpdateSettings {
     fun Title(connectionState: ConnectionState) =
       if (connectionState is ConnectionState.Failed) "Update Failed"
-      else "Updating Settings"
+      else "Updating Settings..."
   }
 
   object CollectingMeasurement {
@@ -77,6 +77,7 @@ object BtWifiScaleSetupStrings {
     const val UsernameLabel = "User name"
     const val RestoreAccountButton = "Restore Account"
     const val ErrorMessage = "The scale can't have duplicate user names"
+    const val UserErrorMessage = "user name unavailable"
     fun LastActive(date: String?) = "last active $date"
 
     object RestoreConfirmation {
