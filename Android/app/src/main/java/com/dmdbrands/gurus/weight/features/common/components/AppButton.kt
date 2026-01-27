@@ -315,8 +315,9 @@ fun AppButton(
     .then(
       if (
         type != ButtonType.InlineTextPrimary &&
-        type != ButtonType.InlineTextSecondary &&
-        type != ButtonType.TextPrimary
+        type != ButtonType.InlineTextSecondary && type != ButtonType.TextSecondary && type != ButtonType.TextPrimary
+        && type != ButtonType.TextTertiary && type != ButtonType.InlineTextTertiary
+        && type != ButtonType.ErrorText
       ) {
         Modifier.height(height)
       } else {
