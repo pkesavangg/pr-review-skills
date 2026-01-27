@@ -359,7 +359,6 @@ fun AppButton(
         .clickable(
           enabled = enabled,
           interactionSource = interactionSource,
-          indication = null, // Disable ripple effect
           onClick = throttledClick
         ),
       contentAlignment = Alignment.Center
