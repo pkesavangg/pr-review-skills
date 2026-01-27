@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
@@ -63,7 +64,6 @@ class GraphViewModel @AssistedInject constructor(
     }
   }
 
-
   @AssistedFactory
   interface Factory {
     fun create(segment: GraphSegment): GraphViewModel
@@ -86,6 +86,7 @@ class GraphViewModel @AssistedInject constructor(
     observeDataChanges()
     subscribeWeightUnit()
   }
+
   /**
    * Initializes the graph with immediate data from services without suspension.
    * This provides instant initialization while the async flows are being set up.
@@ -148,7 +149,7 @@ class GraphViewModel @AssistedInject constructor(
       combine(
         dataFlow,
         dashboardService.selectedKey,
-        goalService.getCurrentGoal()
+        goalService.getCurrentGoal(),
       ) { data, secondaryKey, goal ->
         Triple(data, secondaryKey, goal)
       }
@@ -178,8 +179,7 @@ class GraphViewModel @AssistedInject constructor(
     // Setup chart model producer
     if (data.isNotEmpty()) {
       setupChartModelProducer(data, secondaryKey, goal)
-    }
-    else {
+    } else {
       setupEmptyModelProducer(goal)
     }
   }
@@ -198,7 +198,11 @@ class GraphViewModel @AssistedInject constructor(
     val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
     val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
     if (startx != null && endx != null) {
-      super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
+      // Apply padding to initial scroll range to ensure padding area is visible
+      // This matches the padding applied in snap functions
+      val padding = GraphSnapHelper.getPaddingForSegment(segment)
+      val adjustedStartx = startx - padding
+      super.handleIntent(GraphIntent.SetScrollRange(adjustedStartx, endx))
     }
     super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
 
@@ -286,7 +290,11 @@ class GraphViewModel @AssistedInject constructor(
     }
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
-    super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
+    // Apply padding to initial scroll range to ensure padding area is visible
+    // This matches the padding applied in snap functions
+    val padding = GraphSnapHelper.getPaddingForSegment(segment)
+    val adjustedStartX = startX - padding
+    super.handleIntent(GraphIntent.SetScrollRange(adjustedStartX, endX))
     val filteredData = data.filter {
       it.getTimeStamp() in startX..endX
     }
@@ -300,14 +308,16 @@ class GraphViewModel @AssistedInject constructor(
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
         // Pre-calculate Y-axis range for weight (primary) only
-        val primaryYAxisRange = calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
+        val primaryYAxisRange =
+          calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
         val normalizedSecondaryGraphLines = if (secondaryGraphLines != null &&
-                                                   secondaryGraphLines.points.isNotEmpty() &&
-                                                   primaryYAxisRange.minY != null &&
-                                                   primaryYAxisRange.maxY != null &&
-                                                   primaryYAxisRange.minY!!.isFinite() &&
-                                                   primaryYAxisRange.maxY!!.isFinite() &&
-                                                   primaryYAxisRange.minY!! < primaryYAxisRange.maxY!!) {
+          secondaryGraphLines.points.isNotEmpty() &&
+          primaryYAxisRange.minY != null &&
+          primaryYAxisRange.maxY != null &&
+          primaryYAxisRange.minY!!.isFinite() &&
+          primaryYAxisRange.maxY!!.isFinite() &&
+          primaryYAxisRange.minY!! < primaryYAxisRange.maxY!!
+        ) {
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
           GraphUtil.normalizeMetricToWeightRange(
             metricGraphLine = secondaryGraphLines,
@@ -317,7 +327,6 @@ class GraphViewModel @AssistedInject constructor(
             maxX = endX,
           )
         } else null
-
 
         // Pre-calculate series data on background thread
         val primaryYDataPairs = xLabels.zip(ySeries).mapNotNull { (xLabel, yLabel) ->
@@ -332,7 +341,8 @@ class GraphViewModel @AssistedInject constructor(
 
         // Check if job is still active before running transaction
         if (isActive && primaryXDataFiltered.isNotEmpty() && primaryYDataFiltered.isNotEmpty() &&
-            primaryXDataFiltered.size == primaryYDataFiltered.size) {
+          primaryXDataFiltered.size == primaryYDataFiltered.size
+        ) {
           // Switch to main thread for UI updates
           currentState.modelProducer.runTransaction {
             lineSeries {
@@ -356,7 +366,8 @@ class GraphViewModel @AssistedInject constructor(
               val secondaryYDataFiltered = secondaryDataPairs.map { it.second }
 
               if (secondaryXDataFiltered.isNotEmpty() && secondaryYDataFiltered.isNotEmpty() &&
-                  secondaryXDataFiltered.size == secondaryYDataFiltered.size) {
+                secondaryXDataFiltered.size == secondaryYDataFiltered.size
+              ) {
                 lineSeries {
                   series(
                     x = secondaryXDataFiltered,
@@ -423,7 +434,10 @@ class GraphViewModel @AssistedInject constructor(
             segment,
             Calendar.getInstance().timeInMillis,
           )?.toDouble(),
-          minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
+          minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
+            segment,
+            initialTimestamp,
+          )
             ?.toDouble(),
         )
       }
@@ -488,14 +502,12 @@ class GraphViewModel @AssistedInject constructor(
             isWeightlessMode = isWeightlessMode,
           )
 
-
           // This triggers renormalization when Y-axis domain changes
           withContext(Dispatchers.Main) {
             // Directly call renormalization with current scroll range to avoid reading stale state values
             handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis, min = min, max = max)
             super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
           }
-
 
           // Update UI on main thread
         }
@@ -531,9 +543,10 @@ class GraphViewModel @AssistedInject constructor(
     // Only renormalize if we have secondary metrics and Y-axis
     // Validate Y-axis values are finite before use (matching iOS defensive checks)
     if (secondaryKey == null || data.isEmpty() || cachedYAxis == null ||
-        cachedYAxis.minY == null || cachedYAxis.maxY == null ||
-        !cachedYAxis.minY!!.isFinite() || !cachedYAxis.maxY!!.isFinite() ||
-        cachedYAxis.minY!! >= cachedYAxis.maxY!!) {
+      cachedYAxis.minY == null || cachedYAxis.maxY == null ||
+      !cachedYAxis.minY!!.isFinite() || !cachedYAxis.maxY!!.isFinite() ||
+      cachedYAxis.minY!! >= cachedYAxis.maxY!!
+    ) {
       return
     }
 
@@ -547,14 +560,14 @@ class GraphViewModel @AssistedInject constructor(
 
         // Use provided min/max or fallback to state values
         val startX = min ?: currentState.minTarget ?: graphLines.points.minOfOrNull { it.x.value.toLong() }
-          ?: Calendar.getInstance().timeInMillis
+        ?: Calendar.getInstance().timeInMillis
         val endX = max ?: currentState.maxTarget ?: graphLines.points.maxOfOrNull { it.x.value.toLong() }
-          ?: Calendar.getInstance().timeInMillis
+        ?: Calendar.getInstance().timeInMillis
 
         // Renormalize secondary metrics with cached Y-axis (iOS-style)
         // Y-axis values already validated above, safe to use here
         val normalizedSecondaryGraphLines = if (secondaryGraphLines.points.isNotEmpty()) {
-          val originalValues = secondaryGraphLines.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+          secondaryGraphLines.points.take(3).map { (it.y.value as? Number)?.toDouble() }
 
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
           val normalized = GraphUtil.normalizeMetricToWeightRange(
@@ -565,7 +578,7 @@ class GraphViewModel @AssistedInject constructor(
             maxX = endX,
           )
 
-          val normalizedValues = normalized.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+          normalized.points.take(3).map { (it.y.value as? Number)?.toDouble() }
           normalized
         } else null
 
@@ -595,7 +608,8 @@ class GraphViewModel @AssistedInject constructor(
 
           // Only update chart if we have valid data pairs
           if (primaryXData.isNotEmpty() && primaryYData.isNotEmpty() &&
-              primaryXData.size == primaryYData.size) {
+            primaryXData.size == primaryYData.size
+          ) {
             currentState.modelProducer.runTransaction {
               // Update primary series
               lineSeries {
@@ -607,7 +621,8 @@ class GraphViewModel @AssistedInject constructor(
               }
               // Update secondary series with renormalized values (only if valid)
               if (secondaryXData.isNotEmpty() && secondaryYData.isNotEmpty() &&
-                  secondaryXData.size == secondaryYData.size) {
+                secondaryXData.size == secondaryYData.size
+              ) {
                 lineSeries {
                   series(
                     x = secondaryXData,
