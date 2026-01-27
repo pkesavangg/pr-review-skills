@@ -276,10 +276,11 @@ class GraphViewModel @AssistedInject constructor(
       }
       start to end
     } else {
-      val start = _state.value.minTarget ?: GraphUtil.getStartRange(
-        segment,
-        endTimeStamp,
-      ) ?: calendar.timeInMillis
+      // Apply same logic as GraphView: try rolling window start first, then fallback to start range
+      val start = _state.value.minTarget
+        ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+        ?: GraphUtil.getStartRange(segment, endTimeStamp)
+        ?: calendar.timeInMillis
 
       val end = _state.value.maxTarget ?: GraphUtil.getEndRange(
         segment,
