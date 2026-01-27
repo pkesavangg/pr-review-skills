@@ -57,9 +57,11 @@ object FormValidations {
     length: Int,
     fieldName: String = "Field",
     customMessage: String? = null,
+    allowSpaces: Boolean = false,
   ): Validator<String> =
     { value ->
-      if (value.trim().length < length) {
+      val valueToCheck = if (allowSpaces) value else value.trim()
+      if (valueToCheck.length < length) {
         ValidationError(ValidationType.MIN_LENGTH, customMessage ?: "Minimum of $length characters needed")
       } else {
         null
@@ -70,9 +72,11 @@ object FormValidations {
     length: Int,
     fieldName: String? = null,
     customMessage: String? = null,
+    allowSpaces: Boolean = false,
   ): Validator<String> =
     { value ->
-      if (value.trim().length > length) {
+      val valueToCheck = if (allowSpaces) value else value.trim()
+      if (valueToCheck.length > length) {
         ValidationError(
           ValidationType.MAX_LENGTH,
           customMessage ?: if(fieldName.isNullOrEmpty()) "maximum value should be $length" else "$fieldName should not exceed $length characters"
