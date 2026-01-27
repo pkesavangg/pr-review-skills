@@ -1580,7 +1580,6 @@ constructor(
     discoveredScale?.let { scale ->
       AppLog.d(TAG, "Saving scale with updated WiFi configuration: isWifiConfigured=${scale.device?.isWifiConfigured}")
       val deviceDetail = scale.device
-      Log.d("deviceconnectionstatus","${scale.connectionStatus}")
       if (deviceDetail != null) {
         AppLog.d(
           TAG,
