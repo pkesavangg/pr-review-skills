@@ -1115,7 +1115,25 @@ constructor(
           when (it) {
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
+                // Fetch user list first so it's available for duplicate detection; keep it on top.
                 fetchUserList()
+                handleIntent(BtWifiScaleSetupIntent.SetScaleId(discoveredScale?.id ?: ""))
+                handleIntent(
+                  BtWifiScaleSetupIntent.SetStepConnectionState(
+                    BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                    ConnectionState.Success,
+                  ),
+                )
+                val currentTime = Instant.now().toString()
+                discoveredScale = discoveredScale!!.copy(
+                  connectionStatus = BLEStatus.CONNECTED,
+                  deviceType = ScaleSetupType.BtWifiR4.value,
+                  sku = sku,
+                  createdAt = currentTime,
+                )
+                discoveredScale = deviceService.saveScale(discoveredScale!!)
+                isScaleConnected = true
+                // Defer dashboard 4→12 metrics update to avoid blocking the transition.
                 if (accountService.activeAccountFlow.first()?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
                   accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
                   val dashboardMetrics = accountService.activeAccountFlow.first()!!.dashboardMetrics
@@ -1127,31 +1145,10 @@ constructor(
                       }
                     }
                   }
-                  // Convert camelCase strings to MetricKey enums and update via dashboard service
                   val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
                   dashboardService.updateVisibleMetricKeys(accountId, metricKeys, DashboardType.DASHBOARD_12_METRICS)
                 }
-                handleIntent(BtWifiScaleSetupIntent.SetScaleId(discoveredScale?.id ?: ""))
-                handleIntent(
-                  BtWifiScaleSetupIntent.SetStepConnectionState(
-                    BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                    ConnectionState.Success,
-                  ),
-                )
-                val currentTime = Instant.now().toString()
-                // val scaleInfo = _state.value.sc
-                discoveredScale = discoveredScale!!.copy(
-                  connectionStatus = BLEStatus.CONNECTED,
-                  deviceType = ScaleSetupType.BtWifiR4.value,
-                  // nickname = discoveredScale!!.nickname.ifEmpty { scaleInfo?.productName ?: "Bluetooth Smart Scale" },
-                  sku = sku,
-                  createdAt = currentTime,
-                  // device = discoveredScale!!.device?.copy(
-                  //   deviceName = discoveredScale!!.device?.deviceName?.ifEmpty { scaleInfo?.productName ?: "" } ?: scaleInfo?.productName ?: "",
-                  // ),
-                )
-                discoveredScale = deviceService.saveScale(discoveredScale!!)
-                isScaleConnected = true
+                // Navigate promptly to GATHERING_NETWORK so the user does not feel stuck.
                 onNext()
               }
             }
@@ -1247,8 +1244,13 @@ constructor(
           }
         }
         val filteredUserList = userList.filter { user -> user.token != discoveredScale?.token }
+        // Keep the active app user on top so duplicate detection (by name match) is straightforward.
+        val currentUserName = accountService.activeAccountFlow.first()?.firstName?.take(20)
+        val listWithActiveUserOnTop = filteredUserList.sortedByDescending { user ->
+          user.name.equals(currentUserName, ignoreCase = true)
+        }
         AppLog.e(TAG, " during fetching user list $userList")
-        handleIntent(BtWifiScaleSetupIntent.SetUserList(filteredUserList))
+        handleIntent(BtWifiScaleSetupIntent.SetUserList(listWithActiveUserOnTop))
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e)
       // Show error state to user
