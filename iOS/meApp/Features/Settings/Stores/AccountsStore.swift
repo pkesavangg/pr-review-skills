@@ -51,10 +51,10 @@ class AccountsStore: ObservableObject {
             .sink { [weak self] allAccounts in
                 guard let self = self else { return }
 
-                // Show all accounts except truly expired ones (expired + logged out)
-                
+                // Show only logged-in accounts (filter out manually logged-out accounts)
+                // Auto-logged-out accounts (expired but still marked as logged in) will still appear
                 let accountsToShow = allAccounts.filter {
-                    !($0.isExpired == true && $0.isLoggedIn != true)
+                    $0.isLoggedIn == true
                 }
                 // Split by login state
                 let loggedInAccounts = accountsToShow.filter { $0.isLoggedIn == true }
