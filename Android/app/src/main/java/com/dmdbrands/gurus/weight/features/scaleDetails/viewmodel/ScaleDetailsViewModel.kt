@@ -262,6 +262,7 @@ constructor(
             message = ScaleDetailsStrings.DeleteScaleConfirmation,
             confirmText = ScaleDetailsStrings.Delete,
             cancelText = ScaleDetailsStrings.Cancel,
+            primaryActionType = com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText,
             onConfirm = {
               viewModelScope.launch {
                 val scale = state.value.scale!!
@@ -299,11 +300,11 @@ constructor(
                 }
               }
             },
-            onDismiss = {
+          onDismiss = {
               dialogQueueService.dismissCurrent()
             },
 
-            ),
+          ),
 
           )
       }

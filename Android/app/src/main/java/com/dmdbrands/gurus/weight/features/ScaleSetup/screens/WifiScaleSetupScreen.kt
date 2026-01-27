@@ -396,8 +396,14 @@ fun WifiScaleSetupScreenContent(
               SetupContent(
                 title = WifiScaleSetupStrings.ScaleCount.Title,
                 subtitle = WifiScaleSetupStrings.ScaleCount.Message,
-                isGifImage = true,
-                supportingImage = AppIcons.Setup.WifiStepOnApMode,
+                isGifImage = false,
+                supportingImage = AppIcons.Setup.wifiAPModeStepOn,
+                noteMessage = if (state.permissionsSkipped || state.isGetMACSetup) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,
+                supportingButtonLabel = WifiScaleSetupStrings.Note.NavigateToErrorSlide,
+                onSupportingButtonClick = {
+                  // Navigate to error guide step
+                  onIntent(WifiScaleSetupIntent.NavigateToErrorGuide())
+                },
               )
             }
 

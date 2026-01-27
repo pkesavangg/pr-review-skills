@@ -171,8 +171,9 @@ final class GoalForm: ObservableForm {
     private func getFormLevelError<T>(for control: FormControl<T>) -> String? {
         guard isLoseGainMode else { return nil }
         guard control === goalWeight else { return nil }
-        guard goalWeight.isDirty || currentWeight.isDirty else { return nil }
+        guard !goalWeight.value.isEmpty && !currentWeight.value.isEmpty else { return nil }
         guard hasEqualWeights else { return nil }
+        guard goalWeight.isDirty || currentWeight.isDirty || goalType.isDirty else { return nil }
         
         return FormErrorMessages.valueShouldNotBeEqual
     }

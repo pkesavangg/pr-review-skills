@@ -70,12 +70,14 @@ private fun ChangePasswordContent(
     val scrollState = rememberScrollState()
 
   BackHandler {
-        handleIntent.invoke(ChangePasswordIntent.OnRequestBack)
+    handleIntent.invoke(ChangePasswordIntent.OnRequestBack)
     }
     AppScaffold(
         title = ChangePasswordStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { handleIntent.invoke(ChangePasswordIntent.OnRequestBack) }
+            AppIconButton(AppIcons.Default.Close) {
+              focusManager.clearFocus()
+              handleIntent.invoke(ChangePasswordIntent.OnRequestBack) }
         },
         actions = {
             AppButton(

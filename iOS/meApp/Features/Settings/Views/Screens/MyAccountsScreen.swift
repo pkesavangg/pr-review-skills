@@ -58,9 +58,9 @@ struct MyAccountsScreen: View {
                     openItemID: $openItemID,
                     iconSize: 32,
                     swipeButtonWidth: 56,
-                    onTap: { id, isExpired in
-                        if isExpired {
-                            accountsStore.handleLoginCTA(email: account.email, isUserExpired: true)
+                    onTap: { id, needsLogin in
+                        if needsLogin {
+                            accountsStore.handleLoginCTA(email: account.email, isUserExpired: false)
                         } else {
                             accountsStore.switchActiveAccount(to: id)
                         }

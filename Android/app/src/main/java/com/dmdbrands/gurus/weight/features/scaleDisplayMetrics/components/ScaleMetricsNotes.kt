@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.enum.NotifyScaleM
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.AppNote
+import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
@@ -38,6 +39,7 @@ fun ScaleMetricsNotes(
             icon = AppIcons.Default.WeightOnlyMode,
             buttonText = ScaleMetricsSettingStrings.WeightOnlyNotes.UpdateButton,
             onButtonClick = onUpdateScaleMode,
+            messageType = TextType.Body,
           )
         }
 
@@ -46,6 +48,7 @@ fun ScaleMetricsNotes(
             title = ScaleMetricsSettingStrings.OtherUserWeightOnlyModeNote.Title,
             message = ScaleMetricsSettingStrings.OtherUserWeightOnlyModeNote.Message,
             icon = AppIcons.Default.WeightOnlyMode,
+            messageType = TextType.Body,
           )
         }
 
@@ -61,6 +64,7 @@ fun ScaleMetricsNotes(
           iconType = AppIconType.Tertiary,
           buttonText = ScaleMetricsSettingStrings.HeartRateOffNotes.UpdateButton,
           onButtonClick = onUpdateScaleMode,
+          messageType = TextType.Body,
         )
       }
     }

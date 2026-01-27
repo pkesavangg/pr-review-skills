@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListReduc
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListState
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUsernameFormControls
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -167,6 +168,7 @@ constructor(
         message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
         confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
         cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
+        primaryActionType = ButtonType.ErrorText,
         onConfirm = {
           performDeleteUser(user)
         },

@@ -177,6 +177,7 @@ object AppIcons {
     val WifiStepOnApMode = R.raw.stepon_filled_0384
     val WifiStepOn = R.raw.step_on
     val WifiCountOn = R.raw.scale_counts_wifi
+    val wifiAPModeStepOn = R.drawable.stepon_filled_0396
     val WifiAPModeFilled0384 = R.drawable.ap_filled_0384
     val WifiAPModeOutlined0384 = R.drawable.ap_outlined_0384
   }
