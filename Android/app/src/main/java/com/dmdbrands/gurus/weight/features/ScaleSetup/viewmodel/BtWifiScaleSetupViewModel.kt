@@ -381,7 +381,7 @@ constructor(
         title = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Title,
         message = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Message,
         confirmText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Restore,
-        cancelText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.GoBack,
+        cancelText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Back,
         onConfirm = {
           // Delete duplicate users and restore account
           viewModelScope.launch {
@@ -710,7 +710,7 @@ constructor(
         title = ScaleSetupStrings.SkipBtWifiPermissions.Title,
         message = ScaleSetupStrings.SkipBtWifiPermissions.Message,
         confirmText = ScaleSetupStrings.SkipBtWifiPermissions.Skip,
-        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.back,
+        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.Back,
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
