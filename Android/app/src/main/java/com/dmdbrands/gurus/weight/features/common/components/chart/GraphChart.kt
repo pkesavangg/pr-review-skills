@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
+import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
@@ -64,6 +65,7 @@ fun rememberGraphChart(
       primaryLayer,
       secondaryLayer,
       topAxis = topAxis(),
+      startAxis = startAxis(segment),
       endAxis = endAxis(yStep = state.primaryYStep, isEmptyGraph = state.isEmptyGraph, markerDecoration = goalMarker),
       bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
       marker = emptyMarker(),
