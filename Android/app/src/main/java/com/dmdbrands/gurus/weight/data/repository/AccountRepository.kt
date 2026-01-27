@@ -381,14 +381,15 @@ constructor(
     accountId: String,
     dashboardMetrics: List<String>,
     dashboardMilestones: List<String>,
-    dashboardType: DashboardType
+    dashboardType: DashboardType,
+    isSynced: Boolean
   ) {
     val settings = DashboardSettingsEntity(
       accountId = accountId,
       dashboardMetrics = dashboardMetrics,
       dashboardMilestones = dashboardMilestones,
       dashboardType = dashboardType.value,
-      isSynced = true,
+      isSynced = isSynced,
     )
     accountDao.insertDashboardSettings(settings)
   }
@@ -524,6 +525,13 @@ constructor(
     accountDao.getUnsyncedActiveAccount().first()?.let { accountWithRelations ->
       AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
     }
+
+  /**
+   * Gets the dashboard settings for the active account if it is not synced.
+   * @return Dashboard settings if it exists and is not synced, otherwise null
+   */
+  override suspend fun getUnsyncedActiveDashboardSettings(): DashboardSettingsEntity? =
+    accountDao.getUnsyncedActiveDashboardSettings().first()
 
   /**
    * Logs out the account both remotely (API) and locally (DB, tokens).

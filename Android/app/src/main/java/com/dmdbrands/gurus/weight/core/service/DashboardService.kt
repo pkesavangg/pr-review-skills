@@ -1,11 +1,13 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -32,8 +34,11 @@ class DashboardService
 @Inject
 constructor(
   private val dashboardRepository: IDashboardRepository,
-  private val accountRepository: IAccountRepository
-) : IDashboardService {
+  private val accountRepository: IAccountRepository,
+  connectivityObserver: IConnectivityObserver,
+  dialogQueueService: IDialogQueueService,
+  appNavigationService: IAppNavigationService,
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDashboardService {
   private var accountId: String? = null
   private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -105,6 +110,7 @@ constructor(
         dashboardMetrics = serverMetrics,
         dashboardMilestones = serverMilestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
         dashboardType = dashboardType,
+        isSynced = true, // Server data is always synced
       )
 
       AppLog.d("DashboardService", "Dashboard data refreshed from server successfully")
@@ -117,6 +123,7 @@ constructor(
    * Gets a Flow of visible metric keys for the given account.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: no use
   override fun getVisibleMetricKeys(accountId: String?): Flow<List<MetricKey>> =
     dashboardRepository.getVisibleMetricKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -126,6 +133,7 @@ constructor(
    * Gets a Flow of visible milestone keys for the given account.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: no use
   override fun getVisibleMilestoneKeys(accountId: String?): Flow<List<MilestoneKey>> =
     dashboardRepository.getVisibleMilestoneKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -181,23 +189,33 @@ constructor(
       val metrics = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
       val milestones = keys.filterIsInstance<DashboardKey.Milestone>().map { it.key }
 
+      val dashboardKeys = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+      val progressKeys = milestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+
+      // Check if network is available
+      val isOnline = isNetworkAvailable()
+
       // Update both metrics and milestones together to avoid dashboard type conflicts
       accountRepository.updateDashboardSettings(
         accountId = id,
-        dashboardMetrics = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
-        dashboardMilestones = milestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
+        dashboardMetrics = dashboardKeys,
+        dashboardMilestones = progressKeys,
         dashboardType = dashboardType,
+        isSynced = isOnline,
       )
 
-      // Update both dashboard metrics and dashboard type via API
-      val dashboardKeys = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
-      val progressKeys = milestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
-      AppLog.d("DashboardService", "progress keys to server - $progressKeys")
-      AppLog.d("DashboardService", "Sending to server - dashboardKeys: $dashboardKeys")
-      AppLog.d("DashboardService", "Sending to server - dashboardType: ${dashboardType.value}")
+      if (isOnline) {
+        // Update both dashboard metrics and dashboard type via API
+        AppLog.d("DashboardService", "progress keys to server - $progressKeys")
+        AppLog.d("DashboardService", "Sending to server - dashboardKeys: $dashboardKeys")
+        AppLog.d("DashboardService", "Sending to server - dashboardType: ${dashboardType.value}")
 
-      accountRepository.updateDashboardMetrics(dashboardKeys)
-      accountRepository.updateProgressMetrics(progressKeys)
+        accountRepository.updateDashboardMetrics(dashboardKeys)
+        accountRepository.updateProgressMetrics(progressKeys)
+      } else {
+        AppLog.d("DashboardService", "Network unavailable, saved locally with isSynced = false")
+      }
+
       // Refresh the visible keys StateFlow to notify subscribers
       refreshVisibleKeysFromDatabase(id)
     } catch (e: Exception) {
@@ -218,6 +236,7 @@ constructor(
    * Resets the visible metric keys for the given account to the default list.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: Not in use
   override suspend fun resetVisibleMetricKeys(accountId: String?, dashboardType: DashboardType) =
     dashboardRepository.resetVisibleMetricKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -228,6 +247,7 @@ constructor(
    * Resets the visible milestone keys for the given account to the default list.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: Not in use
   override suspend fun resetVisibleMilestoneKeys(accountId: String?) =
     dashboardRepository.resetVisibleMilestoneKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -242,9 +262,6 @@ constructor(
       val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
       AppLog.d("DashboardService", "Resetting visible keys to defaults with dashboardType: ${dashboardType.value}")
 
-      // Reset in database first
-      dashboardRepository.resetVisibleKeys(id, dashboardType)
-
       // Get default metrics and milestones
       val defaultMetrics = when (dashboardType) {
         DashboardType.DASHBOARD_4_METRICS -> MetricKeyConstants.DEFAULT_4_METRICS
@@ -255,13 +272,29 @@ constructor(
       // Convert milestones to camelCase for API
       val progressKeys = defaultMilestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
 
-      AppLog.d("DashboardService", "Resetting to server - dashboardKeys: $defaultMetrics")
-      AppLog.d("DashboardService", "Resetting to server - progressKeys: $progressKeys")
-      AppLog.d("DashboardService", "Resetting to server - dashboardType: ${dashboardType.value}")
+      // Check if network is available
+      val isOnline = isNetworkAvailable()
 
-      // Update both dashboard metrics and progress metrics via API
-      accountRepository.updateDashboardMetrics(defaultMetrics)
-      accountRepository.updateProgressMetrics(progressKeys)
+      // Update dashboard settings in database
+      accountRepository.updateDashboardSettings(
+        accountId = id,
+        dashboardMetrics = defaultMetrics,
+        dashboardMilestones = progressKeys,
+        dashboardType = dashboardType,
+        isSynced = isOnline,
+      )
+
+      if (isOnline) {
+        // Update both dashboard metrics and progress metrics via API
+        AppLog.d("DashboardService", "Resetting to server - dashboardKeys: $defaultMetrics")
+        AppLog.d("DashboardService", "Resetting to server - progressKeys: $progressKeys")
+        AppLog.d("DashboardService", "Resetting to server - dashboardType: ${dashboardType.value}")
+
+        accountRepository.updateDashboardMetrics(defaultMetrics)
+        accountRepository.updateProgressMetrics(progressKeys)
+      } else {
+        AppLog.d("DashboardService", "Network unavailable, saved locally with isSynced = false")
+      }
 
       // Refresh the visible keys StateFlow to notify subscribers
       refreshVisibleKeysFromDatabase(id)
