@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Implementation of IDashboardService for dashboard visible metrics and milestones management.
@@ -85,9 +84,6 @@ constructor(
       // Get progress metrics from server (already in camelCase format)
       val serverProgressMetrics = account.progressMetrics
 
-      AppLog.d("DashboardService", "Server dashboardType: ${dashboardType.value}")
-      AppLog.d("DashboardService", "Server dashboardMetrics: $serverMetrics")
-      AppLog.d("DashboardService", "Server progressMetrics: $serverProgressMetrics")
       serverMetrics.joinToString(",")
       // Convert server progress metrics (camelCase strings) to MilestoneKey enums, or use defaults
       val serverMilestones = if (serverProgressMetrics.isNotEmpty()) {
@@ -96,7 +92,7 @@ constructor(
         }
       } else {
         // If server doesn't have progress metrics, use defaults
-        MilestoneKey.getDefaultMilestones()
+        emptyList()
       }
       serverMilestones.joinToString(",")
       AppLog.d(
@@ -169,7 +165,6 @@ constructor(
    * Updates the visible milestone keys for the given account.
    * If accountId is null, uses the stored accountId.
    */
-  //TODO:Need to remove
   override suspend fun updateVisibleMilestoneKeys(
     accountId: String?,
     keys: List<MilestoneKey>,
@@ -181,7 +176,6 @@ constructor(
   override suspend fun updateVisibleKeys(accountId: String?, keys: List<DashboardKey>, dashboardType: DashboardType) {
     try {
       val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
-      Log.d("DashboardService", "Updating visible keys for account: $keys")
       AppLog.d("DashboardService", "Updating visible keys with dashboardType: ${dashboardType.value}")
 
       val metrics = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
@@ -243,11 +237,38 @@ constructor(
    * Resets both visible metric and milestone keys for the given account to the default lists.
    * If accountId is null, uses the stored accountId.
    */
-  override suspend fun resetVisibleKeys(accountId: String?, dashboardType: DashboardType) =
-    dashboardRepository.resetVisibleKeys(
-      accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-      dashboardType,
-    )
+  override suspend fun resetVisibleKeys(accountId: String?, dashboardType: DashboardType) {
+    try {
+      val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
+      AppLog.d("DashboardService", "Resetting visible keys to defaults with dashboardType: ${dashboardType.value}")
+
+      // Reset in database first
+      dashboardRepository.resetVisibleKeys(id, dashboardType)
+
+      // Get default metrics and milestones
+      val defaultMetrics = when (dashboardType) {
+        DashboardType.DASHBOARD_4_METRICS -> MetricKeyConstants.DEFAULT_4_METRICS
+        DashboardType.DASHBOARD_12_METRICS -> MetricKeyConstants.ALL_METRIC_KEYS
+      }
+      val defaultMilestones = MilestoneKey.getDefaultMilestones()
+
+      // Convert milestones to camelCase for API
+      val progressKeys = defaultMilestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+
+      AppLog.d("DashboardService", "Resetting to server - dashboardKeys: $defaultMetrics")
+      AppLog.d("DashboardService", "Resetting to server - progressKeys: $progressKeys")
+      AppLog.d("DashboardService", "Resetting to server - dashboardType: ${dashboardType.value}")
+
+      // Update both dashboard metrics and progress metrics via API
+      accountRepository.updateDashboardMetrics(defaultMetrics)
+      accountRepository.updateProgressMetrics(progressKeys)
+
+      // Refresh the visible keys StateFlow to notify subscribers
+      refreshVisibleKeysFromDatabase(id)
+    } catch (e: Exception) {
+      AppLog.e("DashboardService", "Failed to reset visible keys", e.toString())
+    }
+  }
 
   /**
    * Refreshes the visible keys StateFlow from the database to notify subscribers of changes.
