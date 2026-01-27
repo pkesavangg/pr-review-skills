@@ -180,21 +180,29 @@ fun IonicHealthConnectData.toHealthConnectData(accountID: String): HealthConnect
  * Creates the main device entity from the scale data.
  */
 private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
+  // Validate required fields to prevent null issues
+  val deviceId = this.id ?: UUID.randomUUID().toString()
+  val deviceSku = this.sku ?: ""
+  val deviceName = this.name ?: "Unknown Scale"
+
+  val deviceNickname = this.nickname ?: this.name ?: "Unknown Scale"
+  val deviceType = this.type ?: "Unknown Type"
+
   return DeviceEntity(
-    id = this.id ?: UUID.randomUUID().toString(),
+    id = deviceId,
     accountId = this.userId ?: accountID,
     peripheralIdentifier = this.peripheralIdentifier,
-    nickname = this.nickname ?: this.name,
-    sku = this.sku,
+    nickname = deviceNickname,
+    sku = deviceSku,
     mac = this.mac,
     password = this.password?.toLong(),
     isDeleted = this.isDeleted ?: false,
-    deviceName = this.name,
-    deviceType = this.type,
+    deviceName = deviceName,
+    deviceType = deviceType,
     broadcastId = this.broadcastId?.toLong(),
     broadcastIdString = this.broadcastIdString,
     userNumber = this.userNumber?.toString(),
-    protocolType = this.type, // Using type as protocol type
+    protocolType = deviceType, // Using type as protocol type
     createdAt = this.createdAt,
     // Convert isTemporary to isSynced: isTemporary=true means isSynced=false, isTemporary=false means isSynced=true
     // If isTemporary is null, default to false (not synced/temporary)

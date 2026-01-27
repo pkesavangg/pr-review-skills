@@ -212,17 +212,25 @@ constructor(
         }
 
         val scaleInfo = SCALES.find { it.sku == state.value.sku }
-        AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}, bodyComp: ${state.value.bodyComp}")
+        val currentSku = state.value.sku
+        val productName = scaleInfo?.productName ?: "Unknown Scale"
+
+        if (currentSku.isBlank()) {
+          AppLog.e(TAG, "SKU is null or blank, cannot save scale")
+          return@launch
+        }
+
+        AppLog.d(TAG, "Scale info found: $productName, bodyComp: ${state.value.bodyComp}, SKU: $currentSku")
 
         val appSyncDevice = Device(
           device = GGDeviceDetail(
-            deviceName = scaleInfo?.productName ?: "",
+            deviceName = productName,
             macAddress = "",
             identifier = "",
           ),
-          sku = state.value.sku,
+          sku = currentSku,
           deviceType = ScaleSetupType.AppSync.value,
-          nickname = scaleInfo?.productName!!,
+          nickname = productName,
         )
 
         AppLog.d(TAG, "Saving AppSync device: ${appSyncDevice.id}")
