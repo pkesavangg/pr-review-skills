@@ -128,9 +128,10 @@ constructor(
   private var isWifiConfigured: Boolean = discoveredScale?.device?.isWifiConfigured == true
   private var isAlreadyExited = false
 
-
   // Timeout constant - 5 minutes for all operations
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
+  // Delay to ensure scale is fully woken up before proceeding
+  private val wakeUpDelay: Long = 2000L // 2 seconds
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
   override fun handleIntent(intent: BtWifiScaleSetupIntent) {
@@ -1843,6 +1844,9 @@ constructor(
               }
               stopObservingDevices()
               customizeDevice(ggDeviceDetail)
+              AppLog.d(TAG, "Device discovered, waiting for scale to fully wake up")
+              // Add a delay to ensure the scale is properly woken up before proceeding
+              delay(wakeUpDelay) // 2 seconds delay similar to iOS implementation
               AppLog.d(TAG, "Wake up successful, proceeding to next step")
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
