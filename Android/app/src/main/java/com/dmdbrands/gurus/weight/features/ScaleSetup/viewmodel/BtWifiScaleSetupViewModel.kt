@@ -520,14 +520,34 @@ constructor(
                   setupType = ScaleSetupType.BtWifiR4,
                 )
               ) {
-                setMeasurementFailed()
+                // Check if only network/WiFi permission is missing
+                val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
+                  permissionMap = state.value.permissions,
+                  setupType = ScaleSetupType.BtWifiR4
+                )
+                val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
+                  disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
+
+                // Don't show error for STEP_ON if only network permission is missing
+                // Network permission is not required for step-on measurement
+                if (!isOnlyNetworkPermissionMissing) {
+                  setMeasurementFailed()
+                } else {
+                  AppLog.d(TAG, "Proceeding with STEP_ON - only network permission is missing, which is not required for measurement")
+                  stepOn()
+                }
               } else {
                 stepOn()
               }
             }
 
             BtWifiSetupStep.MEASUREMENT -> {
-              collectMeasurement()
+              // Only collect measurement if not already in a failed state
+              // This prevents overriding a failed state that was set in STEP_ON
+              val measurementConnectionState = currentState.stepConnectionStates[BtWifiSetupStep.MEASUREMENT]
+              if (measurementConnectionState !is ConnectionState.Failed) {
+                collectMeasurement()
+              }
             }
 
             else -> {
@@ -937,6 +957,8 @@ constructor(
         ConnectionState.Failed.Error,
       ),
     )
+
+    handleIntent(SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
   }
 
   /**
@@ -988,6 +1010,7 @@ constructor(
       BtWifiSetupStep.UPDATE_SETTINGS -> {
         updateSettingsTimeoutJob?.cancel()
         updateSettingsTimeoutJob = null
+        goToCustomiseSettings()
       }
 
       BtWifiSetupStep.MEASUREMENT -> {
@@ -1000,6 +1023,10 @@ constructor(
         AppLog.w(TAG, "Try again called on step that doesn't support retry: ${currentState.currentStep}")
       }
     }
+  }
+
+  fun goToCustomiseSettings() {
+    handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
   }
 
   private fun navigateTo(route: AppRoute) {
@@ -1317,6 +1344,17 @@ constructor(
     val areRequiredPermissionsEnabled =
       AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.BtWifiR4)
     if (!areRequiredPermissionsEnabled) {
+      // Get the list of disabled permissions to identify which specific permissions are missing
+      val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
+        permissionMap = state.value.permissions,
+        setupType = ScaleSetupType.BtWifiR4
+      )
+      AppLog.d(TAG, "Required permissions not enabled. Missing permissions: $disabledPermissions")
+
+      // Check if only WIFI_SWITCH is missing (network permission)
+      val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
+        disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
+
       val currentStep = state.value.currentStep
       when (currentStep) {
         BtWifiSetupStep.WAKEUP -> {
@@ -1329,7 +1367,13 @@ constructor(
         }
 
         BtWifiSetupStep.STEP_ON -> {
-          setMeasurementFailed()
+          // Don't show error for STEP_ON if only network/WiFi permission is missing
+          // Network permission is not required for step-on measurement
+          if (!isOnlyNetworkPermissionMissing) {
+            setMeasurementFailed()
+          } else {
+            AppLog.d(TAG, "Skipping STEP_ON error - only network permission is missing")
+          }
         }
 
         BtWifiSetupStep.WAKEUP,
