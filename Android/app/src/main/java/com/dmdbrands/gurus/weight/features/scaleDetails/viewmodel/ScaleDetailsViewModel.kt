@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -189,7 +190,7 @@ constructor(
           ggDeviceService.addCacheDevice(scale.device?.broadcastId, scale)
           navigationService.navigateTo(
             AppRoute.ScaleSetup.BtWifiScaleSetup(
-              scale.sku ?: "0412",
+              scale.sku ?: SKU_0412,
               BtWifiSetupStep.GATHERING_NETWORK,
               scale.device?.broadcastId,
             ),
