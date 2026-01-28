@@ -202,23 +202,26 @@ constructor(
 
   private fun checkAndSaveScale() {
     AppLog.d(TAG, "Checking and saving scale for SKU: $sku")
+
+    // Fail fast: Validate SKU before launching coroutine
+    val currentSku = state.value.sku
+    if (currentSku.isBlank()) {
+      AppLog.e(TAG, "SKU is null or blank, cannot save scale")
+      return
+    }
+
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     viewModelScope.launch {
       try {
-        val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == sku }
+
+        val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == currentSku }
         if (alreadyPairedScale != null) {
           AppLog.d(TAG, "Found already paired scale, deleting: ${alreadyPairedScale.id}")
           deviceService.deleteScale(alreadyPairedScale.id)
         }
 
-        val scaleInfo = SCALES.find { it.sku == state.value.sku }
-        val currentSku = state.value.sku
+        val scaleInfo = SCALES.find { it.sku == currentSku }
         val productName = scaleInfo?.productName ?: "Unknown Scale"
-
-        if (currentSku.isBlank()) {
-          AppLog.e(TAG, "SKU is null or blank, cannot save scale")
-          return@launch
-        }
 
         AppLog.d(TAG, "Scale info found: $productName, bodyComp: ${state.value.bodyComp}, SKU: $currentSku")
 
