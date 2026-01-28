@@ -386,8 +386,7 @@ fun ScaleDetailsScreenContent(
           handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
         }
 
-      ScaleSettingSteps.NONE -> {
-      }
+      ScaleSettingSteps.NONE -> Unit
     }
   }
 }
