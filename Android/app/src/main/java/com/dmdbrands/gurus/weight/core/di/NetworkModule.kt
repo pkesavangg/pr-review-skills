@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.di
 import androidx.annotation.RequiresApi
 import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
+import com.dmdbrands.gurus.weight.core.config.NetworkConfig
 import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.network.TokenManager
@@ -158,9 +159,9 @@ object NetworkModule {
         tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         val okHttpClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(NetworkConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(NetworkConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(NetworkConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
         // Only add logging interceptor if the app is debuggable
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
