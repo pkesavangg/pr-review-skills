@@ -1419,6 +1419,13 @@ constructor(
         viewModelScope.launch {
           if (it.wifiState == GGWifiState.GG_WIFI_STATE_CONNECTED.name) {
             AppLog.d(TAG, "Wifi connection successful")
+
+            this@BtWifiScaleSetupViewModel.isWifiConfigured = ssid.isNotBlank()
+            ggDeviceService.getConnectedWifiMacAddress(
+              discoveredScale!!.toGGBTDevice(),
+            ) { mac ->
+              this@BtWifiScaleSetupViewModel.wifiMac = mac
+            }
             handleIntent(
               BtWifiScaleSetupIntent.SetStepConnectionState(
                 BtWifiSetupStep.CONNECTING_WIFI,
@@ -1426,12 +1433,6 @@ constructor(
               ),
             )
             clearWifiPasswordForm()
-            this@BtWifiScaleSetupViewModel.isWifiConfigured = ssid.isNotBlank()
-            this@BtWifiScaleSetupViewModel.wifiMac = suspendCancellableCoroutine { cont ->
-              ggDeviceService.getConnectedWifiMacAddress(discoveredScale!!.toGGBTDevice()) { mac ->
-                cont.resume(mac)
-              }
-            }
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
               if (!isAlreadyExited) {
                 isAlreadyExited = true
