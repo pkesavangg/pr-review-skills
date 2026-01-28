@@ -1044,6 +1044,10 @@ constructor(
       val hasShown = userDataStore.hasShownAccountSwitchInfoModalForDevice()
       if (hasShown) return@launch
       val activeAccount = accountService.getCurrentAccount()
+      
+      // Set the flag to true when modal is shown, so it persists even if app closes
+      userDataStore.setAccountSwitchInfoModalShownForDevice(true)
+      
       dialogQueueService.enqueue(
         DialogModel.Custom(
           contentKey = DialogType.AccountSwitchInfoPopup,
@@ -1070,10 +1074,8 @@ constructor(
   }
 
   fun onAccountSwitchInfoDismiss() {
-    viewModelScope.launch {
-      userDataStore.setAccountSwitchInfoModalShownForDevice(true)
-      dialogQueueService.dismissCurrent()
-    }
+    // Flag is already set when modal is shown, just dismiss
+    dialogQueueService.dismissCurrent()
   }
 
   /**
