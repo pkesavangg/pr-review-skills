@@ -93,7 +93,7 @@ fun CustomizeScaleSettings(
       validators = listOf(
         FormValidations.required(),
         FormValidations.noWhiteSpace(),
-        FormValidations.maxLength(20),
+        FormValidations.maxLength(20,),
         FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
       ),
     )
