@@ -76,6 +76,11 @@ class BottomTabBarViewModel: ObservableObject {
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
     private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
+    /// Retains the Combine subscription for app-active notifications specifically used
+    /// when we need to re-check HealthKit permissions after the user is redirected to
+    /// the Apple Health app from the out-of-sync modal.
+    private var hkForegroundObserver: AnyCancellable? = nil
+    private let wgTotalPermissionsCount = 5
     
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
@@ -373,6 +378,16 @@ class BottomTabBarViewModel: ObservableObject {
         // Ensure active account exists before checking
         guard accountService.activeAccount != nil else { return }
         
+        // First check if permissions were restored after being out of sync
+        let permissionsRestored = await healthKitService.checkIfPermissionsRestoredAfterOutOfSync()
+        if permissionsRestored {
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                // Show success toast
+                self.notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+            }
+        }
+        
         do {
             if let modalState = try await healthKitService.shouldShowHKIntegrationModal() {
                 await MainActor.run { [weak self] in
@@ -413,6 +428,9 @@ class BottomTabBarViewModel: ObservableObject {
         case .outOfSync:
             onPrimary = { [weak self] in
                 guard let self else { return }
+                // Set flag indicating we're waiting for permissions to be restored
+                self.healthKitService.setWaitingForPermissionsRestored()
+                self.observeForegroundForHKPermissionChanges()
                 self.healthKitService.openAppleHealth()
                 self.notificationService.dismissModal()
             }
@@ -531,5 +549,33 @@ class BottomTabBarViewModel: ObservableObject {
             let modalData = ModalData(presentedView: AnyView(modalView))
             self.notificationService.showModal(modalData)
         }
+    }
+    
+    // MARK: - Apple Health Permission Observer
+    
+    /// Sets up a temporary observer that fires when the app becomes active again
+    /// (i.e. user returns from the Apple Health app). At that point we re-evaluate
+    /// granted permissions and, if all permissions are granted, show the success toast.
+    private func observeForegroundForHKPermissionChanges() {
+        // Avoid duplicating the observer.
+        if hkForegroundObserver != nil { return }
+        
+        hkForegroundObserver = NotificationCenter.default
+            .publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // Check again on main actor.
+                Task { @MainActor in
+                    let permissionsGranted = self.healthKitService.getApprovedPermissionList().count
+                    if permissionsGranted > 0 {
+                        // Permissions restored - clear the waiting flag and show success toast
+                        self.healthKitService.clearWaitingForPermissionsRestored()
+                        self.notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+                    }
+                    // Clean up observer
+                    self.hkForegroundObserver?.cancel()
+                    self.hkForegroundObserver = nil
+                }
+            }
     }
 }

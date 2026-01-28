@@ -263,6 +263,8 @@ final class HealthKitStore: ObservableObject {
     /// Presents an *Apple Health Out of Sync* alert.
     func showHKOutOfSyncAlert() {
         let lang = alertLang.HKOutOfSyncAlert
+        // Set up observer to check permissions when user returns from Apple Health
+        observeForegroundForOutOfSyncPermissionChanges()
         let alert = AlertModel(
             title: lang.title,
             message: lang.message,
@@ -291,7 +293,8 @@ final class HealthKitStore: ObservableObject {
     /// Sets up a temporary observer that fires when the app becomes active again
     /// (i.e. user returns from the Apple Health app). At that point we re-evaluate
     /// granted permissions and, if at least one permission is now granted, advance
-    /// the flow to `.integrationComplete`.
+    /// the flow to `.integrationComplete`. If all permissions are granted, automatically
+    /// finish the integration flow and show the success toast.
     private func observeForegroundForPermissionChanges() {
         // Avoid duplicating the observer.
         if foregroundObserver != nil { return }
@@ -304,11 +307,43 @@ final class HealthKitStore: ObservableObject {
                 Task { @MainActor in
                     let permissionsGranted = self.healthKitService.getApprovedPermissionList().count
                     if permissionsGranted > 0 {
-                        self.activeState = .integrationComplete
-                        // Remove observer once done.
+                        // If all permissions are granted, automatically finish the flow and show toast
+                        if permissionsGranted >= self.wgTotalPermissionsCount {
+							print("permissionsGranted: \(permissionsGranted)")
+                            self.finishIntegrationFlow()
+                        } else {
+                            // Partial permissions - show integration complete modal for user to finish
+                            self.activeState = .integrationComplete
+                        }
                     } else {
                         self.activeState = nil
                     }
+                    self.foregroundObserver?.cancel()
+                    self.foregroundObserver = nil
+                }
+            }
+    }
+    
+    /// Sets up a temporary observer for out-of-sync alert flow that fires when the app becomes active again
+    /// (i.e. user returns from the Apple Health app). Checks if permissions are restored and shows synced toast.
+    private func observeForegroundForOutOfSyncPermissionChanges() {
+        // Avoid duplicating the observer.
+        if foregroundObserver != nil { return }
+        
+        foregroundObserver = NotificationCenter.default
+            .publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // Check again on main actor.
+                Task { @MainActor in
+                    let permissionsGranted = self.healthKitService.getApprovedPermissionList().count
+                    if permissionsGranted > 0 {
+                        // Permissions restored - clear the waiting flag, show synced toast and update local state
+                        self.healthKitService.clearWaitingForPermissionsRestored()
+                        self.notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+                        self.getLocalStoredData()
+                    }
+                    // Clean up observer
                     self.foregroundObserver?.cancel()
                     self.foregroundObserver = nil
                 }
