@@ -595,21 +595,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         guard !isExiting else { return }
         
         // Settings WiFi setup: show exit alert when trying to go back from WiFi list
-        if isSettingsWifiSetup && currentStep == .availableWifiList {
-            presentExitAlert(
-                onConfirm: { [weak self] in
-                    self?.cancelWifi()
-                    self?.scaleSetupError = .none
-                    // Dismiss sheet first, then clear states after delay
-                    self?.dismissAction?()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                        self?.connectionState = .success
-                    }
-                },
-                onCancel: {
-                    // User chose to go back - do nothing, stay on current screen
-                }
-            )
+        if handleSettingsWifiSetupExit() {
             return
         }
         
@@ -826,19 +812,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         fetchWifiNetworksTask = nil
         
         // Settings WiFi setup: show exit alert when back button is tapped in WiFi list
-        if isSettingsWifiSetup && currentStep == .availableWifiList {
-            presentExitAlert(
-                onConfirm: { [weak self] in
-                    self?.cancelWifi()
-                    self?.scaleSetupError = .none
-                    // Dismiss sheet first, then clear states after delay
-                    self?.dismissAction?()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                        self?.connectionState = .success
-                    }
-                },
-                onCancel: {}
-            )
+        if handleSettingsWifiSetupExit() {
             return
         }
         
@@ -877,6 +851,30 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self.notificationService.dismissModal()
             })
         ))
+    }
+    
+    /// Handles exit from Settings WiFi setup when on available WiFi list
+    /// Returns true if exit was handled (caller should return early), false otherwise
+    private func handleSettingsWifiSetupExit() -> Bool {
+        guard isSettingsWifiSetup && currentStep == .availableWifiList else {
+            return false
+        }
+        
+        presentExitAlert(
+            onConfirm: { [weak self] in
+                self?.cancelWifi()
+                self?.scaleSetupError = .none
+                // Dismiss sheet first, then clear states after delay
+                self?.dismissAction?()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.connectionState = .success
+                }
+            },
+            onCancel: {
+                // User chose to go back - do nothing, stay on current screen
+            }
+        )
+        return true
     }
     
     /// Shows Bluetooth turned off alert
@@ -993,21 +991,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Handles the next button click based on the current step.
     func handleBackButtonClick() {
         // Settings WiFi setup: show exit alert when back button is tapped in WiFi list
-        if isSettingsWifiSetup && currentStep == .availableWifiList {
-            presentExitAlert(
-                onConfirm: { [weak self] in
-                    self?.cancelWifi()
-                    self?.scaleSetupError = .none
-                    // Dismiss sheet first, then clear states after delay
-                    self?.dismissAction?()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                        self?.connectionState = .success
-                    }
-                },
-                onCancel: {
-                    // User chose to go back - do nothing, stay on current screen
-                }
-            )
+        if handleSettingsWifiSetupExit() {
             return
         }
         
