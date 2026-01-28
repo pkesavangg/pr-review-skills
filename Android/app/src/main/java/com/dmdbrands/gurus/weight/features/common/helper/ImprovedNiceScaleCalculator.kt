@@ -81,7 +81,8 @@ object ImprovedNiceScaleCalculator {
       dataMin = dataMin,
       dataMax = dataMax,
       step = result.step,
-      ticks = result.ticks
+      ticks = result.ticks,
+      desiredTickCount = desired
     )
     
     // Align domain to adjusted tick range so plot bounds match horizontal rules
@@ -92,23 +93,28 @@ object ImprovedNiceScaleCalculator {
     val finalMin = if (isWeightLessMode) domainMin else maxOf(domainMin, 0.0)
     val finalMax = domainMax
     
-    // If we clamped to 0, regenerate ticks from 0
-    val finalTicks = if (!isWeightLessMode && domainMin < 0) {
-      val adjustedResult = niceTicks(min = 0.0, max = finalMax, desiredTickCount = desired)
-      applyEdgeBufferToTicks(
+    // iOS sanitization step: if not in weightless mode and domainMin < 0, recalculate with max(3, buffered.ticks.size)
+    val (finalTicks, finalStep) = if (!isWeightLessMode && domainMin < 0) {
+      // Sanitize: recalculate with desiredTickCount = max(3, initial.ticks.count)
+      val sanitizedDesiredTickCount = maxOf(3, buffered.ticks.size)
+      val sanitizedResult = niceTicks(min = 0.0, max = finalMax, desiredTickCount = sanitizedDesiredTickCount)
+      // Apply edge buffer again after sanitization
+      val sanitizedBuffered = applyEdgeBufferToTicks(
         dataMin = dataMin,
         dataMax = dataMax,
-        step = adjustedResult.step,
-        ticks = adjustedResult.ticks
-      ).ticks
+        step = sanitizedResult.step,
+        ticks = sanitizedResult.ticks,
+        desiredTickCount = sanitizedDesiredTickCount
+      )
+      Pair(sanitizedBuffered.ticks, sanitizedBuffered.step)
     } else {
-      buffered.ticks
+      Pair(buffered.ticks, buffered.step)
     }
     
     return AxisMeta(
       min = finalMin,
       max = finalMax,
-      step = buffered.step,
+      step = finalStep,
       count = finalTicks.size,
       ticks = finalTicks
     )
@@ -270,7 +276,8 @@ object ImprovedNiceScaleCalculator {
     step: Double,
     ticks: List<Double>,
     thresholdRatio: Double = 0.35,
-    maxTicks: Int = 6
+    maxTicks: Int = 6,
+    desiredTickCount: Int? = null
   ): EdgeBufferResult {
     if (ticks.isEmpty()) return EdgeBufferResult(step, ticks)
 
@@ -279,26 +286,15 @@ object ImprovedNiceScaleCalculator {
     var proposedStep = step
 
     // Determine if data is too close to outer ticks
-    val tooCloseToTop = (proposedMax - dataMax) < (proposedStep * thresholdRatio)
-    val tooCloseToBottom = (dataMin - proposedMin) < (proposedStep * thresholdRatio)
+    // Use <= to handle exact threshold matches conservatively (extend when distance equals threshold)
+    val tooCloseToTop = (proposedMax - dataMax) <= (proposedStep * thresholdRatio)
+    val tooCloseToBottom = (dataMin - proposedMin) <= (proposedStep * thresholdRatio)
 
     if (tooCloseToTop) proposedMax += proposedStep
     if (tooCloseToBottom) proposedMin -= proposedStep
 
-    // If range extended significantly, recalculate optimal step based on extended range
-    // This ensures we get appropriate step size for the extended range (e.g., step=50 for 0-100 range)
-    val originalRange = ticks.last() - ticks.first()
-    val extendedRange = proposedMax - proposedMin
-    val rangeExtensionRatio = extendedRange / originalRange.coerceAtLeast(1.0)
-    
-    // If range extended (even slightly), recalculate step for the extended range to get optimal tick count
-    if (rangeExtensionRatio > 1.1 || tooCloseToTop || tooCloseToBottom) {
-      // Use targetTickCount=3 to get cleaner graphs with fewer ticks (matches iOS behavior)
-      // This produces step=50 for range 0-100, giving ticks [0, 50, 100]
-      proposedStep = calculateOptimalStep(range = extendedRange, targetTickCount = 3)
-    }
-
-    // Re-enforce tick limits and regenerate ticks uniformly
+    // Re-enforce tick limits and regenerate ticks uniformly using the original step
+    // The step was already chosen optimally for the data range, so we preserve it when extending
     var enforced = enforceTickLimits(min = proposedMin, max = proposedMax, initialStep = proposedStep)
 
     // If still too close and we haven't exceeded soft cap, try to extend once more on each side

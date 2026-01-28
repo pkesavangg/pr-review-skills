@@ -214,6 +214,7 @@ class GraphViewModel @AssistedInject constructor(
             goal.goalWeight.div(10.0) + 10.0,
             goal.goalWeight.div(10.0),
             isWeightLessMode = isWeightlessMode,
+            targetTickCount = 4,
           ) else null
 
           if (graphMeta != null) {
@@ -412,7 +413,7 @@ class GraphViewModel @AssistedInject constructor(
         minValue = minValue,
         maxValue = maxValue,
         goalWeight = goal?.goalWeight ?: 0.0, isWeightLessMode = isWeightlessMode,
-        targetTickCount = 5,
+        targetTickCount = 4,
       )
 
       // Validate graphMeta values are finite
