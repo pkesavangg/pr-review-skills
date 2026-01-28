@@ -34,6 +34,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupSt
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
@@ -76,7 +77,6 @@ import java.time.Instant
 import java.util.TimeZone
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.util.Log
 
 /**
  * ViewModel for the BtWifiScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -230,7 +230,6 @@ constructor(
     }
 
     handleIntent(BtWifiScaleSetupIntent.SetPermissions(updatedPermissions))
-    Log.d("permissionssetup", "Initial permissions: $permissions - Updated: $updatedPermissions")
   }
 
   private fun initializeSetup() {
@@ -711,7 +710,7 @@ constructor(
         title = ScaleSetupStrings.SkipBtWifiPermissions.Title,
         message = ScaleSetupStrings.SkipBtWifiPermissions.Message,
         confirmText = ScaleSetupStrings.SkipBtWifiPermissions.Skip,
-        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.Goback,
+        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.back,
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
@@ -739,7 +738,7 @@ constructor(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
           message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
           onConfirm = {
             onExit()
           },
@@ -1320,6 +1319,7 @@ constructor(
       val currentStep = state.value.currentStep
       when (currentStep) {
         BtWifiSetupStep.WAKEUP -> {
+          goToPermissionSlide()
           handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
         }
 
@@ -1331,9 +1331,23 @@ constructor(
           setMeasurementFailed()
         }
 
+        BtWifiSetupStep.WAKEUP,
+        BtWifiSetupStep.CONNECTING_BLUETOOTH,
+        BtWifiSetupStep.DUPLICATES_FOUND,
+        BtWifiSetupStep.USER_LIMIT_REACHED -> {
+          goToPermissionSlide()
+        }
+
         else -> {}
       }
     }
+  }
+
+  private fun goToPermissionSlide() {
+    if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
+      handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
+    }
+    AppLog.d(TAG, "Permissions not granted, moving to permissions step")
   }
 
   /**
@@ -1759,7 +1773,8 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.BiaModal,
-        dismissOnBackPress = true
+        dismissOnBackPress = true,
+        dismissOnClickOutside = true,
       ),
     )
   }
@@ -1917,6 +1932,7 @@ Log.d("ggdevicedetail","${ggDeviceDetail.macAddress}")
           message = ScaleUsersStrings.DeleteUserAlert.Message(user.name),
           confirmText = ScaleUsersStrings.DeleteUserAlert.Delete,
           cancelText = ScaleUsersStrings.DeleteUserAlert.Back,
+          primaryActionType = ButtonType.ErrorText,
           onConfirm = {
             // Delete user and update the list
             viewModelScope.launch {
