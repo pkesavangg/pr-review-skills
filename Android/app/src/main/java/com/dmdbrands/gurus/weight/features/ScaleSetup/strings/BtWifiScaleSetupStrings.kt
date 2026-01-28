@@ -85,7 +85,7 @@ object BtWifiScaleSetupStrings {
       const val Message =
         "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
       const val Restore = "Restore"
-      const val GoBack = "Go Back"
+      const val Back = "Back"
     }
   }
 
