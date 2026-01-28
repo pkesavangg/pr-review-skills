@@ -1808,7 +1808,6 @@ constructor(
       GGScanResponseType.NEW_DEVICE -> {
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
           viewModelScope.launch {
-Log.d("ggdevicedetail","${ggDeviceDetail.macAddress}")
             if (deviceService.pairedScales.first()
                 .any { it.device?.macAddress == ggDeviceDetail.macAddress } && !ggDeviceService.localSkipDevices.value.contains(
                 ggDeviceDetail.broadcastIdString,
