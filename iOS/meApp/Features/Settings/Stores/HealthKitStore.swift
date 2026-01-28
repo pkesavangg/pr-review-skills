@@ -34,6 +34,9 @@ final class HealthKitStore: ObservableObject {
     var cancellables: Set<AnyCancellable> = []
     let wgTotalPermissionsCount = 5
     
+    /// Duration to wait for sheet dismissal animation to complete before showing subsequent UI.
+    private static let sheetDismissalAnimationDurationNanoseconds: UInt64 = 300_000_000 // 0.3 seconds
+    
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
     /// the Apple Health app.
@@ -210,7 +213,7 @@ final class HealthKitStore: ObservableObject {
         // Dismiss the current sheet
         self.dismissModal()
         // Small delay to ensure sheet dismissal animation completes
-        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 second delay
+        try? await Task.sleep(nanoseconds: Self.sheetDismissalAnimationDurationNanoseconds)
         // Show sync alert if needed
         do {
             let count = try await entryService.getEntryCount()
