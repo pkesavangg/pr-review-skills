@@ -34,7 +34,7 @@ final class AppSyncTabStore: ObservableObject {
     }
     
     private static let minWeightKg: Float = 10.0
-    private static let maxWeightKg: Float = 1000.0
+    private static let maxWeightKg: Float = 450.0
     
     /// Converts the scanned body-composition data into the format expected by
     /// `AppSyncEntryCardView` and shows the confirmation modal.
