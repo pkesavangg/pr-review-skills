@@ -54,6 +54,8 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Permission Disabled Alert Tracking
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
     private var hasShownPermissionAlert: Bool = false
+    /// Tracks whether the Apple Health integration sheet is currently presented
+    private var isAppleHealthSheetPresented: Bool = false
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
@@ -98,6 +100,21 @@ class BottomTabBarViewModel: ObservableObject {
                 if !self.bluetoothService.isSetupInProgress {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
                 }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for Apple Health sheet presentation/dismissal notifications
+        NotificationCenter.default.publisher(for: .appleHealthSheetPresented)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.isAppleHealthSheetPresented = true
+            }
+            .store(in: &cancellables)
+        
+        NotificationCenter.default.publisher(for: .appleHealthSheetDismissed)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.isAppleHealthSheetPresented = false
             }
             .store(in: &cancellables)
         
@@ -449,11 +466,14 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Scale Discovery Handling
     private func shouldShowDiscoveredScale(for event: DeviceDiscoveryEvent) -> Bool {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
+        /// Prevents showing scale discovery when Apple Health integration sheet is already presented
+        /// to avoid dismissing the Apple Health sheet unexpectedly.
         guard !bluetoothService.isSetupInProgress,
               bluetoothService.canShowScaleDiscoveredModal,
               !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
+              !isAppleHealthSheetPresented, // Prevent scale discovery when Apple Health sheet is shown
               event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
               !event.deviceInfo.sku.isEmpty else {
             return false
