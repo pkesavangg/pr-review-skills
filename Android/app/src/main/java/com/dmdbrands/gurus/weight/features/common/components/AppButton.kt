@@ -197,7 +197,7 @@ object AppButtonDefaults {
   // Button height by size
   fun height(size: ButtonSize): Dp =
     when (size) {
-      ButtonSize.XSmall -> 14.dp
+      ButtonSize.XSmall -> 16.dp
       ButtonSize.Small -> 35.dp
       ButtonSize.Medium -> 45.dp
       ButtonSize.Large -> 40.dp
@@ -313,12 +313,7 @@ fun AppButton(
   val maxLines = 1
   val buttonModifier = modifier
     .then(
-      if (
-        type != ButtonType.InlineTextPrimary &&
-        type != ButtonType.InlineTextSecondary && type != ButtonType.TextSecondary && type != ButtonType.TextPrimary
-        && type != ButtonType.TextTertiary && type != ButtonType.InlineTextTertiary
-        && type != ButtonType.ErrorText
-      ) {
+      if (type != ButtonType.InlineTextPrimary || type != ButtonType.InlineTextSecondary) {
         Modifier.height(height)
       } else {
         Modifier
