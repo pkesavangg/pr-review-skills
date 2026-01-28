@@ -59,8 +59,8 @@ struct ApModeConnectionView: View {
                     }
                 }
             }
-            .padding(.horizontal, 2)
-            .padding(.top, .spacingLG)
+            // .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(EdgeInsets(top: .spacingLG, leading: .spacingSM, bottom: 0, trailing: .spacingSM))
         }
     }
 }

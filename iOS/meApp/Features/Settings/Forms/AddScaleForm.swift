@@ -54,8 +54,8 @@ class AddScaleForm: ObservableForm {
 
     private var modelNumberError: String? {
         guard modelNumber.isDirty else { return nil }
-        if modelNumber.errors[.required] ||
-            modelNumber.errors[.minLength] ||
+        guard !modelNumber.value.isEmpty else { return nil }
+        if modelNumber.errors[.minLength] ||
             modelNumber.errors[.maxLength] ||
             modelNumber.errors[.skuMatch] {
             return FormErrorMessages.modelNumberInvalid
