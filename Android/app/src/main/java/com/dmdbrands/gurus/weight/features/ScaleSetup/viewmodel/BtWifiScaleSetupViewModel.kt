@@ -1257,7 +1257,7 @@ constructor(
         val listWithActiveUserOnTop = filteredUserList.sortedByDescending { user ->
           user.name.equals(currentUserName, ignoreCase = true)
         }
-        AppLog.e(TAG, " during fetching user list $userList")
+        AppLog.d(TAG, "During fetching user list $userList")
         handleIntent(BtWifiScaleSetupIntent.SetUserList(listWithActiveUserOnTop))
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e)
