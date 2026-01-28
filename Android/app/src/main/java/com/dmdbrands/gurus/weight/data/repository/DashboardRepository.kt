@@ -46,11 +46,6 @@ class DashboardRepository @Inject constructor(
         ?.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
         ?: emptyList()
 
-      // Debug: Log what we're getting
-      AppLog.d("DashboardRepository", "Raw dashboardMetrics: ${settings?.dashboardMetrics}")
-      AppLog.d("DashboardRepository", "Parsed metrics: ${visibleMetricsFromServer.map { it.name }}")
-      AppLog.d("DashboardRepository", "Available metrics: ${availableMetrics.map { it.name }}")
-
       // Always filter server metrics by available metrics
       // This ensures we only show metrics that are valid for the current dashboard type
       val result = visibleMetricsFromServer.filter { metric ->
