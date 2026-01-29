@@ -1166,14 +1166,14 @@ constructor(
 
                 // Defer dashboard 4→12 metrics update and user list fetch to avoid blocking the transition.
                 // These operations run in the background after navigation.
-                viewModelScope.launch {
+                try {
                   // Fetch user list in background for duplicate detection (if needed later)
                   fetchUserList()
 
                   // Update dashboard type and metrics in background
                   if (accountService.activeAccountFlow.first()?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
                     accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
-                    val dashboardMetrics = accountService.activeAccountFlow.first()!!.dashboardMetrics
+                    val dashboardMetrics = accountService.activeAccountFlow.first()!!.dashboardMetrics ?: emptyList()
                     val additionalMetrics = StatHelper.getAdditionalMetrics()
                     val updatedMetrics = (dashboardMetrics ?: emptyList()).toMutableList().apply {
                       additionalMetrics.forEach { metric ->
@@ -1185,6 +1185,9 @@ constructor(
                     val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
                     dashboardService.updateVisibleMetricKeys(accountId, metricKeys, DashboardType.DASHBOARD_12_METRICS)
                   }
+                } catch (e: Exception) {
+                  // Log errors but don't block navigation - these are background operations
+                  AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
                 }
               }
             }
@@ -1281,9 +1284,16 @@ constructor(
         }
         val filteredUserList = userList.filter { user -> user.token != discoveredScale?.token }
         // Keep the active app user on top so duplicate detection (by name match) is straightforward.
+        // If currentUserName is null, sorting will keep original order (no user matches null).
         val currentUserName = accountService.activeAccountFlow.first()?.firstName?.take(20)
-        val listWithActiveUserOnTop = filteredUserList.sortedByDescending { user ->
-          user.name.equals(currentUserName, ignoreCase = true)
+        val listWithActiveUserOnTop = if (currentUserName != null) {
+          filteredUserList.sortedByDescending { user ->
+            user.name.equals(currentUserName, ignoreCase = true)
+          }
+        } else {
+          // No active user name available - return list as-is
+          AppLog.w(TAG, "No active user name available for sorting user list")
+          filteredUserList
         }
         AppLog.d(TAG, "During fetching user list $userList")
         handleIntent(BtWifiScaleSetupIntent.SetUserList(listWithActiveUserOnTop))
