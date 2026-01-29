@@ -351,8 +351,8 @@ class FormGroup<T : Any>(
 
         for (validator in groupValidators) {
             val err = validator(controls)
-          AppLog.e("Form", "Group validator: $err")
             if (err != null) {
+                AppLog.e("Form", "Group validator: $err")
                 _groupError.value = err
                 return false
             }
