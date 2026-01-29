@@ -27,6 +27,11 @@ struct LandingScreen: View {
         !landingStore.accounts.isEmpty
     }
     
+    // Check if there are any logged-in users
+    var hasLoggedInUsers: Bool {
+        !landingStore.accounts.isEmpty
+    }
+    
     var body: some View {
         RoutingView(stack: $router.stack) {
             ZStack {
