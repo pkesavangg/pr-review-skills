@@ -195,7 +195,7 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
   val deviceSku = this.sku
 
   // Get name and type based on SKU from SCALES lookup
-  val scaleInfo = SCALES.find { it.sku == DeviceHelper.mapSkuForDisplay(deviceSku) }
+  val scaleInfo = SCALES.find { it.sku == DeviceHelper.mapSkuForDisplay(deviceSku.toString()) }
   val deviceName = this.name ?: scaleInfo?.productName ?: "Unknown Scale"
   val deviceType = this.type ?: "Unknown Type"
 
