@@ -54,10 +54,10 @@ class NetworkConnectivityObserver
                             network: Network,
                             capabilities: NetworkCapabilities,
                         ) {
-                            val updatedCapabilities = connectivityManager?.getNetworkCapabilities(network)
-                            val state =
-                                updatedCapabilities?.let { hasCapabilitiesChanged(it) }
-                                    ?: NetworkState(available = false, unAvailable = true)
+                            // Use the capabilities parameter directly instead of re-fetching.
+                            // Re-fetching can return null during network transitions and incorrectly
+                            // emit unavailable state when network is actually available.
+                            val state = hasCapabilitiesChanged(capabilities)
                             trySend(state)
                         }
 
@@ -104,11 +104,12 @@ class NetworkConnectivityObserver
 
         /**
          * Determines network state based on capabilities.
+         * Uses NET_CAPABILITY_INTERNET as the primary signal; NET_CAPABILITY_VALIDATED
+         * may be temporarily false during network transitions, so we use internet capability
+         * only to prevent false "unavailable" states.
          */
         private fun hasCapabilitiesChanged(capabilities: NetworkCapabilities): NetworkState {
-            val isConnected =
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            return NetworkState(available = isConnected, unAvailable = !isConnected)
+            val hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            return NetworkState(available = hasInternet, unAvailable = !hasInternet)
         }
     }
