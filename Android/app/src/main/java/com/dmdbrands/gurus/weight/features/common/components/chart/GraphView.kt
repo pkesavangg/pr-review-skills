@@ -179,6 +179,8 @@ fun GraphView(
               targets,
               click,
               segment,
+              state.minTarget?.toDouble(),
+              state.maxTarget?.toDouble(),
             )
           if (targetMarkerIndex.isNotEmpty()) {
             val targetIndex = targetMarkerIndex.first().toLong()
@@ -215,7 +217,25 @@ fun GraphView(
   )
 }
 
-fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment): List<Double> {
+/**
+ * Gets target points based on visible labels, available points, and current window bounds.
+ *
+ * @param fullList List of visible axis labels (from scrollState).
+ * @param points List of all available target points.
+ * @param input The clicked position value.
+ * @param segment The graph segment type.
+ * @param minWindow Optional minimum x value of current window from state.
+ * @param maxWindow Optional maximum x value of current window from state.
+ * @return List of target points that match the criteria.
+ */
+fun getTargetPoints(
+  fullList: List<Double>,
+  points: List<Double>,
+  input: Double,
+  segment: GraphSegment,
+  minWindow: Double? = null,
+  maxWindow: Double? = null,
+): List<Double> {
 
   // For TOTAL segment, find nearest targets from click without considering visible labels
   if (segment == GraphSegment.TOTAL) {
@@ -226,17 +246,54 @@ fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double,
   // For other segments, use the original logic with visible labels
   if (fullList.isEmpty()) return emptyList()
 
-  // find lower and upper bound from full list
+  // find lower and upper bound from full list (visible labels)
   val lower = fullList.filter { it <= input }.maxOrNull()
   val upper = fullList.filter { it >= input }.minOrNull()
 
-  // edge case: if input is outside range
-  if (lower == null && upper == null) return emptyList()
-  if (lower == null) return listOfNotNull(upper)
-  if (upper == null) return listOfNotNull(lower)
+  // Handle edge cases where input is outside fullList range
+  // Use window bounds from state to find points within current window
+  if (lower == null) {
+    // Input is below fullList range, find points within window bounds
+    val pointsInRange = if (minWindow != null) {
+      points.filter { it in minWindow..input }
+    } else {
+      points.filter { it <= input }
+    }
+    return if (pointsInRange.isNotEmpty()) {
+      // Return the nearest point to input, not just the max
+      val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
+      listOfNotNull(nearestTarget)
+    } else {
+      emptyList()
+    }
+  }
 
-  // filter targets within the upper and lower bound
-  val filteredTargets = points.filter { it in lower..upper }
+  if (upper == null) {
+    // Input is above fullList range, find points within window bounds
+    val pointsInRange = if (maxWindow != null) {
+      points.filter { it in input..maxWindow }
+    } else {
+      points.filter { it >= input }
+    }
+    return if (pointsInRange.isNotEmpty()) {
+      // Return the nearest point to input, not just the min
+      val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
+      listOfNotNull(nearestTarget)
+    } else {
+      emptyList()
+    }
+  }
+
+  // Both lower and upper exist, proceed with original logic
+  // Filter targets within the window bounds if available, otherwise use lower..upper
+  val searchRange = if (minWindow != null && maxWindow != null) {
+    // Use intersection of visible labels range and window bounds
+    kotlin.math.max(minWindow, lower)..kotlin.math.min(maxWindow, upper)
+  } else {
+    lower..upper
+  }
+
+  val filteredTargets = points.filter { it in searchRange }
 
   return when {
     filteredTargets.isEmpty() -> {
