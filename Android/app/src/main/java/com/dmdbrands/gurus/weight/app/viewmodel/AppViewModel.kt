@@ -70,7 +70,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
