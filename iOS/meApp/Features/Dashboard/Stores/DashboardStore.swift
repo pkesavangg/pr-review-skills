@@ -1799,6 +1799,7 @@ class DashboardStore: ObservableObject {
                     }
 
                     self.notificationService.dismissLoader()
+                    self.resetMetricsToLatestEntry()
 
                     // Single UI update after all state changes are complete
                     self.forceImmediateUIUpdate()
@@ -1822,6 +1823,7 @@ class DashboardStore: ObservableObject {
                         self.hasEditSnapshot = false
                     }
                     self.notificationService.dismissLoader()
+                    self.resetMetricsToLatestEntry()                   
                     self.forceImmediateUIUpdate()
                 }
             }
