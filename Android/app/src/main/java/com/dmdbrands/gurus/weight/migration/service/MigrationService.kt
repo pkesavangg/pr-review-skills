@@ -237,8 +237,20 @@ class MigrationService @Inject constructor(
         return@withContext false
       }
       val ionicDeviceMap = IonicDataConverter.parseDevicesWithGson(devicesJsonMap)
+      Log.d("migrationdata","$ionicDeviceMap")
       val deviceDetails = ionicDeviceMap.flatMap { (accountID, ionicScales) ->
-        ionicScales.map { it.toDeviceDetails(accountID) }
+        ionicScales.mapNotNull { scale ->
+          val deviceDetail = scale.toDeviceDetails(accountID)
+          if (deviceDetail == null) {
+            Log.w(TAG, "Skipping scale migration for account $accountID: SKU is null or empty")
+          }
+          deviceDetail
+        }
+      }
+      if (deviceDetails.isEmpty()) {
+        Log.w(TAG, "No valid devices to migrate (all devices had null/empty SKU)")
+      } else {
+        Log.d(TAG, "Migrating ${deviceDetails.size} devices with valid SKU")
       }
       migrationRepository.insertDevice(deviceDetails)
       true

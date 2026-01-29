@@ -25,6 +25,7 @@ data class AccountInfo(
     val isStreakOn: Boolean,
     val dashboardType: String,
     val dashboardMetrics: List<String>,
+    val progressMetrics: List<String>,
     val goalType: String? = null,
     val goalWeight: Float?,
     val initialWeight: Float?,

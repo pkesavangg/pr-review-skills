@@ -104,8 +104,9 @@ struct ScaleBluetoothScreen: View {
         onTap: @escaping () -> Void
     ) -> some View {
         ListItemView(
-            leadingImage: isEnabled ? AppAssets.filledTickCircle : AppAssets.minusCircle,
+            leadingImage: isEnabled ? AppAssets.filledTickCircle : AppAssets.minusCircleClear,
             useThemedImage: !isEnabled,
+            leadingImageColor: isEnabled ? nil : theme.statusIconSecondary,
             title: title,
             trailing: isEnabled ? nil : Image(AppAssets.chevronRight)
                 .foregroundColor(theme.actionPrimary),

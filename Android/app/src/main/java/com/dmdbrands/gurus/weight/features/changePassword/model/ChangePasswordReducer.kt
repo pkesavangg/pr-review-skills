@@ -78,10 +78,12 @@ data class ChangePasswordFormControls(
                                     FormValidations.minLength(
                                         AppValidatorConfig.Password.MIN_LENGTH,
                                         customMessage = ChangePasswordStrings.PasswordMin,
+                                        allowSpaces = true,
                                     ),
                                     FormValidations.maxLength(
                                         AppValidatorConfig.Password.MAX_LENGTH,
                                         customMessage = ChangePasswordStrings.PasswordMax,
+                                        allowSpaces = true,
                                     ),
                                 ),
                         ),
@@ -94,10 +96,12 @@ data class ChangePasswordFormControls(
                                     FormValidations.minLength(
                                       AppValidatorConfig.Password.MIN_LENGTH,
                                       customMessage = ChangePasswordStrings.PasswordMin,
+                                      allowSpaces = true,
                                     ),
                                     FormValidations.maxLength(
                                       AppValidatorConfig.Password.MAX_LENGTH,
                                       customMessage = ChangePasswordStrings.PasswordMax,
+                                      allowSpaces = true,
                                     ),
                                 ),
                         ),
@@ -110,10 +114,12 @@ data class ChangePasswordFormControls(
                                     FormValidations.minLength(
                                       AppValidatorConfig.Password.MIN_LENGTH,
                                       customMessage = ChangePasswordStrings.PasswordMin,
+                                      allowSpaces = true,
                                     ),
                                     FormValidations.maxLength(
                                       AppValidatorConfig.Password.MAX_LENGTH,
                                       customMessage = ChangePasswordStrings.PasswordMax,
+                                      allowSpaces = true,
                                     ),
                                 ),
                         ),

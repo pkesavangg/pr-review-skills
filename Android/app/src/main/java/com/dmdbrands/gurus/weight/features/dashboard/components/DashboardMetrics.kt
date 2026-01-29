@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
  * Composable for the dashboard metrics section that displays health metrics in a grid layout.
@@ -192,7 +193,7 @@ private fun DashboardMetricsGrid(
     userScrollEnabled = false,
     modifier = Modifier
       .fillMaxWidth()
-      .padding(horizontal = MeTheme.spacing.sm)
+      .padding(horizontal = if(isFromSetup) 0.dp else spacing.sm)
       .heightIn(max = 500.dp),
     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),

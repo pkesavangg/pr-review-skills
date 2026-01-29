@@ -21,6 +21,11 @@ struct LandingScreen: View {
     var height: CGFloat {
         CGFloat(min(itemHeight * landingStore.userItems.count, itemHeight * 5))
     }
+
+    // Check if there are any logged-in users
+    var hasLoggedInUsers: Bool {
+        !landingStore.accounts.isEmpty
+    }
     
     // Check if there are any logged-in users
     var hasLoggedInUsers: Bool {

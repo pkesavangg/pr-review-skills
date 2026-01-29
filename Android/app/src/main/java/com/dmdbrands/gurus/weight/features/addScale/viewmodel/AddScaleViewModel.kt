@@ -110,7 +110,7 @@ constructor(
           title = PairedScaleExistsAlert.Title,
           message = PairedScaleExistsAlert.Message(scaleInfo.sku),
           confirmText = PairedScaleExistsAlert.Pair,
-          cancelText = PairedScaleExistsAlert.Cancel,
+          cancelText = PairedScaleExistsAlert.Return,
           onConfirm = {
             AppLog.d(TAG, "User confirmed pairing existing scale")
             navigateToSelectedScaleSetup(sku)

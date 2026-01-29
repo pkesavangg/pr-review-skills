@@ -51,6 +51,11 @@ struct WifiPasswordView: View {
                                 }
                             }
                         )
+                        .onChange(of: focusedField) { oldValue, newValue in
+                            if oldValue == .networkName && newValue != .networkName {
+                                store.networkForm.touchAndValidateSSID()
+                            }
+                        }
                         // Clear SSID only if permissions were skipped and are still disabled
                         .onAppear {
                             if store.permissionsSkipped && !store.arePermissionsEnabled() {
@@ -79,6 +84,11 @@ struct WifiPasswordView: View {
                                 }
                             }
                         )
+                        .onChange(of: focusedField) { oldValue, newValue in
+                            if oldValue == .password && newValue != .password {
+                                store.networkForm.touchAndValidatePassword()
+                            }
+                        }
                         
                         CustomToggleView(isOn: $store.networkForm.networkHasNoPassword, text: lang.networkHasNoPassword)
                             .padding(.top, 0)

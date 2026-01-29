@@ -18,34 +18,34 @@ class AccountsStore: ObservableObject {
     @Injector var entryService: EntryService
     @Injector var logger: LoggerService
     @Injector var feedService: FeedService
-    
+
     private let networkMonitor = NetworkMonitor.shared
-    
+
     let alertStrings = AlertStrings.self
     let appConstants = AppConstants.self
     let toastLang = ToastStrings.self
-    
+
     var theme = Theme.shared
-    
+
     @Published var activeAccount: Account?
     @Published var accounts: [Account] = []
     @Published var userItems: [UserItemInfo] = []
-    
+
     @Published var canShowLoginScreen = false
     /// Holds the email to prefill in `LoginScreen` when opening from account switching flow.
     @Published var emailForLogin: String? = nil
     @Published var canShowAccountSignupScreen = false
-    
+
     private let tag = "AccountsStore"
     var cancellables: Set<AnyCancellable> = []
-    
+
     init() {
         accountService.$activeAccount
             .sink { [weak self] account in
                 self?.activeAccount = account
             }
             .store(in: &accountService.cancellables)
-        
+
         // Watch allAccounts and update both `accounts` and `userItems`
         accountService.$allAccounts
             .sink { [weak self] allAccounts in
@@ -65,14 +65,13 @@ class AccountsStore: ObservableObject {
                     (DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast) >
                     (DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast)
                 }
-
                 // Sort logged-out accounts by last active time
                 let sortedLoggedOutAccounts = loggedOutAccounts.sorted {
                     let lhs = DateTimeTools.parse($0.lastActiveTime ?? "") ?? .distantPast
                     let rhs = DateTimeTools.parse($1.lastActiveTime ?? "") ?? .distantPast
                     return lhs > rhs
                 }
-                
+
                 // Combine: logged-in first, then logged-out
                 let allSortedAccounts = sortedLoggedInAccounts + sortedLoggedOutAccounts
                 self.accounts = allSortedAccounts
@@ -94,7 +93,7 @@ class AccountsStore: ObservableObject {
             }
             .store(in: &accountService.cancellables)
     }
-    
+
     /// Triggers display of `LoginScreen`. Pass the email to pre-fill if available.
     /// - Parameter email: Optional email address to prefill in the login form.
     /// - Parameter isUserExpired: Indicates if the user account is expired.
@@ -110,7 +109,7 @@ class AccountsStore: ObservableObject {
         emailForLogin = email
         canShowLoginScreen = true
     }
-    
+
     func handleSignupCTA() {
         // Only count logged-in accounts toward the limit
         let loggedInCount = accounts.filter { $0.isLoggedIn == true }.count
@@ -120,7 +119,7 @@ class AccountsStore: ObservableObject {
         }
         canShowAccountSignupScreen = true
     }
-    
+
     func showMaxUserAccountsAlert() {
         let alertLang = alertStrings.MaxUsersAlert
         let alert = AlertModel(
@@ -133,18 +132,18 @@ class AccountsStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     func switchActiveAccount(to accountId: String) {
         guard let account = accounts.first(where: { $0.accountId == accountId })  else {
             logger.log(level: .error, tag: tag, message: "Account with ID \(accountId) does not exist")
             return
         }
-        
+
         guard account.accountId != self.activeAccount?.accountId  else {
             logger.log(level: .error, tag: tag, message: "Attempted to switch to the same active account \(accountId)")
             return
         }
-        
+
         Task {
             notificationService.showLoader(LoaderModel(text: "Switching account..."))
             do {
@@ -164,7 +163,7 @@ class AccountsStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-    
+
     func userRemoveHandler(user: UserItemInfo) {
         let alertLang = alertStrings.DeleteUserAlert
         let alert = AlertModel(
@@ -180,19 +179,19 @@ class AccountsStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     private func removeUser(user: UserItemInfo) {
         guard let account = accounts.first(where: { $0.accountId == user.accountID }) else {
             logger.log(level: .error, tag: tag, message: "Account with ID \(user.accountID) does not exist")
             return
         }
-        
+
         guard networkMonitor.isConnected else {
             notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
             logger.log(level: .error, tag: tag, message: "Cannot remove account while offline")
             return
         }
-        
+
         Task {
             notificationService.showLoader(LoaderModel(text: "Removing user..."))
             do {

@@ -95,8 +95,9 @@ object RepositoryModule {
       integrationAPI: IIntegrationAPI,
       accountDao: AccountDao,
       accountRepository: IAccountRepository,
-      userAPI: IAuthAPI
-    ): IIntegrationRepository = IntegrationRepository(accountRepository, userAPI, integrationAPI, accountDao)
+      userAPI: IAuthAPI,
+      healthConnectRepository: IHealthConnectRepository
+    ): IIntegrationRepository = IntegrationRepository(accountRepository, userAPI, integrationAPI, accountDao,healthConnectRepository)
 
     @Provides
     @Singleton

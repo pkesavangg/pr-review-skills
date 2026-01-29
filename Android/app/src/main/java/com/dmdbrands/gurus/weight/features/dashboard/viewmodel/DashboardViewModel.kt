@@ -118,7 +118,6 @@ constructor(
     viewModelScope.launch {
       handleIntent(DashboardIntent.UpdateIsRefreshing(true))
       entryService.syncOperations()
-      dashboardService.refreshDashboard()
       accountService.refreshAccount()
       handleIntent(DashboardIntent.UpdateIsRefreshing(false))
     }

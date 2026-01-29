@@ -107,8 +107,8 @@ data class SignupFormControls(
               signupData.password,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = LoginStrings.Errors.passwordlen),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = LoginStrings.Errors.passwordlen, allowSpaces = true),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword, allowSpaces = true),
               ),
             ),
           confirmPassword =
@@ -116,8 +116,8 @@ data class SignupFormControls(
               signupData.confirmPassword,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = LoginStrings.Errors.passwordlen),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword),
+                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = LoginStrings.Errors.passwordlen, allowSpaces = true),
+                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword, allowSpaces = true),
               ),
             ),
           zipcode =
