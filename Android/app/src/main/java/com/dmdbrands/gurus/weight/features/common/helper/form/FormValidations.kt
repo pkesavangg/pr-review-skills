@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.helper.form
 
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import java.util.Calendar
@@ -165,7 +166,9 @@ object FormValidations {
 
   fun skuValidator(): Validator<String> = { value ->
     val sku = value.trim()
-    val skuExists = SCALES.any { it.sku == sku }
+    // Map variant SKUs to their canonical SKU (e.g., 0022 -> 0383)
+    val skuToCheck = DeviceHelper.mapSkuForDisplay(sku)
+    val skuExists = SCALES.any { it.sku == skuToCheck }
     when {
       sku.isBlank() -> ValidationError(ValidationType.REQUIRED, ValidationMessages.SKU)
       skuExists -> null

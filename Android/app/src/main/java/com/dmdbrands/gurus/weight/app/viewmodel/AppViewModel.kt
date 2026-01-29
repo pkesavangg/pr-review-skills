@@ -37,6 +37,8 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -68,6 +70,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -245,16 +248,19 @@ constructor(
   private fun onPopUpConnect() {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
-      if (sku == "0412") {
+      if (sku == SKU_0412) {
         navigationService.navigateTo(
           AppRoute.ScaleSetup.BtWifiScaleSetup(
-            "0412",
+            SKU_0412,
             BtWifiSetupStep.CONNECTING_BLUETOOTH,
             discoveredBroadcastId,
           ),
         )
       } else if (sku != null) {
-        val scaleInfo = SCALES.find { it.sku == sku }
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        val lookupSku = DeviceHelper.mapSkuForDisplay(sku!!)
+        val scaleInfo = SCALES.find { it.sku == lookupSku }
+        // Pass original SKU to routes (not mapped), setup will save original SKU
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
             sku!!,
@@ -489,7 +495,9 @@ constructor(
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
-                val scaleInfo = SCALES.find { it.sku == savedScale.sku }
+                // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
+                val lookupSku = DeviceHelper.mapSkuForDisplay(savedScale.sku ?: "")
+                val scaleInfo = SCALES.find { it.sku == lookupSku }
                 scaleInfo?.setupType in listOf(
                   ScaleSetupType.BtWifiR4,
                   ScaleSetupType.Lcbt,
@@ -536,10 +544,12 @@ constructor(
         // This log helps track when callbacks are received in the ViewModel
         when (response) {
           is GGScanResponse.DeviceDetail -> {
+            AppLog.i(TAG, "Scan Response Device Detail: $response")
             handleDeviceResponse(response)
           }
 
           is GGScanResponse.Entry -> {
+            AppLog.i(TAG, "Scan Response Entry: $response")
             handleEntryResponse(response)
           }
 

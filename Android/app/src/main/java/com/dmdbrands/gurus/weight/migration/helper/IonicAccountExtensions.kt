@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceMetaDataEn
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.R4ScalePreferenceEntity
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.migration.model.IonicAccount
 import com.dmdbrands.gurus.weight.migration.model.IonicHealthConnectData
@@ -194,7 +195,7 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
   val deviceSku = this.sku
 
   // Get name and type based on SKU from SCALES lookup
-  val scaleInfo = SCALES.find { it.sku == deviceSku }
+  val scaleInfo = SCALES.find { it.sku == DeviceHelper.mapSkuForDisplay(deviceSku) }
   val deviceName = this.name ?: scaleInfo?.productName ?: "Unknown Scale"
   val deviceType = this.type ?: "Unknown Type"
 

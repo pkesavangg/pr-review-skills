@@ -24,17 +24,20 @@ object ScaleDataHelper {
         else -> ScaleSetupType.Bluetooth // Default fallback
       }
 
-    // Get product name from SCALES using sku
-    val sku = this.getSKU()
+    // Get stored SKU and map for display (e.g., 0022 -> 0383)
+    val storedSku = this.getSKU()
+    val displaySku = DeviceHelper.mapSkuForDisplay(storedSku)
+
+    // Use display SKU for SCALES lookup to get product name
     val productName =
-      SCALES.find { it.sku == sku }?.productName ?: this.nickname
+      SCALES.find { it.sku == displaySku }?.productName ?: this.nickname
 
     // Determine bodyComp from SCALES or fallback to false
-    val bodyComp = SCALES.find { it.sku == sku }?.bodyComp ?: false
+    val bodyComp = SCALES.find { it.sku == displaySku }?.bodyComp ?: false
 
     return ScaleInfo(
       productName = if (this.nickname.isNotBlank()) this.nickname else productName,
-      sku = sku,
+      sku = displaySku,
       setupType = setupType,
       bodyComp = bodyComp,
       isConnected = this.connectionStatus == BLEStatus.CONNECTED,
