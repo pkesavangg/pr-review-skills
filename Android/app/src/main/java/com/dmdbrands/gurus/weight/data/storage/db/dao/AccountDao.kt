@@ -137,6 +137,13 @@ interface AccountDao {
     @Query("SELECT * FROM dashboard_settings WHERE accountId = :accountId")
     fun getDashboardSettings(accountId: String): Flow<DashboardSettingsEntity?>
 
+    /**
+     * Gets the dashboard settings for the active account if it is not synced.
+     * @return Flow of dashboard settings if it exists and is not synced, otherwise null
+     */
+    @Query("SELECT * FROM dashboard_settings WHERE accountId IN (SELECT accountId FROM account WHERE isActiveAccount = 1) AND isSynced = 0")
+    fun getUnsyncedActiveDashboardSettings(): Flow<DashboardSettingsEntity?>
+
     // Integrations Settings
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIntegrationsSettings(settings: IntegrationsSettingsEntity)

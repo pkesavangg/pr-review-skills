@@ -61,7 +61,7 @@ fun SettingsScreenContent(
         Modifier
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
-          .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
+          .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm)
     ) {
       UserProfileSection(
         account = state.account,

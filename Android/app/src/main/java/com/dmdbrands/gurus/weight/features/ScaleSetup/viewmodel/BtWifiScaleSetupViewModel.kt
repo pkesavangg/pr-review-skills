@@ -129,9 +129,10 @@ constructor(
   private var isWifiConfigured: Boolean = discoveredScale?.device?.isWifiConfigured == true
   private var isAlreadyExited = false
 
-
   // Timeout constant - 5 minutes for all operations
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
+  // Delay to ensure scale is fully woken up before proceeding
+  private val wakeUpDelay: Long = 2000L // 2 seconds
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
   override fun handleIntent(intent: BtWifiScaleSetupIntent) {
@@ -382,7 +383,7 @@ constructor(
         title = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Title,
         message = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Message,
         confirmText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Restore,
-        cancelText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.GoBack,
+        cancelText = BtWifiScaleSetupStrings.DuplicateUser.RestoreConfirmation.Back,
         onConfirm = {
           // Delete duplicate users and restore account
           viewModelScope.launch {
@@ -520,14 +521,34 @@ constructor(
                   setupType = ScaleSetupType.BtWifiR4,
                 )
               ) {
-                setMeasurementFailed()
+                // Check if only network/WiFi permission is missing
+                val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
+                  permissionMap = state.value.permissions,
+                  setupType = ScaleSetupType.BtWifiR4
+                )
+                val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
+                  disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
+
+                // Don't show error for STEP_ON if only network permission is missing
+                // Network permission is not required for step-on measurement
+                if (!isOnlyNetworkPermissionMissing) {
+                  setMeasurementFailed()
+                } else {
+                  AppLog.d(TAG, "Proceeding with STEP_ON - only network permission is missing, which is not required for measurement")
+                  stepOn()
+                }
               } else {
                 stepOn()
               }
             }
 
             BtWifiSetupStep.MEASUREMENT -> {
-              collectMeasurement()
+              // Only collect measurement if not already in a failed state
+              // This prevents overriding a failed state that was set in STEP_ON
+              val measurementConnectionState = currentState.stepConnectionStates[BtWifiSetupStep.MEASUREMENT]
+              if (measurementConnectionState !is ConnectionState.Failed) {
+                collectMeasurement()
+              }
             }
 
             else -> {
@@ -711,7 +732,7 @@ constructor(
         title = ScaleSetupStrings.SkipBtWifiPermissions.Title,
         message = ScaleSetupStrings.SkipBtWifiPermissions.Message,
         confirmText = ScaleSetupStrings.SkipBtWifiPermissions.Skip,
-        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.back,
+        cancelText = ScaleSetupStrings.SkipBtWifiPermissions.Back,
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
@@ -937,6 +958,8 @@ constructor(
         ConnectionState.Failed.Error,
       ),
     )
+
+    handleIntent(SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
   }
 
   /**
@@ -988,6 +1011,7 @@ constructor(
       BtWifiSetupStep.UPDATE_SETTINGS -> {
         updateSettingsTimeoutJob?.cancel()
         updateSettingsTimeoutJob = null
+        goToCustomiseSettings()
       }
 
       BtWifiSetupStep.MEASUREMENT -> {
@@ -1000,6 +1024,10 @@ constructor(
         AppLog.w(TAG, "Try again called on step that doesn't support retry: ${currentState.currentStep}")
       }
     }
+  }
+
+  fun goToCustomiseSettings() {
+    handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
   }
 
   private fun navigateTo(route: AppRoute) {
@@ -1326,6 +1354,17 @@ constructor(
     val areRequiredPermissionsEnabled =
       AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.BtWifiR4)
     if (!areRequiredPermissionsEnabled) {
+      // Get the list of disabled permissions to identify which specific permissions are missing
+      val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
+        permissionMap = state.value.permissions,
+        setupType = ScaleSetupType.BtWifiR4
+      )
+      AppLog.d(TAG, "Required permissions not enabled. Missing permissions: $disabledPermissions")
+
+      // Check if only WIFI_SWITCH is missing (network permission)
+      val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
+        disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
+
       val currentStep = state.value.currentStep
       when (currentStep) {
         BtWifiSetupStep.WAKEUP -> {
@@ -1338,7 +1377,13 @@ constructor(
         }
 
         BtWifiSetupStep.STEP_ON -> {
-          setMeasurementFailed()
+          // Don't show error for STEP_ON if only network/WiFi permission is missing
+          // Network permission is not required for step-on measurement
+          if (!isOnlyNetworkPermissionMissing) {
+            setMeasurementFailed()
+          } else {
+            AppLog.d(TAG, "Skipping STEP_ON error - only network permission is missing")
+          }
         }
 
         BtWifiSetupStep.WAKEUP,
@@ -1429,6 +1474,13 @@ constructor(
         viewModelScope.launch {
           if (it.wifiState == GGWifiState.GG_WIFI_STATE_CONNECTED.name) {
             AppLog.d(TAG, "Wifi connection successful")
+
+            this@BtWifiScaleSetupViewModel.isWifiConfigured = ssid.isNotBlank()
+            ggDeviceService.getConnectedWifiMacAddress(
+              discoveredScale!!.toGGBTDevice(),
+            ) { mac ->
+              this@BtWifiScaleSetupViewModel.wifiMac = mac
+            }
             handleIntent(
               BtWifiScaleSetupIntent.SetStepConnectionState(
                 BtWifiSetupStep.CONNECTING_WIFI,
@@ -1436,12 +1488,6 @@ constructor(
               ),
             )
             clearWifiPasswordForm()
-            this@BtWifiScaleSetupViewModel.isWifiConfigured = ssid.isNotBlank()
-            this@BtWifiScaleSetupViewModel.wifiMac = suspendCancellableCoroutine { cont ->
-              ggDeviceService.getConnectedWifiMacAddress(discoveredScale!!.toGGBTDevice()) { mac ->
-                cont.resume(mac)
-              }
-            }
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
               if (!isAlreadyExited) {
                 isAlreadyExited = true
@@ -1818,7 +1864,6 @@ constructor(
       GGScanResponseType.NEW_DEVICE -> {
         if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
           viewModelScope.launch {
-
             if (deviceService.pairedScales.first()
                 .any { it.device?.macAddress == ggDeviceDetail.macAddress } && !ggDeviceService.localSkipDevices.value.contains(
                 ggDeviceDetail.broadcastIdString,
@@ -1854,6 +1899,9 @@ constructor(
               }
               stopObservingDevices()
               customizeDevice(ggDeviceDetail)
+              AppLog.d(TAG, "Device discovered, waiting for scale to fully wake up")
+              // Add a delay to ensure the scale is properly woken up before proceeding
+              delay(wakeUpDelay) // 2 seconds delay similar to iOS implementation
               AppLog.d(TAG, "Wake up successful, proceeding to next step")
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
