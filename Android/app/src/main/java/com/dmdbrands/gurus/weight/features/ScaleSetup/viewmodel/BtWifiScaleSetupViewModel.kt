@@ -629,7 +629,11 @@ constructor(
 
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         if (!currentState.connectedSSID.isNullOrEmpty()) {
-          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+          if (discoveredScale != null) {
+            ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+          } else {
+            AppLog.w(TAG, "discoveredScale is null when canceling WiFi from available WiFi list")
+          }
           handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
           return
         } else {
@@ -706,13 +710,10 @@ constructor(
     AppLog.d(TAG, "Skipping current step: ${currentState.currentStep}")
 
     when (currentState.currentStep) {
+      BtWifiSetupStep.GATHERING_NETWORK,
       BtWifiSetupStep.AVAILABLE_WIFI_LIST -> {
         // Show confirmation dialog for WiFi skip
         showWifiSkipConfirmation()
-      }
-
-      BtWifiSetupStep.GATHERING_NETWORK -> {
-        handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
       }
 
       else -> {
@@ -735,7 +736,11 @@ constructor(
         onConfirm = {
           // User confirmed skip - proceed to customization
           AppLog.d(TAG, "User confirmed WiFi skip, proceeding to customization")
-          ggDeviceService.cancelWifi(discoveredScale?.toGGBTDevice()!!) {}
+          if (discoveredScale != null) {
+            ggDeviceService.cancelWifi(discoveredScale!!.toGGBTDevice()) {}
+          } else {
+            AppLog.w(TAG, "discoveredScale is null when skipping WiFi, skipping cancelWifi call")
+          }
           handleIntent(SetCurrentStep(BtWifiSetupStep.CUSTOMIZE_SETTINGS))
         },
         onCancel = {
@@ -1325,10 +1330,11 @@ constructor(
               cont.resume(mac)
             }
           }
-          handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
-          handleIntent(BtWifiScaleSetupIntent.SetConnectedSSID(connectedSSID))
-          onNext()
-
+          if (state.value.currentStepConnectionState == ConnectionState.Loading) {
+            handleIntent(BtWifiScaleSetupIntent.SetWifiList(it.wifi))
+            handleIntent(BtWifiScaleSetupIntent.SetConnectedSSID(connectedSSID))
+            onNext()
+          }
         }
       }
     } catch (e: Exception) {
