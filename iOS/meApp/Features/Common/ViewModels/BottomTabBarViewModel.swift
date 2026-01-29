@@ -466,7 +466,7 @@ class BottomTabBarViewModel: ObservableObject {
         notificationService.showModal(modalData)
     }
     
-    private func handleHKConnectFlow(for state: HKIntegrationModalState) async {
+    private func handleHKConnectFlow(for _: HKIntegrationModalState) async {
         do {
             let success = try await healthKitService.integrate(turnOn: true)
             
@@ -476,7 +476,7 @@ class BottomTabBarViewModel: ObservableObject {
             }
             
             let permissionCount = healthKitService.getApprovedPermissionList().count
-            let hasFullPermissions = permissionCount >= 5
+            let hasFullPermissions = permissionCount >= HealthKitStore.wgTotalPermissionsCount
             let entryCount = (try? await entryService.getEntryCount()) ?? 0
             
             if entryCount > 0 && hasFullPermissions {
@@ -537,7 +537,7 @@ class BottomTabBarViewModel: ObservableObject {
             let alert = AlertModel(
                 title: content.title,
                 message: content.description ?? "",
-                buttons: [AlertButtonModel(title: "OK", type: .primary) { _ in }]
+                buttons: [AlertButtonModel(title: CommonStrings.ok, type: .primary) { _ in }]
             )
             notificationService.showAlert(alert)
         }
