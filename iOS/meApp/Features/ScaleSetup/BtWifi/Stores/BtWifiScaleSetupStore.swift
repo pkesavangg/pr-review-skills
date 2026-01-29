@@ -120,6 +120,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Track previous step to detect navigation direction
     private var previousStep: BtWifiScaleSetupStep = .intro
+    /// Flag to track if we're refreshing WiFi networks (to bypass skip logic)
+    private var isRefreshingWifiNetworks: Bool = false
     
     // Flag to prevent error screens from showing during exit
     // Published so SwiftUI reacts immediately when it changes
@@ -1503,13 +1505,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
         } else if scaleSetupError == .updateSettingsFailed {
             targetStep = .customizeSettings
         } else {
-            // For gathering network errors, always navigate to gatheringNetwork step
-            // This allows fetchWifiNetworks() to check permissions and show appropriate error
+            // Retry WiFi network fetch
             targetStep = .gatheringNetwork
+
+            fetchWifiNetworksTask?.cancel()
+            fetchWifiNetworksTask = nil
+
+            isRefreshingWifiNetworks = true
+            scaleSetupError = .none
+            connectionState = .loading
         }
         
         // Clear error state for other error types after a delay
-        if scaleSetupError != .collectMeasurementFailed {
+        if scaleSetupError != .collectMeasurementFailed && targetStep != .gatheringNetwork {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 self.scaleSetupError = .none
                 self.connectionState = .loading
@@ -1545,7 +1553,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
         case .gatheringNetwork:
             // Don't fetch networks if we're showing a "No Networks Found" error
-            if scaleSetupError == .noNetworkFound {
+            if scaleSetupError == .noNetworkFound && !isRefreshingWifiNetworks {
                 return
             }
             
@@ -1554,7 +1562,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 startNetworkScanTimeout()
             }
             
-            let shouldSkipFetch = isSettingsWifiSetup && previousStep == .availableWifiList
+            // Skip fetch only if settings WiFi setup AND not refreshing
+            let shouldSkipFetch = isSettingsWifiSetup && previousStep == .availableWifiList && !isRefreshingWifiNetworks
             
             if let savedScale = savedScale,
                scaleSetupError != .maxUserReached && scaleSetupError != .duplicatesFound,
@@ -1563,8 +1572,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 fetchWifiNetworksTask?.cancel()
                 fetchWifiNetworksTask = Task { [weak self] in
                     guard let self else { return }
+                    // Reset refresh flag after starting the task
+                    self.isRefreshingWifiNetworks = false
                     await self.fetchWifiNetworks(for: savedScale)
                 }
+            } else {
+                // Reset refresh flag even if we skip fetch
+                isRefreshingWifiNetworks = false
             }
         case .availableWifiList:
             if isSettingsWifiSetup {
