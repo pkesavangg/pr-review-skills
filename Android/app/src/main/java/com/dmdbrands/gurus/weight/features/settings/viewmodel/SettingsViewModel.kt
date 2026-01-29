@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.ActivityLevel
@@ -404,7 +405,8 @@ constructor(
           )
         // Use offline handler service similar to Angular implementation
         accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
-        val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+        val updatedProfile = currentAccount.toGGBTUserProfile().copy(sex = gender)
+        val scaleResult = updateR4Profile(updatedProfile)
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -487,19 +489,50 @@ constructor(
    * Follows the same pattern as Angular onActivitySelectionChange method.
    */
   private fun onActivityLevelUpdate(activityLevel: String) {
-    // Show loading dialog
     val currentAccount = state.value.account
+    if (currentAccount == null) {
+      AppLog.e(TAG, "No active account found for activity level update")
+      return
+    }
+    if (currentAccount.activityLevel == activityLevel) {
+      AppLog.d(TAG, "Activity level is already set to $activityLevel, no update needed")
+      return
+    }
 
     dialogQueueService.showLoader("Loading...")
     viewModelScope.launch {
       try {
         val bodyComposition =
           BodyCompUpdateRequest(
-            height = currentAccount?.height ?: 1700,
+            height = currentAccount.height ?: 1700,
             activityLevel = activityLevel,
-            weightUnit = currentAccount?.weightUnit?.value ?: "lb",
+            weightUnit = currentAccount.weightUnit?.value ?: "lb",
           )
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
+        val updatedProfile = currentAccount.toGGBTUserProfile().copy(isAthlete = (activityLevel == ActivityLevel.ATHLETE.name.lowercase()))
+        val scaleResult = updateR4Profile(updatedProfile)
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+
+          else -> {}
+        }
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating activity level", e)
@@ -569,6 +602,30 @@ constructor(
             weightUnit = newWeightUnit.value,
           )
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
+        val updatedProfile = currentAccount.toGGBTUserProfile().copy(unit = newWeightUnit.value)
+        val scaleResult = updateR4Profile(updatedProfile)
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+
+          else -> {}
+        }
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating unit type", e)
@@ -663,6 +720,32 @@ constructor(
             weightUnit = currentAccount.weightUnit?.value ?: "lb",
           )
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
+        val updatedProfile = currentAccount.toGGBTUserProfile().copy(
+          height = ConversionTools.convertStoredHeightToCm(newStoredHeight).toDouble(),
+        )
+        val scaleResult = updateR4Profile(updatedProfile)
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+
+          else -> {}
+        }
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating height", e)
