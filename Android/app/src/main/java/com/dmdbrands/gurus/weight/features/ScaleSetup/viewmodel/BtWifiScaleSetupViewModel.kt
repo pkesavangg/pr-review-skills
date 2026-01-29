@@ -37,6 +37,7 @@ import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsH
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
@@ -1148,22 +1149,6 @@ constructor(
           when (it) {
             GGUserActionResponseType.CREATION_COMPLETED -> {
               viewModelScope.launch {
-                fetchUserList()
-                if (accountService.activeAccountFlow.first()?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
-                  accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
-                  val dashboardMetrics = accountService.activeAccountFlow.first()!!.dashboardMetrics
-                  val additionalMetrics = StatHelper.getAdditionalMetrics()
-                  val updatedMetrics = (dashboardMetrics ?: emptyList()).toMutableList().apply {
-                    additionalMetrics.forEach { metric ->
-                      if (!contains(metric)) {
-                        add(metric)
-                      }
-                    }
-                  }
-                  // Convert camelCase strings to MetricKey enums and update via dashboard service
-                  val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
-                  dashboardService.updateVisibleMetricKeys(accountId, metricKeys, DashboardType.DASHBOARD_12_METRICS)
-                }
                 handleIntent(BtWifiScaleSetupIntent.SetScaleId(discoveredScale?.id ?: ""))
                 handleIntent(
                   BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -1172,20 +1157,43 @@ constructor(
                   ),
                 )
                 val currentTime = Instant.now().toString()
-                // val scaleInfo = _state.value.sc
                 discoveredScale = discoveredScale!!.copy(
                   connectionStatus = BLEStatus.CONNECTED,
                   deviceType = ScaleSetupType.BtWifiR4.value,
-                  // nickname = discoveredScale!!.nickname.ifEmpty { scaleInfo?.productName ?: "Bluetooth Smart Scale" },
                   sku = sku,
                   createdAt = currentTime,
-                  // device = discoveredScale!!.device?.copy(
-                  //   deviceName = discoveredScale!!.device?.deviceName?.ifEmpty { scaleInfo?.productName ?: "" } ?: scaleInfo?.productName ?: "",
-                  // ),
                 )
                 discoveredScale = deviceService.saveScale(discoveredScale!!)
                 isScaleConnected = true
+
+                // Navigate promptly to GATHERING_NETWORK so the user does not feel stuck.
                 onNext()
+
+                // Defer dashboard 4→12 metrics update and user list fetch to avoid blocking the transition.
+                // These operations run in the background after navigation.
+                try {
+                  // Fetch user list in background for duplicate detection (if needed later)
+                  fetchUserList()
+
+                  // Update dashboard type and metrics in background
+                  if (accountService.activeAccountFlow.first()?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
+                    accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
+                    val dashboardMetrics = accountService.activeAccountFlow.first()!!.dashboardMetrics ?: emptyList()
+                    val additionalMetrics = StatHelper.getAdditionalMetrics()
+                    val updatedMetrics = (dashboardMetrics ?: emptyList()).toMutableList().apply {
+                      additionalMetrics.forEach { metric ->
+                        if (!contains(metric)) {
+                          add(metric)
+                        }
+                      }
+                    }
+                    val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
+                    dashboardService.updateVisibleMetricKeys(accountId, metricKeys, DashboardType.DASHBOARD_12_METRICS)
+                  }
+                } catch (e: Exception) {
+                  // Log errors but don't block navigation - these are background operations
+                  AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
+                }
               }
             }
 
@@ -1280,8 +1288,20 @@ constructor(
           }
         }
         val filteredUserList = userList.filter { user -> user.token != discoveredScale?.token }
-        AppLog.e(TAG, " during fetching user list $userList")
-        handleIntent(BtWifiScaleSetupIntent.SetUserList(filteredUserList))
+        // Keep the active app user on top so duplicate detection (by name match) is straightforward.
+        // If currentUserName is null, sorting will keep original order (no user matches null).
+        val currentUserName = accountService.activeAccountFlow.first()?.firstName?.take(20)
+        val listWithActiveUserOnTop = if (currentUserName != null) {
+          filteredUserList.sortedByDescending { user ->
+            user.name.equals(currentUserName, ignoreCase = true)
+          }
+        } else {
+          // No active user name available - return list as-is
+          AppLog.w(TAG, "No active user name available for sorting user list")
+          filteredUserList
+        }
+        AppLog.d(TAG, "During fetching user list $userList")
+        handleIntent(BtWifiScaleSetupIntent.SetUserList(listWithActiveUserOnTop))
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e)
       // Show error state to user
@@ -1871,8 +1891,8 @@ constructor(
 
               dialogQueueService.showDialog(
                 DialogModel.Alert(
-                  title = "Known Scale Discovered",
-                  message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time.",
+                  title = BtWifiScaleSetupStrings.KnownScaleDiscoveredAlert.Title,
+                  message = BtWifiScaleSetupStrings.KnownScaleDiscoveredAlert.Subtitle,
                   onDismiss = {
                     onExitSetup(true)
                     dialogQueueService.dismissCurrent()
@@ -1884,7 +1904,7 @@ constructor(
               pairingTimeoutJob?.cancel()
               pairingTimeoutJob = null
               val deviceSku = ggDeviceDetail.getSKU()
-              val shouldShow = if (deviceSku == "0412") {
+              val shouldShow = if (deviceSku == SKU_0412) {
                 val isAllow = bluetoothPreferencesService.shouldShowDevice(ggDeviceDetail.macAddress)
                 isAllow
               } else {
