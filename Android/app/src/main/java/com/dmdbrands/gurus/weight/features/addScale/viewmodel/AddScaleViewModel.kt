@@ -99,8 +99,8 @@ constructor(
     val lookupSku = DeviceHelper.mapSkuForDisplay(sku)
     val scaleInfo = SCALES.find { it.sku == lookupSku }
     val setupType = scaleInfo?.setupType
-    // Check saved scales using original SKU (saved scales store original SKU)
-    val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == sku }
+    // Check saved scales using mapped SKU (savedScales contains ScaleInfo with mapped SKUs via toScaleInfo())
+    val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == lookupSku }
 
     AppLog.d(
       TAG,
