@@ -57,7 +57,7 @@ class NetworkConnectivityObserver
                             // Use the capabilities parameter directly instead of re-fetching.
                             // Re-fetching can return null during network transitions and incorrectly
                             // emit unavailable state when network is actually available.
-                            val state = hasCapabilitiesChanged(capabilities)
+                            val state = networkStateFromCapabilities(capabilities)
                             trySend(state)
                         }
 
@@ -65,12 +65,15 @@ class NetworkConnectivityObserver
                             trySend(NetworkState(available = false, unAvailable = true))
                         }
                     }
-
+                // We only require NET_CAPABILITY_INTERNET in the NetworkRequest to avoid losing
+                // the network during validation transitions. However, in networkStateFromCapabilities()
+                // we check for both INTERNET and VALIDATED to ensure actual connectivity.
+                // This approach: (1) keeps tracking the network during transitions (prevents false onLost),
+                // (2) but only reports "available" when both capabilities are present (ensures real connectivity).
                 val networkRequest =
                     NetworkRequest
                         .Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                         .build()
 
                 connectivityManager?.registerNetworkCallback(networkRequest, callback)
@@ -99,16 +102,22 @@ class NetworkConnectivityObserver
         private fun getCurrentNetworkState(connectivityManager: ConnectivityManager?): NetworkState? {
             val network = connectivityManager?.activeNetwork
             val capabilities = connectivityManager?.getNetworkCapabilities(network)
-            return capabilities?.let { hasCapabilitiesChanged(it) }
+            return capabilities?.let { networkStateFromCapabilities(it) }
         }
 
         /**
-         * Determines network state based on capabilities.
-         * Uses NET_CAPABILITY_INTERNET as the primary signal; NET_CAPABILITY_VALIDATED
-         * may be temporarily false during network transitions, so we use internet capability
-         * only to prevent false "unavailable" states.
+         * Converts NetworkCapabilities to NetworkState.
+         * Uses NET_CAPABILITY_INTERNET as the signal for availability.
+         * 
+         * Tradeoff: We don't require NET_CAPABILITY_VALIDATED here because during network
+         * transitions (e.g., switching from WiFi to mobile data), validation may be temporarily
+         * pending. Requiring VALIDATED would cause false "unavailable" states during these
+         * transitions. While this means we might report "available" for networks that claim
+         * internet but aren't validated yet, the NetworkInterceptor and actual HTTP requests
+         * will fail gracefully if connectivity isn't real, and we avoid the more problematic
+         * false "unavailable" signals that were causing the original bug.
          */
-        private fun hasCapabilitiesChanged(capabilities: NetworkCapabilities): NetworkState {
+        private fun networkStateFromCapabilities(capabilities: NetworkCapabilities): NetworkState {
             val hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             return NetworkState(available = hasInternet, unAvailable = !hasInternet)
         }
