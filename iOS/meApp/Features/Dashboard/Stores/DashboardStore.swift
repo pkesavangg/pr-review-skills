@@ -1385,22 +1385,17 @@ class DashboardStore: ObservableObject {
     func toggleMetricRemoval(_ metricLabel: String) {
         // Find the metric in the current metrics array
         if let metricIndex = metricsManager.state.metrics.firstIndex(where: { $0.label == metricLabel }) {
-            // Call the underlying manager to actually reorder the array
-            Task {
-                try? await metricsManager.toggleMetricVisibility(at: metricIndex)
-
-                // Sync the UI state with the metrics manager after the change
-                await MainActor.run {
-                    self.syncRemovalStateFromMetricsManager()
-                }
+            if state.ui.removedMetrics.contains(metricLabel) {
+                state.ui.removedMetrics.remove(metricLabel)
+            } else {
+                state.ui.removedMetrics.insert(metricLabel)
             }
-        }
-
-        // Update the UI state
-        if state.ui.removedMetrics.contains(metricLabel) {
-            state.ui.removedMetrics.remove(metricLabel)
-        } else {
-            state.ui.removedMetrics.insert(metricLabel)
+            do {
+                try metricsManager.toggleMetricVisibilitySync(at: metricIndex)
+                syncRemovalStateFromMetricsManager()
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to toggle metric visibility: \(error)")
+            }
         }
     }
 
