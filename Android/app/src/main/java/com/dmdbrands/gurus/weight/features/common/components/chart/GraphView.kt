@@ -95,7 +95,6 @@ fun GraphView(
       segment = segment,
     )
 
-
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
       viewModel.handleIntent(
@@ -106,7 +105,7 @@ fun GraphView(
           if (visibleLabels.isNotEmpty()) {
             val fallbackValues = scrollState.getInterpolatedYValues(
               xValues = visibleLabels,
-              interpolationType = InterpolationType.CUBIC,
+              interpolationType = InterpolationType.MONOTONE,
             )
             val fallbackData = state.createFallBackData(
               segment = segment,
@@ -193,23 +192,23 @@ fun GraphView(
       }
     },
   )
-    CartesianChartHost(
-      chart = chart,
-      modelProducer = state.modelProducer,
-      modifier = modifier.height(chartHeight),
-      scrollState = scrollState,
-      animateIn = true,
-      zoomState = rememberVicoZoomState(zoomEnabled = false),
-      onScrollStopped = { range ->
-        if (range != null) {
-          val min = range.visibleXRange.start
-          val max = range.visibleXRange.endInclusive
-          onScrollUpdate(min.toLong(), max.toLong())
-          if (!state.isEmptyGraph)
-            viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
-        }
-      },
-    )
+  CartesianChartHost(
+    chart = chart,
+    modelProducer = state.modelProducer,
+    modifier = modifier.height(chartHeight),
+    scrollState = scrollState,
+    animateIn = true,
+    zoomState = rememberVicoZoomState(zoomEnabled = false),
+    onScrollStopped = { range ->
+      if (range != null) {
+        val min = range.visibleXRange.start
+        val max = range.visibleXRange.endInclusive
+        onScrollUpdate(min.toLong(), max.toLong())
+        if (!state.isEmptyGraph)
+          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
+      }
+    },
+  )
 }
 
 fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment): List<Double> {
