@@ -65,8 +65,12 @@ fun GraphView(
   val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  val initialScroll = remember(initialStartX) {
-    Scroll.Absolute.x(initialStartX)
+  // Apply padding to initial scroll position to ensure padding area is visible
+  // This matches the padding applied in snap functions
+  val padding = GraphSnapHelper.getPaddingForSegment(segment).toDouble()
+  val initialStartXWithPadding = initialStartX - padding
+  val initialScroll = remember(initialStartXWithPadding) {
+    Scroll.Absolute.x(initialStartXWithPadding)
   }
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
