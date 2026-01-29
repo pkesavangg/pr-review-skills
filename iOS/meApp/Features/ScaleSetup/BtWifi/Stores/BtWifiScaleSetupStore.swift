@@ -2792,6 +2792,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let originalMetrics = dashboardStore.metricsManager.state.metrics
         let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
         
+        
         let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
         let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
         let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
@@ -2882,13 +2883,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Checks if the current dashboard type is dashboard4
     private var isDashboardTypeFour: Bool {
         let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
-        return (currentDashboardType == "dashboard_4_metrics" || 
+        let result = (currentDashboardType == "dashboard_4_metrics" || 
                 currentDashboardType == "dashboard4") &&
                 dashboardStore.effectiveDashboardType == .dashboard4
+        if result {
+        } else {
+        }
+        return result
     }
     
     /// Sets up dashboard metrics customization screen with proper state management
-    /// Matches Android behavior: Always loads metrics from API, no first-time pairing detection
+    // First pairing upgrades dashboard and sets default order; subsequent pairings preserve current order
     private func setupDashboardMetricsCustomization() async {
         let isDashboardFour = isDashboardTypeFour
         
@@ -2898,14 +2903,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
             try? await dashboardStore.streakManager.refreshStreakData()
             await dashboardStore.loadProgressMetricsFromAccount()
         } else {
-            // Load metrics from API - API is the source of truth (matches Android behavior)
-            // For new accounts, API will have default order set by server during R4 scale creation
-            // For existing accounts, API will have user's customized order
-            await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+            // Preserve dashboard order on re-pairing; reload only if metrics are empty
+            let currentMetricsCount = await MainActor.run {
+                dashboardStore.metricsManager.state.metrics.count
+            }           
+            if currentMetricsCount == 0 {
+                await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+            }
         }
         
         await MainActor.run {
-            // Only set default order if API truly returned empty metrics (shouldn't happen for R4 scales)
+            // Only set default order if metrics are truly empty (shouldn't happen for R4 scales)
             if dashboardStore.metricsManager.state.metrics.isEmpty {
                 dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
             }
