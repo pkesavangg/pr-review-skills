@@ -618,16 +618,16 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HeightPicker,
-        params = mapOf("value" to currentHeightInput),
-        onConfirm = { selectedHeight ->
+        params = mapOf("value" to currentHeightInput, "confirmText" to RadioGroupModalStrings.Button.Save),
+      onConfirm = { selectedHeight ->
           if (selectedHeight is HeightInput) {
             onHeightUpdate(selectedHeight)
           }
         },
-        onDismiss = {
+      onDismiss = {
           dialogQueueService.dismissCurrent()
         },
-        dismissOnBackPress = true
+      dismissOnBackPress = true,
       ),
     )
   }
@@ -1044,10 +1044,10 @@ constructor(
       val hasShown = userDataStore.hasShownAccountSwitchInfoModalForDevice()
       if (hasShown) return@launch
       val activeAccount = accountService.getCurrentAccount()
-      
+
       // Set the flag to true when modal is shown, so it persists even if app closes
       userDataStore.setAccountSwitchInfoModalShownForDevice(true)
-      
+
       dialogQueueService.enqueue(
         DialogModel.Custom(
           contentKey = DialogType.AccountSwitchInfoPopup,
