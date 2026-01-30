@@ -100,9 +100,11 @@ interface IAccountService {
 
   /**
    * Checks login status for the active account by calling the API and updating local data.
-   * @param isDuringAccountSwitch If true, falls back to local DB check on network failure instead of returning false.
+   * If 401 Unauthorized is returned, marks the account as expired and clears tokens.
+   * Other HTTP errors (500, 404, etc.) do not mark the account as expired.
+   * @param isDuringAccountSwitch If true, falls back to local DB check on network/HTTP failure instead of returning false.
    *                              This prevents false negatives during account switch operations.
-   * @return true if the account is still valid, false if expired or network unavailable (unless during account switch)
+   * @return true if the account is still valid, false if expired, unauthorized, or network unavailable (unless during account switch)
    */
   suspend fun checkLoginStatusForActiveAccount(isDuringAccountSwitch: Boolean = false): Boolean
 

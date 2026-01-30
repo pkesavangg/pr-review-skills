@@ -337,8 +337,10 @@ constructor(
   /**
    * Checks login status for the active account by calling getAccount API if online.
    * If offline, checks local DB for isExpired status.
-   * @param isDuringAccountSwitch If true, falls back to local DB check on network failure instead of returning false.
-   * @return true if account is valid (online or offline), false if expired
+   * If 401 Unauthorized is returned, marks the account as expired and clears tokens.
+   * Other HTTP errors (500, 404, etc.) do not mark the account as expired.
+   * @param isDuringAccountSwitch If true, falls back to local DB check on network/HTTP failure instead of returning false.
+   * @return true if account is valid (online or offline), false if expired or unauthorized
    */
   override suspend fun checkLoginStatusForActiveAccount(isDuringAccountSwitch: Boolean): Boolean {
     AppLog.d(TAG, "checkLoginStatusForActiveAccount() called, isDuringAccountSwitch: $isDuringAccountSwitch")
@@ -372,6 +374,26 @@ constructor(
       } else {
         AppLog.d(TAG, "No network connection available to check login status")
         false
+      }
+    } catch (e: HttpException) {
+      // Only mark as expired on 401 Unauthorized errors
+      if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
+        val activeAccount = getCurrentAccount()
+        if (activeAccount != null) {
+          AppLog.w(TAG, "Active account is unauthorized (401). Marking as expired: ${activeAccount.id}")
+          accountRepository.markAccountExpired(activeAccount.id)
+          accountRepository.clearAccountTokens(activeAccount.id)
+        }
+        false
+      } else {
+        // Other HTTP errors (500, 404, etc.) - don't mark as expired
+        AppLog.w(TAG, "HTTP error ${e.code()} during active account check, not marking as expired")
+        if (isDuringAccountSwitch) {
+          AppLog.d(TAG, "During account switch - falling back to local DB check after HTTP error")
+          checkActiveAccountLocalValidity()
+        } else {
+          false
+        }
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Active account login status check failed", e)
