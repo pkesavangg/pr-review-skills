@@ -14,7 +14,7 @@ struct ConnectionPromptView: View {
     let title: String
     let subtitle: String?
     let image: String
-    /// Optional scale image path. If provided, displays the scale image instead of the connection indicator.
+    /// Optional scale image asset name. If provided, displays the scale image instead of the connection indicator.
     let scaleImagePath: String?
 
     /// Designated initializer.
@@ -22,7 +22,7 @@ struct ConnectionPromptView: View {
     ///   - title: Heading text.
     ///   - subtitle: Optional secondary text shown beneath the heading.
     ///   - image: Name of the asset to display inside the indicator (used when scaleImagePath is nil).
-    ///   - scaleImagePath: Optional path to scale image asset. If provided, displays scale image instead of connection indicator.
+    ///   - scaleImagePath: Optional scale image asset name. If provided, displays scale image instead of connection indicator.
     init(title: String = ScaleSetupStrings.wakeYourScaleTitle, subtitle: String? = nil, image: String = AppAssets.bluetooth, scaleImagePath: String? = nil) {
         self.title = title
         self.subtitle = subtitle
@@ -47,17 +47,15 @@ struct ConnectionPromptView: View {
                 }
             }
 
-            VStack(spacing: scaleImagePath == nil ? 0 : 90) {
-                if let scaleImagePath {
-                    Image(scaleImagePath)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 180, height: 180)
-                        .cornerRadius(.radiusLG)
-                        .themeDropShadow()
-                        .padding(.top, .spacingXS)
-                }
-
+            if let scaleImagePath {
+                Image(scaleImagePath)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 180, height: 180)
+                    .cornerRadius(.radiusLG)
+                    .themeDropShadow()
+                    .padding(.top, .spacingXS)
+            } else {
                 ConnectionIndicatorView(image: image)
             }
             
