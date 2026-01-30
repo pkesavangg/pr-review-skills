@@ -32,7 +32,7 @@ final class HealthKitStore: ObservableObject {
     @Injector private var logger: LoggerService
     
     var cancellables: Set<AnyCancellable> = []
-    let wgTotalPermissionsCount = 5
+    static let wgTotalPermissionsCount = 5
     
     /// Duration to wait for sheet dismissal animation to complete before showing subsequent UI.
     private static let sheetDismissalAnimationDurationNanoseconds: UInt64 = 300_000_000 // 0.3 seconds
@@ -115,9 +115,9 @@ final class HealthKitStore: ObservableObject {
                 // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
                 // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
                 switch permissionCount {
-                case wgTotalPermissionsCount...:
+                case Self.wgTotalPermissionsCount...:
                     activeState = .permissionsAllowed
-                case 1..<wgTotalPermissionsCount:
+                case 1..<Self.wgTotalPermissionsCount:
                     activeState = .integrationComplete
                 default:
                     activeState = .integrationFailed
@@ -181,7 +181,7 @@ final class HealthKitStore: ObservableObject {
                         // Check if user granted full permissions (all 5 permissions)
                         // Get permissions immediately after authorization - they should be available
                         let permissionCount = healthKitService.getApprovedPermissionList().count
-                        if permissionCount >= wgTotalPermissionsCount {
+                        if permissionCount >= Self.wgTotalPermissionsCount {
                             // User granted full permissions - go directly to sync flow without showing Integration Complete
                             // Don't dismiss modal here - let finishIntegrationFlow handle it properly
                             await self.finishIntegrationFlowForFullPermissions()
