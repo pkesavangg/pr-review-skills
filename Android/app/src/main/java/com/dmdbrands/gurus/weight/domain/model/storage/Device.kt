@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.domain.model.storage
 
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.DEFAULT_SKU
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
@@ -42,12 +44,12 @@ data class Device(
   }
 
   fun getSKU(): String {
-    return sku ?: device?.getSKU() ?: "0375"
+    return sku ?: device?.getSKU() ?: DEFAULT_SKU
   }
 
   companion object {
     fun fromDevice(device: GGDeviceDetail, deviceType: String): Device {
-      val preferences = if (device.getSKU() == "0412") {
+      val preferences = if (device.getSKU() == SKU_0412) {
         Preferences(shouldMeasureImpedance = device.impedanceSwitchState)
       } else null
       return Device(

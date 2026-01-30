@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import sh.calvin.reorderable.Scroller
 
 /**
  * Display metrics screen with reorderable list of scale metrics.
@@ -38,6 +39,7 @@ fun ScaleMetricsSettingScreen(
   currentMetrics: List<String> = emptyList(),
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
+  parentScroller: Scroller? = null,
   includeHeartRate: Boolean = true,
   showAllMetrics: Boolean = true,
 ) {
@@ -78,13 +80,13 @@ fun ScaleMetricsSettingScreen(
     val enabledBodyMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key }
     val enabledOtherMetrics = otherMetricsState.filter { it.isEnabled }.map { it.key }
     val allEnabledKeys = enabledBodyMetrics + enabledOtherMetrics
-    onMetricsChanged(allEnabledKeys)
+    // onMetricsChanged(allEnabledKeys)
   }
 
   /**
    * Handles toggle operation for a metric item gracefully.
-   * When toggled off, moves the item above the disabled heart rate (if present).
-   * When toggled on, moves the item to the bottom of all enabled items.
+   * When toggled off, moves the item to the end of the list.
+   * When toggled on, moves the item to the bottom of the enabled list.
    *
    * @param metricsList The mutable list of metrics to update.
    * @param metricKey The key of the metric to toggle.
@@ -105,20 +107,13 @@ fun ScaleMetricsSettingScreen(
     val updatedItem = updatedList[itemIndex].copy(isEnabled = isEnabled)
     updatedList.removeAt(itemIndex)
     if (!isEnabled) {
-      // Toggled off: move above disabled heart rate (if present), otherwise to bottom
-      val heartRateIndex = updatedList.indexOfFirst { it.key == "heartRate" && !it.isIncluded }
-      if (heartRateIndex != -1) {
-        // Heart rate is disabled and at bottom: insert above it
-        updatedList.add(heartRateIndex, updatedItem)
-      } else {
-        // No disabled heart rate: add to bottom
-        updatedList.add(updatedItem)
-      }
+      // Toggled off: move to the end of the list
+      updatedList.add(updatedItem)
     } else {
-      // Toggled on: move to bottom of enabled items
+      // Toggled on: move to the bottom of the enabled list
       val lastEnabledIndex = updatedList.indexOfLast { it.isEnabled }
       if (lastEnabledIndex != -1) {
-        // Found enabled items: insert right after the last enabled one
+        // Found enabled items: insert after the last enabled one (bottom of enabled list)
         updatedList.add(lastEnabledIndex + 1, updatedItem)
       } else {
         // No enabled items exist: place at the beginning
@@ -137,6 +132,7 @@ fun ScaleMetricsSettingScreen(
       modifier = Modifier
         .clip(shape = RoundedCornerShape(borderRadius.sm))
         .heightIn(max = 600.dp),
+      parentScroller = parentScroller,
       items = displayedBodyMetrics,
       onMove = { from, to ->
         val newList = bodyMetricsState.toMutableList()

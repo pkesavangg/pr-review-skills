@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
@@ -24,7 +25,8 @@ data class ScaleNameDialogFormControls(
         validators = listOf(
           FormValidations.required(),
           FormValidations.noWhiteSpace(),
-        FormValidations.maxLength(100, ScaleNameDialogStrings.ScalenameLabel),
+          FormValidations.maxLength(100, ScaleNameDialogStrings.ScalenameLabel),
+          FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
         ),
       ),
     )

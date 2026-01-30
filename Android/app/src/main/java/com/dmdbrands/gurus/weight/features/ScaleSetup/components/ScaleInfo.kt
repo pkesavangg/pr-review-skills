@@ -48,6 +48,7 @@ fun ScaleInfo(
     Spacer(modifier = Modifier.height(spacing.lg))
     scaleName?.let {
       AppText(text = ScaleSetupStrings.ScaleInfo.Title(sku), textType = TextType.ListTitle2)
+      Spacer(modifier = Modifier.height(spacing.xs))
       AppText(text = scaleName, textType = TextType.Body)
     }
     Spacer(modifier = Modifier.height(spacing.lg))

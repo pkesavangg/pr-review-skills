@@ -73,6 +73,12 @@ interface IAccountRepository {
   suspend fun updateDashboardMetrics(dashboardKeys: List<String>)
 
   /**
+   * Updates the progress metrics for the active account.
+   * @param progressKeys The list of progress metric keys to update
+   */
+  suspend fun updateProgressMetrics(progressKeys: List<String>)
+
+  /**
    * Updates the dashboard type for the active account.
    * @param dashboardType The new dashboard type
    */
@@ -174,6 +180,12 @@ interface IAccountRepository {
   suspend fun getUnsyncedActiveAccount(): Account?
 
   /**
+   * Gets the dashboard settings for the active account if it is not synced.
+   * @return Dashboard settings if it exists and is not synced, otherwise null
+   */
+  suspend fun getUnsyncedActiveDashboardSettings(): com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity?
+
+  /**
    * Logs out the account both remotely (API) and locally (DB, tokens).
    * @param accountId The ID of the account to log out
    * @param fcmToken The FCM token for push notifications (optional)
@@ -262,11 +274,13 @@ interface IAccountRepository {
    * @param dashboardMetrics List of metric keys
    * @param dashboardMilestones List of milestone keys
    * @param dashboardType The dashboard type
+   * @param isSynced Whether the settings are synced with the server
    */
   suspend fun updateDashboardSettings(
     accountId: String,
     dashboardMetrics: List<String>,
     dashboardMilestones: List<String>,
-    dashboardType: DashboardType
+    dashboardType: DashboardType,
+    isSynced: Boolean = true
   )
 }

@@ -245,6 +245,8 @@ constructor(
   private fun onPopUpConnect() {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
+      // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
+      dialogQueueService.clear()
       if (sku == "0412") {
         navigationService.navigateTo(
           AppRoute.ScaleSetup.BtWifiScaleSetup(
@@ -578,7 +580,14 @@ constructor(
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
     val data = deviceResponse.data
     viewModelScope.launch {
-
+      // Check if scale is already known (paired) - similar to Angular's isKnown logic
+      val accountId = currentAccountId ?: return@launch
+      val isKnownScale = data.broadcastId?.let { broadcastId ->
+        // Check against latestPairedScales list first (similar to Angular's this.scales.find)
+        latestPairedScales.any { scale ->
+          scale.device?.broadcastId == broadcastId
+        } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
+      } == true
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG,"new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
@@ -595,15 +604,6 @@ constructor(
               // Check if same scale was shown recently (15 seconds)
               val isIgnored = data.macAddress == scaleToIgnore
 
-              // Check if scale is already known (paired) - similar to Angular's isKnown logic
-              val accountId = currentAccountId ?: return@launch
-              val isKnown = data.broadcastId?.let { broadcastId ->
-                // Check against latestPairedScales list first (similar to Angular's this.scales.find)
-                latestPairedScales.any { scale ->
-                  scale.device?.broadcastId == broadcastId
-                } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
-              } == true
-
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
               val shouldShow = if (deviceSku == "0412") {
@@ -614,7 +614,7 @@ constructor(
               }
 
               // Only show if not skipped, not ignored, not known, and shouldShow is true
-              if (!isSkipped && !isIgnored && !isKnown && shouldShow) {
+              if (!isSkipped && !isIgnored && !isKnownScale && shouldShow) {
                 handleIntent(AppIntent.SetScaleDiscovered(true))
                 handleIntent(AppIntent.SetSku(deviceSku))
                 sku = deviceSku
@@ -643,7 +643,7 @@ constructor(
                 if (isIgnored) {
                   AppLog.d(TAG, "Ignoring recently shown scale with MAC: ${data.macAddress}")
                 }
-                if (isKnown) {
+                if (isKnownScale) {
                   AppLog.d(TAG, "Known device (already paired) with broadcastId: ${data.broadcastId}")
                 }
                 if (!shouldShow) {
@@ -687,7 +687,7 @@ constructor(
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
-          if (currentRoute !is AppRoute.ScaleSetup) {
+          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
@@ -724,7 +724,7 @@ constructor(
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
           try {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {

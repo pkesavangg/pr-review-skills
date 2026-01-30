@@ -13,7 +13,7 @@ object ScaleSetupStrings {
   const val FinishButton = "Finish"
   const val skipButton = "skip"
   const val saveButton = "save"
-  const val SaveScaleLoader = "Saving Scale..."
+  const val SaveScaleLoader = "Saving..."
 
   object ScaleInfo {
     fun Title(sku: String) = "Model $sku"
@@ -79,7 +79,7 @@ object ScaleSetupStrings {
     const val Title = "Are you sure you want to skip Wi-Fi?"
     const val Message = "After setup, find additional Wi-Fi settings or the MAC Address via scale settings."
     const val Skip = "SKIP"
-    const val Goback = "GO BACK"
+    const val Back = "Go Back"
   }
 
   object PermissionAlerts {

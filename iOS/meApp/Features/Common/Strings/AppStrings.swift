@@ -445,6 +445,15 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
 
+    struct DeleteR4ScaleUserAlert {
+        static let title = "Are you sure you want to delete?"
+        static let message: (String) -> String = { name in
+            return "Deleting \(name) will remove them as a user of the scale and they'll need to reconnect."
+        }
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
+
     struct ExpiredUserLogOutAlert {
         static let title: (String) -> String = { name in
             return "\(name) was logged out"
@@ -602,7 +611,7 @@ struct AlertStrings {
 
     struct ConfirmRestoreAlert {
         static let title = "Confirm Account Restore"
-        static let message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
+        static let message = "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
         static let restoreButton = "Restore"
         static let backButton = "Back"
     }
@@ -757,7 +766,7 @@ struct AppAssets {
     static let xmarkSmall = "xmarkSmall"
     static let meLogoDark = "meLogoDark"
     static let meLogoLight = "meLogoLight"
-    static let wgLogoDark = "WGLogoDark"
+    static let wgLogoDark = "wgLogoDark"
     static let wgLogoLight = "wgLogoLight"
     static let stamp = "stamp"
     static let stampDark = "stampDark"
@@ -810,6 +819,7 @@ struct AppAssets {
     static let userProfile = "userProfile"
     // Newly added from image
     static let exclamationDanger = "exclamationDanger"
+    static let exclamationMarkSimple = "exclamationMarkSimple"
     static let hkIntegrationCompleteSS = "hkIntegrationCompleteSS"
     static let hkPermissionsAllowedSS = "hkPermissionsAllowedSS"
     static let hkPermissionsNotAllowedSS = "hkPermissionsNotAllowedSS"
@@ -856,7 +866,7 @@ struct AppAssets {
     // MARK: - WiFi series
     static let scale0384 = "0384"
     static let scale0385 = "0385"
-    static let scale03960397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
+    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"

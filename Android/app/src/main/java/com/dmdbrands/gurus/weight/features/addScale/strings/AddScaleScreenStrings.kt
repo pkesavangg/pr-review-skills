@@ -22,5 +22,6 @@ object PairedScaleExistsAlert {
   fun Message(deviceName: String) =
     "The device with sku: $deviceName is already paired. Do you want to pair it again?"
   const val Cancel = "Cancel"
+  const val Return = "Return"
   const val Pair = "Pair"
 }

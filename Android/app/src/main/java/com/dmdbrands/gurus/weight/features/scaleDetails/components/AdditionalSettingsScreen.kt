@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +32,9 @@ fun AdditionalSettingsScreen(
   handleIntent: (ScaleDetailsIntent) -> Unit,
   onClose: () -> Unit,
 ) {
+  BackHandler {
+    onClose()
+  }
   val device = state.scale
   val isConnected = device?.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED
   AppScaffold(

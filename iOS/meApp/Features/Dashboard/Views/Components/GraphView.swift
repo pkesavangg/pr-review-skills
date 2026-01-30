@@ -76,6 +76,10 @@ struct GraphView: View {
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
 
+            // Note: The anchor-based scroll position is already calculated and set by
+            // WeightTrendView.onChange(of: localSelectedPeriod) before this handler runs.
+            // We only need to handle view model configuration and UI updates here.
+
             // Immediate lightweight operations (cheap)
             dashboardStore.clearSelection()
             totalSectionViewModel.clearSelection()
@@ -102,17 +106,7 @@ struct GraphView: View {
                     totalSectionViewModel.configure(with: dashboardStore)
                 }
 
-                // Calculate optimal scroll position
-                let optimal = dashboardStore.graphManager.calculateOptimalScrollPosition(
-                    for: newValue,
-                    from: dashboardStore.continuousOperations,
-                    showingLatest: true,
-                    cachedBounds: dashboardStore.dataManager.getDateBounds(for: newValue)
-                )
-                dashboardStore.graphManager.updateScrollPosition(to: optimal)
-                dashboardStore.updateSelectedPeriod(newValue)
-
-                // Force the active view model to sync with the optimal position
+                // Force the active view model to sync with the scroll position set by WeightTrendView
                 try? await Task.sleep(nanoseconds: 100_000_000) // 100ms additional delay
                 guard !Task.isCancelled else { return }
 

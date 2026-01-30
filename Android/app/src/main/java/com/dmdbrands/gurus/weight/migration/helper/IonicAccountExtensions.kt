@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceMetaDataEn
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.R4ScalePreferenceEntity
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
+import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.migration.model.IonicAccount
 import com.dmdbrands.gurus.weight.migration.model.IonicHealthConnectData
 import com.dmdbrands.gurus.weight.migration.model.IonicScale
@@ -115,8 +116,15 @@ fun IonicAccount.toDashboardSettings(): DashboardSettingsEntity {
 /**
  * Converts IonicScale to DeviceDetails.
  * Creates a complete DeviceDetails object with all related entities from the scale data.
+ * Returns null if SKU is blank to skip saving the scale.
  */
-fun IonicScale.toDeviceDetails(accountID: String): DeviceDetails {
+fun IonicScale.toDeviceDetails(accountID: String): DeviceDetails? {
+  // Skip saving if SKU is not available
+  val deviceSku = this.sku ?: ""
+  if (deviceSku.isBlank()) {
+    return null
+  }
+
   return DeviceDetails(
     device = this.toDeviceEntity(accountID),
     scale = this.toBodyScaleEntity(),
@@ -178,25 +186,39 @@ fun IonicHealthConnectData.toHealthConnectData(accountID: String): HealthConnect
 /**
  * Converts IonicScale to DeviceEntity.
  * Creates the main device entity from the scale data.
+ * Gets name and type based on SKU from SCALES lookup.
  */
 private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
+  // Validate required fields to prevent null issues
+  val deviceId = this.id ?: UUID.randomUUID().toString()
+  val deviceSku = this.sku
+
+  // Get name and type based on SKU from SCALES lookup
+  val scaleInfo = SCALES.find { it.sku == deviceSku }
+  val deviceName = this.name ?: scaleInfo?.productName ?: "Unknown Scale"
+  val deviceType = this.type ?: "Unknown Type"
+
+  val deviceNickname = this.nickname ?: deviceName
+
   return DeviceEntity(
-    id = this.id ?: UUID.randomUUID().toString(),
+    id = deviceId,
     accountId = this.userId ?: accountID,
     peripheralIdentifier = this.peripheralIdentifier,
-    nickname = this.nickname ?: this.name,
-    sku = this.sku,
+    nickname = deviceNickname,
+    sku = deviceSku,
     mac = this.mac,
     password = this.password?.toLong(),
     isDeleted = this.isDeleted ?: false,
-    deviceName = this.name,
-    deviceType = this.type,
+    deviceName = deviceName,
+    deviceType = deviceType,
     broadcastId = this.broadcastId?.toLong(),
     broadcastIdString = this.broadcastIdString,
     userNumber = this.userNumber?.toString(),
-    protocolType = this.type, // Using type as protocol type
+    protocolType = deviceType, // Using type as protocol type
     createdAt = this.createdAt,
-    isSynced = this.isTemporary ?: false,
+    // Convert isTemporary to isSynced: isTemporary=true means isSynced=false, isTemporary=false means isSynced=true
+    // If isTemporary is null, default to false (not synced/temporary)
+    isSynced = this.isTemporary == false || this.isTemporary == null,
     hasServerID = !this.id.isNullOrBlank(),
     token = this.scaleToken,
   )
@@ -252,6 +274,8 @@ private fun IonicScale.toR4ScalePreferenceEntity(): R4ScalePreferenceEntity? {
     timeFormat = preference.timeFormat,
     tzOffset = preference.tzOffset?.toInt(),
     wifiFotaScheduleTime = preference.wifiFotaScheduleTime?.toInt(),
-    isSynced = false,
+    // Convert preference.isTemporary to isSynced: isTemporary=true means isSynced=false, isTemporary=false means isSynced=true
+    // If isTemporary is null, default to false (not synced/temporary)
+    isSynced = preference.isTemporary == false,
   )
 }

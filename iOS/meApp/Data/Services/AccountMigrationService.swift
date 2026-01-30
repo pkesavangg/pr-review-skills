@@ -909,5 +909,3 @@ final class AccountMigrationService {
     }
 }
 // swiftlint:enable type_body_length
-
-

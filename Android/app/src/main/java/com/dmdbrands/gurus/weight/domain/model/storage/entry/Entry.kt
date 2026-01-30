@@ -31,10 +31,11 @@ sealed class Entry : IUnitProcessable<Entry> {
                 val convertedWeight = convertWeight(this.scale.scaleEntry.weight, fromUnit, toUnit)
                 val finalWeight =
                     if (weightLess?.isWeightlessOn == true) convertedWeight - weightLess.weightlessWeight else convertedWeight
+                val normalizedWeight = finalWeight.rounded()?.takeIf { kotlin.math.abs(it) >= 0.0001 } ?: 0.0
                 val newScaleEntry = this.scale.scaleEntry.copy(
-                    weight = finalWeight.rounded() ?: this.scale.scaleEntry.weight,
+                    weight = normalizedWeight,
                 )
-                newScaleEntry.prefix = if (weightLess?.isWeightlessOn == true && finalWeight > 0) "+" else ""
+              newScaleEntry.prefix = if (weightLess?.isWeightlessOn == true && finalWeight > 0) "+" else ""
                 this.copy(
                     entry = this.entry.copy(
                         unit = toUnit,

@@ -104,24 +104,27 @@ fun AppProfileAvatar(
         // Combined "K" + profile icon
         Box(
             modifier = modifier
-              .width(size * 2f) // more space for separation
+              .width(size * 1.6f) // adjusted width for better centering
                 .height(size)
               .then(gestureModifier),
-            contentAlignment = Alignment.CenterStart,
+            contentAlignment = Alignment.Center,
         ) {
+            // Profile icon - overlapping on the right (rendered first, lower z-index)
             AppIcon(
                 id = AppIcons.Default.profile,
                 contentDescription = "Profile",
                 type = AppIconType.Primary,
                 modifier = Modifier
-                  .size(size)
-                  .absoluteOffset(x = size * 0.6f), // this gives a slight overlap effect
+                  .align(Alignment.CenterEnd)
+                  .size(size),
             )
 
+            // Letter box - positioned on the left (rendered second, higher z-index)
             Box(
                 modifier = Modifier
-                  // .border(3.dp, colorScheme.inverseAction, shape = CircleShape)
+                  .align(Alignment.CenterStart)
                   .size(size / 1.06f)
+                  .border(3.dp, MeTheme.colorScheme.inverseAction, CircleShape)
                   .clip(CircleShape)
                   .background(backgroundColor),
                 contentAlignment = Alignment.Center,
