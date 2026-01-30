@@ -28,6 +28,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private var scaleItem: ScaleItemInfo?
     private var discoveredScale: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
+    /// Flag to track if scale has been saved to prevent duplicate saves
+    private var isScaleSaved: Bool = false
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     // MARK: - Published State
@@ -144,7 +146,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
             }
             return
         case .setupFinished:
-            saveDiscoveredScale()
+            dismissAction?()
             return
         default:
             // Default behavior for other steps
@@ -188,23 +190,13 @@ final class BluetoothScaleSetupStore: ObservableObject {
     func handleExit() {
         let alertLang = AlertStrings.ExitSetupAlert.self
         
-        // Check if we're on the last step (setupFinished)
-        let isLastStep = currentStep == .setupFinished
-        let shouldSaveScale = isLastStep && discoveredScale != nil && discoveryEvent != nil
-        
         let alert = AlertModel(
             title: alertLang.title,
             message: alertLang.message,
             buttons: [
                 AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
                     guard let self = self else { return }
-                    // If on last step and scale is ready, save it before dismissing
-                    if shouldSaveScale {
-                        self.saveDiscoveredScale()
-                    } else {
-                        // For other steps, just dismiss without saving
-                        self.dismissAction?()
-                    }
+                    self.dismissAction?()
                 },
                 AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
             ]
@@ -289,6 +281,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
                         self.scaleToDelete = scaleToDelete
                         handleDuplicateScale()
                     } else {
+                        // Save scale immediately after pairing succeeds (similar to WiFi scales)
+                        await saveDiscoveredScaleWithLoader(isExiting: false)
                         startEntrySyncing()
                     }
                     LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
@@ -321,7 +315,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
                     }
                 },
                 AlertButtonModel(title: lang.pairButton, type: .primary) { _ in
-                    self.startEntrySyncing()
+                    Task {
+                        // Save scale immediately when user chooses to pair again
+                        await self.saveDiscoveredScaleWithLoader(isExiting: false)
+                        self.startEntrySyncing()
+                    }
                 }
             ]
         )
@@ -437,6 +435,12 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     private func saveDiscoveredScaleWithLoader(isExiting: Bool) async {
+        // Prevent duplicate saves
+        if isScaleSaved {
+            LoggerService.shared.log(level: .info, tag: tag, message: "Scale already saved, skipping duplicate save")
+            return
+        }
+        
         guard let discoveryEvent, let device = discoveredScale else { return }
         
         // Show appropriate loader message
@@ -503,6 +507,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
             
             await self.scaleService.syncAllScalesWithRemote()
             
+            isScaleSaved = true
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(savedScale.id)")
             
             // Post notification that scale was added
@@ -517,7 +522,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
             bluetoothService.isSetupInProgress = false
         }
         notificationService.dismissLoader()
-        dismissAction?()
+        // Only dismiss the screen if we're exiting, not when saving immediately after pairing
+        if isExiting {
+            dismissAction?()
+        }
     }
     
     // MARK: - Helpers
@@ -621,5 +629,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         bluetoothService.reapplySkipDevicesExcludingPaired()
         // Clear setup in progress flag when setup is dismissed
         bluetoothService.isSetupInProgress = false
+        // Reset saved flag
+        isScaleSaved = false
     }
 }
