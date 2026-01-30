@@ -94,9 +94,11 @@ object AppPermissionsHelper {
   fun mapToPermissionGroups(permissionMap: GGPermissionStatusMap): List<PermissionGroup> {
     // Build PermissionItems for all known types, excluding WIFI_SWITCH_LOCATION which is only for WiFi scale setup
     val items = permissionMetaMap.mapNotNull { (type, meta) ->
-      // Skip WIFI_SWITCH_LOCATION in general permissions screen - it's only for WiFi scale setup
-      if (type == CustomPermissionType.WIFI_SWITCH_LOCATION.value) {
-        return@mapNotNull null
+      // Skip permissions that shouldn't be shown in the general permissions screen
+      when {
+        type == CustomPermissionType.WIFI_SWITCH_LOCATION.value -> return@mapNotNull null
+        type == GGPermissionType.NEARBY_DEVICE && Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> return@mapNotNull null
+        type == GGPermissionType.NOTIFICATION && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> return@mapNotNull null
       }
 
       val value = permissionMap[type] ?: PermissionState.NOT_DETERMINED
@@ -389,6 +391,12 @@ object AppPermissionsHelper {
   ): List<PermissionItem> {
     // Build PermissionItems for only the required types
     val items = requiredPermissionTypes.mapNotNull { type ->
+      // Skip permissions that aren't available on this Android version
+      when {
+        type == GGPermissionType.NEARBY_DEVICE && Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> return@mapNotNull null
+        type == GGPermissionType.NOTIFICATION && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> return@mapNotNull null
+      }
+      
       val meta = permissionMetaMap[type] ?: return@mapNotNull null
 
       // For WIFI_SWITCH_LOCATION, use the actual WIFI_SWITCH permission state
