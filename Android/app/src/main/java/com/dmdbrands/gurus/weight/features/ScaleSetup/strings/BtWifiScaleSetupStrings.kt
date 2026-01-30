@@ -104,4 +104,10 @@ object BtWifiScaleSetupStrings {
     const val Subtitle = "Delete an inactive user to add yourself to the scale."
     const val UsernameLabel = "User name"
   }
+
+  object KnownScaleDiscoveredAlert {
+    const val Title = "Known Scale Discovered"
+    const val Subtitle =
+      "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+  }
 }
