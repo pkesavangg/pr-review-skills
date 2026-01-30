@@ -74,7 +74,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(PermissionListView(setupType: .bluetooth))
             case .wakeUp:
                 return AnyView(ConnectionPromptView(
-                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle
+                    subtitle: scaleSetupStrings.wakeYourScaleSubtitleLCBT,
+                    scaleImagePath: scaleItem.imgPath
                 ))
             case .connectingBluetooth:
                 return AnyView(

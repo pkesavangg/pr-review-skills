@@ -13,17 +13,22 @@ struct ConnectionPromptView: View {
     // MARK: - Props
     let title: String
     let subtitle: String?
-    let image: String
+    /// Optional image path. If scaleImagePath is provided, this is ignored. Otherwise, used for the connection indicator.
+    let image: String?
+    /// Optional scale image path. If provided, displays the scale image instead of the connection indicator.
+    let scaleImagePath: String?
 
     /// Designated initializer.
     /// - Parameters:
     ///   - title: Heading text.
     ///   - subtitle: Optional secondary text shown beneath the heading.
-    ///   - image: Name of the asset to display inside the indicator.
-    init(title: String = ScaleSetupStrings.wakeYourScaleTitle, subtitle: String? = nil, image: String = AppAssets.bluetooth) {
+    ///   - image: Optional name of the asset to display inside the indicator (used when scaleImagePath is nil). Defaults to bluetooth icon.
+    ///   - scaleImagePath: Optional path to scale image asset. If provided, displays scale image instead of connection indicator.
+    init(title: String = ScaleSetupStrings.wakeYourScaleTitle, subtitle: String? = nil, image: String? = AppAssets.bluetooth, scaleImagePath: String? = nil) {
         self.title = title
         self.subtitle = subtitle
         self.image = image
+        self.scaleImagePath = scaleImagePath
     }
 
     // MARK: - Body
@@ -43,7 +48,22 @@ struct ConnectionPromptView: View {
                 }
             }
 
-            ConnectionIndicatorView(image: image)
+            VStack(spacing: scaleImagePath == nil ? 0 : 90) {
+                if let scaleImagePath {
+                    Image(scaleImagePath)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 180, height: 180)
+                        .cornerRadius(.radiusLG)
+                        .themeDropShadow()
+                        .padding(.top, .spacingXS)
+                }
+
+                if let image {
+                    ConnectionIndicatorView(image: image)
+                }
+            }
+            
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }

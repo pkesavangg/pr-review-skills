@@ -285,7 +285,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 return AnyView(PermissionListView(setupType: .btWifi))
             case .wakeup:
                 return AnyView(ConnectionPromptView(
-                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle
+                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle,
+                    scaleImagePath: scaleItem.imgPath
                 ))
             case .connectingBluetooth:
                 return AnyView(
