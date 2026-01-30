@@ -32,7 +32,6 @@ final class HealthKitStore: ObservableObject {
     @Injector private var logger: LoggerService
     private let kvStorage = KvStorageService.shared
     
-    var cancellables: Set<AnyCancellable> = []
     let wgTotalPermissionsCount = 5
     
     /// Retains the Combine subscription for app-active notifications specifically used
@@ -47,11 +46,7 @@ final class HealthKitStore: ObservableObject {
     let tag = "HealthKitStore"
     // MARK: - Init
     init() {
-        loadStatus()
-    }
-    
-    func loadStatus() {
-        self.getLocalStoredData()
+        getLocalStoredData()
     }
     
     func getLocalStoredData() {
@@ -140,7 +135,7 @@ final class HealthKitStore: ObservableObject {
                 if currentIntegration?.isIntegrated != true {
                     await persistIntegrationAfterPermissionGrant()
                 }
-                finishIntegrationFlow(hasAlreadySynced: hasSyncedInCurrentFlow)
+                finishIntegrationFlow()
             case .integrationFailed:
                 observeForegroundForPermissionChanges()
                 healthKitService.openAppleHealth()
@@ -192,13 +187,6 @@ final class HealthKitStore: ObservableObject {
         Task {
             dismissModal()
             
-            // If we've already synced in this flow, don't show sync prompt again
-            if hasAlreadySynced {
-                notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
-                hasSyncedInCurrentFlow = false // Reset flag
-                return
-            }
-            
             let hasEntries = (try? await entryService.getEntryCount() ?? 0) ?? 0 > 0
             if hasEntries {
                 presentSyncHistoryAlert()
@@ -225,31 +213,6 @@ final class HealthKitStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    /// Presents the *Sync Weight History* confirmation alert with completion callback.
-    /// Used for the "permission denied → later allowed" flow to show Integration Complete screen after sync.
-    private func presentSyncHistoryAlertWithCompletion() {
-        let alert = AlertModel(
-            title: AlertStrings.SyncWeightHistoryAlert.title,
-            message: AlertStrings.SyncWeightHistoryAlert.message,
-            buttons: [
-                AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.cancelButton, type: .secondary) { _ in
-                    // User cancelled sync, still show Integration Complete screen
-                    // Don't mark as synced since user cancelled
-                    Task {
-                        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
-                        await MainActor.run {
-                            self.activeState = .integrationComplete
-                        }
-                    }
-                },
-                AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.syncButton, type: .primary) { _ in
-                    self.performFullSyncWithCompletion()
-                }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-    
     /// Performs the actual sync and shows toast after successful sync.
     private func performFullSync() {
         Task {
@@ -263,33 +226,6 @@ final class HealthKitStore: ObservableObject {
                 }
                 dismissModal()
                 notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
-            } catch {
-                notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
-            }
-        }
-    }
-    
-    /// Performs the actual sync, shows toast after successful sync, then displays Integration Complete screen.
-    /// Used for the "permission denied → later allowed" flow.
-    private func performFullSyncWithCompletion() {
-        Task {
-            notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
-            defer { notificationService.dismissLoader() }
-            
-            do {
-                try await healthKitService.syncAllData()
-                if let latestEntry = try? await entryService.getLatestEntry() {
-                    await integrationService.logHealthEntry(entry: latestEntry)
-                }
-                // Mark that we've synced in this flow
-                hasSyncedInCurrentFlow = true
-                // Show sync success toast
-                notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
-                // Wait a bit for toast to be visible, then show Integration Complete screen
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                await MainActor.run {
-                    self.activeState = .integrationComplete
-                }
             } catch {
                 notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
             }
@@ -371,6 +307,37 @@ final class HealthKitStore: ObservableObject {
             }
     }
     
+    /// Sets up a temporary observer that fires when the app becomes active again
+    /// (i.e. user returns from the Apple Health app) after seeing the out-of-sync alert.
+    /// At that point we re-check if permissions are now in sync.
+    private func observeForegroundForOutOfSyncPermissionChanges() {
+        foregroundObserver?.cancel()
+        
+        foregroundObserver = NotificationCenter.default
+            .publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.handleOutOfSyncPermissionCheck()
+                    self.foregroundObserver?.cancel()
+                    self.foregroundObserver = nil
+                }
+            }
+    }
+    
+    /// Handles the permission check when user returns from Apple Health after seeing out-of-sync alert.
+    private func handleOutOfSyncPermissionCheck() async {
+        let permissionsGranted = healthKitService.getApprovedPermissionList().count
+        
+        // Update the out-of-sync status
+        isOutOfSync = await healthKitService.isHKOutOfSync()
+        
+        // If permissions are now in sync, show a toast notification
+        if permissionsGranted >= wgTotalPermissionsCount && !isOutOfSync {
+            notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+        }
+    }
+    
     /// Handles the permission check and integration persistence when user returns from Apple Health.
     private func handlePermissionChangeAfterReturningFromAppleHealth() async {
         let permissionsGranted = healthKitService.getApprovedPermissionList().count
@@ -386,10 +353,7 @@ final class HealthKitStore: ObservableObject {
         }
         
         await persistIntegrationAfterPermissionGrant()
-        
-        // Handle flow based on permission count: full permissions show completion screen after sync
-        let isFullPermissions = permissionsGranted >= wgTotalPermissionsCount
-        await handlePermissionFlowAfterReturning(isFullPermissions: isFullPermissions)
+        await handlePermissionFlowAfterReturning()
     }
     
     /// Checks if integration is already used by another user
@@ -403,8 +367,7 @@ final class HealthKitStore: ObservableObject {
     }
     
     /// Handles the flow after permissions are granted when returning from Apple Health.
-    /// - Parameter isFullPermissions: If true, shows Integration Complete screen after sync completion.
-    private func handlePermissionFlowAfterReturning(isFullPermissions: Bool) async {
+    private func handlePermissionFlowAfterReturning() async {
         dismissModal()
         try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
         
