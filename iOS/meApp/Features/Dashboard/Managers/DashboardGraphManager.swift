@@ -1434,7 +1434,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let visibleStart: Date
         let visibleEnd: Date
 
-        if period == .year {
+        if period == .year || period == .total {
             // Show all X-axis ticks from first entry to current date with buffer
             visibleStart = overallMinDate.addingTimeInterval(-minDateBuffer)
             visibleEnd = currentDate
