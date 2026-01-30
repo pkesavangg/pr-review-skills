@@ -230,10 +230,9 @@ final class HealthKitStore: ObservableObject {
                 // Dismiss loader before showing toast to avoid showing both at the same time
                 notificationService.dismissLoader()
                 dismissModal()
-                notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
-                // Delay persistence to ensure toast appears first, then checkmark appears after
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
+                // Persist integration and show toast simultaneously so checkmark and toast appear together
                 await persistIntegrationAfterPermissionGrant()
+                notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
             } catch {
                 notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
