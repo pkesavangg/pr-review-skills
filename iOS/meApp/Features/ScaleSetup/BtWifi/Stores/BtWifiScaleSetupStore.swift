@@ -2886,9 +2886,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let result = (currentDashboardType == "dashboard_4_metrics" || 
                 currentDashboardType == "dashboard4") &&
                 dashboardStore.effectiveDashboardType == .dashboard4
-        if result {
-        } else {
-        }
         return result
     }
     
@@ -2906,7 +2903,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Preserve dashboard order on re-pairing; reload only if metrics are empty
             let currentMetricsCount = await MainActor.run {
                 dashboardStore.metricsManager.state.metrics.count
-            }           
+            }
             if currentMetricsCount == 0 {
                 await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
             }
