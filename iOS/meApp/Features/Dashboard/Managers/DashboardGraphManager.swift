@@ -1429,10 +1429,20 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             break
         }
 
-        let adjustedMinDate = overallMinDate.addingTimeInterval(-minDateBuffer)
+        // For year view: display all X-axis ticks for the entire time period
+        // For other views: use scroll-based calculation
+        let visibleStart: Date
+        let visibleEnd: Date
 
-        let visibleStart = max(adjustedMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
-        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer + maxDateBuffer))
+        if period == .year {
+            // Show all X-axis ticks from first entry to current date with buffer
+            visibleStart = overallMinDate.addingTimeInterval(-minDateBuffer)
+            visibleEnd = currentDate
+        } else {
+            let adjustedMinDate = overallMinDate.addingTimeInterval(-minDateBuffer)
+            visibleStart = max(adjustedMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+            visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer + maxDateBuffer))
+        }
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
