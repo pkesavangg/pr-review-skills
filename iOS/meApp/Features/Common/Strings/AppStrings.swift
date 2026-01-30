@@ -757,7 +757,7 @@ struct AppAssets {
     static let xmarkSmall = "xmarkSmall"
     static let meLogoDark = "meLogoDark"
     static let meLogoLight = "meLogoLight"
-    static let wgLogoDark = "WGLogoDark"
+    static let wgLogoDark = "wgLogoDark"
     static let wgLogoLight = "wgLogoLight"
     static let stamp = "stamp"
     static let stampDark = "stampDark"
@@ -856,7 +856,7 @@ struct AppAssets {
     // MARK: - WiFi series
     static let scale0384 = "0384"
     static let scale0385 = "0385"
-    static let scale03960397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
+    static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"

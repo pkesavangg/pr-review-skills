@@ -780,7 +780,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 await self.ggBleSDK.getDeviceInfo(ggDevice)
             }
             
-            return .success(DeviceInfo(sdk: details!))
+            return .success(DeviceInfo(sdk: detail))
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
