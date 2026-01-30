@@ -80,6 +80,12 @@ constructor(
 
   companion object {
     private const val GOAL_ALERT_DELAY_MS = 3000L
+    /**
+     * Weight conversion factor to convert from stored weight unit to pounds.
+     * Weight is stored in 0.1 lb increments (e.g., 150.5 lbs is stored as 1505),
+     * so multiplying by 10 converts to full pounds for the goal alert service.
+     */
+    private const val WEIGHT_CONVERSION_FACTOR = 10
   }
 
   private val _isEmpty = MutableStateFlow(false)
@@ -594,19 +600,14 @@ constructor(
       _lastUpdated.value = System.currentTimeMillis()
       
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
-      if (lastValidOperation != null) {
+      // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
+      if (lastValidOperation != null && lastValidOperation is ScaleEntry) {
+        val operationWeight = lastValidOperation.scale.scaleEntry.weight
         repositoryScope.launch {
           try {
             delay(GOAL_ALERT_DELAY_MS)
-            // Get latest entry from StateFlow (similar to TypeScript: this.getEntryService().latestEntry.value)
-            val latestEntry = _latestEntry.value
-            val latestWeight = when (latestEntry) {
-              is ScaleEntry -> latestEntry.scale.scaleEntry.weight
-              else -> null
-            }
-            latestWeight?.let { weight ->
-              goalService.showGoalCompletionAlert(weight * 10)
-            }
+            // Convert stored weight (0.1 lb increments) to full pounds for goal alert service
+            goalService.showGoalCompletionAlert(operationWeight * WEIGHT_CONVERSION_FACTOR)
           } catch (err: Exception) {
             AppLog.e("EntryService", "syncOperations - unable to set Goal met", err)
           }
