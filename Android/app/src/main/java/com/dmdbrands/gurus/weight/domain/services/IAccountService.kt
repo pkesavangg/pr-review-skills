@@ -100,9 +100,15 @@ interface IAccountService {
 
   /**
    * Checks login status for the active account by calling the API and updating local data.
-   * @param isDuringAccountSwitch If true, falls back to local DB check on network failure instead of returning false.
-   *                              This prevents false negatives during account switch operations.
-   * @return true if the account is still valid, false if expired or network unavailable (unless during account switch)
+   * When the network is unavailable, this method falls back to a local validity check for the
+   * active account (no remote verification), which may still report the account as valid.
+   *
+   * @param isDuringAccountSwitch If true, applies more lenient handling of network failures and
+   *                              relies on local checks to avoid false negatives during account
+   *                              switch operations.
+   * @return true if the account is considered valid (either confirmed by the server or by a
+   *         local validity check when offline), false if it is considered expired/invalid based
+   *         on server response or local evaluation.
    */
   suspend fun checkLoginStatusForActiveAccount(isDuringAccountSwitch: Boolean = false): Boolean
 
