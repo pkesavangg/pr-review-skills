@@ -16,7 +16,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     init() {}
     
     /// Fetches the scale token for WiFi scale operations.
-    /// - Parameter r: Optional parameter for the scale token request.
+    /// - Parameter request: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.
     func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse {
         logger.log(level: .info, tag: tag, message: "getScaleToken called with request: \(request ?? "nil")")
