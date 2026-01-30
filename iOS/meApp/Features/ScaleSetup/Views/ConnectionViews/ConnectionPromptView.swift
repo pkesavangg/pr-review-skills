@@ -47,15 +47,17 @@ struct ConnectionPromptView: View {
                 }
             }
 
-            if let scaleImagePath {
-                Image(scaleImagePath)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 180, height: 180)
-                    .cornerRadius(.radiusLG)
-                    .themeDropShadow()
-                    .padding(.top, .spacingXS)
-            } else {
+            VStack(spacing: scaleImagePath == nil ? 0 : 90) {
+                if let scaleImagePath {
+                    Image(scaleImagePath)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 180, height: 180)
+                        .cornerRadius(.radiusLG)
+                        .themeDropShadow()
+                        .padding(.top, .spacingXS)
+                }
+                
                 ConnectionIndicatorView(image: image)
             }
             
