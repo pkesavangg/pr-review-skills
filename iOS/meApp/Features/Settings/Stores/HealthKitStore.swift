@@ -68,8 +68,9 @@ final class HealthKitStore: ObservableObject {
             showHKRemoveAlert()
             return
         }
-        // Reset sync flag when starting a new integration flow
+        // Reset sync flag and ensure integration status is false when starting a new integration flow
         hasSyncedInCurrentFlow = false
+        isIntegrated = false // Ensure checkmark doesn't show until after sync completes
         Task {
             do {
                 let isAlreadyIntegrated = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
@@ -131,10 +132,6 @@ final class HealthKitStore: ObservableObject {
                 setHasShownFirstTimeConnectScreen(true)
                 requestAuthorization()
             case .integrationComplete:
-                let currentIntegration = try? await integrationService.getStoredIntegrationData()
-                if currentIntegration?.isIntegrated != true {
-                    await persistIntegrationAfterPermissionGrant()
-                }
                 finishIntegrationFlow()
             case .integrationFailed:
                 observeForegroundForPermissionChanges()
@@ -173,7 +170,7 @@ final class HealthKitStore: ObservableObject {
                 } else {
                     activeState = .integrationFailed
                 }
-                getLocalStoredData()
+                // Don't refresh integration status here - wait until after sync completes
             } catch {
                 activeState = error is IntegrationError ? .userConflict : .integrationFailed
             }
@@ -181,7 +178,7 @@ final class HealthKitStore: ObservableObject {
     }
     
     /// Called when user taps **FINISH** on the *Integration Complete* screen.
-    /// Presents *Sync Weight History* alert if needed, otherwise shows toast and ends flow.
+    /// Presents *Sync Weight History* alert if needed, otherwise persists integration and shows toast.
     /// - Parameter hasAlreadySynced: If true, skips showing sync prompt since sync was already performed.
     private func finishIntegrationFlow(hasAlreadySynced: Bool = false) {
         Task {
@@ -191,6 +188,8 @@ final class HealthKitStore: ObservableObject {
             if hasEntries {
                 presentSyncHistoryAlert()
             } else {
+                // No entries to sync - persist integration and show toast immediately
+                await persistIntegrationAfterPermissionGrant()
                 notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
             }
         }
@@ -203,7 +202,12 @@ final class HealthKitStore: ObservableObject {
             message: AlertStrings.SyncWeightHistoryAlert.message,
             buttons: [
                 AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.cancelButton, type: .secondary) { _ in
-                    self.dismissModal()
+                    Task {
+                        self.dismissModal()
+                        self.notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+                        // Delay persistence to ensure toast appears first
+                        await self.persistIntegrationAfterPermissionGrant()
+                    }
                 },
                 AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.syncButton, type: .primary) { _ in
                     self.performFullSync()
@@ -217,16 +221,21 @@ final class HealthKitStore: ObservableObject {
     private func performFullSync() {
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
-            defer { notificationService.dismissLoader() }
             
             do {
                 try await healthKitService.syncAllData()
                 if let latestEntry = try? await entryService.getLatestEntry() {
                     await integrationService.logHealthEntry(entry: latestEntry)
                 }
+                // Dismiss loader before showing toast to avoid showing both at the same time
+                notificationService.dismissLoader()
                 dismissModal()
                 notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
+                // Delay persistence to ensure toast appears first, then checkmark appears after
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
+                await persistIntegrationAfterPermissionGrant()
             } catch {
+                notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
             }
         }
@@ -338,7 +347,8 @@ final class HealthKitStore: ObservableObject {
         }
     }
     
-    /// Handles the permission check and integration persistence when user returns from Apple Health.
+    /// Handles the permission check when user returns from Apple Health.
+    /// Integration persistence is deferred until after sync completes (or user cancels sync).
     private func handlePermissionChangeAfterReturningFromAppleHealth() async {
         let permissionsGranted = healthKitService.getApprovedPermissionList().count
         
@@ -352,7 +362,7 @@ final class HealthKitStore: ObservableObject {
             return
         }
         
-        await persistIntegrationAfterPermissionGrant()
+        // Don't persist integration here - wait until sync completes or user cancels
         await handlePermissionFlowAfterReturning()
     }
     
