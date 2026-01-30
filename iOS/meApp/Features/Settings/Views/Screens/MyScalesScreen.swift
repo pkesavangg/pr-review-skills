@@ -250,7 +250,7 @@ struct MyScalesScreen: View {
                         
                         ForEach(scaleStore.scales, id: \.id) { scale in
                             ScaleItemView(
-                                scaleIcon: scaleIcon(for: scale.sku),
+                                scaleIcon: scaleIcon(for: scale.displaySku ?? scale.sku),
                                 modelNumber: scale.displaySku ?? scale.sku ?? "----",
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
                                 status: scale.connectionStatus,
