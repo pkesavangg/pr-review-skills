@@ -13,8 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -28,8 +27,9 @@ fun ScaleDiscoveredModal(
   onClose: () -> Unit = {},
 ) {
   // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup and image
-  val displaySku = DeviceHelper.mapSkuForDisplay(sku)
-  val scaleName = SCALES.find { it.sku == displaySku }!!.productName
+  val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)!!
+  val displaySku = scaleInfo.sku
+  val scaleName = scaleInfo.productName
   Box(
     modifier = modifier.fillMaxWidth()
   ) {

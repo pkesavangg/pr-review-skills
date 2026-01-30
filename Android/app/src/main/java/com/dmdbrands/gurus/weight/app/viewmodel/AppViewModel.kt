@@ -37,10 +37,9 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
@@ -256,9 +255,7 @@ constructor(
           ),
         )
       } else if (sku != null) {
-        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
-        val lookupSku = DeviceHelper.mapSkuForDisplay(sku!!)
-        val scaleInfo = SCALES.find { it.sku == lookupSku }
+        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku!!)
         // Pass original SKU to routes (not mapped), setup will save original SKU
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
@@ -494,9 +491,7 @@ constructor(
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
-                // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
-                val lookupSku = DeviceHelper.mapSkuForDisplay(savedScale.sku ?: "")
-                val scaleInfo = SCALES.find { it.sku == lookupSku }
+                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.sku ?: "")
                 scaleInfo?.setupType in listOf(
                   ScaleSetupType.BtWifiR4,
                   ScaleSetupType.Lcbt,

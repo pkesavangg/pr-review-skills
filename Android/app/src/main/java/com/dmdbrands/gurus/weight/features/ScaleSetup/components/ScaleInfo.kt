@@ -24,7 +24,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
@@ -37,7 +37,8 @@ fun ScaleInfo(
   onButtonClick: (() -> Unit)? = null,
 ) {
   // Map SKU for display (e.g., 0022 -> 0383)
-  val displaySku = DeviceHelper.mapSkuForDisplay(sku)
+  val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
+  val displaySku = scaleInfo?.sku ?: DeviceHelper.mapSkuForDisplay(sku)
   Column(
     modifier = Modifier
       .fillMaxSize()
@@ -46,7 +47,7 @@ fun ScaleInfo(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {
-    val scaleName = SCALES.find { it.sku == displaySku }?.productName
+    val scaleName = scaleInfo?.productName
     AppScaleImage(sku = displaySku, scaleImageSize = ScaleImageSize.Large)
     Spacer(modifier = Modifier.height(spacing.lg))
     scaleName?.let {

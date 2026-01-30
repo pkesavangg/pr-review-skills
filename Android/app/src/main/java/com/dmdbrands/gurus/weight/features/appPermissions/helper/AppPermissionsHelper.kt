@@ -6,8 +6,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.appPermissions.strings.AppPermissionsScreenStrings
 import com.dmdbrands.gurus.weight.features.common.components.PermissionItemStatus
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
@@ -203,9 +202,8 @@ object AppPermissionsHelper {
     requiredPermissionTypes: List<String>? = null,
     wifiName: String? = null
   ): List<PermissionGroup> {
-    // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
-    val lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-    val scaleSetupType = SCALES.find { it.sku == lookupSku }!!.setupType
+    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
+    val scaleSetupType = scaleInfo!!.setupType
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     // Build PermissionItems for only the required types
@@ -301,9 +299,8 @@ object AppPermissionsHelper {
     if (sku == null && setupType == null) {
       return false
     }
-    // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
-    val lookupSku = sku?.let { DeviceHelper.mapSkuForDisplay(it) }
-    val scaleSetupType = setupType ?: SCALES.find { it.sku == lookupSku }!!.setupType
+    val scaleInfo = sku?.let { ScaleDataHelper.findScaleInfoBySku(it) }
+    val scaleSetupType = setupType ?: scaleInfo!!.setupType
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.all { permissionType ->
@@ -342,9 +339,8 @@ object AppPermissionsHelper {
     if (sku == null && setupType == null) {
       return emptyList()
     }
-    // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
-    val lookupSku = sku?.let { DeviceHelper.mapSkuForDisplay(it) }
-    val scaleSetupType = setupType ?: SCALES.find { it.sku == lookupSku }!!.setupType
+    val scaleInfo = sku?.let { ScaleDataHelper.findScaleInfoBySku(it) }
+    val scaleSetupType = setupType ?: scaleInfo!!.setupType
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.filter { permissionType ->
