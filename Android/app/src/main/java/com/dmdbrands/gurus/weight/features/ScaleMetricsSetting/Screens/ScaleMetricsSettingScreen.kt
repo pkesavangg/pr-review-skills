@@ -85,12 +85,17 @@ fun ScaleMetricsSettingScreen(
     val currentEnabledMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key } +
         otherMetricsState.filter { it.isEnabled }.map { it.key }
     
-    // Only sync if currentMetrics is different from what we would emit
+    // Check if heart rate metric's isIncluded matches includeHeartRate parameter
+    val heartRateMetric = bodyMetricsState.find { it.key == ScaleMetricKeys.HEART_RATE }
+    val heartRateIncludedMatches = heartRateMetric?.isIncluded == includeHeartRate
+    
+    // Only sync if currentMetrics is different from what we would emit OR if heart rate inclusion state doesn't match
     // This prevents reset loops when onMetricsChanged updates the parent
     // Use content comparison to check if lists are different (order-independent for safety)
     val metricsMatch = currentEnabledMetrics.size == currentMetrics.size &&
         currentEnabledMetrics.all { it in currentMetrics } &&
-        currentMetrics.all { it in currentEnabledMetrics }
+        currentMetrics.all { it in currentEnabledMetrics } &&
+        heartRateIncludedMatches
     
     if (!metricsMatch) {
       val (bodyMetrics, otherMetrics) = ScaleMetricsHelper.createOrderedMetrics(currentMetrics)

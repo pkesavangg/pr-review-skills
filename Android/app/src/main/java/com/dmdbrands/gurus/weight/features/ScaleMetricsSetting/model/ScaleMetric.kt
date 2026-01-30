@@ -27,7 +27,7 @@ object ScaleMetricKeys {
 /**
  * Constants for scale metric display labels.
  */
-object ScaleMetricDisplayKeys {
+object ScaleMetricDisplayLabels {
   const val BODY_MASS_INDEX = "Body Mass Index"
   const val BODY_FAT = "Body Fat"
   const val MUSCLE_MASS = "Muscle Mass"
@@ -67,18 +67,18 @@ data class ScaleMetric(
  */
 val scaleMetrics =
   listOf(
-    ScaleMetric(ScaleMetricDisplayKeys.BODY_MASS_INDEX, ScaleMetricKeys.BMI, AppIcons.Metrics.Bmi),
-    ScaleMetric(ScaleMetricDisplayKeys.BODY_FAT, ScaleMetricKeys.BODY_FAT_PERCENT, AppIcons.Metrics.BodyFat),
-    ScaleMetric(ScaleMetricDisplayKeys.MUSCLE_MASS, ScaleMetricKeys.MUSCLE_PERCENT, AppIcons.Metrics.MuscleMass),
-    ScaleMetric(ScaleMetricDisplayKeys.BODY_WATER, ScaleMetricKeys.BODY_WATER_PERCENT, AppIcons.Metrics.Water),
-    ScaleMetric(ScaleMetricDisplayKeys.HEART_RATE, ScaleMetricKeys.HEART_RATE, AppIcons.Metrics.Pulse),
-    ScaleMetric(ScaleMetricDisplayKeys.BONE_MASS, ScaleMetricKeys.BONE_PERCENT, AppIcons.Metrics.BoneMass),
-    ScaleMetric(ScaleMetricDisplayKeys.VISCERAL_FAT, ScaleMetricKeys.VISCERAL_FAT_LEVEL, AppIcons.Metrics.VisceralFat),
-    ScaleMetric(ScaleMetricDisplayKeys.SUBCUTANEOUS_FAT, ScaleMetricKeys.SUBCUTANEOUS_FAT_PERCENT, AppIcons.Metrics.SubcutaneousFat),
-    ScaleMetric(ScaleMetricDisplayKeys.PROTEIN, ScaleMetricKeys.PROTEIN_PERCENT, AppIcons.Metrics.Protein),
-    ScaleMetric(ScaleMetricDisplayKeys.SKELETAL_MUSCLES, ScaleMetricKeys.SKELETAL_MUSCLE_PERCENT, AppIcons.Metrics.SkeletalMusclePercent),
-    ScaleMetric(ScaleMetricDisplayKeys.BASAL_METABOLIC_RATE, ScaleMetricKeys.BMR, AppIcons.Metrics.Bmr),
-    ScaleMetric(ScaleMetricDisplayKeys.METABOLIC_AGE, ScaleMetricKeys.METABOLIC_AGE, AppIcons.Metrics.MetabolicAge),
+    ScaleMetric(ScaleMetricDisplayLabels.BODY_MASS_INDEX, ScaleMetricKeys.BMI, AppIcons.Metrics.Bmi),
+    ScaleMetric(ScaleMetricDisplayLabels.BODY_FAT, ScaleMetricKeys.BODY_FAT_PERCENT, AppIcons.Metrics.BodyFat),
+    ScaleMetric(ScaleMetricDisplayLabels.MUSCLE_MASS, ScaleMetricKeys.MUSCLE_PERCENT, AppIcons.Metrics.MuscleMass),
+    ScaleMetric(ScaleMetricDisplayLabels.BODY_WATER, ScaleMetricKeys.BODY_WATER_PERCENT, AppIcons.Metrics.Water),
+    ScaleMetric(ScaleMetricDisplayLabels.HEART_RATE, ScaleMetricKeys.HEART_RATE, AppIcons.Metrics.Pulse),
+    ScaleMetric(ScaleMetricDisplayLabels.BONE_MASS, ScaleMetricKeys.BONE_PERCENT, AppIcons.Metrics.BoneMass),
+    ScaleMetric(ScaleMetricDisplayLabels.VISCERAL_FAT, ScaleMetricKeys.VISCERAL_FAT_LEVEL, AppIcons.Metrics.VisceralFat),
+    ScaleMetric(ScaleMetricDisplayLabels.SUBCUTANEOUS_FAT, ScaleMetricKeys.SUBCUTANEOUS_FAT_PERCENT, AppIcons.Metrics.SubcutaneousFat),
+    ScaleMetric(ScaleMetricDisplayLabels.PROTEIN, ScaleMetricKeys.PROTEIN_PERCENT, AppIcons.Metrics.Protein),
+    ScaleMetric(ScaleMetricDisplayLabels.SKELETAL_MUSCLES, ScaleMetricKeys.SKELETAL_MUSCLE_PERCENT, AppIcons.Metrics.SkeletalMusclePercent),
+    ScaleMetric(ScaleMetricDisplayLabels.BASAL_METABOLIC_RATE, ScaleMetricKeys.BMR, AppIcons.Metrics.Bmr),
+    ScaleMetric(ScaleMetricDisplayLabels.METABOLIC_AGE, ScaleMetricKeys.METABOLIC_AGE, AppIcons.Metrics.MetabolicAge),
   )
 
 /**
@@ -87,8 +87,8 @@ val scaleMetrics =
  */
 val otherScaleMetrics =
   listOf(
-    ScaleMetric(ScaleMetricDisplayKeys.GOAL_PROGRESS, ScaleMetricKeys.GOAL_PROGRESS, metricIcon = null),
-    ScaleMetric(ScaleMetricDisplayKeys.DAILY_AVERAGE, ScaleMetricKeys.DAILY_AVERAGE, metricIcon = null),
-    ScaleMetric(ScaleMetricDisplayKeys.WEEKLY_AVERAGE, ScaleMetricKeys.WEEKLY_AVERAGE, metricIcon = null),
-    ScaleMetric(ScaleMetricDisplayKeys.MONTHLY_AVERAGE, ScaleMetricKeys.MONTHLY_AVERAGE, metricIcon = null),
+    ScaleMetric(ScaleMetricDisplayLabels.GOAL_PROGRESS, ScaleMetricKeys.GOAL_PROGRESS, metricIcon = null),
+    ScaleMetric(ScaleMetricDisplayLabels.DAILY_AVERAGE, ScaleMetricKeys.DAILY_AVERAGE, metricIcon = null),
+    ScaleMetric(ScaleMetricDisplayLabels.WEEKLY_AVERAGE, ScaleMetricKeys.WEEKLY_AVERAGE, metricIcon = null),
+    ScaleMetric(ScaleMetricDisplayLabels.MONTHLY_AVERAGE, ScaleMetricKeys.MONTHLY_AVERAGE, metricIcon = null),
   )
