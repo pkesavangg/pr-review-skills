@@ -43,6 +43,7 @@ data class Account(
   val streakTimestamp: String? = null, // nullable
   val dashboardType: String? = DashboardType.DASHBOARD_4_METRICS.value,
   val dashboardMetrics: List<String>? = emptyList(),
+  val progressMetrics: List<String>? = emptyList(),
   // Notification settings
   val shouldSendEntryNotifications: Boolean? = false,
   val shouldSendWeightInEntryNotifications: Boolean? = false,
@@ -147,6 +148,7 @@ fun Account.toAccountInfo(): AccountInfo {
     isStreakOn = this.isStreakOn ?: false,
     dashboardType = this.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.value,
     dashboardMetrics = this.dashboardMetrics ?: emptyList(),
+    progressMetrics = this.progressMetrics ?: emptyList(),
     goalType = this.goalType,
     goalWeight = this.goalWeight?.toFloat(),
     initialWeight = this.initialWeight.toFloat(),

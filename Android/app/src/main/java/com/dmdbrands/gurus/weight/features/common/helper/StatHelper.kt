@@ -127,7 +127,17 @@ object StatHelper {
       else -> null
     }
     val prefix = meta.valuePrefix(useShort).takeIf { it.isNotEmpty() }
-    val suffix = meta.valueSuffix(useShort).takeIf { it.isNotEmpty() }
+    
+    // Handle pluralization for streak milestones (day vs days)
+    val suffix = if (this is DashboardKey.Milestone && 
+        (this.key == MilestoneKey.CURRENT_STREAK || this.key == MilestoneKey.LONGEST_STREAK) &&
+        value is Number) {
+      val numValue = value.toDouble()
+      if (numValue <= 1.0) "day" else "days"
+    } else {
+      meta.valueSuffix(useShort).takeIf { it.isNotEmpty() }
+    }
+    
     val calculatedUnit = if (this is DashboardKey.Metric && (this.key == MetricKey.WEIGHT)) {
       unit.label
     } else {

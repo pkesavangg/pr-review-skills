@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,9 @@ fun SoftwareUpdateScreen(
   handleIntent: (ScaleDetailsIntent) -> Unit,
   onClose: () -> Unit,
 ) {
+  BackHandler {
+    onClose()
+  }
   val device = state.scale
   val currentVersion = device?.device?.firmwareRevision ?: ""
   val latestVersion = state.scale?.latestVersion ?: ""

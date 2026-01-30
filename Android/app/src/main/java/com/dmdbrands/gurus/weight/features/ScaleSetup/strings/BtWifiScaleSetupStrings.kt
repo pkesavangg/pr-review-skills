@@ -85,7 +85,7 @@ object BtWifiScaleSetupStrings {
       const val Message =
         "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
       const val Restore = "Restore"
-      const val GoBack = "Go Back"
+      const val Back = "Back"
     }
   }
 
@@ -103,5 +103,11 @@ object BtWifiScaleSetupStrings {
     const val Title = "User Limit Exceeded!"
     const val Subtitle = "Delete an inactive user to add yourself to the scale."
     const val UsernameLabel = "User name"
+  }
+
+  object KnownScaleDiscoveredAlert {
+    const val Title = "Known Scale Discovered"
+    const val Subtitle =
+      "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
   }
 }

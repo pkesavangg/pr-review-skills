@@ -60,7 +60,10 @@ class AppSyncService @Inject constructor(
     try {
       entryService.addEntry(scaleEntry)
       dialogQueueService.showToast(
-        Toast(message = EntryScreenStrings.EntryAdded),
+        Toast(
+          title = EntryScreenStrings.EntryAddedTitle,
+          message = EntryScreenStrings.EntryAdded,
+        ),
       )
       setAppSyncDataForEditing(null)
       AppLog.d("AppSyncService", "Successfully saved AppSync entry")
