@@ -120,6 +120,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Track previous step to detect navigation direction
     private var previousStep: BtWifiScaleSetupStep = .intro
+    /// Flag to track if we're refreshing WiFi networks (to bypass skip logic)
+    private var isRefreshingWifiNetworks: Bool = false
     
     // Flag to prevent error screens from showing during exit
     // Published so SwiftUI reacts immediately when it changes
@@ -283,7 +285,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 return AnyView(PermissionListView(setupType: .btWifi))
             case .wakeup:
                 return AnyView(ConnectionPromptView(
-                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle
+                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle,
+                    scaleImagePath: scaleItem.imgPath
                 ))
             case .connectingBluetooth:
                 return AnyView(
@@ -1503,13 +1506,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
         } else if scaleSetupError == .updateSettingsFailed {
             targetStep = .customizeSettings
         } else {
-            // For gathering network errors, always navigate to gatheringNetwork step
-            // This allows fetchWifiNetworks() to check permissions and show appropriate error
+            // Retry WiFi network fetch
             targetStep = .gatheringNetwork
+
+            fetchWifiNetworksTask?.cancel()
+            fetchWifiNetworksTask = nil
+
+            isRefreshingWifiNetworks = true
+            scaleSetupError = .none
+            connectionState = .loading
         }
         
         // Clear error state for other error types after a delay
-        if scaleSetupError != .collectMeasurementFailed {
+        if scaleSetupError != .collectMeasurementFailed && targetStep != .gatheringNetwork {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 self.scaleSetupError = .none
                 self.connectionState = .loading
@@ -1545,7 +1554,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
         case .gatheringNetwork:
             // Don't fetch networks if we're showing a "No Networks Found" error
-            if scaleSetupError == .noNetworkFound {
+            if scaleSetupError == .noNetworkFound && !isRefreshingWifiNetworks {
                 return
             }
             
@@ -1554,7 +1563,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 startNetworkScanTimeout()
             }
             
-            let shouldSkipFetch = isSettingsWifiSetup && previousStep == .availableWifiList
+            // Skip fetch only if settings WiFi setup AND not refreshing
+            let shouldSkipFetch = isSettingsWifiSetup && previousStep == .availableWifiList && !isRefreshingWifiNetworks
             
             if let savedScale = savedScale,
                scaleSetupError != .maxUserReached && scaleSetupError != .duplicatesFound,
@@ -1563,8 +1573,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 fetchWifiNetworksTask?.cancel()
                 fetchWifiNetworksTask = Task { [weak self] in
                     guard let self else { return }
+                    // Reset refresh flag after starting the task
+                    self.isRefreshingWifiNetworks = false
                     await self.fetchWifiNetworks(for: savedScale)
                 }
+            } else {
+                // Reset refresh flag even if we skip fetch
+                isRefreshingWifiNetworks = false
             }
         case .availableWifiList:
             if isSettingsWifiSetup {
@@ -2778,6 +2793,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let originalMetrics = dashboardStore.metricsManager.state.metrics
         let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
         
+        
         let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
         let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
         let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
@@ -2868,13 +2884,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Checks if the current dashboard type is dashboard4
     private var isDashboardTypeFour: Bool {
         let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
-        return (currentDashboardType == "dashboard_4_metrics" || 
+        let result = (currentDashboardType == "dashboard_4_metrics" || 
                 currentDashboardType == "dashboard4") &&
                 dashboardStore.effectiveDashboardType == .dashboard4
+        return result
     }
     
     /// Sets up dashboard metrics customization screen with proper state management
-    /// Matches Android behavior: Always loads metrics from API, no first-time pairing detection
+    // First pairing upgrades dashboard and sets default order; subsequent pairings preserve current order
     private func setupDashboardMetricsCustomization() async {
         let isDashboardFour = isDashboardTypeFour
         
@@ -2884,14 +2901,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
             try? await dashboardStore.streakManager.refreshStreakData()
             await dashboardStore.loadProgressMetricsFromAccount()
         } else {
-            // Load metrics from API - API is the source of truth (matches Android behavior)
-            // For new accounts, API will have default order set by server during R4 scale creation
-            // For existing accounts, API will have user's customized order
-            await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+            // Preserve dashboard order on re-pairing; reload only if metrics are empty
+            let currentMetricsCount = await MainActor.run {
+                dashboardStore.metricsManager.state.metrics.count
+            }
+            if currentMetricsCount == 0 {
+                await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+            }
         }
         
         await MainActor.run {
-            // Only set default order if API truly returned empty metrics (shouldn't happen for R4 scales)
+            // Only set default order if metrics are truly empty (shouldn't happen for R4 scales)
             if dashboardStore.metricsManager.state.metrics.isEmpty {
                 dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
             }

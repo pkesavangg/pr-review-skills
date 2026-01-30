@@ -102,12 +102,44 @@ class DashboardStore: ObservableObject {
     var hasBodyMetrics: Bool {
         !metricsToShow.isEmpty
     }
+    
+    /// Whether body metrics should be shown (either skeleton or loaded)
+    var shouldShowBodyMetrics: Bool {
+        if !state.ui.hasLoadedDashboardConfig {
+            // Before loading, check if account has body metrics configured
+            guard let dashboardMetrics = accountService.activeAccount?.dashboardSettings?.dashboardMetrics,
+                  !dashboardMetrics.isEmpty else {
+                return false
+            }
+            let metrics = dashboardMetrics.split(separator: ",").map(String.init)
+            return !metrics.isEmpty && metrics.allSatisfy { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        } else {
+            // After loading, check if there are metrics to show
+            return hasBodyMetrics
+        }
+    }
+    
+    /// Whether body metrics skeleton should be shown
+    var shouldShowBodyMetricsSkeleton: Bool {
+        !state.ui.hasLoadedDashboardConfig && shouldShowBodyMetrics
+    }
+    
+    /// Whether progress metrics skeleton should be shown
+    var shouldShowProgressMetricsSkeleton: Bool {
+        !state.ui.hasLoadedProgressMetrics
+    }
+    
+    /// Whether skeleton progress metrics has content above (body metrics)
+    var skeletonProgressMetricsHasContentAbove: Bool {
+        shouldShowBodyMetrics
+    }
 
     /// Whether the divider should be shown between body metrics and goal/streak section.
-    /// Shows divider in edit mode or when both body metrics and goal/streak items are present.
+    /// Shows divider only when BOTH body metrics AND progress metrics are present.
     var shouldShowDivider: Bool {
-        guard state.ui.hasLoadedDashboardConfig else { return state.ui.isEditMode }
-        return state.ui.isEditMode || (hasBodyMetrics && hasGoalOrStreaks)
+        let hasBodyMetricsToShow = shouldShowBodyMetrics
+        let hasProgressMetricsToShow = shouldShowProgressMetricsSkeleton || shouldShowGoalStreakSection
+        return hasBodyMetricsToShow && hasProgressMetricsToShow
     }
 
     /// Whether the goal/streak section should be shown.

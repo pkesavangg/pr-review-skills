@@ -776,10 +776,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             
             let details = try await withTimeout(seconds: 10) {
-               try await self.ggBleSDK.getDeviceInfo(ggDevice)
+               await self.ggBleSDK.getDeviceInfo(ggDevice)
             }
             
-            return .success(DeviceInfo(sdk: details))
+            guard let deviceDetails = details else {
+                logger.log(level: .error, tag: tag, message: "Device info returned nil for device: \(device.id)")
+                return .failure(.updateProfileFailed(NSError(domain: "BluetoothService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Device info returned nil"])))
+            }
+            
+            return .success(DeviceInfo(sdk: deviceDetails))
         } catch let error as BluetoothServiceError {
             return .failure(error)
         } catch {
@@ -1261,10 +1266,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
 
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
-        let hasImpedanceMismatch = preference.shouldMeasureImpedance && !impedanceSwitchState
+        // Check for impedance preference mismatch between app and scale
+        let hasImpedanceMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
         let hasUnsyncedPreferences = preference.isSynced == false
 
+        logger.log(level: .debug, tag: tag, message: "Checking preference sync - App wants impedance: \(preference.shouldMeasureImpedance), Scale has impedance: \(impedanceSwitchState), Mismatch: \(hasImpedanceMismatch), Unsynced: \(hasUnsyncedPreferences)")
+
         guard hasImpedanceMismatch || hasUnsyncedPreferences else {
+            logger.log(level: .debug, tag: tag, message: "No sync needed - preferences match scale state")
             return
         }
 
@@ -1272,6 +1281,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         switch await updateAccount(on: scale, preference: preference) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
+            // Mark preference as synced to avoid re-syncing
+            preference.isSynced = true
+            Task { @MainActor in
+                do {
+                    try await scaleService.updateScalePreference(scale.id, preference)
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
+                }
+            }
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to sync preference settings to scale \(broadcastId): \(error)")
         }
