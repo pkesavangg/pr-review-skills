@@ -31,6 +31,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.model.CustomizeSettingsCar
 import com.dmdbrands.gurus.weight.features.ScaleSetup.model.CustomizeSettingsList
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupState
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -93,6 +94,7 @@ fun CustomizeScaleSettings(
         FormValidations.required(),
         FormValidations.noWhiteSpace(),
         FormValidations.maxLength(20,),
+        FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
       ),
     )
   }
@@ -399,7 +401,8 @@ fun InitializeCustomizeScaleSettings(
 ) {
   Column(
     modifier = modifier
-      .fillMaxSize().padding(horizontal = spacing.sm),
+      .fillMaxSize()
+      .padding(horizontal = spacing.sm),
   ) {
     Column(
       verticalArrangement = Arrangement.spacedBy(spacing.xs),

@@ -78,6 +78,7 @@ internal fun rememberLineLayerWithConnection(
       targetValue = minYTarget.toFloat(),
       animationSpec = tween(durationMillis = sharedDuration),
     ).also {
+      currentMinY.value
       currentMinY.value = it.value
     }
   } else null
@@ -87,6 +88,7 @@ internal fun rememberLineLayerWithConnection(
       targetValue = maxYTarget.toFloat(),
       animationSpec = tween(durationMillis = sharedDuration),
     ).also {
+      currentMaxY.value
       currentMaxY.value = it.value
     }
   } else null
@@ -94,32 +96,42 @@ internal fun rememberLineLayerWithConnection(
   val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
   val pointSize = if (segment == GraphSegment.TOTAL) 5f else 8f
 
-
-  return rememberLineCartesianLayer(
-    lineProvider = LineCartesianLayer.LineProvider.series(
-      listOf(lineColor).map {
-        LineCartesianLayer.rememberLine(
-          fill = LineCartesianLayer.LineFill.single(fill(it)),
-          stroke = LineCartesianLayer.LineStroke.continuous(thickness = lineThickness),
-          pointConnector = LineCartesianLayer.PointConnector.cubic(0.5f),
-          pointProvider = LineCartesianLayer.PointProvider.single(
-            point = LineCartesianLayer.Point(
-              component = rememberShapeComponent(
-                fill(it),
-                CorneredShape.Pill,
-                strokeThickness = 0.dp,
-              ),
-              sizeDp = pointSize,
-            ),
-          ),
-        )
-      },
-    ),
-    verticalAxisPosition = verticalAxisPosition,
-    rangeProvider = CartesianLayerRangeProvider.fixed(
+  // Memoize rangeProvider to prevent unnecessary layer recreations
+  // Only recreate when minYTarget or maxYTarget actually change
+  val rangeProvider = remember(minYTarget, maxYTarget) {
+    CartesianLayerRangeProvider.fixed(
       maxY = maxYTarget?.toDouble(),
       minY = minYTarget?.toDouble(),
+    )
+  }
+
+  // Create line instance during composition (rememberLine is already memoized internally)
+  val line = LineCartesianLayer.rememberLine(
+    fill = LineCartesianLayer.LineFill.single(fill(lineColor)),
+    stroke = LineCartesianLayer.LineStroke.continuous(thickness = lineThickness),
+    pointConnector = LineCartesianLayer.PointConnector.monotone(), // Now identical to cubic - should work
+    pointProvider = LineCartesianLayer.PointProvider.single(
+      point = LineCartesianLayer.Point(
+        component = rememberShapeComponent(
+          fill(lineColor),
+          CorneredShape.Pill,
+          strokeThickness = 0.dp,
+        ),
+        sizeDp = pointSize,
+      ),
     ),
+  )
+
+  // Memoize lineProvider wrapper to prevent unnecessary recreations
+  // Only recreate when line instance actually changes (which is already memoized by rememberLine)
+  val lineProvider = remember(line) {
+    LineCartesianLayer.LineProvider.series(listOf(line))
+  }
+
+  return rememberLineCartesianLayer(
+    lineProvider = lineProvider,
+    verticalAxisPosition = verticalAxisPosition,
+    rangeProvider = rangeProvider,
   )
 }
 

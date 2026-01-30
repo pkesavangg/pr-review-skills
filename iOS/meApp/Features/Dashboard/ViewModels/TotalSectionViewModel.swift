@@ -29,10 +29,8 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     
     // MARK: - Constants
     
-    /// Number of months to expand domain for small/medium spans
+    /// Number of months to expand domain for small spans (< 1 year)
     private static let domainExpansionMonths: Int = 3
-    /// Number of months to expand domain for very large spans (> 2 years)
-    private static let longSpanExpansionMonths: Int = 6
     
     /// Fallback time interval for domain expansion (90 days in seconds)
     private static let fallbackDomainExpansion: TimeInterval = 90 * 24 * 60 * 60
@@ -72,21 +70,28 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         
         let minDate = bounds.min
         let maxDate = bounds.max
-
         let calendar = Calendar.current
 
-        // Determine padding months based on overall span
+        // Calculate the actual data span in years
         let yearDiff = calendar.dateComponents([.year], from: minDate, to: maxDate).year ?? 0
+        
+        // Determine padding based on span length
         let paddingMonths: Int
         if minDate == maxDate {
-            // Single point → 3 months padding each side (existing behavior)
+            // Single point → 3 months padding each side
             paddingMonths = Self.domainExpansionMonths
-        } else if yearDiff > 2 {
-            // More than 2 years span → add 6 months padding on both sides
-            paddingMonths = Self.longSpanExpansionMonths
+        } else if yearDiff < 1 {
+            // Less than 1 year → 3 months padding each side
+            paddingMonths = Self.domainExpansionMonths
+        } else if yearDiff < 10 {
+            // 1 to <10 years → 6 months padding each side
+            paddingMonths = 6
+        } else if yearDiff < 50 {
+            // 10 to <50 years → 2.5 years (30 months) padding each side
+            paddingMonths = 30
         } else {
-            // Up to and including 2 years span → add 3 months padding on both sides
-            paddingMonths = Self.domainExpansionMonths
+            // 50+ years → 5 years (60 months) padding each side
+            paddingMonths = 60
         }
 
         let expandedStart = calendar.date(byAdding: .month, value: -paddingMonths, to: minDate)

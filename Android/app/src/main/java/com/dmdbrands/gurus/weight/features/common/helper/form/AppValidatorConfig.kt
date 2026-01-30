@@ -77,6 +77,10 @@ class AppValidatorConfig {
         const val MAX = 999
     }
 
+    object WeightLength {
+        const val MAX_LENGTH = 4
+    }
+
     object HeightMm {
         const val MIN = 500
         const val MAX = 3000

@@ -36,6 +36,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.weightless.model.WeightlessFormControls
@@ -163,6 +164,7 @@ private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessI
               focusManager.clearFocus()
               keyboardController?.hide()
             },
+            maxLength = AppValidatorConfig.WeightLength.MAX_LENGTH,
             modifier = Modifier.focusRequester(weightFocusRequester),
           )
           Spacer(Modifier.height(spacing.lg))
