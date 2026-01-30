@@ -28,11 +28,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import okio.IOException
+import java.io.IOException
 import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 
 /**
  * Service for managing account authentication and session state.
