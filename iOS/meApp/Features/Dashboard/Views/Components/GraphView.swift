@@ -57,21 +57,35 @@ struct GraphView: View {
         }
     }
 
+    // Show skeleton until graph is ready (set after settling delay)
+    private var shouldShowSkeleton: Bool {
+        !dashboardStore.state.graph.isGraphReady
+    }
+
     var body: some View {
-        VStack(alignment: .leading){
-            // Preserve layout height: fade the label out instead of removing it to avoid jump
-            Text(dashboardStore.weightLabel.lowercased())
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
-                // Hide immediately when the callout is shown (driven by the same VM flag)
-                .opacity(isShowingSelectionCallout ? 0 : 1)
-                .animation(.none, value: isShowingSelectionCallout)
-                .padding(.leading, .spacingSM)
-                .padding(.vertical, .spacingXS)
+        ZStack {
+            // Skeleton loader shown only during initial graph load
+            if shouldShowSkeleton {
+                GraphSkeletonView()
+            }
+
+            // Actual graph content
+            VStack(alignment: .leading) {
+                // Preserve layout height: fade the label out instead of removing it to avoid jump
+                Text(dashboardStore.weightLabel.lowercased())
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                    // Hide immediately when the callout is shown (driven by the same VM flag)
+                    .opacity(isShowingSelectionCallout ? 0 : 1)
+                    .animation(.none, value: isShowingSelectionCallout)
+                    .padding(.leading, .spacingSM)
+                    .padding(.vertical, .spacingXS)
                 chartView
                     .id(chartIdentity)
-
+            }
+            .opacity(shouldShowSkeleton ? 0 : 1)
         }
+        .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()

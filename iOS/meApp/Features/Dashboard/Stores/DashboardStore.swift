@@ -569,6 +569,7 @@ class DashboardStore: ObservableObject {
         // Clear caches and scrolling flags to ensure fresh computations
         clearAllCaches()
         state.ui.hasInitializedChart = false
+        graphManager.state.isGraphReady = false
         state.graph.clearSelection()
 
         // Kick off data loads for the new account
@@ -2825,6 +2826,11 @@ class DashboardStore: ObservableObject {
         // Don't initialize if already done or currently scrolling
         guard !state.ui.hasInitializedChart && !state.graph.isScrolling else {
             updateWeightDisplayForCurrentView()
+            // Only mark ready on early return if chart was previously initialized (e.g., tab switch back)
+            // Don't set ready if we're just scrolling during initial load
+            if state.ui.hasInitializedChart && !graphManager.state.isGraphReady {
+                graphManager.state.isGraphReady = true
+            }
             return
         }
 
@@ -2841,6 +2847,13 @@ class DashboardStore: ObservableObject {
         self.graphManager.updateScrollPosition(to: optimalScrollPosition)
         self.forceCompleteRecalculationAfterScrollPosition()
         state.ui.hasInitializedChart = true
+
+        // Mark graph as ready after a settling delay to allow computations to complete
+        // This hides the skeleton loader once the graph has stabilized
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms settling delay
+            graphManager.state.isGraphReady = true
+        }
     }
 
     /// Handle scroll position changes - delegate to graph manager
@@ -2927,7 +2940,6 @@ class DashboardStore: ObservableObject {
         isProcessingScrollEnd = false
     }
 
-    @available(iOS 18.0, *)
     func handleScrollPhaseChange(to phase: ScrollPhase) async {
         await graphManager.handleScrollPhaseChange(phase)
 

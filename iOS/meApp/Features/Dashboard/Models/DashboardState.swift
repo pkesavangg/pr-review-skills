@@ -96,6 +96,9 @@ struct GraphState {
     var chartHeight: CGFloat = 0
     var annotationHeight: CGFloat = 0
 
+    // Graph readiness state - false until initial computation settles
+    var isGraphReady: Bool = false
+
     // Scroll and interaction state
     var isScrolling: Bool = false
     var showCrosshair: Bool = false

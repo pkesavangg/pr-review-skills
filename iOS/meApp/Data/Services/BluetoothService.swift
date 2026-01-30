@@ -776,13 +776,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
 
             let details = try await withTimeout(seconds: 10) {
-               try await self.ggBleSDK.getDeviceInfo(ggDevice)
+               await self.ggBleSDK.getDeviceInfo(ggDevice)
             }
-            if let deviceDetails = details {
-              return .success(DeviceInfo(sdk: deviceDetails))
-            } else {
-              return .failure(.deviceNotConnected)
+            guard let deviceDetails = details else {
+                return .failure(.deviceNotConnected)
             }
+            return .success(DeviceInfo(sdk: deviceDetails))
 
         } catch let error as BluetoothServiceError {
             return .failure(error)
