@@ -1020,44 +1020,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.cachedYAxisTicks = newTicks
     }
 
-    private func enforceScrollBoundaries(_ position: Date, from operations: [BathScaleWeightSummary]) -> Date {
-        guard !operations.isEmpty else { return position }
-        // Use first/last of pre-sorted array for O(1) min/max lookup
-        guard let minDate = operations.first?.date, let maxDate = operations.last?.date else { return position }
-        let domainLength = visibleDomainLength(for: state.selectedPeriod)
-        let halfDomain = domainLength / 2
-        let centeringBuffer: TimeInterval
-        switch state.selectedPeriod {
-        case .week:
-            centeringBuffer = DashboardConstants.TimeInterval.day * 3.5
-        case .month:
-            centeringBuffer = DashboardConstants.TimeInterval.week * 2
-        case .year:
-            centeringBuffer = DashboardConstants.TimeInterval.month * 2
-        case .total:
-            centeringBuffer = DashboardConstants.TimeInterval.month * 3
-        }
-        let pastBuffer: TimeInterval
-        switch state.selectedPeriod {
-        case .week:
-            pastBuffer = DashboardConstants.TimeInterval.day * 1
-        case .month:
-            pastBuffer = DashboardConstants.TimeInterval.week * 1
-        case .year:
-            pastBuffer = DashboardConstants.TimeInterval.month * 1
-        case .total:
-            pastBuffer = DashboardConstants.TimeInterval.month * 2
-        }
-        let earliestAllowedPosition = minDate.addingTimeInterval(-pastBuffer - halfDomain)
-        let maxVisibleEnd = maxDate.addingTimeInterval(centeringBuffer)
-        let latestAllowedPosition = maxVisibleEnd.addingTimeInterval(-halfDomain)
-        let clampedPosition = max(earliestAllowedPosition, min(position, latestAllowedPosition))
-        if clampedPosition != position {
-            logger.log(level: .info, tag: "DashboardGraphManager",
-                       message: "Enforced scroll boundary: \(position) -> \(clampedPosition), period: \(state.selectedPeriod)")
-        }
-        return clampedPosition
-    }
 
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         // During active scrolling, reuse cache ONLY if it still lies fully within the
@@ -1552,55 +1514,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    /// Generates X-axis values for alignment calculation (internal helper)
-    private func generateXAxisValuesForAlignment(for period: TimePeriod, from operations: [BathScaleWeightSummary], centerPosition: Date) -> [Date] {
-        let allDates = operations.map(\.date)
-        guard let overallMinDate = allDates.min(), let overallMaxDate = allDates.max() else { return [] }
-
-        let domainLength = visibleDomainLength(for: period)
-        let buffer: TimeInterval = domainLength * 2.0
-        let visibleStart = max(overallMinDate, centerPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
-        let visibleEnd = min(overallMaxDate, centerPosition.addingTimeInterval(domainLength / 2.0 + buffer))
-        let entryCount = operations.count
-        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
-
-        switch period {
-        case .week:
-            return generateVisibleWeeklyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
-        case .month:
-            return generateVisibleMonthlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
-        case .year:
-            return generateVisibleYearlyXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, shouldRepeat: shouldRepeat)
-        case .total:
-            return generateVisibleTotalXAxisWithBuffer(visibleStart: visibleStart, visibleEnd: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
-        }
-    }
-
-    /// Finds the optimal leftmost date from X-axis values
-    private func findOptimalLeftmostDate(from xAxisValues: [Date], targetStart: Date, domainLength: TimeInterval) -> Date? {
-        let targetEnd = targetStart.addingTimeInterval(domainLength)
-
-        // Find X-axis values that would be visible in our target range
-        let visibleXAxisValues = xAxisValues.filter { date in
-            date >= targetStart && date <= targetEnd
-        }
-
-        // If we have visible X-axis values, use the first one as our leftmost position
-        // This ensures the scroll position aligns with an actual X-axis tick
-        if let firstVisibleXAxis = visibleXAxisValues.first {
-            return firstVisibleXAxis
-        }
-
-        // If no X-axis values are in the target range, find the closest one before the target start
-        let beforeTarget = xAxisValues.filter { $0 <= targetStart }
-        if let closestBefore = beforeTarget.max() {
-            return closestBefore
-        }
-
-        // Fallback to the first available X-axis value
-        return xAxisValues.first
-    }
-
     private func generateVisibleWeeklyXAxisWithBuffer(visibleStart: Date, visibleEnd: Date, shouldRepeat: Bool) -> [Date] {
         // Ensure dates are in correct order to prevent range errors
         let startDate = min(visibleStart, visibleEnd)
@@ -1761,11 +1674,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
             return dates
         }
-    }
-
-
-    private func snapToNearestPosition() async {
-        logger.log(level: .info, tag: "DashboardGraphManager", message: "Snapping to nearest position")
     }
 
 
@@ -2316,19 +2224,29 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> Date {
         let domainLength = visibleDomainLength(for: period)
 
-        // Left boundary: 10% padding for visual comfort
-        let minScrollPosition = minDate.addingTimeInterval(-domainLength * 0.1)
+        // Left boundary: period-aware padding to allow viewing the full calendar period
+        // containing the first entry (e.g., full week containing Nov 1)
+        let padding: TimeInterval
+        switch period {
+        case .week:
+            padding = DashboardConstants.TimeInterval.week // 1 week before first entry
+        case .month:
+            padding = DashboardConstants.TimeInterval.month // ~1 month before first entry
+        case .year:
+            padding = DashboardConstants.TimeInterval.year // 12 months before first entry
+        case .total:
+            padding = 0
+        }
+        let minScrollPosition = minDate.addingTimeInterval(-padding)
 
-        // Only clamp left boundary to allow scrolling past last entry for date label updates
-        let clampedLeft = max(minScrollPosition, position)
+        let maxScrollPosition = maxDate.addingTimeInterval(padding)
 
         // Handle edge case where data range is smaller than visible domain
-        if minScrollPosition >= maxDate {
+        if minScrollPosition >= maxScrollPosition {
             return minDate
         }
 
-        // Don't clamp right boundary - allow scrolling past maxDate
-        return clampedLeft
+        return max(minScrollPosition, min(maxScrollPosition, position))
     }
 
     // MARK: - Smart Snap Mechanism
