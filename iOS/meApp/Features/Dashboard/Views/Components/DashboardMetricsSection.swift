@@ -133,7 +133,7 @@ struct DashboardMetricsSection: View {
     }
     
     private func skeletonProgressMetrics(hasContentAbove: Bool) -> some View {
-        VStack() {
+        VStack{
             // Skeleton goal card
             SkeletonGoalCardView()
             
@@ -143,7 +143,7 @@ struct DashboardMetricsSection: View {
                 columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing/2), count: streakColumnCount),
                 spacing: DashboardConstants.UI.gridSpacing/2
             ) {
-                ForEach(0..<4, id: \.self) { _ in
+                ForEach(0..<6, id: \.self) { _ in
                     SkeletonStreakCardView(parentView: parentView)
                 }
             }
