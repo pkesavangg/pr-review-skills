@@ -360,7 +360,7 @@ constructor(
           RadioButtonOption(Gender.FEMALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Female),
         ),
       selectedItem = state.value.account?.gender,
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedSex ->
         AppLog.d(TAG, "Biological sex modal onConfirm called with: $selectedSex")
         selectedSex?.let { gender ->
@@ -471,7 +471,7 @@ constructor(
           ),
         ),
       selectedItem = state.value.account?.activityLevel,
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedActivityLevel ->
         selectedActivityLevel?.let { activityLevel ->
           onActivityLevelUpdate(activityLevel)
@@ -526,7 +526,7 @@ constructor(
         state.value.account
           ?.weightUnit
           ?.value,
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedUnitType ->
         selectedUnitType?.let { unitType ->
           onUnitTypeUpdate(unitType)
@@ -765,7 +765,7 @@ constructor(
         RadioButtonOption("SYSTEM", RadioGroupModalStrings.Appearance.System),
       ),
       selectedItem = getCurrentThemeModeString(),
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedTheme ->
         selectedTheme?.let { themeValue ->
           onAppearanceUpdate(themeValue.toString())
@@ -910,7 +910,7 @@ constructor(
           state.value.account?.shouldSendEntryNotifications == true -> "On"
           else -> "Off"
         },
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedNotification ->
         selectedNotification?.let { notificationOption ->
           onNotificationUpdate(notificationOption)
@@ -1044,6 +1044,10 @@ constructor(
       val hasShown = userDataStore.hasShownAccountSwitchInfoModalForDevice()
       if (hasShown) return@launch
       val activeAccount = accountService.getCurrentAccount()
+      
+      // Set the flag to true when modal is shown, so it persists even if app closes
+      userDataStore.setAccountSwitchInfoModalShownForDevice(true)
+      
       dialogQueueService.enqueue(
         DialogModel.Custom(
           contentKey = DialogType.AccountSwitchInfoPopup,
@@ -1070,10 +1074,8 @@ constructor(
   }
 
   fun onAccountSwitchInfoDismiss() {
-    viewModelScope.launch {
-      userDataStore.setAccountSwitchInfoModalShownForDevice(true)
-      dialogQueueService.dismissCurrent()
-    }
+    // Flag is already set when modal is shown, just dismiss
+    dialogQueueService.dismissCurrent()
   }
 
   /**

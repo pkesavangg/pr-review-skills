@@ -395,7 +395,6 @@ fun WifiScaleSetupScreenContent(
             WifiScaleSetupStep.SCALE_COUNTS -> {
               SetupContent(
                 title = WifiScaleSetupStrings.ScaleCount.Title,
-                subtitle = WifiScaleSetupStrings.ScaleCount.Message,
                 isGifImage = false,
                 supportingImage = AppIcons.Setup.wifiAPModeStepOn,
                 noteMessage = if (state.permissionsSkipped || state.isGetMACSetup) WifiScaleSetupStrings.WifiMode.ApNote else WifiScaleSetupStrings.WifiMode.CommonNote,

@@ -34,7 +34,7 @@ import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeState
 import com.dmdbrands.gurus.weight.features.home.viewmodel.HomeViewModel
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
-import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.greatergoods.libs.appsync.AppSyncResultHolder
 import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
@@ -161,8 +161,9 @@ fun OpenWeightOnlyModePopup(
     sheetState = sheetState,
     modifier = Modifier.navigationBarsPadding(),
     onDismissRequest = onClose,
-    containerColor = MeTheme.colorScheme.primaryBackground,
-    dragHandle = null
+    containerColor = colorScheme.primaryBackground,
+    scrimColor = colorScheme.overlay,
+    dragHandle = null,
   ) {
     WeightOnlyModePopup(
       onEnable = onEnable,

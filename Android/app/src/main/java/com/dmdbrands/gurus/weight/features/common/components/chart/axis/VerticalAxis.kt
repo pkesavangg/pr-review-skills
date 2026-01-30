@@ -9,7 +9,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberEnd
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
@@ -24,9 +26,12 @@ import kotlin.math.roundToInt
 import android.graphics.Typeface
 
 @Composable
-fun startAxis() = VerticalAxis.rememberStart(
+fun startAxis(segment: GraphSegment) = VerticalAxis.rememberStart(
   label = null,
-  size = BaseAxis.Size.scroll(8.dp, isLabelsScrollable = true),
+  size = if (segment == GraphSegment.TOTAL) BaseAxis.Size.fixed(8.dp) else BaseAxis.Size.scroll(
+    8.dp,
+    isLabelsScrollable = true,
+  ),
   line = rememberAxisLineComponent(
     fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
     thickness = 1.dp,

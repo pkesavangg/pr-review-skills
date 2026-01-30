@@ -1,10 +1,13 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
@@ -31,8 +34,11 @@ class DashboardService
 @Inject
 constructor(
   private val dashboardRepository: IDashboardRepository,
-  private val accountRepository: IAccountRepository
-) : IDashboardService {
+  private val accountRepository: IAccountRepository,
+  connectivityObserver: IConnectivityObserver,
+  dialogQueueService: IDialogQueueService,
+  appNavigationService: IAppNavigationService,
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDashboardService {
   private var accountId: String? = null
   private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -78,31 +84,33 @@ constructor(
         ?: DashboardType.DASHBOARD_4_METRICS
 
       // Get dashboard metrics from server (already in camelCase format)
-      val serverMetrics = account.dashboardMetrics ?: emptyList()
+      val serverMetrics = account.dashboardMetrics
 
-      AppLog.d("DashboardService", "Server dashboardType: ${dashboardType.value}")
-      AppLog.d("DashboardService", "Server dashboardMetrics: $serverMetrics")
+      // Get progress metrics from server (already in camelCase format)
+      val serverProgressMetrics = account.progressMetrics
 
-      // Update local database with server data
       serverMetrics.joinToString(",")
-
-      // Get current milestones from database, or use defaults if not set
-      val currentMilestones = try {
-        dashboardRepository.getVisibleMilestoneKeys(accountId).first()
-      } catch (e: Exception) {
-        emptyList<MilestoneKey>()
+      // Convert server progress metrics (camelCase strings) to MilestoneKey enums, or use defaults
+      val serverMilestones = if (serverProgressMetrics.isNotEmpty()) {
+        serverProgressMetrics.mapNotNull { camelCase ->
+          ProgressKeyConstants.CAMEL_CASE_TO_ENUM[camelCase]
+        }
+      } else {
+        // If server doesn't have progress metrics, use defaults
+        emptyList()
       }
-
+      serverMilestones.joinToString(",")
       AppLog.d(
         "DashboardService",
-        "Using milestones: ${if (currentMilestones.isNotEmpty()) currentMilestones else MilestoneKey.getDefaultMilestones()}",
+        "Using milestones from server: $serverMilestones",
       )
 
       accountRepository.updateDashboardSettings(
         accountId = accountId,
         dashboardMetrics = serverMetrics,
-        dashboardMilestones = currentMilestones.map { it.name.lowercase() },
+        dashboardMilestones = serverMilestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
         dashboardType = dashboardType,
+        isSynced = true, // Server data is always synced
       )
 
       AppLog.d("DashboardService", "Dashboard data refreshed from server successfully")
@@ -115,6 +123,7 @@ constructor(
    * Gets a Flow of visible metric keys for the given account.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: no use
   override fun getVisibleMetricKeys(accountId: String?): Flow<List<MetricKey>> =
     dashboardRepository.getVisibleMetricKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -124,6 +133,7 @@ constructor(
    * Gets a Flow of visible milestone keys for the given account.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: no use
   override fun getVisibleMilestoneKeys(accountId: String?): Flow<List<MilestoneKey>> =
     dashboardRepository.getVisibleMilestoneKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -174,27 +184,37 @@ constructor(
   override suspend fun updateVisibleKeys(accountId: String?, keys: List<DashboardKey>, dashboardType: DashboardType) {
     try {
       val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
-
       AppLog.d("DashboardService", "Updating visible keys with dashboardType: ${dashboardType.value}")
 
       val metrics = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
       val milestones = keys.filterIsInstance<DashboardKey.Milestone>().map { it.key }
 
+      val dashboardKeys = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+      val progressKeys = milestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+
+      // Check if network is available
+      val isOnline = isNetworkAvailable()
+
       // Update both metrics and milestones together to avoid dashboard type conflicts
       accountRepository.updateDashboardSettings(
         accountId = id,
-        dashboardMetrics = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
-        dashboardMilestones = milestones.map { it.name.lowercase() },
+        dashboardMetrics = dashboardKeys,
+        dashboardMilestones = progressKeys,
         dashboardType = dashboardType,
+        isSynced = isOnline,
       )
 
-      // Update both dashboard metrics and dashboard type via API
-      val dashboardKeys = metrics.map { MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+      if (isOnline) {
+        // Update both dashboard metrics and dashboard type via API
+        AppLog.d("DashboardService", "progress keys to server - $progressKeys")
+        AppLog.d("DashboardService", "Sending to server - dashboardKeys: $dashboardKeys")
+        AppLog.d("DashboardService", "Sending to server - dashboardType: ${dashboardType.value}")
 
-      AppLog.d("DashboardService", "Sending to server - dashboardKeys: $dashboardKeys")
-      AppLog.d("DashboardService", "Sending to server - dashboardType: ${dashboardType.value}")
-
-      accountRepository.updateDashboardMetrics(dashboardKeys)
+        accountRepository.updateDashboardMetrics(dashboardKeys)
+        accountRepository.updateProgressMetrics(progressKeys)
+      } else {
+        AppLog.d("DashboardService", "Network unavailable, saved locally with isSynced = false")
+      }
 
       // Refresh the visible keys StateFlow to notify subscribers
       refreshVisibleKeysFromDatabase(id)
@@ -216,6 +236,7 @@ constructor(
    * Resets the visible metric keys for the given account to the default list.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: Not in use
   override suspend fun resetVisibleMetricKeys(accountId: String?, dashboardType: DashboardType) =
     dashboardRepository.resetVisibleMetricKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -226,6 +247,7 @@ constructor(
    * Resets the visible milestone keys for the given account to the default list.
    * If accountId is null, uses the stored accountId.
    */
+  //TODO: Not in use
   override suspend fun resetVisibleMilestoneKeys(accountId: String?) =
     dashboardRepository.resetVisibleMilestoneKeys(
       accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
@@ -235,11 +257,51 @@ constructor(
    * Resets both visible metric and milestone keys for the given account to the default lists.
    * If accountId is null, uses the stored accountId.
    */
-  override suspend fun resetVisibleKeys(accountId: String?, dashboardType: DashboardType) =
-    dashboardRepository.resetVisibleKeys(
-      accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set"),
-      dashboardType,
-    )
+  override suspend fun resetVisibleKeys(accountId: String?, dashboardType: DashboardType) {
+    try {
+      val id = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
+      AppLog.d("DashboardService", "Resetting visible keys to defaults with dashboardType: ${dashboardType.value}")
+
+      // Get default metrics and milestones
+      val defaultMetrics = when (dashboardType) {
+        DashboardType.DASHBOARD_4_METRICS -> MetricKeyConstants.DEFAULT_4_METRICS
+        DashboardType.DASHBOARD_12_METRICS -> MetricKeyConstants.ALL_METRIC_KEYS
+      }
+      val defaultMilestones = MilestoneKey.getDefaultMilestones()
+
+      // Convert milestones to camelCase for API
+      val progressKeys = defaultMilestones.map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() }
+
+      // Check if network is available
+      val isOnline = isNetworkAvailable()
+
+      // Update dashboard settings in database
+      accountRepository.updateDashboardSettings(
+        accountId = id,
+        dashboardMetrics = defaultMetrics,
+        dashboardMilestones = progressKeys,
+        dashboardType = dashboardType,
+        isSynced = isOnline,
+      )
+
+      if (isOnline) {
+        // Update both dashboard metrics and progress metrics via API
+        AppLog.d("DashboardService", "Resetting to server - dashboardKeys: $defaultMetrics")
+        AppLog.d("DashboardService", "Resetting to server - progressKeys: $progressKeys")
+        AppLog.d("DashboardService", "Resetting to server - dashboardType: ${dashboardType.value}")
+
+        accountRepository.updateDashboardMetrics(defaultMetrics)
+        accountRepository.updateProgressMetrics(progressKeys)
+      } else {
+        AppLog.d("DashboardService", "Network unavailable, saved locally with isSynced = false")
+      }
+
+      // Refresh the visible keys StateFlow to notify subscribers
+      refreshVisibleKeysFromDatabase(id)
+    } catch (e: Exception) {
+      AppLog.e("DashboardService", "Failed to reset visible keys", e.toString())
+    }
+  }
 
   /**
    * Refreshes the visible keys StateFlow from the database to notify subscribers of changes.
