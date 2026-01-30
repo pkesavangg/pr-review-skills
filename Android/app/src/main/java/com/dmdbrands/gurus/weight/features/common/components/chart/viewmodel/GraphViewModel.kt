@@ -196,6 +196,8 @@ class GraphViewModel @AssistedInject constructor(
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
     val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
     val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
+    val isSingleWindow = GraphUtil.isSingleWindow(segment, startx, endx)
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
     if (startx != null && endx != null) {
       super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
     }
@@ -261,6 +263,8 @@ class GraphViewModel @AssistedInject constructor(
     val ySeries = graphLines.points.map { it.y }
     val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
     val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
+    val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
+    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
     val calendar = Calendar.getInstance()
 
     val (startX, endX) = if (segment == GraphSegment.TOTAL) {

@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
@@ -17,7 +18,6 @@ import com.patrykandpatrick.vico.core.cartesian.CartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.layer.CartesianLayerPadding
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import java.util.Calendar
 
 @Composable
@@ -73,7 +73,7 @@ fun rememberGraphChart(
       primaryLayer,
       secondaryLayer,
       topAxis = topAxis(),
-      startAxis = startAxis(segment),
+      startAxis = startAxis(segment, state.isSingleWindow),
       endAxis = endAxis(yStep = state.primaryYStep, isEmptyGraph = state.isEmptyGraph, markerDecoration = goalMarker),
       bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
       marker = emptyMarker(),

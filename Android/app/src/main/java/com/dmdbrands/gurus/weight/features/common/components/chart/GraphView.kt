@@ -81,7 +81,7 @@ fun GraphView(
   }
 
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL,
+    scrollEnabled = segment != GraphSegment.TOTAL || !state.isSingleWindow,
     initialScroll = initialScroll,
     snapBehaviorConfig = SnapBehaviorConfig(
       snapToLabelFunction = snapToLabelFunction,
@@ -169,7 +169,21 @@ fun GraphView(
         if (outOfBoundaryCondition) {
           markerIndex = null
         } else {
-          val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+
+          val visibleLabels =
+            scrollState
+              .getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+              .filter { label ->
+                val min = state.minTarget?.toDouble()
+                val max = state.maxTarget?.toDouble()
+
+                if (min != null && max != null) {
+                  label in min..max
+                } else {
+                  true // keep all when no bounds
+                }
+              }
+
           val targetMarkerIndex =
             getTargetPoints(
               visibleLabels,

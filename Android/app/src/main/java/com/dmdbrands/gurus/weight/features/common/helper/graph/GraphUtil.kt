@@ -534,6 +534,26 @@ object GraphUtil {
   }
 
   /**
+   * Returns whether the range from [initialTimestamp] to [endTimestamp] lies entirely within
+   * a single segment window (e.g. same week for WEEK, same month for MONTH, same year for YEAR/TOTAL).
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param initialTimestamp Start of the range in milliseconds
+   * @param endTimestamp End of the range in milliseconds
+   * @return true if both timestamps fall in the same segment window, false otherwise or if either timestamp is null
+   */
+  fun isSingleWindow(
+    segment: GraphSegment,
+    initialTimestamp: Long?,
+    endTimestamp: Long?,
+  ): Boolean {
+    if (initialTimestamp == null || endTimestamp == null) return false
+    val windowStartInitial = getStartRange(segment, initialTimestamp) ?: return false
+    val windowStartEnd = getStartRange(segment, endTimestamp) ?: return false
+    return windowStartInitial == windowStartEnd
+  }
+
+  /**
    * Gets the rolling window start timestamp calculated backwards from latest entry using fixed durations.
    * This ensures the window shows exactly the period duration (7 days, 30 days, 365 days) ending at the latest entry.
    * The initial scroll position will be at the latest entry (end of window) to show data without empty space.
