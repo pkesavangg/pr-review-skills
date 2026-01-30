@@ -181,7 +181,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let isEditMode = store.state.ui.isEditMode
         let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
         let hasStreaks = !allStreaks.isEmpty
-        let hasValidGoal = !isGoalCardRemoved && store.hasGoalSet
+        let hasValidGoal = !isGoalCardRemoved && (isEditMode || store.hasGoalSet)
         if !hasStreaks && !hasValidGoal {
             return MileStoneGridModel(mileStones: [])
         }
@@ -257,10 +257,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widgets.append(contentsOf: activeStreaks.map { .streak($0) })
             } else {
                 let streakCount = activeStreaks.count
-                // Only show goal card if there are streaks OR if goal is set (has data)
-                // This prevents empty white cards from appearing before data loads
+                // Show goal card always in edit mode; only when data exists in non-edit mode
                 if streakCount == 0 {
-                    if store.hasGoalSet && !isGoalCardRemoved {
+                    if isEditMode || (store.hasGoalSet && !isGoalCardRemoved) {
                         widgets.append(.goalCard)
                     }
                 } else {

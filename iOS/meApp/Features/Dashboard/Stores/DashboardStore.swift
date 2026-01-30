@@ -120,7 +120,7 @@ class DashboardStore: ObservableObject {
 
     /// Whether there are goal or streak items available to display
     private var hasGoalOrStreaks: Bool {
-        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && hasGoalSet)
+        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && (state.ui.isEditMode || hasGoalSet))
     }
     // MARK: - Initialization
     init() {
@@ -1094,6 +1094,9 @@ class DashboardStore: ObservableObject {
                     state.ui.streakGridOrder = defaultOrder
                 }
                 state.ui.removedStreaks = Set(allStreaks.map { $0.label })
+                
+                streakManager.state.activeStreakItemsCount = 0
+                
                 scheduleUIUpdate()
                 return
             }
@@ -1133,6 +1136,20 @@ class DashboardStore: ObservableObject {
             state.ui.isGoalCardRemoved = goalCardPosition == nil
             state.ui.streakGridOrder = orderedStreakIds
             state.ui.removedStreaks = Set(allStreaks.map { $0.label }).subtracting(foundStreakLabels)
+
+            // Sync active streak count from UI removal state
+            let activeCount = max(
+                0,
+                allStreaks.count - state.ui.removedStreaks.count
+            )
+
+            streakManager.state.activeStreakItemsCount = min(activeCount, allStreaks.count)
+
+            logger.log(
+                level: .debug,
+                tag: "DashboardStore",
+                message: "Active streaks synced: \(streakManager.state.activeStreakItemsCount)/\(allStreaks.count)"
+            )
 
             scheduleUIUpdate()
         }
@@ -1209,18 +1226,28 @@ class DashboardStore: ObservableObject {
     }
 
     /// Syncs the removal state from the streak manager to the UI state
+    /// This should ONLY be called after a toggle operation completes, not during initialization
     func syncRemovalStateFromStreakManager() {
         // Get the current streak items from the manager
         let currentStreakItems = streakManager.state.streakItems
-        let activeCount = streakManager.state.activeStreakItemsCount
+        var activeCount = streakManager.state.activeStreakItemsCount
 
-        // Clear existing removal state
+        guard !currentStreakItems.isEmpty else {
+            state.ui.removedStreaks.removeAll()
+            return
+        }
+
+        if activeCount > currentStreakItems.count {
+            activeCount = currentStreakItems.count
+        }
+
         state.ui.removedStreaks.removeAll()
 
-        // Ensure activeCount doesn't exceed currentStreakItems.count to prevent range crash
         let safeActiveCount = min(activeCount, currentStreakItems.count)
 
-        // Mark streak items beyond the active count as removed
+        guard safeActiveCount < currentStreakItems.count else {
+            return
+        }
         for i in safeActiveCount..<currentStreakItems.count {
             state.ui.removedStreaks.insert(currentStreakItems[i].label)
         }
@@ -1301,19 +1328,12 @@ class DashboardStore: ObservableObject {
             try? await metricsManager.toggleMetricVisibility(at: originalIndex)
 
             // Sync the UI state with the metrics manager after the change
+            // This will correctly update removal state for ALL items based on activeMetricsCount
             await MainActor.run {
                 self.syncRemovalStateFromMetricsManager()
+                // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                self.forceImmediateUIUpdate()
             }
-        }
-
-        // Update the UI state for consistency
-        let isCurrentlyRemoved = originalIndex >= metricsManager.state.activeMetricsCount
-        if isCurrentlyRemoved {
-            // Metric is being added back - remove from removed set
-            state.ui.removedMetrics.remove(metric.label)
-        } else {
-            // Metric is being removed - add to removed set
-            state.ui.removedMetrics.insert(metric.label)
         }
     }
 
@@ -1337,25 +1357,15 @@ class DashboardStore: ObservableObject {
             try? await streakManager.toggleStreakVisibility(at: originalIndex)
 
             // Sync the UI state with the streak manager after the change
+            // This will correctly update removal state for ALL items based on activeStreakItemsCount
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
+                // Validate goal card position after streak removal
+                self.validateGoalCardPosition()
                 // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
                 self.forceImmediateUIUpdate()
             }
         }
-
-        // Update the UI state for consistency
-        let isCurrentlyRemoved = originalIndex >= streakManager.state.activeStreakItemsCount
-        if isCurrentlyRemoved {
-            // Streak is being added back - remove from removed set
-            state.ui.removedStreaks.remove(streak.label)
-        } else {
-            // Streak is being removed - add to removed set
-            state.ui.removedStreaks.insert(streak.label)
-        }
-
-        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
-        forceImmediateUIUpdate()
     }
 
     func isStreakRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
@@ -1406,11 +1416,15 @@ class DashboardStore: ObservableObject {
             return
         }
         
+        // Capture the current state BEFORE toggle to ensure we have the correct baseline
+        let currentActiveCount = streakManager.state.activeStreakItemsCount
+        let isCurrentlyRemoved = streakIndex >= currentActiveCount
+        
         // Call the underlying manager to actually reorder the array
         Task {
+            // Perform the toggle operation atomically
             try? await streakManager.toggleStreakVisibility(at: streakIndex)
 
-            // Sync the UI state with the streak manager after the change
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
                 // Validate goal card position after streak removal
