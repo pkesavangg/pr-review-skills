@@ -386,7 +386,6 @@ final class HealthKitStore: ObservableObject {
         }
         
         await persistIntegrationAfterPermissionGrant()
-        getLocalStoredData()
         
         // Handle flow based on permission count: full permissions show completion screen after sync
         let isFullPermissions = permissionsGranted >= wgTotalPermissionsCount
