@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.goal.GoalData
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
@@ -67,6 +68,7 @@ class OfflineHandlerService
         syncGoalData()
         syncWeightlessSettings()
         syncStreakSettings()
+        syncDashboardData()
         // Sync user settings data if there are unsynced user settings accounts
         AppLog.i(TAG, "Selective offline sync process completed")
       } catch (e: Exception) {
@@ -244,6 +246,40 @@ class OfflineHandlerService
         AppLog.i(TAG, "Device sync completed")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during device sync", e)
+      }
+    }
+
+    /**
+     * Syncs dashboard settings for the active account if it has unsynced changes.
+     */
+    private suspend fun syncDashboardData() {
+      val unsyncedSettings = accountRepository.getUnsyncedActiveDashboardSettings()
+      if (unsyncedSettings == null) {
+        AppLog.d(TAG, "No unsynced dashboard data for active account")
+        return
+      }
+      try {
+        // Get dashboard type from settings
+        val dashboardType = DashboardType.entries.find {
+          it.value == unsyncedSettings.dashboardType
+        } ?: DashboardType.DASHBOARD_4_METRICS
+
+        // Sync dashboard metrics and progress metrics via API
+        accountRepository.updateDashboardMetrics(unsyncedSettings.dashboardMetrics)
+        accountRepository.updateProgressMetrics(unsyncedSettings.dashboardMilestones)
+
+        // Update dashboard settings as synced
+        accountRepository.updateDashboardSettings(
+          accountId = unsyncedSettings.accountId,
+          dashboardMetrics = unsyncedSettings.dashboardMetrics,
+          dashboardMilestones = unsyncedSettings.dashboardMilestones,
+          dashboardType = dashboardType,
+          isSynced = true,
+        )
+
+        AppLog.i(TAG, "Successfully synced dashboard settings for account: ${unsyncedSettings.accountId}")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error syncing dashboard settings for account ${unsyncedSettings.accountId}", e)
       }
     }
   }

@@ -1894,7 +1894,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Populate userNameForm with current user name and user list for validation
                 if let firstName = self.firstName {
                     userNameForm.setDisplayName(firstName)
-                    userNameForm.setCurrentUserName(firstName)
+                    // Don't set currentUserName here - we want to show that this name IS a duplicate
+                    userNameForm.setCurrentUserName(nil)
                 }
                 
                 // Convert DeviceUser list to ScaleUser list for form validation
@@ -1904,7 +1905,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 userNameForm.updateUserList(scaleUsers)
                 userNameForm.displayName.markAsPristine()
                 userNameForm.displayName.markAsUntouched()
-                
                 // Set error state and navigate to gathering network
                 scaleSetupError = .duplicatesFound
                 navigateToStep(.gatheringNetwork)

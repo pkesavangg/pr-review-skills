@@ -67,8 +67,11 @@ class PushNotificationService: NSObject {
                 // the app state. This handles silent/data-only pushes and ensures visibility even when
                 // iOS suppresses remote-push banners in the foreground.
                 let aps = userInfo["aps"] as? [String: Any]
-                    let alert = aps?["alert"] as? [String: Any]
-                    let title = alert?["title"] as? String ?? "New Notification"
+                let alert = aps?["alert"] as? [String: Any]
+                let hasAlertContent = alert != nil
+                // This prevents duplicate notifications when iOS already shows the push notification banner
+                if !hasAlertContent {
+ let title = alert?["title"] as? String ?? "New Notification"
                     let body = alert?["body"] as? String ?? "You have a new message"
                     let content = UNMutableNotificationContent()
                     content.title = title
@@ -82,6 +85,7 @@ class PushNotificationService: NSObject {
                         trigger: nil
                     )
                     try await UNUserNotificationCenter.current().add(request)
+                }
             } catch {
                 logger.log(level: .error, tag: "PushNotificationService", message: "Failed to handle notification: \(error.localizedDescription)")
             }

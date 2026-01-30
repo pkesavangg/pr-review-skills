@@ -150,6 +150,7 @@ fun AddScaleScreenContent(
         AppButton(
           label = AddScaleScreenStrings.CantFindModelNumber,
           type = ButtonType.TextPrimary,
+          size = ButtonSize.XSmall,
           onClick = { handleIntent(AddScaleIntent.OpenScaleChooser) },
           modifier = Modifier.align(Alignment.CenterHorizontally),
         )

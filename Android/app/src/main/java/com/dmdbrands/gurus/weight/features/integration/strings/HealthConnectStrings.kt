@@ -11,6 +11,7 @@ object HealthConnectStrings  {
   }
   object Loader {
     const val loading = "Loading..."
+    const val removing = "Removing..."
   }
 
   object NotInstalledAlert {

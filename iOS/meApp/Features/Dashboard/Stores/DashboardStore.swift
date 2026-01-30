@@ -1098,22 +1098,22 @@ class DashboardStore: ObservableObject {
             await MainActor.run { setupDefaultProgressMetricsOrder() }
             return
         }
-        
-        let progressMetrics = progressMetricsString.isEmpty 
-            ? [] 
+
+        let progressMetrics = progressMetricsString.isEmpty
+            ? []
             : progressMetricsString.split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
 
         // Handle case where API defaults empty progress metrics back to all metrics
         let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
         let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
         let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
-        
+
         // If the flag is set and API returns the default full list, treat all as removed
         let shouldTreatAsAllRemoved = allMetricsRemovedFlag && (progressMetrics.isEmpty || isDefaultFullList)
 
         await MainActor.run {
             let allStreaks = streakManager.state.streakItems
-            
+
             // Handle case where progressMetrics is empty or should be treated as all removed
             if progressMetrics.isEmpty || shouldTreatAsAllRemoved {
                 // All progress metrics are removed
@@ -1132,7 +1132,7 @@ class DashboardStore: ObservableObject {
                 scheduleUIUpdate()
                 return
             }
-            
+
             guard !allStreaks.isEmpty else {
                 setupDefaultProgressMetricsOrder()
                 return
@@ -1892,7 +1892,11 @@ class DashboardStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
-    func updateSelectedPeriod(_ period: TimePeriod) {
+    /// Updates the selected time period with optional anchor date for temporal context preservation
+    /// - Parameters:
+    ///   - period: The new time period to switch to
+    ///   - anchorDate: Optional anchor date to center the viewport around (preserves user's temporal focus)
+    func updateSelectedPeriod(_ period: TimePeriod, anchorDate: Date? = nil) {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
 
@@ -1902,13 +1906,18 @@ class DashboardStore: ObservableObject {
         // End any scrolling immediately so new period computes fresh domain/x-axis
         graphManager.endScrollingImmediately()
 
+        // IMPORTANT: Get the correct operations for the NEW period directly from dataManager
+        let operationsForNewPeriod = dataManager.getContinuousOperations(for: period)
+
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
         // Use cached bounds for O(1) lookup
+        // If anchorDate is provided, center the viewport around it for temporal context preservation
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,
-            from: continuousOperations,
-            showingLatest: true,
+            from: operationsForNewPeriod,
+            anchorDate: anchorDate,
+            showingLatest: anchorDate == nil, // Only show latest if no anchor
             cachedBounds: dataManager.getDateBounds(for: period)
         )
         graphManager.updateScrollPosition(to: optimalScrollPosition)
@@ -2312,7 +2321,7 @@ class DashboardStore: ObservableObject {
     }
 
     // MARK: - Metric Info Date Label
-    
+
     /// Generates date label for metric info sheet. Shows "Measurement taken [Date]" for history entries, otherwise period averages.
     func metricInfoDateLabel(for entryDTO: BathScaleOperationDTO) -> String {
         let isHistoryEntry = !isDashboardEntry(entryDTO)
@@ -2321,7 +2330,7 @@ class DashboardStore: ObservableObject {
         }
         return formatMetricInfoDateLabel(entryDate: entryDate, isFromHistory: isHistoryEntry)
     }
-    
+
     /// Formats the date label based on entry date and context. Returns period averages if no date provided.
     private func formatMetricInfoDateLabel(entryDate: Date? = nil, isFromHistory: Bool = false) -> String {
         let period = state.graph.selectedPeriod
@@ -2349,29 +2358,29 @@ class DashboardStore: ObservableObject {
         let dateText = weightLabel // already computed from visible region
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
     }
-    
+
     // MARK: - Private Helpers
-    
+
     private func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool {
         return entryDTO.source == "dashboard"
     }
-    
+
     /// Parses date from entry DTO, handling multiple timestamp formats.
     private func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? {
         if let date = entryDTO.date {
             return date
         }
-        
+
         guard let timestamp = entryDTO.entryTimestamp else {
             return nil
         }
-        
+
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = formatter.date(from: timestamp) {
             return date
         }
-        
+
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: timestamp)
     }
@@ -2868,8 +2877,9 @@ class DashboardStore: ObservableObject {
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: state.graph.selectedPeriod,
             from: continuousOperations,
+            anchorDate: nil,
             showingLatest: true,
-            cachedBounds: dataManager.getDateBounds(for: state.graph.selectedPeriod)
+            cachedBounds: nil
         )
         self.graphManager.updateScrollPosition(to: optimalScrollPosition)
         self.forceCompleteRecalculationAfterScrollPosition()
