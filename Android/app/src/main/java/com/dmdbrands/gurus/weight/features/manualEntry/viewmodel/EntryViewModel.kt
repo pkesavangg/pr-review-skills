@@ -258,6 +258,7 @@ constructor(
 
         dialogQueueService.showToast(
           Toast(
+            title = EntryScreenStrings.EntryAddedTitle,
             message = EntryScreenStrings.EntryAdded,
           ),
         )

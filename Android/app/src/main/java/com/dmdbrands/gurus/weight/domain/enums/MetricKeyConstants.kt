@@ -12,7 +12,7 @@ object MetricKeyConstants {
     const val MUSCLE_MASS = "muscleMass"
     const val BODY_WATER = "water"
     const val HEART_RATE = "pulse"
-    
+
     // Advanced metrics
     const val BONE_MASS = "boneMass"
     const val VISCERAL_FAT = "visceralFatLevel"
@@ -21,7 +21,7 @@ object MetricKeyConstants {
     const val SKELETAL_MUSCLE = "skeletalMusclePercent"
     const val BMR = "bmr"
     const val METABOLIC_AGE = "metabolicAge"
-    
+
     /**
      * All metric keys in camelCase format.
      * Matches the order specified by the user.
@@ -31,6 +31,7 @@ object MetricKeyConstants {
         BODY_FAT,
         MUSCLE_MASS,
         BODY_WATER,
+        HEART_RATE,
         BONE_MASS,
         VISCERAL_FAT,
         SUBCUTANEOUS_FAT,
@@ -38,9 +39,8 @@ object MetricKeyConstants {
         SKELETAL_MUSCLE,
         BMR,
         METABOLIC_AGE,
-        HEART_RATE
     )
-    
+
     /**
      * Default 4-metric dashboard keys in camelCase format.
      */
@@ -50,7 +50,7 @@ object MetricKeyConstants {
         MUSCLE_MASS,
         BODY_WATER
     )
-    
+
     /**
      * Maps camelCase keys to MetricKey enums.
      */
@@ -69,7 +69,7 @@ object MetricKeyConstants {
         BMR to MetricKey.BMR,
         METABOLIC_AGE to MetricKey.METABOLIC_AGE
     )
-    
+
     /**
      * Maps MetricKey enums to camelCase keys.
      */

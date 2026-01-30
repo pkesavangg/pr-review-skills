@@ -317,8 +317,7 @@ fun BtWifiScaleSetupScreenContent(
               configuredSSID = state.connectedSSID,
               onSelect = { selectedSSID ->
                 // Check if the selected network is already connected
-                if (selectedSSID == state.connectedSSID) {
-                } else {
+                if (selectedSSID != state.connectedSSID) {
                   // New network selected, go to password step
                   state.wifiPasswordForm.ssid.onValueChange(selectedSSID)
                   onIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.WIFI_PASSWORD))
@@ -370,7 +369,7 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.UpdateSettings.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
-              indicatorIcon = LoaderIconType.Measurement,
+              indicatorIcon = if(state.currentStepConnectionState is ConnectionState.Failed)  LoaderIconType.Error else LoaderIconType.Measurement,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
@@ -394,7 +393,7 @@ fun BtWifiScaleSetupScreenContent(
               connectionState = state.currentStepConnectionState,
               title = BtWifiScaleSetupStrings.CollectingMeasurement.Title(state.currentStepConnectionState),
               showIndicationOnly = true,
-              indicatorIcon = LoaderIconType.Measurement,
+              indicatorIcon = if(state.currentStepConnectionState is ConnectionState.Failed)  LoaderIconType.Error else LoaderIconType.Measurement,
               primaryButtonClick = if (state.currentStepConnectionState is ConnectionState.Failed) {
                 { onIntent(BtWifiScaleSetupIntent.TryAgain) }
               } else null,
