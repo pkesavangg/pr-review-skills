@@ -13,25 +13,16 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Published Properties
     @Published var state: StreakState
 
-    // MARK: - Private Types
-    private struct StreakItemData {
-        let value: String
-        let label: String
-        let unit: String?
-        let preLabel: String?
-        let icon: String?
-    }
-
     // MARK: - Private Properties
-    private var originalStreakItems: [StreakItemData] {
+    private var originalStreakItems: [MetricItem] {
         let streakLabels = getStreakLabels()
         return [
-            StreakItemData(value: DashboardStrings.placeholder, label: DashboardStrings.currentStreak, unit: nil, preLabel: nil, icon: AppAssets.streak),
-            StreakItemData(value: DashboardStrings.placeholder, label: DashboardStrings.longestStreak, unit: nil, preLabel: nil, icon: AppAssets.longestStreak),
-            StreakItemData(value: DashboardStrings.placeholder, label: streakLabels.week, unit: nil, preLabel: nil, icon: nil),
-            StreakItemData(value: DashboardStrings.placeholder, label: streakLabels.month, unit: nil, preLabel: nil, icon: nil),
-            StreakItemData(value: DashboardStrings.placeholder, label: streakLabels.year, unit: nil, preLabel: nil, icon: nil),
-            StreakItemData(value: DashboardStrings.placeholder, label: streakLabels.total, unit: nil, preLabel: nil, icon: nil)
+            MetricItem(value: DashboardStrings.placeholder, label: DashboardStrings.currentStreak, unit: nil, preLabel: nil, icon: AppAssets.streak),
+            MetricItem(value: DashboardStrings.placeholder, label: DashboardStrings.longestStreak, unit: nil, preLabel: nil, icon: AppAssets.longestStreak),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.week, unit: nil, preLabel: nil, icon: nil),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.month, unit: nil, preLabel: nil, icon: nil),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.year, unit: nil, preLabel: nil, icon: nil),
+            MetricItem(value: DashboardStrings.placeholder, label: streakLabels.total, unit: nil, preLabel: nil, icon: nil)
         ]
     }
 
@@ -45,9 +36,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     // MARK: - Setup Methods
     func setupInitialStreakItems() {
-        state.streakItems = originalStreakItems.map { item in
-            MetricItem(value: item.value, label: item.label, unit: item.unit, preLabel: item.preLabel, icon: item.icon)
-        }
+        state.streakItems = originalStreakItems
         state.activeStreakItemsCount = originalStreakItems.count
     }
 
