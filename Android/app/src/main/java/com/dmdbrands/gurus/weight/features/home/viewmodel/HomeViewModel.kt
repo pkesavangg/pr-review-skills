@@ -113,7 +113,7 @@ constructor(
     viewModelScope.launch {
       deviceService.pairedScales.collect { savedScales ->
         val hasAppSyncScales = savedScales.any { savedScale ->
-          val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.sku ?: "")
+          val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
           scaleInfo?.setupType == ScaleSetupType.AppSync
         } && savedScales.isNotEmpty()
 

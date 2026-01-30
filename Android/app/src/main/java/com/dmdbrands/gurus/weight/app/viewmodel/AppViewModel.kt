@@ -493,7 +493,7 @@ constructor(
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
-                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.sku ?: "")
+                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
                 scaleInfo?.setupType in listOf(
                   ScaleSetupType.BtWifiR4,
                   ScaleSetupType.Lcbt,

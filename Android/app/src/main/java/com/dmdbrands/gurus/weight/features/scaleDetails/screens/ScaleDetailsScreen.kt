@@ -121,7 +121,7 @@ fun ScaleDetailsScreenContent(
     ) {
       // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       AppScaleImage(
-        sku = DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: ""),
+        sku = DeviceHelper.mapSkuForDisplay(device!!.getSKU()),
         modifier = Modifier.fillMaxWidth(),
         scaleImageSize = ScaleImageSize.Large,
       )
@@ -281,7 +281,7 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: "")),
+              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device!!.getSKU())),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,
