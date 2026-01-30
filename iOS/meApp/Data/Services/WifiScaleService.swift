@@ -23,7 +23,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
         
         do {
             let result = try await apiRepo.getScaleToken(request: request)
-            logger.log(level: .info, tag: tag, message: "Successfully fetched scale token: \(result.token)")
+            logger.log(level: .info, tag: tag, message: "Successfully fetched scale token")
             return result
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch scale token: \(error.localizedDescription)")
