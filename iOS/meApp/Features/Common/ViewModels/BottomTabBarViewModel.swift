@@ -50,6 +50,7 @@ class BottomTabBarViewModel: ObservableObject {
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsService
     @Injector private var pushNotificationService: PushNotificationService
+    @Injector private var integrationService: IntegrationsService
     
     // MARK: - Permission Disabled Alert Tracking
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
@@ -422,8 +423,10 @@ class BottomTabBarViewModel: ObservableObject {
             onPrimary = { [weak self] in
                 guard let self else { return }
                 self.notificationService.dismissModal()
-                // Switch to Settings tab and queue navigation to the Integrations screen.
-                self.navigateToSettings(route: .integrations)
+                // Trigger connection flow directly instead of navigating to settings
+                Task {
+                    await self.handleHKConnectFlow(for: state)
+                }
             }
             onSecondary = nil
             
@@ -461,6 +464,83 @@ class BottomTabBarViewModel: ObservableObject {
         
         let modalData = ModalData(presentedView: AnyView(modalView))
         notificationService.showModal(modalData)
+    }
+    
+    private func handleHKConnectFlow(for _: HKIntegrationModalState) async {
+        do {
+            let success = try await healthKitService.integrate(turnOn: true)
+            
+            guard success else {
+                await showAlert(from: HKIntegrationHealthAccessStrings.integrationFailed)
+                return
+            }
+            
+            let permissionCount = healthKitService.getApprovedPermissionList().count
+            let hasFullPermissions = permissionCount >= HealthKitStore.wgTotalPermissionsCount
+            let entryCount = (try? await entryService.getEntryCount()) ?? 0
+            
+            if entryCount > 0 && hasFullPermissions {
+                await showSyncAlert()
+            } else {
+                await MainActor.run {
+                    notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+                }
+            }
+        } catch IntegrationError.userConflict {
+            await showAlert(from: HKIntegrationHealthAccessStrings.userConflict)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to connect HealthKit", data: error.localizedDescription)
+            await showAlert(from: HKIntegrationHealthAccessStrings.integrationFailed)
+        }
+    }
+    
+    private func showSyncAlert() async {
+        await MainActor.run {
+            let alert = AlertModel(
+                title: AlertStrings.SyncWeightHistoryAlert.title,
+                message: AlertStrings.SyncWeightHistoryAlert.message,
+                buttons: [
+                    AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.cancelButton, type: .secondary) { _ in },
+                    AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.syncButton, type: .primary) { [weak self] _ in
+                        Task { await self?.performSync() }
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+    
+    private func performSync() async {
+        await MainActor.run {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
+        }
+        
+        do {
+            try await healthKitService.syncAllData()
+            if let latestEntry = try await entryService.getLatestEntry() {
+                await integrationService.logHealthEntry(entry: latestEntry)
+            }
+            await MainActor.run {
+                notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
+            }
+        } catch {
+            await MainActor.run {
+                notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
+            }
+        }
+    }
+    
+    private func showAlert(from content: HKIntegrationHealthAccessContent) async {
+        await MainActor.run {
+            let alert = AlertModel(
+                title: content.title,
+                message: content.description ?? "",
+                buttons: [AlertButtonModel(title: CommonStrings.ok, type: .primary) { _ in }]
+            )
+            notificationService.showAlert(alert)
+        }
     }
     
     // MARK: - Scale Discovery Handling
