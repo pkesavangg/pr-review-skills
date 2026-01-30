@@ -117,7 +117,7 @@ fun ScaleModeSettingsScreen(
       }
       AppText(
         text = ScaleModeStrings.HeartRateDescription,
-        textType = TextType.SubHeading,
+        textType = TextType.Body,
       )
       Surface(
         color = colorScheme.inverseAction,
@@ -130,7 +130,7 @@ fun ScaleModeSettingsScreen(
           annotatedText = ScaleModeStrings.Note,
           annotationPosition = AnnotationPosition.Start,
           spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
-          textType = TextType.SubHeading,
+          textType = TextType.Body,
           modifier = Modifier.padding(spacing.md),
         )
       }
@@ -150,7 +150,8 @@ fun ScaleModeSettingsScreen(
           )
           AppText(
             text = ScaleModeStrings.WeightOnlyIndicator,
-            textType = TextType.SubHeading,
+            textType = TextType.Body,
+
           )
         }
         Column(
@@ -168,6 +169,7 @@ fun ScaleModeSettingsScreen(
           AppNote(
             message = ScaleModeStrings.NoteOtherUsers,
             showNote = true,
+            messageType = TextType.Body
           )
         }
       }

@@ -31,6 +31,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.model.CustomizeSettingsCar
 import com.dmdbrands.gurus.weight.features.ScaleSetup.model.CustomizeSettingsList
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BtWifiScaleSetupState
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -91,6 +92,9 @@ fun CustomizeScaleSettings(
       initialValue = state.usernameForm.username.value,
       validators = listOf(
         FormValidations.required(),
+        FormValidations.noWhiteSpace(),
+        FormValidations.maxLength(20,),
+        FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
       ),
     )
   }
@@ -141,7 +145,7 @@ fun CustomizeScaleSettings(
     modifier = Modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(vertical = spacing.md, horizontal = spacing.sm),
+      .padding(vertical = spacing.md),
     steps = CustomizeSettings.entries,
     containerColor = MeTheme.colorScheme.secondaryBackground,
     pagerState = pagerState,
@@ -364,6 +368,7 @@ fun CustomizeScaleSettings(
             supportingImage = AppIcons.Setup.UserNameScale,
             enableScroll = false,
             userList = userList,
+            isCustomization = true,
             onImeAction = {
               focusManager.clearFocus()
               keyboardController?.hide()
@@ -396,7 +401,8 @@ fun InitializeCustomizeScaleSettings(
 ) {
   Column(
     modifier = modifier
-      .fillMaxSize(),
+      .fillMaxSize()
+      .padding(horizontal = spacing.sm),
   ) {
     Column(
       verticalArrangement = Arrangement.spacedBy(spacing.xs),

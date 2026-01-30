@@ -111,7 +111,7 @@ final class ScaleSettingsStore: ObservableObject {
             title: alertLang.DeleteScaleAlert.title,
             message: alertLang.DeleteScaleAlert.message,
             buttons: [
-                AlertButtonModel(title: alertLang.DeleteScaleAlert.deleteButton, type: .primary) { _ in
+                AlertButtonModel(title: alertLang.DeleteScaleAlert.deleteButton, type: .danger) { _ in
                     Task { [weak self] in
                         guard let self = self else { return }
                         let success = await self.deleteScale(scaleId: scaleId)

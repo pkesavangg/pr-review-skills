@@ -200,7 +200,7 @@ fun rememberReorderableLazyListState(
   return state
 }
 
-private val LazyListLayoutInfo.mainAxisViewportSize: Int
+val LazyListLayoutInfo.mainAxisViewportSize: Int
   get() = when (orientation) {
     Orientation.Vertical -> viewportSize.height
     Orientation.Horizontal -> viewportSize.width

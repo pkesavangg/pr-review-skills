@@ -98,6 +98,7 @@ fun ScaleSetupLoader(
   secondaryButtonClick: (() -> Unit)? = null,
   contentButtonClick: (() -> Unit)? = null
 ) {
+  val isFailedWithIndicatorOnly = connectionState is ConnectionState.Failed && showIndicationOnly
 
   Column(
     modifier = modifier
@@ -116,6 +117,9 @@ fun ScaleSetupLoader(
       Column(
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
+        if(isFailedWithIndicatorOnly) {
+          Spacer(modifier = Modifier.height(spacing.x2l))
+        }
         // Title
         title?.let {
           AppText(
@@ -226,6 +230,9 @@ fun ScaleSetupLoader(
           modifier = Modifier
             .padding(top = spacing.x2l),
         ) {
+          if(isFailedWithIndicatorOnly) {
+            Spacer(modifier = Modifier.height(120.dp))
+          }
           AppButton(
             label = primaryButtonText,
             type = ButtonType.PrimaryFilled,

@@ -85,7 +85,7 @@ fun MultipleDeviceConnectionScreen(
               )
               AppButton(
                 type = ButtonType.PrimaryFilled,
-                label = HealthConnectStrings.ActionButtons.finish,
+                label = HealthConnectStrings.ActionButtons.connect,
                 size = ButtonSize.Large,
                 onClick = onPrimaryAction,
               )

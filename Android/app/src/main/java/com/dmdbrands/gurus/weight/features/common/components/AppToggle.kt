@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
@@ -61,9 +62,12 @@ fun AppToggle(
   Switch(
     checked = checked,
     onCheckedChange = onCheckedChange,
-    // modifier = modifier.size(width = defaultWidth, height = MeTheme.spacing.lg),
     enabled = enabled,
     colors = AppToggleDefaults.colors(),
+    modifier = modifier.widthIn(
+      min = AppToggleDefaults.defaultWidth,
+      max = AppToggleDefaults.defaultWidth,
+    ),
   )
 }
 

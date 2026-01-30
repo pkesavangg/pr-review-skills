@@ -20,7 +20,7 @@ fun CustomizationLayout(
 ) {
   Column(
     modifier = Modifier
-      .fillMaxSize(),
+      .fillMaxSize().padding(horizontal = spacing.sm),
   ) {
     title?.let {
       AppText(

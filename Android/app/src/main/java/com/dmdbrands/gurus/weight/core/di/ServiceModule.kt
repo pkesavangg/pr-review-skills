@@ -383,9 +383,18 @@ object ServiceModule {
     @Singleton
     fun provideDashboardService(
       dashboardRepository: IDashboardRepository,
-      accountRepository: IAccountRepository
+      accountRepository: IAccountRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
     ): IDashboardService =
-      DashboardService(dashboardRepository, accountRepository)
+      DashboardService(
+        dashboardRepository,
+        accountRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+      )
 
     @Provides
     @Singleton

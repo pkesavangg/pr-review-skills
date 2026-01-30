@@ -1408,6 +1408,11 @@ class SettingsStore: ObservableObject {
             // Mark as touched so form is considered interacted with
             goalForm.goalType.markAsTouched()
         }
+        if newSegment == .loseGain {
+            [goalForm.goalWeight, goalForm.currentWeight]
+                .filter { !$0.value.isEmpty }
+                .forEach { $0.markAsDirty() }
+        }
         
         // Force form validation to update computed properties
         goalForm.validate()
