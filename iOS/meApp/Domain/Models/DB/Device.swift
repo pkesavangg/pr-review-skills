@@ -158,12 +158,14 @@ final class Device {
             bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
         }
 
+        let finalSku = dto.sku
+
         self.init(
             id: id,
             accountId: accountId ?? dto.userId ?? "",
             peripheralIdentifier: dto.peripheralIdentifier,
             nickname: dto.nickname,
-            sku: dto.sku,
+            sku: finalSku,
             mac: dto.mac,
             password: dto.password.map { Int64($0) },
             isSoftDeleted: dto.isDeleted,
@@ -261,5 +263,14 @@ extension Device {
         }
         
         return .connected
+    }
+    
+    /// Returns the display SKU, showing "0383" if actual SKU is "0022" (UI only, doesn't affect data)
+    var displaySku: String? {
+        // If actual SKU is "0022", display "0383" in UI
+        if sku == "0022" {
+            return "0383"
+        }
+        return sku
     }
 }

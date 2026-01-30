@@ -59,14 +59,16 @@ struct ScaleBluetoothScreen: View {
     }
 
     private func scaleIcon(for sku: String?) -> Image {
-        let imagePath = SCALES.first(where: { $0.sku == (sku ?? "") })?.imgPath ?? AppAssets.meLogoDark
+        // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku ?? "")
+        let imagePath = SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? AppAssets.meLogoDark
         return Image(imagePath)
     }
 
     private var scaleItemView: some View {
         ScaleItemView(
             scaleIcon: scaleIcon(for: scale.sku),
-            modelNumber: scale.sku ?? "----",
+            modelNumber: scale.displaySku ?? scale.sku ?? "----",
             scaleName: getScaleDisplayName(),
             status: (scale.isConnected ?? false) ? ScaleConnectionStatus.connected : ScaleConnectionStatus.notConnected,
             onTap: {},
