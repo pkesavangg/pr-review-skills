@@ -32,18 +32,44 @@ final class HealthKitStore: ObservableObject {
     @Injector private var logger: LoggerService
     
     var cancellables: Set<AnyCancellable> = []
-    let wgTotalPermissionsCount = 5
+    static let wgTotalPermissionsCount = 5
+    
+    /// Duration to wait for sheet dismissal animation to complete before showing subsequent UI.
+    private static let sheetDismissalAnimationDurationNanoseconds: UInt64 = 300_000_000 // 0.3 seconds
     
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
     /// the Apple Health app.
     private var foregroundObserver: AnyCancellable? = nil
     
+    /// Tracks the previous activeState value to detect transitions between nil and non-nil
+    private var previousActiveState: AppleHealthIntegrationState? = nil
+    
     let alertLang = AlertStrings.self
     let tag = "HealthKitStore"
     // MARK: - Init
     init() {
         loadStatus()
+        // Observe activeState changes to post notifications when sheet is presented/dismissed
+        // Only post notifications when transitioning between nil and non-nil states
+        $activeState
+            .dropFirst()
+            .sink { [weak self] newState in
+                guard let self else { return }
+                let wasPresented = self.previousActiveState != nil
+                let isPresented = newState != nil
+                
+                if !wasPresented && isPresented {
+                    // Transitioning from nil to non-nil: sheet is being presented
+                    NotificationCenter.default.post(name: .appleHealthSheetPresented, object: nil)
+                } else if wasPresented && !isPresented {
+                    // Transitioning from non-nil to nil: sheet is being dismissed
+                    NotificationCenter.default.post(name: .appleHealthSheetDismissed, object: nil)
+                }
+                
+                self.previousActiveState = newState
+            }
+            .store(in: &cancellables)
     }
     
     func loadStatus() {
@@ -89,9 +115,9 @@ final class HealthKitStore: ObservableObject {
                 // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
                 // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
                 switch permissionCount {
-                case wgTotalPermissionsCount...:
+                case Self.wgTotalPermissionsCount...:
                     activeState = .permissionsAllowed
-                case 1..<wgTotalPermissionsCount:
+                case 1..<Self.wgTotalPermissionsCount:
                     activeState = .integrationComplete
                 default:
                     activeState = .integrationFailed
@@ -152,7 +178,17 @@ final class HealthKitStore: ObservableObject {
                 let success = try await healthKitService.integrate(turnOn: true)
                 if success {
                     if !wasPreviouslyIntegrated {
-                        activeState = .integrationComplete
+                        // Check if user granted full permissions (all 5 permissions)
+                        // Get permissions immediately after authorization - they should be available
+                        let permissionCount = healthKitService.getApprovedPermissionList().count
+                        if permissionCount >= Self.wgTotalPermissionsCount {
+                            // User granted full permissions - go directly to sync flow without showing Integration Complete
+                            // Don't dismiss modal here - let finishIntegrationFlow handle it properly
+                            await self.finishIntegrationFlowForFullPermissions()
+                        } else {
+                            // User granted partial permissions - show Integration Complete screen
+                            activeState = .integrationComplete
+                        }
                     } else {
                         finishIntegrationFlow()
                     }
@@ -168,6 +204,28 @@ final class HealthKitStore: ObservableObject {
                     activeState = .integrationFailed
                 }
             }
+        }
+    }
+    
+    /// Handles the integration flow completion when user has granted full permissions.
+    /// This skips the Integration Complete screen and goes directly to the sync alert.
+    private func finishIntegrationFlowForFullPermissions() async {
+        // Dismiss the current sheet
+        self.dismissModal()
+        // Small delay to ensure sheet dismissal animation completes
+        try? await Task.sleep(nanoseconds: Self.sheetDismissalAnimationDurationNanoseconds)
+        // Show sync alert if needed
+        do {
+            let count = try await entryService.getEntryCount()
+            if count > 0 {
+                presentSyncHistoryAlert()
+            } else {
+                // Nothing to sync – just show toast.
+                notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+            }
+        } catch {
+            // If we can't get entry count, just show toast
+            notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
         }
     }
     

@@ -18,6 +18,8 @@ struct ScaleSetupStrings {
     }
     static let wakeYourScaleTitle = "Wake Your Scale"
     static let wakeYourScaleSubtitle = "Give it a little tap, so your phone can find it."
+    /// Subtitle for LCBT (A6) scales - user should step on the scale
+    static let wakeYourScaleSubtitleLCBT = "Step on the scale, so your phone can find it."
     static let gatheringNetworksTitle = "Gathering Networks"
     static let connectingToBluetooth = "Connecting to Bluetooth"
     static let connectedToBluetooth = "Connected to Bluetooth"

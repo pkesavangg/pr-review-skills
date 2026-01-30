@@ -12,8 +12,9 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     // MARK: - Published Properties
     @Published var state: StreakState
-
+    
     // MARK: - Private Properties
+    private var hasUpdatedWithRealData: Bool = false
     private var originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] {
         let streakLabels = getStreakLabels()
         return [
@@ -135,8 +136,17 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             ))
 
             // Update streak items array
+            let isFirstUpdate = !hasUpdatedWithRealData
             state.streakItems = updatedStreakItems
-            state.activeStreakItemsCount = updatedStreakItems.count
+            hasUpdatedWithRealData = true
+
+            // Preserve active count only after the first real data update
+            if !isFirstUpdate {
+                state.activeStreakItemsCount = min(
+                    state.activeStreakItemsCount,
+                    updatedStreakItems.count
+                )
+            }
 
         } catch {
             logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to update streak items: \(error)")
