@@ -363,7 +363,8 @@ constructor(
             dashboardService.setSelectedKey(null)
             // Reset scale discovered state when switching accounts
             resetScaleDiscoveredState()
-            initLoadingData(authState.account, true)
+            // Pass isAccountSwitch=true to use more lenient network failure handling
+            initLoadingData(authState.account, isLoggedIn = true, isAccountSwitch = true)
           }
 
           is AuthState.ProfileUpdated -> {
@@ -413,20 +414,43 @@ constructor(
 
   /**
    * Checks the login status for all accounts using the split methods.
+   * @param isDuringAccountSwitch If true, uses more lenient network failure handling during account switch.
    * @return true if login status check was successful
    */
-  private suspend fun checkLoginStatus(): Boolean =
+  private suspend fun checkLoginStatus(isDuringAccountSwitch: Boolean = false): Boolean =
     try {
-      val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount()
+      val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount(isDuringAccountSwitch)
       // Then check other logged-in accounts
-      val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
+      val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts(isDuringAccountSwitch)
 
-      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}")
+      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}, isDuringAccountSwitch: $isDuringAccountSwitch")
       isActiveAccountChecked && isLoggedInAccountsChecked
     } catch (e: Exception) {
       AppLog.e(TAG, "Error checking login status", e)
+      // During account switch, don't fail on exceptions - check local validity instead
+      if (isDuringAccountSwitch) {
+        AppLog.d(TAG, "During account switch - checking local account validity after exception")
+        checkLocalAccountValidity()
+      } else {
+        false
+      }
+    }
+
+  /**
+   * Checks if the active account is valid locally (exists and not expired).
+   * Used as fallback during account switch when network checks fail.
+   * @return true if active account exists and is not expired
+   */
+  private suspend fun checkLocalAccountValidity(): Boolean {
+    val activeAccount = accountService.getCurrentAccount()
+    return if (activeAccount != null && !activeAccount.isExpired) {
+      AppLog.d(TAG, "Local account validity check passed for account: ${activeAccount.id}")
+      true
+    } else {
+      AppLog.d(TAG, "Local account validity check failed - account is null or expired")
       false
     }
+  }
 
   /**
    * Routes to either the landing page or the app based on login status.
@@ -447,10 +471,30 @@ constructor(
     navigationService.replaceStack(route = route)
   }
 
-  private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
+  /**
+   * Initializes loading data for the given account.
+   * @param account The account to load data for
+   * @param isLoggedIn Whether this is a fresh login (triggers device info update)
+   * @param isAccountSwitch Whether this is called during account switch (uses more lenient network handling)
+   */
+  private suspend fun initLoadingData(
+    account: Account?,
+    isLoggedIn: Boolean = false,
+    isAccountSwitch: Boolean = false,
+  ) {
     try {
       initialized = false
-      val isLoginStatusChecked = checkLoginStatus()
+      var isLoginStatusChecked = checkLoginStatus(isDuringAccountSwitch = isAccountSwitch)
+      
+      // During account switch, fall back to local validity check if network check failed
+      if (!isLoginStatusChecked && isAccountSwitch && account != null) {
+        val isLocallyValid = checkLocalAccountValidity()
+        if (isLocallyValid) {
+          AppLog.d(TAG, "Account switch - account is locally valid, proceeding despite network check failure")
+          isLoginStatusChecked = true
+        }
+      }
+      
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
@@ -477,6 +521,11 @@ constructor(
         routeToLandingOrApp()
       }
     } catch (e: Exception) {
+      // During account switch, check local validity before routing to landing
+      if (isAccountSwitch && account != null && checkLocalAccountValidity()) {
+        AppLog.d(TAG, "Account switch exception - account is locally valid, not routing to landing")
+        return
+      }
       routeToLandingOrApp()
       AppLog.e(TAG, "Load data failed", e)
     }
