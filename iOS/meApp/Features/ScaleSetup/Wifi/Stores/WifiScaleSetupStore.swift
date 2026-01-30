@@ -611,7 +611,7 @@ final class WifiScaleSetupStore: ObservableObject {
             do {
                 let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
                 self.scaleToken = scaleTokenResponse.token
-                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
+                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token")
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             }
