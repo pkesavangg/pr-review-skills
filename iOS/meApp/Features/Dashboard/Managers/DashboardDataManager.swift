@@ -204,7 +204,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
         )
 
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Updated daily summaries cache: \(cachedSortedDailySummaries.count) items, bounds: \(cachedDailyMinDate?.description ?? "nil") to \(cachedDailyMaxDate?.description ?? "nil")")
+        logger.log(
+            level: .debug,
+            tag: "DashboardDataManager",
+            message: "Updated daily summaries cache: \(cachedSortedDailySummaries.count) items, " +
+                "bounds: \(cachedDailyMinDate?.description ?? "nil") to \(cachedDailyMaxDate?.description ?? "nil")"
+        )
     }
 
     private func updateStateFromMonthlySummaries(_ monthlySummaries: [BathScaleWeightSummary]) {
@@ -223,7 +228,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
         )
 
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Updated monthly summaries cache: \(cachedSortedMonthlySummaries.count) items, bounds: \(cachedMonthlyMinDate?.description ?? "nil") to \(cachedMonthlyMaxDate?.description ?? "nil")")
+        logger.log(
+            level: .debug,
+            tag: "DashboardDataManager",
+            message: "Updated monthly summaries cache: \(cachedSortedMonthlySummaries.count) items, " +
+                "bounds: \(cachedMonthlyMinDate?.description ?? "nil") to \(cachedMonthlyMaxDate?.description ?? "nil")"
+        )
     }
 
     private func calculateDateRange() -> DateRange? {

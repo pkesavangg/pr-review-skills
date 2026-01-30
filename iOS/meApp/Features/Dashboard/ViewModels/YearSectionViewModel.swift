@@ -45,8 +45,8 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
         guard !realTicks.isEmpty else { return }
 
         // Snap to nearest tick by absolute time distance
-        let snapped = realTicks.min { a, b in
-            abs(a.timeIntervalSince(date)) < abs(b.timeIntervalSince(date))
+        let snapped = realTicks.min { first, second in
+            abs(first.timeIntervalSince(date)) < abs(second.timeIntervalSince(date))
         } ?? date
 
         // Determine first/last plotted months and only show selection if snapped month

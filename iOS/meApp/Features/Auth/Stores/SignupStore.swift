@@ -342,8 +342,8 @@ final class SignupStore: ObservableObject {
         let current = Double(signupForm.currentWeight.value) ?? 0.0
         let target = Double(signupForm.goalWeight.value) ?? 0.0
         
-        let convert = { (w: Double) -> Int in
-            ConversionTools.convertDisplayToStored(w, forceMetric: useMetric)
+        let convert = { (weight: Double) -> Int in
+            ConversionTools.convertDisplayToStored(weight, forceMetric: useMetric)
         }
         
         if goalTypeValue == GoalType.maintain.rawValue {

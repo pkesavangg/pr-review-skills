@@ -248,12 +248,12 @@ struct AlertModifier: ViewModifier {
     
     private func isInAlertHierarchy(view: UIView) -> Bool {
         var currentView: UIView? = view
-        while let v = currentView {
-            let typeName = String(describing: type(of: v))
+        while let viewToCheck = currentView {
+            let typeName = String(describing: type(of: viewToCheck))
             if typeName.contains("Alert") || typeName.contains("_UIAlert") {
                 return true
             }
-            currentView = v.superview
+            currentView = viewToCheck.superview
         }
         return false
     }

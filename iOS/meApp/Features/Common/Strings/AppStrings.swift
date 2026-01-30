@@ -866,6 +866,7 @@ struct AppAssets {
     // MARK: - WiFi series
     static let scale0384 = "0384"
     static let scale0385 = "0385"
+    // swiftlint:disable:next identifier_name
     static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
 
     // MARK: - Bluetooth wifi series

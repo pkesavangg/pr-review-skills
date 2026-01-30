@@ -50,7 +50,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         // Check if this is a reset operation (all metrics restored and order reset)
         let isResetOperation = newRemovedMetrics.isEmpty && 
                               newActiveMetricsCount == store.metricsManager.state.metrics.count &&
-                              coordinator.lastRemovedMetrics.count > 0
+                              !coordinator.lastRemovedMetrics.isEmpty
         
         // Disable system drag interaction; we use interactive movement with a clamped gesture
         uiView.dragInteractionEnabled = false
