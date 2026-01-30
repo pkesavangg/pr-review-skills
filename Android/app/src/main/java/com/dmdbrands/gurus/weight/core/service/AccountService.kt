@@ -413,10 +413,13 @@ constructor(
 
   /**
    * Checks login status for all logged-in accounts (non-active) by calling getAccount API if online.
-   * If offline, checks local DB for isExpired status for all accounts.
+   * This is a best-effort check that refreshes account data and cleans up invalid accounts.
+   * Accounts that return 401 Unauthorized are marked as expired and removed.
    * Network failures (IOException) will not mark accounts as expired - only 401 errors will.
+   * If offline, returns true without checking (offline mode is allowed).
    * @param isDuringAccountSwitch If true, more lenient handling of network failures during account switch.
-   * @return true if all accounts are valid (online or offline), false if any are expired
+   * @return true if the check completed (regardless of whether individual accounts were expired/removed),
+   *         false only if a fatal error (network failure, exception) prevented the check from completing
    */
   override suspend fun checkLoginStatusForLoggedInAccounts(isDuringAccountSwitch: Boolean): Boolean {
     AppLog.d(TAG, "checkLoginStatusForLoggedInAccounts() called, isDuringAccountSwitch: $isDuringAccountSwitch")
