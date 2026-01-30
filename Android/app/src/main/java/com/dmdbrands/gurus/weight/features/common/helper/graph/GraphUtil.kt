@@ -62,8 +62,8 @@ object GraphUtil {
           GraphPoint(
             x =
               Label(
-                value = DateTimeConverter.isoToTimestamp (entry.entryTimestamp),
-            label = entry.period,
+                value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
+                label = entry.period,
               ),
             y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight.rounded() ?: 0}"),
           )
@@ -137,14 +137,35 @@ object GraphUtil {
 
   /**
    * Returns the number of intervals for the given [GraphSegment].
+   * Includes padding from GraphSnapHelper in the calculation:
+   * - When [canScrollBackward] is true: adds padding
+   * - When [canScrollForward] is false: adds padding * 2
+   *
+   * @param canScrollBackward Whether backward scrolling is possible. Padding is added when true.
+   * @param canScrollForward Whether forward scrolling is possible. Padding * 2 is added when false.
+   * @return Number of intervals calculated as (baseRange + padding) / xStep, where padding depends on scroll state
    */
-  fun GraphSegment.intervalCount(): Double =
-    when (this) {
-      GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 5
-      GraphSegment.YEAR -> 11.75
-      GraphSegment.TOTAL -> 1000
-    }.toDouble() - 0.001
+  fun GraphSegment.intervalCount(canScrollBackward: Boolean = false, canScrollForward: Boolean = true): Double {
+    val baseRange = when (this) {
+      GraphSegment.WEEK -> 7 * ONE_DAY_MILLIS // 7 days
+      GraphSegment.MONTH -> 31 * ONE_DAY_MILLIS  // 31 days
+      GraphSegment.YEAR -> 366 * ONE_DAY_MILLIS // 365 days
+      GraphSegment.TOTAL -> 365 * ONE_DAY_MILLIS // 365 days as default
+    }
+
+    val xStep = calculateXStep(this)
+
+    val basePadding = GraphSnapHelper.getPaddingForSegment(this)
+    val padding = when {
+      canScrollBackward -> basePadding // Add padding when can scroll backward
+      else -> -basePadding // No padding otherwise
+    }
+
+    val rangeWithPadding = baseRange + padding
+    val intervals = rangeWithPadding.toDouble() / xStep
+
+    return intervals.coerceAtLeast(1.0)
+  }
   // endregion
 
   // region Formatting
@@ -266,7 +287,6 @@ object GraphUtil {
     val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
     val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
 
-
     val metricValuesForRange = buildList {
       previousPoint?.let { add(it.toDouble()) }
       addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
@@ -288,9 +308,9 @@ object GraphUtil {
     val effectiveMetricMax: Double
 
     if (isSingleMetricPoint) {
-        val padding = 1.0
-        effectiveMetricMin = metricMin - padding
-        effectiveMetricMax = metricMax + padding
+      val padding = 1.0
+      effectiveMetricMin = metricMin - padding
+      effectiveMetricMax = metricMax + padding
     } else {
       // Add 5% padding (matching iOS implementation)
       val padding = metricRange * 0.05
@@ -325,12 +345,12 @@ object GraphUtil {
         // Validate position is finite before using (matching iOS guard checks)
         if (positionInRange.isFinite()) {
           point.copy(
-            y = point.y.copy(value = positionInRange)
+            y = point.y.copy(value = positionInRange),
           )
         } else if (useFallback) {
           // Fallback to middle of weight range (validated above)
           point.copy(
-            y = point.y.copy(value = safeFallbackValue)
+            y = point.y.copy(value = safeFallbackValue),
           )
         } else {
           // If fallback is also invalid, skip this point entirely
@@ -342,7 +362,7 @@ object GraphUtil {
 
         // Normalize to weight range
         val normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
-                              yAxisSpan / metricRangeSpan
+          yAxisSpan / metricRangeSpan
 
         // Apply safety bounds (keep slightly inside bounds)
         val safeMin = weightMin + epsilon
@@ -352,12 +372,12 @@ object GraphUtil {
         // Ensure finite value (matching iOS guard checks)
         if (finalValue.isFinite()) {
           point.copy(
-            y = point.y.copy(value = finalValue)
+            y = point.y.copy(value = finalValue),
           )
         } else if (useFallback) {
           // Fallback to middle of weight range (validated above)
           point.copy(
-            y = point.y.copy(value = safeFallbackValue)
+            y = point.y.copy(value = safeFallbackValue),
           )
         } else {
           // If fallback is also invalid, skip this point entirely
@@ -549,6 +569,7 @@ object GraphUtil {
           add(Calendar.DAY_OF_YEAR, -6)
         }.timeInMillis
       }
+
       GraphSegment.MONTH -> {
         // Show 31 days total: latest - 30 days to latest (inclusive)
         // This ensures day 1 of 31-day months is always included in the window
@@ -557,6 +578,7 @@ object GraphUtil {
           add(Calendar.DAY_OF_YEAR, -28)
         }.timeInMillis
       }
+
       GraphSegment.YEAR -> {
         // Show 12 months total: latest - 11 months to latest (inclusive)
         // This includes the latest entry month as the 12th month
@@ -566,6 +588,7 @@ object GraphUtil {
           add(Calendar.MONTH, -11)
         }.timeInMillis
       }
+
       GraphSegment.TOTAL -> null // Keep existing ±6 months logic
     }
   }

@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
@@ -198,11 +197,7 @@ class GraphViewModel @AssistedInject constructor(
     val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
     val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
     if (startx != null && endx != null) {
-      // Apply padding to initial scroll range to ensure padding area is visible
-      // This matches the padding applied in snap functions
-      val padding = GraphSnapHelper.getPaddingForSegment(segment)
-      val adjustedStartx = startx - padding
-      super.handleIntent(GraphIntent.SetScrollRange(adjustedStartx, endx))
+      super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
     }
     super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
 
@@ -293,10 +288,8 @@ class GraphViewModel @AssistedInject constructor(
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
     // Apply padding to initial scroll range to ensure padding area is visible
-    // This matches the padding applied in snap functions
-    val padding = GraphSnapHelper.getPaddingForSegment(segment)
-    val adjustedStartX = startX - padding
-    super.handleIntent(GraphIntent.SetScrollRange(adjustedStartX, endX))
+    Log.i("CHECKING", "strtax : $startX")
+    super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
     val filteredData = data.filter {
       it.getTimeStamp() in startX..endX
     }
@@ -474,7 +467,7 @@ class GraphViewModel @AssistedInject constructor(
    * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
-
+    Log.i("CHECKING", min.toString())
     val currentState = _state.value
     // Cancel any existing debounce job
     scrollDebounceJob?.cancel()

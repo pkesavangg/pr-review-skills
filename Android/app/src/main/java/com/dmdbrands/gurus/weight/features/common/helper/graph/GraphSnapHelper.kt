@@ -19,9 +19,9 @@ object GraphSnapHelper {
    */
   fun getPaddingForSegment(segment: GraphSegment): Long {
     return when (segment) {
-      GraphSegment.WEEK -> 5 * 60 * 60 * 1000L // 5 hours
-      GraphSegment.MONTH -> 5 * 60 * 60 * 1000L // 5 hours
-      GraphSegment.YEAR -> 5 * 24 * 60 * 60 * 1000L // 5 days
+      GraphSegment.WEEK -> 4 * 60 * 60 * 1000L // 5 hours
+      GraphSegment.MONTH -> 12 * 60 * 60 * 1000L // 5 hours
+      GraphSegment.YEAR -> 15 * 24 * 60 * 60 * 1000L // 5 days
       GraphSegment.TOTAL -> 0L // No padding for total
     }
   }

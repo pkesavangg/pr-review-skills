@@ -25,6 +25,7 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -74,12 +75,17 @@ fun GraphView(
   }
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
-      if (isDrag) {
+      val scrolledX = scrolledX?.let { it + GraphSnapHelper.getPaddingForSegment(segment).toDouble() }
+      Log.i("CHECKING", "isDrag $isDrag scrolledX $scrolledX")
+
+      val result = if (isDrag) {
         val snappedPosition = GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
         snappedPosition
       } else {
         GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
       }
+      Log.i("CHECKING", "isDrag $isDrag result $result")
+      result
     }
   }
 
@@ -162,6 +168,8 @@ fun GraphView(
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
+    canScrollBackward = scrollState.canScrollBackward,
+    canScrollForward = scrollState.canScrollForward,
     onChartClick = { targets, click ->
       if (click == null) return@rememberGraphChart
       scope.launch {

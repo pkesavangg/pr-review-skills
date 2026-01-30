@@ -26,13 +26,20 @@ fun rememberGraphChart(
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   onChartClick: ((List<Double>, Double?) -> Unit)? = null,
   handleIntent: (GraphIntent) -> Unit,
+  canScrollBackward: Boolean = false,
+  canScrollForward: Boolean = true,
 ): CartesianChart {
   // Get weightless mode from goal's account if available
   val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
   val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
   val markerIndex = state.markerIndex
   val timeStamps = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted()
-  val intervalCount = if (segment != GraphSegment.TOTAL) segment.intervalCount() else {
+  // Calculate interval count using static values per segment with padding based on scroll state
+  val intervalCount = if (segment != GraphSegment.TOTAL) {
+    remember(segment, canScrollBackward, canScrollForward) {
+      segment.intervalCount(canScrollBackward = canScrollBackward, canScrollForward = canScrollForward)
+    }
+  } else {
     remember(state.minTarget, state.maxTarget) {
       getIntervalCount(
         startTimeStamp = state.minTarget ?: Calendar.getInstance().timeInMillis,
