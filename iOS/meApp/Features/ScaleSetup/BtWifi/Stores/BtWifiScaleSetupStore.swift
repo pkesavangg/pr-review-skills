@@ -625,7 +625,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                    isDuplicated: Bool = false,
                    isWifiSetupOnly: Bool
     ) {
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        // Pass original SKU to routes (not mapped), setup will save original SKU
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES.first
         self.scaleItem = resolved
         
         // Reset exiting flag when configuring

@@ -16,8 +16,10 @@ struct ScaleTypeHelper {
     static func determineScaleType(for scale: Device) -> ScaleType {
         guard let sku = scale.sku else { return .bluetoothA6 } // Default fallback
         
+        // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         // Get scale info from the SCALES constant
-        if let scaleInfo = SCALES.first(where: { $0.sku == sku }) {
+        if let scaleInfo = SCALES.first(where: { $0.sku == lookupSku }) {
             switch scaleInfo.setupType {
             case .bluetooth, .lcbt:
                 return .bluetoothA6
@@ -68,8 +70,10 @@ struct ScaleTypeHelper {
     static func determineScaleTypeString(for scale: Device) -> String {
         guard let sku = scale.sku else { return "Unknown" }
         
+        // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         // Get scale info from the SCALES constant
-        if let scaleInfo = SCALES.first(where: { $0.sku == sku }) {
+        if let scaleInfo = SCALES.first(where: { $0.sku == lookupSku }) {
             switch scaleInfo.setupType {
             case .bluetooth, .lcbt:
                 return "Bluetooth"
