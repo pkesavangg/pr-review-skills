@@ -80,7 +80,6 @@ class BottomTabBarViewModel: ObservableObject {
     /// when we need to re-check HealthKit permissions after the user is redirected to
     /// the Apple Health app from the out-of-sync modal.
     private var hkForegroundObserver: AnyCancellable? = nil
-    private let wgTotalPermissionsCount = 5
     
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
