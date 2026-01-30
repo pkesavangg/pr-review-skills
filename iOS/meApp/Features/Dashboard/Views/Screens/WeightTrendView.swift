@@ -11,7 +11,7 @@ struct WeightTrendView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     @State private var localSelectedPeriod: TimePeriod = .week
-    
+
     var body: some View {
         ZStack {
             VStack(alignment: .leading,spacing: 0) {
@@ -39,11 +39,23 @@ struct WeightTrendView: View {
             }
         }
         // Update store period immediately without animating the whole subtree
-        .onChange(of: localSelectedPeriod) { _, newValue in
-            dashboardStore.updateSelectedPeriod(newValue)
+        // Capture anchor date using the OLD period for temporal context preservation
+        .onChange(of: localSelectedPeriod) { oldValue, newValue in
+            // Always use midpoint as anchor to ensure consistent positioning
+            // regardless of zoom direction. This keeps the same date centered
+            // even when switching between periods multiple times.
+            let anchorDate: Date?
+            if oldValue == .total {
+                anchorDate = nil
+            } else {
+                // Always anchor to midpoint for consistent behavior
+                anchorDate = dashboardStore.graphManager.visibleMidpoint(for: oldValue)
+            }
+
+            dashboardStore.updateSelectedPeriod(newValue, anchorDate: anchorDate)
         }
     }
-    
+
     @ViewBuilder
     func weightInfoSection(
         dashboardStore: DashboardStore
@@ -54,7 +66,7 @@ struct WeightTrendView: View {
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .padding(.leading, .spacingSM)
-            
+
             WeightDisplayView(
                 weightText: {
                     // Prefer current selection (exact point or interpolated crosshair) when available

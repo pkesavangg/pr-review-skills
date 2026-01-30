@@ -88,7 +88,8 @@ fun MeApp() {
           modifier = Modifier.navigationBarsPadding(),
           onDismissRequest = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
           containerColor = colorScheme.primaryBackground,
-          dragHandle = null
+          scrimColor = colorScheme.overlay,
+          dragHandle = null,
         ) {
           ScaleDiscoveredModal(sku = uiState.sku, onConnect = {
             appViewModel.handleIntent(AppIntent.OnPopUpConnect)
