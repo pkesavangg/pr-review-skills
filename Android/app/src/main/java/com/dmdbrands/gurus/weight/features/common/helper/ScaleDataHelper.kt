@@ -12,6 +12,16 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
  */
 object ScaleDataHelper {
   /**
+   * Finds ScaleInfo by SKU, mapping variant SKUs (e.g., 0022 -> 0383) for lookup.
+   * @param sku The SKU to look up (can be original or variant SKU)
+   * @return The ScaleInfo if found, null otherwise
+   */
+  fun findScaleInfoBySku(sku: String): ScaleInfo? {
+    val lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+    return SCALES.find { it.sku == lookupSku }
+  }
+
+  /**
    * Converts a GGDevice to ScaleInfo for UI display.
    */
   fun Device.toScaleInfo(): ScaleInfo {
@@ -24,17 +34,16 @@ object ScaleDataHelper {
         else -> ScaleSetupType.Bluetooth // Default fallback
       }
 
-    // Get product name from SCALES using sku
-    val sku = this.getSKU()
-    val productName =
-      SCALES.find { it.sku == sku }?.productName ?: this.nickname
-
-    // Determine bodyComp from SCALES or fallback to false
-    val bodyComp = SCALES.find { it.sku == sku }?.bodyComp ?: false
+    // Get stored SKU and find scale info (maps 0022 -> 0383 internally)
+    val storedSku = this.getSKU()
+    val scaleInfoFromScales = findScaleInfoBySku(storedSku)
+    val displaySku = scaleInfoFromScales?.sku ?: DeviceHelper.mapSkuForDisplay(storedSku)
+    val productName = scaleInfoFromScales?.productName ?: this.nickname
+    val bodyComp = scaleInfoFromScales?.bodyComp ?: false
 
     return ScaleInfo(
       productName = if (this.nickname.isNotBlank()) this.nickname else productName,
-      sku = sku,
+      sku = displaySku,
       setupType = setupType,
       bodyComp = bodyComp,
       isConnected = this.connectionStatus == BLEStatus.CONNECTED,

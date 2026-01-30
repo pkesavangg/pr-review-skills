@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.SetupLoaderStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
 import com.dmdbrands.gurus.weight.features.common.components.AppScaleImage
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.ConnectionIndicator
@@ -163,10 +164,10 @@ fun ScaleSetupLoader(
 
       Spacer(modifier = Modifier.height(spacing.lg))
 
-      // Scale Image
+      // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       scaleImageSku?.let {
         AppScaleImage(
-          sku = scaleImageSku,
+          sku = DeviceHelper.mapSkuForDisplay(scaleImageSku),
           scaleImageSize = ScaleImageSize.Large,
         )
         Spacer(modifier = Modifier.height(spacing.lg))
