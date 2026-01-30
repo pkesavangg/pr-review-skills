@@ -31,7 +31,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastXAxisPeriod: TimePeriod?
 
     // Flag to prevent ensureLatestEntriesVisible from overriding scroll position during period changes
-    private var isChangingPeriod: Bool = false
+    public var isChangingPeriod: Bool = false
 
     // Chart data caching for scroll performance
     private var cachedChartSeriesData: [GraphSeries] = []
@@ -978,6 +978,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
 
         // Clear the flag after a brief delay to allow scroll position to be set
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.isChangingPeriod = false
+        }
+    }
+
+    /// Batch update method that updates period, scroll position, and Y-axis atomically.
+    /// CRITICAL: This prevents race conditions where SwiftUI renders between separate state updates.
+    /// All state changes are applied in a single struct assignment → single Combine publish.
+    func updateSelectedPeriodWithYAxis(
+        _ period: TimePeriod,
+        scrollPosition: Date,
+        yAxisDomain: ClosedRange<Double>,
+        yAxisTicks: [Double]
+    ) {
+        let previousPeriod = state.selectedPeriod
+        logger.log(level: .info, tag: "DashboardGraphManager",
+                   message: "updateSelectedPeriodWithYAxis: \(previousPeriod.rawValue) → \(period.rawValue), domain: \(yAxisDomain)")
+
+        // Set flag to prevent ensureLatestEntriesVisible from overriding position
+        isChangingPeriod = true
+
+        // ATOMIC STATE UPDATE: Create a modified copy and assign once
+        // This ensures Combine publishes only ONCE with ALL changes applied
+        var newState = state
+        newState.selectedPeriod = period
+        newState.xScrollPosition = scrollPosition
+        newState.cachedYAxisDomain = yAxisDomain
+        newState.cachedYAxisTicks = yAxisTicks
+        newState.clearSelection()
+        state = newState  // Single assignment → single Combine publish
+
+        // Clear chart data cache when period changes
+        clearChartDataCache()
+
+        // Clear the flag after a brief delay to allow scroll position to settle
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.isChangingPeriod = false
         }

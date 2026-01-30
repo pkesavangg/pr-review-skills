@@ -27,9 +27,33 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // MARK: - Chart Configuration
     var chartFrame: CGRect = .zero
-    var yAxisDomain: ClosedRange<Double> = 0...100
-    var yAxisTicks: [Double] = []
-    
+
+    /// Y-axis domain - reads directly from store's graphManager to avoid race conditions.
+    /// The graphManager.state is updated atomically during period changes, ensuring the
+    /// correct domain is available when SwiftUI evaluates the view body.
+    var yAxisDomain: ClosedRange<Double> {
+        // Always use store's cached domain as source of truth
+        if let cachedDomain = dashboardStore?.graphManager.state.cachedYAxisDomain {
+            return cachedDomain
+        }
+        // Fallback to stored value if store not available
+        return _cachedYAxisDomain
+    }
+    /// Internal backing property for Y-axis domain - used as fallback when dashboardStore is nil
+    internal var _cachedYAxisDomain: ClosedRange<Double> = 0...100
+
+    /// Y-axis ticks - reads directly from store's graphManager to avoid race conditions.
+    var yAxisTicks: [Double] {
+        // Always use store's cached ticks as source of truth
+        if let cachedTicks = dashboardStore?.graphManager.state.cachedYAxisTicks {
+            return cachedTicks
+        }
+        // Fallback to stored value if store not available
+        return _cachedYAxisTicks
+    }
+    /// Internal backing property for Y-axis ticks - used as fallback when dashboardStore is nil
+    internal var _cachedYAxisTicks: [Double] = []
+
     // MARK: - X-Axis Caching (Performance Optimization)
     /// Cached X-axis values to avoid regeneration during scroll
     private var _cachedXAxisValues: [Date] = []
@@ -257,7 +281,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     // MARK: - Initialization and Configuration
     func configure(with store: DashboardStore) {
         self.dashboardStore = store
-        
+
         // For scrollable periods, sync with the store's current scroll position
         // The scroll position should already be set by updateSelectedPeriod (with anchor if applicable)
         // We should NOT recalculate here as it would overwrite anchor-based positioning
@@ -268,10 +292,17 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             // Non-scrollable periods (Total) don't need scroll positioning
             self.scrollPosition = store.state.graph.xScrollPosition
         }
-        
+
         self.isScrolling = store.state.graph.isScrolling
-        updateYAxisConfiguration()
-        // Sync with any existing cached Y-axis values from the store
+
+        // CRITICAL: Skip Y-axis recalculation during period transitions
+        // The atomic update in updateSelectedPeriod() already calculated the correct Y-axis
+        // Recalculating here could overwrite it with stale/different values causing out-of-bounds rendering
+        if !store.graphManager.isChangingPeriod {
+            updateYAxisConfiguration()
+        }
+
+        // Always sync with cached Y-axis values from the store (this just copies, doesn't recalculate)
         syncYAxisFromStore()
         // Initialize cache with current data (safe during configuration)
         updateCachedSeriesData()
@@ -334,11 +365,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             chartHeight: chartFrame.height
         )
         
-        // Animate domain changes smoothly
-        self.yAxisDomain = yAxisScale.domain
+        // Update backing properties (computed properties read from graphManager.state as source of truth)
+        self._cachedYAxisDomain = yAxisScale.domain
         // Do not animate tick updates
         withTransaction(Transaction(animation: nil)) {
-            self.yAxisTicks = yAxisScale.ticks
+            self._cachedYAxisTicks = yAxisScale.ticks
         }
     }
     
@@ -621,22 +652,20 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Sync Y-axis domain and ticks from dashboard store cache
     /// Called when the dashboard store's cached Y-axis values change during scrolling
+    /// Note: The computed yAxisDomain/yAxisTicks properties read directly from graphManager.state,
+    /// but we still update backing properties as fallback values.
     func syncYAxisFromStore() {
         guard let store = dashboardStore else { return }
 
-        // Read cached values from dashboard store
-        if let cachedDomain = store.state.graph.cachedYAxisDomain {
-            // Animate domain changes smoothly
-            withAnimation(.easeInOut(duration: 0.15)) {
-                self.yAxisDomain = cachedDomain
-            }
+        // Update backing properties from dashboard store as fallback
+        // Note: The computed yAxisDomain/yAxisTicks properties read directly from
+        // graphManager.state as source of truth, so this just updates the fallback values
+        if let cachedDomain = store.graphManager.state.cachedYAxisDomain {
+            self._cachedYAxisDomain = cachedDomain
         }
 
-        if let cachedTicks = store.state.graph.cachedYAxisTicks {
-            // Suppress animation for tick changes
-            withTransaction(Transaction(animation: nil)) {
-                self.yAxisTicks = cachedTicks
-            }
+        if let cachedTicks = store.graphManager.state.cachedYAxisTicks {
+            self._cachedYAxisTicks = cachedTicks
         }
 
         // Y-axis domain/ticks affect normalized metric series values.

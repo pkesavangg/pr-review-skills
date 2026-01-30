@@ -129,9 +129,10 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
             convertWeight: store.goalManager.convertWeightToDisplay,
             chartHeight: chartFrame.height
         )
-        
-        self.yAxisDomain = yAxisScale.domain
-        self.yAxisTicks = yAxisScale.ticks
+
+        // Update backing properties (computed properties read from graphManager.state as source of truth)
+        self._cachedYAxisDomain = yAxisScale.domain
+        self._cachedYAxisTicks = yAxisScale.ticks
     }
     
     override func configure(with store: DashboardStore) {
@@ -139,8 +140,14 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         // No scroll positioning for total view - use store's current position
         self.scrollPosition = store.state.graph.xScrollPosition
         self.isScrolling = store.state.graph.isScrolling
-        updateYAxisConfiguration()
-        // Sync with any existing cached Y-axis values from the store
+
+        // CRITICAL: Skip Y-axis recalculation during period transitions
+        // The atomic update in updateSelectedPeriod() already calculated the correct Y-axis
+        if !store.graphManager.isChangingPeriod {
+            updateYAxisConfiguration()
+        }
+
+        // Always sync with cached Y-axis values from the store (this just copies, doesn't recalculate)
         syncYAxisFromStore()
     }
     
