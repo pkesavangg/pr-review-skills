@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import sh.calvin.reorderable.Scroller
 
 /**
  * Display metrics screen with reorderable list of scale metrics.
@@ -38,6 +39,7 @@ fun ScaleMetricsSettingScreen(
   currentMetrics: List<String> = emptyList(),
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
+  parentScroller: Scroller? = null,
   includeHeartRate: Boolean = true,
   showAllMetrics: Boolean = true,
 ) {
@@ -130,6 +132,7 @@ fun ScaleMetricsSettingScreen(
       modifier = Modifier
         .clip(shape = RoundedCornerShape(borderRadius.sm))
         .heightIn(max = 600.dp),
+      parentScroller = parentScroller,
       items = displayedBodyMetrics,
       onMove = { from, to ->
         val newList = bodyMetricsState.toMutableList()

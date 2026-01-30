@@ -246,6 +246,8 @@ constructor(
   private fun onPopUpConnect() {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
+      // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
+      dialogQueueService.clear()
       if (sku == SKU_0412) {
         navigationService.navigateTo(
           AppRoute.ScaleSetup.BtWifiScaleSetup(
