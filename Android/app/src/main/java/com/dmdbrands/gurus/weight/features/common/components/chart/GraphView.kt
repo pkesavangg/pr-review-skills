@@ -25,7 +25,6 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -66,26 +65,16 @@ fun GraphView(
   val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  // Apply padding to initial scroll position to ensure padding area is visible
-  // This matches the padding applied in snap functions
-  val padding = GraphSnapHelper.getPaddingForSegment(segment).toDouble()
-  val initialStartXWithPadding = initialStartX - padding
-  val initialScroll = remember(initialStartXWithPadding) {
-    Scroll.Absolute.x(initialStartXWithPadding)
+  val initialScroll = remember(initialStartX) {
+    Scroll.Absolute.x(initialStartX)
   }
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
-      val scrolledX = scrolledX?.let { it + GraphSnapHelper.getPaddingForSegment(segment).toDouble() }
-      Log.i("CHECKING", "isDrag $isDrag scrolledX $scrolledX")
-
-      val result = if (isDrag) {
-        val snappedPosition = GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
-        snappedPosition
+      if (isDrag) {
+        GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
       } else {
         GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
       }
-      Log.i("CHECKING", "isDrag $isDrag result $result")
-      result
     }
   }
 
@@ -168,8 +157,6 @@ fun GraphView(
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
-    canScrollBackward = scrollState.canScrollBackward,
-    canScrollForward = scrollState.canScrollForward,
     onChartClick = { targets, click ->
       if (click == null) return@rememberGraphChart
       scope.launch {

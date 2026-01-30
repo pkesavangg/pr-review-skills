@@ -136,35 +136,16 @@ object GraphUtil {
     }.toDouble()
 
   /**
-   * Returns the number of intervals for the given [GraphSegment].
-   * Includes padding from GraphSnapHelper in the calculation:
-   * - When [canScrollBackward] is true: adds padding
-   * - When [canScrollForward] is false: adds padding * 2
+   * Returns the visible labels count for the given segment (number of intervals / labels to show).
+   * Not an x range value. Double supports decimal values.
    *
-   * @param canScrollBackward Whether backward scrolling is possible. Padding is added when true.
-   * @param canScrollForward Whether forward scrolling is possible. Padding * 2 is added when false.
-   * @return Number of intervals calculated as (baseRange + padding) / xStep, where padding depends on scroll state
+   * @return Visible labels count as Double.
    */
-  fun GraphSegment.intervalCount(canScrollBackward: Boolean = false, canScrollForward: Boolean = true): Double {
-    val baseRange = when (this) {
-      GraphSegment.WEEK -> 7 * ONE_DAY_MILLIS // 7 days
-      GraphSegment.MONTH -> 31 * ONE_DAY_MILLIS  // 31 days
-      GraphSegment.YEAR -> 366 * ONE_DAY_MILLIS // 365 days
-      GraphSegment.TOTAL -> 365 * ONE_DAY_MILLIS // 365 days as default
-    }
-
-    val xStep = calculateXStep(this)
-
-    val basePadding = GraphSnapHelper.getPaddingForSegment(this)
-    val padding = when {
-      canScrollBackward -> basePadding // Add padding when can scroll backward
-      else -> -basePadding // No padding otherwise
-    }
-
-    val rangeWithPadding = baseRange + padding
-    val intervals = rangeWithPadding.toDouble() / xStep
-
-    return intervals.coerceAtLeast(1.0)
+  fun GraphSegment.visibleLabelsCount(): Double = when (this) {
+    GraphSegment.WEEK -> 7.0
+    GraphSegment.MONTH -> (31.0 / 6.0).coerceAtLeast(1.0)
+    GraphSegment.YEAR -> 12.0 // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
+    GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
   }
   // endregion
 

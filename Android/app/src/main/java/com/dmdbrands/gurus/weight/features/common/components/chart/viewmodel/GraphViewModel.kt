@@ -287,8 +287,6 @@ class GraphViewModel @AssistedInject constructor(
     }
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
-    // Apply padding to initial scroll range to ensure padding area is visible
-    Log.i("CHECKING", "strtax : $startX")
     super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
     val filteredData = data.filter {
       it.getTimeStamp() in startX..endX
@@ -467,7 +465,6 @@ class GraphViewModel @AssistedInject constructor(
    * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
-    Log.i("CHECKING", min.toString())
     val currentState = _state.value
     // Cancel any existing debounce job
     scrollDebounceJob?.cancel()

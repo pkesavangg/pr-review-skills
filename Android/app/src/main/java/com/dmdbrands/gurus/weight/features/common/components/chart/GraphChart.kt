@@ -11,11 +11,13 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.Gra
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.CartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.core.cartesian.layer.CartesianLayerPadding
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import java.util.Calendar
 
 @Composable
@@ -26,18 +28,16 @@ fun rememberGraphChart(
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   onChartClick: ((List<Double>, Double?) -> Unit)? = null,
   handleIntent: (GraphIntent) -> Unit,
-  canScrollBackward: Boolean = false,
-  canScrollForward: Boolean = true,
 ): CartesianChart {
   // Get weightless mode from goal's account if available
   val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
   val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
   val markerIndex = state.markerIndex
   val timeStamps = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted()
-  // Calculate interval count using static values per segment with padding based on scroll state
-  val intervalCount = if (segment != GraphSegment.TOTAL) {
-    remember(segment, canScrollBackward, canScrollForward) {
-      segment.intervalCount(canScrollBackward = canScrollBackward, canScrollForward = canScrollForward)
+  // Visible labels count per segment (TOTAL uses dynamic range)
+  val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
+    remember(segment) {
+      segment.visibleLabelsCount()
     }
   } else {
     remember(state.minTarget, state.maxTarget) {
@@ -67,6 +67,7 @@ fun rememberGraphChart(
     handleIntent = handleIntent,
   )
 
+  val (visibleStartXStep, visibleEndXStep) = GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
   val primaryChart =
     rememberCartesianChart(
       primaryLayer,
@@ -81,17 +82,22 @@ fun rememberGraphChart(
       } else {
         null
       },
-      visibleLabelsCount = intervalCount,
+      visibleLabelsCount = visibleLabelsCount,
       getXStep = { GraphUtil.calculateXStep(segment) },
+      layerPadding = {
+        CartesianLayerPadding(
+          visibleStartPaddingXStep = visibleStartXStep,
+          visibleEndPaddingXStep = visibleEndXStep,
+        )
+      },
       onChartClick = onChartClick,
     )
   return primaryChart
 }
 
 fun getIntervalCount(startTimeStamp: Long, endTimeStamp: Long): Double {
-  val intervalCount = GraphUtil.getTotalMonthsBetweenYears(
+  return GraphUtil.getTotalMonthsBetweenYears(
     startTimeStamp,
     endTimeStamp,
-  ).toDouble()
-  return intervalCount
+  ).toDouble().coerceAtLeast(1.0)
 }
