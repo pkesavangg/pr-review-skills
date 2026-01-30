@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +77,10 @@ constructor(
   private val healthConnectService: IHealthConnectService,
   private val healthConnectRepository: IHealthConnectRepository,
 ) : IEntryService {
+
+  companion object {
+    private const val GOAL_ALERT_DELAY_MS = 3000L
+  }
 
   private val _isEmpty = MutableStateFlow(false)
   override val isEmpty: StateFlow<Boolean> = _isEmpty.asStateFlow()
@@ -587,6 +592,26 @@ constructor(
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
       _lastUpdated.value = System.currentTimeMillis()
+      
+      // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
+      if (lastValidOperation != null) {
+        repositoryScope.launch {
+          try {
+            delay(GOAL_ALERT_DELAY_MS)
+            // Get latest entry from StateFlow (similar to TypeScript: this.getEntryService().latestEntry.value)
+            val latestEntry = _latestEntry.value
+            val latestWeight = when (latestEntry) {
+              is ScaleEntry -> latestEntry.scale.scaleEntry.weight
+              else -> null
+            }
+            latestWeight?.let { weight ->
+              goalService.showGoalCompletionAlert(weight * 10)
+            }
+          } catch (err: Exception) {
+            AppLog.e("EntryService", "syncOperations - unable to set Goal met", err)
+          }
+        }
+      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error in syncOperations", e)
     } finally {

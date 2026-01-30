@@ -148,10 +148,6 @@ constructor(
             else -> null
           }
         handleIntent(DashboardIntent.SetLatestWeight(latestWeight))
-        // Trigger goal alert if needed
-        latestWeight?.let { weight ->
-          goalService.showGoalCompletionAlert(weight * 10)
-        }
       }
     }
   }
