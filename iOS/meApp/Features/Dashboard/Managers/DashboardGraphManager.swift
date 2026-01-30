@@ -1373,13 +1373,66 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         let domainLength: TimeInterval = visibleDomainLength(for: period)
-        guard let overallMinDate = operations.first?.date else {
+        guard let overallMinDate = operations.first?.date,
+              let overallMaxDate = operations.last?.date else {
             return []
         }
         let buffer: TimeInterval = domainLength * 2.0
         let currentDate = Date()
-        let visibleStart = max(overallMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
-        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer))
+
+        // Calculate additional buffer for X-axis ticks when entries fall on calendar boundaries
+        let calendar = Calendar.current
+        var minDateBuffer: TimeInterval = 0
+        var maxDateBuffer: TimeInterval = 0
+
+        switch period {
+        case .week:
+            // Add extra week buffer if minDate is the first day of the week
+            let weekday = calendar.component(.weekday, from: overallMinDate)
+            if weekday == calendar.firstWeekday {
+                minDateBuffer = DashboardConstants.TimeInterval.week
+            }
+            // Add extra week buffer if maxDate is the last day of the week
+            let maxWeekday = calendar.component(.weekday, from: overallMaxDate)
+            let lastWeekday = (calendar.firstWeekday + 5) % 7 + 1
+            if maxWeekday == lastWeekday {
+                maxDateBuffer = DashboardConstants.TimeInterval.week
+            }
+
+        case .month:
+            // Add extra month buffer if minDate is the first day of the month
+            let day = calendar.component(.day, from: overallMinDate)
+            if day == 1 {
+                minDateBuffer = DashboardConstants.TimeInterval.month
+            }
+            // Add extra month buffer if maxDate is the last day of the month
+            if let range = calendar.range(of: .day, in: .month, for: overallMaxDate) {
+                let maxDay = calendar.component(.day, from: overallMaxDate)
+                if maxDay == range.count {
+                    maxDateBuffer = DashboardConstants.TimeInterval.month
+                }
+            }
+
+        case .year:
+            // Add extra year buffer if minDate is in the first month of the year (January)
+            let month = calendar.component(.month, from: overallMinDate)
+            if month == 1 {
+                minDateBuffer = DashboardConstants.TimeInterval.year
+            }
+            // Add extra year buffer if maxDate is in the last month of the year (December)
+            let maxMonth = calendar.component(.month, from: overallMaxDate)
+            if maxMonth == 12 {
+                maxDateBuffer = DashboardConstants.TimeInterval.year
+            }
+
+        case .total:
+            break
+        }
+
+        let adjustedMinDate = overallMinDate.addingTimeInterval(-minDateBuffer)
+
+        let visibleStart = max(adjustedMinDate, scrollPosition.addingTimeInterval(-domainLength / 2.0 - buffer))
+        let visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2.0 + buffer + maxDateBuffer))
         let entryCount = operations.count
         let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
