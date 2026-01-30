@@ -13,8 +13,7 @@ struct ConnectionPromptView: View {
     // MARK: - Props
     let title: String
     let subtitle: String?
-    /// Optional image path. If scaleImagePath is provided, this is ignored. Otherwise, used for the connection indicator.
-    let image: String?
+    let image: String
     /// Optional scale image path. If provided, displays the scale image instead of the connection indicator.
     let scaleImagePath: String?
 
@@ -22,9 +21,9 @@ struct ConnectionPromptView: View {
     /// - Parameters:
     ///   - title: Heading text.
     ///   - subtitle: Optional secondary text shown beneath the heading.
-    ///   - image: Optional name of the asset to display inside the indicator (used when scaleImagePath is nil). Defaults to bluetooth icon.
+    ///   - image: Name of the asset to display inside the indicator (used when scaleImagePath is nil).
     ///   - scaleImagePath: Optional path to scale image asset. If provided, displays scale image instead of connection indicator.
-    init(title: String = ScaleSetupStrings.wakeYourScaleTitle, subtitle: String? = nil, image: String? = AppAssets.bluetooth, scaleImagePath: String? = nil) {
+    init(title: String = ScaleSetupStrings.wakeYourScaleTitle, subtitle: String? = nil, image: String = AppAssets.bluetooth, scaleImagePath: String? = nil) {
         self.title = title
         self.subtitle = subtitle
         self.image = image
@@ -59,9 +58,7 @@ struct ConnectionPromptView: View {
                         .padding(.top, .spacingXS)
                 }
 
-                if let image {
-                    ConnectionIndicatorView(image: image)
-                }
+                ConnectionIndicatorView(image: image)
             }
             
         }
