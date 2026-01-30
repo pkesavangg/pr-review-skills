@@ -25,6 +25,7 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -68,6 +69,7 @@ fun GraphView(
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
   }
+  Log.i("GraphView", "initialScroll: $initialScroll")
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
       if (isDrag) {
@@ -202,9 +204,10 @@ fun GraphView(
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     onScrollStopped = { range ->
       if (range != null) {
-        val min = range.visibleXRange.start
-        val max = range.visibleXRange.endInclusive
-        onScrollUpdate(min.toLong(), max.toLong())
+        val min = range.visibleXRange.start.toLong()
+        val max = range.visibleXRange.endInclusive.toLong()
+
+        onScrollUpdate(min, max)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
       }

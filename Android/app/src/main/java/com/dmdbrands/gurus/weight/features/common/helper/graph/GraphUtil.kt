@@ -144,7 +144,7 @@ object GraphUtil {
   fun GraphSegment.visibleLabelsCount(): Double = when (this) {
     GraphSegment.WEEK -> 7.0
     GraphSegment.MONTH -> (31.0 / 6.0).coerceAtLeast(1.0)
-    GraphSegment.YEAR -> 12.0 // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
+    GraphSegment.YEAR -> (366.0 / 31.0) // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
     GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
   }
   // endregion
@@ -572,6 +572,18 @@ object GraphUtil {
 
       GraphSegment.TOTAL -> null // Keep existing ±6 months logic
     }
+  }
+
+  fun getRollingWindowEnd(segment: GraphSegment, startTimeStamp: Long?): Long {
+    val calender = Calendar.getInstance()
+    calender.timeInMillis = startTimeStamp ?: 0
+    calender.apply {
+      add(Calendar.HOUR, 23)
+      add(Calendar.MINUTE, 59)
+      add(Calendar.SECOND, 59)
+      add(Calendar.MILLISECOND, 999)
+    }
+    return calender.timeInMillis
   }
 
   fun periodStarts(

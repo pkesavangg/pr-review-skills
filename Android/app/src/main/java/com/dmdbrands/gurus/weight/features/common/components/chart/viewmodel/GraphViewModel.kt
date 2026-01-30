@@ -278,7 +278,8 @@ class GraphViewModel @AssistedInject constructor(
         ?: GraphUtil.getStartRange(segment, endTimeStamp)
         ?: calendar.timeInMillis
 
-      val end = _state.value.maxTarget ?: GraphUtil.getEndRange(
+      val end = _state.value.maxTarget ?: GraphUtil.getRollingWindowEnd(segment, endTimeStamp)
+      ?: GraphUtil.getEndRange(
         segment,
         endTimeStamp,
       ) ?: calendar.timeInMillis
@@ -287,6 +288,7 @@ class GraphViewModel @AssistedInject constructor(
     }
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
+    Log.i("GraphViewModel", "Setting up chart model producer  startx : $startX endX : $endX")
     super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
     val filteredData = data.filter {
       it.getTimeStamp() in startX..endX
@@ -465,6 +467,12 @@ class GraphViewModel @AssistedInject constructor(
    * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
+    val min = GraphUtil.getStartRange(segment, min)
+    val max = GraphUtil.getEndRange(segment, max)
+    if (min == null || max == null) {
+      fallback()
+      return
+    }
     val currentState = _state.value
     // Cancel any existing debounce job
     scrollDebounceJob?.cancel()
