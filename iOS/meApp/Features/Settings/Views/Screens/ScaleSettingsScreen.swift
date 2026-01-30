@@ -242,7 +242,7 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.sku.uppercased(),
-                    value: scale.displaySku ?? scale.sku ?? "",
+                    value: DeviceHelper.mapSkuForDisplay(scale.sku ?? ""),
                     chevronType: .none
                 )
             )
@@ -257,7 +257,7 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.productGuide,
-                    onTap: { scaleSettingsStore.openProductGuide(for: scale.sku ?? "") }
+                    onTap: { scaleSettingsStore.openProductGuide(for: DeviceHelper.mapSkuForDisplay(scale.sku ?? "")) }
                 )
             )
         }

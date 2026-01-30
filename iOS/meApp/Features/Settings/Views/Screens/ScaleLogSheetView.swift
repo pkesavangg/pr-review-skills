@@ -27,7 +27,7 @@ struct ScaleLogSheetView: View {
                             }) {
                                 ScaleItemView(
                                     scaleIcon: scaleIcon(for: scale.sku),
-                                    modelNumber: scale.displaySku ?? scale.sku ?? "----",
+                                    modelNumber: DeviceHelper.mapSkuForDisplay(scale.sku ?? ""),
                                     scaleName: scale.nickname ?? scale.deviceName ?? "Unknown Scale",
                                     status: scale.isConnected ?? false ? .connected : .notConnected,
                                     onTap: {

@@ -68,7 +68,7 @@ struct ScaleBluetoothScreen: View {
     private var scaleItemView: some View {
         ScaleItemView(
             scaleIcon: scaleIcon(for: scale.sku),
-            modelNumber: scale.displaySku ?? scale.sku ?? "----",
+            modelNumber: DeviceHelper.mapSkuForDisplay(scale.sku ?? "----"),
             scaleName: getScaleDisplayName(),
             status: (scale.isConnected ?? false) ? ScaleConnectionStatus.connected : ScaleConnectionStatus.notConnected,
             onTap: {},
