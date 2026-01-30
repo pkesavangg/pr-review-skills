@@ -21,6 +21,8 @@ public enum KvStorageKeys: String {
     case outOfSyncAppleHealthModalBase = "hasSeenOutOfSyncAppleHealthModal"
     /// Base key for tracking when we're waiting for permissions to be restored after out-of-sync
     case waitingForHKPermissionsRestoredBase = "waitingForHKPermissionsRestored"
+    /// Base key for tracking if the first-time Apple Health connect screen has been shown
+    case hasShownFirstTimeConnectScreenBase = "hasShownFirstTimeAppleHealthConnectScreen"
     
     // MARK: - Settings Modal Keys
     /// Key for "has seen add multiple accounts modal" flag
