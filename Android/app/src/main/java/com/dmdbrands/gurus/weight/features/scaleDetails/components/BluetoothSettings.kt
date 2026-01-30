@@ -36,6 +36,7 @@ import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import android.os.Build
 
 @Composable
 fun BluetoothPermissionScreen(
@@ -59,12 +60,17 @@ fun BluetoothPermissionScreen(
           .padding(vertical = spacing.md, horizontal = spacing.sm),
       verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
+      val requiredPermissionTypes = buildList {
+        add(GGPermissionType.BLUETOOTH_SWITCH)
+        // NEARBY_DEVICE is only available on Android 12+ (API 31)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          add(GGPermissionType.NEARBY_DEVICE)
+        }
+      }
       val permissions = AppPermissionsHelper
         .getRequiredPermissions(
           state.permissions,
-          listOf(
-            GGPermissionType.BLUETOOTH_SWITCH, GGPermissionType.NEARBY_DEVICE,
-          ),
+          requiredPermissionTypes,
         )
 
       AppText(
@@ -110,10 +116,13 @@ fun BluetoothPermissionScreenPreviewLight() {
       sku = "0375",
       alreadyPaired = true,
     )
-    val dummyPermissions: GGPermissionStatusMap = mutableMapOf(
-      GGPermissionType.BLUETOOTH_SWITCH to GGPermissionState.DISABLED,
-      GGPermissionType.NEARBY_DEVICE to GGPermissionState.DISABLED,
-    )
+    val dummyPermissions: GGPermissionStatusMap = mutableMapOf<String, String>().apply {
+      put(GGPermissionType.BLUETOOTH_SWITCH, GGPermissionState.DISABLED)
+      // NEARBY_DEVICE is only available on Android 12+ (API 31)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        put(GGPermissionType.NEARBY_DEVICE, GGPermissionState.DISABLED)
+      }
+    }
     val dummyScaleNameForm = FormGroup(ScaleNameDialogFormControls.create())
     val dummyState = ScaleDetailsState(
       scale = dummyDevice,
@@ -145,10 +154,13 @@ fun BluetoothPermissionScreenPreviewDark() {
       sku = "0412",
       alreadyPaired = true,
     )
-    val dummyPermissions: GGPermissionStatusMap = mutableMapOf(
-      GGPermissionType.BLUETOOTH_SWITCH to GGPermissionState.ENABLED,
-      GGPermissionType.NEARBY_DEVICE to GGPermissionState.DISABLED,
-    )
+    val dummyPermissions: GGPermissionStatusMap = mutableMapOf<String, String>().apply {
+      put(GGPermissionType.BLUETOOTH_SWITCH, GGPermissionState.ENABLED)
+      // NEARBY_DEVICE is only available on Android 12+ (API 31)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        put(GGPermissionType.NEARBY_DEVICE, GGPermissionState.DISABLED)
+      }
+    }
     val dummyScaleNameForm = FormGroup(ScaleNameDialogFormControls.create())
     val dummyState = ScaleDetailsState(
       scale = dummyDevice,

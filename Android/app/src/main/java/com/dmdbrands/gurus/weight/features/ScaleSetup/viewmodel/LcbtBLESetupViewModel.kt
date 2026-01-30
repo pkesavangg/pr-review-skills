@@ -75,7 +75,7 @@ constructor(
           ),
         )
         deviceService.saveScale(discoveredScale!!)
-        AppLog.i(TAG, "Successfully saved LCBT scale")
+        AppLog.i(TAG, "Successfully saved LCBT scale with SKU: $sku")
       } else {
         AppLog.w(TAG, "No discovered LCBT scale to save")
       }

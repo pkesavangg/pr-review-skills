@@ -111,7 +111,7 @@ final class ScaleSettingsStore: ObservableObject {
             title: alertLang.DeleteScaleAlert.title,
             message: alertLang.DeleteScaleAlert.message,
             buttons: [
-                AlertButtonModel(title: alertLang.DeleteScaleAlert.deleteButton, type: .primary) { _ in
+                AlertButtonModel(title: alertLang.DeleteScaleAlert.deleteButton, type: .danger) { _ in
                     Task { [weak self] in
                         guard let self = self else { return }
                         let success = await self.deleteScale(scaleId: scaleId)
@@ -170,17 +170,35 @@ final class ScaleSettingsStore: ObservableObject {
         }
 
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
-        let hasImpedanceMismatch = preference.shouldMeasureImpedance && !impedanceSwitchState
-        let hasUnsyncedPreferences = preference.isSynced == false
+        /// Check if scale preferences need syncing
+        let hasImpedanceMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
+        let needsSync = hasImpedanceMismatch || !preference.isSynced
 
-        guard hasImpedanceMismatch || hasUnsyncedPreferences else {
+        logger.log(
+            level: .debug,
+            tag: tag,
+            message: "Preference sync check — mismatch: \(hasImpedanceMismatch), synced: \(preference.isSynced)"
+        )
+
+        guard needsSync else {
+            logger.log(level: .debug, tag: tag, message: "Preferences already in sync")
             return
         }
+
 
         let broadcastId = scale.broadcastIdString ?? "unknown"
         switch await bluetoothService.updateAccount(on: scale, preference: preference) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
+            // Mark preference as synced to avoid re-syncing
+            preference.isSynced = true
+            Task { @MainActor in
+                do {
+                    try await scaleService.updateScalePreference(scale.id, preference)
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
+                }
+            }
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to sync preference settings to scale \(broadcastId): \(error)")
         }

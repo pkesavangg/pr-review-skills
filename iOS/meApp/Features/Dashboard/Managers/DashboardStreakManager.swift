@@ -12,8 +12,9 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     // MARK: - Published Properties
     @Published var state: StreakState
-
+    
     // MARK: - Private Properties
+    private var hasUpdatedWithRealData: Bool = false
     private var originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] {
         let streakLabels = getStreakLabels()
         return [
@@ -59,7 +60,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
             // Current streak
             updatedStreakItems.append(MetricItem(
-                value: progress.currentStreak == 0 ? DashboardStrings.placeholder : "\(progress.currentStreak)",
+                value: "\(progress.currentStreak)",
                 label: DashboardStrings.currentStreak,
                 unit: nil,
                 preLabel: nil,
@@ -68,7 +69,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
             // Longest streak
             updatedStreakItems.append(MetricItem(
-                value: progress.longestStreak == 0 ? DashboardStrings.placeholder : "\(progress.longestStreak)",
+                value: "\(progress.longestStreak)",
                 label: DashboardStrings.longestStreak,
                 unit: nil,
                 preLabel: nil,
@@ -135,8 +136,17 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
             ))
 
             // Update streak items array
+            let isFirstUpdate = !hasUpdatedWithRealData
             state.streakItems = updatedStreakItems
-            state.activeStreakItemsCount = updatedStreakItems.count
+            hasUpdatedWithRealData = true
+
+            // Preserve active count only after the first real data update
+            if !isFirstUpdate {
+                state.activeStreakItemsCount = min(
+                    state.activeStreakItemsCount,
+                    updatedStreakItems.count
+                )
+            }
 
         } catch {
             logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to update streak items: \(error)")
@@ -258,9 +268,9 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         // Round to one decimal to determine if the displayed value is effectively zero
         let roundedToOneDecimal = ConversionTools.rounded(displayValue, toPlaces: 1)
         
-        // If the rounded value is zero, show placeholder instead
+        // If the rounded value is zero, show "0"
         if roundedToOneDecimal == 0 {
-            return DashboardStrings.placeholder
+            return "0"
         }
         
         let formatter = NumberFormatter()

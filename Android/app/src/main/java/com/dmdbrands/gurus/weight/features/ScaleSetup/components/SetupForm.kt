@@ -73,6 +73,7 @@ fun <T> SetupForm(
   subtitle: String,
   subtitleAnnotatedText: String? = null,
   label: String,
+  isCustomization: Boolean = false,
   inputType: AppInputType = AppInputType.TEXT,
   hasToggle: Boolean = false,
   toggleLabel: String? = null,
@@ -91,6 +92,7 @@ fun <T> SetupForm(
 ) {
   // Add duplicate name validator if userList is provided (same as Angular version)
     // Use LaunchedEffect to refresh validation whenever userList changes
+  val errorMessage = if(isCustomization) BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage else BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage
   LaunchedEffect(userList) {
     // Remove any existing duplicate validators first
     formControl.removeValidator("DUPLICATE_NAME")
@@ -101,7 +103,7 @@ fun <T> SetupForm(
         if (value?.toString()?.let { name ->
             userList.any { user -> user.name.equals(name, ignoreCase = true) }
           } == true ) {
-          ValidationError("DUPLICATE_NAME", BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage)
+          ValidationError("DUPLICATE_NAME", errorMessage)
         } else null
       }
     }

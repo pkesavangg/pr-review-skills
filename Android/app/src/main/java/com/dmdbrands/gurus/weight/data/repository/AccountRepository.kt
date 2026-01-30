@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightlessSetti
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
+import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
@@ -29,6 +30,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
+import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
@@ -124,6 +126,16 @@ constructor(
       ),
     )
     AppLog.d("AccountRepository", "Dashboard metrics updated successfully on server")
+  }
+
+  override suspend fun updateProgressMetrics(progressKeys: List<String>) {
+    AppLog.d("AccountRepository", "Updating progress metrics on server: $progressKeys")
+    userAPI.updateProgressMetrics(
+      request = ProgressMetricsRequest(
+        progressMetrics = progressKeys,
+      ),
+    )
+    AppLog.d("AccountRepository", "Progress metrics updated successfully on server")
   }
 
   override suspend fun updateDashboardType(dashboardType: String) {
@@ -285,14 +297,11 @@ constructor(
       accountDao.updateIntegrationsSettings(integrationEntity)
     }else
     accountDao.insertIntegrationsSettings(integrationEntity)
-    val dashboardMileStones =
-      accountDao.getDashboardSettings(account.id).first()?.dashboardMilestones ?: MilestoneKey.getDefaultMilestones()
-        .map { it.name }
     val dashboardSettings =
       DashboardSettingsEntity(
         accountId = account.id,
         dashboardMetrics = account.dashboardMetrics ?: MetricKeyConstants.DEFAULT_4_METRICS,
-        dashboardMilestones = dashboardMileStones,
+        dashboardMilestones = account.progressMetrics ?: MilestoneKey.getDefaultMilestones().map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
         dashboardType = account.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.name,
         isSynced = true,
       )
@@ -372,14 +381,15 @@ constructor(
     accountId: String,
     dashboardMetrics: List<String>,
     dashboardMilestones: List<String>,
-    dashboardType: DashboardType
+    dashboardType: DashboardType,
+    isSynced: Boolean
   ) {
     val settings = DashboardSettingsEntity(
       accountId = accountId,
       dashboardMetrics = dashboardMetrics,
       dashboardMilestones = dashboardMilestones,
       dashboardType = dashboardType.value,
-      isSynced = true,
+      isSynced = isSynced,
     )
     accountDao.insertDashboardSettings(settings)
   }
@@ -515,6 +525,13 @@ constructor(
     accountDao.getUnsyncedActiveAccount().first()?.let { accountWithRelations ->
       AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
     }
+
+  /**
+   * Gets the dashboard settings for the active account if it is not synced.
+   * @return Dashboard settings if it exists and is not synced, otherwise null
+   */
+  override suspend fun getUnsyncedActiveDashboardSettings(): DashboardSettingsEntity? =
+    accountDao.getUnsyncedActiveDashboardSettings().first()
 
   /**
    * Logs out the account both remotely (API) and locally (DB, tokens).
@@ -693,6 +710,7 @@ constructor(
         isStreakOn = account.isStreakOn,
         dashboardType = account.dashboardType,
         dashboardMetrics = account.dashboardMetrics,
+        progressMetrics = account.progressMetrics,
         shouldSendEntryNotifications = account.shouldSendEntryNotifications,
         shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications,
         goalType = account.goalType,

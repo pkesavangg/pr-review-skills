@@ -29,6 +29,7 @@ final class A6ScaleSetupStore: ObservableObject {
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
+    private var originalSku: String?
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     /// Discovered scale information
@@ -74,7 +75,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(PermissionListView(setupType: .bluetooth))
             case .wakeUp:
                 return AnyView(ConnectionPromptView(
-                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle
+                    subtitle: scaleSetupStrings.wakeYourScaleSubtitleLCBT,
+                    scaleImagePath: scaleItem.imgPath
                 ))
             case .connectingBluetooth:
                 return AnyView(
@@ -136,7 +138,10 @@ final class A6ScaleSetupStore: ObservableObject {
     func configure(with sku: String,
                    discoveredScale: Device? = nil,
                    discoveryEvent: DeviceDiscoveryEvent? = nil) {
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
+        self.originalSku = sku
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES.first
         self.scaleItem = resolved
         // Reset pairing/discovery state
         resetDiscoveryState()
@@ -282,6 +287,7 @@ final class A6ScaleSetupStore: ObservableObject {
         
         // Cancel any in-flight timeout task.
         stepTimerTask?.cancel()
+        // Note: originalSku is NOT reset here - it should persist for the entire setup flow
     }
     
     // MARK: - Scale Saving
@@ -296,9 +302,12 @@ final class A6ScaleSetupStore: ObservableObject {
                 return
             }
             
+            // This preserves the original SKU (e.g., "0022") passed to the setup flow
+            let finalSku = originalSku ?? scaleItem?.sku ?? discoveryEvent.device.sku
+            
             let savedScale = try await scaleService.createA6Scale(
                 device: scale,
-                sku: scaleItem?.sku ?? discoveryEvent.device.sku,
+                sku: finalSku,
                 accountId: accountId,
                 deviceMetadata: nil,
                 skipDuplicateCheck: false

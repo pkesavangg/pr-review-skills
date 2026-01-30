@@ -218,6 +218,7 @@ struct PermissionListView: View {
         //  - Disabled & optional  ➜ utility / grey
         let colour: Color = {
             if isEnabled { return theme.actionPrimary }
+            if icon == AppAssets.minusCircleClear { return theme.statusIconSecondary }
             // In Scale Setup (setupType != .all), always show grey for disabled permissions
             if setupType != .all { return theme.statusUtilityPrimary }
             if showsChevron || required { return theme.statusError }

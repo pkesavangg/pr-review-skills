@@ -37,8 +37,9 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
@@ -245,16 +246,19 @@ constructor(
   private fun onPopUpConnect() {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
-      if (sku == "0412") {
+      // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
+      dialogQueueService.clear()
+      if (sku == SKU_0412) {
         navigationService.navigateTo(
           AppRoute.ScaleSetup.BtWifiScaleSetup(
-            "0412",
+            SKU_0412,
             BtWifiSetupStep.CONNECTING_BLUETOOTH,
             discoveredBroadcastId,
           ),
         )
       } else if (sku != null) {
-        val scaleInfo = SCALES.find { it.sku == sku }
+        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku!!)
+        // Pass original SKU to routes (not mapped), setup will save original SKU
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
             sku!!,
@@ -359,7 +363,8 @@ constructor(
             dashboardService.setSelectedKey(null)
             // Reset scale discovered state when switching accounts
             resetScaleDiscoveredState()
-            initLoadingData(authState.account, true)
+            // Pass isAccountSwitch=true to use more lenient network failure handling
+            initLoadingData(authState.account, isLoggedIn = true, isAccountSwitch = true)
           }
 
           is AuthState.ProfileUpdated -> {
@@ -409,20 +414,43 @@ constructor(
 
   /**
    * Checks the login status for all accounts using the split methods.
+   * @param isDuringAccountSwitch If true, uses more lenient network failure handling during account switch.
    * @return true if login status check was successful
    */
-  private suspend fun checkLoginStatus(): Boolean =
+  private suspend fun checkLoginStatus(isDuringAccountSwitch: Boolean = false): Boolean =
     try {
-      val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount()
+      val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount(isDuringAccountSwitch)
       // Then check other logged-in accounts
-      val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
+      val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts(isDuringAccountSwitch)
 
-      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}")
+      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}, isDuringAccountSwitch: $isDuringAccountSwitch")
       isActiveAccountChecked && isLoggedInAccountsChecked
     } catch (e: Exception) {
       AppLog.e(TAG, "Error checking login status", e)
+      // During account switch, don't fail on exceptions - check local validity instead
+      if (isDuringAccountSwitch) {
+        AppLog.d(TAG, "During account switch - checking local account validity after exception")
+        checkLocalAccountValidity()
+      } else {
+        false
+      }
+    }
+
+  /**
+   * Checks if the active account is valid locally (exists and not expired).
+   * Used as fallback during account switch when network checks fail.
+   * @return true if active account exists and is not expired
+   */
+  private suspend fun checkLocalAccountValidity(): Boolean {
+    val activeAccount = accountService.getCurrentAccount()
+    return if (activeAccount != null && !activeAccount.isExpired) {
+      AppLog.d(TAG, "Local account validity check passed for account: ${activeAccount.id}")
+      true
+    } else {
+      AppLog.d(TAG, "Local account validity check failed - account is null or expired")
       false
     }
+  }
 
   /**
    * Routes to either the landing page or the app based on login status.
@@ -443,10 +471,30 @@ constructor(
     navigationService.replaceStack(route = route)
   }
 
-  private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
+  /**
+   * Initializes loading data for the given account.
+   * @param account The account to load data for
+   * @param isLoggedIn Whether this is a fresh login (triggers device info update)
+   * @param isAccountSwitch Whether this is called during account switch (uses more lenient network handling)
+   */
+  private suspend fun initLoadingData(
+    account: Account?,
+    isLoggedIn: Boolean = false,
+    isAccountSwitch: Boolean = false,
+  ) {
     try {
       initialized = false
-      val isLoginStatusChecked = checkLoginStatus()
+      var isLoginStatusChecked = checkLoginStatus(isDuringAccountSwitch = isAccountSwitch)
+      
+      // During account switch, fall back to local validity check if network check failed
+      if (!isLoginStatusChecked && isAccountSwitch && account != null) {
+        val isLocallyValid = checkLocalAccountValidity()
+        if (isLocallyValid) {
+          AppLog.d(TAG, "Account switch - account is locally valid, proceeding despite network check failure")
+          isLoginStatusChecked = true
+        }
+      }
+      
       if (account != null && isLoginStatusChecked) {
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
@@ -473,6 +521,11 @@ constructor(
         routeToLandingOrApp()
       }
     } catch (e: Exception) {
+      // During account switch, check local validity before routing to landing
+      if (isAccountSwitch && account != null && checkLocalAccountValidity()) {
+        AppLog.d(TAG, "Account switch exception - account is locally valid, not routing to landing")
+        return
+      }
       routeToLandingOrApp()
       AppLog.e(TAG, "Load data failed", e)
     }
@@ -489,7 +542,7 @@ constructor(
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
-                val scaleInfo = SCALES.find { it.sku == savedScale.sku }
+                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
                 scaleInfo?.setupType in listOf(
                   ScaleSetupType.BtWifiR4,
                   ScaleSetupType.Lcbt,
@@ -536,10 +589,12 @@ constructor(
         // This log helps track when callbacks are received in the ViewModel
         when (response) {
           is GGScanResponse.DeviceDetail -> {
+            AppLog.i(TAG, "Scan Response Device Detail: $response")
             handleDeviceResponse(response)
           }
 
           is GGScanResponse.Entry -> {
+            AppLog.i(TAG, "Scan Response Entry: $response")
             handleEntryResponse(response)
           }
 
@@ -578,7 +633,14 @@ constructor(
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
     val data = deviceResponse.data
     viewModelScope.launch {
-
+      // Check if scale is already known (paired) - similar to Angular's isKnown logic
+      val accountId = currentAccountId ?: return@launch
+      val isKnownScale = data.broadcastId?.let { broadcastId ->
+        // Check against latestPairedScales list first (similar to Angular's this.scales.find)
+        latestPairedScales.any { scale ->
+          scale.device?.broadcastId == broadcastId
+        } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
+      } == true
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG,"new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
@@ -595,15 +657,6 @@ constructor(
               // Check if same scale was shown recently (15 seconds)
               val isIgnored = data.macAddress == scaleToIgnore
 
-              // Check if scale is already known (paired) - similar to Angular's isKnown logic
-              val accountId = currentAccountId ?: return@launch
-              val isKnown = data.broadcastId?.let { broadcastId ->
-                // Check against latestPairedScales list first (similar to Angular's this.scales.find)
-                latestPairedScales.any { scale ->
-                  scale.device?.broadcastId == broadcastId
-                } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
-              } == true
-
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
               val shouldShow = if (deviceSku == "0412") {
@@ -614,7 +667,7 @@ constructor(
               }
 
               // Only show if not skipped, not ignored, not known, and shouldShow is true
-              if (!isSkipped && !isIgnored && !isKnown && shouldShow) {
+              if (!isSkipped && !isIgnored && !isKnownScale && shouldShow) {
                 handleIntent(AppIntent.SetScaleDiscovered(true))
                 handleIntent(AppIntent.SetSku(deviceSku))
                 sku = deviceSku
@@ -643,7 +696,7 @@ constructor(
                 if (isIgnored) {
                   AppLog.d(TAG, "Ignoring recently shown scale with MAC: ${data.macAddress}")
                 }
-                if (isKnown) {
+                if (isKnownScale) {
                   AppLog.d(TAG, "Known device (already paired) with broadcastId: ${data.broadcastId}")
                 }
                 if (!shouldShow) {
@@ -687,7 +740,7 @@ constructor(
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
-          if (currentRoute !is AppRoute.ScaleSetup) {
+          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
@@ -724,7 +777,7 @@ constructor(
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
           try {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {

@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
@@ -55,6 +56,7 @@ data class ScaleUsernameFormControls(
           FormValidations.required(),
           FormValidations.noWhiteSpace(),
           FormValidations.maxLength(20,),
+          FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
         ),
       ),
     )
@@ -297,6 +299,9 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
             initialValue = intent.username,
             validators = listOf(
               FormValidations.required(),
+              FormValidations.noWhiteSpace(),
+              FormValidations.maxLength(20,),
+              FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
             ),
           )
         )

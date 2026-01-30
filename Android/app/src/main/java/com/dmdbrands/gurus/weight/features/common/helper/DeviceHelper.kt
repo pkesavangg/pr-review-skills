@@ -3,38 +3,66 @@ package com.dmdbrands.gurus.weight.features.common.helper
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 
 object DeviceHelper {
-  fun GGDeviceDetail.getSKU() = SKU_MAP[deviceName] ?: "0375"
+  const val DEFAULT_SKU = "0375"
+  const val SKU_0412 = "0412"
+  const val SKU_0376 = "0376"
+  const val SKU_0380 = "0380"
+  const val SKU_0022 = "0022"
+  const val SKU_0383 = "0383"
+  const val SKU_0480 = "0480"
+  const val SKU_0604 = "0604"
+  const val SKU_0003 = "0003"
+  const val SKU_0005 = "0005"
+  const val SKU_0062 = "0062"
+  const val SKU_0603 = "0603"
+  const val SKU_0222 = "0222"
+  const val SKU_0220 = "0220"
+  const val SKU_0663 = "0663"
+  const val SKU_0661 = "0661"
+  const val SKU_0634 = "0634"
+  const val SKU_0344 = "0344"
+
+  fun GGDeviceDetail.getSKU() = SKU_MAP[deviceName] ?: DEFAULT_SKU
+
+  /**
+   * Maps a SKU to its display SKU for UI purposes only.
+   * For example, SKU 0022 is displayed as 0383.
+   * This should only be used for display, not for saving.
+   * @param sku The SKU to map for display
+   * @return The display SKU
+   */
+  fun mapSkuForDisplay(sku: String): String = if (sku == SKU_0022) SKU_0383 else sku
 
   private val SKU_MAP = mapOf(
-    "MY_SCALE" to "0480",
-    "1490BT1" to "0604",
-    "10376B" to "0376",
-    "0376B" to "0376",
-    "376B" to "0376",
-    "0202B" to "0375",
-    "1202B" to "0375",
-    "202B" to "0375",
-    "11251B" to "0380",
-    "1251B" to "0380",
-    "01251B" to "0380",
-    "1270B" to "0380",
-    "11270B" to "0380",
-    "01270B" to "0380",
-    "gG BS 0412" to "0412",
-    "LS212-B" to "0383",
-    "gG-RPM 0022" to "0383",
-    "gG PulseOx 0003" to "0003",
-    "gG-RPM 0040" to "0604",
-    "gG BGM 0005" to "0005",
-    "0062" to "0062",
-    "gG BPM 0603" to "0603",
-    "gG BS 0222" to "0222",
-    "gG BS 0220" to "0220",
-    "BS1711-B" to "0220",
-    "Smart Blood Pressure Monitor" to "0663",
-    "gG BPM 0667" to "0661",
-    "gG BPM 0634" to "0634",
-    "gG BS 0351" to "0375",
-    "gG BS 0344" to "0344",
+    "MY_SCALE" to SKU_0480,
+    "1490BT1" to SKU_0604,
+    "10376B" to SKU_0376,
+    "0376B" to SKU_0376,
+    "376B" to SKU_0376,
+    "0202B" to DEFAULT_SKU,
+    "1202B" to DEFAULT_SKU,
+    "202B" to DEFAULT_SKU,
+    "11251B" to SKU_0380,
+    "1251B" to SKU_0380,
+    "01251B" to SKU_0380,
+    "1270B" to SKU_0380,
+    "11270B" to SKU_0380,
+    "01270B" to SKU_0380,
+    "gG BS 0412" to SKU_0412,
+    "LS212-B" to SKU_0383,
+    "gG-RPM 0022" to SKU_0022,
+    "gG PulseOx 0003" to SKU_0003,
+    "gG-RPM 0040" to SKU_0604,
+    "gG BGM 0005" to SKU_0005,
+    "0062" to SKU_0062,
+    "gG BPM 0603" to SKU_0603,
+    "gG BS 0222" to SKU_0222,
+    "gG BS 0220" to SKU_0220,
+    "BS1711-B" to SKU_0220,
+    "Smart Blood Pressure Monitor" to SKU_0663,
+    "gG BPM 0667" to SKU_0661,
+    "gG BPM 0634" to SKU_0634,
+    "gG BS 0351" to DEFAULT_SKU,
+    "gG BS 0344" to SKU_0344,
   )
 }
