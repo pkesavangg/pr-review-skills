@@ -18,6 +18,10 @@ class NotificationHelperService: ObservableObject {
     /// property to track if any toasts are active in the modifier
     @Published private var hasActiveToasts: Bool = false
     
+    /// Task to track loader timeout
+    private var loaderTimeoutTask: Task<Void, Never>?
+    private let loaderTimeoutDuration: TimeInterval = 600 // 10 minutes
+    
     var isAlertVisible: Bool {
         alertData != nil
     }
@@ -92,13 +96,38 @@ class NotificationHelperService: ObservableObject {
     }
     
     func showLoader(_ loader: LoaderModel) {
+        // Cancel any existing timeout task
+        loaderTimeoutTask?.cancel()
         DispatchQueue.main.async {
             self.loaderData = loader
             self.isOverlayActive = true
         }
+        
+        // Start timeout task
+        loaderTimeoutTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(self.loaderTimeoutDuration * 1_000_000_000))
+                // Only dismiss if loader is still active and task wasn't cancelled
+                if self.loaderData != nil {
+                    // Show error after 10 minutes timeout
+                    self.showToast(ToastModel(
+                        title: ToastStrings.error,
+                        message: ToastStrings.somethingWentWrong,
+                        duration: 3
+                    ))
+                    self.dismissLoader()
+                }
+            } catch {
+                // Task was cancelled, ignore
+            }
+        }
     }
     
     func dismissLoader() {
+        // Cancel timeout task
+        loaderTimeoutTask?.cancel()
+        loaderTimeoutTask = nil
+        
         DispatchQueue.main.async {
             self.loaderData = nil
             self.updateOverlayState()
@@ -106,6 +135,10 @@ class NotificationHelperService: ObservableObject {
     }
     
     func dismissAllNotifications() {
+        // Cancel timeout task
+        loaderTimeoutTask?.cancel()
+        loaderTimeoutTask = nil
+        
         DispatchQueue.main.async {
             self.alertData = nil
             self.toastData = nil
