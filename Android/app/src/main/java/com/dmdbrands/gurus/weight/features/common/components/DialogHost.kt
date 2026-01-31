@@ -44,6 +44,7 @@ fun DialogHost() {
         // Extract params for unit and initial values
         AppHeightPickerModal(
           value = dialog.params.get("value") as HeightInput,
+          confirmText = dialog.params["confirmText"] as String,
           onCancel = {
             dialog.onDismiss?.let { it() }
             dialogQueueViewModel.dismissCurrent()

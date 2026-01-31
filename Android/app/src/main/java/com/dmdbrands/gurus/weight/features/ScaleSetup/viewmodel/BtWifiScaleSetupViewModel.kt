@@ -515,6 +515,23 @@ constructor(
               loadGoalProgress()
             }
 
+            BtWifiSetupStep.UPDATE_SETTINGS -> {
+              // Set connection state to Loading when navigating to UPDATE_SETTINGS
+              // This ensures the screen shows loading state immediately, not the previous error state
+              // This is especially important when retrying after an error
+              val currentUpdateSettingsState = currentState.stepConnectionStates[BtWifiSetupStep.UPDATE_SETTINGS]
+              // Only set Loading if we're not already in a success state (to avoid overriding success)
+              // This handles the case where user retries after an error - we want to show Loading, not the previous Failed state
+              if (currentUpdateSettingsState !is ConnectionState.Success) {
+                handleIntent(
+                  BtWifiScaleSetupIntent.SetStepConnectionState(
+                    BtWifiSetupStep.UPDATE_SETTINGS,
+                    ConnectionState.Loading,
+                  ),
+                )
+              }
+            }
+
             BtWifiSetupStep.STEP_ON -> {
               if (!AppPermissionsHelper.areRequiredPermissionsEnabled(
                   state.value.permissions,
@@ -765,7 +782,7 @@ constructor(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
           message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Back,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
           onConfirm = {
             onExit()
           },
@@ -1741,13 +1758,6 @@ constructor(
   private fun updateDevicePreferences(dashboardKeys: List<DashboardKey>? = null, preferences: Preferences? = null) {
     viewModelScope.launch {
       try {
-        onNext()
-        handleIntent(
-          BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.UPDATE_SETTINGS,
-            ConnectionState.Loading,
-          ),
-        )
         val timeoutJob = viewModelScope.launch {
           delay(2 * 60 * 1000) // 5 minutes timeout
           if (state.value.currentStep == BtWifiSetupStep.UPDATE_SETTINGS) {

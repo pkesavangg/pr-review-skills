@@ -68,14 +68,13 @@ struct EditModeOverlay: ViewModifier {
                         .frame(width: 28, height: 28)
                 }
                 .contentShape(Rectangle())
-                .gesture(
+                .highPriorityGesture(
                     SpatialTapGesture()
                         .onEnded { _ in
                             onToggleRemoval()
                         }
                 )
                 .offset(x: iconOffset.width, y: iconOffset.height)
-                .wiggling(shouldWiggle, rowIndex: rowIndex)
                 .opacity(iconOpacity)
                 .animation(.easeInOut(duration: 0.2), value: iconOpacity)
                 .allowsHitTesting(true)

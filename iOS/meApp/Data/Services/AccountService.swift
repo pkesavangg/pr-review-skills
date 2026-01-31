@@ -945,12 +945,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
     @discardableResult
     func updateDashboardMetrics(metrics: [String]) async throws -> Account {
-        try await updateMetrics(metrics, type: "dashboard", apiCall: apiRepo.patchDashboardMetrics)
+        return try await updateMetrics(metrics, type: "dashboard", apiCall: apiRepo.patchDashboardMetrics)
     }
     
     @discardableResult
     func updateProgressMetrics(metrics: [String]) async throws -> Account {
-        try await updateMetrics(metrics, type: "progress", apiCall: apiRepo.patchProgressMetrics)
+        return try await updateMetrics(metrics, type: "progress", apiCall: apiRepo.patchProgressMetrics)
     }
     
     private func updateMetrics(

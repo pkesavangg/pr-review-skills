@@ -17,7 +17,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
@@ -113,7 +113,7 @@ constructor(
     viewModelScope.launch {
       deviceService.pairedScales.collect { savedScales ->
         val hasAppSyncScales = savedScales.any { savedScale ->
-          val scaleInfo = SCALES.find { it.sku == savedScale.sku }
+          val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
           scaleInfo?.setupType == ScaleSetupType.AppSync
         } && savedScales.isNotEmpty()
 
