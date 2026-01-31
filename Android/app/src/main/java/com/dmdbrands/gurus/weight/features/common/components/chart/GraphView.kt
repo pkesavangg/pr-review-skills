@@ -231,7 +231,7 @@ fun GraphView(
       if (range != null) {
         val min = range.visibleXRange.start.toLong()
         val max = range.visibleXRange.endInclusive.toLong()
-        val relativeMin = DateTimeConverter.getRelativeDayStart(min)
+        val relativeMin = GraphUtil.getRelativeStart(segment, min)
         Log.i(
           "GraphView",
           "onScrollStopped : ${DateTimeConverter.timestampToIso(relativeMin)} , ${DateTimeConverter.timestampToIso(max)}",

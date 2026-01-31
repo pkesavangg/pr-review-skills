@@ -506,6 +506,38 @@ object GraphUtil {
   }
 
   /**
+   * Gets the related start timestamp for the given segment and timestamp.
+   * For WEEK or MONTH segment, returns the relative day start (noon rule) from [DateTimeConverter.getRelativeDayStart].
+   * For YEAR or TOTAL segment, returns the month start from [DateTimeConverter.getMonthStart].
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return Related start timestamp, or null if timeStamp is null
+   */
+  fun getRelativeStart(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
+    when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getRelativeDayStart(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getMonthStart(it)
+    }
+  }
+
+  /**
+   * Gets the related end timestamp for the given segment and timestamp.
+   * For WEEK or MONTH segment, returns the relative day end (noon rule) from [DateTimeConverter.getRelativeDayEnd].
+   * For YEAR or TOTAL segment, returns the month end from [DateTimeConverter.getMonthEnd].
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return Related end timestamp
+   */
+  fun getRelativeEnd(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
+    when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getDayEnd(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getMonthEnd(it)
+    }
+  }
+
+  /**
    * Gets the start timestamp for the given graph segment.
    * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
    * @param timeStamp Reference timestamp in milliseconds
