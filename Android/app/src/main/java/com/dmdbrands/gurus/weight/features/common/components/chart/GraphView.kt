@@ -81,7 +81,7 @@ fun GraphView(
   }
 
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL || !state.isSingleWindow,
+    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
     initialScroll = initialScroll,
     snapBehaviorConfig = SnapBehaviorConfig(
       snapToLabelFunction = snapToLabelFunction,
