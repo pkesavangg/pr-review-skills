@@ -143,6 +143,7 @@ fun AppHeightPickerModal(
   onOk: (HeightInput) -> Unit,
   modifier: Modifier = Modifier,
   value: HeightInput = HeightInput.FtIn(0, 0),
+  confirmText: String = "ok"
 ) {
   val state = rememberPickerState(value)
   // State to control dialog visibility
@@ -152,7 +153,7 @@ fun AppHeightPickerModal(
             title = "Height",
             primaryAction =
               ActionButton(
-                text = "OK",
+                text = confirmText,
                 action = {
                   onOk(state.item)
                 },

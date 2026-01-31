@@ -262,4 +262,5 @@ extension Device {
         
         return .connected
     }
+    
 }

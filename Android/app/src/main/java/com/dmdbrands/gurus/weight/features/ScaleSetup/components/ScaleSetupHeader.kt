@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -22,12 +23,14 @@ fun ScaleSetupHeader(
   onHelp: () -> Unit,
   content: @Composable () -> Unit,
 ) {
+  // Map SKU for display (e.g., 0022 -> 0383)
+  val displaySku = DeviceHelper.mapSkuForDisplay(sku)
   BackHandler {
     onBack()
   }
 
   AppScaffold(
-    title = ScaleSetupStrings.Header(sku),
+    title = ScaleSetupStrings.Header(displaySku),
     containerColor = colorScheme.secondaryBackground,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {

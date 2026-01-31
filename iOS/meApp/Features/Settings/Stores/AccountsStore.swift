@@ -53,7 +53,7 @@ class AccountsStore: ObservableObject {
 
                 // Show all accounts except truly expired ones (expired + logged out)
                 let accountsToShow = allAccounts.filter {
-                    !($0.isExpired == true && $0.isLoggedIn != true)
+                    $0.isLoggedIn == true
                 }
 
                 // Split by login state

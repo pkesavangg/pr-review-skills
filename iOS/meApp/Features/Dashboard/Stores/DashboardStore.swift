@@ -102,12 +102,44 @@ class DashboardStore: ObservableObject {
     var hasBodyMetrics: Bool {
         !metricsToShow.isEmpty
     }
+    
+    /// Whether body metrics should be shown (either skeleton or loaded)
+    var shouldShowBodyMetrics: Bool {
+        if !state.ui.hasLoadedDashboardConfig {
+            // Before loading, check if account has body metrics configured
+            guard let dashboardMetrics = accountService.activeAccount?.dashboardSettings?.dashboardMetrics,
+                  !dashboardMetrics.isEmpty else {
+                return false
+            }
+            let metrics = dashboardMetrics.split(separator: ",").map(String.init)
+            return !metrics.isEmpty && metrics.allSatisfy { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        } else {
+            // After loading, check if there are metrics to show
+            return hasBodyMetrics
+        }
+    }
+    
+    /// Whether body metrics skeleton should be shown
+    var shouldShowBodyMetricsSkeleton: Bool {
+        !state.ui.hasLoadedDashboardConfig && shouldShowBodyMetrics
+    }
+    
+    /// Whether progress metrics skeleton should be shown
+    var shouldShowProgressMetricsSkeleton: Bool {
+        !state.ui.hasLoadedProgressMetrics
+    }
+    
+    /// Whether skeleton progress metrics has content above (body metrics)
+    var skeletonProgressMetricsHasContentAbove: Bool {
+        shouldShowBodyMetrics
+    }
 
     /// Whether the divider should be shown between body metrics and goal/streak section.
-    /// Shows divider in edit mode or when both body metrics and goal/streak items are present.
+    /// Shows divider only when BOTH body metrics AND progress metrics are present.
     var shouldShowDivider: Bool {
-        guard state.ui.hasLoadedDashboardConfig else { return state.ui.isEditMode }
-        return state.ui.isEditMode || (hasBodyMetrics && hasGoalOrStreaks)
+        let hasBodyMetricsToShow = shouldShowBodyMetrics
+        let hasProgressMetricsToShow = shouldShowProgressMetricsSkeleton || shouldShowGoalStreakSection
+        return hasBodyMetricsToShow && hasProgressMetricsToShow
     }
 
     /// Whether the goal/streak section should be shown.
@@ -120,7 +152,7 @@ class DashboardStore: ObservableObject {
 
     /// Whether there are goal or streak items available to display
     private var hasGoalOrStreaks: Bool {
-        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && hasGoalSet)
+        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && (state.ui.isEditMode || hasGoalSet))
     }
     // MARK: - Initialization
     init() {
@@ -1095,6 +1127,9 @@ class DashboardStore: ObservableObject {
                     state.ui.streakGridOrder = defaultOrder
                 }
                 state.ui.removedStreaks = Set(allStreaks.map { $0.label })
+                
+                streakManager.state.activeStreakItemsCount = 0
+                
                 scheduleUIUpdate()
                 return
             }
@@ -1134,6 +1169,20 @@ class DashboardStore: ObservableObject {
             state.ui.isGoalCardRemoved = goalCardPosition == nil
             state.ui.streakGridOrder = orderedStreakIds
             state.ui.removedStreaks = Set(allStreaks.map { $0.label }).subtracting(foundStreakLabels)
+
+            // Sync active streak count from UI removal state
+            let activeCount = max(
+                0,
+                allStreaks.count - state.ui.removedStreaks.count
+            )
+
+            streakManager.state.activeStreakItemsCount = min(activeCount, allStreaks.count)
+
+            logger.log(
+                level: .debug,
+                tag: "DashboardStore",
+                message: "Active streaks synced: \(streakManager.state.activeStreakItemsCount)/\(allStreaks.count)"
+            )
 
             scheduleUIUpdate()
         }
@@ -1210,18 +1259,28 @@ class DashboardStore: ObservableObject {
     }
 
     /// Syncs the removal state from the streak manager to the UI state
+    /// This should ONLY be called after a toggle operation completes, not during initialization
     func syncRemovalStateFromStreakManager() {
         // Get the current streak items from the manager
         let currentStreakItems = streakManager.state.streakItems
-        let activeCount = streakManager.state.activeStreakItemsCount
+        var activeCount = streakManager.state.activeStreakItemsCount
 
-        // Clear existing removal state
+        guard !currentStreakItems.isEmpty else {
+            state.ui.removedStreaks.removeAll()
+            return
+        }
+
+        if activeCount > currentStreakItems.count {
+            activeCount = currentStreakItems.count
+        }
+
         state.ui.removedStreaks.removeAll()
 
-        // Ensure activeCount doesn't exceed currentStreakItems.count to prevent range crash
         let safeActiveCount = min(activeCount, currentStreakItems.count)
 
-        // Mark streak items beyond the active count as removed
+        guard safeActiveCount < currentStreakItems.count else {
+            return
+        }
         for i in safeActiveCount..<currentStreakItems.count {
             state.ui.removedStreaks.insert(currentStreakItems[i].label)
         }
@@ -1302,19 +1361,12 @@ class DashboardStore: ObservableObject {
             try? await metricsManager.toggleMetricVisibility(at: originalIndex)
 
             // Sync the UI state with the metrics manager after the change
+            // This will correctly update removal state for ALL items based on activeMetricsCount
             await MainActor.run {
                 self.syncRemovalStateFromMetricsManager()
+                // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                self.forceImmediateUIUpdate()
             }
-        }
-
-        // Update the UI state for consistency
-        let isCurrentlyRemoved = originalIndex >= metricsManager.state.activeMetricsCount
-        if isCurrentlyRemoved {
-            // Metric is being added back - remove from removed set
-            state.ui.removedMetrics.remove(metric.label)
-        } else {
-            // Metric is being removed - add to removed set
-            state.ui.removedMetrics.insert(metric.label)
         }
     }
 
@@ -1338,25 +1390,15 @@ class DashboardStore: ObservableObject {
             try? await streakManager.toggleStreakVisibility(at: originalIndex)
 
             // Sync the UI state with the streak manager after the change
+            // This will correctly update removal state for ALL items based on activeStreakItemsCount
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
+                // Validate goal card position after streak removal
+                self.validateGoalCardPosition()
                 // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
                 self.forceImmediateUIUpdate()
             }
         }
-
-        // Update the UI state for consistency
-        let isCurrentlyRemoved = originalIndex >= streakManager.state.activeStreakItemsCount
-        if isCurrentlyRemoved {
-            // Streak is being added back - remove from removed set
-            state.ui.removedStreaks.remove(streak.label)
-        } else {
-            // Streak is being removed - add to removed set
-            state.ui.removedStreaks.insert(streak.label)
-        }
-
-        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
-        forceImmediateUIUpdate()
     }
 
     func isStreakRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
@@ -1386,22 +1428,17 @@ class DashboardStore: ObservableObject {
     func toggleMetricRemoval(_ metricLabel: String) {
         // Find the metric in the current metrics array
         if let metricIndex = metricsManager.state.metrics.firstIndex(where: { $0.label == metricLabel }) {
-            // Call the underlying manager to actually reorder the array
-            Task {
-                try? await metricsManager.toggleMetricVisibility(at: metricIndex)
-
-                // Sync the UI state with the metrics manager after the change
-                await MainActor.run {
-                    self.syncRemovalStateFromMetricsManager()
-                }
+            if state.ui.removedMetrics.contains(metricLabel) {
+                state.ui.removedMetrics.remove(metricLabel)
+            } else {
+                state.ui.removedMetrics.insert(metricLabel)
             }
-        }
-
-        // Update the UI state
-        if state.ui.removedMetrics.contains(metricLabel) {
-            state.ui.removedMetrics.remove(metricLabel)
-        } else {
-            state.ui.removedMetrics.insert(metricLabel)
+            do {
+                try metricsManager.toggleMetricVisibilitySync(at: metricIndex)
+                syncRemovalStateFromMetricsManager()
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to toggle metric visibility: \(error)")
+            }
         }
     }
 
@@ -1411,12 +1448,16 @@ class DashboardStore: ObservableObject {
         guard let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) else {
             return
         }
-
+        
+        // Capture the current state BEFORE toggle to ensure we have the correct baseline
+        let currentActiveCount = streakManager.state.activeStreakItemsCount
+        let isCurrentlyRemoved = streakIndex >= currentActiveCount
+        
         // Call the underlying manager to actually reorder the array
         Task {
+            // Perform the toggle operation atomically
             try? await streakManager.toggleStreakVisibility(at: streakIndex)
 
-            // Sync the UI state with the streak manager after the change
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
                 // Validate goal card position after streak removal
@@ -1805,6 +1846,7 @@ class DashboardStore: ObservableObject {
                     }
 
                     self.notificationService.dismissLoader()
+                    self.resetMetricsToLatestEntry()
 
                     // Single UI update after all state changes are complete
                     self.forceImmediateUIUpdate()
@@ -1828,6 +1870,7 @@ class DashboardStore: ObservableObject {
                         self.hasEditSnapshot = false
                     }
                     self.notificationService.dismissLoader()
+                    self.resetMetricsToLatestEntry()                   
                     self.forceImmediateUIUpdate()
                 }
             }
