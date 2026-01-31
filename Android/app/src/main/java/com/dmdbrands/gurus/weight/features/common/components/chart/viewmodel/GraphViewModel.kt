@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
@@ -471,12 +472,8 @@ class GraphViewModel @AssistedInject constructor(
    * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
-    val min = GraphUtil.getStartRange(segment, min)
-    val max = GraphUtil.getEndRange(segment, max)
-    if (min == null || max == null) {
-      fallback()
-      return
-    }
+    val min = DateTimeConverter.getDayStart(min)
+    val max = DateTimeConverter.getDayEnd(max)
     val currentState = _state.value
     // Cancel any existing debounce job
     scrollDebounceJob?.cancel()

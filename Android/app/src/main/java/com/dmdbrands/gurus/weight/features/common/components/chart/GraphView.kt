@@ -8,6 +8,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -69,7 +70,6 @@ fun GraphView(
   val initialScroll = remember(initialStartX) {
     Scroll.Absolute.x(initialStartX)
   }
-  Log.i("GraphView", "initialScroll: $initialScroll")
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
       if (isDrag) {
@@ -169,13 +169,19 @@ fun GraphView(
         if (outOfBoundaryCondition) {
           markerIndex = null
         } else {
+          val min = GraphUtil.getStartRange(segment, state.minTarget)?.toDouble()
+          val max = GraphUtil.getEndRange(segment, state.maxTarget)?.toDouble()
 
+          if (min != null && max != null)
+            Log.i(
+              "GraphView",
+              " min : ${DateTimeConverter.timestampToIso(min.toLong())} max : $" +
+                "${DateTimeConverter.timestampToIso(max.toLong())}",
+            )
           val visibleLabels =
             scrollState
               .getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
               .filter { label ->
-                val min = state.minTarget?.toDouble()
-                val max = state.maxTarget?.toDouble()
 
                 if (min != null && max != null) {
                   label in min..max
@@ -204,6 +210,11 @@ fun GraphView(
             else
               null
           }
+          if (markerIndex != null)
+            Log.i(
+              "GraphView",
+              "targetMarkerIndex : ${DateTimeConverter.timestampToIso(markerIndex.toLong())}",
+            )
         }
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       }
@@ -220,7 +231,10 @@ fun GraphView(
       if (range != null) {
         val min = range.visibleXRange.start.toLong()
         val max = range.visibleXRange.endInclusive.toLong()
-
+        Log.i(
+          "GraphView",
+          "onScrollStopped : ${DateTimeConverter.timestampToIso(min)} , ${DateTimeConverter.timestampToIso(max)}",
+        )
         onScrollUpdate(min, max)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
