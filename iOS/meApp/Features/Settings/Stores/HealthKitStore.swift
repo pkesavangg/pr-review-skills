@@ -32,7 +32,11 @@ final class HealthKitStore: ObservableObject {
     @Injector private var logger: LoggerService
     private let kvStorage = KvStorageService.shared
     
-    let wgTotalPermissionsCount = 5
+    var cancellables: Set<AnyCancellable> = []
+    static let wgTotalPermissionsCount = 5
+    
+    /// Duration to wait for sheet dismissal animation to complete before showing subsequent UI.
+    private static let sheetDismissalAnimationDurationNanoseconds: UInt64 = 300_000_000 // 0.3 seconds
     
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
@@ -42,11 +46,38 @@ final class HealthKitStore: ObservableObject {
     /// Used to prevent showing sync prompt twice in the permission-denied flow.
     private var hasSyncedInCurrentFlow: Bool = false
     
+    /// Tracks the previous activeState value to detect transitions between nil and non-nil
+    private var previousActiveState: AppleHealthIntegrationState? = nil
+    
     let alertLang = AlertStrings.self
     let tag = "HealthKitStore"
     // MARK: - Init
     init() {
-        getLocalStoredData()
+        loadStatus()
+        // Observe activeState changes to post notifications when sheet is presented/dismissed
+        // Only post notifications when transitioning between nil and non-nil states
+        $activeState
+            .dropFirst()
+            .sink { [weak self] newState in
+                guard let self else { return }
+                let wasPresented = self.previousActiveState != nil
+                let isPresented = newState != nil
+                
+                if !wasPresented && isPresented {
+                    // Transitioning from nil to non-nil: sheet is being presented
+                    NotificationCenter.default.post(name: .appleHealthSheetPresented, object: nil)
+                } else if wasPresented && !isPresented {
+                    // Transitioning from non-nil to nil: sheet is being dismissed
+                    NotificationCenter.default.post(name: .appleHealthSheetDismissed, object: nil)
+                }
+                
+                self.previousActiveState = newState
+            }
+            .store(in: &cancellables)
+    }
+    
+    func loadStatus() {
+        self.getLocalStoredData()
     }
     
     func getLocalStoredData() {
@@ -174,6 +205,28 @@ final class HealthKitStore: ObservableObject {
             } catch {
                 activeState = error is IntegrationError ? .userConflict : .integrationFailed
             }
+        }
+    }
+    
+    /// Handles the integration flow completion when user has granted full permissions.
+    /// This skips the Integration Complete screen and goes directly to the sync alert.
+    private func finishIntegrationFlowForFullPermissions() async {
+        // Dismiss the current sheet
+        self.dismissModal()
+        // Small delay to ensure sheet dismissal animation completes
+        try? await Task.sleep(nanoseconds: Self.sheetDismissalAnimationDurationNanoseconds)
+        // Show sync alert if needed
+        do {
+            let count = try await entryService.getEntryCount()
+            if count > 0 {
+                presentSyncHistoryAlert()
+            } else {
+                // Nothing to sync – just show toast.
+                notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+            }
+        } catch {
+            // If we can't get entry count, just show toast
+            notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
         }
     }
     

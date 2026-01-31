@@ -50,10 +50,13 @@ class BottomTabBarViewModel: ObservableObject {
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsService
     @Injector private var pushNotificationService: PushNotificationService
+    @Injector private var integrationService: IntegrationsService
     
     // MARK: - Permission Disabled Alert Tracking
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
     private var hasShownPermissionAlert: Bool = false
+    /// Tracks whether the Apple Health integration sheet is currently presented
+    private var isAppleHealthSheetPresented: Bool = false
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
@@ -102,6 +105,21 @@ class BottomTabBarViewModel: ObservableObject {
                 if !self.bluetoothService.isSetupInProgress {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
                 }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for Apple Health sheet presentation/dismissal notifications
+        NotificationCenter.default.publisher(for: .appleHealthSheetPresented)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.isAppleHealthSheetPresented = true
+            }
+            .store(in: &cancellables)
+        
+        NotificationCenter.default.publisher(for: .appleHealthSheetDismissed)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.isAppleHealthSheetPresented = false
             }
             .store(in: &cancellables)
         
@@ -419,8 +437,10 @@ class BottomTabBarViewModel: ObservableObject {
             onPrimary = { [weak self] in
                 guard let self else { return }
                 self.notificationService.dismissModal()
-                // Switch to Settings tab and queue navigation to the Integrations screen.
-                self.navigateToSettings(route: .integrations)
+                // Trigger connection flow directly instead of navigating to settings
+                Task {
+                    await self.handleHKConnectFlow(for: state)
+                }
             }
             onSecondary = nil
             
@@ -463,14 +483,94 @@ class BottomTabBarViewModel: ObservableObject {
         notificationService.showModal(modalData)
     }
     
+    private func handleHKConnectFlow(for _: HKIntegrationModalState) async {
+        do {
+            let success = try await healthKitService.integrate(turnOn: true)
+            
+            guard success else {
+                await showAlert(from: HKIntegrationHealthAccessStrings.integrationFailed)
+                return
+            }
+            
+            let permissionCount = healthKitService.getApprovedPermissionList().count
+            let hasFullPermissions = permissionCount >= HealthKitStore.wgTotalPermissionsCount
+            let entryCount = (try? await entryService.getEntryCount()) ?? 0
+            
+            if entryCount > 0 && hasFullPermissions {
+                await showSyncAlert()
+            } else {
+                await MainActor.run {
+                    notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+                }
+            }
+        } catch IntegrationError.userConflict {
+            await showAlert(from: HKIntegrationHealthAccessStrings.userConflict)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to connect HealthKit", data: error.localizedDescription)
+            await showAlert(from: HKIntegrationHealthAccessStrings.integrationFailed)
+        }
+    }
+    
+    private func showSyncAlert() async {
+        await MainActor.run {
+            let alert = AlertModel(
+                title: AlertStrings.SyncWeightHistoryAlert.title,
+                message: AlertStrings.SyncWeightHistoryAlert.message,
+                buttons: [
+                    AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.cancelButton, type: .secondary) { _ in },
+                    AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.syncButton, type: .primary) { [weak self] _ in
+                        Task { await self?.performSync() }
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+    
+    private func performSync() async {
+        await MainActor.run {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
+        }
+        
+        do {
+            try await healthKitService.syncAllData()
+            if let latestEntry = try await entryService.getLatestEntry() {
+                await integrationService.logHealthEntry(entry: latestEntry)
+            }
+            await MainActor.run {
+                notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
+            }
+        } catch {
+            await MainActor.run {
+                notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
+            }
+        }
+    }
+    
+    private func showAlert(from content: HKIntegrationHealthAccessContent) async {
+        await MainActor.run {
+            let alert = AlertModel(
+                title: content.title,
+                message: content.description ?? "",
+                buttons: [AlertButtonModel(title: CommonStrings.ok, type: .primary) { _ in }]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+    
     // MARK: - Scale Discovery Handling
     private func shouldShowDiscoveredScale(for event: DeviceDiscoveryEvent) -> Bool {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
+        /// Prevents showing scale discovery when Apple Health integration sheet is already presented
+        /// to avoid dismissing the Apple Health sheet unexpectedly.
         guard !bluetoothService.isSetupInProgress,
               bluetoothService.canShowScaleDiscoveredModal,
               !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
+              !isAppleHealthSheetPresented, // Prevent scale discovery when Apple Health sheet is shown
               event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
               !event.deviceInfo.sku.isEmpty else {
             return false

@@ -104,6 +104,8 @@ data class WifiScaleSetupState(
   val isLastStep: Boolean = false,
   val scaleWifiSsid: String = "gg_SmartScale_##",
   val isNavigating: Boolean = false, // Add navigation state to prevent double-clicks
+  /** Step we were on when we navigated to ERROR_GUIDE; used for correct back navigation. */
+  val stepBeforeErrorGuide: WifiScaleSetupStep? = null,
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -419,8 +421,8 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
           }
 
           WifiScaleSetupStep.ERROR_GUIDE -> {
-            // Go back to WiFi mode
-            WifiScaleSetupStep.WIFI_MODE
+            // Go back to the step we came from (WIFI_MODE or SCALE_COUNTS)
+            state.stepBeforeErrorGuide ?: WifiScaleSetupStep.WIFI_MODE
           }
 
           WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
@@ -459,6 +461,9 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
             state.copy(isGetMACSetup = false)
           } else if(state.currentStep == WifiScaleSetupStep.SCALE_INFO) {
             state.copy(isGetMACSetup = false, permissionsSkipped = false )
+          } else if (state.currentStep == WifiScaleSetupStep.ERROR_GUIDE) {
+            // Clear stepBeforeErrorGuide when leaving ERROR_GUIDE
+            state.copy(stepBeforeErrorGuide = null)
           } else {
             state
           }
@@ -501,8 +506,11 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
       }
 
       is WifiScaleSetupIntent.NavigateToErrorGuide -> {
-        // Navigate to error guide step
-        state.copy(currentStep = WifiScaleSetupStep.ERROR_GUIDE)
+        // Navigate to error guide step; remember current step for correct back navigation
+        state.copy(
+          currentStep = WifiScaleSetupStep.ERROR_GUIDE,
+          stepBeforeErrorGuide = state.currentStep,
+        )
       }
 
       is WifiScaleSetupIntent.NavigateToTroubleShooting -> {

@@ -35,6 +35,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.SettingsSection
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.SettingColorType
@@ -118,9 +119,9 @@ fun ScaleDetailsScreenContent(
           .verticalScroll(rememberScrollState())
           .padding(vertical = spacing.md, horizontal = spacing.sm),
     ) {
-      // Scale Image
+      // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       AppScaleImage(
-        sku = device?.getSKU() ?: "",
+        sku = DeviceHelper.mapSkuForDisplay(device!!.getSKU()),
         modifier = Modifier.fillMaxWidth(),
         scaleImageSize = ScaleImageSize.Large,
       )
@@ -280,7 +281,7 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(device?.getSKU() ?: ""),
+              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device!!.getSKU())),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,

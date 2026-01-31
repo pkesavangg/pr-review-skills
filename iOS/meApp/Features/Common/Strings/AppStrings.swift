@@ -528,6 +528,13 @@ struct AlertStrings {
         static let exitButton = "Exit"
     }
 
+    struct BluetoothTurnedOffAlert {
+        static let title = "Bluetooth is Turned Off"
+        static let message = "Bluetooth is required to connect to your scale. Please turn it on and try again."
+        static let cancelButton = "Cancel"
+        static let turnOnButton = "Turn On"
+    }
+
     struct ResetDashboardAlert {
         static let title = "Are you sure?"
         static let message = "Your dashboard display metrics will reset to default settings"

@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +23,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 fun WeightOnlyModePopup(
     modifier: Modifier = Modifier,
     onEnable: () -> Unit,
+    onClose: () -> Unit,
     onDismiss: () -> Unit
 ) {
 
@@ -41,7 +41,7 @@ fun WeightOnlyModePopup(
             .size(24.dp),
           type = AppIconType.Primary,
           tintColor = Color.Unspecified,
-          onClick = onDismiss
+          onClick = onClose
         )
       }
 
@@ -93,6 +93,7 @@ fun WeightOnlyModeEnabledPopupPreview() {
         WeightOnlyModePopup(
             onEnable = {},
             onDismiss = {},
+            onClose = {}
         )
     }
 }

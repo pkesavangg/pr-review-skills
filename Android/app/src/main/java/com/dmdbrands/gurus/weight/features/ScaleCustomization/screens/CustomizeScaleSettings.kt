@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +72,6 @@ fun CustomizeScaleSettings(
   var isAllBodyMetrics by remember { mutableStateOf(state.isAllBodyMetrics) }
   var isHeartRateOn by remember { mutableStateOf(state.isHeartRateOn) }
   var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
-  val hasSavedSettings = remember { mutableStateOf(false) }
   val customizeSettings = remember(visitedSteps) {
     CustomizeSettingsList.map { it.copy(isVisited = visitedSteps.contains(it.step)) }
   }
@@ -83,6 +83,14 @@ fun CustomizeScaleSettings(
     mutableStateOf(state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>())
   }
   var localUsername by remember { mutableStateOf(state.usernameForm.username.value) }
+  // Initialize hasSavedSettings from reducer state to preserve it when navigating back from error
+  val hasSavedSettings = remember { mutableStateOf(state.hasSavedSettings) }
+  // Sync reducer state to local state when navigating back from error (reducer state is true but local might be false)
+  LaunchedEffect(state.hasSavedSettings) {
+    if (state.hasSavedSettings && !hasSavedSettings.value) {
+      hasSavedSettings.value = true
+    }
+  }
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusManager = LocalFocusManager.current
 
@@ -203,6 +211,7 @@ fun CustomizeScaleSettings(
               if (visitedSteps.isNotEmpty() && hasSavedSettings.value) {
                 val combinedDashboardKeys = (dashboardMetricKeys + dashboardMilestoneKeys).distinct()
                 onIntent(BtWifiScaleSetupIntent.SetHasSavedSettings(true))
+                onIntent(BtWifiScaleSetupIntent.Next)
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
                     dashboardKeys = combinedDashboardKeys,
@@ -226,6 +235,8 @@ fun CustomizeScaleSettings(
             enabled = hasUnsavedChanges && (pagerState.currentPage != CustomizeSettings.SCALE_USERNAME.ordinal || localUsernameFormControl.isValueValid()),
             onClick = {
               hasSavedSettings.value = true
+              // Update reducer state immediately so it's preserved if navigation back occurs
+              onIntent(BtWifiScaleSetupIntent.SetHasSavedSettings(true))
               scope.launch {
 
                 when (pagerState.currentPage) {

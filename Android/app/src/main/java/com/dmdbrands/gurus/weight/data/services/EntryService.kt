@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +77,16 @@ constructor(
   private val healthConnectService: IHealthConnectService,
   private val healthConnectRepository: IHealthConnectRepository,
 ) : IEntryService {
+
+  companion object {
+    private const val GOAL_ALERT_DELAY_MS = 3000L
+    /**
+     * Weight conversion factor to convert from stored weight unit to pounds.
+     * Weight is stored in 0.1 lb increments (e.g., 150.5 lbs is stored as 1505),
+     * so multiplying by 10 converts to full pounds for the goal alert service.
+     */
+    private const val WEIGHT_CONVERSION_FACTOR = 10
+  }
 
   private val _isEmpty = MutableStateFlow(false)
   override val isEmpty: StateFlow<Boolean> = _isEmpty.asStateFlow()
@@ -587,6 +598,21 @@ constructor(
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
       _lastUpdated.value = System.currentTimeMillis()
+      
+      // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
+      // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
+      if (lastValidOperation != null && lastValidOperation is ScaleEntry) {
+        val operationWeight = lastValidOperation.scale.scaleEntry.weight
+        repositoryScope.launch {
+          try {
+            delay(GOAL_ALERT_DELAY_MS)
+            // Convert stored weight (0.1 lb increments) to full pounds for goal alert service
+            goalService.showGoalCompletionAlert(operationWeight * WEIGHT_CONVERSION_FACTOR)
+          } catch (err: Exception) {
+            AppLog.e("EntryService", "syncOperations - unable to set Goal met", err)
+          }
+        }
+      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error in syncOperations", e)
     } finally {
