@@ -827,23 +827,9 @@ extension View {
                     },
                     set: { (newPosition: Date?) in
                         guard let newPosition = newPosition else { return }
-                        
-                        // Apply boundary clamping to prevent over-scrolling
-                        let clampedPosition: Date
-                        if let bounds = dashboardStore.dataManager.getDateBounds(for: viewModel.timePeriod) {
-                            clampedPosition = dashboardStore.graphManager.clampScrollPosition(
-                                newPosition,
-                                for: viewModel.timePeriod,
-                                minDate: bounds.min,
-                                maxDate: bounds.max
-                            )
-                        } else {
-                            clampedPosition = newPosition
-                        }
-                        
                         // Debounce scroll position updates to prevent multiple updates per frame
                         DispatchQueue.main.async {
-                            viewModel.handleScrollPositionChange(clampedPosition)
+                            viewModel.handleScrollPositionChange(newPosition)
                         }
                     }
                 ))
