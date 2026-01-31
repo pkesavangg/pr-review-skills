@@ -39,4 +39,16 @@ protocol HealthKitServiceProtocol {
     /// - Returns: A `HKIntegrationModalState` value indicating which modal should be displayed,
     ///            or `nil` when no modal is necessary.
     func shouldShowHKIntegrationModal() async throws -> HKIntegrationModalState?
+    
+    /// Sets a flag indicating we're waiting for permissions to be restored after out-of-sync.
+    /// Called when user taps "OPEN APPLE HEALTH" from the out-of-sync modal.
+    func setWaitingForPermissionsRestored()
+    
+    /// Clears the flag indicating we're waiting for permissions to be restored.
+    func clearWaitingForPermissionsRestored()
+    
+    /// Checks if permissions were restored after being out of sync.
+    /// Returns `true` if we were waiting for permissions and they are now restored.
+    /// This should be called on app launch to show the success toast.
+    func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool
 }

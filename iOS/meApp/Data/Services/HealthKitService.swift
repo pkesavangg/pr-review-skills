@@ -19,6 +19,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
     private let finishHKModalFlagKeyBase = KvStorageKeys.finishAppleHealthModalBase
     /// Local storage flag indicating the *Out of Sync* Apple Health prompt has already been shown on this device.
     private let outOfSyncHKModalFlagKeyBase = KvStorageKeys.outOfSyncAppleHealthModalBase
+    /// Local storage flag indicating we're waiting for permissions to be restored after out-of-sync.
+    private let waitingForHKPermissionsRestoredBase = KvStorageKeys.waitingForHKPermissionsRestoredBase
     
     // MARK: - Initialization
     
@@ -407,6 +409,45 @@ public final class HealthKitService: HealthKitServiceProtocol {
         }
     }
     
+    // MARK: - Out of Sync Permission Restoration Tracking
+    
+    /// Sets a flag indicating we're waiting for permissions to be restored after out-of-sync.
+    /// Called when user taps "OPEN APPLE HEALTH" from the out-of-sync modal.
+    public func setWaitingForPermissionsRestored() {
+        let accountId = accountService.activeAccount?.accountId
+        let scopedKey = KvStorageKeys.scopedHealthKitModalKey(waitingForHKPermissionsRestoredBase, accountId: accountId)
+        kvStore.setValue(true, forKey: scopedKey)
+    }
+    
+    /// Clears the flag indicating we're waiting for permissions to be restored.
+    public func clearWaitingForPermissionsRestored() {
+        let accountId = accountService.activeAccount?.accountId
+        let scopedKey = KvStorageKeys.scopedHealthKitModalKey(waitingForHKPermissionsRestoredBase, accountId: accountId)
+        kvStore.clearValue(forKey: scopedKey)
+    }
+    
+    /// Checks if permissions were restored after being out of sync.
+    /// Returns `true` if we were waiting for permissions and they are now restored.
+    /// This should be called on app launch to show the success toast.
+    public func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool {
+        let accountId = accountService.activeAccount?.accountId
+        let scopedKey = KvStorageKeys.scopedHealthKitModalKey(waitingForHKPermissionsRestoredBase, accountId: accountId)
+        
+        // Check if we were waiting for permissions to be restored
+        guard (kvStore.getValue(forKey: scopedKey) as? Bool) == true else {
+            return false
+        }
+        
+        // Check if permissions are now restored (at least one permission granted)
+        let approvedPermissions = getApprovedPermissionList()
+        if !approvedPermissions.isEmpty {
+            // Permissions restored - clear the flag and return true
+            kvStore.clearValue(forKey: scopedKey)
+            return true
+        }
+        
+        return false
+    }
 
 }
 
