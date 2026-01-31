@@ -10,11 +10,13 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.intervalCount
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.CartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.core.cartesian.layer.CartesianLayerPadding
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import java.util.Calendar
 
@@ -32,7 +34,12 @@ fun rememberGraphChart(
   val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
   val markerIndex = state.markerIndex
   val timeStamps = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted()
-  val intervalCount = if (segment != GraphSegment.TOTAL) segment.intervalCount() else {
+  // Visible labels count per segment (TOTAL uses dynamic range)
+  val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
+    remember(segment) {
+      segment.visibleLabelsCount()
+    }
+  } else {
     remember(state.minTarget, state.maxTarget) {
       getIntervalCount(
         startTimeStamp = state.minTarget ?: Calendar.getInstance().timeInMillis,
@@ -60,12 +67,13 @@ fun rememberGraphChart(
     handleIntent = handleIntent,
   )
 
+  val (visibleStartXStep, visibleEndXStep) = GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
   val primaryChart =
     rememberCartesianChart(
       primaryLayer,
       secondaryLayer,
       topAxis = topAxis(),
-      startAxis = startAxis(segment),
+      startAxis = startAxis(segment, state.isSingleWindow),
       endAxis = endAxis(yStep = state.primaryYStep, isEmptyGraph = state.isEmptyGraph, markerDecoration = goalMarker),
       bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
       marker = emptyMarker(),
@@ -74,17 +82,22 @@ fun rememberGraphChart(
       } else {
         null
       },
-      visibleLabelsCount = intervalCount,
+      visibleLabelsCount = visibleLabelsCount,
       getXStep = { GraphUtil.calculateXStep(segment) },
+      layerPadding = {
+        CartesianLayerPadding(
+          visibleStartPaddingXStep = visibleStartXStep,
+          visibleEndPaddingXStep = visibleEndXStep,
+        )
+      },
       onChartClick = onChartClick,
     )
   return primaryChart
 }
 
 fun getIntervalCount(startTimeStamp: Long, endTimeStamp: Long): Double {
-  val intervalCount = GraphUtil.getTotalMonthsBetweenYears(
+  return GraphUtil.getTotalMonthsBetweenYears(
     startTimeStamp,
     endTimeStamp,
-  ).toDouble()
-  return intervalCount
+  ).toDouble().coerceAtLeast(1.0)
 }

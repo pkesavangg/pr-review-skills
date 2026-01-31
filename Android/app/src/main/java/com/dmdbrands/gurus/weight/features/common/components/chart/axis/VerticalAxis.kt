@@ -26,9 +26,9 @@ import kotlin.math.roundToInt
 import android.graphics.Typeface
 
 @Composable
-fun startAxis(segment: GraphSegment) = VerticalAxis.rememberStart(
+fun startAxis(segment: GraphSegment, isSingleWindow: Boolean) = VerticalAxis.rememberStart(
   label = null,
-  size = if (segment == GraphSegment.TOTAL) BaseAxis.Size.fixed(8.dp) else BaseAxis.Size.scroll(
+  size = if (segment == GraphSegment.TOTAL || isSingleWindow) BaseAxis.Size.fixed(8.dp) else BaseAxis.Size.scroll(
     8.dp,
     isLabelsScrollable = true,
   ),

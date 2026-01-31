@@ -53,7 +53,7 @@ internal fun rememberDefaultMarker(
     fill = fill(MeTheme.colorScheme.textBody),
     thickness = 1.dp,
   )
-  val pointSize = if (segment == GraphSegment.TOTAL) 14f else 16f
+  val pointSize = if (segment == GraphSegment.TOTAL) 12f else 16f
 
 
   return rememberDefaultCartesianMarker(

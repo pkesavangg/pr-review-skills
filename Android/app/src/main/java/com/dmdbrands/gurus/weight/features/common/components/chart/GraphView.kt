@@ -8,6 +8,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -25,6 +26,7 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -65,18 +67,13 @@ fun GraphView(
   val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  // Apply padding to initial scroll position to ensure padding area is visible
-  // This matches the padding applied in snap functions
-  val padding = GraphSnapHelper.getPaddingForSegment(segment).toDouble()
-  val initialStartXWithPadding = initialStartX - padding
-  val initialScroll = remember(initialStartXWithPadding) {
-    Scroll.Absolute.x(initialStartXWithPadding)
+  val initialScroll = remember(initialStartX) {
+    Scroll.Absolute.x(initialStartX)
   }
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
       if (isDrag) {
-        val snappedPosition = GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
-        snappedPosition
+        GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
       } else {
         GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
       }
@@ -84,7 +81,7 @@ fun GraphView(
   }
 
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL,
+    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
     initialScroll = initialScroll,
     snapBehaviorConfig = SnapBehaviorConfig(
       snapToLabelFunction = snapToLabelFunction,
@@ -172,7 +169,27 @@ fun GraphView(
         if (outOfBoundaryCondition) {
           markerIndex = null
         } else {
-          val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+          val min = GraphUtil.getStartRange(segment, state.minTarget)?.toDouble()
+          val max = GraphUtil.getEndRange(segment, state.maxTarget)?.toDouble()
+
+          if (min != null && max != null)
+            Log.i(
+              "GraphView",
+              " min : ${DateTimeConverter.timestampToIso(min.toLong())} max : $" +
+                "${DateTimeConverter.timestampToIso(max.toLong())}",
+            )
+          val visibleLabels =
+            scrollState
+              .getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+              .filter { label ->
+
+                if (min != null && max != null) {
+                  label in min..max
+                } else {
+                  true // keep all when no bounds
+                }
+              }
+
           val targetMarkerIndex =
             getTargetPoints(
               visibleLabels,
@@ -193,6 +210,11 @@ fun GraphView(
             else
               null
           }
+          if (markerIndex != null)
+            Log.i(
+              "GraphView",
+              "targetMarkerIndex : ${DateTimeConverter.timestampToIso(markerIndex.toLong())}",
+            )
         }
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       }
@@ -207,11 +229,16 @@ fun GraphView(
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     onScrollStopped = { range ->
       if (range != null) {
-        val min = range.visibleXRange.start
-        val max = range.visibleXRange.endInclusive
-        onScrollUpdate(min.toLong(), max.toLong())
+        val min = range.visibleXRange.start.toLong()
+        val max = range.visibleXRange.endInclusive.toLong()
+        val relativeMin = GraphUtil.getRelativeStart(segment, min)
+        Log.i(
+          "GraphView",
+          "onScrollStopped : ${DateTimeConverter.timestampToIso(relativeMin)} , ${DateTimeConverter.timestampToIso(max)}",
+        )
+        onScrollUpdate(relativeMin, max)
         if (!state.isEmptyGraph)
-          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
+          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
       }
     },
   )
