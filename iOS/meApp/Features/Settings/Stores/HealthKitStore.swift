@@ -129,14 +129,14 @@ final class HealthKitStore: ObservableObject {
                     // According to WG: 5 permissions granted ⇒ show *Permissions Allowed* flow,
                     // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
                     // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
-                    switch permissionCount {
-                    case wgTotalPermissionsCount...:
-                        activeState = .permissionsAllowed
-                    case 1..<wgTotalPermissionsCount:
-                        activeState = .integrationComplete
-                    default:
-                        activeState = .integrationFailed
-                    }
+                       switch permissionCount {
+                case Self.wgTotalPermissionsCount...:
+                    activeState = .permissionsAllowed
+                case 1..<Self.wgTotalPermissionsCount:
+                    activeState = .integrationComplete
+                default:
+                    activeState = .integrationFailed
+                }
                 } else {
                     // User has seen the connect screen before but no integration record exists
                     // Check permissions to determine the appropriate state
@@ -394,7 +394,7 @@ final class HealthKitStore: ObservableObject {
         isOutOfSync = await healthKitService.isHKOutOfSync()
         
         // If permissions are now in sync, show a toast notification
-        if permissionsGranted >= wgTotalPermissionsCount && !isOutOfSync {
+        if permissionsGranted >= Self.wgTotalPermissionsCount && !isOutOfSync {
             notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
         }
     }
