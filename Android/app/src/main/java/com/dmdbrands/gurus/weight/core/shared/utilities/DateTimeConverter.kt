@@ -225,9 +225,19 @@ object DateTimeConverter {
     return calendar.timeInMillis
   }
 
-  fun getDayStart(referenceMillis: Long): Long {
+  /**
+   * Gets the relative day start: if the reference time is 12 hours (noon) or later,
+   * returns the start of the next day; otherwise returns the start of the same day.
+   *
+   * @param referenceMillis Timestamp in milliseconds
+   * @return Start of the relative day in milliseconds
+   */
+  fun getRelativeDayStart(referenceMillis: Long): Long {
     val calendar = Calendar.getInstance()
     calendar.timeInMillis = referenceMillis
+    if (calendar.get(Calendar.HOUR_OF_DAY) >= 12) {
+      calendar.add(Calendar.DAY_OF_YEAR, 1)
+    }
     calendar.set(Calendar.HOUR_OF_DAY, 0)
     calendar.set(Calendar.MINUTE, 0)
     calendar.set(Calendar.SECOND, 0)

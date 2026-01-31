@@ -231,13 +231,14 @@ fun GraphView(
       if (range != null) {
         val min = range.visibleXRange.start.toLong()
         val max = range.visibleXRange.endInclusive.toLong()
+        val relativeMin = DateTimeConverter.getRelativeDayStart(min)
         Log.i(
           "GraphView",
-          "onScrollStopped : ${DateTimeConverter.timestampToIso(min)} , ${DateTimeConverter.timestampToIso(max)}",
+          "onScrollStopped : ${DateTimeConverter.timestampToIso(relativeMin)} , ${DateTimeConverter.timestampToIso(max)}",
         )
-        onScrollUpdate(min, max)
+        onScrollUpdate(relativeMin, max)
         if (!state.isEmptyGraph)
-          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
+          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
       }
     },
   )

@@ -472,7 +472,7 @@ class GraphViewModel @AssistedInject constructor(
    * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
    */
   private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
-    val min = DateTimeConverter.getDayStart(min)
+    val min = DateTimeConverter.getRelativeDayStart(min)
     val max = DateTimeConverter.getDayEnd(max)
     val currentState = _state.value
     // Cancel any existing debounce job
