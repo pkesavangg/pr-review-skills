@@ -136,33 +136,19 @@ struct GraphView: View {
                     break // Total view is not scrollable
                 }
 
-                // NOTE: Y-axis cache is already set atomically in updateSelectedPeriod()
-                // DO NOT call updateYAxisCache() here - it would recalculate with potentially
-                // different visible operations and overwrite the correct atomic domain
+                // Recalculate and cache Y-axis based on the new visible region
+                dashboardStore.updateYAxisCache()
             }
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
             dashboardStore.handleSettingsChange()
         }
-        // NOTE: Removed .animation on selectedPeriod - it caused intermediate renders
-        // during transitions where chart data and Y-axis domain were mismatched,
-        // leading to out-of-bounds rendering issues.
+        .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
 
     // MARK: - Chart View
     private var chartView: some View {
-        // CRITICAL: Set dashboardStore on ALL ViewModels SYNCHRONOUSLY before returning any view.
-        // This runs during body evaluation, BEFORE any child view renders.
-        // Ensures yAxisDomain computed property can read from graphManager.state.cachedYAxisDomain
-        // (the source of truth) instead of falling back to stale _cachedYAxisDomain values.
-        let _ = {
-            weekSectionViewModel.dashboardStore = dashboardStore
-            monthSectionViewModel.dashboardStore = dashboardStore
-            yearSectionViewModel.dashboardStore = dashboardStore
-            totalSectionViewModel.dashboardStore = dashboardStore
-        }()
-
         return HStack(spacing: 0) {
             // Use switch case for different time periods (total, year, month, week)
             switch dashboardStore.state.graph.selectedPeriod {

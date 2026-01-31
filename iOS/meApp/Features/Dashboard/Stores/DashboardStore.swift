@@ -1898,76 +1898,34 @@ class DashboardStore: ObservableObject {
     ///   - period: The new time period to switch to
     ///   - anchorDate: Optional anchor date to center the viewport around (preserves user's temporal focus)
     func updateSelectedPeriod(_ period: TimePeriod, anchorDate: Date? = nil) {
-        // PHASE 1: Preparation - Reset state and clear caches
+        // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
-        graphManager.endScrollingImmediately()
+
+        // Clear all caches when period changes
         clearAllCaches()
-        graphManager.forceVisibleOperationsRecalculation()
 
-        // PHASE 2: Get NEW period's data directly from dataManager
+        // End any scrolling immediately so new period computes fresh domain/x-axis
+        graphManager.endScrollingImmediately()
+
+        // IMPORTANT: Get the correct operations for the NEW period directly from dataManager
         let operationsForNewPeriod = dataManager.getContinuousOperations(for: period)
-        let cachedBounds = dataManager.getDateBounds(for: period)
 
-        // PHASE 3: Calculate scroll position for NEW period
+        // Calculate optimal scroll position based on X-axis computation logic for segment change
+        // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
+        // Use cached bounds for O(1) lookup
+        // If anchorDate is provided, center the viewport around it for temporal context preservation
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,
             from: operationsForNewPeriod,
             anchorDate: anchorDate,
-            showingLatest: anchorDate == nil,
-            cachedBounds: cachedBounds
+            showingLatest: anchorDate == nil, // Only show latest if no anchor
+            cachedBounds: dataManager.getDateBounds(for: period)
         )
+        graphManager.updateScrollPosition(to: optimalScrollPosition)
+        // Delegate period update to graph manager (this will clear chart data cache)
+        graphManager.updateSelectedPeriod(period)
 
-        // PHASE 4: Calculate Y-axis for NEW period BEFORE updating state
-        // This ensures the Y-axis domain is calculated with the correct data
-        let yAxisOperations: [BathScaleWeightSummary]
-        if period == .total {
-            // Total period uses all operations
-            yAxisOperations = operationsForNewPeriod
-        } else {
-            // Scrollable periods: calculate visible operations for the new viewport
-            let domainLength = graphManager.visibleDomainLength(for: period)
-            let leftEdge = optimalScrollPosition.addingTimeInterval(-domainLength / 2)
-            let rightEdge = optimalScrollPosition.addingTimeInterval(domainLength / 2)
-
-            // Get visible operations for the new viewport
-            let visible = operationsForNewPeriod.filter { op in
-                op.date >= leftEdge && op.date <= rightEdge
-            }
-
-            // Add bracketing points for complete line coverage
-            let beforeLeft = operationsForNewPeriod.last { $0.date < leftEdge }
-            let afterRight = operationsForNewPeriod.first { $0.date > rightEdge }
-
-            var combined = visible
-            if let before = beforeLeft, !combined.contains(where: { $0.entryTimestamp == before.entryTimestamp }) {
-                combined.append(before)
-            }
-            if let after = afterRight, !combined.contains(where: { $0.entryTimestamp == after.entryTimestamp }) {
-                combined.append(after)
-            }
-
-            yAxisOperations = combined.isEmpty ? operationsForNewPeriod : combined
-        }
-
-        let yAxisScale = graphManager.getYAxisScale(
-            from: yAxisOperations,
-            goalWeight: goalWeightForDisplay,
-            isWeightlessMode: isWeightlessModeEnabled,
-            anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: state.graph.chartHeight
-        )
-
-        // PHASE 5: ATOMIC UPDATE - Period, scroll position, and Y-axis in ONE state mutation
-        // This prevents SwiftUI from rendering between state changes (race condition fix)
-        graphManager.updateSelectedPeriodWithYAxis(
-            period,
-            scrollPosition: optimalScrollPosition,
-            yAxisDomain: yAxisScale.domain,
-            yAxisTicks: yAxisScale.ticks
-        )
-
-        // PHASE 6: Finalize
+        self.forceCompleteRecalculationAfterScrollPosition()
         state.ui.hasInitializedChart = true
 
         // For TOTAL period, immediately compute and show visible-window averages
