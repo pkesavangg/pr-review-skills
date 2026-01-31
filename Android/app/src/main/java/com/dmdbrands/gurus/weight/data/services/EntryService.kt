@@ -147,12 +147,13 @@ constructor(
    * This function monitors the lastUpdated flow and checks if the user has enough entries
    * to display the goal card. Also refreshes entry data to trigger progress recalculation.
    */
-  override fun initializeGoalCardMonitoring() {
+  override fun initializeGoalCardMonitoring(accountId: String) {
     repositoryScope.launch {
       lastUpdated.collect { lastUpdatedValue ->
         try {
           // This collector only handles goal card checking
-          val entries = entryRepository.getEntriesByAccount(accountId ?: "", false)
+          val entries = entryRepository.getEntriesByAccount(accountId, false)
+          AppLog.d("EntryService", "User has  scale entries (>= 3), checking goal card ${entries.size} - accountid - $accountId")
           if (entries.size >= 3) {
             goalService.checkGoalCard()
             AppLog.d("EntryService", "User has  scale entries (>= 3), checking goal card")
@@ -278,7 +279,7 @@ constructor(
    * Fetches latest entry, last 7 and 30 days entries, and updates progress.
    * @param accountId The account ID to update data for.
    */
-  override suspend fun updateAccountId(accountId: String?) {
+  override suspend fun updateAllData(accountId: String?) {
     if (accountId == null) {
       return
     }
@@ -598,7 +599,7 @@ constructor(
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
       _lastUpdated.value = System.currentTimeMillis()
-      
+
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
       if (lastValidOperation != null && lastValidOperation is ScaleEntry) {

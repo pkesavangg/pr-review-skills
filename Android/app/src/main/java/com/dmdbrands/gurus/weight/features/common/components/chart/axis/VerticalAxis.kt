@@ -55,14 +55,17 @@ fun endAxis(
     label = "animatedStep",
   ) else null
 
+  // Vico requires step > 0; pass actual Double step (yStep.roundToInt() would be 0 for small steps e.g. 0.2)
+  val stepForPlacer = (yStep?.takeIf { it > 0 } ?: 1.0)
+
   return VerticalAxis.rememberEnd(
     valueFormatter = CartesianValueFormatter { _, value, _ ->
       if (isEmptyGraph && markerDecoration == null) " " else
         value.roundToInt().toString()
     },
-    itemPlacer = remember(animatedStep?.value) {
+    itemPlacer = remember(stepForPlacer) {
       VerticalAxis.ItemPlacer.step(
-        { animatedStep?.value?.toDouble() },
+        { stepForPlacer },
       )
     },
     size = BaseAxis.Size.scroll(50.dp),

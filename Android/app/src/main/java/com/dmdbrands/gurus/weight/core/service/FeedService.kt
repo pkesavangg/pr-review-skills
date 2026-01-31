@@ -103,23 +103,11 @@ class FeedService @Inject constructor(
 
       ggIAMService.setAccountId(accountService.getCurrentAccount()?.id ?: "")
       val backendItems = feedRepository.fetchFeedItems()
-
-      // Merge backend items with local storage, preserving read/unread status
-      val mergedItems = mergeFeedItemsWithLocalStorage(backendItems)
-
-      // Update local storage
-      _localFeedItems.value = mergedItems
-
       // Sync with IAM service
-      ggIAMService.setFeedItems(mergedItems)
-
+      ggIAMService.setFeedItems(backendItems)
       // Emit updated items
-      _feedsChanged.emit(mergedItems)
-
-      // Set dynamic mock items if needed
-      setMockFeedItems()
+      _feedsChanged.emit(backendItems)
       updateNotificationBadge()
-      AppLog.i(TAG, "Successfully fetched and merged ${mergedItems.size} feed items")
     } catch (error: Exception) {
       AppLog.e(TAG, "Failed to fetch feed items", error.toString())
       // On error, use local items if available

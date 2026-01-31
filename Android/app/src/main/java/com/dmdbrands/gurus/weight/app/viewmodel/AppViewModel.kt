@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.app.viewmodel
 
-import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
-import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
@@ -31,7 +29,6 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
-import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
@@ -61,7 +58,6 @@ import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -91,9 +87,7 @@ constructor(
   private val deviceService: IDeviceService,
   private val ggPermissionService: GGPermissionService,
   private val ggDeviceService: GGDeviceService,
-  private val healthConnectService: IHealthConnectService,
   private val deviceInfoService: IDeviceInfoService,
-  private val workManager: WorkManager,
   private val bluetoothPreferencesService: BluetoothPreferencesService,
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
@@ -103,10 +97,6 @@ constructor(
 ) {
   companion object {
     private const val TAG = "AppViewModel"
-
-    // Delay constants for Health Connect permission check
-    private const val INITIAL_DELAY = 1L // 1 second
-    private const val DELAYED_ALERT = 3000L // 3 seconds
   }
 
   override fun provideInitialState(): AppState = AppState()
@@ -125,15 +115,14 @@ constructor(
   private var latestPairedScales: List<Device> = emptyList()
 
   init {
+
     // Initialize and maintain currentAccountId globally
     viewModelScope.launch {
       accountService.activeAccountFlow.collect {
         currentAccountId = it?.id
       }
     }
-  }
 
-  init {
     viewModelScope.launch {
       try {
         logManager.cleanupOldLogs(5)
@@ -150,7 +139,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
-      initialize()
+      initEvents()
     }
   }
 
@@ -174,24 +163,6 @@ constructor(
     }
   }
 
-  private fun initialize() {
-    viewModelScope.launch {
-      workManager.getWorkInfosByTagLiveData("ionic_migration").asFlow().collect { workInfos ->
-        if (workInfos.isEmpty()) {
-          val account = accountService.getCurrentAccount()
-          initLoadingData(account)
-          initEvents()
-        } else {
-          if (workInfos.all { it.state.isFinished }) {
-            val account = accountService.getCurrentAccount()
-            initLoadingData(account)
-            initEvents()
-          }
-        }
-      }
-    }
-  }
-
   override fun handleIntent(intent: AppIntent) {
     when (intent) {
       is AppIntent.OnPopUpConnect -> onPopUpConnect()
@@ -201,31 +172,6 @@ constructor(
       else -> {}
     }
     super.handleIntent(intent)
-  }
-
-  /**
-   * Disconnects/skips a device and prevents showing popup for 30 seconds.
-   * Similar to Angular's disconnectDevice method.
-   */
-  fun disconnectDevice(broadcastId: String) {
-    viewModelScope.launch {
-      // Add to skipDevices if not already present
-      bluetoothPreferencesService.addSkipDevice(broadcastId)
-      // Set canShowScaleDiscoveredModal to false for 30 seconds
-      canShowScaleDiscoveredModal = false
-      delay(30 * 1000)
-      canShowScaleDiscoveredModal = true
-      // Skip the device in the SDK
-      ggDeviceService.skipDevice(broadcastId, considerForSession = true)
-    }
-  }
-
-  /**
-   * Closes the scale discovered popup.
-   * Similar to Angular's closeScaleDiscoveredPopup functionality.
-   */
-  fun closeScaleDiscoveredPopup() {
-    onPopUpDismiss()
   }
 
   /**
@@ -291,39 +237,35 @@ constructor(
     AppLog.d(TAG, "Closed scale discovered popup ${state.value.isScaleDiscovered}")
   }
 
-  private fun syncScales() {
-    syncScaleJob = viewModelScope.launch {
-      deviceService.getGGBTDevices().collect {
-        ggDeviceService.syncDevices(it)
-      }
-    }
-  }
-
   private fun initEvents() {
     viewModelScope.launch {
       appNavigationService.authEvent.collect { authState ->
         when (authState) {
           is AuthState.LoggedIn -> {
-            // handle login event
             stopScan()
-            // Reset scale discovered state when logging in
             resetScaleDiscoveredState()
-            initLoadingData(authState.account, true)
+            startObserversOnly(authState.account)
+          }
+
+          is AuthState.LoggedInFromLoading -> {
+            // LoadingScreenViewModel already did loadData + autoLogin; only start observers (feed, IAM, permissions, device callbacks, etc.)
+            dashboardService.setSelectedKey(null)
           }
 
           is AuthState.LoggedOut -> {
+            stopScan()
             if (authState.isActiveAccount) {
               routeToLandingOrApp()
               dialogQueueService.clear()
             }
-            stopScan()
           }
 
           is AuthState.AccountDeleted -> {
             if (authState.isActiveAccount) {
+              stopScan()
+              dashboardService.setSelectedKey(null)
               routeToLandingOrApp()
             }
-            stopScan()
           }
 
           is AuthState.UnauthorizedLogout -> {
@@ -341,9 +283,10 @@ constructor(
 
           is AuthState.AccountAdded -> {
             stopScan()
-            // Reset scale discovered state when adding account
+            // Reset scale discovered state when adding account; LoadingScreenViewModel does single load
             resetScaleDiscoveredState()
-            initLoadingData(authState.account)
+            dashboardService.setSelectedKey(null)
+            startObserversOnly(authState.account)
           }
 
           is AuthState.AccountSwitched -> {
@@ -361,10 +304,8 @@ constructor(
             }
             stopScan()
             dashboardService.setSelectedKey(null)
-            // Reset scale discovered state when switching accounts
+            // Reset scale discovered state when switching accounts; LoadingScreenViewModel does single load
             resetScaleDiscoveredState()
-            // Pass isAccountSwitch=true to use more lenient network failure handling
-            initLoadingData(authState.account, isLoggedIn = true, isAccountSwitch = true)
           }
 
           is AuthState.ProfileUpdated -> {
@@ -413,46 +354,6 @@ constructor(
   }
 
   /**
-   * Checks the login status for all accounts using the split methods.
-   * @param isDuringAccountSwitch If true, uses more lenient network failure handling during account switch.
-   * @return true if login status check was successful
-   */
-  private suspend fun checkLoginStatus(isDuringAccountSwitch: Boolean = false): Boolean =
-    try {
-      val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount(isDuringAccountSwitch)
-      // Then check other logged-in accounts
-      val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts(isDuringAccountSwitch)
-
-      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}, isDuringAccountSwitch: $isDuringAccountSwitch")
-      isActiveAccountChecked && isLoggedInAccountsChecked
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error checking login status", e)
-      // During account switch, don't fail on exceptions - check local validity instead
-      if (isDuringAccountSwitch) {
-        AppLog.d(TAG, "During account switch - checking local account validity after exception")
-        checkLocalAccountValidity()
-      } else {
-        false
-      }
-    }
-
-  /**
-   * Checks if the active account is valid locally (exists and not expired).
-   * Used as fallback during account switch when network checks fail.
-   * @return true if active account exists and is not expired
-   */
-  private suspend fun checkLocalAccountValidity(): Boolean {
-    val activeAccount = accountService.getCurrentAccount()
-    return if (activeAccount != null && !activeAccount.isExpired) {
-      AppLog.d(TAG, "Local account validity check passed for account: ${activeAccount.id}")
-      true
-    } else {
-      AppLog.d(TAG, "Local account validity check failed - account is null or expired")
-      false
-    }
-  }
-
-  /**
    * Routes to either the landing page or the app based on login status.
    * @param isLoggedIn true if user is logged in, false otherwise
    */
@@ -472,68 +373,34 @@ constructor(
   }
 
   /**
-   * Initializes loading data for the given account.
-   * @param account The account to load data for
-   * @param isLoggedIn Whether this is a fresh login (triggers device info update)
-   * @param isAccountSwitch Whether this is called during account switch (uses more lenient network handling)
+   * Starts long-lived observers only (no account setup or navigation).
+   * Called when [AuthState.LoggedInFromLoading] is received; LoadingScreenViewModel already did loadData + autoLogin.
    */
-  private suspend fun initLoadingData(
-    account: Account?,
-    isLoggedIn: Boolean = false,
-    isAccountSwitch: Boolean = false,
-  ) {
-    try {
-      initialized = false
-      var isLoginStatusChecked = checkLoginStatus(isDuringAccountSwitch = isAccountSwitch)
-      
-      // During account switch, fall back to local validity check if network check failed
-      if (!isLoginStatusChecked && isAccountSwitch && account != null) {
-        val isLocallyValid = checkLocalAccountValidity()
-        if (isLocallyValid) {
-          AppLog.d(TAG, "Account switch - account is locally valid, proceeding despite network check failure")
-          isLoginStatusChecked = true
-        }
-      }
-      
-      if (account != null && isLoginStatusChecked) {
+  private fun startObserversOnly(account: Account) {
+    viewModelScope.launch {
+      try {
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
         syncScaleJob?.cancel()
         pairedScalesSubscribeJob?.cancel()
-        accountService.subscribeAccount()
-        entryService.updateAccountId(account.id)
-        dashboardService.setAccountId(account.id)
-        deviceService.setAccountId(account.id)
-        if (isLoggedIn) {
-          deviceInfoService.updateDeviceInfo()
-        }
-        navigationService.autoLogin()
-        entryService.initializeGoalCardMonitoring()
-        // Check for IAM feed modal trigger after fetching feed items
-        feedService.fetchFeedItems()
-        initialiseIAMDialogListener()
-        updateUnRead()
+        deviceInfoService.updateDeviceInfo()
         subscribePermissions()
         subscribeDeviceCallback()
         subscribePairedScales()
-        syncScales()
-      } else {
-        routeToLandingOrApp()
+        entryService.initializeGoalCardMonitoring(account.id)
+        feedService.fetchFeedItems()
+        initialiseIAMDialogListener()
+        updateUnRead()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "startObserversOnly failed", e)
       }
-    } catch (e: Exception) {
-      // During account switch, check local validity before routing to landing
-      if (isAccountSwitch && account != null && checkLocalAccountValidity()) {
-        AppLog.d(TAG, "Account switch exception - account is locally valid, not routing to landing")
-        return
-      }
-      routeToLandingOrApp()
-      AppLog.e(TAG, "Load data failed", e)
     }
   }
 
   private fun subscribePermissions() {
     startScan()
     permissionSubscribeJob = viewModelScope.launch {
+      AppLog.d("AppViewModel", "subscribePermissions launched")
       ggPermissionService.permissionCallBackFlow.collect { permissions ->
         if (permissions.isNotEmpty()) {
           if (AppPermissionsHelper.checkScanPermissions(permissions)) {
@@ -575,7 +442,6 @@ constructor(
         }
       }
     }
-    checkHealthConnectPermissionWithDelay()
   }
 
   private fun subscribeDeviceCallback() {
@@ -949,22 +815,6 @@ constructor(
     }
   }
 
-  /**
-   * Checks Health Connect permission with appropriate delay based on whether permission alert was shown.
-   */
-  private fun checkHealthConnectPermissionWithDelay() {
-    viewModelScope.launch {
-      try {
-        val delayTime = if (isPermissionAlertShown) DELAYED_ALERT else INITIAL_DELAY
-        delay(delayTime)
-        healthConnectService.checkHealthConnectPermissionDisabled()
-        AppLog.d(TAG, "Health Connect permission check completed after ${delayTime}ms delay")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to check Health Connect permission", e)
-      }
-    }
-  }
-
   private fun startScan() {
     viewModelScope.launch {
       accountService.activeAccountFlow.map {
@@ -1069,7 +919,7 @@ constructor(
     iamDialogListenerJob?.cancel()
     iamDialogListenerJob = viewModelScope.launch {
       try {
-        ggInAppMessagingService.dialogEvents.collectLatest { event ->
+        ggInAppMessagingService.dialogEvents.collect { event ->
           handleIAMDialogEvent(event)
         }
       } catch (e: Exception) {

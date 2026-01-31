@@ -1,13 +1,13 @@
 package com.dmdbrands.gurus.weight.features.debugMenu.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
@@ -316,8 +316,8 @@ class DebugMenuViewModel @Inject constructor(
                     AppLog.i(tag, "Restart alert confirmed, executing app exit callback")
                     viewModelScope.launch {
                         try {
+                            navigationService.emitAuthEvent(AuthState.LoggedOut(true))
                             dialogQueueService.dismissCurrent()
-                            navigationService.replaceStack(AppRoute.Auth.Landing)
                             onDismiss.invoke()
                             AppLog.i(tag, "App exit callback executed successfully")
                         } catch (e: Exception) {
