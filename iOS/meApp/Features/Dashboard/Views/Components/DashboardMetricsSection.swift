@@ -133,13 +133,13 @@ struct DashboardMetricsSection: View {
     
     private func skeletonProgressMetrics(hasContentAbove: Bool) -> some View {
         let columns = DevicePlatform.isTablet ? 4 : 2
-        let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? 32 : 16
+        let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? .spacingLG : .spacingSM
         let extraTopPadding: CGFloat = store.state.ui.isGoalCardRemoved ? 0 : .spacingXS
 
         return VStack(spacing: .spacingLG) {
             SkeletonGoalCardView()
             LazyVGrid(
-                columns: Array(repeating: .init(.flexible(), spacing: 16), count: columns),
+                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columns),
                 spacing: .spacingLG
             ) {
                 ForEach(0..<6, id: \.self) { _ in

@@ -3055,8 +3055,8 @@ class DashboardStore: ObservableObject {
             }
         } else if state.graph.selectedXValue != nil {
             // Interpolated position selected (no exact data point) - show placeholders
+            // Don't mark as loaded when showing placeholders - they represent absence of actual values
             metricsManager.setPlaceholdersForAllMetrics()
-            state.ui.hasLoadedMetricValues = true
         } else {
             // No selection: compute visible-window averages for all metrics
             let ops = self.visibleOperations
@@ -3068,10 +3068,9 @@ class DashboardStore: ObservableObject {
             Task {
                 await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
                 await MainActor.run {
-                    // Only mark as loaded if we had operations to compute from
-                    if !ops.isEmpty {
-                        self.state.ui.hasLoadedMetricValues = true
-                    }
+                    // Mark as loaded even if there are no operations so skeleton loaders can hide
+                    // This prevents skeleton loaders from displaying indefinitely when there's no data
+                    self.state.ui.hasLoadedMetricValues = true
                 }
             }
         }
