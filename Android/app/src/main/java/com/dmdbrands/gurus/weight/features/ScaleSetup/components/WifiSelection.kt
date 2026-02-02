@@ -195,14 +195,14 @@ fun WifiItem(
           onClick = { onClick?.invoke() },
         ),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+      horizontalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
       if(isWifiIcon){
         AppIcon(
           id = AppIcons.Connection.Wifi,
           contentDescription = "Wifi",
-          modifier = Modifier.size(24.dp),
-          onClick = { onClick?.invoke()}
+          modifier = Modifier.size(32.dp),
+          onClick = { onClick?.invoke() },
         )
       }
 
@@ -218,8 +218,8 @@ fun WifiItem(
         AppIcon(
           id = AppIcons.Default.RightCaret,
           contentDescription = "Right caret",
-          modifier = modifier.size(spacing.sm),
-          onClick = { onClick?.invoke()}
+          modifier = modifier.size(24.dp),
+          onClick = { onClick?.invoke() },
         )
       }
     }
