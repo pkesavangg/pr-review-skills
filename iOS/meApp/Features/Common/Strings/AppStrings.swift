@@ -248,7 +248,7 @@ struct HKIntegrationModalStrings {
 /// Constants for form validation error messages
 struct FormErrorMessages {
     static let required = "This field is required"
-    static let leaveBlank = "must not leave blank"
+    static let leaveBlank = "This field is required"
     static let email = "must use a valid email"
     static let emailMaxLength = "email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
@@ -258,7 +258,7 @@ struct FormErrorMessages {
     static let maxLength = { (length: Int) in "maximum value should be \(length)" }
     static let min = { (value: Int) in "value must be at least \(value)" }
     static let max = { (value: Int) in "value must not exceed \(value)" }
-    static let noWhiteSpace = "must not be left blank"
+    static let noWhiteSpace = "This field is required"
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
