@@ -21,15 +21,12 @@ struct ScaleStatusBanner: View {
                 .foregroundColor(theme.textBody)
             
             Spacer()
-                .padding(.horizontal, DevicePlatform.isTablet || DevicePlatform.isLargePhone ? .spacingXS : 0)
             
             Button(action: type.onTap) {
                 Text(type.actionTitle.uppercased())
                     .fontWeight(.bold)
                     .fontOpenSans(DevicePlatform.isMiniPhone ? .button2 : .button1)
                     .foregroundColor(theme.statusIconPrimary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(theme.backgroundPrimary)
