@@ -6,14 +6,20 @@ import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
 
+/**
+ * Service for handling BLE permission requests.
+ * Uses a dynamic getter for ggBluetooth to ensure it always uses the latest instance
+ * bound to the current Activity, preventing unregistered ActivityResultLauncher crashes.
+ */
 class GGPermissionService @Inject constructor(
-  ggBleService: GGBLEService,
+  private val ggBleService: GGBLEService,
 ) : GGScanService() {
-  override val ggBluetooth: GGBluetooth = ggBleService.ggBluetooth
-  override val deviceCallbackFlow: MutableStateFlow<GGScanResponse> =
-    ggBleService._deviceCallbackFlow
-  override val permissionCallBackFlow: MutableStateFlow<GGPermissionStatusMap> =
-    ggBleService._permissionCallbackFlow
+  override val ggBluetooth: GGBluetooth
+    get() = ggBleService.ggBluetooth
+  override val deviceCallbackFlow: MutableStateFlow<GGScanResponse>
+    get() = ggBleService._deviceCallbackFlow
+  override val permissionCallBackFlow: MutableStateFlow<GGPermissionStatusMap>
+    get() = ggBleService._permissionCallbackFlow
 
   /**
    * Requests a specific permission.
