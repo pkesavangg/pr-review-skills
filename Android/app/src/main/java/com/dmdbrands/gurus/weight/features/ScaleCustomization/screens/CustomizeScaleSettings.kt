@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -42,6 +44,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -53,6 +56,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.mainAxisViewportSize
+import sh.calvin.reorderable.rememberScroller
 
 @Composable
 fun CustomizeScaleSettings(
@@ -101,7 +106,7 @@ fun CustomizeScaleSettings(
       validators = listOf(
         FormValidations.required(),
         FormValidations.noWhiteSpace(),
-        FormValidations.maxLength(20,),
+        FormValidations.maxLength(20),
         FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
       ),
     )
@@ -327,19 +332,29 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
+        val lazyListState = rememberLazyListState()
+        val scroller = rememberScroller(
+          scrollableState = lazyListState,
+          pixelAmountProvider = { lazyListState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
+        )
 
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
         ) {
-          ScaleMetricsSettingScreen(
-            currentMetrics = scaleMetrics,
-            onMetricsChanged = { metrics ->
-              // Only update local state, don't update reducer state until save
-              updatedPreference = updatedPreference.copy(displayMetrics = metrics)
-              scaleMetrics = metrics
-            },
-          )
+          LazyColumn(modifier = modifier.fillMaxSize(), lazyListState) {
+            item {
+              ScaleMetricsSettingScreen(
+                currentMetrics = scaleMetrics,
+                parentScroller = scroller,
+                onMetricsChanged = { metrics ->
+                  // Only update local state, don't update reducer state until save
+                  updatedPreference = updatedPreference.copy(displayMetrics = metrics)
+                  scaleMetrics = metrics
+                },
+              )
+            }
+          }
         }
       }
 
