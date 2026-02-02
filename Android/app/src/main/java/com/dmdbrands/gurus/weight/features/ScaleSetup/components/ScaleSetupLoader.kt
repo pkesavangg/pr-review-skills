@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoaderConstants.FailedIndicatorOnlySpacerHeight
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoaderConstants.SetupGifImageHeight
+import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoaderConstants.SetupGifImageWidth
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupLoaderDefaults.getIcon
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupLoaderDefaults.getIndicationStatus
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LoaderIconType
@@ -26,7 +28,6 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.SetupLoaderStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
 import com.dmdbrands.gurus.weight.features.common.components.AppScaleImage
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.ConnectionIndicator
@@ -35,6 +36,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.SetupLoader
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -181,7 +183,7 @@ fun ScaleSetupLoader(
           if (isGifImage) {
             AppGifImage(
               id = setupImage,
-              modifier = Modifier.size(370.dp, 211.dp),
+              modifier = Modifier.size(SetupGifImageWidth, SetupGifImageHeight),
             )
           } else {
             Image(
@@ -232,7 +234,7 @@ fun ScaleSetupLoader(
             .padding(top = spacing.x2l),
         ) {
           if(isFailedWithIndicatorOnly) {
-            Spacer(modifier = Modifier.height(120.dp))
+            Spacer(modifier = Modifier.height(FailedIndicatorOnlySpacerHeight))
           }
           AppButton(
             label = primaryButtonText,
@@ -335,20 +337,20 @@ private fun PreviewScaleSetupLoaderWifiConnecting() {
 //   }
 // }
 //
-// @PreviewTheme
-// @Composable
-// private fun PreviewScaleSetupLoaderWithButtons() {
-//   MeAppTheme {
-//     ScaleSetupLoader(
-//       title = "Connecting to Scale",
-//       subtitle = "Please wait while we establish connection",
-//       connectionState = ConnectionState.Loading,
-//       showIndicationOnly = true,
-//       indicatorIcon = LoaderIconType.Measurement,
-//       primaryButtonText = "Try Again",
-//       primaryButtonClick = { },
-//       secondaryButtonText = "Support",
-//       secondaryButtonClick = { },
-//     )
-//   }
-// }
+@PreviewTheme
+@Composable
+private fun PreviewScaleSetupLoaderWithButtons() {
+  MeAppTheme {
+    ScaleSetupLoader(
+      title = "Connecting to Scale",
+      subtitle = "Please wait while we establish connection",
+      connectionState = ConnectionState.Failed.Error,
+      showIndicationOnly = true,
+      indicatorIcon = LoaderIconType.Measurement,
+      primaryButtonText = "Try Again",
+      primaryButtonClick = { },
+      secondaryButtonText = "Support",
+      secondaryButtonClick = { },
+    )
+  }
+}
