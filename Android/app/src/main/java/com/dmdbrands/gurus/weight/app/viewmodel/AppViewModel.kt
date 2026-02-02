@@ -248,6 +248,9 @@ constructor(
           }
 
           is AuthState.LoggedInFromLoading -> {
+            stopScan()
+            resetScaleDiscoveredState()
+            startObserversOnly(authState.account)
             // LoadingScreenViewModel already did loadData + autoLogin; only start observers (feed, IAM, permissions, device callbacks, etc.)
             dashboardService.setSelectedKey(null)
           }
