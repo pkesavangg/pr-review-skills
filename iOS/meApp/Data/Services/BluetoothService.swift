@@ -97,6 +97,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var lastProfileUpdateAccountId: String?
     private var isUpdatingR4Profile = false
     private var lastAccountId: String?
+    private var isSyncingPreferences = false  // Guard against concurrent preference syncs
 
     // MARK: - Dependencies
     private let accountService: AccountService
@@ -711,7 +712,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             ggDevice.preference = mapToGGPreference(deviceId: device.id, preference: preference)
-            let result = await ggBleSDK.updateAccount(ggDevice)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let result = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.updateAccount(ggDevice)
+            }
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -1198,12 +1202,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             await handleWifiStatusUpdate(scanData)
         case .DEVICE_INFO_UPDATE:
             await scaleService.updateConnectedDevices(device: scanData, isConnected: true)
-            let deviceDetails = data.data as! GGDeviceDetails
-            let deviceInfo = DeviceInfo(sdk: deviceDetails)
 
-            if let deviceDetails = data.data as? GGDeviceDetails {
-                await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
+            guard let deviceDetails = data.data as? GGDeviceDetails else {
+                logger.log(level: .error, tag: tag, message: "DEVICE_INFO_UPDATE: Failed to cast data to GGDeviceDetails")
+                return
             }
+            let deviceInfo = DeviceInfo(sdk: deviceDetails)
+            await updateWeightOnlyModeStatus(deviceDetails: deviceDetails, deviceInfo: deviceInfo)
 
             deviceInfoUpdatedSubject.send(deviceInfo)
             if !isWeightOnlyModeAlertDismissed {
@@ -1257,6 +1262,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     ///   - scale: The scale device to sync preferences for
     ///   - deviceInfo: The current device info from the scale
     private func syncPreferencesIfNeeded(for scale: Device, deviceInfo: DeviceInfo) async {
+        // Prevent concurrent sync operations - check and set atomically
+        guard !isSyncingPreferences else {
+            return
+        }
+        isSyncingPreferences = true
+        defer { isSyncingPreferences = false }
+
         guard scale.isConnected == true,
               let preference = fetchAttachedPreference(by: scale.id)
         else {
@@ -1281,13 +1293,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
             // Mark preference as synced to avoid re-syncing
             preference.isSynced = true
-            Task { @MainActor in
+            // Await the database update to ensure isSynced = true is persisted
+            // before isSyncingPreferences is reset (via defer)
+            await Task { @MainActor in
                 do {
                     try await scaleService.updateScalePreference(scale.id, preference)
                 } catch {
                     logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
                 }
-            }
+            }.value
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to sync preference settings to scale \(broadcastId): \(error)")
         }
