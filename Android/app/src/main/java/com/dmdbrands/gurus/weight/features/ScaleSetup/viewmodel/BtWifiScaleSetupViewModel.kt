@@ -1520,6 +1520,7 @@ constructor(
                 ConnectionState.Success,
               ),
             )
+            // wifi connection delay to ensure the connection state is shown properly on the UI.
             delay(connectionDelay)
             clearWifiPasswordForm()
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
