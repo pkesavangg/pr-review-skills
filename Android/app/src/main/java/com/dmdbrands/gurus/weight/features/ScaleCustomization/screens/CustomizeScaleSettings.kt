@@ -71,7 +71,8 @@ fun CustomizeScaleSettings(
   var scaleMetrics by remember { mutableStateOf(discoveredScale?.preferences?.displayMetrics ?: state.scaleMetrics) }
   var isAllBodyMetrics by remember { mutableStateOf(state.isAllBodyMetrics) }
   var isHeartRateOn by remember { mutableStateOf(state.isHeartRateOn) }
-  var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
+  // Initialize from state to preserve when returning from UPDATE_SETTINGS Try again
+  var visitedSteps by remember(state.visitedCustomizeSteps) { mutableStateOf(state.visitedCustomizeSteps) }
   val customizeSettings = remember(visitedSteps) {
     CustomizeSettingsList.map { it.copy(isVisited = visitedSteps.contains(it.step)) }
   }
@@ -293,6 +294,7 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.DASHBOARD_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.DASHBOARD_METRICS)
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout(
           title = CustomizeSettingsStrings.DashboardMetrics.Title,
           subtitle = CustomizeSettingsStrings.DashboardMetrics.Subtitle,
@@ -327,7 +329,7 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
-
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
@@ -345,7 +347,7 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_MODE -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_MODE)
-
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleMode.Title,
         ) {
@@ -369,6 +371,7 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_USERNAME -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_USERNAME)
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout {
           SetupForm(
             formControl = localUsernameFormControl,

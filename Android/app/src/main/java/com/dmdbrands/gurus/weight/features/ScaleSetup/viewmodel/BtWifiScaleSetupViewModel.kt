@@ -262,6 +262,25 @@ constructor(
   }
 
   /**
+   * Refreshes discoveredScale from device cache when re-entering CUSTOMIZE_SETTINGS after UPDATE_SETTINGS failure (e.g. Try again after BLE was off).
+   * If the SDK reconnected the scale when BLE was turned back on, the cache will have the updated device with CONNECTED status.
+   */
+  private fun refreshDiscoveredScaleFromCacheAndReconnectIfNeeded() {
+    val broadcastId = discoveredScale?.device?.broadcastId ?: return
+    val cachedDevice = ggDeviceService.deviceCache.value[broadcastId] as? Device ?: return
+    discoveredScale = cachedDevice
+    if (cachedDevice.connectionStatus == BLEStatus.CONNECTED) {
+      isScaleConnected = true
+    }
+    if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
+      AppLog.d(
+        TAG,
+        "Scale not connected after refresh from cache; user may need to ensure BLE is on before tapping Next",
+      )
+    }
+  }
+
+  /**
    * Initializes the username form with the active account name.
    * This ensures we have a valid username even in the connect popup flow.
    * Trims the name to 20 characters to prevent duplicate user errors.
@@ -433,6 +452,15 @@ constructor(
         if (!areRequiredPermissionsEnabled) {
           // Use comprehensive permission-based error handling
           handlePermissionBasedErrors()
+        } else {
+          val currentStep = state.value.currentStep
+          if (discoveredScale?.connectionStatus == BLEStatus.CONNECTED &&
+            (currentStep == BtWifiSetupStep.CUSTOMIZE_SETTINGS || currentStep == BtWifiSetupStep.UPDATE_SETTINGS)
+          ) {
+            viewModelScope.launch {
+              loadPluginData()
+            }
+          }
         }
       }.catch { e ->
         // Handle any errors in the combine flow gracefully
@@ -513,6 +541,10 @@ constructor(
             BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
               loadDashboardKeys()
               loadGoalProgress()
+              // Returning from UPDATE_SETTINGS (e.g. Try again after BLE was off): refresh scale from cache and reconnect if needed
+              if (previousStep == BtWifiSetupStep.UPDATE_SETTINGS) {
+                refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
+              }
             }
 
             BtWifiSetupStep.UPDATE_SETTINGS -> {
@@ -1409,6 +1441,12 @@ constructor(
           setGatheringNetworkFailed()
         }
 
+        BtWifiSetupStep.UPDATE_SETTINGS -> {
+          if (!isOnlyNetworkPermissionMissing) {
+            setUpdateSettingsError()
+          }
+        }
+
         BtWifiSetupStep.STEP_ON -> {
           // Don't show error for STEP_ON if only network/WiFi permission is missing
           // Network permission is not required for step-on measurement
@@ -1758,20 +1796,28 @@ constructor(
     }
   }
 
+  private fun setUpdateSettingsError() {
+    handleIntent(
+      BtWifiScaleSetupIntent.SetStepConnectionState(
+        BtWifiSetupStep.UPDATE_SETTINGS,
+        ConnectionState.Failed.Error,
+      ),
+    )
+    updateSettingsTimeoutJob?.cancel()
+    updateSettingsTimeoutJob = null
+  }
+
   private fun updateDevicePreferences(dashboardKeys: List<DashboardKey>? = null, preferences: Preferences? = null) {
     viewModelScope.launch {
       try {
-        val timeoutJob = viewModelScope.launch {
-          delay(2 * 60 * 1000) // 5 minutes timeout
+        updateSettingsTimeoutJob?.cancel()
+        updateSettingsTimeoutJob = viewModelScope.launch {
+          delay(operationTimeout)
           if (state.value.currentStep == BtWifiSetupStep.UPDATE_SETTINGS) {
             AppLog.w(TAG, "Update settings timeout reached")
-            handleIntent(
-              BtWifiScaleSetupIntent.SetStepConnectionState(
-                BtWifiSetupStep.UPDATE_SETTINGS,
-                ConnectionState.Failed.Error,
-              ),
-            )
+            setUpdateSettingsError()
           }
+          updateSettingsTimeoutJob = null
         }
         if (dashboardKeys != null) {
           dashboardService.updateVisibleKeys(
@@ -1796,7 +1842,8 @@ constructor(
             when (it) {
               GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
                 viewModelScope.launch {
-                  timeoutJob.cancel()
+                  updateSettingsTimeoutJob?.cancel()
+                  updateSettingsTimeoutJob = null
                   updateScalePreferences(
                     discoveredScale?.id ?: "",
                     discoveredScale?.preferences!!.toR4ScalePreferenceApiModel(),
@@ -1814,13 +1861,7 @@ constructor(
 
               else -> {
                 viewModelScope.launch {
-                  timeoutJob.cancel()
-                  handleIntent(
-                    BtWifiScaleSetupIntent.SetStepConnectionState(
-                      BtWifiSetupStep.UPDATE_SETTINGS,
-                      ConnectionState.Failed.Error,
-                    ),
-                  )
+                  setUpdateSettingsError()
                 }
               }
             }
@@ -1828,15 +1869,14 @@ constructor(
           if (!state.value.hasSavedSettings) {
             updateScalePreferences(discoveredScale!!.id, preferences.toR4ScalePreferenceApiModel())
           }
+        } else {
+          // No async device update (dashboard keys only); cancel timeout
+          updateSettingsTimeoutJob?.cancel()
+          updateSettingsTimeoutJob = null
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error during settings update", e)
-        handleIntent(
-          BtWifiScaleSetupIntent.SetStepConnectionState(
-            BtWifiSetupStep.UPDATE_SETTINGS,
-            ConnectionState.Failed.Error,
-          ),
-        )
+        setUpdateSettingsError()
       }
     }
   }
