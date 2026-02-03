@@ -278,7 +278,6 @@ final class ScaleModesViewModel: ObservableObject {
                     // Keep preference as unsynced so it can be synced when device reconnects
                     preference.isSynced = false
                     try await scaleService.updateScalePreference(scale.id, preference)
-                    notificationService.dismissLoader()
                     // Rethrow to trigger retry logic
                     throw error
                 }
