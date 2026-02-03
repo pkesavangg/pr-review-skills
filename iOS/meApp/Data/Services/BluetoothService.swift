@@ -1596,7 +1596,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
         }
     }
-
     private func convertGGEntry(_ ggEntry: GGEntry) -> Entry? {
         guard let activeAccount = activeAccount else {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
@@ -1639,7 +1638,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             pulse: ggEntry.pulse,
             skeletalMusclePercent: roundMetric(ggEntry.skeletalMusclePercent),
             subcutaneousFatPercent: roundMetric(ggEntry.subcutaneousFatPercent),
-            visceralFatLevel: ggEntry.visceralFatLevel,
+            visceralFatLevel: ggEntry.visceralFatLevel * 10, // Multiply by 10 to match storage format (scale sends 5, store as 50)
             boneMass: roundMetric(ggEntry.boneMass),
             impedance: roundMetric(ggEntry.impedance),
             unit: ggEntry.unit.lowercased()
