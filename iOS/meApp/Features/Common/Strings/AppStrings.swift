@@ -808,6 +808,7 @@ struct AppAssets {
     static let checkMarkCircle = "checkMarkCircle"
     static let circleOutline = "circleOutline"
     static let circleCheckFilled = "circleCheckFilled"
+    static let permissionDisabled = "permissionDisabled"
     static let wifi = "wifi"
     static let trash = "trash"
     static let filledCloseCircle = "filledCloseCircle"

@@ -17,6 +17,7 @@ struct UIState {
     var hasInitializedChart: Bool = false
     var hasLoadedDashboardConfig: Bool = false // Flag to track when body metrics config is loaded from API
     var hasLoadedProgressMetrics: Bool = false // Flag to track when progress metrics (goal card + streaks) are loaded
+    var hasLoadedMetricValues: Bool = false // Flag to track when actual metric values are loaded (not placeholders)
     var loaderOverride: LoaderModel? = nil
     var alertData: AlertModel? = nil
     var isEditMode: Bool = false

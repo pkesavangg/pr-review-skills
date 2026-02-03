@@ -121,12 +121,22 @@ class DashboardStore: ObservableObject {
 
     /// Whether body metrics skeleton should be shown
     var shouldShowBodyMetricsSkeleton: Bool {
-        !state.ui.hasLoadedDashboardConfig && shouldShowBodyMetrics
-    }
+    shouldShowBodyMetrics &&
+    (!state.ui.hasLoadedDashboardConfig || !state.ui.hasLoadedMetricValues)
+}
 
     /// Whether progress metrics skeleton should be shown
     var shouldShowProgressMetricsSkeleton: Bool {
-        !state.ui.hasLoadedProgressMetrics
+        if !state.ui.hasLoadedProgressMetrics || !shouldShowGoalStreakSection {
+            return true
+        }
+        // In non-edit mode, wait until streak order is ready
+        let needsStreakOrder =
+            !state.ui.isEditMode &&
+            !streakItemsToShow.isEmpty &&
+            state.ui.streakGridOrder.isEmpty
+
+        return needsStreakOrder
     }
 
     /// Whether skeleton progress metrics has content above (body metrics)
@@ -851,6 +861,7 @@ class DashboardStore: ObservableObject {
         await MainActor.run {
             state.ui.isResettingDashboard = true
             state.ui.hasLoadedProgressMetrics = false
+            state.ui.hasLoadedMetricValues = false
         }
 
         // Determine dashboard type based on account dashboardType
@@ -1823,6 +1834,7 @@ class DashboardStore: ObservableObject {
 
         // Set flag to suppress UI updates during reset to prevent flickering
         state.ui.isResettingDashboard = true
+        state.ui.hasLoadedMetricValues = false
 
         // Reset the saved order to restore default order
         resetGridOrder()
@@ -1871,6 +1883,9 @@ class DashboardStore: ObservableObject {
                     self.notificationService.dismissLoader()
                     self.resetMetricsToLatestEntry()
 
+                    // Mark metric values as loaded since reset restores defaults
+                    self.state.ui.hasLoadedMetricValues = true
+
                     // Single UI update after all state changes are complete
                     self.forceImmediateUIUpdate()
                 } catch {
@@ -1894,6 +1909,13 @@ class DashboardStore: ObservableObject {
                     }
                     self.notificationService.dismissLoader()
                     self.resetMetricsToLatestEntry()
+<<<<<<< HEAD
+=======
+
+                    // Mark metric values as loaded on error recovery too
+                    self.state.ui.hasLoadedMetricValues = true
+
+>>>>>>> dev
                     self.forceImmediateUIUpdate()
                 }
             }
@@ -3092,15 +3114,29 @@ class DashboardStore: ObservableObject {
             // Exact data point selected - show its values
             Task {
                 try? await self.metricsManager.updateMetrics(with: selectedPoint)
+                await MainActor.run {
+                    self.state.ui.hasLoadedMetricValues = true
+                }
             }
         } else if state.graph.selectedXValue != nil {
             // Interpolated position selected (no exact data point) - show placeholders
+            // Don't mark as loaded when showing placeholders - they represent absence of actual values
             metricsManager.setPlaceholdersForAllMetrics()
         } else {
             // No selection: compute visible-window averages for all metrics
             let ops = self.visibleOperations
+
+            if ops.isEmpty && state.ui.hasLoadedMetricValues {
+                return
+            }
+
             Task {
                 await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
+                await MainActor.run {
+                    // Mark as loaded even if there are no operations so skeleton loaders can hide
+                    // This prevents skeleton loaders from displaying indefinitely when there's no data
+                    self.state.ui.hasLoadedMetricValues = true
+                }
             }
         }
     }
