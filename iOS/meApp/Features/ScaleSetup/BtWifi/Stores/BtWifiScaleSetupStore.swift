@@ -752,6 +752,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
         cancelWifi()
         checkGoalModalAfterSetup()
         
+        // Resume scanning and sync devices after setup exits
+        Task { [weak self] in
+            guard let self = self else { return }
+            await self.resumeScanningAndSyncDevices()
+        }
+        
         // Clean up the store to break retain cycles after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.cleanup()
@@ -1822,6 +1828,24 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
                 // Keep timeout running so error screen appears
                 showBluetoothTurnedOffAlert()
+            }
+            break
+            
+        case .updateSettings:
+            let bluetoothSwitchOff =
+                permissionsService.getPermissionState(.BLUETOOTH_SWITCH) != .ENABLED
+            
+            if !bluetoothSwitchOff {
+                Task { [weak self] in
+                    guard let self = self, let savedScale = self.savedScale else { return }
+                    try? await self.scaleService.updateAllScalesStatus([savedScale])
+                    if let refreshedScale = try? await self.scaleService.getDevice(by: savedScale.id) {
+                        await MainActor.run {
+                            self.savedScale = refreshedScale
+                            self.bluetoothService.syncDevices([refreshedScale])
+                        }
+                    }
+                }
             }
             break
             
@@ -3026,6 +3050,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             self?.isExiting = false
             self?.isExitingFromStepOn = false
+        }
+    }
+    
+    /// Resumes scanning and syncs all paired devices after setup exits
+    private func resumeScanningAndSyncDevices() async {
+        bluetoothService.resumeSmartScan(clearOnlyPairing: false)
+        
+        do {
+            try await scaleService.updateAllScalesStatus()
+            bluetoothService.syncDevices([])
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to resume scanning and sync devices: \(error.localizedDescription)")
         }
     }
     
