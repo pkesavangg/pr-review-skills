@@ -249,12 +249,14 @@ final class AppSyncSetupStore: ObservableObject {
             }
             
             do {
+                let createdAt = DateTimeTools.getCurrentDatetimeIsoString()
                 let newDevice = Device(
                     id: UUID().uuidString,
                     accountId: accountId,
                     sku: scaleItem.sku,
                     deviceName: scaleItem.productName,
                     deviceType: DeviceType.scale.rawValue,
+                    createdAt: createdAt,
                     bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
                 let response = try await self.scaleService.createDevice(newDevice)
