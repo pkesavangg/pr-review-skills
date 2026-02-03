@@ -105,6 +105,18 @@ object EntryHelper {
     if (this.isFinite()) BigDecimal.valueOf(this.toDouble()).setScale(1, rounding).toDouble() else this.toDouble()
 
   /**
+   * Converts Float to Double while preserving decimal representation (avoids floating-point drift).
+   * Uses BigDecimal for exact string conversion then strips trailing zeros.
+   *
+   * @return Double representation of this Float.
+   */
+  fun Float.toDoublePreserve(): Double {
+    return BigDecimal(this.toString())
+      .stripTrailingZeros()
+      .toDouble()
+  }
+
+  /**
    * Formats a weight value to display without decimal point if it's a whole number.
    * For example: 60.0 -> "60", 60.5 -> "60.5"
    *
@@ -415,10 +427,4 @@ object EntryHelper {
       serverTimestamp = null,
     )
   }
-}
-
-fun Float.toDoublePreserve(): Double {
-  return BigDecimal(this.toString())
-    .stripTrailingZeros()
-    .toDouble()
 }
