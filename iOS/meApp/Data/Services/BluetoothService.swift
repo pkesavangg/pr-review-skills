@@ -737,7 +737,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             ggDevice.preference = mapToGGPreference(deviceId: device.id, preference: preference)
-            print("updateAccount called in bluetoothService.updateAccount", device.broadcastId, preference.shouldMeasureImpedance)
             
             // Serialize updateAccount calls per device to prevent SDK callback conflicts
             // The SDK only maintains one completion handler at a time, so concurrent calls overwrite each other
@@ -749,13 +748,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                    await self.ggBleSDK.updateAccount(ggDevice)
                }
            }
-           print("updateAccount called in bluetoothService.updateAccount result", device.broadcastId, preference.shouldMeasureImpedance)
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
-            print("updateAccount called in bluetoothService.updateAccount result", device.broadcastId, preference.shouldMeasureImpedance)
             return .failure(error)
         } catch {
-            print("updateAccount called in bluetoothService.updateAccount result", device.broadcastId, preference.shouldMeasureImpedance)
             return .failure(.updateProfileFailed(error))
         }
     }
