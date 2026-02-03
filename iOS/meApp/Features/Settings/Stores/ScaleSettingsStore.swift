@@ -5,6 +5,7 @@
 //  Created by CursorAI on 05/08/25.
 
 import SwiftUI
+import SwiftData
 import Combine
 
 @MainActor
@@ -15,8 +16,55 @@ final class ScaleSettingsStore: ObservableObject {
     @Injector var logger: LoggerService
     @Injector var accountService: AccountService
     private var cancellables = Set<AnyCancellable>()
-    
-    @Published var scale: Device
+
+    // Store the device ID for safe refetching from MainActor context
+    private let scaleId: PersistentIdentifier
+    private let scaleIdString: String
+
+    // Cached scale for fallback when model not found in context
+    private var cachedScale: Device?
+
+    // Returns the cached scale - use refreshScale() to update from database
+    var scale: Device {
+        if let cached = cachedScale {
+            return cached
+        }
+        // This should never happen since we set cachedScale in init
+        logger.log(level: .error, tag: tag, message: "No cached scale available")
+        return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
+    }
+
+    /// Refreshes the scale from the database. Call this before operations that need fresh data.
+    func refreshScale() {
+        // First try registeredModel for already-loaded models (fastest path)
+        if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
+            cachedScale = freshScale
+            return
+        }
+
+        // If not in identity map, fetch from persistent store using FetchDescriptor
+        let idToFind = scaleIdString
+        let descriptor = FetchDescriptor<Device>(
+            predicate: #Predicate<Device> { device in
+                device.id == idToFind
+            }
+        )
+        do {
+            let results = try PersistenceController.shared.context.fetch(descriptor)
+            if let freshScale = results.first {
+                cachedScale = freshScale
+                return
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch scale from store: \(error.localizedDescription)")
+        }
+
+        // Keep existing cached value if fetch failed
+        if cachedScale != nil {
+            logger.log(level: .debug, tag: tag, message: "Using existing cached scale after refresh failed")
+        }
+    }
+
     @Published var isDeviceConnected: Bool = false
     @Published var connectedWifiSSID: String?
     @Published var isWifiConfigured: Bool = false
@@ -26,7 +74,7 @@ final class ScaleSettingsStore: ObservableObject {
     @Published var usersList: [DeviceUser] = []
     @Published var isFetchingUsersList: Bool = false
     private var usersListFetchTask: Task<[DeviceUser], Never>?
-    
+
     // Additional device info
     @Published var firmwareVersion: String? = nil
     @Published var deviceInfo: DeviceInfo? = nil
@@ -34,39 +82,51 @@ final class ScaleSettingsStore: ObservableObject {
     @Published var isScaleImpedanceSwitchedOn: Bool = false
     @Published var isWeighOnlyModeEnabledByOthers: Bool = false
     @Published var displayName = ""
-    
+
+    // Cached preference values for safe access without relationship traversal
+    // These are refreshed whenever the scale data changes
+    @Published private(set) var cachedShouldMeasureImpedance: Bool = false
+    @Published private(set) var cachedShouldMeasurePulse: Bool = false
+    @Published private(set) var cachedPreferenceIsSynced: Bool = false
+
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false
     @Published var productURL: URL? = nil
     let disconnectableScaleTypes: Set<ScaleSourceType> = [.btWifiR4, .bluetooth, .bluetoothScale, .lcbt, .lcbtScale]
 
-    
+
     // Strings
     private let loaderLang = LoaderStrings.self
     private let toastLang = ToastStrings.self
     private let alertLang = AlertStrings.self
     private let appConstants = AppConstants.self
-    
+
     private let tag = "ScaleSettingsStore"
-    
+
     /// Creates a fresh store scoped to a single `Device` (scale) instance.
     /// - Parameter scale: The scale that this settings store should manage.
     init(scale: Device) {
-        self.scale = scale
+        // Store both PersistentIdentifier and string ID for safe refetching
+        self.scaleId = scale.persistentModelID
+        self.scaleIdString = scale.id
+        self.cachedScale = scale  // Cache the initial scale
         logger.log(level: .debug, tag: tag, message: "ScaleSettingsStore initialized for scale: \(scale.id)")
-        
-        // Keep the local `scale` model in-sync with updates coming from `ScaleService`.
+
+        // Initialize cached values from the scale
+        refreshCachedValues()
+
+        // Keep the local state in-sync with updates coming from `ScaleService`.
         scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 guard let self = self else { return }
-                let current = self.scale
-                guard let updated = devices.first(where: { $0.id == current.id }) else { return }
+                // Check if our scale is in the updated list by ID
+                guard devices.contains(where: { $0.id == self.scale.id }) else { return }
                 let wasConnected = self.isDeviceConnected
-                self.scale = updated
-                self.isDeviceConnected = updated.isConnected ?? false
-                self.isWifiConfigured = updated.isWifiConfigured ?? false
-                self.displayName = updated.r4ScalePreference?.displayName ?? accountService.activeAccount?.firstName ?? "Unknown"
+
+                // Refresh all cached values from the fresh MainActor context model
+                self.refreshCachedValues()
+
                 Task { await self.getDeviceInfo() }
                 // Trigger any post-connection logic once the device connects.
                 if !wasConnected && self.isDeviceConnected {
@@ -76,9 +136,33 @@ final class ScaleSettingsStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
+    /// Refreshes all cached values from the current MainActor context model.
+    /// This ensures all relationship access happens with models from the correct context.
+    private func refreshCachedValues() {
+        // Refresh the scale from database first
+        refreshScale()
+        let device = scale
+        isDeviceConnected = device.isConnected ?? false
+        isWifiConfigured = device.isWifiConfigured ?? false
+
+        // Safely access relationship properties - we're guaranteed to be on MainActor
+        // with a model from the MainActor context
+        if let preference = device.r4ScalePreference {
+            displayName = preference.displayName
+            cachedShouldMeasureImpedance = preference.shouldMeasureImpedance
+            cachedShouldMeasurePulse = preference.shouldMeasurePulse
+            cachedPreferenceIsSynced = preference.isSynced
+        } else {
+            displayName = accountService.activeAccount?.firstName ?? "Unknown"
+            cachedShouldMeasureImpedance = false
+            cachedShouldMeasurePulse = false
+            cachedPreferenceIsSynced = false
+        }
+    }
+
     var isBodyMetrics: Bool {
-        return self.scale.r4ScalePreference?.shouldMeasureImpedance ?? false
+        return cachedShouldMeasureImpedance
     }
     
     /// Opens the product guide/manual for the given SKU inside the in-app browser.
@@ -222,7 +306,7 @@ final class ScaleSettingsStore: ObservableObject {
             if let wifiConfigured = deviceInfo.isWifiConfigured {
                 self.isWifiConfigured = wifiConfigured
             }
-            self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && (scale.r4ScalePreference?.shouldMeasureImpedance ?? false)
+            self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && cachedShouldMeasureImpedance
             logger.log(level: .info, tag: tag, message: "Device info retrieved – firmware: \(deviceInfo.firmwareRevision ?? "n/a")", data: deviceInfo)
             
             // Sync preference settings to scale if needed (impedance mismatch or unsynced preferences)

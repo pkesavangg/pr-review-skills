@@ -534,9 +534,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<String, BluetoothServiceError>
      */
     func getConnectedWifiSSID(broadcastId: String) async -> Result<String, BluetoothServiceError> {
-        let ggDevice = mapToGGBTDevice(broadcastId)
-        let ssid = await ggBleSDK.getConnectedWifiSSID(ggDevice)
-        return .success(ssid)
+        do {
+            let ggDevice = mapToGGBTDevice(broadcastId)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let ssid = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getConnectedWifiSSID(ggDevice)
+            }
+            return .success(ssid)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.timeout)
+        }
     }
 
     /**
@@ -548,7 +557,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let mac = await ggBleSDK.getWifiMacAddress(ggDevice)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let mac = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getWifiMacAddress(ggDevice)
+            }
             return .success(mac)
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -711,7 +723,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             ggDevice.preference = mapToGGPreference(deviceId: device.id, preference: preference)
-            let result = await ggBleSDK.updateAccount(ggDevice)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let result = try await withTimeout(seconds: 15) {
+                await self.ggBleSDK.updateAccount(ggDevice)
+            }
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
