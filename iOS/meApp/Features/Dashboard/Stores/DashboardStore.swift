@@ -42,6 +42,7 @@ class DashboardStore: ObservableObject {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
+    private static let allProgressMetricsRemovedKey = "dashboard.allProgressMetricsRemoved"
 
     // MARK: - UI Update Batching (Performance Optimization)
     /// Prevents cascading UI updates by batching multiple state changes
@@ -101,12 +102,44 @@ class DashboardStore: ObservableObject {
     var hasBodyMetrics: Bool {
         !metricsToShow.isEmpty
     }
+    
+    /// Whether body metrics should be shown (either skeleton or loaded)
+    var shouldShowBodyMetrics: Bool {
+        if !state.ui.hasLoadedDashboardConfig {
+            // Before loading, check if account has body metrics configured
+            guard let dashboardMetrics = accountService.activeAccount?.dashboardSettings?.dashboardMetrics,
+                  !dashboardMetrics.isEmpty else {
+                return false
+            }
+            let metrics = dashboardMetrics.split(separator: ",").map(String.init)
+            return !metrics.isEmpty && metrics.allSatisfy { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        } else {
+            // After loading, check if there are metrics to show
+            return hasBodyMetrics
+        }
+    }
+    
+    /// Whether body metrics skeleton should be shown
+    var shouldShowBodyMetricsSkeleton: Bool {
+        !state.ui.hasLoadedDashboardConfig && shouldShowBodyMetrics
+    }
+    
+    /// Whether progress metrics skeleton should be shown
+    var shouldShowProgressMetricsSkeleton: Bool {
+        !state.ui.hasLoadedProgressMetrics
+    }
+    
+    /// Whether skeleton progress metrics has content above (body metrics)
+    var skeletonProgressMetricsHasContentAbove: Bool {
+        shouldShowBodyMetrics
+    }
 
     /// Whether the divider should be shown between body metrics and goal/streak section.
-    /// Shows divider in edit mode or when both body metrics and goal/streak items are present.
+    /// Shows divider only when BOTH body metrics AND progress metrics are present.
     var shouldShowDivider: Bool {
-        guard state.ui.hasLoadedDashboardConfig else { return state.ui.isEditMode }
-        return state.ui.isEditMode || (hasBodyMetrics && hasGoalOrStreaks)
+        let hasBodyMetricsToShow = shouldShowBodyMetrics
+        let hasProgressMetricsToShow = shouldShowProgressMetricsSkeleton || shouldShowGoalStreakSection
+        return hasBodyMetricsToShow && hasProgressMetricsToShow
     }
 
     /// Whether the goal/streak section should be shown.
@@ -119,7 +152,7 @@ class DashboardStore: ObservableObject {
 
     /// Whether there are goal or streak items available to display
     private var hasGoalOrStreaks: Bool {
-        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && hasGoalSet)
+        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && (state.ui.isEditMode || hasGoalSet))
     }
     // MARK: - Initialization
     init() {
@@ -548,7 +581,6 @@ class DashboardStore: ObservableObject {
             return label
         }
         let period = state.graph.selectedPeriod
-        let lastScrollPosition = graphManager.state.xScrollPosition
         switch period {
         case .total:
             return labelForTotalPeriod()
@@ -556,7 +588,10 @@ class DashboardStore: ObservableObject {
             return labelForYearGridlines()
         case .month:
             return labelForMonthGridlines()
+        case .week:
+            return labelForWeekGridlines()
         default:
+            let lastScrollPosition = graphManager.state.xScrollPosition
             return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
         }
     }
@@ -566,6 +601,7 @@ class DashboardStore: ObservableObject {
         // Clear caches and scrolling flags to ensure fresh computations
         clearAllCaches()
         state.ui.hasInitializedChart = false
+        graphManager.state.isGraphReady = false
         state.graph.clearSelection()
 
         // Kick off data loads for the new account
@@ -1054,16 +1090,50 @@ class DashboardStore: ObservableObject {
     }
 
     func loadProgressMetricsFromAccount() async {
-        guard let account = accountService.activeAccount,
-              let progressMetricsString = account.dashboardSettings?.progressMetrics else {
+        guard let account = accountService.activeAccount else {
             await MainActor.run { setupDefaultProgressMetricsOrder() }
             return
         }
 
-        let progressMetrics = progressMetricsString.split(separator: ",").map { String($0) }
+        guard let progressMetricsString = account.dashboardSettings?.progressMetrics else {
+            await MainActor.run { setupDefaultProgressMetricsOrder() }
+            return
+        }
+
+        let progressMetrics = progressMetricsString.isEmpty
+            ? []
+            : progressMetricsString.split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
+
+        // Handle case where API defaults empty progress metrics back to all metrics
+        let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
+        let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
+        let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
+
+        // If the flag is set and API returns the default full list, treat all as removed
+        let shouldTreatAsAllRemoved = allMetricsRemovedFlag && (progressMetrics.isEmpty || isDefaultFullList)
 
         await MainActor.run {
             let allStreaks = streakManager.state.streakItems
+
+            // Handle case where progressMetrics is empty or should be treated as all removed
+            if progressMetrics.isEmpty || shouldTreatAsAllRemoved {
+                // All progress metrics are removed
+                state.ui.goalCardPosition = 0
+                state.ui.isGoalCardRemoved = true
+                // Preserve saved streak order in edit mode; otherwise use default order
+                if state.ui.streakGridOrder.isEmpty {
+                    // Set default order so edit mode can show removed items in order
+                    let defaultOrder = allStreaks.map { $0.id.uuidString }
+                    state.ui.streakGridOrder = defaultOrder
+                }
+                state.ui.removedStreaks = Set(allStreaks.map { $0.label })
+                
+                streakManager.state.activeStreakItemsCount = 0
+                
+                scheduleUIUpdate()
+                return
+            }
+
             guard !allStreaks.isEmpty else {
                 setupDefaultProgressMetricsOrder()
                 return
@@ -1099,6 +1169,20 @@ class DashboardStore: ObservableObject {
             state.ui.isGoalCardRemoved = goalCardPosition == nil
             state.ui.streakGridOrder = orderedStreakIds
             state.ui.removedStreaks = Set(allStreaks.map { $0.label }).subtracting(foundStreakLabels)
+
+            // Sync active streak count from UI removal state
+            let activeCount = max(
+                0,
+                allStreaks.count - state.ui.removedStreaks.count
+            )
+
+            streakManager.state.activeStreakItemsCount = min(activeCount, allStreaks.count)
+
+            logger.log(
+                level: .debug,
+                tag: "DashboardStore",
+                message: "Active streaks synced: \(streakManager.state.activeStreakItemsCount)/\(allStreaks.count)"
+            )
 
             scheduleUIUpdate()
         }
@@ -1175,18 +1259,28 @@ class DashboardStore: ObservableObject {
     }
 
     /// Syncs the removal state from the streak manager to the UI state
+    /// This should ONLY be called after a toggle operation completes, not during initialization
     func syncRemovalStateFromStreakManager() {
         // Get the current streak items from the manager
         let currentStreakItems = streakManager.state.streakItems
-        let activeCount = streakManager.state.activeStreakItemsCount
+        var activeCount = streakManager.state.activeStreakItemsCount
 
-        // Clear existing removal state
+        guard !currentStreakItems.isEmpty else {
+            state.ui.removedStreaks.removeAll()
+            return
+        }
+
+        if activeCount > currentStreakItems.count {
+            activeCount = currentStreakItems.count
+        }
+
         state.ui.removedStreaks.removeAll()
 
-        // Ensure activeCount doesn't exceed currentStreakItems.count to prevent range crash
         let safeActiveCount = min(activeCount, currentStreakItems.count)
 
-        // Mark streak items beyond the active count as removed
+        guard safeActiveCount < currentStreakItems.count else {
+            return
+        }
         for i in safeActiveCount..<currentStreakItems.count {
             state.ui.removedStreaks.insert(currentStreakItems[i].label)
         }
@@ -1267,19 +1361,12 @@ class DashboardStore: ObservableObject {
             try? await metricsManager.toggleMetricVisibility(at: originalIndex)
 
             // Sync the UI state with the metrics manager after the change
+            // This will correctly update removal state for ALL items based on activeMetricsCount
             await MainActor.run {
                 self.syncRemovalStateFromMetricsManager()
+                // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                self.forceImmediateUIUpdate()
             }
-        }
-
-        // Update the UI state for consistency
-        let isCurrentlyRemoved = originalIndex >= metricsManager.state.activeMetricsCount
-        if isCurrentlyRemoved {
-            // Metric is being added back - remove from removed set
-            state.ui.removedMetrics.remove(metric.label)
-        } else {
-            // Metric is being removed - add to removed set
-            state.ui.removedMetrics.insert(metric.label)
         }
     }
 
@@ -1303,25 +1390,15 @@ class DashboardStore: ObservableObject {
             try? await streakManager.toggleStreakVisibility(at: originalIndex)
 
             // Sync the UI state with the streak manager after the change
+            // This will correctly update removal state for ALL items based on activeStreakItemsCount
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
+                // Validate goal card position after streak removal
+                self.validateGoalCardPosition()
                 // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
                 self.forceImmediateUIUpdate()
             }
         }
-
-        // Update the UI state for consistency
-        let isCurrentlyRemoved = originalIndex >= streakManager.state.activeStreakItemsCount
-        if isCurrentlyRemoved {
-            // Streak is being added back - remove from removed set
-            state.ui.removedStreaks.remove(streak.label)
-        } else {
-            // Streak is being removed - add to removed set
-            state.ui.removedStreaks.insert(streak.label)
-        }
-
-        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
-        forceImmediateUIUpdate()
     }
 
     func isStreakRemovedInReorderedArray(at reorderedIndex: Int) -> Bool {
@@ -1351,57 +1428,44 @@ class DashboardStore: ObservableObject {
     func toggleMetricRemoval(_ metricLabel: String) {
         // Find the metric in the current metrics array
         if let metricIndex = metricsManager.state.metrics.firstIndex(where: { $0.label == metricLabel }) {
-            // Call the underlying manager to actually reorder the array
-            Task {
-                try? await metricsManager.toggleMetricVisibility(at: metricIndex)
-
-                // Sync the UI state with the metrics manager after the change
-                await MainActor.run {
-                    self.syncRemovalStateFromMetricsManager()
-                }
+            if state.ui.removedMetrics.contains(metricLabel) {
+                state.ui.removedMetrics.remove(metricLabel)
+            } else {
+                state.ui.removedMetrics.insert(metricLabel)
             }
-        }
-
-        // Update the UI state
-        if state.ui.removedMetrics.contains(metricLabel) {
-            state.ui.removedMetrics.remove(metricLabel)
-        } else {
-            state.ui.removedMetrics.insert(metricLabel)
+            do {
+                try metricsManager.toggleMetricVisibilitySync(at: metricIndex)
+                syncRemovalStateFromMetricsManager()
+            } catch {
+                logger.log(level: .error, tag: "DashboardStore", message: "Failed to toggle metric visibility: \(error)")
+            }
         }
     }
 
     /// Toggles the removal state of a streak by its label
     func toggleStreakRemoval(_ streakLabel: String) {
         // Find the streak in the current streak items array
-        if let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) {
-            // Call the underlying manager to actually reorder the array
-            Task {
-                try? await streakManager.toggleStreakVisibility(at: streakIndex)
+        guard let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) else {
+            return
+        }
+        
+        // Capture the current state BEFORE toggle to ensure we have the correct baseline
+        let currentActiveCount = streakManager.state.activeStreakItemsCount
+        let isCurrentlyRemoved = streakIndex >= currentActiveCount
+        
+        // Call the underlying manager to actually reorder the array
+        Task {
+            // Perform the toggle operation atomically
+            try? await streakManager.toggleStreakVisibility(at: streakIndex)
 
-                // Sync the UI state with the streak manager after the change
-                await MainActor.run {
-                    self.syncRemovalStateFromStreakManager()
-                    // Validate goal card position after streak removal
-                    self.validateGoalCardPosition()
-                    // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
-                    self.forceImmediateUIUpdate()
-                }
+            await MainActor.run {
+                self.syncRemovalStateFromStreakManager()
+                // Validate goal card position after streak removal
+                self.validateGoalCardPosition()
+                // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
+                self.forceImmediateUIUpdate()
             }
         }
-
-        // Update the UI state immediately (synchronously) to provide instant feedback
-        if state.ui.removedStreaks.contains(streakLabel) {
-            state.ui.removedStreaks.remove(streakLabel)
-        } else {
-            state.ui.removedStreaks.insert(streakLabel)
-        }
-
-        // Validate goal card position immediately
-        validateGoalCardPosition()
-
-        // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
-        // This ensures the Save button gets enabled when streak items are toggled
-        forceImmediateUIUpdate()
     }
 
     func toggleGoalCardRemoval() {
@@ -1691,13 +1755,12 @@ class DashboardStore: ObservableObject {
         let allowedValues: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
         progressMetrics = progressMetrics.filter { allowedValues.contains($0) }
 
-        // If no metrics after validation, use default order
-        if progressMetrics.isEmpty {
-            progressMetrics = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
-        }
+        // Preserve saved streak order in edit mode; otherwise use default order
+        let allMetricsRemoved = progressMetrics.isEmpty
+        UserDefaults.standard.set(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
 
         // Log the order being saved for debugging
-        logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics)")
+        logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics), allRemoved: \(allMetricsRemoved)")
 
         // Save to API
         _ = try await accountService.updateProgressMetrics(metrics: progressMetrics)
@@ -1783,6 +1846,7 @@ class DashboardStore: ObservableObject {
                     }
 
                     self.notificationService.dismissLoader()
+                    self.resetMetricsToLatestEntry()
 
                     // Single UI update after all state changes are complete
                     self.forceImmediateUIUpdate()
@@ -1806,6 +1870,7 @@ class DashboardStore: ObservableObject {
                         self.hasEditSnapshot = false
                     }
                     self.notificationService.dismissLoader()
+                    self.resetMetricsToLatestEntry()                   
                     self.forceImmediateUIUpdate()
                 }
             }
@@ -1828,7 +1893,11 @@ class DashboardStore: ObservableObject {
         notificationService.showAlert(alert)
     }
 
-    func updateSelectedPeriod(_ period: TimePeriod) {
+    /// Updates the selected time period with optional anchor date for temporal context preservation
+    /// - Parameters:
+    ///   - period: The new time period to switch to
+    ///   - anchorDate: Optional anchor date to center the viewport around (preserves user's temporal focus)
+    func updateSelectedPeriod(_ period: TimePeriod, anchorDate: Date? = nil) {
         // Reset chart initialization for new period
         state.ui.hasInitializedChart = false
 
@@ -1838,13 +1907,18 @@ class DashboardStore: ObservableObject {
         // End any scrolling immediately so new period computes fresh domain/x-axis
         graphManager.endScrollingImmediately()
 
+        // IMPORTANT: Get the correct operations for the NEW period directly from dataManager
+        let operationsForNewPeriod = dataManager.getContinuousOperations(for: period)
+
         // Calculate optimal scroll position based on X-axis computation logic for segment change
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
         // Use cached bounds for O(1) lookup
+        // If anchorDate is provided, center the viewport around it for temporal context preservation
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,
-            from: continuousOperations,
-            showingLatest: true,
+            from: operationsForNewPeriod,
+            anchorDate: anchorDate,
+            showingLatest: anchorDate == nil, // Only show latest if no anchor
             cachedBounds: dataManager.getDateBounds(for: period)
         )
         graphManager.updateScrollPosition(to: optimalScrollPosition)
@@ -2034,73 +2108,96 @@ class DashboardStore: ObservableObject {
 
 
 
-    // New: Year label based on visible X-axis gridlines instead of chart points.
     private func labelForYearGridlines() -> String {
         let period: TimePeriod = .year
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
-        let ticks = xAxisValuesWithBuffer(for: period)
-        let inclusiveRightEdge = rightEdge.addingTimeInterval(12 * 60 * 60) // 12 hours
-        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= inclusiveRightEdge }.sorted(by: { $0 < $1 })
-        let startDate: Date
-        let endDate: Date
-        if let first = visibleTicks.first, let last = visibleTicks.last {
-            startDate = first
-            endDate = last
-        } else {
-            startDate = leftEdge
-            endDate = rightEdge
+        let calendar = Calendar.current
+
+        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        let entryMin = visibleOps.min(by: { $0.date < $1.date })?.date
+        let entryMax = visibleOps.max(by: { $0.date < $1.date })?.date
+
+        let ticks = xAxisValuesWithBuffer(for: period).sorted()
+        var visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }
+
+        // Include the next tick only if it is close and actually relevant
+        if let nextTick = ticks.first(where: { $0 > rightEdge }),
+           let lastTick = visibleTicks.last {
+            let daysGap = calendar.dateComponents([.day], from: rightEdge, to: nextTick).day ?? .max
+            let isYearBoundary =
+                calendar.component(.month, from: lastTick) == 12 &&
+                calendar.component(.month, from: nextTick) == 1 &&
+                calendar.component(.year, from: nextTick) > calendar.component(.year, from: lastTick)
+
+            if daysGap <= 35 && !isYearBoundary {
+                visibleTicks.append(nextTick)
+            }
         }
-        return formatYearRangeLabel(from: startDate, to: endDate)
+
+        let start = [entryMin, visibleTicks.first].compactMap { $0 }.min()
+        let end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
+
+        return graphManager.formatDateRange(
+            minDate: start ?? leftEdge,
+            maxDate: end ?? rightEdge,
+            for: period
+        )
     }
 
-    private func formatYearRangeLabel(from start: Date, to end: Date) -> String {
-        let cal = Calendar.current
-        let startMonth = cal.component(.month, from: start)
-        if startMonth == 1 {
-            return DateTimeTools.formatter("yyyy").string(from: start)
-        }
-
-        // Otherwise show "MMM yyyy – MMM yyyy"
-        let startStr = DateTimeTools.formatter("MMM yyyy").string(from: start)
-        let endStr = DateTimeTools.formatter("MMM yyyy").string(from: end)
-        return "\(startStr) – \(endStr)"
-    }
 
 
-
-    // New: Month label based on visible X-axis gridlines instead of chart points
     private func labelForMonthGridlines() -> String {
         let period: TimePeriod = .month
-        // Visible window boundaries (left edge + domain length)
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
 
-        // 1) If there are entries in the visible region, derive the label from the visible entries.
         let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        let entryMin = visibleOps.min(by: { $0.date < $1.date })?.date
+        let entryMax = visibleOps.max(by: { $0.date < $1.date })?.date
+
+        let visibleTicks = xAxisValuesWithBuffer(for: period)
+            .filter { $0 >= leftEdge && $0 <= rightEdge }
+            .sorted()
+
+        let start = [entryMin, visibleTicks.first].compactMap { $0 }.min()
+        let end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
+
+        return graphManager.formatDateRange(
+            minDate: start ?? leftEdge,
+            maxDate: end ?? rightEdge,
+            for: period
+        )
+    }
+
+    private func labelForWeekGridlines() -> String {
+        let period: TimePeriod = .week
+        let leftEdge = graphManager.state.xScrollPosition
+        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
+        let buffer: TimeInterval = 2 * 60 * 60
+
+        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+
         if let minDate = visibleOps.min(by: { $0.date < $1.date })?.date,
            let maxDate = visibleOps.max(by: { $0.date < $1.date })?.date {
-            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
+
+            let spansWindow =
+                minDate <= leftEdge.addingTimeInterval(buffer) &&
+                maxDate >= rightEdge.addingTimeInterval(-buffer)
+
+            return graphManager.formatDateRange(
+                minDate: spansWindow ? minDate : leftEdge,
+                maxDate: spansWindow ? maxDate : rightEdge,
+                for: period
+            )
         }
 
-        // 2) If there are no entries in the visible region, fall back to X-axis ticks within the window.
-        // This keeps the label stable during empty stretches (interpolated segments).
-        let ticks = xAxisValuesWithBuffer(for: period)
-        let visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }.sorted(by: { $0 < $1 })
-
-        if let firstTick = visibleTicks.first, let lastTick = visibleTicks.last {
-            let domainLength = graphManager.visibleDomainLength(for: period)
-            let midPoint = leftEdge.addingTimeInterval(max(0, domainLength / 2))
-            if let monthInterval = Calendar.current.dateInterval(of: .month, for: midPoint) {
-                let start = max(firstTick, monthInterval.start)
-                let end = min(lastTick, monthInterval.end)
-                return graphManager.formatDateRange(minDate: start, maxDate: end, for: period)
-            }
-            return graphManager.formatDateRange(minDate: firstTick, maxDate: lastTick, for: period)
-        }
-
-        // 3) Final fallback: use window edges.
-        return graphManager.formatDateRange(minDate: leftEdge, maxDate: rightEdge, for: period)
+        // No visible entries — rely purely on the visible window
+        return graphManager.formatDateRange(
+            minDate: leftEdge,
+            maxDate: rightEdge,
+            for: period
+        )
     }
 
     private func formatMonthRangeLabel(from start: Date, to end: Date) -> String {
@@ -2224,12 +2321,28 @@ class DashboardStore: ObservableObject {
         return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
     }
 
-    // MARK: - Metric Info Date Label (for Metric Info Sheet)
-    /// Returns the period-aware label used in the Metric Info sheet, matching Dashboard behavior.
-    /// - Selection: "day average <MMM d, yyyy>" for week/month; "month average <MMM yyyy>" for year/total.
-    /// - No selection: "<period> average <visible-range-label>" using the same visible-region label as the Dashboard.
-    func metricInfoDateLabel() -> String {
+    // MARK: - Metric Info Date Label
+
+    /// Generates date label for metric info sheet. Shows "Measurement taken [Date]" for history entries, otherwise period averages.
+    func metricInfoDateLabel(for entryDTO: BathScaleOperationDTO) -> String {
+        let isHistoryEntry = !isDashboardEntry(entryDTO)
+        guard let entryDate = parseEntryDate(from: entryDTO) else {
+            return formatMetricInfoDateLabel(entryDate: nil)
+        }
+        return formatMetricInfoDateLabel(entryDate: entryDate, isFromHistory: isHistoryEntry)
+    }
+
+    /// Formats the date label based on entry date and context. Returns period averages if no date provided.
+    private func formatMetricInfoDateLabel(entryDate: Date? = nil, isFromHistory: Bool = false) -> String {
         let period = state.graph.selectedPeriod
+
+        if let entryDate = entryDate {
+            let prefix = isFromHistory ? "Measurement taken" : "day average"
+            let formatter = DateFormatter()
+            formatter.dateFormat = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
+            let dateText = formatter.string(from: entryDate)
+            return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+        }
 
         if let selectedPoint = state.graph.selectedPoint {
             let prefix = selectionPrefix(for: period)
@@ -2245,6 +2358,32 @@ class DashboardStore: ObservableObject {
         let prefix = "\(period.rawValue) average"
         let dateText = weightLabel // already computed from visible region
         return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
+    }
+
+    // MARK: - Private Helpers
+
+    private func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool {
+        return entryDTO.source == "dashboard"
+    }
+
+    /// Parses date from entry DTO, handling multiple timestamp formats.
+    private func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? {
+        if let date = entryDTO.date {
+            return date
+        }
+
+        guard let timestamp = entryDTO.entryTimestamp else {
+            return nil
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: timestamp) {
+            return date
+        }
+
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: timestamp)
     }
 
     private func selectionPrefix(for period: TimePeriod) -> String {
@@ -2730,19 +2869,34 @@ class DashboardStore: ObservableObject {
         // Don't initialize if already done or currently scrolling
         guard !state.ui.hasInitializedChart && !state.graph.isScrolling else {
             updateWeightDisplayForCurrentView()
+            // Only mark ready on early return if chart was previously initialized (e.g., tab switch back)
+            // Don't set ready if we're just scrolling during initial load
+            if state.ui.hasInitializedChart && !graphManager.state.isGraphReady {
+                graphManager.state.isGraphReady = true
+            }
             return
         }
 
         // Calculate optimal scroll position based on X-axis computation logic
         // This ensures the leftmost visible X-axis value aligns with computed X-axis ticks
+        // Use cached bounds for O(1) lookup
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: state.graph.selectedPeriod,
             from: continuousOperations,
-            showingLatest: true
+            anchorDate: nil,
+            showingLatest: true,
+            cachedBounds: nil
         )
         self.graphManager.updateScrollPosition(to: optimalScrollPosition)
         self.forceCompleteRecalculationAfterScrollPosition()
         state.ui.hasInitializedChart = true
+
+        // Mark graph as ready after a settling delay to allow computations to complete
+        // This hides the skeleton loader once the graph has stabilized
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms settling delay
+            graphManager.state.isGraphReady = true
+        }
     }
 
     /// Handle scroll position changes - delegate to graph manager
@@ -2829,7 +2983,6 @@ class DashboardStore: ObservableObject {
         isProcessingScrollEnd = false
     }
 
-    @available(iOS 18.0, *)
     func handleScrollPhaseChange(to phase: ScrollPhase) async {
         await graphManager.handleScrollPhaseChange(phase)
 

@@ -88,7 +88,8 @@ fun ScaleModeScreenContent(
           title = ScaleModeStrings.WeightOnlyModeNotes.Title,
           message = ScaleModeStrings.WeightOnlyModeNotes.Message,
           icon = AppIcons.Default.WeightOnlyMode,
-          modifier = Modifier.padding(bottom = spacing.sm)
+          modifier = Modifier.padding(bottom = spacing.sm),
+          messageType = TextType.Body
         )
       }
       ScaleModeSettingsScreen(

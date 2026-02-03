@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.di
 import androidx.annotation.RequiresApi
 import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
+import com.dmdbrands.gurus.weight.core.config.NetworkConfig
 import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.network.TokenManager
@@ -13,7 +14,6 @@ import com.dmdbrands.gurus.weight.core.network.interceptors.ResponseInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.TokenAuthenticator
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.qualifiers.RefreshClient
-import com.dmdbrands.gurus.weight.core.network.utility.LegacyNetworkConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
@@ -27,6 +27,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -79,13 +80,9 @@ object NetworkModule {
     fun provideConnectivityObserver(
         @ApplicationContext context: Context,
     ): IConnectivityObserver =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            NetworkConnectivityObserver(context)
-        } else {
-            LegacyNetworkConnectivityObserver(context)
-        }
+      NetworkConnectivityObserver(context)
 
-    /**
+  /**
      * Provides a network interceptor that observes connectivity changes. Requires API 23+.
      */
     @RequiresApi(Build.VERSION_CODES.M)
@@ -97,11 +94,16 @@ object NetworkModule {
 
     /**
      * Provides an authentication token interceptor for OkHttp.
+     * Proactively refreshes tokens if they expire within 5 minutes.
      */
     @Provides
     @Singleton
-    fun provideAuthTokenInterceptor(tokenManager: ITokenManager): AuthTokenInterceptor =
-        AuthTokenInterceptor(tokenManager)
+    fun provideAuthTokenInterceptor(
+        tokenManager: ITokenManager,
+        refreshTokenAPI: RefreshTokenAPI,
+        userDataStore: UserDataStore,
+    ): AuthTokenInterceptor =
+        AuthTokenInterceptor(tokenManager, refreshTokenAPI, userDataStore)
 
     /**
      * Provides a response interceptor for OkHttp.
@@ -157,6 +159,10 @@ object NetworkModule {
         tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(NetworkConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(NetworkConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(NetworkConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+
         // Only add logging interceptor if the app is debuggable
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             okHttpClient.addInterceptor(loggingInterceptor)

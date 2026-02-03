@@ -220,7 +220,10 @@ final class ScaleModesViewModel: ObservableObject {
     }
     
     func loadScaleModeData() async {
-        // Refresh scale data and update UI accordingly
+        // Refresh scale from database to get latest preference
+        if let refreshedScale = try? await scaleService.getDevice(by: scale.id) {
+            scale = refreshedScale
+        }
         setupInitialValues()
     }
     
@@ -267,11 +270,22 @@ final class ScaleModesViewModel: ObservableObject {
                 switch result {
                 case .success(_):
                     logger.log(level: .info, tag: tag, message: "Scale mode updated successfully via Bluetooth")
+                    // Mark preference as synced to device after successful update
+                    preference.isSynced = true
+                    try await scaleService.updateScalePreference(scale.id, preference)
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to update scale via Bluetooth: \(error.localizedDescription)")
+                    // Keep preference as unsynced so it can be synced when device reconnects
+                    preference.isSynced = false
+                    try await scaleService.updateScalePreference(scale.id, preference)
                     // Rethrow to trigger retry logic
                     throw error
                 }
+            } else {
+                // Device offline — mark preference to sync on reconnect
+                preference.isSynced = false
+                try await scaleService.updateScalePreference(scale.id, preference)
+                logger.log(level: .info, tag: tag, message: "Scale mode saved while device offline - will sync when device reconnects")
             }
             
             // Success - reset retry count and update state

@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
+import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -257,7 +258,8 @@ constructor(
 
         dialogQueueService.showToast(
           Toast(
-            message = "entry saved successfully!",
+            title = EntryScreenStrings.EntryAddedTitle,
+            message = EntryScreenStrings.EntryAdded,
           ),
         )
         deactivate()

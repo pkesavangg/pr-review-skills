@@ -11,9 +11,7 @@ import com.dmdbrands.gurus.weight.features.changePassword.strings.ChangePassword
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -126,32 +124,14 @@ constructor(
      */
     private fun resetPasswordForCurrentUser(email: String) {
         dialogQueueService.showLoader(
-            message = ChangePasswordStrings.LoaderMessage,
+            message = ChangePasswordStrings.Loading,
         )
         viewModelScope.launch {
             try {
                 accountService.resetPassword(email)
                 AppLog.i("resetPasswordForCurrentUser", "Password reset requested for email: $email")
-
-                // Show success toast
-                dialogQueueService.showToast(
-                  Toast(
-                    title = ToastStrings.Success.ResetPasswordSuccess.Header,
-                    message = ToastStrings.Success.ResetPasswordSuccess.Message(email),
-                        action = null,
-                    ),
-                )
             } catch (e: Exception) {
                 AppLog.e("resetPasswordForCurrentUser", "Reset Password failed", e)
-
-                // Show error toast
-                dialogQueueService.showToast(
-                    Toast(
-                      ToastStrings.Error.ResetPasswordError.Header,
-                      ToastStrings.Error.ResetPasswordError.Message,
-                        action = null,
-                    ),
-                )
             } finally {
                 dialogQueueService.dismissLoader()
             }

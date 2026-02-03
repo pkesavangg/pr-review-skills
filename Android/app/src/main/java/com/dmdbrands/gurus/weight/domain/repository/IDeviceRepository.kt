@@ -23,6 +23,8 @@ interface IDeviceRepository {
    */
   suspend fun saveDeviceToDb(device: Device, accountId: String)
 
+  suspend fun deleteAllDevicesForAccount(accountId: String)
+
   suspend fun deleteDeviceFromDb(deviceId: String)
 
   fun deviceExistsByBroadcastId(broadcastId: String, accountId: String): Flow<Boolean>

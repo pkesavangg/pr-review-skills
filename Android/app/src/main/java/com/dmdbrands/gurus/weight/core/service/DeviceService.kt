@@ -212,13 +212,20 @@ constructor(
         val temp = if (td.isSynced) td else td.copy(isSynced = false)
         storedDevices.add(temp)
       }
-
       // 3. Classify devices
       val devicesToSync = storedDevices.filter { device ->
         !device.isDeleted &&
           (!device.isSynced || (device.preferences != null && !device.preferences.isSynced))
       }
       val devicesMarkedDeleted = storedDevices.filter { it.isDeleted }
+
+      // Initialize syncedDevicesToStore with already synced devices (online scales)
+      val onlineScales = storedDevices.filter { device ->
+        !device.isDeleted &&
+          device.isSynced &&
+          (device.preferences == null || device.preferences.isSynced)
+      }
+      syncedDevicesToStore.addAll(onlineScales)
 
       // 4. Sync new/updated devices
       for (device in devicesToSync) {
@@ -309,12 +316,15 @@ constructor(
       } + unsyncedDevices.map { it.copy(isSynced = false) }
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API", e)
-      syncedDevicesToStore.map { it.copy(isSynced = true) } +
-        unsyncedDevices.map { it.copy(isSynced = false) }
+      // Use syncedDevicesToStore (contains both already synced and newly synced devices) as fallback
+      // Similar to TypeScript: scales = [...unsavedScales, ...onlineScales]
+      // syncedDevicesToStore already includes onlineScales and newly synced devices
+      unsyncedDevices.map { it.copy(isSynced = false) } + syncedDevicesToStore
     }
 
     // 7. Store updated device list locally
     try {
+      deviceRepository.deleteAllDevicesForAccount(accountId = currentAccountId!!)
       finalDevices.forEach { device ->
         deviceRepository.saveDeviceToDb(device, currentAccountId!!)
       }

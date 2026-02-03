@@ -164,11 +164,11 @@ final class UsersViewModel: ObservableObject {
 
     func showDeleteUserAlert(for user: DeviceUser, onDelete: @escaping () -> Void) {
         let alert = AlertModel(
-            title: AlertStrings.DeleteUserAlert.title(user.name),
-            message: AlertStrings.DeleteUserAlert.message(user.name),
+            title: AlertStrings.DeleteR4ScaleUserAlert.title,
+            message: AlertStrings.DeleteR4ScaleUserAlert.message(user.name),
             buttons: [
-                AlertButtonModel(title: AlertStrings.DeleteUserAlert.cancelButton, type: .secondary) { _ in },
-                AlertButtonModel(title: AlertStrings.DeleteUserAlert.removeButton, type: .primary) { _ in
+                AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.cancelButton, type: .secondary) { _ in },
+                AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.deleteButton, type: .danger) { _ in
                     // Check Bluetooth authorization and power state before proceeding with deletion
                     let isBluetoothAuthorized = self.permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
                     let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED

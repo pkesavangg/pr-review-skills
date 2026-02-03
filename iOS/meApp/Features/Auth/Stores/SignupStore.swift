@@ -83,12 +83,8 @@ final class SignupStore: ObservableObject {
     }
     
     func getFormattedHeight() -> String {
-        if signupForm.useMetric.value {
-            let cm = Int(selectedHeightCm.joined()) ?? 178
-            return "\(cm) cm"
-        } else {
-            return "\(selectedHeightInches[0])' \(selectedHeightInches[1])\""
-        }
+        let storedHeight = Int(signupForm.height.value)
+        return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: signupForm.useMetric.value)
     }
     
     func updateFormHeight(fromMetric: Bool, values: [String]) {
@@ -132,9 +128,10 @@ final class SignupStore: ObservableObject {
     // MARK: - Navigation
     
     func handleSkip() {
-        signupForm.resetGoal()
-        moveToNextStep()
         isGoalSkipped = true
+        signupForm.resetGoal()
+        objectWillChange.send()
+        moveToNextStep()
     }
     
     func moveToNextStep() {
@@ -144,15 +141,15 @@ final class SignupStore: ObservableObject {
             }
         }
         guard currentStepIndex < steps.count - 1 else { return }
-        if currentStep == .goal  {
-            isGoalSkipped = false
-        }
         currentStepIndex += 1
     }
     
     func moveToPreviousStep() {
         guard currentStepIndex > 0 else { return }
         currentStepIndex -= 1
+        if currentStep == .goal {
+            isGoalSkipped = false
+        }
     }
     
     func updateNextButtonState() {
@@ -170,7 +167,10 @@ final class SignupStore: ObservableObject {
         case .email:
             isNextEnabled = signupForm.email.isValid
         case .password:
-            isNextEnabled = (signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid)
+            // Check individual field validations AND form-level password match validation
+            let fieldsValid = signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid
+            let passwordsMatch = !signupForm.formErrors[.passwordMatch]
+            isNextEnabled = fieldsValid && passwordsMatch
         }
     }
     
@@ -198,7 +198,10 @@ final class SignupStore: ObservableObject {
     /// Marks a specific field as touched and triggers validation.
     /// Used by signup input views to show field errors as soon as the user leaves a field
     /// or presses the keyboard "Next/Done" button.
+    /// - Parameter field: The field to touch and validate.
     func touchAndValidate(field: FocusField) {
+        var didUpdate = true
+        
         switch field {
         case .firstName:
             signupForm.firstName.markAsTouched()
@@ -206,12 +209,17 @@ final class SignupStore: ObservableObject {
         case .lastName:
             signupForm.lastName.markAsTouched()
             signupForm.lastName.validate()
+        case .email:
+            signupForm.email.markAsTouched()
+            signupForm.email.validate()
         case .password:
             signupForm.password.markAsTouched()
             signupForm.password.validate()
+            signupForm.validate()
         case .confirmPassword:
             signupForm.confirmPassword.markAsTouched()
             signupForm.confirmPassword.validate()
+            signupForm.validate()
         case .zipCode:
             signupForm.zipcode.markAsTouched()
             signupForm.zipcode.validate()
@@ -224,7 +232,11 @@ final class SignupStore: ObservableObject {
             signupForm.goalWeight.validate()
             signupForm.validate()
         default:
-            break
+            didUpdate = false
+        }
+        
+        if didUpdate {
+            objectWillChange.send()
         }
     }
     
@@ -390,6 +402,33 @@ final class SignupStore: ObservableObject {
                 self?.updateNextButtonState()
             }
             .store(in: &cancellables)
+        
+        // React to password-related changes only when we're on the password step
+        let passwordChanges = Publishers.CombineLatest(
+            signupForm.password.$value,
+            signupForm.confirmPassword.$value
+        )
+
+        passwordChanges
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _, _ in
+                self?.signupForm.validate()
+                
+                if self?.currentStep == .password {
+                    self?.updateNextButtonState()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Update button state when form errors change (password step only)
+        signupForm.$formErrors
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard self?.currentStep == .password else { return }
+                self?.updateNextButtonState()
+            }
+            .store(in: &cancellables)
+        
         // Observe useMetric changes
         signupForm.useMetric.$value
             .dropFirst()

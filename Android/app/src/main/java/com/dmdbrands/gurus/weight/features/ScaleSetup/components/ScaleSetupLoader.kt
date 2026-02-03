@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.SetupLoaderStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
 import com.dmdbrands.gurus.weight.features.common.components.AppScaleImage
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.ConnectionIndicator
@@ -98,6 +99,7 @@ fun ScaleSetupLoader(
   secondaryButtonClick: (() -> Unit)? = null,
   contentButtonClick: (() -> Unit)? = null
 ) {
+  val isFailedWithIndicatorOnly = connectionState is ConnectionState.Failed && showIndicationOnly
 
   Column(
     modifier = modifier
@@ -116,6 +118,9 @@ fun ScaleSetupLoader(
       Column(
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
+        if(isFailedWithIndicatorOnly) {
+          Spacer(modifier = Modifier.height(spacing.x2l))
+        }
         // Title
         title?.let {
           AppText(
@@ -159,10 +164,10 @@ fun ScaleSetupLoader(
 
       Spacer(modifier = Modifier.height(spacing.lg))
 
-      // Scale Image
+      // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       scaleImageSku?.let {
         AppScaleImage(
-          sku = scaleImageSku,
+          sku = DeviceHelper.mapSkuForDisplay(scaleImageSku),
           scaleImageSize = ScaleImageSize.Large,
         )
         Spacer(modifier = Modifier.height(spacing.lg))
@@ -226,6 +231,9 @@ fun ScaleSetupLoader(
           modifier = Modifier
             .padding(top = spacing.x2l),
         ) {
+          if(isFailedWithIndicatorOnly) {
+            Spacer(modifier = Modifier.height(120.dp))
+          }
           AppButton(
             label = primaryButtonText,
             type = ButtonType.PrimaryFilled,

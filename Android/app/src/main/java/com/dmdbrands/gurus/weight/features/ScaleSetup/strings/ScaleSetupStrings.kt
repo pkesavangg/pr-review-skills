@@ -13,7 +13,7 @@ object ScaleSetupStrings {
   const val FinishButton = "Finish"
   const val skipButton = "skip"
   const val saveButton = "save"
-  const val SaveScaleLoader = "Saving Scale..."
+  const val SaveScaleLoader = "Saving..."
 
   object ScaleInfo {
     fun Title(sku: String) = "Model $sku"
@@ -28,8 +28,9 @@ object ScaleSetupStrings {
       "If you exit early, you may not be able to access some features until set up."
     else "The scale will not be connected."
 
-    const val Back = "Back"
+    const val GoBack = "Go Back"
     const val Exit = "Exit"
+    const val Return = "Return"
   }
 
   object SetupButtons {
@@ -78,7 +79,7 @@ object ScaleSetupStrings {
     const val Title = "Are you sure you want to skip Wi-Fi?"
     const val Message = "After setup, find additional Wi-Fi settings or the MAC Address via scale settings."
     const val Skip = "SKIP"
-    const val Goback = "GO BACK"
+    const val Back = "Go Back"
   }
 
   object PermissionAlerts {
@@ -92,6 +93,11 @@ object ScaleSetupStrings {
       const val Title = "Location Permission Required"
       const val Message = "Location permission is required to detect your WiFi network for scale setup."
       const val Enable = "Enable"
+    }
+
+    object InternetRequired {
+      const val Title = "Internet Required"
+      const val Message = "Internet required to connect Wi-Fi-scales"
     }
   }
 

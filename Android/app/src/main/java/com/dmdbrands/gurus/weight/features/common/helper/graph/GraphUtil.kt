@@ -62,8 +62,8 @@ object GraphUtil {
           GraphPoint(
             x =
               Label(
-                value = DateTimeConverter.isoToTimestamp (entry.entryTimestamp),
-            label = entry.period,
+                value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
+                label = entry.period,
               ),
             y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight.rounded() ?: 0}"),
           )
@@ -136,15 +136,17 @@ object GraphUtil {
     }.toDouble()
 
   /**
-   * Returns the number of intervals for the given [GraphSegment].
+   * Returns the visible labels count for the given segment (number of intervals / labels to show).
+   * Not an x range value. Double supports decimal values.
+   *
+   * @return Visible labels count as Double.
    */
-  fun GraphSegment.intervalCount(): Double =
-    when (this) {
-      GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 5
-      GraphSegment.YEAR -> 11.75
-      GraphSegment.TOTAL -> 1000
-    }.toDouble() - 0.001
+  fun GraphSegment.visibleLabelsCount(): Double = when (this) {
+    GraphSegment.WEEK -> 7.0
+    GraphSegment.MONTH -> (31.0 / 6.0).coerceAtLeast(1.0)
+    GraphSegment.YEAR -> (366.0 / 31.0) // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
+    GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
+  }
   // endregion
 
   // region Formatting
@@ -266,7 +268,6 @@ object GraphUtil {
     val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
     val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
 
-
     val metricValuesForRange = buildList {
       previousPoint?.let { add(it.toDouble()) }
       addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
@@ -288,9 +289,9 @@ object GraphUtil {
     val effectiveMetricMax: Double
 
     if (isSingleMetricPoint) {
-        val padding = 1.0
-        effectiveMetricMin = metricMin - padding
-        effectiveMetricMax = metricMax + padding
+      val padding = 1.0
+      effectiveMetricMin = metricMin - padding
+      effectiveMetricMax = metricMax + padding
     } else {
       // Add 5% padding (matching iOS implementation)
       val padding = metricRange * 0.05
@@ -325,12 +326,12 @@ object GraphUtil {
         // Validate position is finite before using (matching iOS guard checks)
         if (positionInRange.isFinite()) {
           point.copy(
-            y = point.y.copy(value = positionInRange)
+            y = point.y.copy(value = positionInRange),
           )
         } else if (useFallback) {
           // Fallback to middle of weight range (validated above)
           point.copy(
-            y = point.y.copy(value = safeFallbackValue)
+            y = point.y.copy(value = safeFallbackValue),
           )
         } else {
           // If fallback is also invalid, skip this point entirely
@@ -342,7 +343,7 @@ object GraphUtil {
 
         // Normalize to weight range
         val normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
-                              yAxisSpan / metricRangeSpan
+          yAxisSpan / metricRangeSpan
 
         // Apply safety bounds (keep slightly inside bounds)
         val safeMin = weightMin + epsilon
@@ -352,12 +353,12 @@ object GraphUtil {
         // Ensure finite value (matching iOS guard checks)
         if (finalValue.isFinite()) {
           point.copy(
-            y = point.y.copy(value = finalValue)
+            y = point.y.copy(value = finalValue),
           )
         } else if (useFallback) {
           // Fallback to middle of weight range (validated above)
           point.copy(
-            y = point.y.copy(value = safeFallbackValue)
+            y = point.y.copy(value = safeFallbackValue),
           )
         } else {
           // If fallback is also invalid, skip this point entirely
@@ -505,6 +506,38 @@ object GraphUtil {
   }
 
   /**
+   * Gets the related start timestamp for the given segment and timestamp.
+   * For WEEK or MONTH segment, returns the relative day start (noon rule) from [DateTimeConverter.getRelativeDayStart].
+   * For YEAR or TOTAL segment, returns the month start from [DateTimeConverter.getMonthStart].
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return Related start timestamp, or null if timeStamp is null
+   */
+  fun getRelativeStart(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
+    when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getRelativeDayStart(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getMonthStart(it)
+    }
+  }
+
+  /**
+   * Gets the related end timestamp for the given segment and timestamp.
+   * For WEEK or MONTH segment, returns the relative day end (noon rule) from [DateTimeConverter.getRelativeDayEnd].
+   * For YEAR or TOTAL segment, returns the month end from [DateTimeConverter.getMonthEnd].
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return Related end timestamp
+   */
+  fun getRelativeEnd(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
+    when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getDayEnd(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getMonthEnd(it)
+    }
+  }
+
+  /**
    * Gets the start timestamp for the given graph segment.
    * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
    * @param timeStamp Reference timestamp in milliseconds
@@ -533,6 +566,26 @@ object GraphUtil {
   }
 
   /**
+   * Returns whether the range from [initialTimestamp] to [endTimestamp] lies entirely within
+   * a single segment window (e.g. same week for WEEK, same month for MONTH, same year for YEAR/TOTAL).
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param initialTimestamp Start of the range in milliseconds
+   * @param endTimestamp End of the range in milliseconds
+   * @return true if both timestamps fall in the same segment window, false otherwise or if either timestamp is null
+   */
+  fun isSingleWindow(
+    segment: GraphSegment,
+    initialTimestamp: Long?,
+    endTimestamp: Long?,
+  ): Boolean {
+    if (initialTimestamp == null || endTimestamp == null) return false
+    val windowStartInitial = getStartRange(segment, initialTimestamp) ?: return false
+    val windowStartEnd = getStartRange(segment, endTimestamp) ?: return false
+    return windowStartInitial == windowStartEnd
+  }
+
+  /**
    * Gets the rolling window start timestamp calculated backwards from latest entry using fixed durations.
    * This ensures the window shows exactly the period duration (7 days, 30 days, 365 days) ending at the latest entry.
    * The initial scroll position will be at the latest entry (end of window) to show data without empty space.
@@ -549,6 +602,7 @@ object GraphUtil {
           add(Calendar.DAY_OF_YEAR, -6)
         }.timeInMillis
       }
+
       GraphSegment.MONTH -> {
         // Show 31 days total: latest - 30 days to latest (inclusive)
         // This ensures day 1 of 31-day months is always included in the window
@@ -557,6 +611,7 @@ object GraphUtil {
           add(Calendar.DAY_OF_YEAR, -28)
         }.timeInMillis
       }
+
       GraphSegment.YEAR -> {
         // Show 12 months total: latest - 11 months to latest (inclusive)
         // This includes the latest entry month as the 12th month
@@ -566,8 +621,21 @@ object GraphUtil {
           add(Calendar.MONTH, -11)
         }.timeInMillis
       }
+
       GraphSegment.TOTAL -> null // Keep existing ±6 months logic
     }
+  }
+
+  fun getRollingWindowEnd(segment: GraphSegment, startTimeStamp: Long?): Long {
+    val calender = Calendar.getInstance()
+    calender.timeInMillis = startTimeStamp ?: 0
+    calender.apply {
+      add(Calendar.HOUR, 23)
+      add(Calendar.MINUTE, 59)
+      add(Calendar.SECOND, 59)
+      add(Calendar.MILLISECOND, 999)
+    }
+    return calender.timeInMillis
   }
 
   fun periodStarts(

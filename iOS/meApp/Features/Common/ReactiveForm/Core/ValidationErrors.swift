@@ -47,8 +47,8 @@ public enum ValidatorType: Hashable {
     case skuMatch
     case duplicate
     case namePattern
+    case alphanumeric
     case userNameUnavailable
-    case noEmoji
     
     public func hash(into hasher: inout Hasher) {
         hasher.combine(String(describing: self))

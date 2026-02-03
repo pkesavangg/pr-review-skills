@@ -8,6 +8,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -25,6 +26,7 @@ import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -71,8 +73,7 @@ fun GraphView(
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
       if (isDrag) {
-        val snappedPosition = GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
-        snappedPosition
+        GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
       } else {
         GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
       }
@@ -80,7 +81,7 @@ fun GraphView(
   }
 
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL,
+    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
     initialScroll = initialScroll,
     snapBehaviorConfig = SnapBehaviorConfig(
       snapToLabelFunction = snapToLabelFunction,
@@ -95,7 +96,6 @@ fun GraphView(
       segment = segment,
     )
 
-
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
       viewModel.handleIntent(
@@ -106,7 +106,7 @@ fun GraphView(
           if (visibleLabels.isNotEmpty()) {
             val fallbackValues = scrollState.getInterpolatedYValues(
               xValues = visibleLabels,
-              interpolationType = InterpolationType.CUBIC,
+              interpolationType = InterpolationType.MONOTONE,
             )
             val fallbackData = state.createFallBackData(
               segment = segment,
@@ -169,13 +169,35 @@ fun GraphView(
         if (outOfBoundaryCondition) {
           markerIndex = null
         } else {
-          val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+          val min = GraphUtil.getStartRange(segment, state.minTarget)?.toDouble()
+          val max = GraphUtil.getEndRange(segment, state.maxTarget)?.toDouble()
+
+          if (min != null && max != null)
+            Log.i(
+              "GraphView",
+              " min : ${DateTimeConverter.timestampToIso(min.toLong())} max : $" +
+                "${DateTimeConverter.timestampToIso(max.toLong())}",
+            )
+          val visibleLabels =
+            scrollState
+              .getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
+              .filter { label ->
+
+                if (min != null && max != null) {
+                  label in min..max
+                } else {
+                  true // keep all when no bounds
+                }
+              }
+
           val targetMarkerIndex =
             getTargetPoints(
               visibleLabels,
               targets,
               click,
               segment,
+              state.minTarget?.toDouble(),
+              state.maxTarget?.toDouble(),
             )
           if (targetMarkerIndex.isNotEmpty()) {
             val targetIndex = targetMarkerIndex.first().toLong()
@@ -188,31 +210,59 @@ fun GraphView(
             else
               null
           }
+          if (markerIndex != null)
+            Log.i(
+              "GraphView",
+              "targetMarkerIndex : ${DateTimeConverter.timestampToIso(markerIndex.toLong())}",
+            )
         }
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       }
     },
   )
-    CartesianChartHost(
-      chart = chart,
-      modelProducer = state.modelProducer,
-      modifier = modifier.height(chartHeight),
-      scrollState = scrollState,
-      animateIn = true,
-      zoomState = rememberVicoZoomState(zoomEnabled = false),
-      onScrollStopped = { range ->
-        if (range != null) {
-          val min = range.visibleXRange.start
-          val max = range.visibleXRange.endInclusive
-          onScrollUpdate(min.toLong(), max.toLong())
-          if (!state.isEmptyGraph)
-            viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(min > state.getEndTimestamp()))
-        }
-      },
-    )
+  CartesianChartHost(
+    chart = chart,
+    modelProducer = state.modelProducer,
+    modifier = modifier.height(chartHeight),
+    scrollState = scrollState,
+    animateIn = true,
+    zoomState = rememberVicoZoomState(zoomEnabled = false),
+    onScrollStopped = { range ->
+      if (range != null) {
+        val min = range.visibleXRange.start.toLong()
+        val max = range.visibleXRange.endInclusive.toLong()
+        val relativeMin = GraphUtil.getRelativeStart(segment, min)
+        Log.i(
+          "GraphView",
+          "onScrollStopped : ${DateTimeConverter.timestampToIso(relativeMin)} , ${DateTimeConverter.timestampToIso(max)}",
+        )
+        onScrollUpdate(relativeMin, max)
+        if (!state.isEmptyGraph)
+          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
+      }
+    },
+  )
 }
 
-fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double, segment: GraphSegment): List<Double> {
+/**
+ * Gets target points based on visible labels, available points, and current window bounds.
+ *
+ * @param fullList List of visible axis labels (from scrollState).
+ * @param points List of all available target points.
+ * @param input The clicked position value.
+ * @param segment The graph segment type.
+ * @param minWindow Optional minimum x value of current window from state.
+ * @param maxWindow Optional maximum x value of current window from state.
+ * @return List of target points that match the criteria.
+ */
+fun getTargetPoints(
+  fullList: List<Double>,
+  points: List<Double>,
+  input: Double,
+  segment: GraphSegment,
+  minWindow: Double? = null,
+  maxWindow: Double? = null,
+): List<Double> {
 
   // For TOTAL segment, find nearest targets from click without considering visible labels
   if (segment == GraphSegment.TOTAL) {
@@ -223,17 +273,54 @@ fun getTargetPoints(fullList: List<Double>, points: List<Double>, input: Double,
   // For other segments, use the original logic with visible labels
   if (fullList.isEmpty()) return emptyList()
 
-  // find lower and upper bound from full list
+  // find lower and upper bound from full list (visible labels)
   val lower = fullList.filter { it <= input }.maxOrNull()
   val upper = fullList.filter { it >= input }.minOrNull()
 
-  // edge case: if input is outside range
-  if (lower == null && upper == null) return emptyList()
-  if (lower == null) return listOfNotNull(upper)
-  if (upper == null) return listOfNotNull(lower)
+  // Handle edge cases where input is outside fullList range
+  // Use window bounds from state to find points within current window
+  if (lower == null) {
+    // Input is below fullList range, find points within window bounds
+    val pointsInRange = if (minWindow != null) {
+      points.filter { it in minWindow..input }
+    } else {
+      points.filter { it <= input }
+    }
+    return if (pointsInRange.isNotEmpty()) {
+      // Return the nearest point to input, not just the max
+      val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
+      listOfNotNull(nearestTarget)
+    } else {
+      emptyList()
+    }
+  }
 
-  // filter targets within the upper and lower bound
-  val filteredTargets = points.filter { it in lower..upper }
+  if (upper == null) {
+    // Input is above fullList range, find points within window bounds
+    val pointsInRange = if (maxWindow != null) {
+      points.filter { it in input..maxWindow }
+    } else {
+      points.filter { it >= input }
+    }
+    return if (pointsInRange.isNotEmpty()) {
+      // Return the nearest point to input, not just the min
+      val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
+      listOfNotNull(nearestTarget)
+    } else {
+      emptyList()
+    }
+  }
+
+  // Both lower and upper exist, proceed with original logic
+  // Filter targets within the window bounds if available, otherwise use lower..upper
+  val searchRange = if (minWindow != null && maxWindow != null) {
+    // Use intersection of visible labels range and window bounds
+    kotlin.math.max(minWindow, lower)..kotlin.math.min(maxWindow, upper)
+  } else {
+    lower..upper
+  }
+
+  val filteredTargets = points.filter { it in searchRange }
 
   return when {
     filteredTargets.isEmpty() -> {

@@ -247,7 +247,7 @@ struct HKIntegrationModalStrings {
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
-    static let required = "must not be left blank"
+    static let required = "This field is required"
     static let leaveBlank = "must not leave blank"
     static let email = "must use a valid email"
     static let emailMaxLength = "email should not exceed 100 characters"
@@ -272,9 +272,10 @@ struct FormErrorMessages {
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
     static let modelNumberInvalid = "model number invalid"
-    static let duplicate = "the scale can’t have duplicate user names"
+    static let duplicate = "the scale can't have duplicate user names"
     static let namePattern = "please enter a valid name"
-    static let userNameUnavailable = "user name is unavailable"
+    static let validInput = "please enter valid input"
+    static let userNameUnavailable = "user name unavailable"
 }
 
 /// Constants for input field labels used in the app
@@ -444,6 +445,15 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
 
+    struct DeleteR4ScaleUserAlert {
+        static let title = "Are you sure you want to delete?"
+        static let message: (String) -> String = { name in
+            return "Deleting \(name) will remove them as a user of the scale and they'll need to reconnect."
+        }
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
+
     struct ExpiredUserLogOutAlert {
         static let title: (String) -> String = { name in
             return "\(name) was logged out"
@@ -516,6 +526,13 @@ struct AlertStrings {
         static let wifiExitMessage = "Wi-Fi settings will not be updated."
         static let goBackButton = "Go Back"
         static let exitButton = "Exit"
+    }
+
+    struct BluetoothTurnedOffAlert {
+        static let title = "Bluetooth is Turned Off"
+        static let message = "Bluetooth is required to connect to your scale. Please turn it on and try again."
+        static let cancelButton = "Cancel"
+        static let turnOnButton = "Turn On"
     }
 
     struct ResetDashboardAlert {
@@ -598,7 +615,7 @@ struct AlertStrings {
 
     struct ConfirmRestoreAlert {
         static let title = "Confirm Account Restore"
-        static let message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
+        static let message = "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
         static let restoreButton = "Restore"
         static let backButton = "Back"
     }
@@ -805,6 +822,7 @@ struct AppAssets {
     static let userProfile = "userProfile"
     // Newly added from image
     static let exclamationDanger = "exclamationDanger"
+    static let exclamationMarkSimple = "exclamationMarkSimple"
     static let hkIntegrationCompleteSS = "hkIntegrationCompleteSS"
     static let hkPermissionsAllowedSS = "hkPermissionsAllowedSS"
     static let hkPermissionsNotAllowedSS = "hkPermissionsNotAllowedSS"

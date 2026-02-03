@@ -104,6 +104,8 @@ data class WifiScaleSetupState(
   val isLastStep: Boolean = false,
   val scaleWifiSsid: String = "gg_SmartScale_##",
   val isNavigating: Boolean = false, // Add navigation state to prevent double-clicks
+  /** Step we were on when we navigated to ERROR_GUIDE; used for correct back navigation. */
+  val stepBeforeErrorGuide: WifiScaleSetupStep? = null,
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -266,6 +268,14 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
         // Handle special navigation cases first
         val nextStep = when (state.currentStep) {
+          WifiScaleSetupStep.PERMISSIONS -> {
+            if(state.isGetMACSetup) {
+              WifiScaleSetupStep.ACTIVATE_SCALE
+            } else
+              WifiScaleSetupStep.WIFI_PASSWORD
+          }
+
+
           WifiScaleSetupStep.WIFI_MODE -> {
             // Handle different WiFi mode selections - skip steps based on mode
             when (state.selectedWifiMode) {
@@ -278,7 +288,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
               else -> {
                 // Skip SWITCH_WIFI step and go directly to SCALE_COUNTS
-                WifiScaleSetupStep.SCALE_COUNTS
+                WifiScaleSetupStep.STEP_ON
               }
             }
           }
@@ -371,7 +381,7 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
         // Handle special back navigation cases
         val previousStep = when (state.currentStep) {
-          WifiScaleSetupStep.PERMISSIONS -> {
+          WifiScaleSetupStep.PERMISSIONS,WifiScaleSetupStep.ACTIVATE_SCALE -> {
             if (state.isGetMACSetup) {
               // Going back from permissions in MAC setup should reset MAC setup flag
               // Return to SCALE_INFO
@@ -384,7 +394,8 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
             }
           }
 
-          WifiScaleSetupStep.SCALE_COUNTS -> {
+
+          WifiScaleSetupStep.STEP_ON -> {
             // Check how we got here to determine correct back step
             if (state.selectedWifiMode != "apmode") {
               // We came directly from WIFI_MODE, skip SWITCH_WIFI
@@ -410,8 +421,8 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
           }
 
           WifiScaleSetupStep.ERROR_GUIDE -> {
-            // Go back to WiFi mode
-            WifiScaleSetupStep.WIFI_MODE
+            // Go back to the step we came from (WIFI_MODE or SCALE_COUNTS)
+            state.stepBeforeErrorGuide ?: WifiScaleSetupStep.WIFI_MODE
           }
 
           WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
@@ -450,6 +461,9 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
             state.copy(isGetMACSetup = false)
           } else if(state.currentStep == WifiScaleSetupStep.SCALE_INFO) {
             state.copy(isGetMACSetup = false, permissionsSkipped = false )
+          } else if (state.currentStep == WifiScaleSetupStep.ERROR_GUIDE) {
+            // Clear stepBeforeErrorGuide when leaving ERROR_GUIDE
+            state.copy(stepBeforeErrorGuide = null)
           } else {
             state
           }
@@ -488,13 +502,15 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
         state.copy(
           isGetMACSetup = true,
           shouldGetMacAddress = true,
-          currentStep = WifiScaleSetupStep.PERMISSIONS,
         )
       }
 
       is WifiScaleSetupIntent.NavigateToErrorGuide -> {
-        // Navigate to error guide step
-        state.copy(currentStep = WifiScaleSetupStep.ERROR_GUIDE)
+        // Navigate to error guide step; remember current step for correct back navigation
+        state.copy(
+          currentStep = WifiScaleSetupStep.ERROR_GUIDE,
+          stepBeforeErrorGuide = state.currentStep,
+        )
       }
 
       is WifiScaleSetupIntent.NavigateToTroubleShooting -> {

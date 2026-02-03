@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +77,16 @@ constructor(
   private val healthConnectService: IHealthConnectService,
   private val healthConnectRepository: IHealthConnectRepository,
 ) : IEntryService {
+
+  companion object {
+    private const val GOAL_ALERT_DELAY_MS = 3000L
+    /**
+     * Weight conversion factor to convert from stored weight unit to pounds.
+     * Weight is stored in 0.1 lb increments (e.g., 150.5 lbs is stored as 1505),
+     * so multiplying by 10 converts to full pounds for the goal alert service.
+     */
+    private const val WEIGHT_CONVERSION_FACTOR = 10
+  }
 
   private val _isEmpty = MutableStateFlow(false)
   override val isEmpty: StateFlow<Boolean> = _isEmpty.asStateFlow()
@@ -136,12 +147,13 @@ constructor(
    * This function monitors the lastUpdated flow and checks if the user has enough entries
    * to display the goal card. Also refreshes entry data to trigger progress recalculation.
    */
-  override fun initializeGoalCardMonitoring() {
+  override fun initializeGoalCardMonitoring(accountId: String) {
     repositoryScope.launch {
       lastUpdated.collect { lastUpdatedValue ->
         try {
           // This collector only handles goal card checking
-          val entries = entryRepository.getEntriesByAccount(accountId ?: "", false)
+          val entries = entryRepository.getEntriesByAccount(accountId, false)
+          AppLog.d("EntryService", "User has  scale entries (>= 3), checking goal card ${entries.size} - accountid - $accountId")
           if (entries.size >= 3) {
             goalService.checkGoalCard()
             AppLog.d("EntryService", "User has  scale entries (>= 3), checking goal card")
@@ -166,7 +178,7 @@ constructor(
       }
     }
 
-  override val progress: Flow<Progress> = combine(
+  override val progress: Flow<Progress> =
     combine(
       _latestEntry,
       _last7Days,
@@ -174,28 +186,26 @@ constructor(
       weightSettingsFlow,
       _monthYear
     ) { latest, last7, last30, weightSettings, monthYear ->
-      ProgressInputs(latest, last7, last30, monthYear, weightSettings)
-    },
-    _lastUpdated
-  ) { inputs, lastUpdated ->
-    calculateProgress(
-      inputs.latest?.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
-      inputs.last7.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-      inputs.last30.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-      inputs.monthYear.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-      processWeight(this.initialWeight ?: 0.0, inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
-      goal = inputs.weightSettings.goal?.copy(
-        goalWeight = processWeight(
-          inputs.weightSettings.goal.goalWeight,
-          inputs.weightSettings.weightUnit,
-          inputs.weightSettings.weightless,
+      val inputs = ProgressInputs(latest, last7, last30, monthYear, weightSettings)
+      calculateProgress(
+        inputs.latest?.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
+        inputs.last7.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+        inputs.last30.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+        inputs.monthYear.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
+        processWeight(this.initialWeight ?: 0.0, inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
+        goal = inputs.weightSettings.goal?.copy(
+          goalWeight = processWeight(
+            inputs.weightSettings.goal.goalWeight,
+            inputs.weightSettings.weightUnit,
+            inputs.weightSettings.weightless,
+          ),
+          account = accountRepository.getActiveAccount().first(),
         ),
-        account = accountRepository.getActiveAccount().first(),
-      ),
-      unit = inputs.weightSettings.weightUnit ?: WeightUnit.LB,
-      lastUpdated = lastUpdated,
-    )
-  }
+        unit = inputs.weightSettings.weightUnit ?: WeightUnit.LB,
+        lastUpdated = null,
+      )
+    }
+
 
   override suspend fun monthDetails(startDate: String): Flow<List<Entry>> {
     val input = startDate
@@ -212,25 +222,27 @@ constructor(
   }
 
   private suspend fun updateLast7Days(accountId: String) {
-    val endDate = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
-    val startDate = java.time.ZonedDateTime.now().minusDays(7).toInstant()
-    val entries = entryRepository.getEntriesInRange(
-      accountId,
-      startDate.toString(),
-      endDate.toString(),
-    )
-    _last7Days.value = entries
+    try {
+      entryRepository.getLastNDaysEntries(accountId, 7).collect { entries ->
+        _last7Days.value = entries
+        AppLog.d("EntryService", "Updated last 7 days: ${entries.size} entries")
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating last 7 days", e)
+      _last7Days.value = emptyList()
+    }
   }
 
   private suspend fun updateLast30Days(accountId: String) {
-    val endDate = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC)
-    val startDate = endDate.minusDays(30)
-    val entries = entryRepository.getEntriesInRange(
-      accountId,
-      startDate.toString(),
-      endDate.toString(),
-    )
-    _last30Days.value = entries
+    try {
+      entryRepository.getLastNDaysEntries(accountId, 30).collect { entries ->
+        _last30Days.value = entries
+        AppLog.d("EntryService", "Updated last 30 days: ${entries.size} entries")
+      }
+    } catch (e: Exception) {
+      AppLog.e("EntryService", "Error updating last 30 days", e)
+      _last30Days.value = emptyList()
+    }
   }
 
   private suspend fun updateMonthYear(accountId: String) {
@@ -267,7 +279,7 @@ constructor(
    * Fetches latest entry, last 7 and 30 days entries, and updates progress.
    * @param accountId The account ID to update data for.
    */
-  override suspend fun updateAccountId(accountId: String?) {
+  override suspend fun updateAllData(accountId: String?) {
     if (accountId == null) {
       return
     }
@@ -287,6 +299,10 @@ constructor(
           _isEmpty.value = it.isEmpty()
       }
     }
+
+    repositoryScope.launch {
+      updateLatestEntry(accountId)
+    }
     repositoryScope.launch {
       updateLast7Days(accountId)
     }
@@ -295,9 +311,6 @@ constructor(
     }
     repositoryScope.launch {
       updateMonthYear(accountId)
-    }
-    repositoryScope.launch {
-      updateLatestEntry(accountId)
     }
 
     // Add new body scale data updates
@@ -586,6 +599,21 @@ constructor(
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
       _lastUpdated.value = System.currentTimeMillis()
+
+      // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
+      // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
+      if (lastValidOperation != null && lastValidOperation is ScaleEntry) {
+        val operationWeight = lastValidOperation.scale.scaleEntry.weight
+        repositoryScope.launch {
+          try {
+            delay(GOAL_ALERT_DELAY_MS)
+            // Convert stored weight (0.1 lb increments) to full pounds for goal alert service
+            goalService.showGoalCompletionAlert(operationWeight * WEIGHT_CONVERSION_FACTOR)
+          } catch (err: Exception) {
+            AppLog.e("EntryService", "syncOperations - unable to set Goal met", err)
+          }
+        }
+      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error in syncOperations", e)
     } finally {

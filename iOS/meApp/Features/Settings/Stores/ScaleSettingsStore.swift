@@ -111,7 +111,7 @@ final class ScaleSettingsStore: ObservableObject {
             title: alertLang.DeleteScaleAlert.title,
             message: alertLang.DeleteScaleAlert.message,
             buttons: [
-                AlertButtonModel(title: alertLang.DeleteScaleAlert.deleteButton, type: .primary) { _ in
+                AlertButtonModel(title: alertLang.DeleteScaleAlert.deleteButton, type: .danger) { _ in
                     Task { [weak self] in
                         guard let self = self else { return }
                         let success = await self.deleteScale(scaleId: scaleId)
@@ -159,6 +159,51 @@ final class ScaleSettingsStore: ObservableObject {
         return fetchedUsers
     }
     
+    /// Syncs preference settings to the scale if there is a mismatch or unsynced state
+    /// - Parameters:
+    ///   - deviceInfo: The current device info from the scale
+    private func syncPreferencesIfNeeded(deviceInfo: DeviceInfo) async {
+        guard isDeviceConnected,
+              let preference = scale.r4ScalePreference
+        else {
+            return
+        }
+
+        let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
+        /// Check if scale preferences need syncing
+        let hasImpedanceMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
+        let needsSync = hasImpedanceMismatch || !preference.isSynced
+
+        logger.log(
+            level: .debug,
+            tag: tag,
+            message: "Preference sync check — mismatch: \(hasImpedanceMismatch), synced: \(preference.isSynced)"
+        )
+
+        guard needsSync else {
+            logger.log(level: .debug, tag: tag, message: "Preferences already in sync")
+            return
+        }
+
+
+        let broadcastId = scale.broadcastIdString ?? "unknown"
+        switch await bluetoothService.updateAccount(on: scale, preference: preference) {
+        case .success:
+            logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
+            // Mark preference as synced to avoid re-syncing
+            preference.isSynced = true
+            Task { @MainActor in
+                do {
+                    try await scaleService.updateScalePreference(scale.id, preference)
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
+                }
+            }
+        case .failure(let error):
+            logger.log(level: .error, tag: tag, message: "Failed to sync preference settings to scale \(broadcastId): \(error)")
+        }
+    }
+    
     /// Checks device info and WiFi configuration for scale SKU 0412
     func getDeviceInfo() async {
         guard getScaleType() == .btWifiR4,
@@ -179,6 +224,9 @@ final class ScaleSettingsStore: ObservableObject {
             }
             self.isWeighOnlyModeEnabledByOthers = !(deviceInfo.impedanceSwitchState ?? false) && (scale.r4ScalePreference?.shouldMeasureImpedance ?? false)
             logger.log(level: .info, tag: tag, message: "Device info retrieved – firmware: \(deviceInfo.firmwareRevision ?? "n/a")", data: deviceInfo)
+            
+            // Sync preference settings to scale if needed (impedance mismatch or unsynced preferences)
+            await syncPreferencesIfNeeded(deviceInfo: deviceInfo)
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to get device info: \(error)")
         }

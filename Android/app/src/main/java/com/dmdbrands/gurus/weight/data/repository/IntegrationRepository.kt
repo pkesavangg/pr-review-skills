@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
 import com.dmdbrands.gurus.weight.features.integration.model.Integrations
 import kotlinx.coroutines.CoroutineScope
@@ -24,22 +25,27 @@ class IntegrationRepository @Inject constructor(
   private val accountRepository: IAccountRepository,
   private val authAPI: IAuthAPI,
   private val integrationAPI: IIntegrationAPI,
-  private val accountDao: AccountDao
+  private val accountDao: AccountDao,
+  private val healthConnectRepository: IHealthConnectRepository
 ) : IIntegrationRepository {
   private var integration: Integrations? = null
 
   init {
     CoroutineScope(Dispatchers.IO).launch {
       updateLocalAccount()
-      accountRepository.getActiveAccount().collect {
-        if(it !=null){
+      accountRepository.getActiveAccount().collect { account ->
+        if (account != null) {
+          // Get Health Connect integration status from DataStore (similar to Angular's getHealthConnectIntegrationStatus)
+          val healthConnectData = healthConnectRepository.getAccountByID(account.id)
+          val isHealthConnectOn = healthConnectData?.integrated ?: false
+
           val integration = Integrations(
-            isFitbitOn = it.isFitbitOn,
-            isFitbitValid = it.isFitbitValid,
-            isHealthConnectOn = it.isHealthConnectOn,
-            healthkit = it.isHealthKitOn,
-            isMFPOn = it.isMFPOn,
-            isMFPValid = it.isMFPValid,
+            isFitbitOn = account.isFitbitOn,
+            isFitbitValid = account.isFitbitValid,
+            isHealthConnectOn = isHealthConnectOn,
+            healthkit = account.isHealthKitOn,
+            isMFPOn = account.isMFPOn,
+            isMFPValid = account.isMFPValid,
           )
           _integrations.value = integration
         }
@@ -61,6 +67,9 @@ class IntegrationRepository @Inject constructor(
     isHealthConnectOn = false,
   )
 
+  private val _integrationsFromServer = MutableStateFlow(defaultIntegrations)
+  val integrationsFromServer: StateFlow<Integrations> = _integrationsFromServer.asStateFlow()
+
   // StateFlow for integrations (like BehaviorSubject)
   private val _integrations = MutableStateFlow<Integrations?>(defaultIntegrations)
   override val integrations: StateFlow<Integrations?> = _integrations.asStateFlow()
@@ -81,6 +90,11 @@ class IntegrationRepository @Inject constructor(
         return
       }
       val remoteAccount = accountRepository.getAccountFromAPI(localAccount.id)
+
+      // Get Health Connect integration status from DataStore (similar to Angular's getHealthConnectIntegrationStatus)
+      val healthConnectData = healthConnectRepository.getAccountByID(localAccount.id)
+      val isHealthConnectOn = healthConnectData?.integrated ?: false
+
       // Convert to IntegrationsSettingsEntity
       val integrationsSettings = IntegrationsSettingsEntity(
         accountId = remoteAccount.id,
@@ -93,14 +107,26 @@ class IntegrationRepository @Inject constructor(
         isSynced = true,
       )
       accountDao.updateIntegrationsSettings(integrationsSettings)
-      // Update the integrations flow
-      _integrations.value = Integrations(
+
+      // Update the integrations flow with server data
+      _integrationsFromServer.value = Integrations(
         isFitbitOn = remoteAccount.isFitbitOn,
         isMFPOn = remoteAccount.isMFPOn,
         isFitbitValid = remoteAccount.isFitbitValid,
         isMFPValid = remoteAccount.isMFPValid,
         isHealthConnectOn = remoteAccount.isHealthConnectOn,
       )
+
+      // Update the integrations flow with local Health Connect status from DataStore
+      val currentIntegrations = _integrations.value ?: defaultIntegrations
+      _integrations.value = currentIntegrations.copy(
+        isFitbitOn = remoteAccount.isFitbitOn,
+        isFitbitValid = remoteAccount.isFitbitValid,
+        isMFPOn = remoteAccount.isMFPOn,
+        isMFPValid = remoteAccount.isMFPValid,
+        isHealthConnectOn = isHealthConnectOn,
+      )
+
     } catch (e: Exception) {
       AppLog.d("IntegrationRepository", "Failed to update local account")
     }

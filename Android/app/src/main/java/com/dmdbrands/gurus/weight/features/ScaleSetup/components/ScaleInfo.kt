@@ -23,7 +23,8 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
@@ -35,6 +36,9 @@ fun ScaleInfo(
   buttonText: String? = null,
   onButtonClick: (() -> Unit)? = null,
 ) {
+  // Map SKU for display (e.g., 0022 -> 0383)
+  val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
+  val displaySku = scaleInfo?.sku ?: DeviceHelper.mapSkuForDisplay(sku)
   Column(
     modifier = Modifier
       .fillMaxSize()
@@ -43,11 +47,12 @@ fun ScaleInfo(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {
-    val scaleName = SCALES.find { it.sku == sku }?.productName
-    AppScaleImage(sku = sku, scaleImageSize = ScaleImageSize.Large)
+    val scaleName = scaleInfo?.productName
+    AppScaleImage(sku = displaySku, scaleImageSize = ScaleImageSize.Large)
     Spacer(modifier = Modifier.height(spacing.lg))
     scaleName?.let {
-      AppText(text = ScaleSetupStrings.ScaleInfo.Title(sku), textType = TextType.ListTitle2)
+      AppText(text = ScaleSetupStrings.ScaleInfo.Title(displaySku), textType = TextType.ListTitle2)
+      Spacer(modifier = Modifier.height(spacing.xs))
       AppText(text = scaleName, textType = TextType.Body)
     }
     Spacer(modifier = Modifier.height(spacing.lg))

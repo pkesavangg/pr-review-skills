@@ -27,6 +27,7 @@ object SettingsScreenStrings {
     const val AppSettings = "App Settings"
     const val Notifications = "Notifications"
     const val Messages = "Messages"
+    fun MessagesWithCount(count: Int) = "Messages ($count new)"
     const val Streaks = "Streaks"
     const val AppPermissions = "App Permissions"
     const val Appearance = "Appearance"
@@ -64,7 +65,7 @@ object SettingsScreenStrings {
 
     object LogoutDialog {
         object Logout {
-            const val Title = "Log out"
+            const val Title = "Log Out"
             const val Body = "Are you sure you want to log out?"
         }
 

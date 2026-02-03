@@ -11,9 +11,20 @@ object HealthConnectStrings  {
   }
   object Loader {
     const val loading = "Loading..."
+    const val removing = "Removing..."
+  }
+
+  object NotInstalledAlert {
+    const val title = "Health Connect Not Installed"
+    const val description = "Download Health Connect before integrating with Weight Gurus."
+  }
+  object NotAvailableAlert {
+    const val title = "Health Connect Not Available"
+    const val description = "Sorry, Health Connect is not available, Install Heath connect from play store and try again"
   }
 
   object ActionButtons {
+    const val confirm = "confirm"
     const val connect = "connect"
     const val sync = "sync"
     const val cancel = "cancel"

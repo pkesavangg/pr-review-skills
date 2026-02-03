@@ -69,15 +69,7 @@ extension Validator where Value == String {
     
     /// Validator that requires the control's value pass an email validation test.
     public static let email = Validator(type: .email) { string in
-        // First check for emojis - if found, fail validation
-        guard !Rule.containsEmoji(string) else { return false }
-        // Then check email format
-        return Rule.email(string)
-    }
-    
-    /// Validator that prevents emoji characters in the value.
-    public static let noEmoji = Validator(type: .noEmoji) { string in
-        !Rule.containsEmoji(string)
+        Rule.email(string)
     }
     
     /// Validator that requires the control's value to pass a URL validation test.
@@ -131,8 +123,11 @@ extension Validator where Value == String {
     }
     
     /// Validator that requires the control's value to match a known scale SKU.
+    /// Also checks if the entered value maps to a valid SKU (e.g., "0022" maps to "0383").
     public static let skuMatch = Validator(type: .skuMatch) { value in
-        SCALES.contains { $0.sku == value }
+        // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(value)
+        return SCALES.contains(where: { $0.sku == lookupSku })
     }
     
     /// Validator that checks for duplicate usernames in a provided user list
@@ -149,6 +144,16 @@ extension Validator where Value == String {
     /// Allows letters, numbers, spaces, and underscores, but must start and end with alphanumeric
     public static let namePattern = Validator(type: .namePattern) { value in
         let pattern = "^[A-Za-z0-9 _]*[A-Za-z0-9][A-Za-z0-9 _]*$"
+        let regex = try? NSRegularExpression(pattern: pattern, options: [])
+        let range = NSRange(location: 0, length: value.count)
+        return regex?.firstMatch(in: value, options: [], range: range) != nil
+    }
+    
+    /// Validator that checks if username contains only alphanumeric characters (letters and numbers only)
+    /// Pattern: ^[A-Za-z0-9]+$
+    /// Allows only letters and numbers, no spaces, underscores, or special characters
+    public static let alphanumeric = Validator(type: .alphanumeric) { value in
+        let pattern = "^[A-Za-z0-9]+$"
         let regex = try? NSRegularExpression(pattern: pattern, options: [])
         let range = NSRange(location: 0, length: value.count)
         return regex?.firstMatch(in: value, options: [], range: range) != nil
@@ -233,42 +238,5 @@ private struct Rule {
     static func url(_ string: String) -> Bool {
         guard let url = URL(string: string) else { return false }
         return UIApplication.shared.canOpenURL(url)
-    }
-    
-    /// Checks if a string contains any emoji characters.
-    /// Uses Unicode scalar ranges to detect emoji characters.
-    static func containsEmoji(_ string: String) -> Bool {
-        for scalar in string.unicodeScalars {
-            let value = scalar.value
-            
-            // Check for known emoji Unicode ranges
-            // This covers the most common emoji ranges
-            if (value >= 0x1F600 && value <= 0x1F64F) || // Emoticons
-               (value >= 0x1F300 && value <= 0x1F5FF) || // Miscellaneous Symbols and Pictographs
-               (value >= 0x1F680 && value <= 0x1F6FF) || // Transport and Map Symbols
-               (value >= 0x1F900 && value <= 0x1F9FF) || // Supplemental Symbols and Pictographs
-               (value >= 0x1FA00 && value <= 0x1FA6F) || // Symbols and Pictographs Extended-A
-               (value >= 0x1FA70 && value <= 0x1FAFF) || // Symbols and Pictographs Extended-B
-               (value >= 0x2600 && value <= 0x26FF) ||   // Miscellaneous Symbols
-               (value >= 0x2700 && value <= 0x27BF) ||   // Dingbats
-               (value >= 0xFE00 && value <= 0xFE0F) ||   // Variation Selectors
-               (value >= 0x1F1E6 && value <= 0x1F1FF) || // Regional Indicator Symbols
-               value == 0x200D ||                        // Zero Width Joiner
-               value == 0xFE0F {                         // Variation Selector-16
-                return true
-            }
-        }
-        
-        for char in string {
-            let scalars = char.unicodeScalars
-            if scalars.count > 0 {
-                let firstScalar = scalars[scalars.startIndex]
-                if firstScalar.value > 0xFFFF {
-                    return true
-                }
-            }
-        }
-        
-        return false
     }
 }

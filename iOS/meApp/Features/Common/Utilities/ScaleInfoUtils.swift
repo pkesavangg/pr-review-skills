@@ -36,10 +36,13 @@ class ScaleInfoUtils {
     // MARK: - Public Methods
 
     /// Get scale information by SKU
-    /// - Parameter sku: The scale SKU to search for
+    /// Maps SKU for display lookup (e.g., 0022 -> 0383) for SCALES lookup only.
+    /// - Parameter sku: The scale SKU to search for (original SKU, e.g., "0022")
     /// - Returns: ScaleItemInfo if found, nil otherwise
     public func getScaleInfo(bySku sku: String) -> ScaleItemInfo? {
-        return scales.first { $0.sku == sku }
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        return scales.first { $0.sku == lookupSku }
     }
 
     /// Get scale information by scale name with fallback logic
@@ -79,6 +82,19 @@ class ScaleInfoUtils {
                 scaleInfo = info
             }
 
+        case "GG-RPM 0022":
+            scaleInfo = getScaleInfo(bySku: "0383")
+            if var info = scaleInfo {
+                info = ScaleItemInfo(
+                    productName: "Bluetooth Scale", // Custom nickname for gG-RPM 0022
+                    sku: info.sku,
+                    imgPath: info.imgPath,
+                    setupType: info.setupType,
+                    bodyComp: info.bodyComp
+                )
+                scaleInfo = info
+            }
+
         case "GG BS 0412":
             scaleInfo = getScaleInfo(bySku: "0412")
             if var info = scaleInfo {
@@ -109,10 +125,13 @@ class ScaleInfoUtils {
     // MARK: - Private Methods
 
     /// Resolve image path for a given SKU
-    /// - Parameter sku: The scale SKU
+    /// Maps SKU for display lookup (e.g., 0022 -> 0383) for SCALES lookup only.
+    /// - Parameter sku: The scale SKU (original SKU, e.g., "0022")
     /// - Returns: Image path string or nil
     private func resolveImagePath(for sku: String) -> String? {
-        SCALES.first(where: { $0.sku == sku })?.imgPath ?? nil
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        return SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? nil
     }
 }
 

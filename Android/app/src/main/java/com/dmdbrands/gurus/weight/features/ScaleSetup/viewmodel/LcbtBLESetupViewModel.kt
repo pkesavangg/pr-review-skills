@@ -75,7 +75,7 @@ constructor(
           ),
         )
         deviceService.saveScale(discoveredScale!!)
-        AppLog.i(TAG, "Successfully saved LCBT scale")
+        AppLog.i(TAG, "Successfully saved LCBT scale with SKU: $sku")
       } else {
         AppLog.w(TAG, "No discovered LCBT scale to save")
       }
@@ -252,8 +252,9 @@ constructor(
         )
         clearBluetoothTimeout() // Cancel timeout on success
         AppLog.d(TAG, "Waiting 3 seconds after connection")
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
         saveScale()
+        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+        delay(1000)
         AppLog.d(TAG, "Waiting 2 seconds before proceeding")
         onNext()
       } catch (e: Exception) {

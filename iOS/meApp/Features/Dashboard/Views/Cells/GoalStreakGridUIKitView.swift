@@ -181,7 +181,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let isEditMode = store.state.ui.isEditMode
         let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
         let hasStreaks = !allStreaks.isEmpty
-        let hasValidGoal = !isGoalCardRemoved && store.hasGoalSet
+        let hasValidGoal = !isGoalCardRemoved && (isEditMode || store.hasGoalSet)
         if !hasStreaks && !hasValidGoal {
             return MileStoneGridModel(mileStones: [])
         }
@@ -257,37 +257,44 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widgets.append(contentsOf: activeStreaks.map { .streak($0) })
             } else {
                 let streakCount = activeStreaks.count
-                // Only show goal card if there are streaks OR if goal is set (has data)
-                // This prevents empty white cards from appearing before data loads
+                // Show goal card always in edit mode; only when data exists in non-edit mode
                 if streakCount == 0 {
-                    // Only add goal card if goal data is actually available
-                    if store.hasGoalSet {
+                    if isEditMode || (store.hasGoalSet && !isGoalCardRemoved) {
                         widgets.append(.goalCard)
                     }
                 } else {
-                    let columns = DevicePlatform.isTablet ? 4 : 2
-                    let hasRemovedStreaks = !removedStreaks.isEmpty
-                    let maxPosition = streakCount
-                    let clampedGoal = min(goalCardPos, maxPosition)
-                    let goalIndex = effectiveGoalIndex(
-                        clampedGoalPos: clampedGoal,
-                        streakCount: streakCount,
-                        columns: columns,
-                        isEditMode: isEditMode,
-                        hasRemovedStreaks: hasRemovedStreaks
-                    )
+                    // In non-edit mode, always place goal card at the top (position 0)
+                    // In edit mode, use the saved position
+                    if !isEditMode {
+                        // Always place goal card first, followed by streak items
+                        widgets.append(.goalCard)
+                        widgets.append(contentsOf: activeStreaks.map { .streak($0) })
+                    } else {
+                        // In edit mode, use the saved position
+                        let columns = DevicePlatform.isTablet ? 4 : 2
+                        let hasRemovedStreaks = !removedStreaks.isEmpty
+                        let maxPosition = streakCount
+                        let clampedGoal = min(goalCardPos, maxPosition)
+                        let goalIndex = effectiveGoalIndex(
+                            clampedGoalPos: clampedGoal,
+                            streakCount: streakCount,
+                            columns: columns,
+                            isEditMode: isEditMode,
+                            hasRemovedStreaks: hasRemovedStreaks
+                        )
 
-                    var goalAdded = false
-                    for i in 0...maxPosition {
-                        if i == goalIndex && !goalAdded {
-                            widgets.append(.goalCard)
-                            goalAdded = true
+                        var goalAdded = false
+                        for i in 0...maxPosition {
+                            if i == goalIndex && !goalAdded {
+                                widgets.append(.goalCard)
+                                goalAdded = true
+                            }
+                            if i < streakCount {
+                                widgets.append(.streak(activeStreaks[i]))
+                            }
                         }
-                        if i < streakCount {
-                            widgets.append(.streak(activeStreaks[i]))
-                        }
+                        if !goalAdded { widgets.append(.goalCard) }
                     }
-                    if !goalAdded { widgets.append(.goalCard) }
                 }
             }
 

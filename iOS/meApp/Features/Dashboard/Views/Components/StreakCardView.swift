@@ -72,6 +72,20 @@ struct StreakCardView: View {
         }
     }
     
+    /// Formats streak value with proper day/days pluralization.
+    private var formattedStreakValue: String {
+        // If value is placeholder, show "0 days" instead of "-- days"
+        let displayValue = value == DashboardStrings.placeholder ? "0" : value
+        let streakCount = Int(displayValue) ?? 0
+        return displayValue + DashboardStrings.daySuffix(forStreak: streakCount)
+    }
+    
+    /// Formats non-streak value, converting placeholder to "0"
+    private var formattedNonStreakValue: String {
+        // If value is placeholder, show "0" instead of "--"
+        return value == DashboardStrings.placeholder ? "0" : value
+    }
+    
     private func content() -> some View {
         HStack(alignment: .center, spacing: 8) {
             if let icon = icon {
@@ -87,8 +101,8 @@ struct StreakCardView: View {
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
             } else {
-                VStack(alignment: .center, spacing: 2) {
-                    Text(value)
+                VStack(alignment: isStreakItem ? .leading : .center, spacing: 2) {
+                    Text(isStreakItem ? formattedStreakValue : formattedNonStreakValue)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
@@ -104,10 +118,24 @@ struct StreakCardView: View {
 
 #Preview {
     VStack(spacing: 16) {
-        // Regular dashboard view
+        // Singular: "1 day"
         StreakCardView(
-            value: "1 day",
+            value: "1",
             label: DashboardStrings.currentStreak,
+            icon: AppAssets.streak,
+            isEditMode: true,
+            isRemoved: false,
+            isDropTarget: false,
+            onToggleRemoval: {},
+            onDrop: { _, _ in true },
+            onDropTargetChanged: { _ in },
+            parentView: .dashboard
+        )
+        
+        // Plural: "5 days"
+        StreakCardView(
+            value: "5",
+            label: DashboardStrings.longestStreak,
             icon: AppAssets.streak,
             isEditMode: true,
             isRemoved: false,
@@ -120,7 +148,7 @@ struct StreakCardView: View {
         
         // R4ScaleSetup view with streak items (icon + label only)
         StreakCardView(
-            value: "1 day",
+            value: "3",
             label: DashboardStrings.currentStreak,
             icon: AppAssets.streak,
             isEditMode: true,

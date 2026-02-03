@@ -11,6 +11,62 @@ import java.util.TimeZone
 object GraphSnapHelper {
 
   /**
+   * Returns visible-window padding in xStep units (start, end) for the given segment.
+   * Only start padding is used (iOS-style); end padding is 0. Start = 0.2 xStep.
+   * TOTAL has no visible padding (non-scrollable).
+   *
+   * @param segment The graph segment type (WEEK, MONTH, YEAR, TOTAL).
+   * @return Pair of (visibleStartPaddingXStep, visibleEndPaddingXStep). Use 0 for TOTAL.
+   */
+  fun getVisiblePaddingXStepForSegment(segment: GraphSegment): Pair<Double, Double> =
+    when (segment) {
+      GraphSegment.WEEK,
+      GraphSegment.MONTH -> 0.2 to 0.0
+
+      GraphSegment.YEAR -> 0.5 to 0.0
+      GraphSegment.TOTAL -> 0.0 to 0.0
+    }
+
+  /**
+   * Checks if a timestamp matches a snapped boundary for the given segment.
+   * Used to detect if scroll range came from snapping.
+   *
+   * @param timestamp The timestamp to check.
+   * @param segment The graph segment type.
+   * @return True if the timestamp matches a snapped boundary.
+   */
+  fun isSnappedBoundary(timestamp: Long, segment: GraphSegment): Boolean {
+    val localTimeZone = TimeZone.getDefault()
+    val calendar = Calendar.getInstance(localTimeZone)
+    calendar.timeInMillis = timestamp
+
+    return when (segment) {
+      GraphSegment.WEEK -> {
+        // Check if it's at day boundary (midnight)
+        calendar.get(Calendar.HOUR_OF_DAY) == 0 &&
+          calendar.get(Calendar.MINUTE) == 0 &&
+          calendar.get(Calendar.SECOND) == 0
+      }
+
+      GraphSegment.MONTH -> {
+        // Check if it's at month start (day 1, hour 0 or 1)
+        calendar.get(Calendar.DAY_OF_MONTH) == 1 &&
+          (calendar.get(Calendar.HOUR_OF_DAY) == 0 || calendar.get(Calendar.HOUR_OF_DAY) == 1) &&
+          calendar.get(Calendar.MINUTE) <= 1
+      }
+
+      GraphSegment.YEAR -> {
+        // Check if it's at year start (day 1 of year, hour 0 or 1)
+        calendar.get(Calendar.DAY_OF_YEAR) == 1 &&
+          (calendar.get(Calendar.HOUR_OF_DAY) == 0 || calendar.get(Calendar.HOUR_OF_DAY) == 1) &&
+          calendar.get(Calendar.MINUTE) <= 1
+      }
+
+      GraphSegment.TOTAL -> false
+    }
+  }
+
+  /**
    * Gets the snapped position for drag events based on the graph segment.
    *
    * @param xLabel The x-coordinate timestamp to snap.

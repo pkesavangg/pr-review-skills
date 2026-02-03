@@ -152,17 +152,24 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
 
     /// Visible series filtered by the current scroll position and visible domain
     var visibleChartSeriesData: [GraphSeries] {
-        guard hasXAxis else { return chartSeriesData }
+        guard hasXAxis else {
+            return chartSeriesData
+        }
         let domainLength = visibleDomainLength
-        guard domainLength.isFinite && domainLength > 0 else { return chartSeriesData }
+        guard domainLength.isFinite && domainLength > 0 else {
+            return chartSeriesData
+        }
         let left = scrollPosition.addingTimeInterval(-domainLength / 2)
         let right = scrollPosition.addingTimeInterval(domainLength / 2)
         let data = chartSeriesData
+        
         // Keep only points whose plotted X-date is within visible window
-        return data.filter { point in
+        let filtered = data.filter { point in
             let xDate = plotXDate(for: point.date)
             return xDate >= left && xDate <= right
         }
+        
+        return filtered
     }
     
     /// Goal weight for display (nil if no goal is set)
@@ -197,11 +204,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             // trailing phantom ticks) reflect the current gesture immediately and avoid
             // the "jump" when scroll ends.
             let liveScrollPosition = self.scrollPosition
+            
             let ticks = store.graphManager.generateVisibleXAxisValues(
                 for: timePeriod,
                 from: store.continuousOperations,
                 scrollPosition: liveScrollPosition
             )
+            
             // If manager returned ticks, use them; otherwise fall back to calendar-based ticks
             if !ticks.isEmpty {
                 let sortedTicks = ticks.sorted()
@@ -249,18 +258,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     func configure(with store: DashboardStore) {
         self.dashboardStore = store
         
-        // For scrollable periods, ensure we show recent entries by using optimal scroll position
+        // For scrollable periods, sync with the store's current scroll position
+        // The scroll position should already be set by updateSelectedPeriod (with anchor if applicable)
+        // We should NOT recalculate here as it would overwrite anchor-based positioning
         if hasXAxis {
-            // Use cached bounds for O(1) lookup
-            let optimalPosition = store.graphManager.calculateOptimalScrollPosition(
-                for: timePeriod,
-                from: store.continuousOperations,
-                showingLatest: true,
-                cachedBounds: store.dataManager.getDateBounds(for: timePeriod)
-            )
-            self.scrollPosition = optimalPosition
-            // Also update the store's scroll position to match
-            store.graphManager.updateScrollPosition(to: optimalPosition)
+            // Use the store's already-calculated scroll position
+            self.scrollPosition = store.state.graph.xScrollPosition
         } else {
             // Non-scrollable periods (Total) don't need scroll positioning
             self.scrollPosition = store.state.graph.xScrollPosition
@@ -353,10 +356,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Handles scroll position changes
     func handleScrollPositionChange(_ newPosition: Date?) {
-        guard let newPosition = newPosition else { return }
+        guard let newPosition = newPosition else {
+            return
+        }
+        
+        let positionChange = abs(newPosition.timeIntervalSince(scrollPosition))
         
         // Only update if position actually changed to prevent redundant updates
-        guard abs(newPosition.timeIntervalSince(scrollPosition)) > 0.1 else { return }
+        guard positionChange > 0.1 else {
+            return
+        }
         
         self.scrollPosition = newPosition
         

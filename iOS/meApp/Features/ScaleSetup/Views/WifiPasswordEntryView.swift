@@ -13,11 +13,17 @@ struct WifiPasswordEntryView: View {
     @EnvironmentObject var store: BtWifiScaleSetupStore
     let wifiDetail: WifiDetails
     @State private var focusedField: FocusField?
+    @State private var keyboardHeight: CGFloat = 0
     let lang = BtWifiScaleSetupStrings.WifiScreenStrings.self
     let commonLang = CommonStrings.self
     let isScaleSetup: Bool
     var labels = InputFieldLabels.self
     
+    /// Bottom padding to keep ScrollView content visible above footer and keyboard
+    private var scrollViewBottomPadding: CGFloat {
+        let footerPadding: CGFloat = store.isSettingsContext ? 90 : 0
+        return .spacingLG + footerPadding + max(keyboardHeight, 0)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -46,18 +52,32 @@ struct WifiPasswordEntryView: View {
                                 inputType: .password,
                                 submitLabel: .done,
                                 errorMessage: store.networkForm.getError(for: store.networkForm.password),
-                                isDisabled: store.networkForm.networkHasNoPassword
+                                isDisabled: store.networkForm.networkHasNoPassword,
+                                focusField: .password
                             ),
                             value: $store.networkForm.password.value,
-                            focusedField: $focusedField
-                        ) {
-                            hideKeyboard()
+                            focusedField: $focusedField,
+                            onCommit: {
+                                store.networkForm.touchAndValidatePassword()
+                                hideKeyboard()
+                            },
+                            onEditingChanged: { isFocused in
+                                if !isFocused {
+                                    store.networkForm.touchAndValidatePassword()
+                                }
+                            }
+                        )
+                        .onChange(of: focusedField) { oldValue, newValue in
+                            if oldValue == .password && newValue != .password {
+                                store.networkForm.touchAndValidatePassword()
+                            }
                         }
                         
                         CustomToggleView(isOn: $store.networkForm.networkHasNoPassword, text: lang.noPasswordToggle)
                             .padding(.top, 0)
                     }
                     .padding(.top, .spacingLG)
+                    .padding(.bottom, scrollViewBottomPadding)
                     .navigationBarBackButtonHidden(true)
                 }
             }
@@ -70,9 +90,8 @@ struct WifiPasswordEntryView: View {
                 settingsFooterButtons
                     .padding(.vertical, .spacingSM)
             }
-            
-            
         }
+        .keyboardObserver(keyboardHeight: $keyboardHeight)
     }
     
     private var settingsFooterButtons: some View {

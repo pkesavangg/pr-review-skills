@@ -79,6 +79,7 @@ class DialogUtility @Inject constructor(
         dialogQueueService.dismissCurrent()
       },
       customPriority = 5,
+      dismissOnBackPress = true
     )
     dialogQueueService.enqueue(dialog)
   }
@@ -130,6 +131,7 @@ class DialogUtility @Inject constructor(
               onSave()
             },
           ),
+          dismissOnBackPress = true
         ),
       )
     }

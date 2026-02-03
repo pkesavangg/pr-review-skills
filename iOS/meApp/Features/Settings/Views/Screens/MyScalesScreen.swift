@@ -9,11 +9,13 @@ import SwiftUI
 
 struct MyScalesScreen: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject private var scaleStore = ScaleStore()
     let lang = MyScaleStrings.self
     
     @FocusState private var focusedField: FocusField?
+    @State private var shouldMaintainKeyboardFocus = false
     
     // Consolidated sheet presentation state
     private enum ActiveSheet: Identifiable, Equatable {
@@ -59,7 +61,9 @@ struct MyScalesScreen: View {
     }
     
     private func scaleIcon(for sku: String?) -> Image {
-        let imagePath = SCALES.first(where: { $0.sku == (sku ?? "") })?.imgPath ?? AppAssets.meLogoDark
+        // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku ?? "")
+        let imagePath = SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? AppAssets.meLogoDark
         return Image(imagePath)
     }
     
@@ -86,7 +90,11 @@ struct MyScalesScreen: View {
         switch scale.setupType {
         case .appSync:
             // Prevent adding duplicate AppSync scales unless the user explicitly confirms.
-            let isDuplicate = scaleStore.scales.contains { $0.sku == scale.sku }
+            // Map SKU for comparison (e.g., 0022 -> 0383) so 0022 and 0383 are treated as duplicates
+            let scaleLookupSku = DeviceHelper.mapSkuForDisplay(scale.sku)
+            let isDuplicate = scaleStore.scales.contains { 
+                DeviceHelper.mapSkuForDisplay($0.sku ?? "") == scaleLookupSku 
+            }
             if isDuplicate {
                 scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
             } else {
@@ -150,10 +158,24 @@ struct MyScalesScreen: View {
                         size: .large,
                         isDisabled: !scaleStore.addScaleForm.isValid,
                         action: {
-                            // Find the scale matching the entered model number.
-                            guard let scale = SCALES.first(where: { $0.sku == scaleStore.addScaleForm.modelNumberValue }) else { return }
+                            // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+                            let enteredValue = scaleStore.addScaleForm.modelNumberValue
+                            let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
                             
-                            handleScaleSelection(scale, clearUI: true)
+                            // Find the scale matching the mapped SKU.
+                            guard let scaleInfo = SCALES.first(where: { $0.sku == lookupSku }) else { return }
+                            
+                            // Create a modified scale info with original SKU for navigation
+                            // Pass original SKU to routes (not mapped), setup will save original SKU
+                            let scaleWithOriginalSku = ScaleItemInfo(
+                                productName: scaleInfo.productName,
+                                sku: enteredValue, // Use original SKU
+                                imgPath: scaleInfo.imgPath,
+                                setupType: scaleInfo.setupType,
+                                bodyComp: scaleInfo.bodyComp
+                            )
+                            
+                            handleScaleSelection(scaleWithOriginalSku, clearUI: true)
                         }
                     )
                     .padding(.bottom, .spacingSM)
@@ -229,7 +251,7 @@ struct MyScalesScreen: View {
                         ForEach(scaleStore.scales, id: \.id) { scale in
                             ScaleItemView(
                                 scaleIcon: scaleIcon(for: scale.sku),
-                                modelNumber: scale.sku ?? "----",
+                                modelNumber: DeviceHelper.mapSkuForDisplay(scale.sku ?? "----"),
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
                                 status: scale.connectionStatus,
                                 onTap: {
@@ -248,15 +270,20 @@ struct MyScalesScreen: View {
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {
-            focusedField = nil
-            hideKeyboard()
+            if !shouldMaintainKeyboardFocus {
+                focusedField = nil
+                hideKeyboard()
+            }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(CommonStrings.done) {
-                    focusedField = nil
-                    hideKeyboard()
+        .onChange(of: scenePhase) { _, newPhase in
+            if focusedField == .modelNumber {
+                if newPhase != .active {
+                    shouldMaintainKeyboardFocus = true
+                } else if shouldMaintainKeyboardFocus {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        focusedField = .modelNumber
+                        shouldMaintainKeyboardFocus = false
+                    }
                 }
             }
         }

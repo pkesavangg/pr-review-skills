@@ -42,9 +42,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MeApp">
+<!--   Adding font scale aligns the app’s font with the device font settings -->
         <activity
             android:name=".MainActivity"
-            android:configChanges="uiMode"
+            android:configChanges="uiMode|fontScale"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"

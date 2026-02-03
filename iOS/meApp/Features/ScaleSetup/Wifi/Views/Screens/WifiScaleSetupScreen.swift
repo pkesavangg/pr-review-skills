@@ -48,7 +48,8 @@ struct WifiScaleSetupScreen: View {
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews,
                 shouldApplyHorizontalPadding: { index in
-                    setupStore.steps[index] != .errorSelect
+                    let step = setupStore.steps[index]
+                    return step != .errorSelect && step != .selectUser && step != .apMode
                 }
             )
             
@@ -84,6 +85,7 @@ struct WifiScaleSetupScreen: View {
                        type: .inlineTextPrimary,
                        size: .small,
                        isDisabled: setupStore.shouldDisableBackButton(),
+                       useFrameForInlineText: true,
                        action: {
                 withAnimation {
                     hideKeyboard()
@@ -95,6 +97,8 @@ struct WifiScaleSetupScreen: View {
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
+                       customHorizontalPadding: .spacingXS / 2,
+                       customVerticalPadding: .spacingXS / 4,
                        action: {
                 withAnimation {
                     hideKeyboard()

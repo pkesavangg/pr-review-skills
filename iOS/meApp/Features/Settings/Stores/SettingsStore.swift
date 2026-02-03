@@ -295,8 +295,8 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Computed Profile Info
     var profileInitial: String {
-        if let firstInitial = activeAccount?.firstName?.first {
-            return String(firstInitial)
+        if let firstName = activeAccount?.firstName {
+            return firstName.firstAlphabeticCharacter()
         }
         return ""
     }
@@ -331,21 +331,8 @@ class SettingsStore: ObservableObject {
         
         let storedHeight = Int(round(storedHeightDouble))
         
-        switch activeAccount?.weightSettings?.weightUnit {
-        case .kg: // Metric preference – show centimeters
-            let cm = ConversionTools.convertStoredHeightToCm(storedHeight)
-            // Clamp to valid range (100-299 cm) for display
-            let clampedCm = max(100, min(299, cm))
-            return "\(clampedCm) cm"
-        case .lb: // Imperial preference – show feet & inches
-            let feet = ConversionTools.convertStoredHeightToFeet(storedHeight)
-            // Clamp to valid range (2'0" to 7'11") for display
-            let clampedFeet = max(2, min(7, feet[0]))
-            let clampedInches = max(0, min(11, feet[1]))
-            return "\(clampedFeet)' \(clampedInches)\""  // → 5'8"
-        case .none:
-            return ""
-        }
+        let isMetric = activeAccount?.weightSettings?.weightUnit == .kg
+        return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
     }
     
     var unitTypeText: String {
@@ -562,19 +549,30 @@ class SettingsStore: ObservableObject {
     /// Marks a specific field as touched and triggers validation.
     /// Used by input views to show field errors as soon as the user leaves a field
     /// or presses the keyboard "Next/Done" button.
+    /// - Parameter field: The field to touch and validate.
     func touchAndValidate(field: FocusField) {
+        var didUpdate = true
+        
         switch field {
         case .currentPassword:
             changePasswordForm.currentPassword.markAsTouched()
             changePasswordForm.currentPassword.validate()
+            changePasswordForm.validate()
         case .newPassword:
             changePasswordForm.newPassword.markAsTouched()
             changePasswordForm.newPassword.validate()
+            changePasswordForm.validate()
         case .confirmNewPassword:
             changePasswordForm.confirmNewPassword.markAsTouched()
             changePasswordForm.confirmNewPassword.validate()
+            changePasswordForm.validate()
         default:
-            break
+            didUpdate = false
+        }
+        
+        // Trigger view update to show error messages only if we processed a field
+        if didUpdate {
+            objectWillChange.send()
         }
     }
     
@@ -1406,6 +1404,11 @@ class SettingsStore: ObservableObject {
             // Mark as touched so form is considered interacted with
             goalForm.goalType.markAsTouched()
         }
+        if newSegment == .loseGain {
+            [goalForm.goalWeight, goalForm.currentWeight]
+                .filter { !$0.value.isEmpty }
+                .forEach { $0.markAsDirty() }
+        }
         
         // Force form validation to update computed properties
         goalForm.validate()
@@ -1480,18 +1483,19 @@ class SettingsStore: ObservableObject {
         guard !hasSeen else { return }
         
         guard accountService.activeAccount != nil,
-              let initialChar = activeAccount?.firstName?.first else {
+              let firstName = activeAccount?.firstName,
+              !firstName.firstAlphabeticCharacter().isEmpty else {
             return
         }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             guard self.accountService.allAccounts.count == 1,
                   let activeAccount = self.accountService.activeAccount,
-                  let initialChar = activeAccount.firstName?.first else {
+                  let firstName = activeAccount.firstName else {
                 return
             }
             
-            let initial = String(initialChar)
+            let initial = firstName.firstAlphabeticCharacter()
             self.kvStore.setValue(true, forKey: flagKey)
             
             let modalView = AddMultipleAccountsModalView(

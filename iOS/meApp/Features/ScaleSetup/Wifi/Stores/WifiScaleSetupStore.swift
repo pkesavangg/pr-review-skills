@@ -36,6 +36,12 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Active subscription to the network form changes
     private var networkFormCancellable: AnyCancellable? = nil
     
+    /// Indicates if the user manually cleared the SSID field (prevents auto-fill).
+    private var hasUserManuallyClearedSSID: Bool = false
+
+    /// Stores the previous SSID to detect manual clearing.
+    private var previousSSID: String = ""
+    
     /// Tracks the step that presented `.errorSelect` so we can navigate back correctly.
     private var errorSelectSourceStep: WifiScaleSetupStep? = nil
     /// Tracks the step that presented `.stepOn` so we can navigate back correctly.
@@ -97,6 +103,9 @@ final class WifiScaleSetupStore: ObservableObject {
     
     /// Controls whether to skip network connectivity checks during AP mode
     private var skipCheckNetwork: Bool = false
+    
+    /// Tracks if the scale has been saved to prevent duplicate saves
+    private var isScaleSaved: Bool = false
     
     // MARK: - Forms
     @Published var networkForm = NetworkForm()
@@ -235,7 +244,10 @@ final class WifiScaleSetupStore: ObservableObject {
     
     // MARK: - Configuration
     func configure(with sku: String) {
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        // Pass original SKU to routes (not mapped), setup will save original SKU
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES.first
         self.scaleItem = resolved
         // Start at intro
         currentStepIndex = 0
@@ -265,18 +277,27 @@ final class WifiScaleSetupStore: ObservableObject {
     
     // MARK: - Exit / Help
     func handleExit() {
-        if currentStep == .setupFinish {
+        guard currentStep != .setupFinish else {
             dismissAction?()
             return
         }
         
+        showExitConfirmationAlert()
+    }
+    
+    /// Shows the exit confirmation alert dialog
+    private func showExitConfirmationAlert() {
         let alertLang = AlertStrings.ExitSetupAlert.self
+        
         let alert = AlertModel(
             title: alertLang.title,
             message: alertLang.message,
             buttons: [
                 AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
-                    self?.dismissAction?()
+                    guard let self = self else { return }
+                    (self.currentStep == .stepOn && !self.isScaleSaved)
+                        ? self.saveScaleAndExit()
+                        : self.dismissAction?()
                 },
                 AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
             ]
@@ -338,8 +359,9 @@ final class WifiScaleSetupStore: ObservableObject {
                     }
                 }
             } else {
-                moveToNextStep()
+                selectedConnectionMode == .apMode ? saveScale() : moveToNextStep()
             }
+
             break
         case .apModeConfirm:
             // User confirmed AP-mode connection; advance to the scale calibration (Step-On) stage.
@@ -351,6 +373,8 @@ final class WifiScaleSetupStore: ObservableObject {
         case .stepOn:
             // Persist the newly configured scale to the backend & local storage.
             saveScale()
+        case .setupFinish:
+            moveToNextStep()
         default:
             moveToNextStep()
             break
@@ -412,6 +436,9 @@ final class WifiScaleSetupStore: ObservableObject {
                     // Clear the network form SSID when permissions are skipped and mark as pristine to avoid validation errors
                     self.networkForm.clearSSIDAndMarkPristine()
                     self.wifiStatus = nil
+                    // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
+                    self.hasUserManuallyClearedSSID = false
+                    self.previousSSID = ""
                     logger.log(level: .info, tag: tag, message: "Permissions skipped - cleared WiFi password form SSID and marked as pristine")
                     // Continue to next step.
                     self.moveToNextStep()
@@ -429,15 +456,30 @@ final class WifiScaleSetupStore: ObservableObject {
         bluetoothService.isSetupInProgress = false
     }
     
-    /// Starts observing the network form changes to update the next button state.
+    /// Observes network form changes and updates Next button state.
     private func subscribeToNetworkForm() {
-        // Cancel previous subscription to avoid redundant updates
+        // Cancel existing subscription
         networkFormCancellable?.cancel()
+        
+        // Set initial SSID
+        previousSSID = networkForm.ssid.value
         
         networkFormCancellable = networkForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
-                self?.updateNextEnabled()
+                guard let self else { return }
+                
+                self.updateNextEnabled()
+                
+                let currentSSID = self.networkForm.ssid.value
+                
+                // Track manual SSID clear: once user clears a non-empty SSID,
+                // remember this for the rest of the session.
+                if !self.previousSSID.isEmpty && currentSSID.isEmpty {
+                    self.hasUserManuallyClearedSSID = true
+                }
+                
+                self.previousSSID = currentSSID
             }
     }
     
@@ -458,15 +500,17 @@ final class WifiScaleSetupStore: ObservableObject {
             let kvStorage = KvStorageService.shared
             let status = await wifiScaleService.getConnectedWifiInfo()
             
-            // Check if we should auto-populate SSID
-            // Similar to Android: shouldAutoPopulate = !permissionsSkipped || isGetMACSetup || arePermissionsCurrentlyEnabled
-            // But per user requirement: if permissions were skipped, don't populate even if currently enabled (unless Get-MAC)
-            let shouldAutoPopulate = !permissionsSkipped || isForGetMac
+            /// Auto-populate SSID only when permissions allow or are currently enabled
+            let arePermissionsCurrentlyEnabled = arePermissionsEnabled()
+            let shouldAutoPopulate = !permissionsSkipped || isForGetMac || arePermissionsCurrentlyEnabled
             
             if !shouldAutoPopulate {
                 // Permissions were skipped and not in Get-MAC mode - clear SSID and mark as pristine to avoid validation errors
                 self.networkForm.clearSSIDAndMarkPristine()
                 self.wifiStatus = nil
+                // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
+                self.hasUserManuallyClearedSSID = false
+                self.previousSSID = ""
                 logger.log(level: .info, tag: tag, message: "Wi-Fi permissions skipped: SSID cleared and will not be populated.")
             } else {
                 // Normal flow: update WiFi status and populate SSID
@@ -482,8 +526,13 @@ final class WifiScaleSetupStore: ObservableObject {
                 }
                 let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
                 self.wifiStatus = wifiStatus
-                self.networkForm.setSSID(self.wifiStatus?.ssid ?? "")
-                logger.log(level: .info, tag: tag, message: "Wi-Fi status updated: \(self.wifiStatus?.ssid ?? "Unknown SSID")", data: self.wifiStatus)
+                
+                // Auto-fill SSID only if user hasn't cleared it
+                if !hasUserManuallyClearedSSID {
+                    let newSSID = self.wifiStatus?.ssid ?? ""
+                    self.networkForm.setSSID(newSSID)
+                    self.previousSSID = newSSID // Keep in sync to avoid false clears
+                }
             }
         }
     }
@@ -522,7 +571,7 @@ final class WifiScaleSetupStore: ObservableObject {
         setSkipCheckNetwork(false)
     }
     
-    private func arePermissionsEnabled() -> Bool {
+    func arePermissionsEnabled() -> Bool {
         // For WiFi setup, we need Location permission and switches enabled
         return permissionsService.getPermissionState(.LOCATION) == .ENABLED &&
         permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED &&
@@ -581,53 +630,69 @@ final class WifiScaleSetupStore: ObservableObject {
         return scaleToken
     }
     
+    /// Saves the scale and navigates to the next step
     private func saveScale() {
-        if checkScaleToken() == nil {
+        performSave { [weak self] in
+            self?.moveToNextStep()
+        }
+    }
+    
+    /// Saves the scale and exits the setup flow
+    private func saveScaleAndExit() {
+        performSave { [weak self] in
+            self?.dismissAction?()
+        }
+    }
+    
+    /// Performs the scale save operation
+    /// - Parameter onSuccess: Closure called after successful save
+    private func performSave(onSuccess: @escaping () -> Void) {
+        // Prevent duplicate saves
+        if isScaleSaved {
+            onSuccess()
             return
         }
-        
-        // Reset skipCheckNetwork to false when saving (similar to Angular code)
+
+        guard
+            let token = checkScaleToken(),
+            let scaleItem,
+            let userNumber = selectedUserNumber,
+            let accountId = accountService.activeAccount?.accountId
+        else {
+            logger.log(level: .error, tag: tag, message: "Cannot save scale: missing required data")
+            return
+        }
+
         setSkipCheckNetwork(false)
-        
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
-        
-        guard let scaleItem, let userNumber = selectedUserNumber else {
-            notificationService.dismissLoader()
-            return
-        }
-        
-        guard let accountId = self.accountService.activeAccount?.accountId else {
-            return
-        }
-        
-        Task {
-            defer { self.notificationService.dismissLoader() }
+
+        Task { @MainActor in
+            defer { notificationService.dismissLoader() }
+
             do {
-                let newDevice = Device(
+                let device = Device(
                     id: UUID().uuidString,
                     accountId: accountId,
                     sku: scaleItem.sku,
                     deviceName: scaleItem.productName,
                     deviceType: DeviceType.scale.rawValue,
                     userNumber: "\(userNumber)",
-                    token: self.scaleToken ?? "",
+                    token: token,
                     bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice)
-                await self.scaleService.syncAllScalesWithRemote()
+                let response = try await scaleService.createDevice(device)
+                await scaleService.syncAllScalesWithRemote()
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
                 }
-                
+                isScaleSaved = true
                 // Clear setup in progress flag after scale is saved
                 bluetoothService.isSetupInProgress = false
-                
-                moveToNextStep()
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
+                onSuccess()
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
-                // Clear setup in progress flag even on error
                 bluetoothService.isSetupInProgress = false
             }
         }

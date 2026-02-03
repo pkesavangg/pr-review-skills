@@ -15,7 +15,6 @@ struct DashboardMetricsSection: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            
             if parentView == .R4ScaleSetup {
                 VStack(alignment: .leading, spacing: .spacingXS){
                     Text(DashboardStrings.customizeDashboardTitle)
@@ -24,21 +23,30 @@ struct DashboardMetricsSection: View {
                         .foregroundColor(theme.textHeading)
                     VStack{
                         Text(DashboardStrings.customizeDashboardSubtitle)
-                            .foregroundColor(theme.textBody)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textHeading)
                     }
                     
                 }
             }
 
-            if store.hasBodyMetrics {
+            // Show skeleton while loading body metrics, otherwise show actual metrics
+            if store.shouldShowBodyMetricsSkeleton {
+                skeletonMetricsGrid()
+            } else if store.shouldShowBodyMetrics {
                 metricsGridSection()
             }
             
+            // Show divider if both body metrics and progress metrics are present
             if store.shouldShowDivider {
                 dividerSection()
             }
 
-            if store.shouldShowGoalStreakSection {
+            // Show skeleton while loading progress metrics, otherwise show actual progress metrics
+            if store.shouldShowProgressMetricsSkeleton {
+                skeletonProgressMetrics(hasContentAbove: store.skeletonProgressMetricsHasContentAbove)
+                    .padding(.horizontal, .spacingSM)
+            } else if store.shouldShowGoalStreakSection {
                 goalStreakSection()
             }
             
@@ -103,6 +111,45 @@ struct DashboardMetricsSection: View {
                 .id(store.state.ui.gridLayoutId)
                 .animation(.easeInOut(duration: 0.3), value: store.state.ui.gridLayoutId)
         }
+    }
+    
+    // MARK: - Skeleton Views
+    
+    private func skeletonMetricsGrid() -> some View {
+        let columnCount = store.metricsManager.getMetricGridColumnCount(for: store.effectiveDashboardType)
+        let skeletonCount = store.effectiveDashboardType == .dashboard12 ? 12 : 4
+        
+        return LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount),
+            spacing: DashboardConstants.UI.gridSpacing
+        ) {
+            ForEach(0..<skeletonCount, id: \.self) { _ in
+                SkeletonMetricCardView(dashboardType: store.effectiveDashboardType)
+            }
+        }
+        .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
+        .padding(.top, .spacingLG)
+        .padding(.horizontal, .spacingSM)
+    }
+    
+    private func skeletonProgressMetrics(hasContentAbove: Bool) -> some View {
+        VStack{
+            // Skeleton goal card
+            SkeletonGoalCardView()
+            
+            // Skeleton streak cards grid
+            let streakColumnCount = DashboardConstants.UI.streakGridColumns
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing/2), count: streakColumnCount),
+                spacing: DashboardConstants.UI.gridSpacing/2
+            ) {
+                ForEach(0..<6, id: \.self) { _ in
+                    SkeletonStreakCardView(parentView: parentView)
+                }
+            }
+        }
+        .padding(.top, .spacingSM)
+        .padding(.horizontal, .spacingXS)
     }
 }
 

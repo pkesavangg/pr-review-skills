@@ -61,7 +61,7 @@ fun SettingsScreenContent(
         Modifier
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
-          .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm),
+          .padding(vertical = MeTheme.spacing.md, horizontal = MeTheme.spacing.sm)
     ) {
       UserProfileSection(
         account = state.account,
@@ -194,7 +194,11 @@ fun SettingsScreenContent(
               },
             ),
             SettingsItem(
-              title = SettingsScreenStrings.Messages,
+              title = if (state.unreadFeedCount > 0) {
+               SettingsScreenStrings.MessagesWithCount(state.unreadFeedCount)
+              } else {
+                SettingsScreenStrings.Messages
+              },
               type = SettingsItemType.Action(),
               showUnreadIndicator = state.showUnreadFeedIndication,
               onClick = {

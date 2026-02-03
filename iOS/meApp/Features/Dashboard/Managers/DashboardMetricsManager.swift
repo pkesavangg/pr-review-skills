@@ -210,6 +210,27 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             state.activeMetricsCount -= 1
         }
     }
+    
+    /// Synchronous version for immediate UI updates (used when already on MainActor)
+    func toggleMetricVisibilitySync(at index: Int) throws {
+        guard index < state.metrics.count else {
+            throw DashboardError.invalidMetricData("Invalid metric index: \(index)")
+        }
+        
+        let metric = state.metrics[index]
+        let isCurrentlyRemoved = index >= state.activeMetricsCount
+        
+        state.metrics.remove(at: index)
+        
+        if isCurrentlyRemoved {
+            // Add back to active section
+            state.metrics.insert(metric, at: state.activeMetricsCount)
+            state.activeMetricsCount += 1
+        } else {
+            state.metrics.append(metric)
+            state.activeMetricsCount -= 1
+        }
+    }
 
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws {
         state.metrics.move(fromOffsets: source, toOffset: destination)

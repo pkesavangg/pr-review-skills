@@ -30,24 +30,24 @@ struct UserNumberButtonGrid: View {
                 HStack(spacing: .spacingMD) {
                     ForEach(row, id: \.self) { number in
                         let isSelected = number == selectedNumber
-                        Button(action: {
+                        ZStack {
+                            Circle()
+                                .fill(isSelected ? theme.actionPrimary : Color.clear)
+                                .overlay(
+                                    Circle()
+                                        .stroke(theme.actionPrimary, lineWidth: 2)
+                                )
+                            
+                            Text("U\(number)")
+                                .fontOpenSans(.button1)
+                                .foregroundColor(isSelected ? theme.actionInverse : theme.actionPrimary)
+                        }
+                        .frame(width: 100, height: 100)
+                        .contentShape(Circle())
+                        .onTapGesture {
                             withAnimation {
                                 selectedNumber = number
                                 onNumberSelected?(number)
-                            }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(isSelected ? theme.actionPrimary : Color.clear)
-                                    .frame(width: 100, height: 100)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(theme.actionPrimary, lineWidth: 2)
-                                    )
-                                
-                                Text("U\(number)")
-                                    .fontOpenSans(.button1)
-                                    .foregroundColor(isSelected ? theme.actionInverse : theme.actionPrimary)
                             }
                         }
                     }

@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorruptedChars
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -183,16 +184,20 @@ constructor(
 
   private fun openWiFiSetup() {
     viewModelScope.launch {
-      val scale = state.value.scale
-      if (scale != null) {
-        ggDeviceService.addCacheDevice(scale.device?.broadcastId, scale)
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.BtWifiScaleSetup(
-            scale.sku ?: "0412",
-            BtWifiSetupStep.GATHERING_NETWORK,
-            scale.device?.broadcastId,
-          ),
-        )
+      try {
+        val scale = state.value.scale
+        if (scale != null) {
+          ggDeviceService.addCacheDevice(scale.device?.broadcastId, scale)
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BtWifiScaleSetup(
+              scale.sku ?: SKU_0412,
+              BtWifiSetupStep.GATHERING_NETWORK,
+              scale.device?.broadcastId,
+            ),
+          )
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to navigate to WiFi setup", e)
       }
     }
   }
@@ -262,6 +267,7 @@ constructor(
             message = ScaleDetailsStrings.DeleteScaleConfirmation,
             confirmText = ScaleDetailsStrings.Delete,
             cancelText = ScaleDetailsStrings.Cancel,
+            primaryActionType = com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText,
             onConfirm = {
               viewModelScope.launch {
                 val scale = state.value.scale!!
@@ -299,11 +305,11 @@ constructor(
                 }
               }
             },
-            onDismiss = {
+          onDismiss = {
               dialogQueueService.dismissCurrent()
             },
 
-            ),
+          ),
 
           )
       }
@@ -335,6 +341,7 @@ constructor(
           "scaleId" to (state.value.scale?.id ?: scaleId),
           "accountId" to (activeAccount?.id ?: ""),
         ),
+        dismissOnBackPress = true
       ),
     )
   }

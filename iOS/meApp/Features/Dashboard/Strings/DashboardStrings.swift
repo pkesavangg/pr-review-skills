@@ -52,6 +52,9 @@ struct DashboardStrings {
     // Streak/Loss labels
     static let currentStreak = "current streak"
     static let longestStreak = "longest streak"
+    static func daySuffix(forStreak streak: Int) -> String {
+        streak == 1 ? " day" : " days"
+    }
     static let lbsWeek = "lbs/week"
     static let lbsMonth = "lbs/month"
     static let lbsYear = "lbs/year"

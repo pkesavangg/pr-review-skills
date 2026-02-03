@@ -1,9 +1,8 @@
 package com.dmdbrands.gurus.weight.app.viewmodel
 
-import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
-import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.app.components.ReconnectScale
+import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
@@ -30,14 +29,14 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
-import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
@@ -59,7 +58,6 @@ import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -89,9 +87,7 @@ constructor(
   private val deviceService: IDeviceService,
   private val ggPermissionService: GGPermissionService,
   private val ggDeviceService: GGDeviceService,
-  private val healthConnectService: IHealthConnectService,
   private val deviceInfoService: IDeviceInfoService,
-  private val workManager: WorkManager,
   private val bluetoothPreferencesService: BluetoothPreferencesService,
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
@@ -101,15 +97,12 @@ constructor(
 ) {
   companion object {
     private const val TAG = "AppViewModel"
-
-    // Delay constants for Health Connect permission check
-    private const val INITIAL_DELAY = 1L // 1 second
-    private const val DELAYED_ALERT = 3000L // 3 seconds
   }
 
   override fun provideInitialState(): AppState = AppState()
   private var currentAccountId: String? = null
-  private var canShowPopUp = true
+  private var canShowScaleDiscoveredModal = true
+  private var scaleToIgnore: String? = null
   private var sku: String? = null
   private var discoveredBroadcastId: String? = null
   private var permissionSubscribeJob: Job? = null
@@ -122,15 +115,14 @@ constructor(
   private var latestPairedScales: List<Device> = emptyList()
 
   init {
+
     // Initialize and maintain currentAccountId globally
     viewModelScope.launch {
       accountService.activeAccountFlow.collect {
         currentAccountId = it?.id
       }
     }
-  }
 
-  init {
     viewModelScope.launch {
       try {
         logManager.cleanupOldLogs(5)
@@ -147,7 +139,7 @@ constructor(
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
-      initialize()
+      initEvents()
     }
   }
 
@@ -171,24 +163,6 @@ constructor(
     }
   }
 
-  private fun initialize() {
-    viewModelScope.launch {
-      workManager.getWorkInfosByTagLiveData("ionic_migration").asFlow().collect { workInfos ->
-        if (workInfos.isEmpty()) {
-          val account = accountService.getCurrentAccount()
-          initLoadingData(account)
-          initEvents()
-        } else {
-          if (workInfos.all { it.state.isFinished }) {
-            val account = accountService.getCurrentAccount()
-            initLoadingData(account)
-            initEvents()
-          }
-        }
-      }
-    }
-  }
-
   override fun handleIntent(intent: AppIntent) {
     when (intent) {
       is AppIntent.OnPopUpConnect -> onPopUpConnect()
@@ -200,18 +174,37 @@ constructor(
     super.handleIntent(intent)
   }
 
+  /**
+   * Resets scale discovered related properties when switching accounts.
+   * This ensures that the new account can see discovered scales without
+   * being affected by the previous account's skip/ignore state.
+   */
+  private fun resetScaleDiscoveredState() {
+    bluetoothPreferencesService.clearSkipDevices()
+    scaleToIgnore = null
+    canShowScaleDiscoveredModal = true
+    discoveredBroadcastId = null
+    sku = null
+    handleIntent(AppIntent.SetScaleDiscovered(false))
+    AppLog.d(TAG, "Reset scale discovered state for account switch")
+  }
+
   private fun onPopUpConnect() {
     viewModelScope.launch {
-      if (sku == "0412") {
+      handleIntent(AppIntent.SetScaleDiscovered(false))
+      // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
+      dialogQueueService.clear()
+      if (sku == SKU_0412) {
         navigationService.navigateTo(
           AppRoute.ScaleSetup.BtWifiScaleSetup(
-            "0412",
+            SKU_0412,
             BtWifiSetupStep.CONNECTING_BLUETOOTH,
             discoveredBroadcastId,
           ),
         )
       } else if (sku != null) {
-        val scaleInfo = SCALES.find { it.sku == sku }
+        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku!!)
+        // Pass original SKU to routes (not mapped), setup will save original SKU
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
             sku!!,
@@ -228,17 +221,20 @@ constructor(
   private fun onPopUpDismiss() {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
-      delay(30 * 1000)
-      canShowPopUp = true
-    }
-  }
-
-  private fun syncScales() {
-    syncScaleJob = viewModelScope.launch {
-      deviceService.getGGBTDevices().collect {
-        ggDeviceService.syncDevices(it)
+      // Add to skipDevices if not already present
+      discoveredBroadcastId?.let { broadcastId ->
+        bluetoothPreferencesService.addSkipDevice(broadcastId)
       }
+      // Set canShowScaleDiscoveredModal to false for 30 seconds
+      canShowScaleDiscoveredModal = false
+      delay(30 * 1000)
+      canShowScaleDiscoveredModal = true
     }
+    discoveredBroadcastId?.let { broadcastId ->
+      ggDeviceService.skipDevice(broadCastId = broadcastId, considerForSession = true)
+
+    }
+    AppLog.d(TAG, "Closed scale discovered popup ${state.value.isScaleDiscovered}")
   }
 
   private fun initEvents() {
@@ -246,24 +242,30 @@ constructor(
       appNavigationService.authEvent.collect { authState ->
         when (authState) {
           is AuthState.LoggedIn -> {
-            // handle login event
             stopScan()
-            initLoadingData(authState.account, true)
+            resetScaleDiscoveredState()
+            startObserversOnly(authState.account)
+          }
+
+          is AuthState.LoggedInFromLoading -> {
+            // LoadingScreenViewModel already did loadData + autoLogin; only start observers (feed, IAM, permissions, device callbacks, etc.)
+            dashboardService.setSelectedKey(null)
           }
 
           is AuthState.LoggedOut -> {
+            stopScan()
             if (authState.isActiveAccount) {
               routeToLandingOrApp()
               dialogQueueService.clear()
             }
-            stopScan()
           }
 
           is AuthState.AccountDeleted -> {
             if (authState.isActiveAccount) {
+              stopScan()
+              dashboardService.setSelectedKey(null)
               routeToLandingOrApp()
             }
-            stopScan()
           }
 
           is AuthState.UnauthorizedLogout -> {
@@ -281,7 +283,10 @@ constructor(
 
           is AuthState.AccountAdded -> {
             stopScan()
-            initLoadingData(authState.account)
+            // Reset scale discovered state when adding account; LoadingScreenViewModel does single load
+            resetScaleDiscoveredState()
+            dashboardService.setSelectedKey(null)
+            startObserversOnly(authState.account)
           }
 
           is AuthState.AccountSwitched -> {
@@ -299,7 +304,8 @@ constructor(
             }
             stopScan()
             dashboardService.setSelectedKey(null)
-            initLoadingData(authState.account, true)
+            // Reset scale discovered state when switching accounts; LoadingScreenViewModel does single load
+            resetScaleDiscoveredState()
           }
 
           is AuthState.ProfileUpdated -> {
@@ -348,23 +354,6 @@ constructor(
   }
 
   /**
-   * Checks the login status for all accounts using the split methods.
-   * @return true if login status check was successful
-   */
-  private suspend fun checkLoginStatus(): Boolean =
-    try {
-      val isActiveAccountChecked = accountService.checkLoginStatusForActiveAccount()
-      // Then check other logged-in accounts
-      val isLoggedInAccountsChecked = accountService.checkLoginStatusForLoggedInAccounts()
-
-      AppLog.d(TAG, "Checked login status for all accounts ${isActiveAccountChecked && isLoggedInAccountsChecked}")
-      isActiveAccountChecked && isLoggedInAccountsChecked
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error checking login status", e)
-      false
-    }
-
-  /**
    * Routes to either the landing page or the app based on login status.
    * @param isLoggedIn true if user is logged in, false otherwise
    */
@@ -383,44 +372,35 @@ constructor(
     navigationService.replaceStack(route = route)
   }
 
-  private suspend fun initLoadingData(account: Account?, isLoggedIn: Boolean = false) {
-    try {
-      initialized = false
-      val isLoginStatusChecked = checkLoginStatus()
-      if (account != null && isLoginStatusChecked) {
+  /**
+   * Starts long-lived observers only (no account setup or navigation).
+   * Called when [AuthState.LoggedInFromLoading] is received; LoadingScreenViewModel already did loadData + autoLogin.
+   */
+  private fun startObserversOnly(account: Account) {
+    viewModelScope.launch {
+      try {
         permissionSubscribeJob?.cancel()
         deviceSubscribeJob?.cancel()
         syncScaleJob?.cancel()
         pairedScalesSubscribeJob?.cancel()
-        accountService.subscribeAccount()
-        entryService.updateAccountId(account.id)
-        dashboardService.setAccountId(account.id)
-        deviceService.setAccountId(account.id)
-        if (isLoggedIn) {
-          deviceInfoService.updateDeviceInfo()
-        }
-        navigationService.autoLogin()
-        entryService.initializeGoalCardMonitoring()
-        // Check for IAM feed modal trigger after fetching feed items
-        feedService.fetchFeedItems()
-        initialiseIAMDialogListener()
-        updateUnRead()
+        deviceInfoService.updateDeviceInfo()
         subscribePermissions()
         subscribeDeviceCallback()
         subscribePairedScales()
-        syncScales()
-      } else {
-        routeToLandingOrApp()
+        entryService.initializeGoalCardMonitoring(account.id)
+        feedService.fetchFeedItems()
+        initialiseIAMDialogListener()
+        updateUnRead()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "startObserversOnly failed", e)
       }
-    } catch (e: Exception) {
-      routeToLandingOrApp()
-      AppLog.e(TAG, "Load data failed", e)
     }
   }
 
   private fun subscribePermissions() {
     startScan()
     permissionSubscribeJob = viewModelScope.launch {
+      AppLog.d("AppViewModel", "subscribePermissions launched")
       ggPermissionService.permissionCallBackFlow.collect { permissions ->
         if (permissions.isNotEmpty()) {
           if (AppPermissionsHelper.checkScanPermissions(permissions)) {
@@ -429,7 +409,7 @@ constructor(
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
-                val scaleInfo = SCALES.find { it.sku == savedScale.sku }
+                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
                 scaleInfo?.setupType in listOf(
                   ScaleSetupType.BtWifiR4,
                   ScaleSetupType.Lcbt,
@@ -462,18 +442,25 @@ constructor(
         }
       }
     }
-    checkHealthConnectPermissionWithDelay()
   }
 
   private fun subscribeDeviceCallback() {
     deviceSubscribeJob = viewModelScope.launch {
       ggDeviceService.deviceCallbackFlow.collect { response ->
+        AppLog.d(
+          TAG,
+          "deviceCallback triggered: response type=${response.javaClass.simpleName}, response=$response"
+        )
+        // Note: Bluetooth state check is done in GGBluetoothSDKHelper before emitting
+        // This log helps track when callbacks are received in the ViewModel
         when (response) {
           is GGScanResponse.DeviceDetail -> {
+            AppLog.i(TAG, "Scan Response Device Detail: $response")
             handleDeviceResponse(response)
           }
 
           is GGScanResponse.Entry -> {
+            AppLog.i(TAG, "Scan Response Entry: $response")
             handleEntryResponse(response)
           }
 
@@ -512,12 +499,30 @@ constructor(
   private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail) {
     val data = deviceResponse.data
     viewModelScope.launch {
-
+      // Check if scale is already known (paired) - similar to Angular's isKnown logic
+      val accountId = currentAccountId ?: return@launch
+      val isKnownScale = data.broadcastId?.let { broadcastId ->
+        // Check against latestPairedScales list first (similar to Angular's this.scales.find)
+        latestPairedScales.any { scale ->
+          scale.device?.broadcastId == broadcastId
+        } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
+      } == true
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
-          if (canShowPopUp && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
+          AppLog.d(TAG,"new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
+          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            val isSetupInProgress = deviceService.isSetupInProgress()
+
+            if (currentRoute !is AppRoute.ScaleSetup && !isSetupInProgress) {
+              // Check if device is in skipDevices list
+              val isSkipped =
+                data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||
+                data.macAddress.let { bluetoothPreferencesService.containsSkipDevice(it) }
+
+              // Check if same scale was shown recently (15 seconds)
+              val isIgnored = data.macAddress == scaleToIgnore
+
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
               val shouldShow = if (deviceSku == "0412") {
@@ -527,20 +532,42 @@ constructor(
                 true // Don't filter non-0412 scales
               }
 
-              if (shouldShow) {
+              // Only show if not skipped, not ignored, not known, and shouldShow is true
+              if (!isSkipped && !isIgnored && !isKnownScale && shouldShow) {
                 handleIntent(AppIntent.SetScaleDiscovered(true))
                 handleIntent(AppIntent.SetSku(deviceSku))
                 sku = deviceSku
                 discoveredBroadcastId = data.broadcastId
+
+                // Set scaleToIgnore for 15 seconds to prevent showing same scale again
+                data.macAddress.let { macAddress ->
+                  scaleToIgnore = macAddress
+                  viewModelScope.launch {
+                    delay(SCALEDISCOVEREDTIMEOUT)
+                    scaleToIgnore = null
+                  }
+                }
+
                 val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
                   device = data,
                   deviceType = ScaleSetupType.Lcbt.value,
                   sku = sku,
                 )
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
-                canShowPopUp = false
+                canShowScaleDiscoveredModal = false
               } else {
-                AppLog.d(TAG, "Filtered out 0412 scale with MAC: ${data.macAddress}")
+                if (isSkipped) {
+                  AppLog.d(TAG, "Skipped device with broadcastId: ${data.broadcastId} or MAC: ${data.macAddress}")
+                }
+                if (isIgnored) {
+                  AppLog.d(TAG, "Ignoring recently shown scale with MAC: ${data.macAddress}")
+                }
+                if (isKnownScale) {
+                  AppLog.d(TAG, "Known device (already paired) with broadcastId: ${data.broadcastId}")
+                }
+                if (!shouldShow) {
+                  AppLog.d(TAG, "Filtered out 0412 scale with MAC: ${data.macAddress}")
+                }
               }
             }
           }
@@ -579,7 +606,7 @@ constructor(
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
-          if (currentRoute !is AppRoute.ScaleSetup) {
+          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
@@ -616,7 +643,7 @@ constructor(
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
           try {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {
@@ -788,22 +815,6 @@ constructor(
     }
   }
 
-  /**
-   * Checks Health Connect permission with appropriate delay based on whether permission alert was shown.
-   */
-  private fun checkHealthConnectPermissionWithDelay() {
-    viewModelScope.launch {
-      try {
-        val delayTime = if (isPermissionAlertShown) DELAYED_ALERT else INITIAL_DELAY
-        delay(delayTime)
-        healthConnectService.checkHealthConnectPermissionDisabled()
-        AppLog.d(TAG, "Health Connect permission check completed after ${delayTime}ms delay")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to check Health Connect permission", e)
-      }
-    }
-  }
-
   private fun startScan() {
     viewModelScope.launch {
       accountService.activeAccountFlow.map {
@@ -908,7 +919,7 @@ constructor(
     iamDialogListenerJob?.cancel()
     iamDialogListenerJob = viewModelScope.launch {
       try {
-        ggInAppMessagingService.dialogEvents.collectLatest { event ->
+        ggInAppMessagingService.dialogEvents.collect { event ->
           handleIAMDialogEvent(event)
         }
       } catch (e: Exception) {
