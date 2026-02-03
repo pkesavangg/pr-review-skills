@@ -172,7 +172,7 @@ final class ScaleSettingsStore: ObservableObject {
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
         /// Check if scale preferences need syncing
         let hasImpedanceMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
-        let needsSync = hasImpedanceMismatch || !preference.isSynced
+        let needsSync = !preference.isSynced
 
         logger.log(
             level: .debug,

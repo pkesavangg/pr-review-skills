@@ -1346,7 +1346,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
         logger.log(level: .debug, tag: tag, message: "Checking preference sync - App wants impedance: \(preference.shouldMeasureImpedance), Scale has impedance: \(impedanceSwitchState), Mismatch: \(hasImpedanceMismatch), Unsynced: \(hasUnsyncedPreferences)")
 
-        guard hasImpedanceMismatch || hasUnsyncedPreferences else {
+        guard hasUnsyncedPreferences else {
             logger.log(level: .debug, tag: tag, message: "No sync needed - preferences match scale state")
             return
         }
