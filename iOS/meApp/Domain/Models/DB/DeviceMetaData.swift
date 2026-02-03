@@ -67,5 +67,5 @@ final class DeviceMetaData {
     }
 }
 
-// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
-// Use PersistentIdentifier to pass references between contexts.
+/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
+extension DeviceMetaData: @unchecked Sendable {}

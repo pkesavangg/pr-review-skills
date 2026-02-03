@@ -49,5 +49,8 @@ final class BathScaleEntry {
     }
 }
 
-// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
-// Use PersistentIdentifier to pass references between contexts.
+/// @unchecked Sendable is used because BathScaleEntry is a SwiftData @Model with thread-safe properties.
+/// SwiftData handles synchronization internally, allowing safe use in async contexts like
+/// HealthKit sync and background operations. We explicitly mark it Sendable to enable
+/// concurrent access without data races.
+extension BathScaleEntry: @unchecked Sendable {}

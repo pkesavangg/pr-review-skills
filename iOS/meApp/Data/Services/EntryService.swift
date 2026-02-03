@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import SwiftData
 
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
@@ -215,27 +214,84 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Progress/Stats
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
-
-        // Use SwiftDataWorker for thread-safe access to SwiftData relationships
-        // All relationship data is extracted within the worker's isolated context
-        let worker = await SwiftDataWorker(modelContainer: PersistenceController.shared.container)
-        let fetchResult = try await worker.fetchProgressData(accountId: accountId)
-
-        guard let latestData = fetchResult.latestEntry else {
+        let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+        let sortedEntries = allEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
+        
+        guard let latestEntry = sortedEntries.last else {
             throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "No entries found"])
         }
-
-        // All data is already extracted - safe to use across actors
-        let latestWeight = latestData.weight ?? 0
-        let weekStartWeight = fetchResult.weekStartEntry?.weight
-        let monthStartWeight = fetchResult.monthStartEntry?.weight
-        let firstEntryWeight = fetchResult.firstEntry?.weight
-
-        // DTOs already extracted by worker
-        let latestDTO = latestData.toDTO()
-        let weekDTO = fetchResult.weekStartEntry?.toDTO()
-        let monthDTO = fetchResult.monthStartEntry?.toDTO()
-
+        
+        // Helper: Gets and sorts entries in the last N days
+        func sortedRecentEntries(_ days: Int) async throws -> [Entry] {
+            try await localRepo.fetchEntries(lastNDays: days, userId: accountId).sorted { $0.entryTimestamp < $1.entryTimestamp }
+        }
+        
+        let weekEntries = try await sortedRecentEntries(7)
+        let monthEntries = try await sortedRecentEntries(30)
+        
+        // Prepare entry IDs to refetch in main actor context for SwiftData safety
+        let idSet = [
+            latestEntry.id,
+            weekEntries.first?.id,
+            monthEntries.first?.id,
+            sortedEntries.first?.id
+        ].compactMap { $0 }
+        
+        guard let entryRepo = localRepo as? EntryRepository else {
+            throw NSError(domain: "EntryService", code: 500, userInfo: [NSLocalizedDescriptionKey: "localRepo is not of type EntryRepository"])
+        }
+        let refetched = try await entryRepo.refetchEntriesOnMainActor(entryIds: idSet)
+        
+        // Store IDs before accessing SwiftData properties
+        let latestEntryId = latestEntry.id
+        let weekStartId = weekEntries.first?.id
+        let monthStartId = monthEntries.first?.id
+        let firstEntryId = sortedEntries.first?.id
+        
+        // Helper: Safe extraction utilities
+        func safe<T>(_ id: UUID?) -> T? { id.flatMap { refetched[$0] as? T } }
+        func sync<T>(_ block: @Sendable () throws -> T) async rethrows -> T { try await MainActor.run(body: block) }
+        
+        // Extract relevant weights and DTOs in a MainActor context
+        // All SwiftData property access must happen on MainActor to avoid crashes
+        let ext: (
+            latestWeight: Int,
+            weekStartWeight: Int?,
+            monthStartWeight: Int?,
+            firstEntryWeight: Int?,
+            weekDTO: BathScaleOperationDTO?,
+            monthDTO: BathScaleOperationDTO?,
+            firstDTO: BathScaleOperationDTO?,
+            latestDTO: BathScaleOperationDTO
+        ) = try await sync {
+            guard let latestEntry = refetched[latestEntryId] else {
+                throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Latest entry not found in refetched entries"])
+            }
+            let weekStart = safe(weekStartId) as Entry?
+            let monthStart = safe(monthStartId) as Entry?
+            let firstEntry = safe(firstEntryId) as Entry?
+            
+            return (
+                latestWeight: latestEntry.scaleEntry?.weight ?? 0,
+                weekStartWeight: weekStart?.scaleEntry?.weight,
+                monthStartWeight: monthStart?.scaleEntry?.weight,
+                firstEntryWeight: firstEntry?.scaleEntry?.weight,
+                weekDTO: weekStart?.toOperationDTO(),
+                monthDTO: monthStart?.toOperationDTO(),
+                firstDTO: firstEntry?.toOperationDTO(),
+                latestDTO: latestEntry.toOperationDTO()
+            )
+        }
+        
+        let latestWeight = ext.latestWeight
+        let weekStartWeight = ext.weekStartWeight
+        let monthStartWeight = ext.monthStartWeight
+        let firstEntryWeight = ext.firstEntryWeight
+        let weekDTO = ext.weekDTO
+        let monthDTO = ext.monthDTO
+        let firstDTO = ext.firstDTO
+        let latestDTO = ext.latestDTO
+        
         let weekDelta = latestWeight - (weekStartWeight ?? latestWeight)
         let monthDelta = latestWeight - (monthStartWeight ?? latestWeight)
         
@@ -258,7 +314,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
         
         return Progress(
-            count: fetchResult.totalCount,
+            count: sortedEntries.count,
             currentStreak: streak.current,
             initYear: yearStartDTO,
             initMonth: monthDTO,

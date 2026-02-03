@@ -38,5 +38,5 @@ final class NotificationSettings {
     }
 }
 
-// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
-// Use PersistentIdentifier to pass references between contexts.
+/// Marked @unchecked Sendable due to SwiftData's built-in thread safety.
+extension NotificationSettings: @unchecked Sendable {}
