@@ -70,6 +70,7 @@ struct ManualEntryScreen: View {
                         // Pickers
                         DatePickerView(isPresented: $entryStore.showDatePicker,
                                        date: $entryStore.manualEntryForm.date.value,
+                                       startDate: Date(timeIntervalSince1970: 946684800), // Jan 1, 2000
                                        endDate: Date())
                         .onChange(of: entryStore.showDatePicker) { _, isPresented in
                             if isPresented {
