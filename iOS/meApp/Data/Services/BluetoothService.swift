@@ -98,6 +98,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var isUpdatingR4Profile = false
     private var lastAccountId: String?
     private var isSyncingPreferences = false  // Guard against concurrent preference syncs
+    private var weightOnlyModeAlertDebounceTask: Task<Void, Never>?  // Debounce task for weight-only mode alert check
 
     // MARK: - Dependencies
     private let accountService: AccountService
@@ -107,7 +108,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let ggBleSDK = GGBluetoothSwiftPackage.shared
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let tag = "BluetoothService"
-
+    
+    // Generic actor to serialize SDK operations per device to prevent callback conflicts
+    // The SDK only maintains one completion handler per operation type at a time
+    private nonisolated let sdkOperationSerializer = SDKOperationSerializer()
 
     // MARK: - Alert Dependencies (injected via shared instances for now)
     private var notificationService: NotificationHelperService { NotificationHelperService.shared }
@@ -408,7 +412,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             ggDevice.userNumber = userNumber ?? 0
             let preference = GGDevicePreference(displayName: displayName)
             ggDevice.preference = preference
-            let result = await ggBleSDK.confirmPair(ggDevice)
+            
+            // Serialize confirmPair calls per device to prevent SDK callback conflicts
+            let result = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):confirmPair"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.confirmPair(ggDevice)
+                }
+            }
+            
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -426,7 +440,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let result = await ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
+            
+            // Serialize deleteUser calls per device to prevent SDK callback conflicts
+            let result = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):deleteUser"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
+                }
+            }
+            
             return .success(UserDeletionResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -716,6 +740,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /**
      Updates account-specific preferences (display name, metrics, etc.) on the device.
+     Serializes calls per device to prevent SDK callback conflicts when multiple calls happen concurrently.
      - Returns: Result<UserCreationResponse, BluetoothServiceError>
      */
     func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> {
@@ -724,10 +749,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             ggDevice.preference = mapToGGPreference(deviceId: device.id, preference: preference)
-            // Add timeout to prevent continuation leaks if SDK callback never fires
-            let result = try await withTimeout(seconds: 10) {
-                await self.ggBleSDK.updateAccount(ggDevice)
-            }
+            
+            // Serialize updateAccount calls per device to prevent SDK callback conflicts
+            // The SDK only maintains one completion handler at a time, so concurrent calls overwrite each other
+           let result = try await sdkOperationSerializer.execute(
+               operationKey: "\(device.id):updateAccount"
+           ) { @MainActor in
+               // Add timeout to prevent continuation leaks if SDK callback never fires
+               try await self.withTimeout(seconds: 10) {
+                   await self.ggBleSDK.updateAccount(ggDevice)
+               }
+           }
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -752,9 +784,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
 
-            // Add timeout to prevent continuation leaks if SDK callback never fires
-            let users = try await withTimeout(seconds: 10) {
-                await self.ggBleSDK.getUsers(ggDevice)
+            // Serialize getUsers calls per device to prevent SDK callback conflicts
+            let users = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):getUsers"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.getUsers(ggDevice)
+                }
             }
 
             let deviceUsers = users.user.map { user in
@@ -791,8 +828,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
 
-            let details = try await withTimeout(seconds: 10) {
-               await self.ggBleSDK.getDeviceInfo(ggDevice)
+            // Serialize getDeviceInfo calls per device to prevent SDK callback conflicts
+            let details = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):getDeviceInfo"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.getDeviceInfo(ggDevice)
+                }
             }
             guard let deviceDetails = details else {
                 return .failure(.deviceNotConnected)
@@ -1242,26 +1285,47 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
 
     private func checkCanShowWeightOnlyModeAlert() async {
-        // Get connected scales that have weight-only mode enabled by others
-        let connectedScales = bluetoothScales.filter { scale in
-            (scale.isConnected ?? false)
-        }
+        // Cancel any existing debounce task to ensure only the latest call executes
+        weightOnlyModeAlertDebounceTask?.cancel()
+        
+        // Create new debounce task with 500ms delay
+        let debounceTask = Task { @MainActor [weak self] in
+            // Wait 500ms before executing - this ensures we use the latest state
+            try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+            
+            // Check if task was cancelled (another call came in)
+            guard !Task.isCancelled, let self = self else { return }
+            
+            // Get connected scales that have weight-only mode enabled by others
+            // Read the latest state at execution time, not when task was created
+            let connectedScales = self.bluetoothScales.filter { scale in
+                (scale.isConnected ?? false)
+            }
 
-        var hasWeightOnlyModeEnabledByOthers = false
+            var hasWeightOnlyModeEnabledByOthers = false
 
-        // Check each connected scale for weight-only mode condition
-        for scale in connectedScales {
-            if let isWeightOnlyEnabled = scale.isWeighOnlyModeEnabledByOthers, isWeightOnlyEnabled {
-                hasWeightOnlyModeEnabledByOthers = true
-                break
+            // Check each connected scale for weight-only mode condition
+            for scale in connectedScales {
+                if let isWeightOnlyEnabled = scale.isWeighOnlyModeEnabledByOthers, isWeightOnlyEnabled {
+                    hasWeightOnlyModeEnabledByOthers = true
+                    break
+                }
+            }
+
+            // Only send the final value after debounce period
+            if hasWeightOnlyModeEnabledByOthers && !self.isWeightOnlyModeAlertDismissed {
+                self.showWeightOnlyModeAlertSubject.send(true)
+            } else {
+                self.showWeightOnlyModeAlertSubject.send(false)
             }
         }
-
-        if hasWeightOnlyModeEnabledByOthers && !isWeightOnlyModeAlertDismissed {
-            showWeightOnlyModeAlertSubject.send(true)
-        } else {
-            showWeightOnlyModeAlertSubject.send(false)
-        }
+        
+        // Store the task so it can be cancelled by subsequent calls
+        weightOnlyModeAlertDebounceTask = debounceTask
+        
+        // Await the task completion so callers know the check has been scheduled and will complete
+        // If cancelled by a subsequent call, this will return immediately
+        await debounceTask.value
     }
 
     public func handleWeightOnlyModeAlertDismissed() {
@@ -1817,6 +1881,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 }
+
 
 // MARK: - Helpers & Mapping
 private extension BluetoothService {
