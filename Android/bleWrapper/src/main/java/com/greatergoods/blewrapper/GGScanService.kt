@@ -22,12 +22,14 @@ abstract class GGScanService {
     appType: String = GGAppType.BALANCE_HEALTH,
     userProfile: GGBTUserProfile
   ) {
+
     ggBluetooth.scan(
       userProfile,
       appType,
     ) { response ->
       when (response) {
         is GGScanResponse.Permission -> {
+          Log.d("appviewmodel", "scan started ${response.data}")
           permissionCallBackFlow.value = response.data
         }
 

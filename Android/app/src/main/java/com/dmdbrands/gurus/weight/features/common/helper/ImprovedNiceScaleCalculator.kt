@@ -1,11 +1,11 @@
 package com.greatergoods.meapp.features.common.helper
 
-import kotlin.math.floor
-import kotlin.math.ceil
-import kotlin.math.log10
 import kotlin.math.abs
-import kotlin.math.round
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.round
 
 /**
  * Data class representing Y-axis metadata including ticks.
@@ -51,12 +51,15 @@ internal data class EdgeBufferResult(
 object ImprovedNiceScaleCalculator {
   // Expanded set of nice numbers used for step selection (normalized domain)
   private val niceNumbers = listOf(1.0, 2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0, 40.0, 50.0, 100.0, 200.0)
-  
+
   // Classic nice numbers for niceTicks (1-2-5 × 10^n)
   private val classicNiceNumbers = listOf(1.0, 2.0, 5.0, 10.0)
-  
+
   // Double equality epsilon
   private const val DOUBLE_EQUALITY_EPSILON = 1e-9
+
+  /** Minimal padding above and below when min and max are the same (single data point). */
+  private const val MIN_PADDING_SAME_VALUE = 1.0
 
   /**
    * Generate a nice Y-axis scale with optimal tick values for gradual changes.
@@ -72,27 +75,37 @@ object ImprovedNiceScaleCalculator {
     val dataMin = minOf(minValue, maxValue)
     val dataMax = maxOf(minValue, maxValue)
     val desired = maxOf(3, minOf(6, targetTickCount))
-    
+
+    // When min and max are the same, use minimal padding above and below instead of zero range
+    val range = dataMax - dataMin
+    val isSameValue = !range.isFinite() || range <= 0 || abs(range) < DOUBLE_EQUALITY_EPSILON
+    val (effectiveMin, effectiveMax) = if (isSameValue) {
+      val center = (dataMin + dataMax) / 2.0
+      Pair(center - MIN_PADDING_SAME_VALUE, center + MIN_PADDING_SAME_VALUE)
+    } else {
+      Pair(dataMin, dataMax)
+    }
+
     // Generate nice ticks using classic algorithm (iOS matches this)
-    val result = niceTicks(min = dataMin, max = dataMax, desiredTickCount = desired)
-    
+    val result = niceTicks(min = effectiveMin, max = effectiveMax, desiredTickCount = desired)
+
     // Apply edge buffer so top/bottom data points don't touch chart edges
     val buffered = applyEdgeBufferToTicks(
       dataMin = dataMin,
       dataMax = dataMax,
       step = result.step,
       ticks = result.ticks,
-      desiredTickCount = desired
+      desiredTickCount = desired,
     )
-    
+
     // Align domain to adjusted tick range so plot bounds match horizontal rules
     val domainMin = buffered.ticks.firstOrNull() ?: result.domainMin
     val domainMax = buffered.ticks.lastOrNull() ?: result.domainMax
-    
+
     // Apply weightless mode logic: allow negative values if true, otherwise clamp to 0
     val finalMin = if (isWeightLessMode) domainMin else maxOf(domainMin, 0.0)
     val finalMax = domainMax
-    
+
     // iOS sanitization step: if not in weightless mode and domainMin < 0, recalculate with max(3, buffered.ticks.size)
     val (finalTicks, finalStep) = if (!isWeightLessMode && domainMin < 0) {
       // Sanitize: recalculate with desiredTickCount = max(3, initial.ticks.count)
@@ -104,19 +117,19 @@ object ImprovedNiceScaleCalculator {
         dataMax = dataMax,
         step = sanitizedResult.step,
         ticks = sanitizedResult.ticks,
-        desiredTickCount = sanitizedDesiredTickCount
+        desiredTickCount = sanitizedDesiredTickCount,
       )
       Pair(sanitizedBuffered.ticks, sanitizedBuffered.step)
     } else {
       Pair(buffered.ticks, buffered.step)
     }
-    
+
     return AxisMeta(
       min = finalMin,
       max = finalMax,
       step = finalStep,
       count = finalTicks.size,
-      ticks = finalTicks
+      ticks = finalTicks,
     )
   }
 
@@ -139,7 +152,7 @@ object ImprovedNiceScaleCalculator {
         ticks = listOf(lo, hi),
         step = step,
         domainMin = lo,
-        domainMax = hi
+        domainMax = hi,
       )
     }
 
@@ -178,12 +191,12 @@ object ImprovedNiceScaleCalculator {
     val domainMin = deduped.firstOrNull() ?: niceMin
     val domainMax = deduped.lastOrNull() ?: niceMax
     val actualStep = if (deduped.size > 1) (deduped[1] - deduped[0]) else step
-    
+
     return NiceTicksResult(
       ticks = deduped,
       step = actualStep,
       domainMin = domainMin,
-      domainMax = domainMax
+      domainMax = domainMax,
     )
   }
 
@@ -200,11 +213,11 @@ object ImprovedNiceScaleCalculator {
     fun snapDown(value: Double, step: Double): Double {
       return if (step > 0) floor(value / step) * step else value
     }
-    
+
     fun snapUp(value: Double, step: Double): Double {
       return if (step > 0) ceil(value / step) * step else value
     }
-    
+
     fun buildTicks(min: Double, max: Double, step: Double): List<Double> {
       if (step <= 0) return listOf(min, max)
       val ticks = mutableListOf<Double>()
@@ -212,7 +225,7 @@ object ImprovedNiceScaleCalculator {
       val end = snapUp(max, step)
       // Guard against degenerate ranges
       if (end < start) return listOf(min, max)
-      
+
       while (start <= end + 0.0001) {
         // Round to avoid floating artifacts
         val rounded = round(start / step) * step
@@ -253,7 +266,7 @@ object ImprovedNiceScaleCalculator {
         val rng = (ticks.lastOrNull() ?: snappedMax) - (ticks.firstOrNull() ?: snappedMin)
         val snappedStep = calculateOptimalStep(
           range = rng,
-          targetTickCount = maxOf(3, minOf(6, ticks.size))
+          targetTickCount = maxOf(3, minOf(6, ticks.size)),
         )
         step = maxOf(snappedStep, 0.0001)
         val sMin = floor(min / step) * step
@@ -305,17 +318,17 @@ object ImprovedNiceScaleCalculator {
         enforced = enforceTickLimits(
           min = enforced.ticks.firstOrNull() ?: proposedMin,
           max = proposedMax,
-          initialStep = enforced.step
+          initialStep = enforced.step,
         )
       }
-      
+
       val first = enforced.ticks.first()
       if ((dataMin - first) < (enforced.step * thresholdRatio) && enforced.ticks.size < maxTicks) {
         proposedMin = first - enforced.step
         enforced = enforceTickLimits(
           min = proposedMin,
           max = enforced.ticks.lastOrNull() ?: proposedMax,
-          initialStep = enforced.step
+          initialStep = enforced.step,
         )
       }
     }

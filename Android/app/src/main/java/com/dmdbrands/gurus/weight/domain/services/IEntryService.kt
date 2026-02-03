@@ -25,7 +25,7 @@ interface IEntryService {
 
   suspend fun monthDetails(startDate: String): Flow<List<Entry>>
 
-  suspend fun updateAccountId(accountId: String?)
+  suspend fun updateAllData(accountId: String?)
   suspend fun addEntry(entry: Entry)
   suspend fun addEntry(entries: List<Entry>)
   suspend fun deleteEntry(entry: Entry)
@@ -43,5 +43,5 @@ interface IEntryService {
    * This function monitors the lastUpdated flow and checks if the user has enough entries
    * to display the goal card.
    */
-  fun initializeGoalCardMonitoring()
+  fun initializeGoalCardMonitoring(accountId: String)
 }
