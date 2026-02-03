@@ -218,7 +218,7 @@ fun WifiItem(
         AppIcon(
           id = AppIcons.Default.RightCaret,
           contentDescription = "Right caret",
-          modifier = modifier.size(24.dp),
+          modifier = Modifier.size(24.dp),
           onClick = { onClick?.invoke() },
         )
       }
