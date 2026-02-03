@@ -140,9 +140,16 @@ final class BluetoothScaleSetupStore: ObservableObject {
         
         switch currentStep {
         case .permissions:
-            let targetStep: BluetoothScaleSetupStep = (bluetoothConnectionState == .success) ? .stepOn : .selectUser
-            if let index = steps.firstIndex(of: targetStep) {
-                currentStepIndex = index
+            // If scale is already saved and paired, navigate to stepOn
+            // Otherwise, navigate to selectUser
+            if isScaleSaved && bluetoothConnectionState == .success {
+                if let index = steps.firstIndex(of: .stepOn) {
+                    currentStepIndex = index
+                }
+            } else {
+                if let index = steps.firstIndex(of: .selectUser) {
+                    currentStepIndex = index
+                }
             }
             return
         case .setupFinished:
@@ -212,6 +219,14 @@ final class BluetoothScaleSetupStore: ObservableObject {
         switch currentStep {
         case .connectingBluetooth:
             pair()
+        case .stepOn:
+            // If scale is already saved, set up entry subscription
+            // This handles the case where user navigates to stepOn after Bluetooth is turned back on
+            if isScaleSaved, let savedScale = discoveredScale {
+                Task {
+                    await syncNewScaleAndListenForEntries()
+                }
+            }
         default:
             break
         }
@@ -537,8 +552,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
         deviceDiscoveryCancellable = nil
         stepTimerTask?.cancel()
         cleanupEntrySubscription()
-        discoveredScale = nil
-        discoveryEvent = nil
+        // Preserve discoveredScale if scale is already saved, as we need it for entry subscription
+        if !isScaleSaved {
+            discoveredScale = nil
+            discoveryEvent = nil
+        }
         scaleToDelete = nil
     }
     
@@ -586,14 +604,25 @@ final class BluetoothScaleSetupStore: ObservableObject {
     /// Permissions screen.
     private func handlePermissionChange() {
         let permissionsOK = isBluetoothPermissionEnabled()
-        guard !permissionsOK else { return }
         
-        // If we are currently on the pairing step, navigate back so the user can
-        // re-grant permissions.
-        if ![.intro, .setupFinished].contains(currentStep) {
-            resetDiscoveryState()
-            if let permissionIndex = steps.firstIndex(of: .permissions) {
-                currentStepIndex = permissionIndex
+        if !permissionsOK {
+            // Reset connection state when permissions are lost to prevent incorrect navigation
+            // This ensures that when permissions are restored, we don't incorrectly navigate to stepOn
+            bluetoothConnectionState = .loading
+            
+            // If we are currently on the pairing step, navigate back so the user can
+            // re-grant permissions.
+            if ![.intro, .setupFinished].contains(currentStep) {
+                resetDiscoveryState()
+                if let permissionIndex = steps.firstIndex(of: .permissions) {
+                    currentStepIndex = permissionIndex
+                }
+            }
+        } else {
+            // When permissions are restored, if scale is already saved, restore connection state
+            // This allows proper navigation to stepOn when user taps NEXT from permissions
+            if isScaleSaved && discoveredScale != nil {
+                bluetoothConnectionState = .success
             }
         }
     }
