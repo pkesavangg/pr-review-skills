@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -56,7 +54,6 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import kotlinx.coroutines.launch
-import sh.calvin.reorderable.mainAxisViewportSize
 import sh.calvin.reorderable.rememberScroller
 
 @Composable
@@ -71,6 +68,7 @@ fun CustomizeScaleSettings(
 ) {
   val scope = rememberCoroutineScope()
   val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size })
+  val scrollState = rememberScrollState()
 
   // Initialize scale metrics with discovered scale's display metrics if available
   var scaleMetrics by remember { mutableStateOf(discoveredScale?.preferences?.displayMetrics ?: state.scaleMetrics) }
@@ -157,7 +155,7 @@ fun CustomizeScaleSettings(
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
-      .verticalScroll(rememberScrollState())
+      .verticalScroll(state = scrollState)
       .padding(vertical = spacing.md),
     steps = CustomizeSettings.entries,
     containerColor = MeTheme.colorScheme.secondaryBackground,
@@ -332,29 +330,20 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
-        val lazyListState = rememberLazyListState()
-        val scroller = rememberScroller(
-          scrollableState = lazyListState,
-          pixelAmountProvider = { lazyListState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
-        )
 
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
         ) {
-          LazyColumn(modifier = modifier.fillMaxSize(), lazyListState) {
-            item {
-              ScaleMetricsSettingScreen(
-                currentMetrics = scaleMetrics,
-                parentScroller = scroller,
-                onMetricsChanged = { metrics ->
-                  // Only update local state, don't update reducer state until save
-                  updatedPreference = updatedPreference.copy(displayMetrics = metrics)
-                  scaleMetrics = metrics
-                },
-              )
-            }
-          }
+          ScaleMetricsSettingScreen(
+            currentMetrics = scaleMetrics,
+            scrollState = scrollState,
+            onMetricsChanged = { metrics ->
+              // Only update local state, don't update reducer state until save
+              updatedPreference = updatedPreference.copy(displayMetrics = metrics)
+              scaleMetrics = metrics
+            },
+          )
         }
       }
 
