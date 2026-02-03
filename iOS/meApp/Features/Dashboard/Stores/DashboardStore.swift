@@ -102,7 +102,7 @@ class DashboardStore: ObservableObject {
     var hasBodyMetrics: Bool {
         !metricsToShow.isEmpty
     }
-    
+
     /// Whether body metrics should be shown (either skeleton or loaded)
     var shouldShowBodyMetrics: Bool {
         if !state.ui.hasLoadedDashboardConfig {
@@ -118,17 +118,17 @@ class DashboardStore: ObservableObject {
             return hasBodyMetrics
         }
     }
-    
+
     /// Whether body metrics skeleton should be shown
     var shouldShowBodyMetricsSkeleton: Bool {
         !state.ui.hasLoadedDashboardConfig && shouldShowBodyMetrics
     }
-    
+
     /// Whether progress metrics skeleton should be shown
     var shouldShowProgressMetricsSkeleton: Bool {
         !state.ui.hasLoadedProgressMetrics
     }
-    
+
     /// Whether skeleton progress metrics has content above (body metrics)
     var skeletonProgressMetricsHasContentAbove: Bool {
         shouldShowBodyMetrics
@@ -540,7 +540,24 @@ class DashboardStore: ObservableObject {
         }
 
         // When no selection, show average of visible region if available
-        let opsToUse = visibleOperations
+        var opsToUse = visibleOperations
+
+        // For month period: if visible window contains a full month, filter to only that month's entries
+        if state.graph.selectedPeriod == .month {
+            let calendar = Calendar.current
+            let leftEdge = graphManager.state.xScrollPosition
+            let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+
+            if let monthInterval = calendar.dateInterval(of: .month, for: leftEdge) {
+                let containsFullMonth = leftEdge <= monthInterval.start && rightEdge >= monthInterval.end
+                if containsFullMonth {
+                    opsToUse = opsToUse.filter {
+                        calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
+                    }
+                }
+            }
+        }
+
         // If no visible operations, but we have data and we're not in total view,
         // calculate interpolated average for the visible range
         if opsToUse.isEmpty && !continuousOperations.isEmpty && state.graph.selectedPeriod != .total {
@@ -708,8 +725,28 @@ class DashboardStore: ObservableObject {
     func getCurrentAverageWeight() -> Double {
         // Prefer strict on-screen visible operations; if empty, fall back to buffered visible range
         // This avoids returning 0.0 when the left boundary barely excludes entries (e.g., UTC vs local midnight)
-        let strictVisibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-        let opsToUse = strictVisibleOps.isEmpty ? visibleOperations : strictVisibleOps
+        var strictVisibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
+        var fallbackOps = visibleOperations
+
+        // For month period: if visible window contains a full month, filter to only that month's entries
+        if state.graph.selectedPeriod == .month {
+            let calendar = Calendar.current
+            let leftEdge = graphManager.state.xScrollPosition
+            let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+
+            if let monthInterval = calendar.dateInterval(of: .month, for: leftEdge) {
+                let containsFullMonth = leftEdge <= monthInterval.start && rightEdge >= monthInterval.end
+                if containsFullMonth {
+                    let monthFilter: (BathScaleWeightSummary) -> Bool = {
+                        calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
+                    }
+                    strictVisibleOps = strictVisibleOps.filter(monthFilter)
+                    fallbackOps = fallbackOps.filter(monthFilter)
+                }
+            }
+        }
+
+        let opsToUse = strictVisibleOps.isEmpty ? fallbackOps : strictVisibleOps
 
         // Return 0 if no operations are available
         guard !opsToUse.isEmpty else {
@@ -1127,9 +1164,9 @@ class DashboardStore: ObservableObject {
                     state.ui.streakGridOrder = defaultOrder
                 }
                 state.ui.removedStreaks = Set(allStreaks.map { $0.label })
-                
+
                 streakManager.state.activeStreakItemsCount = 0
-                
+
                 scheduleUIUpdate()
                 return
             }
@@ -1448,11 +1485,11 @@ class DashboardStore: ObservableObject {
         guard let streakIndex = streakManager.state.streakItems.firstIndex(where: { $0.label == streakLabel }) else {
             return
         }
-        
+
         // Capture the current state BEFORE toggle to ensure we have the correct baseline
         let currentActiveCount = streakManager.state.activeStreakItemsCount
         let isCurrentlyRemoved = streakIndex >= currentActiveCount
-        
+
         // Call the underlying manager to actually reorder the array
         Task {
             // Perform the toggle operation atomically
@@ -1870,7 +1907,7 @@ class DashboardStore: ObservableObject {
                         self.hasEditSnapshot = false
                     }
                     self.notificationService.dismissLoader()
-                    self.resetMetricsToLatestEntry()                   
+                    self.resetMetricsToLatestEntry()
                     self.forceImmediateUIUpdate()
                 }
             }
@@ -2149,23 +2186,28 @@ class DashboardStore: ObservableObject {
 
     private func labelForMonthGridlines() -> String {
         let period: TimePeriod = .month
+        let calendar = Calendar.current
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
 
-        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-        let entryMin = visibleOps.min(by: { $0.date < $1.date })?.date
-        let entryMax = visibleOps.max(by: { $0.date < $1.date })?.date
+        // Check if visible window contains an entire month
+        if let monthInterval = calendar.dateInterval(of: .month, for: leftEdge) {
+            let startOfMonth = monthInterval.start
+            let endOfMonth = monthInterval.end
+            let containsFullMonth = leftEdge <= startOfMonth && rightEdge >= endOfMonth
 
-        let visibleTicks = xAxisValuesWithBuffer(for: period)
-            .filter { $0 >= leftEdge && $0 <= rightEdge }
-            .sorted()
-
-        let start = [entryMin, visibleTicks.first].compactMap { $0 }.min()
-        let end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
+            if containsFullMonth {
+                return graphManager.formatDateRange(
+                    minDate: startOfMonth,
+                    maxDate: startOfMonth,
+                    for: period
+                )
+            }
+        }
 
         return graphManager.formatDateRange(
-            minDate: start ?? leftEdge,
-            maxDate: end ?? rightEdge,
+            minDate:  leftEdge,
+            maxDate: rightEdge,
             for: period
         )
     }

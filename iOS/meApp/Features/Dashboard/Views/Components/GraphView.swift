@@ -121,7 +121,6 @@ struct GraphView: View {
                 }
 
                 // Force the active view model to sync with the scroll position set by WeightTrendView
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms additional delay
                 guard !Task.isCancelled else { return }
 
                 let finalPosition = dashboardStore.state.graph.xScrollPosition
@@ -144,7 +143,6 @@ struct GraphView: View {
         .onReceive(accountService.$activeAccount) { _ in
             dashboardStore.handleSettingsChange()
         }
-        .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
 
     // MARK: - Chart View
