@@ -1277,7 +1277,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         weightOnlyModeAlertDebounceTask?.cancel()
         
         // Create new debounce task with 500ms delay
-        weightOnlyModeAlertDebounceTask = Task { @MainActor [weak self] in
+        let debounceTask = Task { @MainActor [weak self] in
             // Wait 500ms before executing - this ensures we use the latest state
             try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
             
@@ -1307,6 +1307,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 self.showWeightOnlyModeAlertSubject.send(false)
             }
         }
+        
+        // Store the task so it can be cancelled by subsequent calls
+        weightOnlyModeAlertDebounceTask = debounceTask
+        
+        // Await the task completion so callers know the check has been scheduled and will complete
+        // If cancelled by a subsequent call, this will return immediately
+        await debounceTask.value
     }
 
     public func handleWeightOnlyModeAlertDismissed() {
