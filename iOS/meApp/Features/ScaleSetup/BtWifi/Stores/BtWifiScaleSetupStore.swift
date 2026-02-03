@@ -2266,7 +2266,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId, considerForSession: false)
                 }
             }
-            bluetoothService.stopScan()
             showKnownScaleAlert()
         } else {
             // New scale discovered - move to next step
