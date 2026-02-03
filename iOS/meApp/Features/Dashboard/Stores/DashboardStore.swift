@@ -1909,13 +1909,8 @@ class DashboardStore: ObservableObject {
                     }
                     self.notificationService.dismissLoader()
                     self.resetMetricsToLatestEntry()
-<<<<<<< HEAD
-=======
-
                     // Mark metric values as loaded on error recovery too
                     self.state.ui.hasLoadedMetricValues = true
-
->>>>>>> dev
                     self.forceImmediateUIUpdate()
                 }
             }
