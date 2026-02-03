@@ -547,9 +547,12 @@ class DashboardStore: ObservableObject {
             let calendar = Calendar.current
             let leftEdge = graphManager.state.xScrollPosition
             let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+            let buffer: TimeInterval = 12 * 60 * 60
 
-            if let monthInterval = calendar.dateInterval(of: .month, for: leftEdge) {
-                let containsFullMonth = leftEdge <= monthInterval.start && rightEdge >= monthInterval.end
+            // Use rightEdge to find the month (for months < 31 days, leftEdge may be in previous month)
+            if let monthInterval = calendar.dateInterval(of: .month, for: rightEdge) {
+                let containsFullMonth = leftEdge <= monthInterval.start.addingTimeInterval(buffer) &&
+                                        rightEdge >= monthInterval.end.addingTimeInterval(-buffer)
                 if containsFullMonth {
                     opsToUse = opsToUse.filter {
                         calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
@@ -733,9 +736,12 @@ class DashboardStore: ObservableObject {
             let calendar = Calendar.current
             let leftEdge = graphManager.state.xScrollPosition
             let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+            let buffer: TimeInterval = 12 * 60 * 60
 
-            if let monthInterval = calendar.dateInterval(of: .month, for: leftEdge) {
-                let containsFullMonth = leftEdge <= monthInterval.start && rightEdge >= monthInterval.end
+            // Use rightEdge to find the month (for months < 31 days, leftEdge may be in previous month)
+            if let monthInterval = calendar.dateInterval(of: .month, for: rightEdge) {
+                let containsFullMonth = leftEdge <= monthInterval.start.addingTimeInterval(buffer) &&
+                                        rightEdge >= monthInterval.end.addingTimeInterval(-buffer)
                 if containsFullMonth {
                     let monthFilter: (BathScaleWeightSummary) -> Bool = {
                         calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
@@ -2190,11 +2196,19 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
 
+        // Buffer tolerance for timezone edge cases (1 day to handle time-of-day misalignment)
+        let buffer: TimeInterval = 12 * 60 * 60
+
         // Check if visible window contains an entire month
-        if let monthInterval = calendar.dateInterval(of: .month, for: leftEdge) {
+        // Get the month that starts within or near the visible window
+        // Use rightEdge to find the month we're primarily viewing (for months < 31 days,
+        // the scroll position may be at the end of the previous month)
+        if let monthInterval = calendar.dateInterval(of: .month, for: rightEdge) {
             let startOfMonth = monthInterval.start
             let endOfMonth = monthInterval.end
-            let containsFullMonth = leftEdge <= startOfMonth && rightEdge >= endOfMonth
+            // Use buffer: leftEdge should be within 1 day of month start, rightEdge within 1 day of month end
+            let containsFullMonth = leftEdge <= startOfMonth.addingTimeInterval(buffer) &&
+                                    rightEdge >= endOfMonth.addingTimeInterval(-buffer)
 
             if containsFullMonth {
                 return graphManager.formatDateRange(
@@ -2206,7 +2220,7 @@ class DashboardStore: ObservableObject {
         }
 
         return graphManager.formatDateRange(
-            minDate:  leftEdge,
+            minDate: leftEdge,
             maxDate: rightEdge,
             for: period
         )
