@@ -45,7 +45,6 @@ struct DashboardMetricsSection: View {
             // Show skeleton while loading progress metrics, otherwise show actual progress metrics
             if store.shouldShowProgressMetricsSkeleton {
                 skeletonProgressMetrics(hasContentAbove: store.skeletonProgressMetricsHasContentAbove)
-                    .padding(.horizontal, .spacingSM)
             } else if store.shouldShowGoalStreakSection {
                 goalStreakSection()
             }
@@ -133,23 +132,24 @@ struct DashboardMetricsSection: View {
     }
     
     private func skeletonProgressMetrics(hasContentAbove: Bool) -> some View {
-        VStack{
-            // Skeleton goal card
+        let columns = DevicePlatform.isTablet ? 4 : 2
+        let topInset: CGFloat = store.state.ui.isGoalCardRemoved ? .spacingLG : .spacingSM
+        let extraTopPadding: CGFloat = store.state.ui.isGoalCardRemoved ? 0 : .spacingXS
+
+        return VStack(spacing: .spacingLG) {
             SkeletonGoalCardView()
-            
-            // Skeleton streak cards grid
-            let streakColumnCount = DashboardConstants.UI.streakGridColumns
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing/2), count: streakColumnCount),
-                spacing: DashboardConstants.UI.gridSpacing/2
+                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columns),
+                spacing: .spacingLG
             ) {
                 ForEach(0..<6, id: \.self) { _ in
                     SkeletonStreakCardView(parentView: parentView)
                 }
             }
         }
-        .padding(.top, .spacingSM)
-        .padding(.horizontal, .spacingXS)
+        .padding(.top, topInset + extraTopPadding)
+        .padding(.horizontal, .spacingSM)
+        .padding(.bottom, .spacingLG)
     }
 }
 

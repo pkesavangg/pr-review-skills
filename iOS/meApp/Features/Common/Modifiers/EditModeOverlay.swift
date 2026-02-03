@@ -61,7 +61,7 @@ struct EditModeOverlay: ViewModifier {
                     // Rectangular background overlay to improve tap target
                     Rectangle()
                         .fill(Color.clear)
-                        .frame(width: 60, height: 60)
+                        .frame(width: 48, height: 48)
                         .contentShape(Rectangle())
 
                     ThemedImage(name: iconName, isSingleMode: true)
