@@ -23,6 +23,8 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.reflect.KProperty1
 
 val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
@@ -206,7 +208,9 @@ object GraphUtil {
     val immediatePoint = graphLines.points
       .filter { it.x.value.toLong() > timeStamp }
       .minByOrNull { it.x.value.toLong() }
-    return immediatePoint?.y?.value?.toLong()
+      ?.y?.value
+    if (immediatePoint == null) return null
+    return ceil(immediatePoint as Double).toLong()
   }
 
   fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
@@ -215,7 +219,9 @@ object GraphUtil {
     val previousPoint = graphLines.points
       .filter { it.x.value.toLong() < timeStamp }
       .maxByOrNull { it.x.value.toLong() }
-    return previousPoint?.y?.value?.toLong()
+      ?.y?.value
+    if (previousPoint == null) return null
+    return floor(previousPoint as Double).toLong()
   }
 
   /**

@@ -407,9 +407,9 @@ class GraphViewModel @AssistedInject constructor(
     )
 
     val paddedValues: List<Double> =
-      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min, isSecondary)?.toDouble()) +
+      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min, isSecondary)?.toString()?.toDouble()) +
         visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
-        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max, isSecondary)?.toDouble())
+        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max, isSecondary)?.toString()?.toDouble())
 
     // Filter out NaN and infinite values before calculating min/max
     val validPaddedValues = paddedValues.filter { it.isFinite() }

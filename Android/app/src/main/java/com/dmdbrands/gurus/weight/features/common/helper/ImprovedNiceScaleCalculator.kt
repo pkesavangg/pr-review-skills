@@ -161,18 +161,42 @@ object ImprovedNiceScaleCalculator {
     val magnitude = 10.0.pow(floor(log10(kotlin.math.max(rawInterval, DOUBLE_EQUALITY_EPSILON))))
     val residual = rawInterval / magnitude
 
-    val niceResidual: Double = when {
+    var niceResidual: Double = when {
       residual.compareTo(1.0) <= 0 -> 1.0
       residual.compareTo(2.0) <= 0 -> 2.0
       residual.compareTo(5.0) <= 0 -> 5.0
       else -> 10.0
     }
 
+    // Small ranges: avoid fractional step (0.5) and use integer steps; rule depends on range width.
+    // Range 1 (e.g. 84–85): step 1 → 4 ticks 83, 84, 85, 86 (one step padding each side).
+    // Range 2 (e.g. 83–85): step 2 → 3 ticks 82, 84, 86 (padding with even step).
+    if (range <= 2.0 && magnitude <= 1.0) {
+      val candidateStep = niceResidual * magnitude
+      if (candidateStep < 1.0) {
+        niceResidual = 1.0 / magnitude // step 1 for range 1
+      } else if (range > 1.0 && candidateStep < 2.0) {
+        niceResidual = 2.0 / magnitude // step 2 for range 2
+      }
+    }
+
     val step = niceResidual * magnitude
 
     // Snap bounds to multiples of step
-    val niceMin = floor(min / step) * step
-    val niceMax = ceil(max / step) * step
+    var niceMin = floor(min / step) * step
+    var niceMax = ceil(max / step) * step
+
+    if (range <= 2.0 && magnitude <= 1.0) {
+      val tickCount = ((niceMax - niceMin) / step).toInt() + 1
+      if (range <= 1.0 && step >= 1.0 && tickCount < 4) {
+        // Range 1: ensure 4 ticks with step 1 (e.g. 84–85 → 83, 84, 85, 86)
+        niceMin = niceMin - step
+        niceMax = niceMin + 3 * step
+      } else if (range > 1.0 && step >= 2.0 && tickCount < 3) {
+        // Range 2: ensure 3 ticks with step 2 (e.g. 83–85 → 82, 84, 86)
+        niceMin = niceMin - step
+      }
+    }
 
     // Build ticks
     val ticks = mutableListOf<Double>()
@@ -298,10 +322,13 @@ object ImprovedNiceScaleCalculator {
     var proposedMax = ticks.last()
     var proposedStep = step
 
-    // Determine if data is too close to outer ticks
-    // Use <= to handle exact threshold matches conservatively (extend when distance equals threshold)
-    val tooCloseToTop = (proposedMax - dataMax) <= (proposedStep * thresholdRatio)
-    val tooCloseToBottom = (dataMin - proposedMin) <= (proposedStep * thresholdRatio)
+    // Extend when: (a) small positive gap (data close to edge), or (b) gap = 0 and step >= 10 (add one step headroom for larger scales, e.g. 50–100 → 40–120).
+    // When gap = 0 and step < 10, do not extend so small scales stay tight (e.g. 83–86 not 82–87).
+    val gapTop = proposedMax - dataMax
+    val gapBottom = dataMin - proposedMin
+    val extendWhenGapZero = proposedStep >= 10.0
+    val tooCloseToTop = gapTop < (proposedStep * thresholdRatio) && (gapTop > 0 || extendWhenGapZero)
+    val tooCloseToBottom = gapBottom < (proposedStep * thresholdRatio) && (gapBottom > 0 || extendWhenGapZero)
 
     if (tooCloseToTop) proposedMax += proposedStep
     if (tooCloseToBottom) proposedMin -= proposedStep
@@ -310,10 +337,11 @@ object ImprovedNiceScaleCalculator {
     // The step was already chosen optimally for the data range, so we preserve it when extending
     var enforced = enforceTickLimits(min = proposedMin, max = proposedMax, initialStep = proposedStep)
 
-    // If still too close and we haven't exceeded soft cap, try to extend once more on each side
+    // If still too close (positive gap only) and we haven't exceeded soft cap, try to extend once more on each side
     if (enforced.ticks.isNotEmpty()) {
       val last = enforced.ticks.last()
-      if ((last - dataMax) < (enforced.step * thresholdRatio) && enforced.ticks.size < maxTicks) {
+      val gapTopAfter = last - dataMax
+      if (gapTopAfter > 0 && gapTopAfter < (enforced.step * thresholdRatio) && enforced.ticks.size < maxTicks) {
         proposedMax = last + enforced.step
         enforced = enforceTickLimits(
           min = enforced.ticks.firstOrNull() ?: proposedMin,
@@ -323,7 +351,8 @@ object ImprovedNiceScaleCalculator {
       }
 
       val first = enforced.ticks.first()
-      if ((dataMin - first) < (enforced.step * thresholdRatio) && enforced.ticks.size < maxTicks) {
+      val gapBottomAfter = dataMin - first
+      if (gapBottomAfter > 0 && gapBottomAfter < (enforced.step * thresholdRatio) && enforced.ticks.size < maxTicks) {
         proposedMin = first - enforced.step
         enforced = enforceTickLimits(
           min = proposedMin,
