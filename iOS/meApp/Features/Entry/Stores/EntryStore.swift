@@ -253,7 +253,6 @@ final class EntryStore: ObservableObject {
         if let bmiStr = metrics.bmi {
             manualEntryForm.bmi.value = bmiStr
             manualEntryForm.bmi.validate()
-            self.isBmiAutoCalculationEnabled = false
         }
 
         assignPercent(metrics.bodyFat, to: manualEntryForm.bodyFat)
