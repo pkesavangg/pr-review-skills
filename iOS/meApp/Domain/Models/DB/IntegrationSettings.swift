@@ -57,5 +57,5 @@ final class IntegrationSettings {
     }
 }
 
-/// Marked @unchecked Sendable because SwiftData provides its own thread-safety.
-extension IntegrationSettings: @unchecked Sendable {}
+// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
+// Use PersistentIdentifier to pass references between contexts.
