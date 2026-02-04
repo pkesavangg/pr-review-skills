@@ -548,16 +548,8 @@ class DashboardStore: ObservableObject {
         }
 
         // When no selection, show average of visible region if available
-        var opsToUse = visibleOperations
-
-        // For month period: if visible window contains a full month, filter to only that month's entries
-        if state.graph.selectedPeriod == .month,
-           let monthInterval = getFullyContainedMonthInterval() {
-            let calendar = Calendar.current
-            opsToUse = opsToUse.filter {
-                calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
-            }
-        }
+        // Use operations filtered to match the date range shown in the label
+        let opsToUse = getOperationsForLabelDateRange()
 
         // If no visible operations, but we have data and we're not in total view,
         // calculate interpolated average for the visible range
@@ -724,23 +716,8 @@ class DashboardStore: ObservableObject {
     /// - Returns: The average weight rounded to 1 decimal place, or 0 if no operations are available
     @MainActor
     func getCurrentAverageWeight() -> Double {
-        // Prefer strict on-screen visible operations; if empty, fall back to buffered visible range
-        // This avoids returning 0.0 when the left boundary barely excludes entries (e.g., UTC vs local midnight)
-        var strictVisibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-        var fallbackOps = visibleOperations
-
-        // For month period: if visible window contains a full month, filter to only that month's entries
-        if state.graph.selectedPeriod == .month,
-           let monthInterval = getFullyContainedMonthInterval() {
-            let calendar = Calendar.current
-            let monthFilter: (BathScaleWeightSummary) -> Bool = {
-                calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
-            }
-            strictVisibleOps = strictVisibleOps.filter(monthFilter)
-            fallbackOps = fallbackOps.filter(monthFilter)
-        }
-
-        let opsToUse = strictVisibleOps.isEmpty ? fallbackOps : strictVisibleOps
+        // Use operations filtered to match the date range shown in the label
+        let opsToUse = getOperationsForLabelDateRange()
 
         // Return 0 if no operations are available
         guard !opsToUse.isEmpty else {
@@ -2146,7 +2123,9 @@ class DashboardStore: ObservableObject {
 
 
 
-    private func labelForYearGridlines() -> String {
+    /// Returns the date range used for the year label display.
+    /// This ensures the average computation uses the same dates as the label.
+    private func getYearLabelDateRange() -> (start: Date, end: Date)? {
         let period: TimePeriod = .year
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
@@ -2155,6 +2134,9 @@ class DashboardStore: ObservableObject {
         let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
         let entryMin = visibleOps.min(by: { $0.date < $1.date })?.date
         let entryMax = visibleOps.max(by: { $0.date < $1.date })?.date
+
+        // Get the absolute maximum date from all data to prevent showing dates beyond data range
+        let absoluteMaxDate = continuousOperations.max(by: { $0.date < $1.date })?.date
 
         let ticks = xAxisValuesWithBuffer(for: period).sorted()
         var visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }
@@ -2174,17 +2156,40 @@ class DashboardStore: ObservableObject {
         }
 
         let start = [entryMin, visibleTicks.first].compactMap { $0 }.min()
-        let end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
+        var end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
 
+        // Clamp end date to not exceed the absolute maximum date in the dataset
+        if let maxDate = absoluteMaxDate, let endDate = end, endDate > maxDate {
+            end = maxDate
+        }
+
+        guard let startDate = start ?? (leftEdge as Date?),
+              let endDate = end ?? (rightEdge as Date?) else {
+            return nil
+        }
+
+        return (start: startDate, end: endDate)
+    }
+
+    private func labelForYearGridlines() -> String {
+        guard let dateRange = getYearLabelDateRange() else {
+            return graphManager.fallbackTimeLabel(for: .year)
+        }
         return graphManager.formatDateRange(
-            minDate: start ?? leftEdge,
-            maxDate: end ?? rightEdge,
-            for: period
+            minDate: dateRange.start,
+            maxDate: dateRange.end,
+            for: .year
         )
     }
 
 
 
+    /// The active month interval for greying out points outside the visible month.
+    /// Returns the DateInterval only when in month period and a full month is visible, otherwise nil.
+    var activeMonthInterval: DateInterval? {
+        guard state.graph.selectedPeriod == .month else { return nil }
+        return getFullyContainedMonthInterval()
+    }
     /// Checks if the visible window for month period contains an entire month.
     /// Returns the DateInterval of the fully contained month, or nil if no month is fully visible.
     ///
@@ -2224,6 +2229,51 @@ class DashboardStore: ObservableObject {
         }
 
         return nil
+    }
+
+    /// Returns operations filtered to match the date range shown in the current period's label.
+    /// This ensures the average calculation uses the same date range as the displayed label.
+    private func getOperationsForLabelDateRange() -> [BathScaleWeightSummary] {
+        let calendar = Calendar.current
+
+        switch state.graph.selectedPeriod {
+        case .month:
+            if let monthInterval = getFullyContainedMonthInterval() {
+                // Single month label (e.g., "January 2026") - include all entries from that calendar month
+                return continuousOperations.filter {
+                    calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
+                }
+            } else {
+                // Date range label (e.g., "Dec 15 - Jan 15") - include entries within exact range
+                let leftEdge = graphManager.state.xScrollPosition
+                let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+                return continuousOperations.filter { op in
+                    op.date >= leftEdge && op.date <= rightEdge
+                }
+            }
+
+        case .year:
+            if let dateRange = getYearLabelDateRange() {
+                let startYear = calendar.component(.year, from: dateRange.start)
+                let endYear = calendar.component(.year, from: dateRange.end)
+
+                if startYear == endYear {
+                    // Single year label (e.g., "2026") - include all entries from that calendar year
+                    return continuousOperations.filter { op in
+                        calendar.component(.year, from: op.date) == startYear
+                    }
+                } else {
+                    // Date range label (e.g., "Apr 2024 - Apr 2025") - include entries within exact range
+                    return continuousOperations.filter { op in
+                        op.date >= dateRange.start && op.date <= dateRange.end
+                    }
+                }
+            }
+            return visibleOperations
+
+        default:
+            return visibleOperations
+        }
     }
 
     private func labelForMonthGridlines() -> String {
@@ -2275,38 +2325,6 @@ class DashboardStore: ObservableObject {
             maxDate: rightEdge,
             for: period
         )
-    }
-
-    private func formatMonthRangeLabel(from start: Date, to end: Date) -> String {
-        let calendar = Calendar.current
-        let startDay = calendar.component(.day, from: start)
-        let startYear = calendar.component(.year, from: start)
-        let endYear = calendar.component(.year, from: end)
-        let startMonth = calendar.component(.month, from: start)
-        let endMonth = calendar.component(.month, from: end)
-        let endDay = calendar.component(.day, from: end)
-
-        // Match Android: if start day is 1st, show "MMM yyyy"
-        if startDay == 1 {
-            return DateTimeTools.formatter("MMM yyyy").string(from: start)
-        }
-
-        // Cross-year: "MMM d, yyyy – MMM d, yyyy"
-        if startYear != endYear {
-            let fmt = DateTimeTools.formatter("MMM d, yyyy")
-            return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
-        }
-
-        // Cross-month within same year: "MMM d – MMM d, yyyy"
-        if startMonth != endMonth {
-            let startFmt = DateTimeTools.formatter("MMM d")
-            let endFmt = DateTimeTools.formatter("MMM d, yyyy")
-            return "\(startFmt.string(from: start)) – \(endFmt.string(from: end))"
-        }
-
-        // Same month: "MMM d – d, yyyy"
-        let startFmt = DateTimeTools.formatter("MMM d")
-        return "\(startFmt.string(from: start)) – \(endDay), \(startYear)"
     }
 
     private func defaultRangeLabel(for period: TimePeriod, lastScrollPosition: Date) -> String {

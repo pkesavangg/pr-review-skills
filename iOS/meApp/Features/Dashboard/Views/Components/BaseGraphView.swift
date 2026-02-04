@@ -455,15 +455,26 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
 
+            // Check if point is outside the active month interval (should be greyed out)
+            let isOutsideMonthInterval = isPointOutsideActiveMonth(date: point.date)
+
+            // Line color stays consistent (SwiftUI Charts applies color to entire interpolated line)
+            let lineColor = point.series == DashboardStrings.weight
+                ? theme.actionPrimary
+                : theme.actionSecondary
+
+            // Point color is greyed out if outside the active month
+            let pointColor = point.series == DashboardStrings.weight
+                ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
+                : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
+
             // Line mark
             LineMark(
                 x: .value("Date", xDate),
                 y: .value(point.series, point.value),
                 series: .value("Series", point.series)
             )
-            .foregroundStyle(point.series == DashboardStrings.weight
-                             ? theme.actionPrimary
-                             : theme.actionSecondary)
+            .foregroundStyle(lineColor)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
@@ -473,10 +484,21 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 y: .value(point.series, point.value)
             )
             .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
-            .foregroundStyle(point.series == DashboardStrings.weight
-                             ? theme.actionPrimary
-                             : theme.actionSecondary)
+            .foregroundStyle(pointColor)
         }
+    }
+
+    /// Checks if a point's date falls outside the active month interval.
+    /// Returns true only when in month period with a full month visible, not scrolling, and the point is outside that month.
+    private func isPointOutsideActiveMonth(date: Date) -> Bool {
+        // Don't grey out points while scrolling
+        guard !viewModel.isScrolling else { return false }
+
+        guard let monthInterval = dashboardStore.activeMonthInterval else {
+            return false
+        }
+        // Check if date is before month start or on/after month end
+        return date < monthInterval.start || date >= monthInterval.end
     }
 
     @ChartContentBuilder
