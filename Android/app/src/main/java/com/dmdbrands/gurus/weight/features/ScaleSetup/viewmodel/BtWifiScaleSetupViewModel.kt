@@ -1838,7 +1838,6 @@ constructor(
             AppLog.w(TAG, "Update settings timeout reached")
             setUpdateSettingsError()
           }
-          updateSettingsTimeoutJob = null
         }
         if (dashboardKeys != null) {
           dashboardService.updateVisibleKeys(
