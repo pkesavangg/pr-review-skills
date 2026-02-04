@@ -392,7 +392,7 @@ constructor(
 
         if (fromLoadingScreen) {
           // Wait for loading screen to finish before checking permissions
-          kotlinx.coroutines.delay(1000)
+          delay(1000)
         }
         subscribePermissions()
 
