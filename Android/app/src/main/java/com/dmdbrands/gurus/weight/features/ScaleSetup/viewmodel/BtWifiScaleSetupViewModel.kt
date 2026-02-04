@@ -1413,9 +1413,8 @@ constructor(
           // Don't show error for STEP_ON if only network/WiFi permission is missing
           // Network permission is not required for step-on measurement
           if (!isOnlyNetworkPermissionMissing) {
-            setMeasurementFailed()
-          } else {
             requestPermission(GGPermissionType.BLUETOOTH_SWITCH, true)
+          } else {
             AppLog.d(TAG, "Skipping STEP_ON error - only network permission is missing")
           }
         }
