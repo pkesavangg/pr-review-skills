@@ -12,10 +12,12 @@ import SwiftUI
 /// Features include wiggle animation and iOS home screen-like behavior
 /// Uses GoalProgressCardView SwiftUI component for UI with EditModeOverlay
 class GoalCardCell: UICollectionViewCell {
+    private static let overlayButtonSize: CGFloat = 48
     
     // MARK: - UI Components
     
     private let hostingController: UIHostingController<AnyView>?
+    private let overlayTapButton = UIButton(type: .custom)
     
     // MARK: - Public Accessors
     
@@ -28,6 +30,9 @@ class GoalCardCell: UICollectionViewCell {
     private var suppressOverlay: Bool = false
     private var currentIsBeingDragged: Bool = false
     private let goalProgressViewModel = GoalProgressViewModel()
+    private var overlayButtonAction: (() -> Void)?
+    private var overlayButtonVisible: Bool = false
+    private var overlayButtonOffset: CGSize = CGSize(width: 20, height: -28)
     
     // MARK: - Initialization
     
@@ -51,6 +56,7 @@ class GoalCardCell: UICollectionViewCell {
         setupHostingController()
         setupConstraints()
         setupGestureRecognizers()
+        setupOverlayTapButton()
     }
     
     /// Configures the hosting controller for SwiftUI view
@@ -59,6 +65,9 @@ class GoalCardCell: UICollectionViewCell {
         
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         hostingController.view.backgroundColor = .clear
+        hostingController.view.clipsToBounds = false
+        contentView.clipsToBounds = false
+        clipsToBounds = false
         contentView.addSubview(hostingController.view)
     }
     
@@ -77,6 +86,13 @@ class GoalCardCell: UICollectionViewCell {
     /// Sets up gesture recognizers for the cell
     private func setupGestureRecognizers() {
         // Gesture recognizers will be set up in configure method based on edit mode
+    }
+
+    private func setupOverlayTapButton() {
+        overlayTapButton.backgroundColor = .clear
+        overlayTapButton.isHidden = true
+        overlayTapButton.addTarget(self, action: #selector(handleOverlayTap), for: .touchUpInside)
+        addSubview(overlayTapButton)
     }
     
     /// Sets up gesture recognizers based on edit mode
@@ -147,14 +163,19 @@ class GoalCardCell: UICollectionViewCell {
                         dimWhenRemoved: true
                     )
             )
+            overlayButtonVisible = !isDragging && !(store.state.ui.dropHoverId == "goalCard")
+            overlayButtonAction = { store.toggleGoalCardRemoval() }
         } else {
             viewWithOverlay = AnyView(goalCardView)
+            overlayButtonVisible = false
+            overlayButtonAction = nil
         }
         
         hostingController?.rootView = viewWithOverlay
         
         // Set up gesture recognizers based on edit mode
         setupGestureRecognizersForEditMode(store.state.ui.isEditMode)
+        setNeedsLayout()
     }
     
     // MARK: - Reuse
@@ -164,6 +185,9 @@ class GoalCardCell: UICollectionViewCell {
         currentStore = nil
         isLongPressed = false
         currentIsBeingDragged = false
+        overlayButtonVisible = false
+        overlayButtonAction = nil
+        overlayTapButton.isHidden = true
         
         // Remove gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
@@ -211,6 +235,15 @@ class GoalCardCell: UICollectionViewCell {
         } else {
             stopWiggleAnimation()
         }
+
+        let size = GoalCardCell.overlayButtonSize
+        overlayTapButton.frame = CGRect(
+            x: bounds.width - size + overlayButtonOffset.width,
+            y: 0 + overlayButtonOffset.height,
+            width: size,
+            height: size
+        )
+        overlayTapButton.isHidden = !overlayButtonVisible
     }
     
     /// Starts the widget wiggle animation (same behavior as reference WidgetCell)
@@ -405,4 +438,18 @@ class GoalCardCell: UICollectionViewCell {
             contentView.backgroundColor = .clear
         }
     }
-} 
+
+    @objc private func handleOverlayTap() {
+        overlayButtonAction?()
+    }
+
+    func handleOverlayTapIfNeeded(at pointInCell: CGPoint) -> Bool {
+        guard overlayButtonVisible else { return false }
+        if overlayTapButton.frame.contains(pointInCell) {
+            overlayButtonAction?()
+            return true
+        }
+        return false
+    }
+
+}

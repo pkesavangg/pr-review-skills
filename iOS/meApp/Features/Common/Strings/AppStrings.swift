@@ -550,9 +550,9 @@ struct AlertStrings {
     }
 
     struct DeviceAlreadyPairedAlert {
-        static let title = "Device Already Paired"
+        static let title = "Device already paired"
         static let message: (String) -> String = { sku in
-            "The device with SKU: \(sku) is already paired. Do you want to pair it again?"
+            "The device with sku: \(sku) is already paired. Do you want to pair it again?"
         }
         static let returnButton = "RETURN"
         static let pairButton = "PAIR"
@@ -605,8 +605,8 @@ struct AlertStrings {
         static let wifiDisabledMessage = "1. Open Settings on your phone\n2. Tap Wi-Fi\n3. Toggle Wi-Fi on\n4. Return to this app"
 
         // MARK: - Camera
-        static let cameraDisabledTitle = "You have not given permission to access camera"
-        static let cameraDisabledMessage = "You will not be able to pair or sync with your AppSync scale. Please enable Camera access in Settings."
+        static let cameraDisabledTitle = "You have not given permission to access camera!"
+        static let cameraDisabledMessage = "You will not be able to pair or sync with your App sync scale. Please enable it from your app permissions."
 
         // MARK: - Notification
         static let notificationDisabledTitle = "Notifications are disabled!"

@@ -4,7 +4,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 
 object BtScaleSetupStrings {
   object ChooseUser {
-    const val Title = "Choose Your User Number"
+    const val Title = "Choose your user number."
     const val Message = "Pick one that no one else is using for this scale."
   }
 

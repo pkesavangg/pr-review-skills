@@ -12,10 +12,12 @@ import SwiftUI
 /// Features include wiggle animation and iOS home screen-like behavior
 /// Uses MetricCardView SwiftUI component for UI with EditModeOverlay
 class MetricCell: UICollectionViewCell {
+    private static let overlayButtonSize: CGFloat = 48
     
     // MARK: - UI Components
     
     private let hostingController: UIHostingController<AnyView>?
+    private let overlayTapButton = UIButton(type: .custom)
     
     // MARK: - Public Accessors
     
@@ -31,6 +33,9 @@ class MetricCell: UICollectionViewCell {
     private var isLongPressed: Bool = false
     private var isTapped: Bool = false
     private var suppressOverlay: Bool = false
+    private var overlayButtonAction: (() -> Void)?
+    private var overlayButtonVisible: Bool = false
+    private var overlayButtonOffset: CGSize = CGSize(width: 20, height: -26)
     
     // MARK: - Initialization
     
@@ -70,6 +75,7 @@ class MetricCell: UICollectionViewCell {
     private func setupUI() {
         setupHostingController()
         setupConstraints()
+        setupOverlayTapButton()
     }
     
     /// Configures the hosting controller for SwiftUI view
@@ -78,6 +84,9 @@ class MetricCell: UICollectionViewCell {
         
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         hostingController.view.backgroundColor = .clear
+        hostingController.view.clipsToBounds = false
+        contentView.clipsToBounds = false
+        clipsToBounds = false
         contentView.addSubview(hostingController.view)
     }
     
@@ -91,6 +100,13 @@ class MetricCell: UICollectionViewCell {
             hostingController.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             hostingController.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
         ])
+    }
+
+    private func setupOverlayTapButton() {
+        overlayTapButton.backgroundColor = .clear
+        overlayTapButton.isHidden = true
+        overlayTapButton.addTarget(self, action: #selector(handleOverlayTap), for: .touchUpInside)
+        addSubview(overlayTapButton)
     }
     
     // MARK: - Configuration
@@ -164,6 +180,12 @@ class MetricCell: UICollectionViewCell {
                     disableWiggle: itemIsRemoved // removed items must not wiggle
                 )
         ) : AnyView(metricCardView)
+
+        overlayButtonAction = { store.toggleMetricRemoval(item.label) }
+        overlayButtonVisible = store.state.ui.isEditMode &&
+            !(isBeingDragged || store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped) &&
+            !(store.state.ui.dropHoverId == item.id.uuidString)
+        setNeedsLayout()
         
         // Update root view with animation disabled to prevent visual glitches during cell configuration; rely on natural layout pass for better performance
         CATransaction.begin()
@@ -207,6 +229,9 @@ class MetricCell: UICollectionViewCell {
         isWiggling = false
         isRemoved = false
         rowIndex = 0
+        overlayButtonVisible = false
+        overlayButtonAction = nil
+        overlayTapButton.isHidden = true
         
         // Reset callbacks
         onMetricLongPressCallback = nil
@@ -285,6 +310,15 @@ class MetricCell: UICollectionViewCell {
         } else {
             contentView.stopWiggle()
         }
+
+        let size = MetricCell.overlayButtonSize
+        overlayTapButton.frame = CGRect(
+            x: bounds.width - size + overlayButtonOffset.width,
+            y: 0 + overlayButtonOffset.height,
+            width: size,
+            height: size
+        )
+        overlayTapButton.isHidden = !overlayButtonVisible
     }
     
     var isWiggling: Bool = false {
@@ -403,6 +437,19 @@ class MetricCell: UICollectionViewCell {
         if let item = representedItem, let store = currentStore {
             configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: isBeingDragged, parentView: currentParentView)
         }
+    }
+
+    @objc private func handleOverlayTap() {
+        overlayButtonAction?()
+    }
+
+    func handleOverlayTapIfNeeded(at pointInCell: CGPoint) -> Bool {
+        guard overlayButtonVisible else { return false }
+        if overlayTapButton.frame.contains(pointInCell) {
+            overlayButtonAction?()
+            return true
+        }
+        return false
     }
 
     func setOverlaySuppressed(_ suppressed: Bool) {

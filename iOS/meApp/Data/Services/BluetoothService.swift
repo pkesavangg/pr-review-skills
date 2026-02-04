@@ -559,9 +559,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<String, BluetoothServiceError>
      */
     func getConnectedWifiSSID(broadcastId: String) async -> Result<String, BluetoothServiceError> {
-        let ggDevice = mapToGGBTDevice(broadcastId)
-        let ssid = await ggBleSDK.getConnectedWifiSSID(ggDevice)
-        return .success(ssid)
+        do {
+            let ggDevice = mapToGGBTDevice(broadcastId)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let ssid = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getConnectedWifiSSID(ggDevice)
+            }
+            return .success(ssid)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.timeout)
+        }
     }
 
     /**
@@ -573,7 +582,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let mac = await ggBleSDK.getWifiMacAddress(ggDevice)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let mac = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getWifiMacAddress(ggDevice)
+            }
             return .success(mac)
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -1346,8 +1358,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
         logger.log(level: .debug, tag: tag, message: "Checking preference sync - App wants impedance: \(preference.shouldMeasureImpedance), Scale has impedance: \(impedanceSwitchState), Mismatch: \(hasImpedanceMismatch), Unsynced: \(hasUnsyncedPreferences)")
 
-        guard hasImpedanceMismatch || hasUnsyncedPreferences else {
-            logger.log(level: .debug, tag: tag, message: "No sync needed - preferences match scale state")
+        guard hasUnsyncedPreferences else {
+            logger.log(level: .debug, tag: tag, message: "No sync performed - preferences already marked as synced")
             return
         }
 
@@ -1596,7 +1608,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
         }
     }
-
     private func convertGGEntry(_ ggEntry: GGEntry) -> Entry? {
         guard let activeAccount = activeAccount else {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
@@ -1639,7 +1650,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             pulse: ggEntry.pulse,
             skeletalMusclePercent: roundMetric(ggEntry.skeletalMusclePercent),
             subcutaneousFatPercent: roundMetric(ggEntry.subcutaneousFatPercent),
-            visceralFatLevel: ggEntry.visceralFatLevel,
+            visceralFatLevel: ggEntry.visceralFatLevel * 10, // Multiply by 10 to match storage format (scale sends 5, store as 50)
             boneMass: roundMetric(ggEntry.boneMass),
             impedance: roundMetric(ggEntry.impedance),
             unit: ggEntry.unit.lowercased()

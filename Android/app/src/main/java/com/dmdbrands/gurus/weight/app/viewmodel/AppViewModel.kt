@@ -386,6 +386,8 @@ constructor(
         deviceSubscribeJob?.cancel()
         syncScaleJob?.cancel()
         pairedScalesSubscribeJob?.cancel()
+        // Reset initialized flag to ensure permission checks happen after login
+        initialized = false
         deviceInfoService.updateDeviceInfo()
         subscribePermissions()
         subscribeDeviceCallback()

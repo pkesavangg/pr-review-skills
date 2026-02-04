@@ -32,7 +32,6 @@ struct MetricGridUIKitView: UIViewRepresentable {
     func updateUIView(_ uiView: UICollectionView, context: Context) {
         let coordinator = context.coordinator
         coordinator.store = store
-
         // Determine if content or layout actually changed
         let newIds = store.metricsToShow.map { $0.id }
         let newDashboardType = store.state.metrics.dashboardType
@@ -360,8 +359,21 @@ extension MetricGridUIKitView {
 
         // MARK: - Gesture Sink
         @objc func consumeTap(_ sender: UITapGestureRecognizer) {
-            // No-op; presence of this recognizer ensures taps in the grid are handled here
-            // and not propagated to parent background .onTapGesture that cancels edit mode.
+            guard store.state.ui.isEditMode,
+                  let collectionView = sender.view as? UICollectionView else {
+                return
+            }
+            let location = sender.location(in: collectionView)
+            for cell in collectionView.visibleCells {
+                guard let metricCell = cell as? MetricCell else { continue }
+                let pointInCell = collectionView.convert(location, to: metricCell)
+                if metricCell.bounds.contains(pointInCell) {
+                    continue
+                }
+                if metricCell.handleOverlayTapIfNeeded(at: pointInCell) {
+                    return
+                }
+            }
         }
 
         // MARK: - Interactive Movement with Clamped Bounds

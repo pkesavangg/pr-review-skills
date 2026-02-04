@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 /// A screen that allows users to configure scale modes and settings.
 /// Supports both regular scale mode configuration and R4 scale setup workflows.
@@ -180,50 +181,100 @@ final class ScaleModesViewModel: ObservableObject {
     @Injector var bluetoothService: BluetoothService
     @Injector var logger: LoggerService
     @Injector var accountService: AccountService
-    
-    @Published var scale: Device
+
+    // Store the device ID for safe refetching from MainActor context
+    private let scaleId: PersistentIdentifier
+    private let scaleIdString: String
+
+    // Cached scale for fallback when model not found in context
+    private var cachedScale: Device?
+
+    // Returns the cached scale - use refreshScale() to update from database
+    var scale: Device {
+        if let cached = cachedScale {
+            return cached
+        }
+        // This should never happen since we set cachedScale in init
+        logger.log(level: .error, tag: tag, message: "No cached scale available")
+        return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
+    }
+
+    /// Refreshes the scale from the database. Call this before operations that need fresh data.
+    private func refreshScale() {
+        // First try registeredModel for already-loaded models (fastest path)
+        if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
+            cachedScale = freshScale
+            return
+        }
+
+        // If not in identity map, fetch from persistent store using FetchDescriptor
+        let idToFind = scaleIdString
+        let descriptor = FetchDescriptor<Device>(
+            predicate: #Predicate<Device> { device in
+                device.id == idToFind
+            }
+        )
+        do {
+            let results = try PersistenceController.shared.context.fetch(descriptor)
+            if let freshScale = results.first {
+                cachedScale = freshScale
+                return
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch scale from store: \(error.localizedDescription)")
+        }
+
+        // Keep existing cached value if fetch failed
+        if cachedScale != nil {
+            logger.log(level: .debug, tag: tag, message: "Using existing cached scale after refresh failed")
+        }
+    }
+
     @Published var modeValue: ScaleModes = .weightOnly
     @Published var isHeartRateEnabled: Bool = false
     @Published var isWeighOnlyModeEnabledByOthers: Bool = false
-    
+
     // Track original values to detect changes
     private var originalModeValue: ScaleModes = .weightOnly
     private var originalIsHeartRateEnabled: Bool = false
-    
+
     // Retry functionality
     private var retryCount: Int = 0
     private let maxRetries: Int = 2
     private let retryDelay: TimeInterval = 5.0
-    
+
     private let tag = "ScaleModesViewModel"
-    
+
     var hasModeChanges: Bool {
         return modeValue != originalModeValue || isHeartRateEnabled != originalIsHeartRateEnabled
     }
-    
+
     init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
-        self.scale = scale
+        self.scaleId = scale.persistentModelID
+        self.scaleIdString = scale.id
+        self.cachedScale = scale  // Cache the initial scale
         self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
         setupInitialValues()
     }
-    
+
     private func setupInitialValues() {
-        // Initialize based on scale preferences
+        // Initialize based on scale preferences - safe because scale fetches fresh from MainActor context
         if let preference = scale.r4ScalePreference {
             modeValue = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
             isHeartRateEnabled = preference.shouldMeasurePulse
         }
-        
+
         // Store original values
         originalModeValue = modeValue
         originalIsHeartRateEnabled = isHeartRateEnabled
     }
-    
+
     func loadScaleModeData() async {
         // Refresh scale from database to get latest preference
-        if let refreshedScale = try? await scaleService.getDevice(by: scale.id) {
+        // The scale computed property will automatically fetch fresh data
+        if let refreshedScale = try? await scaleService.getDevice(by: scaleIdString) {
             await MainActor.run {
-                self.scale = refreshedScale
+                self.cachedScale = refreshedScale
                 self.setupInitialValues()
             }
         } else {
