@@ -264,10 +264,15 @@ constructor(
   /**
    * Refreshes discoveredScale from device cache when re-entering CUSTOMIZE_SETTINGS after UPDATE_SETTINGS failure (e.g. Try again after BLE was off).
    * If the SDK reconnected the scale when BLE was turned back on, the cache will have the updated device with CONNECTED status.
+   * Tries both [Device.device.broadcastId] and [Device.device.broadcastIdString] for lookup, since the cache may be keyed by either
+   * (e.g. AppViewModel keys by scan data.broadcastId, ScaleDetailsViewModel by device.broadcastId).
    */
   private fun refreshDiscoveredScaleFromCacheAndReconnectIfNeeded() {
-    val broadcastId = discoveredScale?.device?.broadcastId ?: return
-    val cachedDevice = ggDeviceService.deviceCache.value[broadcastId] as? Device ?: return
+    val deviceDetail = discoveredScale?.device ?: return
+    val cache = ggDeviceService.deviceCache.value
+    val cachedDevice =
+      (deviceDetail.broadcastId?.let { cache[it] } ?: deviceDetail.broadcastIdString?.let { cache[it] }) as? Device
+        ?: return
     discoveredScale = cachedDevice
     if (cachedDevice.connectionStatus == BLEStatus.CONNECTED) {
       isScaleConnected = true
