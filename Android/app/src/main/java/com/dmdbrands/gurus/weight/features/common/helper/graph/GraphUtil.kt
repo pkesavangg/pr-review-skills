@@ -202,26 +202,22 @@ object GraphUtil {
       )
     }
 
-  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the minimum timestamp that is still greater than the search timestamp
     // This works regardless of list order (ascending or descending)
     val immediatePoint = graphLines.points
       .filter { it.x.value.toLong() > timeStamp }
       .minByOrNull { it.x.value.toLong() }
-      ?.y?.value
-    if (immediatePoint == null) return null
-    return ceil(immediatePoint as Double).toLong()
+    return immediatePoint?.y?.value as Double?
   }
 
-  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the maximum timestamp that is still less than the search timestamp
     // This works regardless of list order (ascending or descending)
     val previousPoint = graphLines.points
       .filter { it.x.value.toLong() < timeStamp }
       .maxByOrNull { it.x.value.toLong() }
-      ?.y?.value
-    if (previousPoint == null) return null
-    return floor(previousPoint as Double).toLong()
+    return previousPoint?.y?.value as Double?
   }
 
   /**
@@ -271,13 +267,13 @@ object GraphUtil {
     val visiblePoints = metricGraphLine.points.filter {
       it.x.value.toLong() in minX..maxX
     }
-    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
-    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
+    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX)
+    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX)
 
     val metricValuesForRange = buildList {
-      previousPoint?.let { add(it.toDouble()) }
+      previousPoint?.let { add(it) }
       addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
-      nextPoint?.let { add(it.toDouble()) }
+      nextPoint?.let { add(it) }
     }
 
     if (metricValuesForRange.isEmpty()) {

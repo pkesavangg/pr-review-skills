@@ -33,8 +33,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.ceil
-import kotlin.math.floor
 import android.icu.util.Calendar
 import android.util.Log
 
@@ -407,20 +405,17 @@ class GraphViewModel @AssistedInject constructor(
     )
 
     val paddedValues: List<Double> =
-      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min, isSecondary)?.toString()?.toDouble()) +
+      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min)) +
         visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
-        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max, isSecondary)?.toString()?.toDouble())
+        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max))
 
     // Filter out NaN and infinite values before calculating min/max
     val validPaddedValues = paddedValues.filter { it.isFinite() }
 
     if (validPaddedValues.isNotEmpty()) {
-      val minValue = floor(validPaddedValues.min())
-      val maxValue = ceil(validPaddedValues.max())
-
       val graphMeta = generateNiceScale(
-        minValue = minValue,
-        maxValue = maxValue,
+        minValue = validPaddedValues.min(),
+        maxValue = validPaddedValues.max(),
         goalWeight = goal?.goalWeight ?: 0.0, isWeightLessMode = isWeightlessMode,
         targetTickCount = 4,
       )

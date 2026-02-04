@@ -37,6 +37,7 @@ fun startAxis(segment: GraphSegment, isSingleWindow: Boolean) = VerticalAxis.rem
     thickness = 1.dp,
   ),
   guideline = null,
+  tick = null,
   tickLength = 0.dp,
 )
 
@@ -49,7 +50,7 @@ fun endAxis(
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
 
-  val animatedStep = if (yStep != null) animateIntAsState(
+  if (yStep != null) animateIntAsState(
     targetValue = yStep.roundToInt(),
     animationSpec = tween(durationMillis = 250, delayMillis = 0, easing = EaseInOut),
     label = "animatedStep",
