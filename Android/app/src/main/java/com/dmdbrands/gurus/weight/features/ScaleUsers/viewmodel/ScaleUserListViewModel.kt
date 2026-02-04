@@ -226,7 +226,27 @@ constructor(
   }
 
   private fun onBack() {
-    navigateBack()
+    // Check if username has been changed
+    val originalUsername = state.value.scale?.preferences?.displayName ?: ""
+    val currentUsername = state.value.usernameForm.username.value
+    val hasChanges = currentUsername != originalUsername && currentUsername.isNotEmpty()
+
+    if (hasChanges) {
+      dialogQueueService.enqueue(
+        DialogModel.Confirm(
+          title = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Title,
+          message = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Message,
+          confirmText = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Leave,
+          cancelText = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Cancel,
+          onConfirm = {
+            navigateBack()
+            initScaleUserList()
+          },
+        ),
+      )
+    } else {
+      navigateBack()
+    }
   }
 
   private fun navigateBack() {
