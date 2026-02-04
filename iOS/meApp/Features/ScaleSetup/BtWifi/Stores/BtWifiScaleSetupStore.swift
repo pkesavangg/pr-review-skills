@@ -1042,6 +1042,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         let accountName = getAccountNameForRestore()
+		userNameForm.setDisplayName(accountName)
         guard !accountName.isEmpty else {
             scaleSetupError = .duplicatesFound
             return
@@ -1060,10 +1061,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
         await restartConnectionAndNavigate()
     }
     
-    /// Gets the account name to restore, preferring duplicateUserName over firstName
+    /// Gets the account name to restore, using the original name that exists on the scale
+    /// (not the edited duplicateUserName, since restore should use the original account name)
     private func getAccountNameForRestore() -> String {
-        if !duplicateUserName.isEmpty {
-            return duplicateUserName.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Use the original name from currentUser (the duplicate user on the scale) or firstName
+        // This ensures restore uses the original name, not any edited name
+        if let originalName = currentUser?.name, !originalName.isEmpty {
+            return originalName.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return (firstName ?? "User").trimmingCharacters(in: .whitespacesAndNewlines)
     }
