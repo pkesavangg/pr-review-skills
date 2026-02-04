@@ -85,7 +85,7 @@ data class GoalFormControls(
         validators = listOf(FormValidations.required()),
       )
 
-      val startingWeightValidators = if (goalType == GoalType.LOSE_GAIN) {
+      val startingWeightValidators = if (goalType == GoalType.LOSE_GAIN || goalType == GoalType.GAIN || goalType == GoalType.LOSE) {
        listOf(FormValidations.required(), FormValidations.weightValidator(weightUnit))
       } else {
         listOf(FormValidations.weightValidator(weightUnit))
