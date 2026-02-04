@@ -44,11 +44,3 @@ include(":app:appsync")
 include(":bleWrapper")
 // include(":ggBluetoothLibrary")
 include(":iam")
-
-includeBuild("../../vico") {
-  dependencySubstitution {
-    substitute(module("com.dmdbrands.lib:vico-core")).using(project(":vico:core"))
-    substitute(module("com.dmdbrands.lib:vico-compose")).using(project(":vico:compose"))
-    substitute(module("com.dmdbrands.lib:vico-compose-m3")).using(project(":vico:compose-m3"))
-  }
-}
