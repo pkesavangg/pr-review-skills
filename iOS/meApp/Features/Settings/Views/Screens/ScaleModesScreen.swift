@@ -222,9 +222,15 @@ final class ScaleModesViewModel: ObservableObject {
     func loadScaleModeData() async {
         // Refresh scale from database to get latest preference
         if let refreshedScale = try? await scaleService.getDevice(by: scale.id) {
-            scale = refreshedScale
+            await MainActor.run {
+                self.scale = refreshedScale
+                self.setupInitialValues()
+            }
+        } else {
+            await MainActor.run {
+                self.setupInitialValues()
+            }
         }
-        setupInitialValues()
     }
     
     func updateModeValue(_ mode: ScaleModes) {
