@@ -415,8 +415,30 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // MARK: - Gesture Sink
         @objc func consumeTap(_ sender: UITapGestureRecognizer) {
-            // Intentionally no-op.
-            // This prevents parent/background tap handlers from stealing touches while interacting in the grid.
+            guard store.state.ui.isEditMode,
+                  let collectionView = sender.view as? UICollectionView else {
+                return
+            }
+            let location = sender.location(in: collectionView)
+            for cell in collectionView.visibleCells {
+                if let goalCell = cell as? GoalCardCell {
+                    let pointInCell = collectionView.convert(location, to: goalCell)
+                    if goalCell.bounds.contains(pointInCell) {
+                        continue
+                    }
+                    if goalCell.handleOverlayTapIfNeeded(at: pointInCell) {
+                        return
+                    }
+                } else if let streakCell = cell as? StreakCardCell {
+                    let pointInCell = collectionView.convert(location, to: streakCell)
+                    if streakCell.bounds.contains(pointInCell) {
+                        continue
+                    }
+                    if streakCell.handleOverlayTapIfNeeded(at: pointInCell) {
+                        return
+                    }
+                }
+            }
         }
 
         private func prepareHapticsForDrag() {

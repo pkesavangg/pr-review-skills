@@ -5,10 +5,12 @@ import SwiftUI
 import ObjectiveC
 
 class StreakCardCell: UICollectionViewCell {
+    private static let overlayButtonSize: CGFloat = 48
     
     // MARK: - UI Components
     
     private var hostingController: UIHostingController<AnyView>?
+    private let overlayTapButton = UIButton(type: .custom)
     
     // MARK: - Wiggle Animation Properties
     
@@ -46,6 +48,9 @@ class StreakCardCell: UICollectionViewCell {
     private var currentStore: DashboardStore?
     private var currentIsBeingDragged: Bool = false
     private var suppressOverlay: Bool = false
+    private var overlayButtonAction: (() -> Void)?
+    private var overlayButtonVisible: Bool = false
+    private var overlayButtonOffset: CGSize = CGSize(width: 22, height: -32)
     
     // Parent context for rendering rules
     var parentView: DashboardMetricsParentView = .dashboard
@@ -114,8 +119,12 @@ class StreakCardCell: UICollectionViewCell {
                         iconOffset: CGSize(width: 22, height: -32)
                     )
             )
+            overlayButtonVisible = store.state.ui.dropHoverId != item.id.uuidString
+            overlayButtonAction = { store.toggleStreakRemoval(item.label) }
         } else {
             viewWithOverlay = AnyView(streakCardView)
+            overlayButtonVisible = false
+            overlayButtonAction = nil
         }
 
         let swiftUIView = viewWithOverlay
@@ -123,6 +132,9 @@ class StreakCardCell: UICollectionViewCell {
         if hostingController == nil {
             let hc = UIHostingController(rootView: swiftUIView)
             hc.view.backgroundColor = .clear
+            hc.view.clipsToBounds = false
+            contentView.clipsToBounds = false
+            clipsToBounds = false
             contentView.addSubview(hc.view)
             hc.view.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
@@ -162,6 +174,13 @@ class StreakCardCell: UICollectionViewCell {
             self.onSelectMetricCallback = onSelectMetric
         }
 
+        if overlayTapButton.superview == nil {
+            overlayTapButton.backgroundColor = .clear
+            overlayTapButton.isHidden = true
+            overlayTapButton.addTarget(self, action: #selector(handleOverlayTap), for: .touchUpInside)
+            addSubview(overlayTapButton)
+        }
+
         setNeedsLayout()
         layoutIfNeeded()
 
@@ -195,6 +214,9 @@ class StreakCardCell: UICollectionViewCell {
         // Clear callbacks
         onMetricLongPressCallback = nil
         onSelectMetricCallback = nil
+        overlayButtonVisible = false
+        overlayButtonAction = nil
+        overlayTapButton.isHidden = true
         
         // Remove gesture recognizers
         gestureRecognizers?.forEach { self.removeGestureRecognizer($0) }
@@ -356,6 +378,15 @@ class StreakCardCell: UICollectionViewCell {
         } else {
             contentView.stopWiggle()
         }
+
+        let size = StreakCardCell.overlayButtonSize
+        overlayTapButton.frame = CGRect(
+            x: bounds.width - size + overlayButtonOffset.width,
+            y: 0 + overlayButtonOffset.height,
+            width: size,
+            height: size
+        )
+        overlayTapButton.isHidden = !overlayButtonVisible
     }
     
     func restartWiggleAnimation() {
@@ -424,6 +455,19 @@ class StreakCardCell: UICollectionViewCell {
         }
     }
 
+    @objc private func handleOverlayTap() {
+        overlayButtonAction?()
+    }
+
+    func handleOverlayTapIfNeeded(at pointInCell: CGPoint) -> Bool {
+        guard overlayButtonVisible else { return false }
+        if overlayTapButton.frame.contains(pointInCell) {
+            overlayButtonAction?()
+            return true
+        }
+        return false
+    }
+
     override var isHighlighted: Bool {
         didSet {
             contentView.alpha = 1.0
@@ -439,7 +483,7 @@ class StreakCardCell: UICollectionViewCell {
             layer.shadowOpacity = 0.0
         }
     }
-    
+
     // MARK: - Drag Preview
     /// Creates a snapshot view for drag preview
     /// - Returns: A UIView snapshot of the cell's content
