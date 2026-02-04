@@ -132,7 +132,7 @@ constructor(
   // Timeout constant - 5 minutes for all operations
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
   // Delay to ensure scale is fully woken up before proceeding
-  private val wakeUpDelay: Long = 2000L // 2 seconds
+  private val connectionDelay: Long = 2000L // 2 seconds
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
 
   override fun handleIntent(intent: BtWifiScaleSetupIntent) {
@@ -1520,6 +1520,8 @@ constructor(
                 ConnectionState.Success,
               ),
             )
+            // wifi connection delay to ensure the connection state is shown properly on the UI.
+            delay(connectionDelay)
             clearWifiPasswordForm()
             if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
               if (!isAlreadyExited) {
@@ -1927,7 +1929,7 @@ constructor(
               customizeDevice(ggDeviceDetail)
               AppLog.d(TAG, "Device discovered, waiting for scale to fully wake up")
               // Add a delay to ensure the scale is properly woken up before proceeding
-              delay(wakeUpDelay) // 2 seconds delay similar to iOS implementation
+              delay(connectionDelay) // 2 seconds delay similar to iOS implementation
               AppLog.d(TAG, "Wake up successful, proceeding to next step")
               handleIntent(
                 BtWifiScaleSetupIntent.SetStepConnectionState(
