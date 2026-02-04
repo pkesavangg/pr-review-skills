@@ -34,6 +34,10 @@ final class ScaleSettingsStore: ObservableObject {
     @Published var isScaleImpedanceSwitchedOn: Bool = false
     @Published var isWeighOnlyModeEnabledByOthers: Bool = false
     @Published var displayName = ""
+
+    // Prevent concurrent preference syncs and device info fetches
+    private var isSyncingPreferences: Bool = false
+    private var deviceInfoFetchTask: Task<Void, Never>?
     
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false
@@ -163,6 +167,10 @@ final class ScaleSettingsStore: ObservableObject {
     /// - Parameters:
     ///   - deviceInfo: The current device info from the scale
     private func syncPreferencesIfNeeded(deviceInfo: DeviceInfo) async {
+        guard !isSyncingPreferences else { return }
+        isSyncingPreferences = true
+        defer { isSyncingPreferences = false }
+
         guard isDeviceConnected,
               let preference = scale.r4ScalePreference
         else {
@@ -206,6 +214,21 @@ final class ScaleSettingsStore: ObservableObject {
     
     /// Checks device info and WiFi configuration for scale SKU 0412
     func getDeviceInfo() async {
+        if let existingTask = deviceInfoFetchTask {
+            await existingTask.value
+            return
+        }
+
+        let task = Task { [weak self] in
+            guard let self = self else { return }
+            defer { self.deviceInfoFetchTask = nil }
+            await self.fetchDeviceInfoInternal()
+        }
+        deviceInfoFetchTask = task
+        await task.value
+    }
+
+    private func fetchDeviceInfoInternal() async {
         guard getScaleType() == .btWifiR4,
               isDeviceConnected == true else { return }
         

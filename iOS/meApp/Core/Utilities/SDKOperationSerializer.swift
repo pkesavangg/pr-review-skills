@@ -15,24 +15,26 @@ import Foundation
 /// This actor ensures operations of the same type are executed sequentially per device, with each operation
 /// running after the previous one completes (true serialization).
 /// 
-/// Different operation types can run concurrently for the same device (e.g., updateAccount and getUsers),
-/// but the same operation type is serialized per device.
+/// All operations are serialized per device to avoid SDK callback collisions.
+/// If the SDK supports independent callbacks per operation type, this can be relaxed.
 actor SDKOperationSerializer {
     private var lastTask: [String: Task<Void, Never>] = [:]
     
-    /// Executes an SDK operation, serializing calls per operation key (deviceId:operationType).
-    /// Operations with the same key are queued and executed sequentially, ensuring each operation
+    /// Executes an SDK operation, serializing calls per device to avoid SDK callback collisions.
+    /// Operations for the same device are queued and executed sequentially, ensuring each operation
     /// runs with its own inputs and produces its own result.
     /// - Parameters:
-    ///   - operationKey: Unique key combining device ID and operation type (e.g., "deviceId:updateAccount")
+    ///   - operationKey: Key combining device ID and operation type (e.g., "deviceId:updateAccount")
     ///   - operation: The async operation to execute (must be @MainActor)
     /// - Returns: The result of the operation
     func execute<T: Sendable>(
         operationKey: String,
         operation: @escaping @MainActor () async throws -> T
     ) async throws -> T {
-        // Wait for the previous task for this operation key to complete
-        if let previousTask = lastTask[operationKey] {
+        let queueKey = operationKey.split(separator: ":", maxSplits: 1).first.map(String.init) ?? operationKey
+
+        // Wait for the previous task for this device to complete
+        if let previousTask = lastTask[queueKey] {
             await previousTask.value
         }
         
@@ -51,7 +53,7 @@ actor SDKOperationSerializer {
             
             // Store the task so the next operation waits for it
             // Old tasks will be naturally replaced when new operations start
-            lastTask[operationKey] = operationTask
+            lastTask[queueKey] = operationTask
         }
     }
 }
