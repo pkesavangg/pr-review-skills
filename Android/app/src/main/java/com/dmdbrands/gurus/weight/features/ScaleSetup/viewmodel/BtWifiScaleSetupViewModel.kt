@@ -1415,6 +1415,7 @@ constructor(
           if (!isOnlyNetworkPermissionMissing) {
             setMeasurementFailed()
           } else {
+            requestPermission(GGPermissionType.BLUETOOTH_SWITCH, true)
             AppLog.d(TAG, "Skipping STEP_ON error - only network permission is missing")
           }
         }
@@ -1562,7 +1563,7 @@ constructor(
   /**
    * Requests a specific permission with rationale alert using the permission service.
    */
-  private fun requestPermission(permissionType: String) {
+  private fun requestPermission(permissionType: String, isDuringStepOn: Boolean = false) {
     if (permissionType == GGPermissionType.WIFI_SWITCH) {
       permissionService.requestPermission(permissionType)
       return
@@ -1571,6 +1572,7 @@ constructor(
       try {
         dialogUtility.permissionAlert(
           permissionType = permissionType,
+          isScaleSetupRequest = isDuringStepOn,
           onRequest = {
             permissionService.requestPermission(permissionType)
           },
