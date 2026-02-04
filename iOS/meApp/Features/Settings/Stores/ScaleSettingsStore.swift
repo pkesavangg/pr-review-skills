@@ -164,6 +164,10 @@ final class ScaleSettingsStore: ObservableObject {
             cachedPreferenceIsSynced = false
         }
     }
+    
+    func refreshScaleData() {
+        refreshCachedValues()
+    }
 
     var isBodyMetrics: Bool {
         return cachedShouldMeasureImpedance
