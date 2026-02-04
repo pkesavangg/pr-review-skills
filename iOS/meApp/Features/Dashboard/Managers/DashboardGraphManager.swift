@@ -343,7 +343,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     self.latestScrollPosition = nil
                 }
                 self.state.updateScrollState(isScrolling: false)
-
                 self.logger.log(level: .debug, tag: "DashboardGraphManager", message: "Scroll ended - all caches cleared for fresh calculation")
             }
         }
@@ -1367,7 +1366,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             let nearRight = rightEdge >= maxDate.addingTimeInterval(-domainLength / 4.0)
 
             if !(movedFar || nearLeft || nearRight) {
-                logger.log(level: .debug, tag: "DashboardGraphManager", message: "Using cached X-axis values during scroll (stable segment)")
                 return lastXAxisValues
             }
         }
@@ -1428,22 +1426,62 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let visibleStart: Date
         let visibleEnd: Date
 
-        if period == .year || period == .total {
-            // Show all X-axis ticks from first entry to current date with buffer
-            visibleStart = overallMinDate.addingTimeInterval(-minDateBuffer)
-            let adjustedMaxDate = overallMaxDate.addingTimeInterval(maxDateBuffer)
-            visibleEnd = max(adjustedMaxDate, currentDate)
+  
+        let adjustedMinDate = overallMinDate.addingTimeInterval(-minDateBuffer)
+        let adjustedMaxDate = overallMaxDate.addingTimeInterval(maxDateBuffer)
+
+        // Calculate data span to decide which domain strategy to use
+        let dataSpan = overallMaxDate.timeIntervalSince(overallMinDate)
+        let oneYearInterval = DashboardConstants.TimeInterval.year
+        let useFixedDomain = period == .year ? dataSpan <= 5 * oneYearInterval : dataSpan <= oneYearInterval
+
+        if useFixedDomain {
+            // This ensures the domain remains constant during scrolling, preventing "shooting" behavior
+            // Calculate end of current calendar period for extending the domain
+            let currentPeriodEnd: Date
+            switch period {
+            case .week:
+                // End of current week (Saturday at noon)
+                let currentWeekday = calendar.component(.weekday, from: currentDate)
+                let daysUntilSaturday = (7 - currentWeekday + 7) % 7
+                if let saturdayStart = calendar.date(byAdding: .day, value: daysUntilSaturday, to: calendar.startOfDay(for: currentDate)),
+                   let saturdayNoon = calendar.date(byAdding: .hour, value: 12, to: saturdayStart) {
+                    currentPeriodEnd = saturdayNoon
+                } else {
+                    currentPeriodEnd = currentDate
+                }
+            case .month:
+                // Add extra month buffer
+                minDateBuffer = DashboardConstants.TimeInterval.month
+                // End of current month
+                if let monthInterval = calendar.dateInterval(of: .month, for: currentDate) {
+                    currentPeriodEnd = monthInterval.end.addingTimeInterval(-1)
+                } else {
+                    currentPeriodEnd = currentDate
+                }
+            case .year, .total:
+                // End of current year
+                if let yearInterval = calendar.dateInterval(of: .year, for: currentDate) {
+                    currentPeriodEnd = yearInterval.end.addingTimeInterval(-1)
+                } else {
+                  currentPeriodEnd = currentDate
+                }
+            }
+
+            visibleStart = adjustedMinDate
+            let extendedMaxDate = max(adjustedMaxDate, currentPeriodEnd)
+            visibleEnd = extendedMaxDate
         } else {
-            let adjustedMinDate = overallMinDate.addingTimeInterval(-minDateBuffer)
-            let adjustedMaxDate = overallMaxDate.addingTimeInterval(maxDateBuffer)
+            // For data spanning more than 1 year: use scroll-based bounds for performance
+            let scrollBasedEnd = scrollPosition.addingTimeInterval(domainLength / 2 + buffer)
             visibleStart = max(adjustedMinDate, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
+
             if adjustedMaxDate > currentDate {
-                visibleEnd = min(adjustedMaxDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+                visibleEnd = min(adjustedMaxDate, scrollBasedEnd)
             } else if adjustedMaxDate < currentDate.addingTimeInterval(-domainLength * 3) {
-                // if max date is more than 3 domain lengths in the past, show x-axis till current date
-                visibleEnd = max(currentDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+                visibleEnd = max(currentDate, scrollBasedEnd)
             } else {
-                visibleEnd = min(currentDate, scrollPosition.addingTimeInterval(domainLength / 2 + buffer))
+                visibleEnd = min(currentDate, scrollBasedEnd)
             }
         }
         let entryCount = operations.count

@@ -814,7 +814,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength *  1.05) // Add 5% extra length for trailing padding
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength)
                 // When there are no operations (empty-state), explicitly pin the
                 // X-axis domain to the current period tick range so labels render
                 // left-to-right (sun → mon → … → sat for week).
@@ -1051,21 +1051,21 @@ extension View {
             // For week view: align to start of week (Sunday)
             return .valueAligned(
                 matching: .init(hour: 12),
-                majorAlignment: .matching(.init(hour: 12, weekday: 1)), // Sunday = 1
+                majorAlignment: .matching(.init(hour: 6, weekday: 1)), // Sunday = 1
                 limitBehavior: .automatic
             )
         case .month:
             // For month view: align to start of month (1st day)
             return .valueAligned(
-                matching: .init(hour: 0),
-                majorAlignment: .matching(.init(day: 1)),
+                matching: .init(hour: 12),
+                majorAlignment: .matching(.init(day: 31, hour: 12)),
                 limitBehavior: .automatic
             )
         case .year:
-            // For year view: snap to any day at noon for finer-grained boundary handling
+            // For year view: align to mid-December (centers the year boundary between Dec and Jan)
             return .valueAligned(
                 matching: .init(hour: 12),
-                majorAlignment: .matching(.init(day: 1, hour: 12)),
+                majorAlignment: .matching(.init(month: 12, day: 20, hour: 12)),
                 limitBehavior: .automatic
             )
         case .total:
