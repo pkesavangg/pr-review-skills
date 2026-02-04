@@ -74,6 +74,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.util.TimeZone
 import kotlin.coroutines.resume
@@ -130,7 +131,7 @@ constructor(
   private var isAlreadyExited = false
 
   // Timeout constant - 5 minutes for all operations
-  private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
+  private val operationTimeout: Long = 2 * 60 * 1000L // 5 minutes
   // Delay to ensure scale is fully woken up before proceeding
   private val connectionDelay: Long = 2000L // 2 seconds
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
@@ -273,16 +274,16 @@ constructor(
     val cachedDevice =
       (deviceDetail.broadcastId?.let { cache[it] } ?: deviceDetail.broadcastIdString?.let { cache[it] }) as? Device
         ?: return
-    discoveredScale = cachedDevice
-    if (cachedDevice.connectionStatus == BLEStatus.CONNECTED) {
+    val isConnected = cachedDevice.connectionStatus == BLEStatus.CONNECTED
+    if (isConnected) {
       isScaleConnected = true
-    }
-    if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
+    } else {
       AppLog.d(
         TAG,
         "Scale not connected after refresh from cache; user may need to ensure BLE is on before tapping Next",
       )
     }
+    discoveredScale = cachedDevice
   }
 
   /**
@@ -459,12 +460,8 @@ constructor(
           handlePermissionBasedErrors()
         } else {
           val currentStep = state.value.currentStep
-          if (discoveredScale?.connectionStatus == BLEStatus.CONNECTED &&
-            (currentStep == BtWifiSetupStep.CUSTOMIZE_SETTINGS || currentStep == BtWifiSetupStep.UPDATE_SETTINGS)
-          ) {
-            viewModelScope.launch {
-              loadPluginData()
-            }
+          if (currentStep == BtWifiSetupStep.CUSTOMIZE_SETTINGS || currentStep == BtWifiSetupStep.UPDATE_SETTINGS) {
+            viewModelScope.launch { syncForSetupBleReconnection() }
           }
         }
       }.catch { e ->
@@ -855,6 +852,25 @@ constructor(
     }
   }
 
+  /**
+   * Minimal sync to help BLE reconnection during setup when user turns BLE back on at CUSTOMIZE_SETTINGS or UPDATE_SETTINGS.
+   * Syncs paired devices to the SDK so it knows which devices to reconnect to. Skip-list logic is not used in this setup
+   * flow (we never add the current scale to skip during BtWifi setup); that is only in loadPluginData() for exit cleanup.
+   */
+  private suspend fun syncForSetupBleReconnection() {
+    try {
+      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+      AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices for setup BLE reconnection")
+      ggDeviceService.syncDevices(pairedDevices)
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error during setup BLE reconnection sync", e)
+    }
+  }
+
+  /**
+   * Full plugin data load: skip-list sync and paired devices sync. Intended for cleanup during exit (onExit).
+   * For BLE reconnection during setup at CUSTOMIZE_SETTINGS/UPDATE_SETTINGS use syncForSetupBleReconnection() instead.
+   */
   private suspend fun loadPluginData() {
     try {
       // load skipDevices
@@ -1832,6 +1848,28 @@ constructor(
           )
         }
         if (preferences != null) {
+          // Refresh from cache so we have latest connection state (e.g. after BLE turned back on).
+          refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
+          // If scale is not connected yet (e.g. reconnection in progress), wait for it before updateAccount.
+          if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
+            val bid = discoveredScale?.device?.broadcastId ?: discoveredScale?.device?.broadcastIdString
+            if (bid != null) {
+              val connected = withTimeoutOrNull(20_000L) {
+                ggDeviceService.deviceCache.first { cache ->
+                  (cache[bid] as? Device)?.connectionStatus == BLEStatus.CONNECTED
+                }
+              }
+              if (connected == null) {
+                AppLog.w(TAG, "Scale did not reconnect within timeout before UPDATE_SETTINGS")
+                setUpdateSettingsError()
+                return@launch
+              }
+              refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
+            } else {
+              setUpdateSettingsError()
+              return@launch
+            }
+          }
           val newName = _state.value.usernameForm.username.value
           val updatedDevice =
             discoveredScale!!.copy(
