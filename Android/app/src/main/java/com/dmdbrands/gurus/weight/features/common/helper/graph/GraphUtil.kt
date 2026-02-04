@@ -23,8 +23,6 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.math.ceil
-import kotlin.math.floor
 import kotlin.reflect.KProperty1
 
 val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
@@ -255,8 +253,7 @@ object GraphUtil {
     }
 
     // Get all metric values (including previous/next for range calculation)
-    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Number }
-      .map { it.toDouble() }
+    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Double? }
       .filter { it.isFinite() } // Filter out NaN/Infinity values
 
     if (allMetricValues.isEmpty()) {
@@ -267,8 +264,8 @@ object GraphUtil {
     val visiblePoints = metricGraphLine.points.filter {
       it.x.value.toLong() in minX..maxX
     }
-    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX)
-    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX)
+    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX)?.toLong()?.toDouble()
+    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX)?.toLong()?.toDouble()
 
     val metricValuesForRange = buildList {
       previousPoint?.let { add(it) }

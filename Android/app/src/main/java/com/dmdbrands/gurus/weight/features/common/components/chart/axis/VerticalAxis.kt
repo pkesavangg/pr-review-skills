@@ -1,10 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.axis
 
-import androidx.compose.animation.core.EaseInOut
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,12 +46,6 @@ fun endAxis(
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
 
-  if (yStep != null) animateIntAsState(
-    targetValue = yStep.roundToInt(),
-    animationSpec = tween(durationMillis = 250, delayMillis = 0, easing = EaseInOut),
-    label = "animatedStep",
-  ) else null
-
   // Vico requires step > 0; pass actual Double step (yStep.roundToInt() would be 0 for small steps e.g. 0.2)
   val stepForPlacer = (yStep?.takeIf { it > 0 } ?: 1.0)
 
@@ -64,11 +54,9 @@ fun endAxis(
       if (isEmptyGraph && markerDecoration == null) " " else
         value.roundToInt().toString()
     },
-    itemPlacer = remember(stepForPlacer) {
-      VerticalAxis.ItemPlacer.step(
-        { stepForPlacer },
-      )
-    },
+    itemPlacer = VerticalAxis.ItemPlacer.step(
+      { stepForPlacer },
+    ),
     size = BaseAxis.Size.scroll(50.dp),
     line =
       rememberAxisLineComponent(

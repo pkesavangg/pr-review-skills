@@ -562,7 +562,7 @@ class GraphViewModel @AssistedInject constructor(
         // Renormalize secondary metrics with cached Y-axis (iOS-style)
         // Y-axis values already validated above, safe to use here
         val normalizedSecondaryGraphLines = if (secondaryGraphLines.points.isNotEmpty()) {
-          secondaryGraphLines.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+          secondaryGraphLines.points.take(3).map { (it.y.value as? Double?) }
 
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
           val normalized = GraphUtil.normalizeMetricToWeightRange(
@@ -573,7 +573,7 @@ class GraphViewModel @AssistedInject constructor(
             maxX = endX,
           )
 
-          normalized.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+          normalized.points.take(3).map { (it.y.value as? Double?) }
           normalized
         } else null
 
