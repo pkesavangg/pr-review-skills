@@ -250,7 +250,7 @@ constructor(
           is AuthState.LoggedInFromLoading -> {
             stopScan()
             resetScaleDiscoveredState()
-            startObserversOnly(authState.account)
+            startObserversOnly(authState.account, fromLoadingScreen = true)
             // LoadingScreenViewModel already did loadData + autoLogin; only start observers (feed, IAM, permissions, device callbacks, etc.)
             dashboardService.setSelectedKey(null)
           }
@@ -379,7 +379,7 @@ constructor(
    * Starts long-lived observers only (no account setup or navigation).
    * Called when [AuthState.LoggedInFromLoading] is received; LoadingScreenViewModel already did loadData + autoLogin.
    */
-  private fun startObserversOnly(account: Account) {
+  private fun startObserversOnly(account: Account, fromLoadingScreen: Boolean = false) {
     viewModelScope.launch {
       try {
         permissionSubscribeJob?.cancel()
@@ -389,7 +389,13 @@ constructor(
         // Reset initialized flag to ensure permission checks happen after login
         initialized = false
         deviceInfoService.updateDeviceInfo()
+
+        if (fromLoadingScreen) {
+          // Wait for loading screen to finish before checking permissions
+          kotlinx.coroutines.delay(1000)
+        }
         subscribePermissions()
+
         subscribeDeviceCallback()
         subscribePairedScales()
         entryService.initializeGoalCardMonitoring(account.id)
