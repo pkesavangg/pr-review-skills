@@ -127,8 +127,12 @@ class DashboardStore: ObservableObject {
 
     /// Whether progress metrics skeleton should be shown
     var shouldShowProgressMetricsSkeleton: Bool {
-        if !state.ui.hasLoadedProgressMetrics || !shouldShowGoalStreakSection {
+        if !state.ui.hasLoadedProgressMetrics {
             return true
+        }
+
+        if !shouldShowGoalStreakSection {
+            return false
         }
         // In non-edit mode, wait until streak order is ready
         let needsStreakOrder =
@@ -376,18 +380,12 @@ class DashboardStore: ObservableObject {
                allStreaksRemoved
     }
 
-    /// Checks if a goal is set for the active account
-    /// Returns true if goalSettings exists and has valid goal type, initial weight, and goal weight
+    /// Checks if a goal is set for the active account (as resolved by the goal manager)
     var hasGoalSet: Bool {
-            guard let account = accountService.activeAccount,
-                  let goalSettings = account.goalSettings,
-                  let goalType = goalSettings.goalType,
-                  let initialWeight = goalSettings.initialWeight,
-                  let goalWeight = goalSettings.goalWeight else {
-                return false
-            }
-            return initialWeight > 0 && goalWeight > 0
-        }
+        // Use the goal manager's resolved state to avoid drifting logic.
+        // It already checks the API goal settings and normalizes to a boolean.
+        state.goal.hasGoalSet
+    }
 
     var shouldShowStreakGrid: Bool {
         // Only show streak grid if there are visible (non-removed) streaks
