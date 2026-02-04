@@ -1838,12 +1838,25 @@ final class BtWifiScaleSetupStore: ObservableObject {
             if !bluetoothSwitchOff {
                 Task { [weak self] in
                     guard let self = self, let savedScale = self.savedScale else { return }
-                    try? await self.scaleService.updateAllScalesStatus([savedScale])
-                    if let refreshedScale = try? await self.scaleService.getDevice(by: savedScale.id) {
+                    
+                    do {
+                        try await self.scaleService.updateAllScalesStatus([savedScale])
+                    } catch {
+                        LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): failed to update scale status for id \(savedScale.id): \(error.localizedDescription)")
+                        return
+                    }
+                    
+                    do {
+                        guard let refreshedScale = try await self.scaleService.getDevice(by: savedScale.id) else {
+                            LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): device not found for id \(savedScale.id)")
+                            return
+                        }
                         await MainActor.run {
                             self.savedScale = refreshedScale
                             self.bluetoothService.syncDevices([refreshedScale])
                         }
+                    } catch {
+                        LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): failed to refresh scale device for id \(savedScale.id): \(error.localizedDescription)")
                     }
                 }
             }
