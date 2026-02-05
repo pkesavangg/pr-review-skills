@@ -1023,13 +1023,17 @@ class DashboardStore: ObservableObject {
                 if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                     let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
                     metricsManager.updateMetricsOrder(from: metricArray)
+                    syncRemovalStateFromMetricsManager()
                 } else {
-                    // Set up default metrics if no local data
-                    metricsManager.setupInitialMetrics()
+                    if metricsManager.state.metrics.isEmpty {
+                        metricsManager.setupInitialMetrics()
+                    }
                 }
             } else {
                 // Set up default metrics if no account
-                metricsManager.setupInitialMetrics()
+                if metricsManager.state.metrics.isEmpty {
+                    metricsManager.setupInitialMetrics()
+                }
             }
         }
     }

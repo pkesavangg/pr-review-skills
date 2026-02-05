@@ -2870,10 +2870,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
             try? await dashboardStore.streakManager.refreshStreakData()
             await dashboardStore.loadProgressMetricsFromAccount()
         } else {
-            await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)           
             await MainActor.run {
-                // Sync removal state for UI consistency
-                dashboardStore.syncRemovalStateFromMetricsManager()
+                // Ensure metrics are loaded (should already be from dashboard screen)
+                if dashboardStore.metricsManager.state.metrics.isEmpty {
+                    // Only load if truly empty (shouldn't happen)
+                    Task {
+                        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+                        await MainActor.run {
+                            dashboardStore.syncRemovalStateFromMetricsManager()
+                        }
+                    }
+                } else {
+                    dashboardStore.syncRemovalStateFromMetricsManager()
+                }
             }
         }
         
