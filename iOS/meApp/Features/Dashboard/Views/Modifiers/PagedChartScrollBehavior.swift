@@ -5,6 +5,7 @@ import Charts
 /// - Pages horizontally with 1 page for normal swipes and 2 pages for bigger swipes
 /// - Handles content smaller than viewport, start/end bounds, and near-edge snapping
 /// - After paging, applies date-component alignment like `.valueAligned(matching:)`
+/// references: https://fatbobman.com/en/posts/mastering-swiftui-scrolling-implementing-custom-paging/
 struct PagedChartScrollBehavior: ChartScrollTargetBehavior {
 
     enum ScrollDirection { case left, right, none }
@@ -174,7 +175,7 @@ struct PagedChartScrollBehavior: ChartScrollTargetBehavior {
             valueAligned.updateTarget(&target, context: context)
 
             // Limit valueAligned adjustment to half a viewport to prevent extra page jumps
-            let maxAdjustment = viewportW * 0.75
+            let maxAdjustment = viewportW * 0.80
             let adjustment = abs(target.rect.origin.x - preAlignedX)
             if adjustment > maxAdjustment {
                 target.rect.origin.x = preAlignedX
