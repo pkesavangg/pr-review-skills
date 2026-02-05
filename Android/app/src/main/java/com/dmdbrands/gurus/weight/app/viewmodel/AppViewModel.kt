@@ -167,7 +167,7 @@ constructor(
     when (intent) {
       is AppIntent.OnPopUpConnect -> onPopUpConnect()
 
-      is AppIntent.OnPopUpDismiss -> onPopUpDismiss()
+      is AppIntent.OnPopUpDismiss -> onPopUpDismiss(shouldSkipDevice = true)
 
       else -> {}
     }
@@ -218,21 +218,18 @@ constructor(
     }
   }
 
-  private fun onPopUpDismiss() {
+  private fun onPopUpDismiss(shouldSkipDevice: Boolean = false) {
     viewModelScope.launch {
       handleIntent(AppIntent.SetScaleDiscovered(false))
-      // Add to skipDevices if not already present
-      discoveredBroadcastId?.let { broadcastId ->
-        bluetoothPreferencesService.addSkipDevice(broadcastId)
-      }
       // Set canShowScaleDiscoveredModal to false for 30 seconds
       canShowScaleDiscoveredModal = false
       delay(30 * 1000)
       canShowScaleDiscoveredModal = true
     }
-    discoveredBroadcastId?.let { broadcastId ->
-      ggDeviceService.skipDevice(broadCastId = broadcastId, considerForSession = true)
-
+    if (shouldSkipDevice) {
+      discoveredBroadcastId?.let { broadcastId ->
+        ggDeviceService.skipDevice(broadCastId = broadcastId, considerForSession = true)
+      }
     }
     AppLog.d(TAG, "Closed scale discovered popup ${state.value.isScaleDiscovered}")
   }
@@ -460,7 +457,7 @@ constructor(
       ggDeviceService.deviceCallbackFlow.collect { response ->
         AppLog.d(
           TAG,
-          "deviceCallback triggered: response type=${response.javaClass.simpleName}, response=$response"
+          "deviceCallback triggered: response type=${response.javaClass.simpleName}, response=$response",
         )
         // Note: Bluetooth state check is done in GGBluetoothSDKHelper before emitting
         // This log helps track when callbacks are received in the ViewModel
@@ -520,7 +517,7 @@ constructor(
       } == true
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
-          AppLog.d(TAG,"new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
+          AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
           if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
             val currentRoute = navigationService.getCurrentRoute()
             val isSetupInProgress = deviceService.isSetupInProgress()
@@ -529,7 +526,7 @@ constructor(
               // Check if device is in skipDevices list
               val isSkipped =
                 data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||
-                data.macAddress.let { bluetoothPreferencesService.containsSkipDevice(it) }
+                  data.macAddress.let { bluetoothPreferencesService.containsSkipDevice(it) }
 
               // Check if same scale was shown recently (15 seconds)
               val isIgnored = data.macAddress == scaleToIgnore
@@ -671,13 +668,13 @@ constructor(
                         if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
                           viewModelScope.launch {
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
-                              navigationService.navigateTo(
-                                AppRoute.ScaleSetup.BtWifiScaleSetup(
-                                  data.getSKU(),
-                                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                                  data.broadcastId,
-                                ),
-                              )
+                            navigationService.navigateTo(
+                              AppRoute.ScaleSetup.BtWifiScaleSetup(
+                                data.getSKU(),
+                                BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                                data.broadcastId,
+                              ),
+                            )
                           }
                         }
                       }
@@ -721,7 +718,7 @@ constructor(
         return@launch
       }
       val accountId = currentAccountId ?: return@launch
-      //During setup scale list will be empty so ignoring this check during setup and allow all entries.
+      // During setup scale list will be empty so ignoring this check during setup and allow all entries.
       val isSetupInProgress = deviceService.isSetupInProgress()
       val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId)
 
@@ -739,14 +736,17 @@ constructor(
           val calculatedBmi = EntryHelper.getCalculatedBMI(
             weight = scaleEntry.scale.scaleEntry.weight.toFloat(),
             unit = scaleEntry.entry.unit,
-            height = userHeight
+            height = userHeight,
           )
 
           // Update the BMI in the scale entry
           val updatedScaleEntry = scaleEntry.scale.scaleEntry.copy(bmi = calculatedBmi)
           val updatedScaleEntryWithMetrics = scaleEntry.scale.copy(scaleEntry = updatedScaleEntry)
 
-          AppLog.d(TAG, "Calculated BMI: $calculatedBmi for weight: ${scaleEntry.scale.scaleEntry.weight}, height: $userHeight")
+          AppLog.d(
+            TAG,
+            "Calculated BMI: $calculatedBmi for weight: ${scaleEntry.scale.scaleEntry.weight}, height: $userHeight",
+          )
 
           scaleEntry.copy(scale = updatedScaleEntryWithMetrics)
         } else {
@@ -756,7 +756,7 @@ constructor(
 
       try {
         entryService.addEntry(entry)
-        if(!isSetupInProgress){
+        if (!isSetupInProgress) {
           dialogQueueService.showToast(
             Toast(
               message = "entry saved successfully",
