@@ -1338,7 +1338,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     ///   - scale: The scale device to sync preferences for
     ///   - deviceInfo: The current device info from the scale
     private func syncPreferencesIfNeeded(for scale: Device, deviceInfo: DeviceInfo) async {
-        // Prevent concurrent sync operations - check and set atomically
+   // Prevent concurrent sync operations - check and set atomically
         guard !isSyncingPreferences else {
             return
         }
@@ -1352,18 +1352,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
 
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
-        // Check for impedance preference mismatch between app and scale
-        let hasImpedanceMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
-        let hasUnsyncedPreferences = preference.isSynced == false
+        let hasMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
 
-        logger.log(level: .debug, tag: tag, message: "Checking preference sync - App wants impedance: \(preference.shouldMeasureImpedance), Scale has impedance: \(impedanceSwitchState), Mismatch: \(hasImpedanceMismatch), Unsynced: \(hasUnsyncedPreferences)")
-
-        guard hasUnsyncedPreferences else {
-            logger.log(level: .debug, tag: tag, message: "No sync performed - preferences already marked as synced")
+        //  Sync if there's a mismatch (regardless of isSynced flag)
+        guard hasMismatch else {
             return
         }
-
-        let broadcastId = scale.broadcastIdString ?? "unknown"
+   let broadcastId = scale.broadcastIdString ?? "unknown"
         switch await updateAccount(on: scale, preference: preference) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
@@ -1397,8 +1392,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return
         }
 
-        // Calculate weight-only mode status using the specified condition
-        let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
+        // Sync already happened in updateWeightOnlyModeStatusFromDeviceDetails
+        // Wait briefly for sync to complete and scale to update
+        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 second delay
+        
+        // Get app preference
         let shouldMeasureImpedance: Bool = {
             if let pref = scale.r4ScalePreference {
                 if let fetched = fetchAttachedPreference(by: pref.id) { return fetched.shouldMeasureImpedance }
@@ -1406,7 +1404,20 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             return false
         }()
-        let isWeightOnlyModeEnabledByOthers = !impedanceSwitchState && shouldMeasureImpedance
+        
+        // Get fresh device info after sync to calculate weight-only mode status
+        
+        let updatedDeviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
+        let finalImpedanceSwitchState: Bool
+        if case .success(let updatedInfo) = updatedDeviceInfoResult {
+            finalImpedanceSwitchState = updatedInfo.impedanceSwitchState ?? false
+        } else {
+            // Fallback: assume scale matches app preference after sync
+            finalImpedanceSwitchState = shouldMeasureImpedance
+        }
+        
+        // Calculate weight-only mode status: enabled by others if scale has Weight Only BUT app wants All Body Metrics
+        let isWeightOnlyModeEnabledByOthers = !finalImpedanceSwitchState && shouldMeasureImpedance
 
         // Update the scale's weight-only mode status
         scale.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
@@ -1416,9 +1427,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             broadcastId: broadcastId,
             isWeightOnlyModeEnabledByOthers: isWeightOnlyModeEnabledByOthers
         )
-
-        // Sync preference settings to scale if needed (impedance mismatch or unsynced preferences)
-        await syncPreferencesIfNeeded(for: scale, deviceInfo: deviceInfo)
 
         logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for scale \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
     }
@@ -1437,11 +1445,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return
         }
 
-        // For connection events, we need to get device info to calculate weight-only mode status
-        // Since we don't have full DeviceInfo here, we'll get it from the scale
+        // Get device info and sync preferences FIRST before calculating status
+        // This prevents the scale from briefly showing the wrong mode
         let deviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
+            // Sync immediately to update scale mode before calculating status
+            await syncPreferencesIfNeeded(for: scale, deviceInfo: deviceInfo)
+            // Then update weight-only mode status with synced state
             await updateWeightOnlyModeStatus(deviceDetails: deviceDetails, deviceInfo: deviceInfo)
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to get device info for weight-only mode calculation: \(error)")
