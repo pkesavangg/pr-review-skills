@@ -131,7 +131,7 @@ constructor(
   private var isAlreadyExited = false
 
   // Timeout constant - 5 minutes for all operations
-  private val operationTimeout: Long = 2 * 60 * 1000L // 5 minutes
+  private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
   // Delay to ensure scale is fully woken up before proceeding
   private val connectionDelay: Long = 2000L // 2 seconds
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
