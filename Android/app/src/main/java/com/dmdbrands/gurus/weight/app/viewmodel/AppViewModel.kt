@@ -584,6 +584,19 @@ constructor(
             connectionStatus = BLEStatus.CONNECTED,
           )
           checkCanShowWeightOnlyModeAlert()
+          // Sync entries from reconnected scale when not in setup (setup flow syncs after pairing)
+          if (!deviceService.isSetupInProgress()) {
+            val currentRoute = navigationService.getCurrentRoute()
+            if (currentRoute !is AppRoute.ScaleSetup) {
+              val device = data.broadcastId?.let {
+                deviceService.getScaleByBroadcastId(it, accountId)
+              }
+              if (device != null) {
+                AppLog.d(TAG, "Syncing entries for reconnected scale")
+                ggDeviceService.syncDevices(listOf(device.toGGBTDevice()))
+              }
+            }
+          }
         }
 
         GGScanResponseType.DEVICE_DISCONNECTED -> {
