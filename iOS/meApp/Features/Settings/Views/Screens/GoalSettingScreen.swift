@@ -204,8 +204,6 @@ struct GoalSettingScreen: View {
         return String(format: "%.1f %@", display, weightUnit.rawValue)
     }
     
-    // MARK: - Helper Methods
-    
     /// Handles field value changes by marking as touched when editing
     /// FormControl automatically marks as dirty and validates when value changes
     private func handleFieldValueChange(_ field: FocusField, newValue: String) {
