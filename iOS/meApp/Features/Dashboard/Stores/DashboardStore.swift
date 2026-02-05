@@ -1051,6 +1051,8 @@ class DashboardStore: ObservableObject {
             // Sync the dashboard type from metrics manager to store state
             await MainActor.run {
                 state.metrics.dashboardType = metricsManager.state.dashboardType
+                // Sync removal state after loading metrics to ensure UI state reflects API data
+                syncRemovalStateFromMetricsManager()
             }
 
             // Load progress metrics (goal card + streaks) only if not already loaded

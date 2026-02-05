@@ -974,7 +974,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .viewSettings:
             handleViewSettingsAction()
         case .customizeSettings:
-            handleCustomizeSettingsNext()
+            navigateToStep(.updateSettings)
         case .scaleConnected:
             // Post notification to refresh dashboard when setup completes
             // Add a small delay to ensure connection status updates have propagated to UI
@@ -1323,18 +1323,34 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
             break
         case .dashboardMetrics:
-            // Save dashboard changes immediately when Save is clicked
-            dashboardStore.saveChanges()
-            // Mark that changes were made so the flow can treat it as updated
-            self.hasCustomizeChanges = true
-            self.selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
-            // Post notification to refresh dashboard screen when user returns to it
-            // Note: This notification will also trigger a reload in the customize screen,
-            // but that's fine as it ensures both screens stay in sync
-            NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
-            // Cancel sync subscription after saving since we've already synced
-            dashboardMetricsUpdatedCancellable?.cancel()
-            dashboardMetricsUpdatedCancellable = nil
+            hasCustomizeChanges = true
+            selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            
+            Task { @MainActor in
+                 // Sync removal state
+                self.dashboardStore.syncRemovalStateFromMetricsManager()
+                self.dashboardStore.syncRemovalStateFromStreakManager()
+                
+                // Persist metrics
+                Task {
+                    do {
+                        try await self.dashboardStore.metricsManager.saveMetricsToAPI()
+                        try await self.dashboardStore.saveProgressMetricsToAPI()
+                        LoggerService.shared.log(
+                            level: .info,
+                            tag: tag,
+                            message: "Dashboard metrics saved to API"
+                        )
+                         } catch {
+                        LoggerService.shared.log(level: .error, tag: self.tag, message: "Failed to save dashboard metrics to API: \(error.localizedDescription)")
+                    }
+                }
+                
+                // Force UI refresh
+                self.dashboardStore.state.ui.gridLayoutId = UUID()
+                self.dashboardStore.refreshDashboardState()
+                self.dashboardStore.objectWillChange.send()
+            }
             break
         default:
             break
@@ -1387,34 +1403,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
         default:
             break
-        }
-        
-        // Navigation back to customize settings will be handled by moveToPreviousStep()
-    }
-    
-    /// Handles the next button click from the customize settings screen
-    ///
-    /// CUSTOMIZE SETTINGS FLOW:
-    /// 1. User is on customizeSettings step
-    /// 2. User clicks Next button
-    /// 3. If hasCustomizeChanges is true:
-    ///    - Navigate to updatingSettings step
-    ///    - Show ConnectionPromptView with "Updating Settings" and wgLogo
-    ///    - Call updateCustomizeSettings() to sync changes to scale
-    ///    - Auto-navigate to stepOn after 2 seconds
-    /// 4. If hasCustomizeChanges is false:
-    ///    - Navigate directly to stepOn step
-    ///
-    /// NOTE: hasCustomizeChanges is set to true when:
-    /// - User saves changes from viewSettings screen (via handleViewSettingsAction)
-    /// - CustomizeSettingsView calls markCustomizeSettingsChanged() when settings change
-    private func handleCustomizeSettingsNext() {
-        if hasCustomizeChanges {
-            // Show updating settings view
-            navigateToStep(.updateSettings)
-        } else {
-            // Move directly to stepOn
-            navigateToStep(.stepOn)
         }
     }
     
@@ -2477,6 +2465,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         do {
             // Check which customize settings pages need to be saved
+            // Dashboard metrics are independent and already saved to API, not included here
+            let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
             let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
             let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
             
@@ -2504,8 +2494,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Build updated preference object
             let updatedPreferenceDTO = R4ScalePreferenceDTO(
                 scaleId: savedScale.id,
-                displayName: currentPreference.displayName,
-                displayMetrics: currentPreference.displayMetrics, // Use current preference metrics (already updated when Save was clicked)
+                displayName: saveScaleUsername ? (userNameForm.displayName.value.isEmpty ? (firstName ?? "User") : userNameForm.displayName.value) : currentPreference.displayName,
+                displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics, // Only update if scale metrics were customized (independent from dashboard metrics)
                 shouldFactoryReset: false,
                 shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
                 shouldMeasurePulse: saveScaleMode ? isHeartRateEnabled : currentPreference.shouldMeasurePulse,
@@ -2832,18 +2822,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
     private func upgradeDashboardTypeFrom4To12PreservingRemovalState() async {
         await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
         
-        let originalActiveMetricsCount = dashboardStore.metricsManager.state.activeMetricsCount
-        let originalMetrics = dashboardStore.metricsManager.state.metrics
-        let originalFourLabels = [DashboardStrings.bmi, DashboardStrings.bodyFat, DashboardStrings.muscle, DashboardStrings.water]
-        
-        
-        let enabledOriginalMetrics = Array(originalMetrics.prefix(originalActiveMetricsCount))
-        let removedOriginalMetrics = Array(originalMetrics.dropFirst(originalActiveMetricsCount))
-        let enabledOriginalLabels = Set(enabledOriginalMetrics.map { $0.label })
-        let removedOriginalLabels = Set(removedOriginalMetrics.map { $0.label })
-        
-        LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Original 4 metrics - Enabled: \(enabledOriginalLabels), Removed: \(removedOriginalLabels)")
-        
         do {
             let apiRepo = AccountRepositoryAPI()
             _ = try await apiRepo.patchDashboardType(.dashboard12)
@@ -2852,72 +2830,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
             LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to update dashboard type on server: \(error.localizedDescription)")
         }
         
-        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-        
         await MainActor.run {
             dashboardStore.metricsManager.updateDashboardType(.dashboard12)
             dashboardStore.state.metrics.dashboardType = .dashboard12
             
-            let newMetricsLabels = [
-                DashboardStrings.heartBpm, DashboardStrings.bone, DashboardStrings.visceralFat,
-                DashboardStrings.subFat, DashboardStrings.protein, DashboardStrings.skelMuscle,
-                DashboardStrings.bmrKcal, DashboardStrings.metAge
-            ]
-            
-            let originalMetricsDef = [
-                (DashboardStrings.placeholder, DashboardStrings.bmi, nil, nil, AppAssets.bmiIcon),
-                (DashboardStrings.placeholder, DashboardStrings.bodyFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.bodyFatIcon),
-                (DashboardStrings.placeholder, DashboardStrings.muscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.muscleIcon),
-                (DashboardStrings.placeholder, DashboardStrings.water, DashboardStrings.percentageUnitSymbol, nil, AppAssets.waterIcon),
-                (DashboardStrings.placeholder, DashboardStrings.heartBpm, DashboardStrings.bpmUnitSymbol, nil, AppAssets.heartIcon),
-                (DashboardStrings.placeholder, DashboardStrings.bone, DashboardStrings.percentageUnitSymbol, nil, AppAssets.boneIcon),
-                (DashboardStrings.placeholder, DashboardStrings.visceralFat, nil, DashboardStrings.visceralFatPre, AppAssets.visceralFatIcon),
-                (DashboardStrings.placeholder, DashboardStrings.subFat, DashboardStrings.percentageUnitSymbol, nil, AppAssets.subcutaneousFatIcon),
-                (DashboardStrings.placeholder, DashboardStrings.protein, DashboardStrings.percentageUnitSymbol, nil, AppAssets.proteinIcon),
-                (DashboardStrings.placeholder, DashboardStrings.skelMuscle, DashboardStrings.percentageUnitSymbol, nil, AppAssets.skeletalMuscleIcon),
-                (DashboardStrings.placeholder, DashboardStrings.bmrKcal, DashboardStrings.kcalUnitSymbol, nil, AppAssets.bmrIcon),
-                (DashboardStrings.placeholder, DashboardStrings.metAge, DashboardStrings.metAgeUnit, nil, AppAssets.ageIcon)
-            ]
-            
-            var orderedMetrics: [MetricItem] = []
-            
-            for label in originalFourLabels where enabledOriginalLabels.contains(label) {
-                if let metricDef = originalMetricsDef.first(where: { $0.1 == label }) {
-                    orderedMetrics.append(MetricItem(
-                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
-                        preLabel: metricDef.3, icon: metricDef.4
-                    ))
-                }
-            }
-            
-            for newLabel in newMetricsLabels {
-                if let metricDef = originalMetricsDef.first(where: { $0.1 == newLabel }) {
-                    orderedMetrics.append(MetricItem(
-                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
-                        preLabel: metricDef.3, icon: metricDef.4
-                    ))
-                }
-            }
-            
-            for label in originalFourLabels where removedOriginalLabels.contains(label) {
-                if let metricDef = originalMetricsDef.first(where: { $0.1 == label }) {
-                    orderedMetrics.append(MetricItem(
-                        value: metricDef.0, label: metricDef.1, unit: metricDef.2,
-                        preLabel: metricDef.3, icon: metricDef.4
-                    ))
-                }
-            }
-            
-            dashboardStore.metricsManager.state.metrics = orderedMetrics
-            dashboardStore.metricsManager.state.activeMetricsCount = enabledOriginalLabels.count + 8
+            // For first R4 pairing, reset to default order with all 12 metrics enabled
+            dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
+            dashboardStore.metricsManager.resetOrderToDefault()
             dashboardStore.syncRemovalStateFromMetricsManager()
             
-            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Upgraded to dashboard12. Enabled original: \(enabledOriginalLabels.count), Removed: \(removedOriginalLabels.count), Active count: \(enabledOriginalLabels.count + 8)")
+            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Upgraded to dashboard12 with default order. All 12 metrics enabled.")
         }
         
         do {
-            // The removal state is managed by the metricsManager's activeMetricsCount and the ordering of metrics.
-            // We intentionally pass an empty array for removedMetrics here, as the actual removal state is derived from metric ordering.
+            // Save the default order to API
             try await dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
@@ -2944,20 +2870,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
             try? await dashboardStore.streakManager.refreshStreakData()
             await dashboardStore.loadProgressMetricsFromAccount()
         } else {
-            // Preserve dashboard order on re-pairing; reload only if metrics are empty
-            let currentMetricsCount = await MainActor.run {
-                dashboardStore.metricsManager.state.metrics.count
-            }
-            if currentMetricsCount == 0 {
-                await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+            await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)           
+            await MainActor.run {
+                // Sync removal state for UI consistency
+                dashboardStore.syncRemovalStateFromMetricsManager()
             }
         }
         
         await MainActor.run {
-            // Only set default order if metrics are truly empty (shouldn't happen for R4 scales)
-            if dashboardStore.metricsManager.state.metrics.isEmpty {
-                dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
-            }
+            // Sync removal state before edit
+            dashboardStore.syncRemovalStateFromMetricsManager()
             
             dashboardStore.beginEdit()
             dashboardStore.state.ui.isEditMode = true
