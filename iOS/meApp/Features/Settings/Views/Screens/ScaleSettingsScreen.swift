@@ -81,6 +81,9 @@ struct ScaleSettingsScreen: View {
             )
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            scaleSettingsStore.refreshScaleData()
+        }
     }
     
     // MARK: - Sections as Functions

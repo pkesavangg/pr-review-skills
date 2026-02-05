@@ -200,22 +200,22 @@ object GraphUtil {
       )
     }
 
-  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the minimum timestamp that is still greater than the search timestamp
     // This works regardless of list order (ascending or descending)
     val immediatePoint = graphLines.points
       .filter { it.x.value.toLong() > timeStamp }
       .minByOrNull { it.x.value.toLong() }
-    return immediatePoint?.y?.value?.toLong()
+    return immediatePoint?.y?.value as Double?
   }
 
-  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the maximum timestamp that is still less than the search timestamp
     // This works regardless of list order (ascending or descending)
     val previousPoint = graphLines.points
       .filter { it.x.value.toLong() < timeStamp }
       .maxByOrNull { it.x.value.toLong() }
-    return previousPoint?.y?.value?.toLong()
+    return previousPoint?.y?.value as Double?
   }
 
   /**
@@ -253,8 +253,7 @@ object GraphUtil {
     }
 
     // Get all metric values (including previous/next for range calculation)
-    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Number }
-      .map { it.toDouble() }
+    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Double? }
       .filter { it.isFinite() } // Filter out NaN/Infinity values
 
     if (allMetricValues.isEmpty()) {
@@ -265,13 +264,13 @@ object GraphUtil {
     val visiblePoints = metricGraphLine.points.filter {
       it.x.value.toLong() in minX..maxX
     }
-    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
-    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
+    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX)?.toLong()?.toDouble()
+    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX)?.toLong()?.toDouble()
 
     val metricValuesForRange = buildList {
-      previousPoint?.let { add(it.toDouble()) }
+      previousPoint?.let { add(it) }
       addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
-      nextPoint?.let { add(it.toDouble()) }
+      nextPoint?.let { add(it) }
     }
 
     if (metricValuesForRange.isEmpty()) {
