@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.app
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -10,9 +11,13 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.app.components.NavHost
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
@@ -91,11 +96,31 @@ fun MeApp() {
           scrimColor = colorScheme.overlay,
           dragHandle = null,
         ) {
-          ScaleDiscoveredModal(sku = uiState.sku, onConnect = {
-            appViewModel.handleIntent(AppIntent.OnPopUpConnect)
-          }, onClose = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss)})
+          ApplySystemBarsForDialog()
+          ScaleDiscoveredModal(
+            sku = uiState.sku,
+            onConnect = {
+              appViewModel.handleIntent(AppIntent.OnPopUpConnect)
+            },
+            onClose = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
+          )
         }
       }
+    }
+  }
+}
+
+@Composable
+fun ApplySystemBarsForDialog() {
+  val view = LocalView.current
+  val isDarkTheme = isSystemInDarkTheme()
+  (view.parent as? DialogWindowProvider)?.window?.let { window ->
+    SideEffect {
+      val controller =
+        WindowCompat.getInsetsController(window, view)
+
+      controller.isAppearanceLightStatusBars = !isDarkTheme
+      controller.isAppearanceLightNavigationBars = !isDarkTheme
     }
   }
 }

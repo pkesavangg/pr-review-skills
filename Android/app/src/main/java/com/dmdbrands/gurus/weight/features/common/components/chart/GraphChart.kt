@@ -1,7 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
@@ -14,6 +16,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.core.cartesian.CartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.core.cartesian.layer.CartesianLayerPadding
@@ -67,6 +70,12 @@ fun rememberGraphChart(
     handleIntent = handleIntent,
   )
 
+  val fadingEdges = rememberFadingEdges(
+    useVisiblePaddingWidth = true,
+    visibilityThreshold = 24.dp,
+    visibilityEasing = FastOutSlowInEasing,
+  )
+
   val (visibleStartXStep, visibleEndXStep) = GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
   val primaryChart =
     rememberCartesianChart(
@@ -82,6 +91,7 @@ fun rememberGraphChart(
       } else {
         null
       },
+      fadingEdges = fadingEdges,
       visibleLabelsCount = visibleLabelsCount,
       getXStep = { GraphUtil.calculateXStep(segment) },
       layerPadding = {
