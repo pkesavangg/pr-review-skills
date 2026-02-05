@@ -84,7 +84,6 @@ struct GoalSettingScreen: View {
                                 value: $settingsStore.goalForm.currentWeight.value,
                                 focusedField: $focusedField,
                                 onCommit: {
-                                    settingsStore.touchAndValidate(field: .currentWeight)
                                     focusedField = .goalWeight
                                 }
                             )
@@ -107,7 +106,6 @@ struct GoalSettingScreen: View {
                             value: $settingsStore.goalForm.goalWeight.value,
                             focusedField: $focusedField,
                             onCommit: {
-                                settingsStore.touchAndValidate(field: .goalWeight)
                                 focusedField = nil
                             }
                         )
