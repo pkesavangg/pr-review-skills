@@ -130,7 +130,7 @@ object GraphUtil {
   ): Double =
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
-      GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
+      GraphSegment.MONTH -> 7.0 * ONE_DAY_MILLIS
       GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
       GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
@@ -143,7 +143,7 @@ object GraphUtil {
    */
   fun GraphSegment.visibleLabelsCount(): Double = when (this) {
     GraphSegment.WEEK -> 7.0
-    GraphSegment.MONTH -> (31.0 / 6.0).coerceAtLeast(1.0)
+    GraphSegment.MONTH -> (28 / 7.0).coerceAtLeast(1.0)
     GraphSegment.YEAR -> (366.0 / 31.0) // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
     GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
   }
