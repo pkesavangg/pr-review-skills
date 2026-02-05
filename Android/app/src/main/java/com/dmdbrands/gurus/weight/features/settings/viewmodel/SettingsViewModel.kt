@@ -46,6 +46,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the settings feature, managing state and handling settings intents.
@@ -452,6 +453,7 @@ constructor(
       ggDeviceService.updateProfile(
         profile,
       ) { responseType ->
+        Log.d("CHECKING", "updating the profole in settingsviewmodel" + responseType.name)
         result.complete(responseType)
       }
     } catch (e: Exception) {
@@ -517,7 +519,8 @@ constructor(
             weightUnit = currentAccount.weightUnit.value,
           )
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
-        val updatedProfile = currentAccount.toGGBTUserProfile().copy(isAthlete = (activityLevel == ActivityLevel.ATHLETE.name.lowercase()))
+        val updatedProfile =
+          currentAccount.toGGBTUserProfile().copy(isAthlete = (activityLevel == ActivityLevel.ATHLETE.name.lowercase()))
         val scaleResult = updateR4Profile(updatedProfile)
         dialogQueueService.dismissLoader()
         when (scaleResult) {
@@ -700,15 +703,15 @@ constructor(
       DialogModel.Custom(
         contentKey = DialogType.HeightPicker,
         params = mapOf("value" to currentHeightInput, "confirmText" to RadioGroupModalStrings.Button.Save),
-      onConfirm = { selectedHeight ->
+        onConfirm = { selectedHeight ->
           if (selectedHeight is HeightInput) {
             onHeightUpdate(selectedHeight)
           }
         },
-      onDismiss = {
+        onDismiss = {
           dialogQueueService.dismissCurrent()
         },
-      dismissOnBackPress = true,
+        dismissOnBackPress = true,
       ),
     )
   }

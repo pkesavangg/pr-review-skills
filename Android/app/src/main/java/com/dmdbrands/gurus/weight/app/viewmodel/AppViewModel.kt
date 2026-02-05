@@ -842,8 +842,11 @@ constructor(
               10,
             ),
           )
-          ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
-          handleIntent(AppIntent.SetScanStatus(true))
+          if (!_state.value.hasScanStarted) {
+            ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
+            handleIntent(AppIntent.SetScanStatus(true))
+          }
+          ggDeviceService.updateProfile(updatedProfile) {}
           AppLog.i(TAG, "Scan started with current weight: $currentWeight")
         }
       }
