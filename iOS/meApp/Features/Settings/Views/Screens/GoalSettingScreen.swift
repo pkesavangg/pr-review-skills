@@ -35,7 +35,7 @@ struct GoalSettingScreen: View {
                         size: .small,
                         isDisabled: !settingsStore.isGoalFormValid(focusedField: focusedField),
                     ) {
-                        dismissKeyboardAndTouchField()
+                        hideKeyboard()
                         settingsStore.saveGoal(router: router)
                     }
                 },
@@ -123,7 +123,10 @@ struct GoalSettingScreen: View {
         .onChange(of: focusedField) { oldValue, newValue in
             // When focus changes away from a field, mark it as touched and validate
             if let oldField = oldValue, oldField != newValue {
-                settingsStore.touchAndValidate(field: oldField)
+                // Only call touchAndValidate for fields that are handled by SettingsStore
+                if oldField != .currentWeight && oldField != .goalWeight {
+                    settingsStore.touchAndValidate(field: oldField)
+                }
             }
         }
         .onTapGesture {
@@ -207,22 +210,26 @@ struct GoalSettingScreen: View {
     /// Handles field value changes by marking as touched when editing
     /// FormControl automatically marks as dirty and validates when value changes
     private func handleFieldValueChange(_ field: FocusField, newValue: String) {
-        guard !newValue.isEmpty && focusedField == field else { return }
+        guard focusedField == field else { return }
         
-        switch field {
-        case .currentWeight:
+        if field == .currentWeight {
             settingsStore.goalForm.currentWeight.markAsTouched()
-        case .goalWeight:
+        } else if field == .goalWeight {
             settingsStore.goalForm.goalWeight.markAsTouched()
-        default:
-            break
         }
     }
     
     /// Dismisses keyboard and marks current field as touched
     private func dismissKeyboardAndTouchField() {
         if let field = focusedField {
-            settingsStore.touchAndValidate(field: field)
+            // Handle weight fields directly since SettingsStore.touchAndValidate doesn't handle them
+            if field == .currentWeight {
+                settingsStore.goalForm.currentWeight.markAsTouched()
+            } else if field == .goalWeight {
+                settingsStore.goalForm.goalWeight.markAsTouched()
+            } else {
+                settingsStore.touchAndValidate(field: field)
+            }
         }
         focusedField = nil
         hideKeyboard()
