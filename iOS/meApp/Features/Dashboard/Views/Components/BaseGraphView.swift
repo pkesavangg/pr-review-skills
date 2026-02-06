@@ -845,15 +845,12 @@ extension View {
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: {
-                        let pos = viewModel.scrollPosition
-                        return pos
+                        viewModel.scrollPosition
                     },
                     set: { (newPosition: Date?) in
                         guard let newPosition = newPosition else { return }
-                        // Debounce scroll position updates to prevent multiple updates per frame
-                        DispatchQueue.main.async {
-                            viewModel.handleScrollPositionChange(newPosition)
-                        }
+                        // Throttling is handled in handleScrollPositionChange
+                        viewModel.handleScrollPositionChange(newPosition)
                     }
                 ))
                 .chartXAxis {
@@ -1107,40 +1104,31 @@ extension View {
         if isScrollable {
             self
                 .onChange(of: dashboardStore.state.graph.xScrollPosition) { oldPosition, newPosition in
-                    // Debounce to prevent multiple updates per frame
-                    DispatchQueue.main.async {
-                        viewModel.updateScrollPosition(to: newPosition)
-                    }
+                    // Only sync if position actually changed (programmatic navigation)
+                    // Skip if viewModel already has this position to avoid redundant updates
+                    guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.1 else { return }
+                    viewModel.updateScrollPosition(to: newPosition)
                 }
                 .onChange(of: dashboardStore.state.graph.isScrolling) { oldValue, newValue in
-                    // Debounce to prevent multiple updates per frame
-                    DispatchQueue.main.async {
-                        viewModel.isScrolling = newValue
-                        // Immediately clear local selection when scrolling starts to remove crosshair and label
-                        if newValue {
-                            localSelectedXValue.wrappedValue = nil
-                            // Also clear the view model's selection state immediately
-                            viewModel.clearSelection()
-                        }
+                    viewModel.isScrolling = newValue
+                    // Immediately clear local selection when scrolling starts to remove crosshair and label
+                    if newValue {
+                        localSelectedXValue.wrappedValue = nil
+                        // Also clear the view model's selection state immediately
+                        viewModel.clearSelection()
                     }
                 }
                 .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
                     // Clear local selection when period changes (similar to scrolling behavior)
-                    DispatchQueue.main.async {
-                        localSelectedXValue.wrappedValue = nil
-                        viewModel.clearSelection()
-                    }
+                    localSelectedXValue.wrappedValue = nil
+                    viewModel.clearSelection()
                 }
             // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
                 .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
-                    DispatchQueue.main.async {
-                        viewModel.syncYAxisFromStore()
-                    }
+                    viewModel.syncYAxisFromStore()
                 }
                 .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
-                    DispatchQueue.main.async {
-                        viewModel.syncYAxisFromStore()
-                    }
+                    viewModel.syncYAxisFromStore()
                 }
         } else {
             self

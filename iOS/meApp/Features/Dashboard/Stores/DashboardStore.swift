@@ -398,6 +398,11 @@ class DashboardStore: ObservableObject {
     private var _cachedContinuousOperations: [BathScaleWeightSummary] = []
     private var _cachedContinuousPeriod: TimePeriod?
 
+    // Cache for label date range operations to avoid repeated O(n) filters
+    private var _cachedLabelDateRangeOps: [BathScaleWeightSummary] = []
+    private var _cachedLabelDateRangePeriod: TimePeriod?
+    private var _cachedLabelDateRangeScrollPos: Date?
+
     /// Cached continuous operations - only recalculates when period changes or cache is invalidated
     var continuousOperations: [BathScaleWeightSummary] {
         // Return cache if valid for current period
@@ -417,6 +422,10 @@ class DashboardStore: ObservableObject {
         // Also invalidate dependent caches
         cachedVisibleOperations = []
         cachedChartSeriesData = nil
+        // Invalidate label date range cache
+        _cachedLabelDateRangeOps = []
+        _cachedLabelDateRangePeriod = nil
+        _cachedLabelDateRangeScrollPos = nil
     }
 
     var visibleOperations: [BathScaleWeightSummary] {
@@ -1936,11 +1945,13 @@ class DashboardStore: ObservableObject {
             showingLatest: anchorDate == nil, // Only show latest if no anchor
             cachedBounds: dataManager.getDateBounds(for: period)
         )
+
         graphManager.updateScrollPosition(to: optimalScrollPosition)
         // Delegate period update to graph manager (this will clear chart data cache)
         graphManager.updateSelectedPeriod(period)
 
         self.forceCompleteRecalculationAfterScrollPosition()
+
         state.ui.hasInitializedChart = true
 
         // For TOTAL period, immediately compute and show visible-window averages
@@ -2045,12 +2056,11 @@ class DashboardStore: ObservableObject {
                 // Combine visible points with bracketing points for complete line coverage
                 // This ensures Y-axis accounts for line segments that extend beyond the visible window
                 // Skip sorting - Y-axis calculation only needs min/max values, not ordered data
+                // Use Set for O(1) lookup instead of O(n) contains(where:) - fixes O(n²) performance
+                let visibleTimestamps = Set(visible.map { $0.entryTimestamp })
                 var combinedOperations = visible
-                for bracketOp in bracket {
-                    // Only add if not already present (check by entryTimestamp for uniqueness)
-                    if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
-                        combinedOperations.append(bracketOp)
-                    }
+                for bracketOp in bracket where !visibleTimestamps.contains(bracketOp.entryTimestamp) {
+                    combinedOperations.append(bracketOp)
                 }
                 operationsForYAxis = combinedOperations
             }
@@ -2113,10 +2123,9 @@ class DashboardStore: ObservableObject {
     }
 
     private func labelForTotalPeriod() -> String {
-        let minDate = continuousOperations.min(by: { $0.date < $1.date })?.date
-        let maxDate = continuousOperations.max(by: { $0.date < $1.date })?.date
-        if let minDate = minDate, let maxDate = maxDate {
-            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: .total)
+        // Use cached date bounds from data manager to avoid O(n) min/max scans
+        if let bounds = dataManager.getDateBounds(for: .total) {
+            return graphManager.formatDateRange(minDate: bounds.min, maxDate: bounds.max, for: .total)
         }
         return graphManager.fallbackTimeLabel(for: .total)
     }
@@ -2132,11 +2141,13 @@ class DashboardStore: ObservableObject {
         let calendar = Calendar.current
 
         let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-        let entryMin = visibleOps.min(by: { $0.date < $1.date })?.date
-        let entryMax = visibleOps.max(by: { $0.date < $1.date })?.date
 
-        // Get the absolute maximum date from all data to prevent showing dates beyond data range
-        let absoluteMaxDate = continuousOperations.max(by: { $0.date < $1.date })?.date
+        // Use first/last instead of min/max since visibleOps is already sorted by date
+        let entryMin = visibleOps.first?.date
+        let entryMax = visibleOps.last?.date
+
+        // Use cached date bounds from data manager instead of O(n) max scan
+        let absoluteMaxDate = dataManager.getDateBounds(for: period)?.max
 
         let ticks = xAxisValuesWithBuffer(for: period).sorted()
         var visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }
@@ -2233,23 +2244,38 @@ class DashboardStore: ObservableObject {
 
     /// Returns operations filtered to match the date range shown in the current period's label.
     /// This ensures the average calculation uses the same date range as the displayed label.
+    /// Uses caching to prevent repeated O(n) filter operations during scrolling.
     private func getOperationsForLabelDateRange() -> [BathScaleWeightSummary] {
-        let calendar = Calendar.current
+        let currentPeriod = state.graph.selectedPeriod
+        let currentScrollPos = graphManager.state.xScrollPosition
 
-        switch state.graph.selectedPeriod {
+        // Return cache if valid (same period and scroll position within threshold)
+        if _cachedLabelDateRangePeriod == currentPeriod,
+           let cachedScrollPos = _cachedLabelDateRangeScrollPos,
+           !_cachedLabelDateRangeOps.isEmpty {
+            // Use cache if scroll position hasn't changed significantly (within 1 hour for year, 1 day for month)
+            let threshold: TimeInterval = currentPeriod == .year ? 3600 : 86400
+            if abs(currentScrollPos.timeIntervalSince(cachedScrollPos)) < threshold {
+                return _cachedLabelDateRangeOps
+            }
+        }
+
+        let calendar = Calendar.current
+        var result: [BathScaleWeightSummary]
+
+        switch currentPeriod {
         case .month:
             if let monthInterval = getFullyContainedMonthInterval() {
-                // Single month label (e.g., "January 2026") - include all entries from that calendar month
-                return continuousOperations.filter {
-                    calendar.isDate($0.date, equalTo: monthInterval.start, toGranularity: .month)
-                }
+                // Single month label (e.g., "January 2026") - use binary search for sorted data
+                result = filterOperationsInDateRange(
+                    start: monthInterval.start,
+                    end: monthInterval.end
+                )
             } else {
                 // Date range label (e.g., "Dec 15 - Jan 15") - include entries within exact range
-                let leftEdge = graphManager.state.xScrollPosition
+                let leftEdge = currentScrollPos
                 let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
-                return continuousOperations.filter { op in
-                    op.date >= leftEdge && op.date <= rightEdge
-                }
+                result = filterOperationsInDateRange(start: leftEdge, end: rightEdge)
             }
 
         case .year:
@@ -2258,22 +2284,64 @@ class DashboardStore: ObservableObject {
                 let endYear = calendar.component(.year, from: dateRange.end)
 
                 if startYear == endYear {
-                    // Single year label (e.g., "2026") - include all entries from that calendar year
-                    return continuousOperations.filter { op in
-                        calendar.component(.year, from: op.date) == startYear
-                    }
+                    // Single year label - get start/end of that calendar year
+                    let yearStart = calendar.date(from: DateComponents(year: startYear, month: 1, day: 1))!
+                    let yearEnd = calendar.date(from: DateComponents(year: startYear + 1, month: 1, day: 1))!
+                    result = filterOperationsInDateRange(start: yearStart, end: yearEnd)
                 } else {
-                    // Date range label (e.g., "Apr 2024 - Apr 2025") - include entries within exact range
-                    return continuousOperations.filter { op in
-                        op.date >= dateRange.start && op.date <= dateRange.end
-                    }
+                    // Date range label (e.g., "Apr 2024 - Apr 2025")
+                    result = filterOperationsInDateRange(start: dateRange.start, end: dateRange.end)
                 }
+            } else {
+                result = visibleOperations
             }
-            return visibleOperations
 
         default:
-            return visibleOperations
+            result = visibleOperations
         }
+
+        // Cache the result
+        _cachedLabelDateRangeOps = result
+        _cachedLabelDateRangePeriod = currentPeriod
+        _cachedLabelDateRangeScrollPos = currentScrollPos
+
+        return result
+    }
+
+    /// Binary search-based filtering for sorted operations array.
+    /// Much faster than filter() for large datasets (O(log n) + O(k) vs O(n)).
+    private func filterOperationsInDateRange(start: Date, end: Date) -> [BathScaleWeightSummary] {
+        let ops = continuousOperations
+        guard !ops.isEmpty else { return [] }
+
+        // Binary search for start index
+        var lo = 0
+        var hi = ops.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if ops[mid].date < start {
+                lo = mid + 1
+            } else {
+                hi = mid
+            }
+        }
+        let startIndex = lo
+
+        // Binary search for end index
+        lo = startIndex
+        hi = ops.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if ops[mid].date <= end {
+                lo = mid + 1
+            } else {
+                hi = mid
+            }
+        }
+        let endIndex = lo
+
+        guard startIndex < endIndex else { return [] }
+        return Array(ops[startIndex..<endIndex])
     }
 
     private func labelForMonthGridlines() -> String {
@@ -2384,14 +2452,13 @@ class DashboardStore: ObservableObject {
     }
 
     func formatChartDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
+        // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
         switch state.graph.selectedPeriod {
         case .week, .month:
-            formatter.dateFormat = "MMM d"
+            return DateTimeTools.formatter("MMM d").string(from: date)
         case .year, .total:
-            formatter.dateFormat = "MMM yyyy"
+            return DateTimeTools.formatter("MMM yyyy").string(from: date)
         }
-        return formatter.string(from: date)
     }
 
     func roundedGoalWeight(_ weight: Double) -> Double {
@@ -2433,9 +2500,9 @@ class DashboardStore: ObservableObject {
 
         if let entryDate = entryDate {
             let prefix = isFromHistory ? "Measurement taken" : "day average"
-            let formatter = DateFormatter()
-            formatter.dateFormat = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
-            let dateText = formatter.string(from: entryDate)
+            // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
+            let format = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
+            let dateText = DateTimeTools.formatter(format).string(from: entryDate)
             return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
         }
 
@@ -2489,14 +2556,13 @@ class DashboardStore: ObservableObject {
     }
 
     private func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String {
-        let formatter = DateFormatter()
+        // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
         switch period {
         case .week, .month:
-            formatter.dateFormat = "MMM d, yyyy"
+            return DateTimeTools.formatter("MMM d, yyyy").string(from: date)
         case .year, .total:
-            formatter.dateFormat = "MMM yyyy"
+            return DateTimeTools.formatter("MMM yyyy").string(from: date)
         }
-        return formatter.string(from: date)
     }
 
     private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
@@ -2982,8 +3048,11 @@ class DashboardStore: ObservableObject {
             showingLatest: true,
             cachedBounds: nil
         )
+
         self.graphManager.updateScrollPosition(to: optimalScrollPosition)
+
         self.forceCompleteRecalculationAfterScrollPosition()
+
         state.ui.hasInitializedChart = true
 
         // Mark graph as ready after a settling delay to allow computations to complete

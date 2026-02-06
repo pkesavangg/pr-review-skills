@@ -39,6 +39,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     private var _lastXAxisPeriod: TimePeriod?
     /// Threshold for considering scroll position "same" (1 second tolerance)
     private let xAxisCacheThreshold: TimeInterval = 1.0
+
+    // MARK: - Scroll Position Throttling (Performance Optimization)
+    /// Last time scroll position was updated to prevent multiple updates per frame
+    private var lastScrollUpdateTime: Date = .distantPast
+    /// Minimum interval between scroll position updates (16ms ≈ 60fps)
+    private let scrollUpdateThrottleInterval: TimeInterval = 0.016
     
     // MARK: - Dependencies (injected from parent)
     var dashboardStore: DashboardStore?
@@ -310,13 +316,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 operations = bracket.isEmpty ? chartOperations : bracket
             } else {
                 // Combine visible points with bracketing points for complete line coverage
-                // Manually deduplicate by entryTimestamp since BathScaleWeightSummary doesn't conform to Hashable
+                // Use Set for O(1) lookup instead of O(n) contains(where:) - fixes O(n²) performance
+                let visibleTimestamps = Set(visible.map { $0.entryTimestamp })
                 var combinedOperations = visible
-                for bracketOp in bracket {
-                    // Only add if not already present (check by entryTimestamp for uniqueness)
-                    if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
-                        combinedOperations.append(bracketOp)
-                    }
+                for bracketOp in bracket where !visibleTimestamps.contains(bracketOp.entryTimestamp) {
+                    combinedOperations.append(bracketOp)
                 }
                 operations = combinedOperations.sorted { $0.entryTimestamp < $1.entryTimestamp }
             }
@@ -353,22 +357,31 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     // MARK: - Scroll Management
-    
-    /// Handles scroll position changes
+
+    /// Handles scroll position changes with throttling to prevent multiple updates per frame
     func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else {
             return
         }
-        
+
+        let now = Date()
+        let timeSinceLastUpdate = now.timeIntervalSince(lastScrollUpdateTime)
+
+        // Throttle updates to prevent multiple updates per frame (SwiftUI warning fix)
+        guard timeSinceLastUpdate >= scrollUpdateThrottleInterval else {
+            return
+        }
+
         let positionChange = abs(newPosition.timeIntervalSince(scrollPosition))
-        
+
         // Only update if position actually changed to prevent redundant updates
         guard positionChange > 0.1 else {
             return
         }
-        
+
+        lastScrollUpdateTime = now
         self.scrollPosition = newPosition
-        
+
         // Update dashboard store scroll position
         dashboardStore?.handleScrollPositionChange(newPosition)
     }
@@ -537,22 +550,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             switch timePeriod {
             case .week:
                 // 3-letter weekday starting from Sunday, lowercased (sun, mon, ... sat)
-                let fmt = DateFormatter()
-                fmt.locale = Locale(identifier: "en_US_POSIX")
-                fmt.calendar = calendar
-                fmt.dateFormat = "EEE"
-                return fmt.string(from: date).lowercased()
+                // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
+                return DateTimeTools.formatter("EEE").string(from: date).lowercased()
             case .month:
                 // Show day-of-month numerals: 1, 8, 15, 22, 29
                 let day = calendar.component(.day, from: date)
                 return String(day)
             case .year:
                 // Single-letter month initials (j, f, m, a, m, j, j, a, s, o, n, d)
-                let fmt = DateFormatter()
-                fmt.locale = Locale(identifier: "en_US_POSIX")
-                fmt.calendar = calendar
-                fmt.dateFormat = "MMM"
-                return String(fmt.string(from: date).prefix(1)).lowercased()
+                // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
+                return String(DateTimeTools.formatter("MMM").string(from: date).prefix(1)).lowercased()
             default:
                 break
             }
