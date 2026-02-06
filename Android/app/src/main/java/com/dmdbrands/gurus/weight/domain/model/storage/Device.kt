@@ -47,6 +47,9 @@ data class Device(
     return sku ?: device?.getSKU() ?: DEFAULT_SKU
   }
 
+  /** Bluetooth broadcast ID string for scale log / support; e.g. "00:00:00:00:00:00". */
+  fun getBroadcastIdString(): String = device?.broadcastIdString ?: "00:00:00:00:00:00"
+
   companion object {
     fun fromDevice(device: GGDeviceDetail, deviceType: String): Device {
       val preferences = if (device.getSKU() == SKU_0412) {

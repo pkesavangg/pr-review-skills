@@ -275,7 +275,9 @@ object ServiceModule {
       exportAPI: IExportAPI,
       accountService: IAccountService,
       dialogQueueService: IDialogQueueService,
-    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
+      deviceService: com.greatergoods.blewrapper.GGDeviceService,
+      logRepository: ILogRepository,
+    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService, deviceService, logRepository)
 
     /**
      * Provides the offline handler service implementation.

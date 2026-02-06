@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.domain.repository
 
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
+import com.dmdbrands.gurus.weight.domain.model.api.support.LogEntry
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -124,4 +125,13 @@ interface ILogRepository {
      * Clears all logs for the current active account only.
      */
     suspend fun clearLogsForCurrentAccount()
+
+    /**
+     * Sends scale device logs to support (e.g. from BLE getDeviceLogs).
+     * Uses same support API as sendLogs() but with provided log entries.
+     * Based on Angular LoggerService.sendScaleLog() -> http.sendLog().
+     *
+     * @param logs List of log entries (e.g. Mac Address line + device log lines).
+     */
+    suspend fun sendScaleLog(logs: List<LogEntry>)
 }

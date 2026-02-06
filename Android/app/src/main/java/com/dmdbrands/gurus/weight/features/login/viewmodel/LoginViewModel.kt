@@ -39,6 +39,7 @@ constructor(
   reducer = LoginReducer(),
 ) {
   private val TAG = "LoginViewModel"
+
   @AssistedFactory
   interface Factory {
     fun create(email: String? = null): LoginViewModel
@@ -88,7 +89,8 @@ constructor(
       return
     }
     val email = state.value.form.controls.email.value.trim()
-    val password = state.value.form.controls.password.value.trim()
+    // Removed the trim() extension to allow spaces in the password field
+    val password = state.value.form.controls.password.value
     viewModelScope.launch {
       try {
         val account = accountService.login(email, password)
@@ -108,7 +110,7 @@ constructor(
   }
 
   private fun onRequestBack() {
-    if(state.value.form.isDirty){
+    if (state.value.form.isDirty) {
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = AppPopupStrings.UnsavedChanges.Title,
@@ -124,11 +126,9 @@ constructor(
           },
         ),
       )
-    }
-    else {
+    } else {
       navigateBack()
     }
-
   }
 
   /**

@@ -8,7 +8,6 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
 import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
-import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -76,12 +75,6 @@ constructor(
       AppLog.e(TAG, "Body composition update failed", e)
       null
     } finally {
-      if (showToast) {
-        showSuccessToast(
-          ToastStrings.Success.UpdateProfileSuccess.Header,
-          ToastStrings.Success.UpdateProfileSuccess.Message,
-        )
-      }
     }
   }
 }

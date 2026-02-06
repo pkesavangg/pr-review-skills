@@ -65,7 +65,7 @@ internal object LightColorToken {
   val loadingError = ColorPalette.Red100 // #F5C0BD
 
   // Support
-  val overlay = ColorPalette.Neutral500 // 50% of #2C2827
+  val overlay = ColorPalette.Neutral500 // 25% of #2C2827
   val toastBackground = ColorPalette.Blue100 // #E3F2FD
 
   //iam
@@ -136,7 +136,7 @@ internal object DarkColorToken {
   val loadingError = ColorPalette.Red950 // #5C1A16
 
   // Support
-  val overlay = ColorPalette.Neutral650 // 50% of #E0E1E1
+  val overlay = ColorPalette.Neutral650 // 25% of #E0E1E1
   val toastBackground = ColorPalette.Blue1000 // #1A3959
 
   //iam

@@ -167,6 +167,7 @@ constructor(
           wasMet = account.metPreviousGoal ?: false,
         )
         val scaleResult = updateR4Profile(account.toGGBTUserProfile())
+        dialogQueueService.dismissLoader()
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -182,14 +183,16 @@ constructor(
             handleIntent(GoalIntent.Success)
           }
 
-          else -> {}
+          else -> {
+            handleIntent(GoalIntent.Success)
+          }
         }
         AppLog.i(tag, "Goal settings saved successfully")
       } catch (e: Exception) {
+        dialogQueueService.dismissLoader()
         handleIntent(GoalIntent.Error(GoalStrings.SaveErrorMessage))
         AppLog.e(tag, "Failed to save goal settings", e)
       } finally {
-        dialogQueueService.dismissLoader()
       }
     }
   }

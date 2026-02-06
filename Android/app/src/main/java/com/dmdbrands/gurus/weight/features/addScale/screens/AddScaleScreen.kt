@@ -139,7 +139,7 @@ fun AddScaleScreenContent(
           label = AddScaleScreenStrings.Submit,
           type = ButtonType.PrimaryFilled,
           size = ButtonSize.Large,
-          enabled = state.form.isValid,
+          enabled = state.form.isValid && modelNumberControl.value.isNotBlank(),
           onClick = {
             keyboardController?.hide()
             handleIntent(AddScaleIntent.Submit)
