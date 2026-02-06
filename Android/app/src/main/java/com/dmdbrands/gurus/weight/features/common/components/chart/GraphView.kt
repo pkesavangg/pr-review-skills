@@ -24,6 +24,7 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import android.util.Log
@@ -120,15 +121,7 @@ fun GraphView(
     }
   }
 
-
-
-  LaunchedEffect(scrollState.value) {
-    if (state.markerIndex != null) {
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-    }
-  }
-
-  LaunchedEffect(state.markerIndex) {
+  LaunchedEffect(state.markerIndex == null) {
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
@@ -160,36 +153,27 @@ fun GraphView(
     horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
-      if (click == null) return@rememberGraphChart
+      if (click == null) {
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+        return@rememberGraphChart
+      }
+      // Capture visible labels synchronously (during draw). Use the full list from the placer
+      // so getTargetPoints can resolve the nearest label; do not filter by min/max here or
+      // we drop labels that are actually on screen and marker stays null.
       scope.launch {
+        val visibleRange = scrollState.visibleRange.firstOrNull()
+        val visibleLabels =
+          scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
+            if (visibleRange != null)
+              it in visibleRange.visibleXRange.start..visibleRange.visibleXRange.endInclusive
+            else
+              true
+          }
         var markerIndex: Double? = null
         val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
         val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
         val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
-        if (outOfBoundaryCondition) {
-          markerIndex = null
-        } else {
-          val min = GraphUtil.getStartRange(segment, state.minTarget)?.toDouble()
-          val max = GraphUtil.getEndRange(segment, state.maxTarget)?.toDouble()
-
-          if (min != null && max != null)
-            Log.i(
-              "GraphView",
-              " min : ${DateTimeConverter.timestampToIso(min.toLong())} max : $" +
-                "${DateTimeConverter.timestampToIso(max.toLong())}",
-            )
-          val visibleLabels =
-            scrollState
-              .getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
-              .filter { label ->
-
-                if (min != null && max != null) {
-                  label in min..max
-                } else {
-                  true // keep all when no bounds
-                }
-              }
-
+        if (!outOfBoundaryCondition) {
           val targetMarkerIndex =
             getTargetPoints(
               visibleLabels,
@@ -201,14 +185,12 @@ fun GraphView(
             )
           if (targetMarkerIndex.isNotEmpty()) {
             val targetIndex = targetMarkerIndex.first().toLong()
-            markerIndex = if (targetIndex in state.getStartTimestamp()..state.getEndTimestamp())
-              targetMarkerIndex.first()
-            else if (targetIndex < state.getStartTimestamp())
-              state.getStartTimestamp().toDouble()
-            else if (targetIndex > state.getEndTimestamp())
-              state.getEndTimestamp().toDouble()
-            else
-              null
+            markerIndex = when {
+              targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
+              targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
+              targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
+              else -> null
+            }
           }
           if (markerIndex != null)
             Log.i(
