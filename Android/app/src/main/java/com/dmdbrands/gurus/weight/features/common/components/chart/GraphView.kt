@@ -8,7 +8,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -27,7 +26,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -192,13 +190,9 @@ fun GraphView(
               else -> null
             }
           }
-          if (markerIndex != null)
-            Log.i(
-              "GraphView",
-              "targetMarkerIndex : ${DateTimeConverter.timestampToIso(markerIndex.toLong())}",
-            )
         }
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+        if (state.markerIndex != markerIndex)
+          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       }
     },
   )
@@ -208,16 +202,13 @@ fun GraphView(
     modifier = modifier.height(chartHeight),
     scrollState = scrollState,
     animateIn = true,
+    consumeMoveEvents = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     onScrollStopped = { range ->
-      if (range != null) {
+      if (range != null && segment != GraphSegment.TOTAL) {
         val min = range.visibleXRange.start.toLong()
         val max = range.visibleXRange.endInclusive.toLong()
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
-        Log.i(
-          "GraphView",
-          "onScrollStopped : ${DateTimeConverter.timestampToIso(relativeMin)} , ${DateTimeConverter.timestampToIso(max)}",
-        )
         onScrollUpdate(relativeMin, max)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
