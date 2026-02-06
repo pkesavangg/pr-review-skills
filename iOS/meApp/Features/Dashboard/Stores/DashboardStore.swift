@@ -1297,15 +1297,15 @@ class DashboardStore: ObservableObject {
 
     // Delegate entry lifecycle to DataManager
     // MARK: - Entry Lifecycle Management
-    internal func onEntryAdded(_ entry: Entry) {
+    internal func onEntryAdded(_ notification: EntryNotification) {
         handleEntryLifecycleChange()
     }
 
-    internal func onEntryUpdated(_ entry: Entry) {
+    internal func onEntryUpdated(_ notification: EntryNotification) {
         handleEntryLifecycleChange()
     }
 
-    internal func onEntryDeleted(_ entry: Entry) {
+    internal func onEntryDeleted(_ notification: EntryNotification) {
         handleEntryLifecycleChange()
     }
 

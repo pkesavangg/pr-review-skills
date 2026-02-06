@@ -1701,10 +1701,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
             
-            // Subscribe to new entry events
+            // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
             newEntrySubscription = bluetoothService.newEntryReceivedPublisher
                 .receive(on: DispatchQueue.main)
-                .sink { [weak self] entry in
+                .sink { [weak self] _ in
                     guard let self else { return }
                     // Entry received - clear timeout and move to next step
                     self.cancelMeasurementSubscription()

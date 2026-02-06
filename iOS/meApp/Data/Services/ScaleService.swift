@@ -252,33 +252,35 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         return try await localRepository.getDevice(deviceId)
     }
     
-    nonisolated func getConnectedDevices() async -> [String: Any] {
-        return await MainActor.run {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isConnected == true })
-            do {
-                let connectedDevices = try localRepository.context.fetch(descriptor)
-                var connectedDevicesDict: [String: Any] = [:]
-                for device in connectedDevices {
-                    if let broadcastId = device.broadcastIdString {
-                        connectedDevicesDict[broadcastId] = [
-                            "id": device.id,
-                            "name": device.deviceName ?? "",
-                            "nickname": device.nickname ?? "",
-                            "type": device.deviceType ?? "",
-                            "isWifiConfigured": device.isWifiConfigured ?? false,
-                            "wifiMac": device.wifiMac ?? ""
-                        ]
-                    }
+    /// Returns a dictionary of connected devices keyed by broadcastId.
+    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
+    func getConnectedDevices() async -> [String: Any] {
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isConnected == true })
+        do {
+            let connectedDevices = try localRepository.context.fetch(descriptor)
+            var connectedDevicesDict: [String: Any] = [:]
+            for device in connectedDevices {
+                if let broadcastId = device.broadcastIdString {
+                    connectedDevicesDict[broadcastId] = [
+                        "id": device.id,
+                        "name": device.deviceName ?? "",
+                        "nickname": device.nickname ?? "",
+                        "type": device.deviceType ?? "",
+                        "isWifiConfigured": device.isWifiConfigured ?? false,
+                        "wifiMac": device.wifiMac ?? ""
+                    ]
                 }
-                return connectedDevicesDict
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to fetch connected devices: \(error.localizedDescription)")
-                return [:]
             }
+            return connectedDevicesDict
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch connected devices: \(error.localizedDescription)")
+            return [:]
         }
     }
     
-    nonisolated func updateConnectedDevices(device: Any, isConnected: Bool) async {
+    /// Updates connection status for devices matching the given device info.
+    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
+    func updateConnectedDevices(device: Any, isConnected: Bool) async {
         // Get current active accountId - CRITICAL: Only update devices for current account
         // Multiple accounts can have devices with same MAC/BroadcastID
         let currentAccountId: String?
@@ -287,88 +289,117 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         } catch {
             currentAccountId = nil
         }
-        
+
         guard let accountId = currentAccountId else {
-            await MainActor.run {
-                logger.log(level: .debug, tag: tag, message: "No active account for connection update")
-            }
+            logger.log(level: .debug, tag: tag, message: "No active account for connection update")
             return
         }
-        
-        await MainActor.run {
-            // Try to extract device ID from different possible data formats
-            var deviceId: String?
-            var broadcastId: String?
-            var isWifiConfigured: Bool = false
-            if let deviceDict = device as? [String: Any] {
-                deviceId = deviceDict["id"] as? String
-                broadcastId = deviceDict["broadcastId"] as? String
-                isWifiConfigured = deviceDict["isWifiConfigured"] as? Bool ?? false
-            } else if let deviceDetails = device as? GGDeviceDetails {
-                // GGDeviceDetails doesn't have an 'id' property, use broadcastId instead
-                broadcastId = deviceDetails.broadcastId ?? deviceDetails.broadcastIdString
-                isWifiConfigured = deviceDetails.isWifiConfigured ?? false // Extract isWifiConfigured from GGDeviceDetails
-            }
-            
-            var devicesUpdated = 0
-            
-            // If we have a device ID, try to update by ID first (scoped to current account)
-            if let deviceId = deviceId {
-                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
-                    $0.id == deviceId && $0.accountId == accountId 
-                })
-                do {
-                    let devices = try localRepository.context.fetch(descriptor)
-                    for device in devices {
-                        device.isConnected = isConnected
-                        device.isWifiConfigured = isWifiConfigured // Reset WiFi config status on connection change
-                        devicesUpdated += 1
-                    }
-                    if devicesUpdated > 0 {
-                        try localRepository.context.save()
-                        logger.log(level: .info, tag: tag, message: "Updated \(devicesUpdated) device(s) connection status by ID: \(deviceId), connected: \(isConnected)")
-                    }
-                } catch {
-                    logger.log(level: .error, tag: tag, message: "Failed to update device by ID: \(error.localizedDescription)")
+
+        // Try to extract device ID from different possible data formats
+        var deviceId: String?
+        var broadcastId: String?
+        var isWifiConfigured: Bool = false
+        if let deviceDict = device as? [String: Any] {
+            deviceId = deviceDict["id"] as? String
+            broadcastId = deviceDict["broadcastId"] as? String
+            isWifiConfigured = deviceDict["isWifiConfigured"] as? Bool ?? false
+        } else if let deviceDetails = device as? GGDeviceDetails {
+            // GGDeviceDetails doesn't have an 'id' property, use broadcastId instead
+            broadcastId = deviceDetails.broadcastId ?? deviceDetails.broadcastIdString
+            isWifiConfigured = deviceDetails.isWifiConfigured ?? false
+        }
+
+        var devicesUpdated = 0
+
+        // If we have a device ID, try to update by ID first (scoped to current account)
+        if let deviceId = deviceId {
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
+                $0.id == deviceId && $0.accountId == accountId
+            })
+            do {
+                let devices = try localRepository.context.fetch(descriptor)
+                for device in devices {
+                    device.isConnected = isConnected
+                    device.isWifiConfigured = isWifiConfigured
+                    devicesUpdated += 1
                 }
-            }
-            
-            // Also try to update by broadcast ID (scoped to current account)
-            // CRITICAL: Only update devices for current account, not all accounts
-            if let broadcastId = broadcastId {
-                let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
-                    $0.broadcastIdString == broadcastId && $0.accountId == accountId 
-                })
-                do {
-                    let devices = try localRepository.context.fetch(descriptor)
-                    for device in devices {
-                        device.isConnected = isConnected
-                        device.isWifiConfigured = isWifiConfigured // Reset WiFi config status on connection change
-                        devicesUpdated += 1
-                    }
-                    
-                    if devices.count > 0 {
-                        try localRepository.context.save()
-                        logger.log(level: .info, tag: tag, message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)")
-                    }
-                } catch {
-                    logger.log(level: .error, tag: tag, message: "Failed to update device by broadcast ID: \(error.localizedDescription)")
+                if devicesUpdated > 0 {
+                    try localRepository.context.save()
+                    logger.log(level: .info, tag: tag, message: "Updated \(devicesUpdated) device(s) connection status by ID: \(deviceId), connected: \(isConnected)")
                 }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to update device by ID: \(error.localizedDescription)")
             }
-            
-            // Refresh scales to update UI if any devices were updated
-            if devicesUpdated > 0 {
-                Task {
-                    await self.refreshScalesFromLocal()
+        }
+
+        // Also try to update by broadcast ID (scoped to current account)
+        // CRITICAL: Only update devices for current account, not all accounts
+        if let broadcastId = broadcastId {
+            let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
+                $0.broadcastIdString == broadcastId && $0.accountId == accountId
+            })
+            do {
+                let devices = try localRepository.context.fetch(descriptor)
+                for device in devices {
+                    device.isConnected = isConnected
+                    device.isWifiConfigured = isWifiConfigured
+                    devicesUpdated += 1
                 }
+
+                if devices.count > 0 {
+                    try localRepository.context.save()
+                    logger.log(level: .info, tag: tag, message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)")
+                }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to update device by broadcast ID: \(error.localizedDescription)")
+            }
+        }
+
+        // Refresh scales to update UI if any devices were updated
+        if devicesUpdated > 0 {
+            Task {
+                await self.refreshScalesFromLocal()
+            }
+        } else {
+            // If we couldn't find any devices, log the error
+            logger.log(level: .error, tag: tag, message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), Broadcast ID: \(broadcastId ?? "nil"), AccountId: \(accountId)")
+        }
+    }
+    
+    /// Updates WiFi configuration status for a device by broadcast ID.
+    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
+    func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
+        // Get current active accountId - CRITICAL: Only update devices for current account
+        let currentAccountId: String?
+        do {
+            currentAccountId = try await getAccountId()
+        } catch {
+            currentAccountId = nil
+        }
+
+        guard let accountId = currentAccountId else {
+            logger.log(level: .debug, tag: tag, message: "No active account for WiFi status update")
+            return
+        }
+
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
+            $0.broadcastIdString == broadcastId && $0.accountId == accountId
+        })
+        do {
+            if let device = try localRepository.context.fetch(descriptor).first {
+                device.isWifiConfigured = isConfigured
+                try localRepository.context.save()
             } else {
-                // If we couldn't find any devices, log the error
-                logger.log(level: .error, tag: tag, message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), Broadcast ID: \(broadcastId ?? "nil"), AccountId: \(accountId)")
+                logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
             }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update device WiFi configuration status: \(error.localizedDescription)")
         }
     }
-    
-    nonisolated func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
+
+    /// Updates weight-only mode status for a device by broadcast ID.
+    /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
+    func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {
         // Get current active accountId - CRITICAL: Only update devices for current account
         let currentAccountId: String?
         do {
@@ -376,63 +407,26 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         } catch {
             currentAccountId = nil
         }
-        
+
         guard let accountId = currentAccountId else {
-            await MainActor.run {
-                logger.log(level: .debug, tag: tag, message: "No active account for WiFi status update")
-            }
+            logger.log(level: .debug, tag: tag, message: "No active account for weight-only mode update")
             return
         }
-        
-        await MainActor.run {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
-                $0.broadcastIdString == broadcastId && $0.accountId == accountId 
-            })
-            do {
-                if let device = try localRepository.context.fetch(descriptor).first {
-                    device.isWifiConfigured = isConfigured
-                    try localRepository.context.save()
-                } else {
-                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
-                }
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to update device WiFi configuration status: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    nonisolated func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {
-        // Get current active accountId - CRITICAL: Only update devices for current account
-        let currentAccountId: String?
+
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
+            $0.broadcastIdString == broadcastId && $0.accountId == accountId
+        })
         do {
-            currentAccountId = try await getAccountId()
+            if let device = try localRepository.context.fetch(descriptor).first {
+                device.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
+                device.isSynced = false
+                try localRepository.context.save()
+                logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for device \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
+            } else {
+                logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
+            }
         } catch {
-            currentAccountId = nil
-        }
-        
-        guard let accountId = currentAccountId else {
-            await MainActor.run {
-                logger.log(level: .debug, tag: tag, message: "No active account for weight-only mode update")
-            }
-            return
-        }
-        
-        await MainActor.run {
-            let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
-                $0.broadcastIdString == broadcastId && $0.accountId == accountId 
-            })
-            do {
-                if let device = try localRepository.context.fetch(descriptor).first {
-                    device.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
-                    device.isSynced = false // Mark as unsynced since we updated the device
-                    try localRepository.context.save()
-                    logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for device \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
-                } else {
-                    logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
-                }
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to update device weight-only mode status: \(error.localizedDescription)")
-            }
+            logger.log(level: .error, tag: tag, message: "Failed to update device weight-only mode status: \(error.localizedDescription)")
         }
     }
 

@@ -13,11 +13,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private let migrationService = SQLiteMigrationService()
     @MainActor static let shared = EntryService(accountService: AccountService.shared)
     // MARK: - Publishers ------------------------------------------------
-    
+
     /// Emits each time a new entry is locally stored (create).
-    let entrySaved = PassthroughSubject<Entry, Never>()
+    /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
+    let entrySaved = PassthroughSubject<EntryNotification, Never>()
     /// Emits each time an entry is deleted locally.
-    let entryDeleted = PassthroughSubject<Entry, Never>()
+    /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
+    let entryDeleted = PassthroughSubject<EntryNotification, Never>()
     
     let tag = "EntryService"
     
@@ -32,7 +34,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountId: String? = nil
-    
+
+    @MainActor
     init(accountService: AccountServiceProtocol) {
         self.accountService = accountService
         
@@ -709,7 +712,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         do {
             let latestEntry = try await getLatestEntry()
             if let entry = latestEntry {
-                entrySaved.send(entry)
+                // Create notification on MainActor to safely extract relationship data
+                let notification = await MainActor.run { EntryNotification(from: entry) }
+                entrySaved.send(notification)
                 try await self.handleEntryAdded(entry)
             }
         } catch {
@@ -977,9 +982,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         if let monthlySummary = monthlySummary {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         }
-        
-        entrySaved.send(entry)
-        
+
+        // Create notification on MainActor to safely extract relationship data
+        let notification = await MainActor.run { EntryNotification(from: entry) }
+        entrySaved.send(notification)
+
         // Trigger integration sync for the new entry (e.g., HealthKit)
         do {
             try await integrationService.syncNewEntry(entry)
@@ -1027,9 +1034,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // If no entries left for the month, remove summary
             updateMonthlySummary(monthKey: monthKey, summary: nil)
         }
-        
-        entryDeleted.send(entry)
-        
+
+        // Create notification on MainActor to safely extract relationship data
+        let notification = await MainActor.run { EntryNotification(from: entry) }
+        entryDeleted.send(notification)
+
         // Trigger integration delete for the removed entry (e.g., HealthKit)
         do {
             try await integrationService.deleteEntry(entry)

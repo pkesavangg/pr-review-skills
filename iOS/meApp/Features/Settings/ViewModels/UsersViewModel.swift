@@ -6,7 +6,7 @@
 //
 import Foundation
 import Combine
- 
+import SwiftData
 
 @MainActor
 final class UsersViewModel: ObservableObject {
@@ -19,8 +19,54 @@ final class UsersViewModel: ObservableObject {
     @Published var deviceUsers: [DeviceUser] = []
     @Published var currentDeviceUser: DeviceUser?
     @Published var isLoadingUsers: Bool = false
-    
-    private let scale: Device
+
+    // Store the device ID for safe refetching from MainActor context
+    private let scaleId: PersistentIdentifier
+    private let scaleIdString: String
+
+    // Cached scale for fallback when model not found in context
+    private var cachedScale: Device?
+
+    // Returns the cached scale - use refreshScale() to update from database
+    private var scale: Device {
+        if let cached = cachedScale {
+            return cached
+        }
+        logger.log(level: .error, tag: tag, message: "No cached scale available")
+        return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
+    }
+
+    /// Refreshes the scale from the database. Call this before operations that need fresh data.
+    private func refreshScale() {
+        // First try registeredModel for already-loaded models (fastest path)
+        if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
+            cachedScale = freshScale
+            return
+        }
+
+        // If not in identity map, fetch from persistent store using FetchDescriptor
+        let idToFind = scaleIdString
+        let descriptor = FetchDescriptor<Device>(
+            predicate: #Predicate<Device> { device in
+                device.id == idToFind
+            }
+        )
+        do {
+            let results = try PersistenceController.shared.context.fetch(descriptor)
+            if let freshScale = results.first {
+                cachedScale = freshScale
+                return
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch scale from store: \(error.localizedDescription)")
+        }
+
+        // Keep existing cached value if fetch failed
+        if cachedScale != nil {
+            logger.log(level: .debug, tag: tag, message: "Using existing cached scale after refresh failed")
+        }
+    }
+
     private let tag = "UsersViewModel"
     private var cancellables = Set<AnyCancellable>()
     private let initialUsersList: [DeviceUser]
@@ -41,7 +87,9 @@ final class UsersViewModel: ObservableObject {
     }
     
     init(scale: Device, initialUsersList: [DeviceUser] = []) {
-        self.scale = scale
+        self.scaleId = scale.persistentModelID
+        self.scaleIdString = scale.id
+        self.cachedScale = scale
         self.initialUsersList = initialUsersList
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
@@ -85,6 +133,8 @@ final class UsersViewModel: ObservableObject {
         let result = await bluetoothService.getScaleUserList(for: scale)
         
         await MainActor.run {
+            // Refresh scale before accessing relationships in findCurrentUser
+            self.refreshScale()
             switch result {
             case .success(let users):
                 self.deviceUsers = users
@@ -118,6 +168,8 @@ final class UsersViewModel: ObservableObject {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         
         do {
+            // Refresh scale to get latest data before accessing relationships
+            refreshScale()
             // Update the current user's name via Bluetooth service
             if currentDeviceUser != nil,
                let preference = scale.r4ScalePreference {
@@ -195,7 +247,10 @@ final class UsersViewModel: ObservableObject {
     
     private func deleteUser(_ user: DeviceUser) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
-        
+
+        // Refresh to get latest scale data
+        refreshScale()
+
         // Preserve the original token so we can restore it after the deletion call
         let originalToken = scale.token
         // Temporarily set the token to the user's token we want to delete

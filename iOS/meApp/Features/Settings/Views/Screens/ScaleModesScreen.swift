@@ -301,6 +301,7 @@ final class ScaleModesViewModel: ObservableObject {
     }
     
     private func performSaveOperation(onSuccess: (() -> Void)? = nil) async {
+        refreshScale()
         guard let preference = scale.r4ScalePreference else {
             logger.log(level: .error, tag: tag, message: "No R4 scale preference found for scale")
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: "Unable to save scale mode settings"))
