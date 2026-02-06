@@ -407,6 +407,7 @@ constructor(
         accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(sex = gender)
         val scaleResult = updateR4Profile(updatedProfile)
+        dialogQueueService.dismissLoader()
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -427,13 +428,20 @@ constructor(
             )
           }
 
-          else -> {}
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
         }
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
+        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating biological sex", e)
       } finally {
-        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -506,11 +514,12 @@ constructor(
           BodyCompUpdateRequest(
             height = currentAccount.height ?: 1700,
             activityLevel = activityLevel,
-            weightUnit = currentAccount.weightUnit?.value ?: "lb",
+            weightUnit = currentAccount.weightUnit.value,
           )
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(isAthlete = (activityLevel == ActivityLevel.ATHLETE.name.lowercase()))
         val scaleResult = updateR4Profile(updatedProfile)
+        dialogQueueService.dismissLoader()
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -531,14 +540,21 @@ constructor(
             )
           }
 
-          else -> {}
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
         }
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
+        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating activity level", e)
         // Error toast is shown by the service
       } finally {
-        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -601,9 +617,9 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = newWeightUnit.value,
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(unit = newWeightUnit.value)
         val scaleResult = updateR4Profile(updatedProfile)
+        dialogQueueService.dismissLoader()
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -624,14 +640,22 @@ constructor(
             )
           }
 
-          else -> {}
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
         }
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
+        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating unit type", e)
         // Error toast is shown by the service
       } finally {
-        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -717,13 +741,14 @@ constructor(
           BodyCompUpdateRequest(
             height = newStoredHeight,
             activityLevel = currentAccount.activityLevel ?: "normal",
-            weightUnit = currentAccount.weightUnit?.value ?: "lb",
+            weightUnit = currentAccount.weightUnit.value,
           )
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(
           height = ConversionTools.convertStoredHeightToCm(newStoredHeight).toDouble(),
         )
         val scaleResult = updateR4Profile(updatedProfile)
+        dialogQueueService.dismissLoader()
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -744,14 +769,21 @@ constructor(
             )
           }
 
-          else -> {}
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
         }
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
+        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating height", e)
         // Error toast is shown by the service
       } finally {
-        dialogQueueService.dismissLoader()
       }
     }
   }
