@@ -1336,10 +1336,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     do {
                         try await self.dashboardStore.metricsManager.saveMetricsToAPI()
                         try await self.dashboardStore.saveProgressMetricsToAPI()
+                        // Refresh account so dashboard reflects latest metrics
+                        try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+
+                        // Notify dashboard to reload
+                        NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+
                         LoggerService.shared.log(
                             level: .info,
                             tag: tag,
-                            message: "Dashboard metrics saved to API"
+                            message: "Dashboard metrics saved to API and account refreshed"
                         )
                          } catch {
                         LoggerService.shared.log(level: .error, tag: self.tag, message: "Failed to save dashboard metrics to API: \(error.localizedDescription)")
@@ -1375,13 +1381,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Revert unsaved changes for each customize screen
         switch currentCustomizeSetting {
         case .dashboardMetrics:
-            // Discard dashboard customization changes
             discardDashboardCustomization()
-            // Reload dashboard configuration from API to ensure we have the latest state
-            Task { [weak self] in
-                guard let self else { return }
-                await self.dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-            }
         case .scaleMode:
             if let savedScale = savedScale {
                 // Restore previously snapshotted values
@@ -2052,7 +2052,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             
             if isDashboardFour {
-                await upgradeDashboardTypeFrom4To12PreservingRemovalState()
+                await upgradeDashboardTypeFrom4To12WithDefaults()
             }
             
             
@@ -2816,11 +2816,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     // MARK: - Dashboard Metrics Upgrade
     
-    /// Upgrades dashboard type from 4 to 12 while preserving removal state of original 4 metrics.
-    /// This ensures that if user had removed some of the original 4 metrics (BMI, body fat, muscle, water),
-    /// those remain removed after the upgrade, while the 8 new metrics are all enabled.
-    private func upgradeDashboardTypeFrom4To12PreservingRemovalState() async {
-        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
+    /// Upgrades dashboard from type 4 → 12 using default metric order.
+    /// Enables all metrics. Call only when current dashboard type is 4.
+    private func upgradeDashboardTypeFrom4To12WithDefaults() async {
+        // Check if dashboard is already type 12 - if so, don't do anything
+        let isAlreadyDashboard12 = await MainActor.run {
+            dashboardStore.metricsManager.state.dashboardType == .dashboard12 && 
+            !dashboardStore.metricsManager.state.metrics.isEmpty
+        }
+        
+        if isAlreadyDashboard12 {
+            return
+        }
+        
+        let currentMetricsOrder = await MainActor.run {
+            dashboardStore.metricsManager.state.metrics.map { $0.label }
+        }
         
         do {
             let apiRepo = AccountRepositoryAPI()
@@ -2834,7 +2845,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             dashboardStore.metricsManager.updateDashboardType(.dashboard12)
             dashboardStore.state.metrics.dashboardType = .dashboard12
             
-            // For first R4 pairing, reset to default order with all 12 metrics enabled
+            // True 4 → 12 upgrade; preserve existing metric order
             dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
             dashboardStore.metricsManager.resetOrderToDefault()
             dashboardStore.syncRemovalStateFromMetricsManager()
@@ -2843,11 +2854,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         do {
-            // Save the default order to API
             try await dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
+            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Saved default dashboard metrics order to API")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
         }
+        
+        // Only refresh account data to ensure we have latest settings, but don't reload metrics
+        // This ensures the API has the updated dashboard type without resetting the metrics order
+        try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
     }
     
     /// Checks if the current dashboard type is dashboard4
@@ -2865,31 +2880,34 @@ final class BtWifiScaleSetupStore: ObservableObject {
         let isDashboardFour = isDashboardTypeFour
         
         if isDashboardFour {
-            await upgradeDashboardTypeFrom4To12PreservingRemovalState()
+            await upgradeDashboardTypeFrom4To12WithDefaults()
             // Ensure streak data is refreshed and progress metrics are loaded for dashboard 4 upgrade
             try? await dashboardStore.streakManager.refreshStreakData()
             await dashboardStore.loadProgressMetricsFromAccount()
         } else {
             await MainActor.run {
-                // Ensure metrics are loaded (should already be from dashboard screen)
+                dashboardStore.syncRemovalStateFromMetricsManager()
+                
                 if dashboardStore.metricsManager.state.metrics.isEmpty {
-                    // Only load if truly empty (shouldn't happen)
+                    LoggerService.shared.log(level: .info, tag: tag, message: "Dashboard metrics empty, loading from API as fallback")
                     Task {
-                        await dashboardStore.reloadDashboardConfiguration(fullRefresh: true)
-                        await MainActor.run {
-                            dashboardStore.syncRemovalStateFromMetricsManager()
+                        // Only load metrics from API, don't do full reload which might reset other state
+                        do {
+                            try await dashboardStore.metricsManager.loadMetricsFromAPI()
+                            await MainActor.run {
+                                dashboardStore.syncRemovalStateFromMetricsManager()
+                            }
+                        } catch {
+                            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to load dashboard metrics from API: \(error.localizedDescription)")
                         }
                     }
                 } else {
-                    dashboardStore.syncRemovalStateFromMetricsManager()
+                    LoggerService.shared.log(level: .info, tag: tag, message: "Preserving existing dashboard metrics order and removal state (account-based, independent of scale)")
                 }
             }
         }
         
         await MainActor.run {
-            // Sync removal state before edit
-            dashboardStore.syncRemovalStateFromMetricsManager()
-            
             dashboardStore.beginEdit()
             dashboardStore.state.ui.isEditMode = true
             snapshotDashboardState()

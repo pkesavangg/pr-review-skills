@@ -62,12 +62,12 @@ struct DashboardMetricsSection: View {
         }
         .onChange(of: store.metricsManager.state.metrics) { _, _ in
             if parentView == .R4ScaleSetup {
-                store.syncRemovalStateFromMetricsManager()
+                store.debouncedSyncRemovalState()
             }
         }
         .onChange(of: store.metricsManager.state.activeMetricsCount) { _, _ in
             if parentView == .R4ScaleSetup {
-                store.syncRemovalStateFromMetricsManager()
+                store.debouncedSyncRemovalState()
             }
         }
         .onChange(of: parentView) { _, newValue in

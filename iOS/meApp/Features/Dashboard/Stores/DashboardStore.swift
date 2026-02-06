@@ -48,6 +48,10 @@ class DashboardStore: ObservableObject {
     /// Prevents cascading UI updates by batching multiple state changes
     private var pendingUIUpdate = false
     private var uiUpdateDebounceTask: Task<Void, Never>?
+    
+    // MARK: - Debounced Sync
+    /// Debounce task to prevent excessive sync calls during drag operations or rapid metric toggles
+    private var syncDebounceTask: Task<Void, Never>?
 
     /// Batches multiple state changes into a single UI update (~1 frame at 60fps)
     /// Use this for non-critical updates that can be coalesced
@@ -1293,6 +1297,23 @@ class DashboardStore: ObservableObject {
         // Mark metrics beyond the active count as removed
         for i in safeActiveCount..<currentMetrics.count {
             state.ui.removedMetrics.insert(currentMetrics[i].label)
+        }
+    }
+    
+    /// Debounces sync calls to prevent excessive UI updates during drag operations or rapid metric toggles
+    func debouncedSyncRemovalState() {
+        // Cancel any existing debounce task
+        syncDebounceTask?.cancel()
+        
+        // Create new debounced task
+        syncDebounceTask = Task { @MainActor [weak self] in
+            // Wait for 150ms to debounce rapid changes
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            
+            // Only sync if task wasn't cancelled
+            if !Task.isCancelled {
+                self?.syncRemovalStateFromMetricsManager()
+            }
         }
     }
 

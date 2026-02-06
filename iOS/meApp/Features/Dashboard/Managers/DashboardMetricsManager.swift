@@ -130,6 +130,42 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             }
             updateDashboardType(dashboardType)
             
+            // If metrics exist locally, update from API only when data has changed
+           // Preserve local state during in-flow navigation
+            if !state.metrics.isEmpty {
+                if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
+                    let apiMetricArray = dashboardMetrics.split(separator: ",").map(String.init)
+                    let localMetricLabels = state.metrics.prefix(state.activeMetricsCount).map { $0.label }
+                    
+                    // Map local labels to API format for comparison
+                    let localApiMetrics = localMetricLabels.compactMap { displayLabel -> String? in
+                        switch displayLabel {
+                        case DashboardStrings.bmi: return "bmi"
+                        case DashboardStrings.bodyFat: return "bodyFat"
+                        case DashboardStrings.muscle: return "muscleMass"
+                        case DashboardStrings.water: return "water"
+                        case DashboardStrings.heartBpm: return "pulse"
+                        case DashboardStrings.bone: return "boneMass"
+                        case DashboardStrings.visceralFat: return "visceralFatLevel"
+                        case DashboardStrings.subFat: return "subcutaneousFatPercent"
+                        case DashboardStrings.protein: return "proteinPercent"
+                        case DashboardStrings.skelMuscle: return "skeletalMusclePercent"
+                        case DashboardStrings.bmrKcal: return "bmr"
+                        case DashboardStrings.metAge: return "metabolicAge"
+                        default: return nil
+                        }
+                    }
+                    
+                    // If API metrics differ from local, update from API (changes were saved)
+                    if localApiMetrics != apiMetricArray {
+                        logger.log(level: .info, tag: "DashboardMetricsManager", message: "API metrics differ from local, updating from API after save")
+                        updateMetricsOrder(from: apiMetricArray)
+                        return
+                    }
+                }
+                return
+            }
+            
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
                 updateMetricsOrder(from: metricArray)
