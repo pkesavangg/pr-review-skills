@@ -42,6 +42,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -53,6 +54,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.rememberScroller
 
 @Composable
 fun CustomizeScaleSettings(
@@ -66,6 +68,7 @@ fun CustomizeScaleSettings(
 ) {
   val scope = rememberCoroutineScope()
   val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size })
+  val scrollState = rememberScrollState()
 
   // Initialize scale metrics with discovered scale's display metrics if available
   var scaleMetrics by remember { mutableStateOf(discoveredScale?.preferences?.displayMetrics ?: state.scaleMetrics) }
@@ -102,7 +105,7 @@ fun CustomizeScaleSettings(
       validators = listOf(
         FormValidations.required(),
         FormValidations.noWhiteSpace(),
-        FormValidations.maxLength(20,),
+        FormValidations.maxLength(20),
         FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
       ),
     )
@@ -153,7 +156,7 @@ fun CustomizeScaleSettings(
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
-      .verticalScroll(rememberScrollState())
+      .verticalScroll(state = scrollState)
       .padding(vertical = spacing.md),
     steps = CustomizeSettings.entries,
     containerColor = MeTheme.colorScheme.secondaryBackground,
@@ -336,6 +339,7 @@ fun CustomizeScaleSettings(
         ) {
           ScaleMetricsSettingScreen(
             currentMetrics = scaleMetrics,
+            scrollState = scrollState,
             onMetricsChanged = { metrics ->
               // Only update local state, don't update reducer state until save
               updatedPreference = updatedPreference.copy(displayMetrics = metrics)
