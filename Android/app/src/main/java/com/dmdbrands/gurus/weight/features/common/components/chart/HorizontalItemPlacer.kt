@@ -1,7 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import java.time.Instant
@@ -11,55 +13,82 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
+ * Filters [values] to those inside [visibleXRange] with optional [paddingMillis] on each side.
+ * If the result is empty, returns a single value at the visible start so the axis does not break.
+ */
+private fun filterToVisibleWithPadding(
+  values: List<Double>,
+  visibleXRange: ClosedFloatingPointRange<Double>,
+  paddingMillis: Double,
+): List<Double> {
+  val start = visibleXRange.start - paddingMillis
+  val end = visibleXRange.endInclusive + paddingMillis
+  val filtered = values.filter { it in start..end }
+  return if (filtered.isEmpty()) listOf(visibleXRange.start) else filtered
+}
+
+/**
  * Internal helper to remember the horizontal item placer for the X axis.
+ * The placer is memoized by [segment] so the same instance is reused until the segment changes,
+ * avoiding unnecessary chart redraws on recomposition.
  */
 @Composable
 internal fun rememberHorizontalAxisItemPlacer(
   segment: GraphSegment,
 ): HorizontalAxis.ItemPlacer {
-  val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()
-  return object : HorizontalAxis.ItemPlacer by defaultPlacer {
-    override fun getLabelValues(
-      context: CartesianDrawingContext,
-      visibleXRange: ClosedFloatingPointRange<Double>,
-      fullXRange: ClosedFloatingPointRange<Double>,
-      maxLabelWidth: Float,
-    ): List<Double> {
-      return when (segment) {
-        GraphSegment.YEAR ->
-          fullXRange.monthStartTimestampsMillis()
-
-        GraphSegment.MONTH ->
-          monthAnchorStartOfDayMillisBetween(
-            startMillis = fullXRange.start.toLong(),
-            endMillis = fullXRange.endInclusive.toLong(),
+  return remember(segment) {
+    val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()
+    object : HorizontalAxis.ItemPlacer by defaultPlacer {
+      override fun getLabelValues(
+        context: CartesianDrawingContext,
+        visibleXRange: ClosedFloatingPointRange<Double>,
+        fullXRange: ClosedFloatingPointRange<Double>,
+        maxLabelWidth: Float,
+      ): List<Double> {
+        return when (segment) {
+          GraphSegment.YEAR -> {
+            val all = fullXRange.monthStartTimestampsMillis()
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          GraphSegment.MONTH -> {
+            val all = monthAnchorStartOfDayMillisBetween(
+              startMillis = fullXRange.start.toLong(),
+              endMillis = fullXRange.endInclusive.toLong(),
+            )
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          else -> defaultPlacer.getLabelValues(
+            context, visibleXRange, fullXRange, maxLabelWidth,
           )
-
-        else -> defaultPlacer.getLabelValues(
-          context, visibleXRange, fullXRange, maxLabelWidth,
-        )
+        }
       }
-    }
 
-    override fun getLineValues(
-      context: CartesianDrawingContext,
-      visibleXRange: ClosedFloatingPointRange<Double>,
-      fullXRange: ClosedFloatingPointRange<Double>,
-      maxLabelWidth: Float
-    ): List<Double>? {
-      return when (segment) {
-        GraphSegment.YEAR ->
-          fullXRange.monthStartTimestampsMillis()
-
-        GraphSegment.MONTH ->
-          monthAnchorStartOfDayMillisBetween(
-            startMillis = fullXRange.start.toLong(),
-            endMillis = fullXRange.endInclusive.toLong(),
+      override fun getLineValues(
+        context: CartesianDrawingContext,
+        visibleXRange: ClosedFloatingPointRange<Double>,
+        fullXRange: ClosedFloatingPointRange<Double>,
+        maxLabelWidth: Float
+      ): List<Double>? {
+        return when (segment) {
+          GraphSegment.YEAR -> {
+            val all = fullXRange.monthStartTimestampsMillis()
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          GraphSegment.MONTH -> {
+            val all = monthAnchorStartOfDayMillisBetween(
+              startMillis = fullXRange.start.toLong(),
+              endMillis = fullXRange.endInclusive.toLong(),
+            )
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          else -> defaultPlacer.getLabelValues(
+            context, visibleXRange, fullXRange, maxLabelWidth,
           )
-
-        else -> defaultPlacer.getLabelValues(
-          context, visibleXRange, fullXRange, maxLabelWidth,
-        )
+        }
       }
     }
   }

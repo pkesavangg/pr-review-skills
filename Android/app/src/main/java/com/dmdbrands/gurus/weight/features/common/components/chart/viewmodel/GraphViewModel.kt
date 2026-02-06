@@ -23,6 +23,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
@@ -506,6 +507,8 @@ class GraphViewModel @AssistedInject constructor(
 
           // Update UI on main thread
         }
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         Log.e("GraphViewModel", "Error handling scroll", e)
       }
