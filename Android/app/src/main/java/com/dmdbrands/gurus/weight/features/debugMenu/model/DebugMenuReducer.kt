@@ -1,6 +1,9 @@
 package com.dmdbrands.gurus.weight.features.debugMenu.model
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
 
 /**
  * Reducer for Debug Menu screen state transitions.
@@ -37,6 +40,31 @@ class DebugMenuReducer : IReducer<DebugMenuState, DebugMenuIntent> {
             is DebugMenuIntent.SendScaleLogs -> {
                 state.copy(isLoading = true)
             }
+
+            is DebugMenuIntent.SendScaleLogForScale -> {
+                state.copy(isLoading = true)
+            }
+
+            is DebugMenuIntent.SetScaleList -> {
+                val scaleInfos = intent.scales
+                    .map { it.toScaleInfo() }
+                    .sortedByDescending { scaleInfo ->
+                        DateTimeConverter.isoToTimestamp(scaleInfo.createdAt)
+                    }
+                val devicesById = intent.scales.associateBy { it.id }
+                val devicesInOrder = scaleInfos.mapNotNull { si ->
+                    si.scaleId?.let { scaleId -> devicesById[scaleId] }
+                }
+                state.copy(
+                    scaleList = devicesInOrder,
+                    scaleListScaleInfo = scaleInfos,
+                    hasScales = intent.scales.isNotEmpty(),
+                    isSendScaleLogEnabled = intent.scales.isNotEmpty() &&
+                        (intent.scales.size > 1 ||
+                            intent.scales.singleOrNull()?.connectionStatus == BLEStatus.CONNECTED),
+                )
+            }
+
           is DebugMenuIntent.ShowAppReview -> {
             state.copy(isLoading = true)
           }
