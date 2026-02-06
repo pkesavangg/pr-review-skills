@@ -316,11 +316,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     WifiConnectionView(
                                         state: self.connectionState,
                                         setupType: .btWifiR4,
+                                        isFromSettingsFlow: self.isSettingsWifiSetup,
                                         onTryAgain: { [weak self] in
                                             self?.tryAgainButtonHandler()
                                         },
                                         onSupport: { [weak self] in
-                                            self?.handleSkipWifiStep()
+                                            if self?.isSettingsWifiSetup == true {
+                                                self?.showHelpModal()
+                                            } else {
+                                                self?.handleSkipWifiStep()
+                                            }
                                         }
                                     )
                                 } else {
@@ -399,6 +404,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 } else {
                     return AnyView(WifiConnectionView(
                         state: .noNetworks,
+                        isFromSettingsFlow: isSettingsWifiSetup,
                         onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
                         onSupport: {
                             [weak self] in self?.showHelpModal()
@@ -409,6 +415,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 return AnyView(WifiConnectionView(
                     state: connectionState,
                     errorCode: errorCode,
+                    isFromSettingsFlow: isSettingsWifiSetup,
                     onTryAgain: { [weak self] in
                         self?.tryAgainButtonHandler()
                     },
