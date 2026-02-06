@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
@@ -98,9 +97,6 @@ fun GraphPagerView(
           labelData = ("+").plus(labelData)
         }
         weightValue = averageWeight
-        scrollTarget =
-          if (state.data.isNotEmpty()) DateTimeConverter.isoToTimestamp(state.data.last().entryTimestamp)
-            .toDouble() else null
         onSelected(graphState.target)
       }
 
@@ -127,6 +123,9 @@ fun GraphPagerView(
           val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
           subText = formattedRange
           onRangeChange(formattedRange)
+          if (currentSegment != GraphSegment.TOTAL) {
+            scrollTarget = (minTarget + maxTarget).div(2.0)
+          }
         }
       }
       Column {

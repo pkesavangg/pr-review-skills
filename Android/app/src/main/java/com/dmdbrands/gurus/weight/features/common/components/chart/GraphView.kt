@@ -125,15 +125,22 @@ fun GraphView(
     }
   }
 
-  // LaunchedEffect(scrollTarget) {
-  //   if (scrollTarget != null) {
-  //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
-  //     if (destinationTarget != null)
-  //       scrollState.animateScroll(
-  //         Scroll.Absolute.x(destinationTarget.toDouble()),
-  //       )
-  //   }
-  // }
+  LaunchedEffect(scrollTarget) {
+    if (scrollTarget != null) {
+      scrollState.scroll(
+        Scroll.Absolute.x(scrollTarget, 0.5f),
+      )
+      val range = scrollState.visibleRange.firstOrNull()
+      if (range != null && segment != GraphSegment.TOTAL) {
+        val min = range.visibleXRange.start.toLong()
+        val max = range.visibleXRange.endInclusive.toLong()
+        val relativeMin = GraphUtil.getRelativeStart(segment, min)
+        onScrollUpdate(relativeMin, max)
+        if (!state.isEmptyGraph)
+          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
+      }
+    }
+  }
 
   val defaultMarker = rememberDefaultMarker(
     state = state,
