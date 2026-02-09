@@ -15,6 +15,7 @@ final class ScaleSettingsStore: ObservableObject {
     @Injector var bluetoothService: BluetoothService
     @Injector var logger: LoggerService
     @Injector var accountService: AccountService
+    @Injector var permissionsService: PermissionsService
     private var cancellables = Set<AnyCancellable>()
 
     // Store the device ID for safe refetching from MainActor context
@@ -147,7 +148,8 @@ final class ScaleSettingsStore: ObservableObject {
         // Refresh the scale from database first
         refreshScale()
         let device = scale
-        isDeviceConnected = device.isConnected ?? false
+        let isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+        isDeviceConnected = (device.isConnected ?? false) && isBluetoothOn
         isWifiConfigured = device.isWifiConfigured ?? false
 
         // Safely access relationship properties - we're guaranteed to be on MainActor
