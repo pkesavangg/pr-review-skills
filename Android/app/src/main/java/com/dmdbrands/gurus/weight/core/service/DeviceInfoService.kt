@@ -155,7 +155,6 @@ constructor(
       AppLog.i(TAG, "Device info updated successfully", deviceInfo.toString())
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to update device info", e)
-      throw e
     }
   }
 
