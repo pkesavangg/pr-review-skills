@@ -981,7 +981,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .viewSettings:
             handleViewSettingsAction()
         case .customizeSettings:
-            navigateToStep(.updateSettings)
+            // Only navigate to updateSettings if there are actual changes
+            if hasCustomizeChanges {
+                navigateToStep(.updateSettings)
+            } else {
+                // Skip updateSettings and go directly to stepOn if no changes were made
+                navigateToStep(.stepOn)
+            }
         case .scaleConnected:
             // Post notification to refresh dashboard when setup completes
             // Add a small delay to ensure connection status updates have propagated to UI
