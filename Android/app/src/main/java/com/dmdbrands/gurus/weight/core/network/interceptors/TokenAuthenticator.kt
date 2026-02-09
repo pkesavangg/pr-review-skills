@@ -257,7 +257,7 @@ class TokenAuthenticator @Inject constructor(
               val httpCode = (e as? retrofit2.HttpException)?.code()
                 ?: (e.cause as? retrofit2.HttpException)?.code()
 
-              if (httpCode == 401 || httpCode == 403 || errorStatus == 401) {
+              if (httpCode == 401 || errorStatus == 401) {
                 logoutUser(accountId, isCurrentAccount(accountId))
               }
               deferred.complete(null)
