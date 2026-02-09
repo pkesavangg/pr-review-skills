@@ -1358,7 +1358,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         guard hasMismatch else {
             return
         }
-   let broadcastId = scale.broadcastIdString ?? "unknown"
+        let broadcastId = scale.broadcastIdString ?? "unknown"
         switch await updateAccount(on: scale, preference: preference) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
