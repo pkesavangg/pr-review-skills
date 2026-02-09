@@ -238,11 +238,6 @@ constructor(
     viewModelScope.launch {
       appNavigationService.authEvent.collect { authState ->
         when (authState) {
-          is AuthState.LoggedIn -> {
-            stopScan()
-            resetScaleDiscoveredState()
-            startObserversOnly(authState.account)
-          }
 
           is AuthState.LoggedInFromLoading -> {
             stopScan()
@@ -385,7 +380,6 @@ constructor(
         pairedScalesSubscribeJob?.cancel()
         // Reset initialized flag to ensure permission checks happen after login
         initialized = false
-        deviceInfoService.updateDeviceInfo()
 
         if (fromLoadingScreen) {
           // Wait for loading screen to finish before checking permissions

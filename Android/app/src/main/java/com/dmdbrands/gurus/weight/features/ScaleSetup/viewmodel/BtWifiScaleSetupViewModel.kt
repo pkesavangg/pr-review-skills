@@ -62,9 +62,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -844,7 +841,6 @@ constructor(
       }
 
       try {
-        updateWifiDetails()
         navigateBack()
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to navigate back from scale setup", e)
@@ -1671,31 +1667,6 @@ constructor(
     }
 
     AppLog.d(TAG, "All required permissions are enabled")
-  }
-
-  private suspend fun updateWifiDetails() {
-    val supervisorJob = SupervisorJob()
-    val supervisorScope = CoroutineScope(Dispatchers.IO + supervisorJob)
-    discoveredScale = discoveredScale?.copy(
-      device = discoveredScale?.device?.copy(
-        isWifiConfigured = isWifiConfigured,
-        wifiMacAddress = wifiMac,
-      ),
-    )
-
-    // Save the scale with updated WiFi configuration to ensure UI updates properly
-    discoveredScale?.let { scale ->
-      AppLog.d(TAG, "Saving scale with updated WiFi configuration: isWifiConfigured=${scale.device?.isWifiConfigured}")
-      val deviceDetail = scale.device
-      if (deviceDetail != null) {
-        AppLog.d(
-          TAG,
-          "Triggering onDeviceUpdate for device ${deviceDetail.macAddress} with WiFi configured: ${deviceDetail.isWifiConfigured}",
-        )
-        deviceService.onDeviceUpdate(deviceDetail, scale.connectionStatus)
-        AppLog.d(TAG, "Triggered onDeviceUpdate for WiFi configuration change")
-      }
-    }
   }
 
   private fun stepOn() {

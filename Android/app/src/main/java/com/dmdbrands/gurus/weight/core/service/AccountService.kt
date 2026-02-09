@@ -134,7 +134,7 @@ constructor(
         throw MaxAccountsReachedException()
       }
       val savedAccount = accountRepository.login(email, password)
-      appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
+
       AppLog.d(TAG, "login() successful for email: $email")
       savedAccount
     } catch (e: HttpException) {
