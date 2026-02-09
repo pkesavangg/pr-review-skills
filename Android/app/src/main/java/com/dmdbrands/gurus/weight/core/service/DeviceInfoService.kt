@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
+import com.dmdbrands.gurus.weight.core.shared.utilities.FcmTokenUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
@@ -113,11 +114,22 @@ constructor(
     )
 
   /**
-   * Updates the device info by fetching the latest FCM token from DataStore and sending device info to the API.
+   * Updates the device info by fetching the latest FCM token (from DataStore or Firebase when empty, e.g. after migration) and sending device info to the API.
    */
   override suspend fun updateDeviceInfo() {
     try {
       fcmToken = getFcmToken()
+      // After migration from older app, DataStore may not have the token; fetch from Firebase and persist.
+      if (fcmToken.isBlank()) {
+        runCatching {
+          val token = FcmTokenUtil.getCurrentToken()
+          if (token.isNotBlank()) {
+            appRepository.setFcmToken(token)
+            fcmToken = token
+            AppLog.i(TAG, "FCM token populated from Firebase (e.g. post-migration): $token")
+          }
+        }.onFailure { e -> AppLog.w(TAG, "Could not fetch FCM token from Firebase: ${e.message}") }
+      }
       AppLog.d(TAG, "Updating device info with FCM token: $fcmToken")
 
       val deviceInfo =
