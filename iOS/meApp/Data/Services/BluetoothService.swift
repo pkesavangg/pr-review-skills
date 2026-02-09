@@ -1406,7 +1406,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }()
         
         // Get fresh device info after sync to calculate weight-only mode status
-        
         let updatedDeviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
         let finalImpedanceSwitchState: Bool
         if case .success(let updatedInfo) = updatedDeviceInfoResult {
