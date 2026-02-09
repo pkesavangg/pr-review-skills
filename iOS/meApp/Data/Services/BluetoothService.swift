@@ -1354,7 +1354,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
         let hasMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
 
-        //  Sync if there's a mismatch (regardless of isSynced flag)
+        // Sync if there's a mismatch (regardless of isSynced flag)
         guard hasMismatch else {
             return
         }
