@@ -404,11 +404,12 @@ constructor(
             gender = gender,
             zipcode = currentAccount.zipcode,
           )
-        // Use offline handler service similar to Angular implementation
-        accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
+        // IMPORTANT: Update scale first, then API. If we call the API first, activeAccountFlow
+        // emits and AppViewModel.startScan() runs ggDeviceService.updateProfile(), which races
+        // with our updateR4Profile callback so the loader never dismisses (see AppViewModel.startScan).
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(sex = gender)
         val scaleResult = updateR4Profile(updatedProfile)
-        dialogQueueService.dismissLoader()
+        AppLog.d(TAG, "Scale result: $scaleResult")
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -438,11 +439,14 @@ constructor(
             )
           }
         }
+        accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
+
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
         dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating biological sex", e)
       } finally {
+        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -518,11 +522,13 @@ constructor(
             activityLevel = activityLevel,
             weightUnit = currentAccount.weightUnit.value,
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
+        // IMPORTANT: Update scale first, then API (bodyCompositionService). API-first causes
+        // activeAccountFlow to emit and AppViewModel.startScan() to call updateProfile(), racing
+        // with our updateR4Profile callback so the loader never dismisses.
         val updatedProfile =
           currentAccount.toGGBTUserProfile().copy(isAthlete = (activityLevel == ActivityLevel.ATHLETE.name.lowercase()))
         val scaleResult = updateR4Profile(updatedProfile)
-        dialogQueueService.dismissLoader()
+        AppLog.d(TAG, "Scale result: $scaleResult")
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -552,12 +558,13 @@ constructor(
             )
           }
         }
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
-        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating activity level", e)
         // Error toast is shown by the service
       } finally {
+        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -620,9 +627,11 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = newWeightUnit.value,
           )
+        // IMPORTANT: Update scale first, then API. API-first causes activeAccountFlow to emit
+        // and AppViewModel.startScan() to call updateProfile(), racing with our callback.
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(unit = newWeightUnit.value)
         val scaleResult = updateR4Profile(updatedProfile)
-        dialogQueueService.dismissLoader()
+        AppLog.d(TAG, "Scale result: $scaleResult")
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -655,10 +664,10 @@ constructor(
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
-        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating unit type", e)
         // Error toast is shown by the service
       } finally {
+        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -746,12 +755,11 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = currentAccount.weightUnit.value,
           )
-        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(
           height = ConversionTools.convertStoredHeightToCm(newStoredHeight).toDouble(),
         )
         val scaleResult = updateR4Profile(updatedProfile)
-        dialogQueueService.dismissLoader()
+        AppLog.d(TAG, "Scale result: $scaleResult")
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -781,12 +789,13 @@ constructor(
             )
           }
         }
+        bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
-        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating height", e)
         // Error toast is shown by the service
       } finally {
+        dialogQueueService.dismissLoader()
       }
     }
   }
