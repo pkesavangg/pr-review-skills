@@ -399,7 +399,7 @@ object AppPermissionsHelper {
         type == GGPermissionType.NEARBY_DEVICE && Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> return@mapNotNull null
         type == GGPermissionType.NOTIFICATION && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> return@mapNotNull null
       }
-      
+
       val meta = permissionMetaMap[type] ?: return@mapNotNull null
 
       // For WIFI_SWITCH_LOCATION, use the actual WIFI_SWITCH permission state
@@ -490,6 +490,16 @@ object AppPermissionsHelper {
 
         ScaleSetupType.AppSync -> {
           requiredPermissions.add(GGPermissionType.CAMERA)
+        }
+
+        ScaleSetupType.Wifi -> {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requiredPermissions.add(GGPermissionType.NEARBY_DEVICE)
+          } else {
+            requiredPermissions.add(GGPermissionType.LOCATION_SWITCH)
+            requiredPermissions.add(GGPermissionType.LOCATION)
+          }
+          requiredPermissions.add(GGPermissionType.NOTIFICATION)
         }
 
         ScaleSetupType.BtWifiR4 -> {

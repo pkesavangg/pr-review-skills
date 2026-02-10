@@ -238,7 +238,6 @@ constructor(
     viewModelScope.launch {
       appNavigationService.authEvent.collect { authState ->
         when (authState) {
-
           is AuthState.LoggedInFromLoading -> {
             stopScan()
             resetScaleDiscoveredState()
@@ -277,11 +276,6 @@ constructor(
           }
 
           is AuthState.AccountAdded -> {
-            stopScan()
-            // Reset scale discovered state when adding account; LoadingScreenViewModel does single load
-            resetScaleDiscoveredState()
-            dashboardService.setSelectedKey(null)
-            startObserversOnly(authState.account)
           }
 
           is AuthState.AccountSwitched -> {
@@ -297,10 +291,6 @@ constructor(
                 ),
               )
             }
-            stopScan()
-            dashboardService.setSelectedKey(null)
-            // Reset scale discovered state when switching accounts; LoadingScreenViewModel does single load
-            resetScaleDiscoveredState()
           }
 
           is AuthState.ProfileUpdated -> {
@@ -386,7 +376,6 @@ constructor(
           delay(1000)
         }
         subscribePermissions()
-
         subscribeDeviceCallback()
         subscribePairedScales()
         entryService.initializeGoalCardMonitoring(account.id)
@@ -410,6 +399,7 @@ constructor(
           } else {
             if (!initialized) {
               val pairedScales = deviceService.pairedScales.first()
+              AppLog.d(TAG, "Paired scales: $pairedScales")
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
                 val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
                 scaleInfo?.setupType in listOf(
