@@ -358,19 +358,19 @@ constructor(
       AppLog.d(TAG, "Active account login status check successful")
       true
     } catch (e: java.net.UnknownHostException){
-      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}", )
+      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}" )
       checkActiveAccountLocalValidity()
     }
     catch (e: java.io.InterruptedIOException){
-      AppLog.w(TAG, "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}", )
+      AppLog.w(TAG, "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}" )
       checkActiveAccountLocalValidity()
     }
     catch (e: java.net.SocketTimeoutException) {
-      AppLog.w(TAG, "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}", )
+      AppLog.w(TAG, "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}" )
       checkActiveAccountLocalValidity()
     }
     catch (e: IOException) {
-      AppLog.w(TAG, "Network failure during login status check, falling back to local DB ${e.toString()}", )
+      AppLog.w(TAG, "Network failure during login status check, falling back to local DB ${e.toString()}")
       checkActiveAccountLocalValidity()
     } catch (e: HttpException) {
       if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
@@ -480,9 +480,6 @@ constructor(
             // Other HTTP errors (500, 404, etc.) - don't mark as expired, just log
             AppLog.w(TAG, "HTTP error ${e.code()} while checking account ${account.id}, not marking as expired")
           }
-        } catch (e: Exception) {
-          // Other exceptions - log but don't mark as expired
-          AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
         }
         catch (e: java.net.UnknownHostException){
           AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}", )
@@ -492,6 +489,10 @@ constructor(
         }
         catch (e: java.net.SocketTimeoutException) {
           AppLog.w(TAG, "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}")
+        }
+        catch (e: Exception) {
+          // Other exceptions - log but don't mark as expired
+          AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
         }
       }
       AppLog.d(TAG, "Logged-in accounts status check completed.")

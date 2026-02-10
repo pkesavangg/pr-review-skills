@@ -130,7 +130,7 @@ constructor(
           }
         }.onFailure { e -> AppLog.w(TAG, "Could not fetch FCM token from Firebase: ${e.message}") }
       }
-      AppLog.d(TAG, "Updating device info with FCM token: $fcmToken")
+      AppLog.d(TAG, "Updating device info with FCM token: fcm token is not empty ${fcmToken.isNotEmpty()}")
 
       val deviceInfo =
         DeviceInfo(
@@ -154,7 +154,7 @@ constructor(
 
       AppLog.i(TAG, "Device info updated successfully", deviceInfo.toString())
     } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to update device info", e)
+      AppLog.e(TAG, "Failed to update device info $e")
     }
   }
 
