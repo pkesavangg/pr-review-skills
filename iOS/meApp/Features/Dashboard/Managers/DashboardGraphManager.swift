@@ -1991,7 +1991,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         period: TimePeriod,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Int) -> Double,
+        labelRange: DateInterval? = nil
     ) -> Double? {
         // Only apply to non-total periods
         guard period != .total, !allOperations.isEmpty else {
@@ -2017,8 +2018,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let effectiveStartBoundary = firstDataPoint.addingTimeInterval(-bufferTime)
         let effectiveEndBoundary = lastDataPoint.addingTimeInterval(bufferTime)
 
-        let validSampleDates = sampleDates.filter { sampleDate in
+        var validSampleDates = sampleDates.filter { sampleDate in
             sampleDate >= effectiveStartBoundary && sampleDate <= effectiveEndBoundary
+        }
+
+        // If a label range is provided, only include samples inside it.
+        if let labelRange {
+            validSampleDates = validSampleDates.filter { sampleDate in
+                sampleDate >= labelRange.start && sampleDate <= labelRange.end
+            }
         }
 
         // If no sample dates fall within the data boundaries, return nil
