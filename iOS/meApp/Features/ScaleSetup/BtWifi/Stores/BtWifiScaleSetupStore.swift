@@ -1099,10 +1099,17 @@ final class BtWifiScaleSetupStore: ObservableObject {
         guard let userToken = user.token, !userToken.isEmpty else {
             return false
         }
-        
-        scale.token = userToken
-        let deleteResult = await bluetoothService.deleteDevice(scale, disconnect: false)
-        
+        guard let broadcastId = scale.broadcastIdString, !broadcastId.isEmpty else {
+            return false
+        }
+
+        // Use deleteUserByToken to avoid mutating @Model token property
+        let deleteResult = await bluetoothService.deleteUserByToken(
+            broadcastId: broadcastId,
+            token: userToken,
+            disconnect: false
+        )
+
         switch deleteResult {
         case .success:
             return true

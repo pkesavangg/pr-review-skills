@@ -179,7 +179,10 @@ final class UsersViewModel: ObservableObject {
                     preference
                 )
                 await scaleService.pushLocalChangesToServer()
-                let result = await bluetoothService.updateAccount(on: scale, preference: preference)
+                // Refresh scale before Bluetooth call to ensure fresh @Model data
+                refreshScale()
+                guard let freshPreference = scale.r4ScalePreference else { return }
+                let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
                 switch result {
                 case .success(_):
                     currentDeviceUser?.name = newName
@@ -251,14 +254,20 @@ final class UsersViewModel: ObservableObject {
         // Refresh to get latest scale data
         refreshScale()
 
-        // Preserve the original token so we can restore it after the deletion call
-        let originalToken = scale.token
-        // Temporarily set the token to the user's token we want to delete
-        scale.token = user.token
-        logger.log(level: .debug, tag: tag, message: "Deleting user: \(user.name) with token: \(user.token ?? "nil") on scale \(scale.id)")
-        let result = await bluetoothService.deleteDevice(scale, disconnect: false)
-        // Restore the original token to avoid side-effects elsewhere in the app
-        scale.token = originalToken
+        // Extract primitives before async call — never mutate @Model to pass data
+        guard let broadcastId = scale.broadcastIdString, !broadcastId.isEmpty else {
+            logger.log(level: .error, tag: tag, message: "Missing broadcastId for scale")
+            notificationService.dismissLoader()
+            return
+        }
+        guard let userToken = user.token, !userToken.isEmpty else {
+            logger.log(level: .error, tag: tag, message: "Missing token for user to delete")
+            notificationService.dismissLoader()
+            return
+        }
+
+        logger.log(level: .debug, tag: tag, message: "Deleting user: \(user.name) with token: \(userToken) on scale \(scale.id)")
+        let result = await bluetoothService.deleteUserByToken(broadcastId: broadcastId, token: userToken, disconnect: false)
         
         switch result {
         case .success(_):

@@ -232,7 +232,26 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         try await localRepository.patchScalePreference(deviceId, preference)
         await pushLocalChangesToServer()
     }
-    
+
+    /// Updates scale preference from a DTO. This is the async-boundary-safe variant.
+    /// Callers should use this when they need to pass preference data across await points.
+    func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {
+        guard let _ = try await localRepository.getDevice(deviceId) else {
+            throw ScaleError.deviceNotFound(id: deviceId)
+        }
+        var mutableDTO = dto
+        do {
+            try await remoteRepo.patchScalePreference(dto)
+            logger.log(level: .info, tag: tag, message: "Updated scale preference (DTO) for device \(deviceId) locally and on server")
+            mutableDTO.isSynced = true
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update scale preference on server: \(error.localizedDescription)")
+            mutableDTO.isSynced = false
+        }
+        try await localRepository.patchScalePreference(deviceId, fromDTO: mutableDTO)
+        await pushLocalChangesToServer()
+    }
+
     // MARK: - DeviceServiceProtocol Implementation
     func getDevices() async throws -> [Device] {
         let accountId = try await getAccountId()

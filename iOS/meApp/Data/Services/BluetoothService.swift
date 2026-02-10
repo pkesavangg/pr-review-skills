@@ -1152,6 +1152,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - disconnect: Whether to disconnect after deletion
      - Returns: Result indicating success or failure
      */
+    /// Deletes a user slot on the scale by broadcastId and token, without mutating any @Model object.
+    /// Public wrapper around deleteScaleByBroadcastId for safe use from ViewModels.
+    func deleteUserByToken(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+    }
+
     private func deleteScaleByBroadcastId(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
         // Create a temporary device for the deletion
         let tempDevice = Device(

@@ -100,6 +100,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func setStartAnimation(_ enabled: Bool) async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let setting = DeviceSetting(key: "INITIAL_LOGO_ANIM", value: .bool(enabled))
         let res = await bluetoothService.updateSetting(on: scale, settings: [setting])
         if case .success = res { startAnimationEnabled = enabled } else {
@@ -109,6 +110,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func setEndAnimation(_ enabled: Bool) async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let setting = DeviceSetting(key: "FINAL_LOGO_ANIM", value: .bool(enabled))
         let res = await bluetoothService.updateSetting(on: scale, settings: [setting])
         if case .success = res { endAnimationEnabled = enabled } else {
@@ -118,6 +120,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func setTimeFormat(_ format: String) async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "TIME_FORMAT", value: .string(format))])
         switch res {
         case .success:
@@ -132,6 +135,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func clearData(_ type: DeviceClearType) async {
         guard isDeviceConnected else { return }
+        refreshScale()
         notificationService.showLoader(LoaderModel(text: LoaderStrings.pleaseWait))
         let res = await bluetoothService.clearData(on: scale, dataType: type)
         switch res {
@@ -146,6 +150,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func resetFirmware() async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "RESET_FIRMWARE", value: .bool(true))])
         switch res {
         case .success:
@@ -158,6 +163,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func restoreFactorySettings() async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "RESTORE_FACTORY", value: .bool(true))])
         switch res {
         case .success:
