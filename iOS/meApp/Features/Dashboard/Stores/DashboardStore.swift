@@ -3278,8 +3278,8 @@ class DashboardStore: ObservableObject {
             // Don't mark as loaded when showing placeholders - they represent absence of actual values
             metricsManager.setPlaceholdersForAllMetrics()
         } else {
-            // No selection: compute visible-window averages for all metrics
-            let ops = self.visibleOperations
+            // No selection: compute averages aligned to the label date range
+            let ops = self.getOperationsForLabelDateRange()
 
             if ops.isEmpty && state.ui.hasLoadedMetricValues {
                 return
