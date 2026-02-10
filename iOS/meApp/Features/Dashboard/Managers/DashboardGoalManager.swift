@@ -265,8 +265,18 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     }
 
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
-        // Round to 1 decimal place for proper display using robust rounding to handle floating-point precision
-        let roundedWeight = (weight * 100).rounded(.toNearestOrAwayFromZero) / 100
+        // Round to 1 decimal place using Decimal to avoid binary floating-point artifacts
+        let decimal = Decimal(weight)
+        let roundedDecimal = (decimal as NSDecimalNumber)
+            .rounding(accordingToBehavior: NSDecimalNumberHandler(
+                roundingMode: .plain,
+                scale: 1,
+                raiseOnExactness: false,
+                raiseOnOverflow: false,
+                raiseOnUnderflow: false,
+                raiseOnDivideByZero: false
+            ))
+        let roundedWeight = roundedDecimal.doubleValue
         
         // Drop trailing .0 for integers; keep one decimal otherwise
         let isInteger = abs(roundedWeight - roundedWeight.rounded()) < AppConstants.Precision.doubleEqualityEpsilon
@@ -345,4 +355,3 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         }
     }
 }
-
