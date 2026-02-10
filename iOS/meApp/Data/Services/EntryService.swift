@@ -1079,6 +1079,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         }
 
+        await updateProgressAndStreakInternal()
+
         // Create notification on MainActor to safely extract relationship data
         let notification = await MainActor.run { EntryNotification(from: entry) }
         entrySaved.send(notification)
