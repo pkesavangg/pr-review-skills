@@ -594,9 +594,8 @@ class DashboardStore: ObservableObject {
         guard !weights.isEmpty else { return nil }
         let averageWeight = weights.reduce(0, +) / Double(weights.count)
 
-        // Apply same rounding logic as getCurrentAverageWeight() and formatWeightForDisplay()
-        // Use a more robust rounding approach to handle floating-point precision issues
-        let roundedAverage = (averageWeight * 100).rounded(.toNearestOrAwayFromZero) / 100
+        // Round to 1 decimal place using a more robust approach to handle floating-point precision
+        let roundedAverage = (averageWeight * 10).rounded(.toNearestOrAwayFromZero) / 10
         return roundedAverage
     }
 
@@ -771,7 +770,7 @@ class DashboardStore: ObservableObject {
         let average = sum / Double(weightValues.count)
 
         // Round to 1 decimal place using a more robust approach to handle floating-point precision
-        let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
+        let roundedAverage = (average * 10).rounded(.toNearestOrAwayFromZero) / 10
         return roundedAverage
     }
 
@@ -2156,6 +2155,13 @@ class DashboardStore: ObservableObject {
             return nil
         }
         let endInclusive = inclusiveEnd(fromExclusive: endExclusive)
+
+        // Clamp to available data to avoid showing future months with no entries
+        if let bounds = dataManager.getDateBounds(for: .year) {
+            let clampedEnd = min(endInclusive, bounds.max)
+            return (start: start, end: clampedEnd)
+        }
+
         return (start: start, end: endInclusive)
     }
 
@@ -2221,7 +2227,7 @@ class DashboardStore: ObservableObject {
 
     /// Returns the date range used by the month label for the current scroll position.
     /// If a full calendar month is contained, returns that month interval.
-    /// Otherwise returns the visible window range.
+    /// Otherwise returns a 1-month window starting at the day-aligned left edge.
     private func getLabelDateRangeForMonth() -> DateInterval {
         if let monthInterval = getFullyContainedMonthInterval() {
             return DateInterval(start: monthInterval.start, end: inclusiveEnd(fromExclusive: monthInterval.end))
@@ -2231,13 +2237,14 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let windowStart = calendar.startOfDay(for: leftEdge)
         let endExclusive = calendar.date(byAdding: .month, value: 1, to: windowStart)
-            ?? leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+            ?? windowStart.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
         return DateInterval(start: windowStart, end: inclusiveEnd(fromExclusive: endExclusive))
     }
 
     /// Returns the date range used by the year label for the current scroll position.
-    /// If a full calendar year is contained, returns that year interval.
-    /// Otherwise returns the visible window range.
+    /// If a custom year label range is available, that range is used.
+    /// Otherwise returns a 12-month range starting at the beginning of the month
+    /// containing the current scroll position.
     private func getLabelDateRangeForYear() -> DateInterval {
         if let dateRange = getYearLabelDateRange() {
             return DateInterval(start: dateRange.start, end: dateRange.end)
@@ -2247,7 +2254,7 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let windowStart = calendar.dateInterval(of: .month, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
         let endExclusive = calendar.date(byAdding: .month, value: 12, to: windowStart)
-            ?? leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .year))
+            ?? windowStart.addingTimeInterval(graphManager.visibleDomainLength(for: .year))
         return DateInterval(start: windowStart, end: inclusiveEnd(fromExclusive: endExclusive))
     }
 
@@ -2258,7 +2265,7 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let windowStart = calendar.startOfDay(for: leftEdge)
         let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
-            ?? leftEdge.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
+            ?? windowStart.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
         let windowEndInclusive = windowEndExclusive.addingTimeInterval(-1)
         return DateInterval(start: windowStart, end: windowEndInclusive)
     }
@@ -2415,7 +2422,7 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let windowStart = calendar.startOfDay(for: leftEdge)
         let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
-            ?? leftEdge.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
+            ?? windowStart.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
 
         return graphManager.formatDateRange(
             minDate: windowStart,
