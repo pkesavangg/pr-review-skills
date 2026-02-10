@@ -979,7 +979,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         
         entrySaved.send(entry)
-        
+
+        await updateProgressAndStreakInternal()
+
         // Trigger integration sync for the new entry (e.g., HealthKit)
         do {
             try await integrationService.syncNewEntry(entry)

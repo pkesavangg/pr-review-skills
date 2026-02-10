@@ -1365,6 +1365,11 @@ class DashboardStore: ObservableObject {
             self.loadLatestEntryData()
             self.loadGoalCardData()
 
+            // Refresh streak & milestone so they update immediately after add/delete entry
+            Task { @MainActor in
+                try? await self.streakManager.refreshStreakData()
+            }
+
             // Clear all caches to force recalculation (including continuousOperations)
             self.invalidateContinuousOperationsCache()
             self.lastVisibleOperationsCacheTime = Date.distantPast
