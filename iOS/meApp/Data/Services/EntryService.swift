@@ -731,7 +731,16 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
         guard let allEntries = localEntries, allEntries.count > 1 else { return }
         for entry in allEntries where entry.id != keepId {
-            try? await localRepo.deleteEntry(byId: entry.id.uuidString)
+            do {
+                try await localRepo.deleteEntry(byId: entry.id.uuidString)
+                try await self.handleEntryDeleted(entry)
+            } catch {
+                await logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to delete duplicate entry \(entry.id): \(error.localizedDescription)"
+                )
+            }
         }
     }
     
