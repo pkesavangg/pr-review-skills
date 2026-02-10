@@ -240,7 +240,7 @@ class PushNotificationService: NSObject {
         guard isNetworkConnected else {
             return
         }
-        await fetchEntries(showToast: true)
+        await fetchEntries(showToast: false)
         await syncDevices()
         if isNotificationAuthorized(), fcmToken == nil {
             await registerForPushNotifications()
@@ -255,7 +255,7 @@ class PushNotificationService: NSObject {
         isFetchingEntries = true
         defer { isFetchingEntries = false }
         await entryService.syncAllEntriesWithRemote()
-        if showToast, !bluetoothService.isSetupInProgress {
+        if showToast, !bluetoothService.isSetupInProgress, accountService.activeAccount != nil {
             await showNewEntryToast()
         }
     }
