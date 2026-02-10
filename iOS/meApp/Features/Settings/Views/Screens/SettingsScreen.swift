@@ -51,7 +51,7 @@ struct SettingsScreen: View {
             .onAppear {
                 tabViewModel.showTabBar = true
                 if tabViewModel.selectedTab == .settings {
-                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                    settingsStore.presentAddAccountModalIfNeeded(router: router, tabViewModel: tabViewModel)
                     handlePendingSettingsNavigation()
                 }
                 
@@ -62,7 +62,7 @@ struct SettingsScreen: View {
             }
             .onChange(of: tabViewModel.selectedTab) { oldTab, newTab in
                 if newTab == .settings && oldTab != .settings {
-                    settingsStore.presentAddAccountModalIfNeeded(router: router)
+                    settingsStore.presentAddAccountModalIfNeeded(router: router, tabViewModel: tabViewModel)
                 }
             }
             .onChange(of: router.stack) { _, newStack in
