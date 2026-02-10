@@ -594,9 +594,8 @@ class DashboardStore: ObservableObject {
         guard !weights.isEmpty else { return nil }
         let averageWeight = weights.reduce(0, +) / Double(weights.count)
 
-        // Apply same rounding logic as getCurrentAverageWeight() and formatWeightForDisplay()
-        // Use a more robust rounding approach to handle floating-point precision issues
-        let roundedAverage = (averageWeight * 100).rounded(.toNearestOrAwayFromZero) / 100
+        // Round to 1 decimal place using a more robust approach to handle floating-point precision
+        let roundedAverage = (averageWeight * 10).rounded(.toNearestOrAwayFromZero) / 10
         return roundedAverage
     }
 
@@ -771,7 +770,7 @@ class DashboardStore: ObservableObject {
         let average = sum / Double(weightValues.count)
 
         // Round to 1 decimal place using a more robust approach to handle floating-point precision
-        let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
+        let roundedAverage = (average * 10).rounded(.toNearestOrAwayFromZero) / 10
         return roundedAverage
     }
 
@@ -2145,52 +2144,25 @@ class DashboardStore: ObservableObject {
 
     /// Returns the date range used for the year label display.
     /// This ensures the average computation uses the same dates as the label.
+    /// Uses a calendar-aligned 12-month window to avoid 13-month labels.
     private func getYearLabelDateRange() -> (start: Date, end: Date)? {
-        let period: TimePeriod = .year
-        let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
         let calendar = Calendar.current
+        let leftEdge = graphManager.state.xScrollPosition
 
-        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-
-        // Use first/last instead of min/max since visibleOps is already sorted by date
-        let entryMin = visibleOps.first?.date
-        let entryMax = visibleOps.last?.date
-
-        // Use cached date bounds from data manager instead of O(n) max scan
-        let absoluteMaxDate = dataManager.getDateBounds(for: period)?.max
-
-        let ticks = xAxisValuesWithBuffer(for: period).sorted()
-        var visibleTicks = ticks.filter { $0 >= leftEdge && $0 <= rightEdge }
-
-        // Include the next tick only if it is close and actually relevant
-        if let nextTick = ticks.first(where: { $0 > rightEdge }),
-           let lastTick = visibleTicks.last {
-            let daysGap = calendar.dateComponents([.day], from: rightEdge, to: nextTick).day ?? .max
-            let isYearBoundary =
-                calendar.component(.month, from: lastTick) == 12 &&
-                calendar.component(.month, from: nextTick) == 1 &&
-                calendar.component(.year, from: nextTick) > calendar.component(.year, from: lastTick)
-
-            if daysGap <= 35 && !isYearBoundary {
-                visibleTicks.append(nextTick)
-            }
-        }
-
-        let start = [entryMin, visibleTicks.first].compactMap { $0 }.min()
-        var end = [entryMax, visibleTicks.last].compactMap { $0 }.max()
-
-        // Clamp end date to not exceed the absolute maximum date in the dataset
-        if let maxDate = absoluteMaxDate, let endDate = end, endDate > maxDate {
-            end = maxDate
-        }
-
-        guard let startDate = start ?? (leftEdge as Date?),
-              let endDate = end ?? (rightEdge as Date?) else {
+        // Align to the start of the month containing the left edge
+        let start = calendar.dateInterval(of: .month, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
+        guard let endExclusive = calendar.date(byAdding: .month, value: 12, to: start) else {
             return nil
         }
+        let endInclusive = inclusiveEnd(fromExclusive: endExclusive)
 
-        return (start: startDate, end: endDate)
+        // Clamp to available data to avoid showing future months with no entries
+        if let bounds = dataManager.getDateBounds(for: .year) {
+            let clampedEnd = min(endInclusive, bounds.max)
+            return (start: start, end: clampedEnd)
+        }
+
+        return (start: start, end: endInclusive)
     }
 
     private func labelForYearGridlines() -> String {
@@ -2255,65 +2227,46 @@ class DashboardStore: ObservableObject {
 
     /// Returns the date range used by the month label for the current scroll position.
     /// If a full calendar month is contained, returns that month interval.
-    /// Otherwise returns the visible window range.
+    /// Otherwise returns a 1-month window starting at the day-aligned left edge.
     private func getLabelDateRangeForMonth() -> DateInterval {
         if let monthInterval = getFullyContainedMonthInterval() {
             return DateInterval(start: monthInterval.start, end: inclusiveEnd(fromExclusive: monthInterval.end))
         }
+
+        let calendar = Calendar.current
         let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
-        return DateInterval(start: leftEdge, end: inclusiveEnd(fromExclusive: rightEdge))
+        let windowStart = calendar.startOfDay(for: leftEdge)
+        let endExclusive = calendar.date(byAdding: .month, value: 1, to: windowStart)
+            ?? windowStart.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+        return DateInterval(start: windowStart, end: inclusiveEnd(fromExclusive: endExclusive))
     }
 
     /// Returns the date range used by the year label for the current scroll position.
-    /// If a full calendar year is contained, returns that year interval.
-    /// Otherwise returns the visible window range.
+    /// If a custom year label range is available, that range is used.
+    /// Otherwise returns a 12-month range starting at the beginning of the month
+    /// containing the current scroll position.
     private func getLabelDateRangeForYear() -> DateInterval {
-        let calendar = Calendar.current
         if let dateRange = getYearLabelDateRange() {
-            let startYear = calendar.component(.year, from: dateRange.start)
-            let endYear = calendar.component(.year, from: dateRange.end)
-            if startYear == endYear {
-                let yearStartComponents = DateComponents(year: startYear, month: 1, day: 1)
-                let nextYearStartComponents = DateComponents(year: startYear + 1, month: 1, day: 1)
-                if let yearStart = calendar.date(from: yearStartComponents),
-                   let nextYearStart = calendar.date(from: nextYearStartComponents) {
-                    return DateInterval(start: yearStart, end: inclusiveEnd(fromExclusive: nextYearStart))
-                }
-            }
             return DateInterval(start: dateRange.start, end: dateRange.end)
         }
 
+        let calendar = Calendar.current
         let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .year))
-        return DateInterval(start: leftEdge, end: inclusiveEnd(fromExclusive: rightEdge))
+        let windowStart = calendar.dateInterval(of: .month, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
+        let endExclusive = calendar.date(byAdding: .month, value: 12, to: windowStart)
+            ?? windowStart.addingTimeInterval(graphManager.visibleDomainLength(for: .year))
+        return DateInterval(start: windowStart, end: inclusiveEnd(fromExclusive: endExclusive))
     }
 
     /// Returns the date range used by the week label for the current scroll position.
     /// Mirrors labelForWeekGridlines so averages match the label.
     private func getLabelDateRangeForWeek() -> DateInterval {
-        let period: TimePeriod = .week
-        let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
         let calendar = Calendar.current
+        let leftEdge = graphManager.state.xScrollPosition
         let windowStart = calendar.startOfDay(for: leftEdge)
-        let windowEndExclusive = calendar.startOfDay(for: rightEdge)
+        let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
+            ?? windowStart.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
         let windowEndInclusive = windowEndExclusive.addingTimeInterval(-1)
-        let buffer: TimeInterval = 2 * 60 * 60
-
-        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-        if let minDate = visibleOps.first?.date,
-           let maxDate = visibleOps.last?.date {
-            let spansWindow =
-                minDate <= leftEdge.addingTimeInterval(buffer) &&
-                maxDate >= rightEdge.addingTimeInterval(-buffer)
-            if spansWindow {
-                let clampedStart = max(minDate, windowStart)
-                let clampedEnd = min(maxDate, windowEndInclusive)
-                return DateInterval(start: clampedStart, end: clampedEnd)
-            }
-        }
-
         return DateInterval(start: windowStart, end: windowEndInclusive)
     }
 
@@ -2455,51 +2408,25 @@ class DashboardStore: ObservableObject {
 
     private func labelForMonthGridlines() -> String {
         let period: TimePeriod = .month
-        let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
-
-        // Check if visible window contains an entire month
-        if let monthInterval = getFullyContainedMonthInterval() {
-            return graphManager.formatDateRange(
-                minDate: monthInterval.start,
-                maxDate: monthInterval.start,
-                for: period
-            )
-        }
-
+        let labelRange = getLabelDateRangeForMonth()
         return graphManager.formatDateRange(
-            minDate: leftEdge,
-            maxDate: rightEdge,
+            minDate: labelRange.start,
+            maxDate: labelRange.end,
             for: period
         )
     }
 
     private func labelForWeekGridlines() -> String {
         let period: TimePeriod = .week
+        let calendar = Calendar.current
         let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: period))
-        let buffer: TimeInterval = 2 * 60 * 60
+        let windowStart = calendar.startOfDay(for: leftEdge)
+        let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
+            ?? windowStart.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
 
-        let visibleOps = graphManager.getStrictVisibleOperations(from: continuousOperations)
-
-        if let minDate = visibleOps.min(by: { $0.date < $1.date })?.date,
-           let maxDate = visibleOps.max(by: { $0.date < $1.date })?.date {
-
-            let spansWindow =
-                minDate <= leftEdge.addingTimeInterval(buffer) &&
-                maxDate >= rightEdge.addingTimeInterval(-buffer)
-
-            return graphManager.formatDateRange(
-                minDate: spansWindow ? minDate : leftEdge,
-                maxDate: spansWindow ? maxDate : rightEdge,
-                for: period
-            )
-        }
-
-        // No visible entries — rely purely on the visible window
         return graphManager.formatDateRange(
-            minDate: leftEdge,
-            maxDate: rightEdge,
+            minDate: windowStart,
+            maxDate: windowEndExclusive,
             for: period
         )
     }
