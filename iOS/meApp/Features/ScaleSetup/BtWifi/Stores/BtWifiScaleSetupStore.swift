@@ -198,6 +198,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Tracks if any changes were made in customize settings
     @Published var hasCustomizeChanges: Bool = false
     
+    /// Tracks if any customization settings have been saved (used to determine navigation to updateSettings step)
+    @Published var hasSavedSettings: Bool = false
+    
     /// Scale mode selection (All Body Metrics or Weight Only)
     @Published var selectedScaleMode: ScaleModes = .allBodyMetrics
     
@@ -465,6 +468,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             }
                             .scrollIndicators(.hidden)
                             
+                            
                         default:
                             // For now, other settings show placeholder
                             VStack {
@@ -671,6 +675,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Reset customize settings state
         self.hasCustomizeChanges = false
+        self.hasSavedSettings = false
         self.currentCustomizeSetting = .none
         self.selectedCustomizeItems = []
         self.visitedCustomizeItems = []
@@ -839,9 +844,16 @@ final class BtWifiScaleSetupStore: ObservableObject {
             performExitCleanup()
             return
         }
-        presentExitAlert(onConfirm: { [weak self] in
-            self?.performExitCleanup()
-        })
+        presentExitAlert(
+            onConfirm: { [weak self] in
+                self?.performExitCleanup()
+            },
+            onCancel: { [weak self] in
+                guard let self else { return }
+                // Cancel exit and stay on current screen
+                self.isExiting = false
+            }
+        )
     }
     
     // Used by tab-switch logic.
@@ -981,7 +993,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .viewSettings:
             handleViewSettingsAction()
         case .customizeSettings:
-            navigateToStep(.updateSettings)
+            persistDashboardMetricsIfNeeded()
+            
+            // Navigate to updateSettings if any settings have been saved
+            if hasSavedSettings {
+                navigateToStep(.updateSettings)
+            } else {
+                // Skip updateSettings and go directly to stepOn if no settings were saved
+                navigateToStep(.stepOn)
+            }
         case .scaleConnected:
             // Post notification to refresh dashboard when setup completes
             // Add a small delay to ensure connection status updates have propagated to UI
@@ -1307,6 +1327,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
             self.hasCustomizeChanges = true
+            self.hasSavedSettings = true
             break
         case .scaleMode:
             // Update the attached preference with new scale mode settings
@@ -1319,6 +1340,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
             self.hasCustomizeChanges = true
+            self.hasSavedSettings = true
             break
         case .scaleMetrics:
             // Persist scale metrics changes immediately when Save is clicked
@@ -1334,39 +1356,23 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
             }
             self.hasCustomizeChanges = true
+            self.hasSavedSettings = true
             self.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
             break
         case .dashboardMetrics:
             hasCustomizeChanges = true
+            hasSavedSettings = true
             selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
             
+            // Sync state so back button reverts to saved state
             Task { @MainActor in
-                 // Sync removal state
                 self.dashboardStore.syncRemovalStateFromMetricsManager()
                 self.dashboardStore.syncRemovalStateFromStreakManager()
                 
-                // Persist metrics
-                Task {
-                    do {
-                        try await self.dashboardStore.metricsManager.saveMetricsToAPI()
-                        try await self.dashboardStore.saveProgressMetricsToAPI()
-                        // Refresh account so dashboard reflects latest metrics
-                        try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
-
-                        // Notify dashboard to reload
-                        NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
-
-                        LoggerService.shared.log(
-                            level: .info,
-                            tag: tag,
-                            message: "Dashboard metrics saved to API and account refreshed"
-                        )
-                         } catch {
-                        LoggerService.shared.log(level: .error, tag: self.tag, message: "Failed to save dashboard metrics to API: \(error.localizedDescription)")
-                    }
-                }
+                // Save current state as snapshot for back button
+                self.dashboardStore.updateSnapshot()
                 
-                // Force UI refresh
+                // Refresh UI to show changes
                 self.dashboardStore.state.ui.gridLayoutId = UUID()
                 self.dashboardStore.refreshDashboardState()
                 self.dashboardStore.objectWillChange.send()
@@ -1383,17 +1389,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Handles the back action from the view settings screen
     private func handleViewSettingsBack() {
-        // Reset current customize setting
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.currentCustomizeSetting = .none
-        }
+        // Store the current setting before resetting for revert logic
+        let settingToRevert = currentCustomizeSetting
         
         // Cancel dashboard metrics sync subscription when navigating away
         dashboardMetricsUpdatedCancellable?.cancel()
         dashboardMetricsUpdatedCancellable = nil
         
         // Revert unsaved changes for each customize screen
-        switch currentCustomizeSetting {
+        switch settingToRevert {
         case .dashboardMetrics:
             discardDashboardCustomization()
         case .scaleMode:
@@ -1417,6 +1421,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
         default:
             break
+        }
+        
+        // Reset current customize setting after navigation completes to prevent showing placeholder during transition
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.currentCustomizeSetting = .none
         }
     }
     
@@ -2569,6 +2578,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     
                     // Reset the changes flag after successful update
                     hasCustomizeChanges = false
+                    hasSavedSettings = false
                     
                     LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
                     // Clear the selected items since they're now saved
@@ -2969,6 +2979,62 @@ final class BtWifiScaleSetupStore: ObservableObject {
                    !self.isExiting {
                 }
             }
+    }
+    
+    /// Persists dashboard metric customization before navigation.
+    /// Runs only when dashboard customization is selected.
+    /// Errors are logged and do not block navigation.
+
+    private func persistDashboardMetricsIfNeeded() {
+        guard selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue) else {
+            return
+        }
+        
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.persistDashboardMetrics()
+        }
+    }
+    
+    //// Persists dashboard metrics to the API.
+    /// Separated for testability.
+    @MainActor
+    private func persistDashboardMetrics() async {
+        do {
+            // Sync removal state
+            dashboardStore.syncRemovalStateFromMetricsManager()
+            dashboardStore.syncRemovalStateFromStreakManager()
+            
+            // Persist metrics
+            try await dashboardStore.metricsManager.saveMetricsToAPI()
+            try await dashboardStore.saveProgressMetricsToAPI()
+            
+            // Refresh account (non-blocking)
+            try? await accountService.refreshAccount(
+                accountId: accountService.activeAccount?.accountId
+            )
+            
+            // Update snapshot for rollback
+            dashboardStore.updateSnapshot()
+            
+            // Notify dashboard refresh
+            NotificationCenter.default.post(
+                name: .dashboardMetricsUpdated,
+                object: nil
+            )
+            
+            LoggerService.shared.log(
+                level: .info,
+                tag: tag,
+                message: "Dashboard metrics persisted with latest order"
+            )
+        } catch {
+            LoggerService.shared.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to persist dashboard metrics: \(error.localizedDescription)"
+            )
+        }
     }
     
     // MARK: - Cleanup Methods
