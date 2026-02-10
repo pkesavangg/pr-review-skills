@@ -554,7 +554,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     // MARK: - Goal Chip Callout
     @ViewBuilder
     private func goalChipCallout() -> some View {
-        if let goalWeight = viewModel.goalWeight {
+        if let goalWeight = viewModel.goalWeight, viewModel.chartFrame.height > 0 {
             let goalPosition = viewModel.getGoalChipPosition()
 
             goalWeightChip(goalWeight)
@@ -562,10 +562,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
                     y: goalPosition.yPosition
                 )
-                .animation(
-                    viewModel.shouldAnimateChartData ? .easeOut(duration: 0.3) : .none,
-                    value: goalPosition.yPosition
-                )
+                .animation(coordinatedChartAnimation, value: goalPosition.yPosition)
+        } else {
+            EmptyView()
         }
     }
 
@@ -1144,4 +1143,3 @@ extension View {
     .frame(height: 265)
     .padding()
 }
-
