@@ -122,11 +122,17 @@ final class AdditionalSettingsViewModel: ObservableObject {
     func setTimeFormat(_ format: String) async {
         guard isDeviceConnected else { return }
         refreshScale()
+        let deviceId = scaleIdString
         let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "TIME_FORMAT", value: .string(format))])
         switch res {
         case .success:
             refreshScale()
-            scale.r4ScalePreference?.timeFormat = (format == "12H") ? "12" : "24"
+            // R9: Use DTO to update preference instead of mutating @Model directly after await
+            if let preference = scale.r4ScalePreference {
+                var dto = preference.toDTO()
+                dto.timeFormat = (format == "12H") ? "12" : "24"
+                try? await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+            }
             notificationService.showToast(ToastModel(title: ToastStrings.saved, message: "Time format updated"))
         case .failure(let err):
             logger.log(level: .error, tag: tag, message: "Time format failed: \(err.localizedDescription)")
