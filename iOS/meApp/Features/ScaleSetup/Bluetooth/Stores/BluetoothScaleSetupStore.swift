@@ -405,14 +405,14 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private func setupNewEntrySubscription() {
         // Cancel any existing subscription
         newEntrySubscription?.cancel()
-        
-        // Subscribe to new entry events
+
+        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
         newEntrySubscription = bluetoothService.newEntryReceivedPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] entry in
+            .sink { [weak self] _ in
                 guard let self = self else { return }
                 LoggerService.shared.log(level: .info, tag: self.tag, message: "New entry received, marking as synced")
-                
+
                 // Mark entry as synced and update UI
                 self.isEntrySynced = true
                 self.updateNextEnabled()

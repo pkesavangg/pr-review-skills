@@ -92,6 +92,14 @@ protocol EntryRepositoryProtocol {
     /// - Returns: True if the entry exists, false otherwise.
     func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool
 
+    /// Fetches entries and returns DTOs with all relationship data extracted on a background thread.
+    /// Use this instead of fetchEntries when you only need to read entry data to avoid main thread blocking.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - operationType: Optional operation type filter.
+    /// - Returns: An array of BathScaleOperationDTO objects.
+    func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO]
+
     // MARK: - Sync
 
     /// Syncs new and deleted entries with the local data store.

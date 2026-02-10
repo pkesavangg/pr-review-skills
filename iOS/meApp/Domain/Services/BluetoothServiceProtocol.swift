@@ -30,7 +30,8 @@ protocol BluetoothServiceProtocol {
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { get }
 
     /// Publisher for new entry events.
-    var newEntryReceivedPublisher: AnyPublisher<Entry, Never> { get }
+    /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
+    var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { get }
 
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { get }
