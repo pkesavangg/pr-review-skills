@@ -56,7 +56,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         showWeightOnlyModeAlertSubject.eraseToAnyPublisher()
     }
     /// Publisher for new entry events.
-    var newEntryReceivedPublisher: AnyPublisher<Entry, Never> {
+    /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
+    var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> {
         newEntryReceivedSubject.eraseToAnyPublisher()
     }
     /// Publisher for firmware update progress.
@@ -80,7 +81,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     // MARK: - Subjects for Scale Discovery
     private let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
-    private let newEntryReceivedSubject = PassthroughSubject<Entry, Never>()
+    private let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
     private let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
     private let showWeightOnlyModeAlertSubject = PassthroughSubject<Bool, Never>()
     private let firmwareUpdateProgressSubject = PassthroughSubject<FirmwareUpdateStatus, Never>()
@@ -1151,6 +1152,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - disconnect: Whether to disconnect after deletion
      - Returns: Result indicating success or failure
      */
+    /// Deletes a user slot on the scale by broadcastId and token, without mutating any @Model object.
+    /// Public wrapper around deleteScaleByBroadcastId for safe use from ViewModels.
+    func deleteUserByToken(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+    }
+
     private func deleteScaleByBroadcastId(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
         // Create a temporary device for the deletion
         let tempDevice = Device(
@@ -1602,7 +1609,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 return
             }
             try? await entryService.saveNewEntry(entry)
-            newEntryReceivedSubject.send(entry)
+            // Create notification to safely pass entry data across actor boundaries
+            let notification = EntryNotification(from: entry)
+            newEntryReceivedSubject.send(notification)
         } else if let entryList = entriesData as? GGEntryList {
             // Handle multiple entries
             let entries = entryList.list.compactMap { convertGGEntry($0) }
@@ -1614,7 +1623,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 try? await entryService.saveNewEntry(entry)
             }
             if !entries.isEmpty {
-                newEntryReceivedSubject.send(entries[0])
+                // Create notification to safely pass entry data across actor boundaries
+                let notification = EntryNotification(from: entries[0])
+                newEntryReceivedSubject.send(notification)
             }
         }
     }

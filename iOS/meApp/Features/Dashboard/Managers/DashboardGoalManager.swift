@@ -30,20 +30,21 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 return
             }
 
+            // Extract all relationship data BEFORE async call (R7)
+            let goalType = goalSettings.goalType ?? .gain
+            let goalUnit = account.weightSettings?.weightUnit ?? .lb
+            let hasGoalSet = goalSettings.goalWeight != nil
+            let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
+            let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
+
             // Get current weight from latest entry
             let latestEntry = try await entryService.getLatestEntry()
             let currentWeightStored = latestEntry?.scaleEntry?.weight ?? 0
 
-            // Update goal state with settings
-            state.goalType = goalSettings.goalType ?? .gain
-            state.goalUnit = account.weightSettings?.weightUnit ?? .lb
-
-            // Track if goal is actually set (not null from API)
-            state.hasGoalSet = goalSettings.goalWeight != nil
-            
-            // Convert weights to display units
-            let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
-            let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
+            // Update goal state with extracted settings
+            state.goalType = goalType
+            state.goalUnit = goalUnit
+            state.hasGoalSet = hasGoalSet
 
             let initialWeightDisplay = convertStoredWeightToDisplay(initialWeightStored)
             let goalWeightDisplay = convertStoredWeightToDisplay(goalWeightStored)
@@ -135,14 +136,15 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 return
             }
 
+            // Extract all relationship data BEFORE async call (R7)
+            let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
+            let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
+
             // Get current weight from latest entry
             let latestEntry = try await entryService.getLatestEntry()
             let currentWeightStored = latestEntry?.scaleEntry?.weight ?? 0
 
             // Convert weights to display units
-            let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
-            let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
-
             let initialWeightDisplay = convertStoredWeightToDisplay(initialWeightStored)
             let goalWeightDisplay = convertStoredWeightToDisplay(goalWeightStored)
             let currentWeightDisplay = convertStoredWeightToDisplay(currentWeightStored)
@@ -263,8 +265,18 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     }
 
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
-        // Round to 1 decimal place for proper display using robust rounding to handle floating-point precision
-        let roundedWeight = (weight * 100).rounded(.toNearestOrAwayFromZero) / 100
+        // Round to 1 decimal place using Decimal to avoid binary floating-point artifacts
+        let decimal = Decimal(weight)
+        let roundedDecimal = (decimal as NSDecimalNumber)
+            .rounding(accordingToBehavior: NSDecimalNumberHandler(
+                roundingMode: .plain,
+                scale: 1,
+                raiseOnExactness: false,
+                raiseOnOverflow: false,
+                raiseOnUnderflow: false,
+                raiseOnDivideByZero: false
+            ))
+        let roundedWeight = roundedDecimal.doubleValue
         
         // Drop trailing .0 for integers; keep one decimal otherwise
         let isInteger = abs(roundedWeight - roundedWeight.rounded()) < AppConstants.Precision.doubleEqualityEpsilon
@@ -343,4 +355,3 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         }
     }
 }
-
