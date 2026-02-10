@@ -539,37 +539,42 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // 2. Try to sync with backend
         if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
             for operation in unsyncedEntries {
+                // R7/R9: Extract all @Model data BEFORE any await calls
+                let entryId = operation.id
+                let entryIdString = entryId.uuidString
+                let operationType = operation.operationType
+                let entryTimestamp = operation.entryTimestamp
+                let currentAttempts = operation.attempts
+                let dto = operation.toOperationDTO()
+
                 do {
-                    let dto = operation.toOperationDTO()
                     try await remoteRepo.syncOperation(operation: dto)
-                    
-                    successfulOps.append(operation)
-                    
-                    if operation.operationType == "create" {
-                        operation.isSynced = true
-                        try await localRepo.updateEntry(operation)
-                        await logger.log(level: .debug, tag: tag, message: "Entry create/update synced: \(operation.id)")
+
+                    if operationType == "create" {
+                        // R9: Use primitive-based update instead of mutating @Model
+                        try await localRepo.updateEntrySyncStatus(
+                            entryId: entryIdString,
+                            isSynced: true,
+                            isFailedToSync: false,
+                            attempts: currentAttempts
+                        )
+                        await logger.log(level: .debug, tag: tag, message: "Entry create/update synced: \(entryId)")
                     } else {
-                        try await localRepo.deleteEntry(byId: operation.id.uuidString)
-                        try await handleEntryDeleted(operation)
-                        await logger.log(level: .debug, tag: tag, message: "Entry deleted: \(operation.id)")
+                        try await localRepo.deleteEntry(byId: entryIdString)
+                        try await handleEntryDeleted(entryId: entryId, entryTimestamp: entryTimestamp)
+                        await logger.log(level: .debug, tag: tag, message: "Entry deleted: \(entryId)")
                     }
                 } catch {
-                    //check if error is due to unauthorized access
-                    //                  if error is HTTPError.unauthorized {
-                    //                    return
-                    //                  }
-                    // If sync fails, mark synced as false and update local state
-                    operation.isSynced = false
-                    operation.attempts = operation.attempts + 1
-                    
-                    //if attempts is more than 8, mark as failed and update local state
-                    if operation.attempts > 8 {
-                        operation.isSynced = true
-                        operation.isFailedToSync = true
-                    }
-                    try? await localRepo.updateEntry(operation)
-                    failedOps.append(operation)
+                    // R9: Compute new sync values from extracted primitives (no @Model mutation)
+                    let newAttempts = currentAttempts + 1
+                    let markAsFailed = newAttempts > 8
+
+                    try? await localRepo.updateEntrySyncStatus(
+                        entryId: entryIdString,
+                        isSynced: markAsFailed,
+                        isFailedToSync: markAsFailed,
+                        attempts: newAttempts
+                    )
                     await logger.log(level: .error, tag: tag, message: "Sync failed: \(error)")
                 }
             }
@@ -1096,6 +1101,38 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         try await handleEntryAdded(entry)
     }
     
+    /// Lightweight variant for sync loop: handles entry deletion using extracted primitives only.
+    /// Used when @Model Entry is not safely accessible after async boundary (R7).
+    /// Skips integration cleanup since that happens at original user-delete time.
+    private func handleEntryDeleted(entryId: UUID, entryTimestamp: String) async throws {
+        let accountId = try await getAccountId()
+
+        await logger.log(level: .debug, tag: tag, message: "Handling entry deletion (sync): \(entryId)")
+
+        let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entryTimestamp)
+        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entryTimestamp)
+
+        let dayEntries = try await getEntries(forDay: dayKey)
+        let monthEntries = try await getEntries(forMonth: monthKey)
+
+        let dailySummary = aggregateByDay(entries: dayEntries, accountId: accountId).first ?? nil
+        let monthlySummary = aggregateByMonth(entries: monthEntries, accountId: accountId).first ?? nil
+
+        updateDailySummary(dayKey: dayKey, summary: dailySummary)
+        updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
+
+        // Minimal notification — entry already deleted locally, no relationship data needed
+        let dto = BathScaleOperationDTO(
+            accountId: accountId, bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+            entryTimestamp: entryTimestamp, impedance: nil, metabolicAge: nil,
+            muscleMass: nil, operationType: "delete", proteinPercent: nil,
+            pulse: nil, serverTimestamp: nil, skeletalMusclePercent: nil,
+            source: nil, subcutaneousFatPercent: nil, unit: nil, visceralFatLevel: nil,
+            water: nil, weight: nil
+        )
+        entryDeleted.send(EntryNotification(from: dto, id: entryId))
+    }
+
     /// Handles entry deletion by updating affected day and month summaries
     func handleEntryDeleted(_ entry: Entry) async throws {
         let accountId = try await getAccountId()

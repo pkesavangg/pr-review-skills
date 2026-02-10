@@ -144,6 +144,22 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    /// Updates only the sync-related fields of an entry by its UUID string.
+    /// Use this instead of mutating @Model directly then calling updateEntry (R7/R9).
+    func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws {
+        guard let uuid = UUID(uuidString: entryId) else { return }
+        try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            if let existing = try ctx.fetch(descriptor).first {
+                existing.isSynced = isSynced
+                existing.isFailedToSync = isFailedToSync
+                existing.attempts = attempts
+                try ctx.save()
+            }
+            return ()
+        }
+    }
+
     /// Deletes an entry by its unique UUID string.
     /// - Parameter id: The UUID string of the entry to delete.
     func deleteEntry(byId id: String) async throws {

@@ -24,6 +24,10 @@ protocol EntryRepositoryProtocol {
     /// - Parameter entry: The updated Entry object.
     func updateEntry(_ entry: Entry) async throws
 
+    /// Updates only the sync-related fields of an entry by its UUID string.
+    /// Use this instead of mutating @Model then calling updateEntry (R7/R9).
+    func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws
+
     /// Deletes an entry by its unique ID.
     /// - Parameter id: The ID of the entry to delete.
     func deleteEntry(byId id: String) async throws
