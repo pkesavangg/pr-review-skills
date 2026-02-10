@@ -216,21 +216,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
-        guard let _ = try await localRepository.getDevice(deviceId) else {
-            throw ScaleError.deviceNotFound(id: deviceId)
-        }
-        // Update on server immediately
-        do {
-            try await remoteRepo.patchScalePreference(preference.toDTO())
-            logger.log(level: .info, tag: tag, message: "Updated scale preference for device \(deviceId) locally and on server")
-            preference.isSynced = true // Mark as synced after successful server update
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to update scale preference on server: \(error.localizedDescription)")
-            preference.isSynced = false // Mark as unsynced if server update fails
-        }
-        // Update locally and mark as synced or unsynced based on server update success
-        try await localRepository.patchScalePreference(deviceId, preference)
-        await pushLocalChangesToServer()
+        // Convert to DTO to avoid mutating @Model across async boundaries (R9)
+        let dto = preference.toDTO()
+        try await updateScalePreference(deviceId, fromDTO: dto)
     }
 
     /// Updates scale preference from a DTO. This is the async-boundary-safe variant.

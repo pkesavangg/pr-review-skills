@@ -85,6 +85,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func getDeviceInfo() async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let result = await bluetoothService.getDeviceInfo(for: scale)
         switch result {
         case .success(let info):

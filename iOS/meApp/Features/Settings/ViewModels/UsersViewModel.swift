@@ -173,11 +173,11 @@ final class UsersViewModel: ObservableObject {
             // Update the current user's name via Bluetooth service
             if currentDeviceUser != nil,
                let preference = scale.r4ScalePreference {
-                preference.displayName = newName
-                try await scaleService.updateScalePreference(
-                    scale.id,
-                    preference
-                )
+                // Extract to DTO before async to avoid @Model mutation (R9)
+                let deviceId = scale.id
+                var dto = preference.toDTO()
+                dto.displayName = newName
+                try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
                 await scaleService.pushLocalChangesToServer()
                 // Refresh scale before Bluetooth call to ensure fresh @Model data
                 refreshScale()

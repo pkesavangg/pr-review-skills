@@ -2344,14 +2344,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        // Delete all users in the duplicate list
+        // Delete all users in the duplicate list — extract primitives to avoid @Model mutation (R9)
+        guard let broadcastId = scale.broadcastIdString, !broadcastId.isEmpty else { return }
         for user in duplicateList {
-            guard let userToken = user.token else {
+            guard let userToken = user.token, !userToken.isEmpty else {
                 continue
             }
-            
-            scale.token = userToken
-            _ = await bluetoothService.deleteDevice(scale, disconnect: false)
+
+            _ = await bluetoothService.deleteUserByToken(broadcastId: broadcastId, token: userToken, disconnect: false)
         }
         
         // Reset display name to first name
@@ -2382,11 +2382,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
             LoggerService.shared.log(level: .error, tag: tag, message: "deleteUserFromScale - no discovered scale")
             return
         }
-        
-        // Set the user's token to delete the correct user
-        scale.token = user.token
-        let result = await bluetoothService.deleteDevice(scale, disconnect: false)
-        
+
+        // Extract primitives to avoid @Model mutation (R9)
+        guard let broadcastId = scale.broadcastIdString, !broadcastId.isEmpty else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "deleteUserFromScale - no broadcastId")
+            return
+        }
+        let userToken = user.token ?? ""
+        let result = await bluetoothService.deleteUserByToken(broadcastId: broadcastId, token: userToken, disconnect: false)
+
         switch result {
         case .success:
             LoggerService.shared.log(level: .info, tag: tag, message: "deleteUserFromScale - deleted user: \(user.name)")
