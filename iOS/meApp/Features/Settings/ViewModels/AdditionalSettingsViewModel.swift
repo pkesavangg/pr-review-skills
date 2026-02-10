@@ -85,6 +85,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func getDeviceInfo() async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let result = await bluetoothService.getDeviceInfo(for: scale)
         switch result {
         case .success(let info):
@@ -100,6 +101,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func setStartAnimation(_ enabled: Bool) async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let setting = DeviceSetting(key: "INITIAL_LOGO_ANIM", value: .bool(enabled))
         let res = await bluetoothService.updateSetting(on: scale, settings: [setting])
         if case .success = res { startAnimationEnabled = enabled } else {
@@ -109,6 +111,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func setEndAnimation(_ enabled: Bool) async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let setting = DeviceSetting(key: "FINAL_LOGO_ANIM", value: .bool(enabled))
         let res = await bluetoothService.updateSetting(on: scale, settings: [setting])
         if case .success = res { endAnimationEnabled = enabled } else {
@@ -118,11 +121,18 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func setTimeFormat(_ format: String) async {
         guard isDeviceConnected else { return }
+        refreshScale()
+        let deviceId = scaleIdString
         let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "TIME_FORMAT", value: .string(format))])
         switch res {
         case .success:
             refreshScale()
-            scale.r4ScalePreference?.timeFormat = (format == "12H") ? "12" : "24"
+            // R9: Use DTO to update preference instead of mutating @Model directly after await
+            if let preference = scale.r4ScalePreference {
+                var dto = preference.toDTO()
+                dto.timeFormat = (format == "12H") ? "12" : "24"
+                try? await scaleService.updateScalePreference(deviceId, fromDTO: dto)
+            }
             notificationService.showToast(ToastModel(title: ToastStrings.saved, message: "Time format updated"))
         case .failure(let err):
             logger.log(level: .error, tag: tag, message: "Time format failed: \(err.localizedDescription)")
@@ -132,6 +142,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func clearData(_ type: DeviceClearType) async {
         guard isDeviceConnected else { return }
+        refreshScale()
         notificationService.showLoader(LoaderModel(text: LoaderStrings.pleaseWait))
         let res = await bluetoothService.clearData(on: scale, dataType: type)
         switch res {
@@ -146,6 +157,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func resetFirmware() async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "RESET_FIRMWARE", value: .bool(true))])
         switch res {
         case .success:
@@ -158,6 +170,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func restoreFactorySettings() async {
         guard isDeviceConnected else { return }
+        refreshScale()
         let res = await bluetoothService.updateSetting(on: scale, settings: [DeviceSetting(key: "RESTORE_FACTORY", value: .bool(true))])
         switch res {
         case .success:

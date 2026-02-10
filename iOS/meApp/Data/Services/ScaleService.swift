@@ -216,23 +216,30 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
+        // Convert to DTO to avoid mutating @Model across async boundaries (R9)
+        let dto = preference.toDTO()
+        try await updateScalePreference(deviceId, fromDTO: dto)
+    }
+
+    /// Updates scale preference from a DTO. This is the async-boundary-safe variant.
+    /// Callers should use this when they need to pass preference data across await points.
+    func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {
         guard let _ = try await localRepository.getDevice(deviceId) else {
             throw ScaleError.deviceNotFound(id: deviceId)
         }
-        // Update on server immediately
+        var mutableDTO = dto
         do {
-            try await remoteRepo.patchScalePreference(preference.toDTO())
-            logger.log(level: .info, tag: tag, message: "Updated scale preference for device \(deviceId) locally and on server")
-            preference.isSynced = true // Mark as synced after successful server update
+            try await remoteRepo.patchScalePreference(dto)
+            logger.log(level: .info, tag: tag, message: "Updated scale preference (DTO) for device \(deviceId) locally and on server")
+            mutableDTO.isSynced = true
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update scale preference on server: \(error.localizedDescription)")
-            preference.isSynced = false // Mark as unsynced if server update fails
+            mutableDTO.isSynced = false
         }
-        // Update locally and mark as synced or unsynced based on server update success
-        try await localRepository.patchScalePreference(deviceId, preference)
+        try await localRepository.patchScalePreference(deviceId, fromDTO: mutableDTO)
         await pushLocalChangesToServer()
     }
-    
+
     // MARK: - DeviceServiceProtocol Implementation
     func getDevices() async throws -> [Device] {
         let accountId = try await getAccountId()

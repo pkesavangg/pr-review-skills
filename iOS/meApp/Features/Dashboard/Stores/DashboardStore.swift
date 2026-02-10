@@ -952,7 +952,10 @@ class DashboardStore: ObservableObject {
             do {
                 guard let latestEntry = try await dataManager.getLatestEntry() else { return }
 
-                if let weight = latestEntry.scaleEntry?.weight {
+                // R7: Extract relationship data immediately after fetch, before any further await
+                let weight = latestEntry.scaleEntry?.weight
+
+                if let weight {
                     state.data.latestWeightStored = weight
                 }
 

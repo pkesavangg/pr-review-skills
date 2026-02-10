@@ -1,6 +1,6 @@
 import Foundation
 
-struct ScaleMetaDataDTO: Codable {
+struct ScaleMetaDataDTO: Codable, Sendable {
     var firmwareRevision: String?
     var hardwareRevision: String?
     var latestFirmwareVersion: String?
