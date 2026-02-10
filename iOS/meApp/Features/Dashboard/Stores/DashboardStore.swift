@@ -866,6 +866,10 @@ class DashboardStore: ObservableObject {
             state.ui.hasLoadedMetricValues = false
         }
 
+        // Refresh account data first to ensure we have latest dashboard settings
+        // This ensures changes made during scale setup are reflected
+        try? await accountService.refreshAccount()
+        
         // Determine dashboard type based on account dashboardType
         let dashboardType = determineDashboardTypeFromAccount()
         state.metrics.dashboardType = dashboardType
@@ -3300,6 +3304,21 @@ class DashboardStore: ObservableObject {
         snapshotRemovedStreaks = state.ui.removedStreaks
         hasEditSnapshot = true
 
+    }
+    
+    /// Updates the snapshot to the current state (used after saving changes)
+    /// This ensures that when the user clicks back, it reverts to the last saved state
+    func updateSnapshot() {
+        guard hasEditSnapshot else { return }
+        snapshotMetrics = metricsManager.state.metrics
+        snapshotActiveMetricsCount = metricsManager.state.activeMetricsCount
+        snapshotStreakItems = streakManager.state.streakItems
+        snapshotActiveStreakItemsCount = streakManager.state.activeStreakItemsCount
+        snapshotGoalCardRemoved = state.ui.isGoalCardRemoved
+        snapshotGoalCardPosition = state.ui.goalCardPosition
+        snapshotStreakGridOrder = state.ui.streakGridOrder
+        snapshotRemovedMetrics = state.ui.removedMetrics
+        snapshotRemovedStreaks = state.ui.removedStreaks
     }
 
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.

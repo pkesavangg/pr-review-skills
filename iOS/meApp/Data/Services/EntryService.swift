@@ -572,19 +572,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     /// Internal: Sync only unsynced entries (used after local changes)
     private func syncUnsyncedEntries() async {
-        guard !isSyncing else {
-            return
-        }
+        guard !isSyncing else { return }
         
         isSyncing = true
-        defer { 
-            isSyncing = false
-        }
+        defer { isSyncing = false }
         
-        let accountId: String
-        do {
-            accountId = try await getAccountId()
-        } catch {
+        guard let accountId = try? await getAccountId() else {
             await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: No account ID available")
             return
         }
@@ -594,13 +587,25 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await pushUnsyncedEntriesToRemote(accountId: accountId)
             
             // After syncing, update last sync timestamp and local state
-            let now = ISO8601DateFormatter().string(from: Date())
-            try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: now)
-            lastSyncTime = Date()
+            var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+            if (try? await localRepo.fetchEntryCount(forUserId: accountId)) == 0 {
+                try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
+                lastSyncTimestamp = nil
+            }
             
+            let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
+            if !remoteOps.operations.isEmpty {
+                await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
+                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
+            } else {
+                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: ISO8601DateFormatter().string(from: Date()))
+            }
+            
+            lastSyncTime = Date()
             // Update progress, streak, and check for goal alerts
             await updateProgressAndStreakInternal()
-        }  catch {
+            await loadDashboardData()
+        } catch {
             await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: \(error.localizedDescription)")
         }
     }
@@ -628,13 +633,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
             let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
             
-            // Attempt to find local entries by trying both timestamp variants
+            // Fetch ALL entries with this timestamp (including both create and delete operations)
             var localEntry: Entry? = nil
             var localEntries: [Entry]? = nil
             for ts in tsCandidates {
                 if let fetched = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
                     localEntries = fetched
-                    localEntry = fetched.first
+                    localEntry = fetched.first { $0.operationType == OperationType.create.rawValue } ?? fetched.first
                     break
                 }
             }
@@ -671,27 +676,33 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 let localServerTS = localEntry.serverTimestamp ?? ""
                 let remoteServerTS = finalOp.serverTimestamp ?? ""
                 
-                if remoteServerTS > localServerTS {
-                    // Remote is newer - apply the final operation
+                let shouldApplyRemote = localServerTS.isEmpty || remoteServerTS > localServerTS
+                
+                if shouldApplyRemote {
                     if finalOp.operationType == OperationType.delete.rawValue {
-                        // Final state is deleted - remove from local storage
-                        try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
+                        let entriesToDelete = localEntries ?? [localEntry]
+                        for entry in entriesToDelete {
+                            try? await localRepo.deleteEntry(byId: entry.id.uuidString)
+                        }
                         try? await handleEntryDeleted(localEntry)
                     } else {
-                        // Final state is create - update local with remote
-                        let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                        await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
+                        var updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                        updated.id = localEntry.id
                         try? await localRepo.updateEntry(updated)
-                        // Notify downstream listeners/UI about the updated/added entry so lists refresh
                     }
+                } else if !localServerTS.isEmpty {
+                    if !localEntry.isSynced {
+                        localEntry.isSynced = true
+                        try? await localRepo.updateEntry(localEntry)
+                    }
+                    await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
                 }
             } else if !potentialDuplicates.isEmpty {
                 // Found potential duplicate by weight - update the existing one instead of creating new
                 let duplicateEntry = potentialDuplicates.first!
-                let updated: Entry = {
-                    var entry = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                    entry.id = duplicateEntry.id
-                    return entry
-                }()
+                let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                updated.id = duplicateEntry.id
                 try? await localRepo.updateEntry(updated)
             } else {
                 // No local entry - only create if final operation is create
@@ -714,6 +725,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
+        }
+    }
+    
+    private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
+        guard let allEntries = localEntries, allEntries.count > 1 else { return }
+        for entry in allEntries where entry.id != keepId {
+            do {
+                try await localRepo.deleteEntry(byId: entry.id.uuidString)
+                try await self.handleEntryDeleted(entry)
+            } catch {
+                await logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to delete duplicate entry \(entry.id): \(error.localizedDescription)"
+                )
+            }
         }
     }
     
