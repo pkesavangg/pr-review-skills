@@ -988,7 +988,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             let response = try await apiCall(metrics)
             
-            // Preserve the order we sent (matching Android behavior)
             // Store the sent order before updating from response to prevent order loss
             let sentOrderString = metrics.joined(separator: ",")
             
