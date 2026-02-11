@@ -452,6 +452,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             let point = plottedPoint.original
             let xDate = plottedPoint.xDate  // Use precomputed
 
+            // Clamp value to the Y-axis domain so marks never overflow outside
+            // the plot area into the x-axis region during domain transitions.
+            let domainLower = viewModel.yAxisDomain.lowerBound
+            let domainUpper = viewModel.yAxisDomain.upperBound
+            let clampedValue = min(max(point.value, domainLower), domainUpper)
+            let isWithinDomain = point.value >= domainLower && point.value <= domainUpper
+
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
@@ -469,22 +476,23 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
                 : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
 
-            // Line mark
+            // Line mark — uses clamped value so the line stops at the domain boundary
             LineMark(
                 x: .value("Date", xDate),
-                y: .value(point.series, point.value),
+                y: .value(point.series, clampedValue),
                 series: .value("Series", point.series)
             )
             .foregroundStyle(lineColor)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
-            // Visible point mark
+            // Visible point mark — only shown when within domain to avoid
+            // dots sitting on the axis boundary
             PointMark(
                 x: .value("Date", xDate),
-                y: .value(point.series, point.value)
+                y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
-            .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
+            .symbolSize(isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
             .foregroundStyle(pointColor)
         }
     }
