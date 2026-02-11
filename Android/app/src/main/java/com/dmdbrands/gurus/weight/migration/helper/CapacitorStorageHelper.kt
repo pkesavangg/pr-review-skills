@@ -74,6 +74,46 @@ object CapacitorStorageHelper {
   }
 
   /**
+   * Locates and reads all timestampkey entries from Capacitor Storage.
+   * Ionic stores keys as "timestampkey-{userId}" (prefix). Returns map of userId -> timestamp string.
+   */
+  fun locateAndReadTimestampKeyFromCapacitorStorage(context: Context): Map<String, String> {
+    return try {
+      val sharedPrefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
+      val prefix = "timestampkey-"
+      val result = sharedPrefs.all.keys
+        .filter { it.startsWith(prefix) }
+        .mapNotNull { key ->
+          sharedPrefs.getString(key, null)?.takeIf { it.isNotBlank() }?.let { timestamp ->
+            key.removePrefix(prefix) to timestamp
+          }
+        }
+        .toMap()
+      Log.d(TAG, "Found ${result.size} timestampkey entries")
+      result
+    } catch (e: Exception) {
+      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      emptyMap()
+    }
+  }
+
+  /**
+   * Reads the last sync timestamp for the given account from Capacitor Storage.
+   * Ionic stores this as key "timestampkey-{accountId}".
+   * @return The timestamp string, or null if not found.
+   */
+  fun getLastSyncTimestampForAccount(context: Context, accountId: String): String? {
+    return try {
+      val sharedPrefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
+      val key = "timestampkey-$accountId"
+      sharedPrefs.getString(key, null)?.takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+      Log.d(TAG, "Could not read timestampkey for $accountId: ${e.message}")
+      null
+    }
+  }
+
+  /**
    * Locates and reads theme mode data from Capacitor Preferences storage.
    */
   fun locateAndReadThemeModeFromCapacitorStorage(context: Context): Map<String, String> {

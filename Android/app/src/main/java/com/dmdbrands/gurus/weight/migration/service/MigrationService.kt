@@ -90,6 +90,7 @@ class MigrationService @Inject constructor(
 
       migrateDeviceData(context)
       migrateIntegration(context)
+      migrateTimestampKey(context)
       // Step 2: Locate and open Ionic database for entries
       val dbPath = IonicDatabaseHelper.locateIonicDb(context)
       if (dbPath == null) {
@@ -97,10 +98,20 @@ class MigrationService @Inject constructor(
       }
       sqliteDb = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY)
 
-      // Step 4: Migrate entries from both opStack and entry tables using raw SQL
-      val opStackEntries = migrateEntriesWithRawSQL(context, sqliteDb)
-      val regularEntries = migrateEntriesFromEntryTables(context, sqliteDb)
-      totalMigratedEntries = opStackEntries + regularEntries
+      // Step 4: Migrate entries. Check table existence before querying to support 4.0.1 vs 4.2.0.
+      val regularEntries = if (tableExists(sqliteDb, "entry")) {
+        migrateEntriesFromEntryTables(context, sqliteDb)
+      } else {
+        Log.i(TAG, "entry table not present, skipping entry migration")
+        0
+      }
+      val opStackEntries = if (tableExists(sqliteDb, "opStack")) {
+        migrateEntriesWithRawSQL(context, sqliteDb)
+      } else {
+        Log.i(TAG, "opStack table not present (e.g. 4.0.1), skipping opStack migration")
+        0
+      }
+      totalMigratedEntries = regularEntries + opStackEntries
 
       // Step 5: Save migration timestamp
       IonicDatabaseHelper.saveMigrationTimestamp(context)
@@ -125,6 +136,27 @@ class MigrationService @Inject constructor(
       context.deleteDatabase(dbPath)
     }
     context.deleteSharedPreferences("CapacitorStorage")
+  }
+
+  /**
+   * Returns true if the given table exists in the SQLite database.
+   * Used to support both 4.0.1 (no opStack) and 4.2.0 (has opStack) migration.
+   * Uses case-insensitive match because SQLite stores unquoted identifiers (e.g. opStack) as lowercase (opstack) in sqlite_master.
+   */
+  private fun tableExists(db: SQLiteDatabase, tableName: String): Boolean {
+    var cursor: Cursor? = null
+    return try {
+      cursor = db.rawQuery(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND LOWER(name)=LOWER(?)",
+        arrayOf(tableName),
+      )
+      cursor.moveToFirst()
+    } catch (e: Exception) {
+      Log.w(TAG, "tableExists failed for $tableName: ${e.message}")
+      false
+    } finally {
+      cursor?.close()
+    }
   }
 
   /**
@@ -224,6 +256,27 @@ class MigrationService @Inject constructor(
     }
   }
 
+  /**
+   * Migrates per-account operations sync timestamp (timestampkey-{userId}) from Capacitor Storage
+   * into UserDataStore so the app uses it for operations sync. Only updates accounts that already exist in UserDataStore.
+   */
+  private suspend fun migrateTimestampKey(context: Context) {
+    try {
+      val timestampMap = CapacitorStorageHelper.locateAndReadTimestampKeyFromCapacitorStorage(context)
+      if (timestampMap.isEmpty()) {
+        Log.d(TAG, "No timestampkey entries found in Capacitor storage")
+        return
+      }
+      val userDataStore = UserDataStore(context)
+      timestampMap.forEach { (accountId, timestamp) ->
+        userDataStore.updateSyncTimestamp(accountId, timestamp)
+      }
+      Log.i(TAG, "Migrated ${timestampMap.size} operations sync timestamp(s) from Capacitor")
+    } catch (e: Exception) {
+      Log.e(TAG, "Timestampkey migration failed: ${e.message}")
+    }
+  }
+
   private suspend fun migrateDeviceData(context: Context): Boolean = withContext(Dispatchers.IO) {
     return@withContext try {
       val devicesJsonMap =
@@ -296,9 +349,12 @@ class MigrationService @Inject constructor(
         return@withContext false
       }
 
-      // Save account and related data
+      // Read last sync timestamp from Capacitor (Ionic key: timestampkey-{accountId})
+      val lastSyncTimestamp =
+        CapacitorStorageHelper.getLastSyncTimestampForAccount(context, accountEntity.id)
 
-      saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap)
+      // Save account and related data
+      saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
 
       Log.i(TAG, "✅ Account migration successful: ${accountEntity.email}")
       true
@@ -310,12 +366,14 @@ class MigrationService @Inject constructor(
 
   /**
    * Saves account and all related settings to the database.
+   * @param lastSyncTimestamp Optional last operations sync timestamp from Ionic Capacitor storage (timestampkey-{accountId}); stored in UserDataStore when present.
    */
   private suspend fun saveAccountAndSettings(
     context: Context,
     ionicAccount: IonicAccount,
     accountEntity: AccountEntity,
-    themeModeMap: Map<String, String>
+    themeModeMap: Map<String, String>,
+    lastSyncTimestamp: String? = null
   ) {
     // Update UserDataStore with UserAccount
     val userDataStore = UserDataStore(context)
@@ -323,8 +381,14 @@ class MigrationService @Inject constructor(
 
     themeModeMap.forEach { (key, value) ->
       val themeMode = value.toThemeMode()
+      val syncTs = if (key == accountEntity.id && !lastSyncTimestamp.isNullOrBlank()) lastSyncTimestamp else ""
       Log.d(TAG, "🌞 Theme mode for $key: $value")
-      userDataStore.addAccount(key, themeMode = themeMode, forceUpdate = userDataStore.containsAccount(key))
+      userDataStore.addAccount(
+        key,
+        themeMode = themeMode,
+        syncTimestamp = syncTs,
+        forceUpdate = userDataStore.containsAccount(key),
+      )
     }
 
     userDataStore.updateAccountTokens(
@@ -335,6 +399,11 @@ class MigrationService @Inject constructor(
       true,
     )
     userDataStore.setActiveAccount(accountEntity.id)
+
+    // If account was not in themeModeMap, set sync timestamp here (addAccount already set it when key == accountEntity.id)
+    if (!lastSyncTimestamp.isNullOrBlank() && accountEntity.id !in themeModeMap) {
+      userDataStore.updateSyncTimestamp(accountEntity.id, lastSyncTimestamp)
+    }
 
     // Insert account and settings using extension functions
     migrationRepository.insertAccountWithSettings(
@@ -353,16 +422,17 @@ class MigrationService @Inject constructor(
 
   /**
    * Migrates entries using raw SQL queries.
+   * Only called when opStack table exists. Uses opStack_metric if present, else selects from opStack only.
    */
   private suspend fun migrateEntriesWithRawSQL(context: Context, sqliteDb: SQLiteDatabase): Int {
     var migratedCount = 0
     var cursor: Cursor? = null
 
     try {
-      // Query to join opStack_v1 with opStack_metric for complete data
-      // Standardized column order: id, userId, entryTimestamp, operationType, weight, bodyFat, muscleMass, water, bmi, source, attempts, bmr, metabolicAge, proteinPercent, pulse, skeletalMusclePercent, subcutaneousFatPercent, visceralFatLevel, boneMass, impedance, unit
-      // Note: impedance and unit are NULL for opStack since opStack_metric doesn't have these columns
-      val query = """
+      // Build query depending on whether opStack_metric exists (LEFT JOIN would fail if table missing)
+      val hasMetric = tableExists(sqliteDb, "opStack_metric")
+      val query = if (hasMetric) {
+        """
         SELECT
           e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
           e.muscleMass, e.water, e.bmi, e.source, e.attempts,
@@ -371,7 +441,18 @@ class MigrationService @Inject constructor(
         FROM opStack e
         LEFT JOIN opStack_metric m ON e.userId = m.userId AND e.entryTimestamp = m.entryTimestamp
         ORDER BY e.entryTimestamp ASC
-      """
+        """
+      } else {
+        """
+        SELECT
+          e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
+          e.muscleMass, e.water, e.bmi, e.source, e.attempts,
+          NULL AS bmr, NULL AS metabolicAge, NULL AS proteinPercent, NULL AS pulse, NULL AS skeletalMusclePercent,
+          NULL AS subcutaneousFatPercent, NULL AS visceralFatLevel, NULL AS boneMass, NULL AS impedance, NULL AS unit
+        FROM opStack e
+        ORDER BY e.entryTimestamp ASC
+        """
+      }
 
       cursor = sqliteDb.rawQuery(query, null)
 
@@ -407,17 +488,18 @@ class MigrationService @Inject constructor(
   }
 
   /**
-   * Migrates entries from entry and entry_metric tables using raw SQL queries.
-   * This function handles the regular entries (not opStack entries) from the Ionic database.
+   * Migrates entries from entry (and optionally entry_metric) tables using raw SQL queries.
+   * Only called when entry table exists. Uses entry_metric if present, else selects from entry only.
    */
   private suspend fun migrateEntriesFromEntryTables(context: Context, sqliteDb: SQLiteDatabase): Int {
     var migratedCount = 0
     var cursor: Cursor? = null
 
     try {
-      // Query to join entry_v1 with entry_metric_v1 for complete data
-      // Column order: id, userId, entryTimestamp, operationType, weight, bodyFat, muscleMass, water, bmi, source, bmr, metabolicAge, proteinPercent, pulse, skeletalMusclePercent, subcutaneousFatPercent, visceralFatLevel, boneMass, impedance, unit
-      val query = """
+      // Build query depending on whether entry_metric exists (LEFT JOIN would fail if table missing)
+      val hasMetric = tableExists(sqliteDb, "entry_metric")
+      val query = if (hasMetric) {
+        """
         SELECT
           e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
           e.muscleMass, e.water, e.bmi, e.source, 0 AS attempts,
@@ -426,7 +508,18 @@ class MigrationService @Inject constructor(
         FROM entry e
         LEFT JOIN entry_metric m ON e.userId = m.userId AND e.entryTimestamp = m.entryTimestamp
         ORDER BY e.entryTimestamp ASC
-      """
+        """
+      } else {
+        """
+        SELECT
+          e.id, e.userId, e.entryTimestamp, e.operationType, e.weight, e.bodyFat,
+          e.muscleMass, e.water, e.bmi, e.source, 0 AS attempts,
+          NULL AS bmr, NULL AS metabolicAge, NULL AS proteinPercent, NULL AS pulse, NULL AS skeletalMusclePercent,
+          NULL AS subcutaneousFatPercent, NULL AS visceralFatLevel, NULL AS boneMass, NULL AS impedance, NULL AS unit
+        FROM entry e
+        ORDER BY e.entryTimestamp ASC
+        """
+      }
 
       cursor = sqliteDb.rawQuery(query, null)
 
