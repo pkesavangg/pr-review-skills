@@ -100,7 +100,12 @@ object EntryHelper {
     )
   }
 
-  fun Double?.rounded(): Double? = this?.let { round(it * 10) / 10 }
+  fun Double?.rounded(): Double? =
+    this?.let {
+      BigDecimal.valueOf(it)
+        .setScale(1, RoundingMode.HALF_UP)
+        .toDouble()
+    }
   fun Float.toDouble1dp(rounding: RoundingMode = RoundingMode.HALF_UP): Double =
     if (this.isFinite()) BigDecimal.valueOf(this.toDouble()).setScale(1, rounding).toDouble() else this.toDouble()
 
