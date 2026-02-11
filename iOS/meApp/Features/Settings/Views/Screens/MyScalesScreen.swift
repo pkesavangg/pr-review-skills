@@ -257,7 +257,8 @@ struct MyScalesScreen: View {
                                 onTap: {
                                     let scaleType = determineScaleType(for: scale)
                                     router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
-                                }
+                                },
+                                scaleType: determineScaleType(for: scale)
                             )
                             
                             Divider()

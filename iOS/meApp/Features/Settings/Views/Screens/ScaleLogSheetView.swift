@@ -33,7 +33,8 @@ struct ScaleLogSheetView: View {
                                     onTap: {
                                         helpStore.sendScaleLogHandler(device: scale)
                                     },
-                                    isDisabled: !(scale.isConnected ?? false)
+                                    isDisabled: !(scale.isConnected ?? false),
+                                    scaleType: ScaleTypeHelper.determineScaleType(for: scale)
                                 )
                             }
                             .disabled(!(scale.isConnected ?? false))
