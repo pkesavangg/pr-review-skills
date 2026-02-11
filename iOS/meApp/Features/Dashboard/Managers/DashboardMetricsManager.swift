@@ -330,8 +330,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             DashboardStrings.water
         ]
 
+        let effectiveRemoved = removedMetrics.isEmpty ? getRemovedMetricLabels() : removedMetrics
         if isEditMode {
-            let effectiveRemoved = removedMetrics.isEmpty ? getRemovedMetricLabels() : removedMetrics
             // In edit mode, show all metrics (both removed and non-removed) so users can manage them
             // Non-removed metrics first, then removed metrics
             let nonRemovedMetrics = state.metrics.filter { !effectiveRemoved.contains($0.label) }
@@ -339,7 +339,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             return nonRemovedMetrics + removedMetricsArray
         } else {
             // In non-edit mode, only show non-removed metrics
-            let allUnremovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
+            let allUnremovedMetrics = state.metrics.filter { !effectiveRemoved.contains($0.label) }
             
             switch dashboardType {
             case .dashboard4:

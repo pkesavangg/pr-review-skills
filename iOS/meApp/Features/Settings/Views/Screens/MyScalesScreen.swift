@@ -249,15 +249,16 @@ struct MyScalesScreen: View {
                             .padding(.horizontal, .spacingSM)
                         
                         ForEach(scaleStore.scales, id: \.id) { scale in
+                            let scaleType = determineScaleType(for: scale)
                             ScaleItemView(
                                 scaleIcon: scaleIcon(for: scale.sku),
                                 modelNumber: DeviceHelper.mapSkuForDisplay(scale.sku ?? "----"),
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
                                 status: scaleStore.determineConnectionStatus(for: scale),
                                 onTap: {
-                                    let scaleType = determineScaleType(for: scale)
                                     router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
-                                }
+                                },
+                                scaleType: scaleType
                             )
                             
                             Divider()
