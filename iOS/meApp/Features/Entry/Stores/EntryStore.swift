@@ -184,6 +184,12 @@ final class EntryStore: ObservableObject {
             }
         }
     }
+    
+    /// Refreshes the weight unit from the active account.
+    /// Call this when the view appears to ensure the unit is up-to-date after sync.
+    func refreshWeightUnit() {
+        updateWeightUnitFromAccount(accountService.activeAccount)
+    }
 
     private func clampTimeForSelectedDate(selectedDate: Date? = nil, selectedTime: Date? = nil) {
         if isAdjustingTime { return }

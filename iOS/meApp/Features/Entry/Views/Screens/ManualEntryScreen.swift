@@ -24,6 +24,19 @@ struct ManualEntryScreen: View {
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
     
+    // Computed property for weight input config to ensure it updates when weightUnit changes
+    private var weightInputConfig: TextInputConfig {
+        let weightLabel = labels.weightLabel(entryStore.weightUnit == .kg)
+        return TextInputConfig(
+            label: weightLabel,
+            inputType: .metric,
+            errorMessage: entryStore.getError(for: entryStore.manualEntryForm.weight),
+            focusField: .weight,
+            maxLength: 4,
+            maxValue: 999.9
+        )
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<EmptyView, EmptyView>(title: manualEntryLang.title, canShowBorder: true)
@@ -33,17 +46,7 @@ struct ManualEntryScreen: View {
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         // Weight Input Field
                         MetricInputField(
-                            config: {
-                                let weightLabel = labels.weightLabel(entryStore.weightUnit == .kg)
-                                return TextInputConfig(
-                                    label: weightLabel,
-                                    inputType: .metric,
-                                    errorMessage: entryStore.getError(for: entryStore.manualEntryForm.weight),
-                                    focusField: .weight,
-                                    maxLength: 4,
-                                    maxValue: 999.9
-                                )
-                            }(),
+                            config: weightInputConfig,
                             value: $entryStore.manualEntryForm.weight.value,
                             focusedField: $focusedField
                         ) {
@@ -325,6 +328,8 @@ struct ManualEntryScreen: View {
                 .onAppear {
                     // Ensure time defaults to current when landing on this tab
                     entryStore.refreshTimeOnTabSelected()
+                    // Refresh weight unit to catch any sync updates from other devices
+                    entryStore.refreshWeightUnit()
                     // Start periodic time sync while on this screen
                     entryStore.startAutoTimeSync()
                     // Register a reselect handler for same-tab clicks (do nothing)
@@ -339,7 +344,7 @@ struct ManualEntryScreen: View {
                         return await entryStore.confirmDiscardChanges()
                     }
                 }
-                .onChange(of: entryStore.weightUnit) { _, _ in
+                .onChange(of: entryStore.weightUnit) { oldValue, newValue in
                 }
                 .onDisappear {
                     // Stop periodic time sync when leaving screen
@@ -349,6 +354,7 @@ struct ManualEntryScreen: View {
                     // Update time every time Entry tab becomes active
                     if newValue == .entry {
                         entryStore.refreshTimeOnTabSelected()
+                        entryStore.refreshWeightUnit()
                         entryStore.startAutoTimeSync()
                     } else {
                         entryStore.stopAutoTimeSync()
