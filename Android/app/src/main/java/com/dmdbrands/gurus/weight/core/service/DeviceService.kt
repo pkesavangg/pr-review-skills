@@ -299,7 +299,7 @@ constructor(
     // 6. Get fresh data from API and merge with unsynced
     val finalDevices = try {
       val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
-      AppLog.e(tag, "Fetching devices from API" )
+      AppLog.i(tag, "Successfully fetched ${apiDevices.size} devices from API")
       apiDevices.map { apiDev ->
         val localMatch = deviceRepository.getDevice(apiDev.id).first()
         if (localMatch != null) {
