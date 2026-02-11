@@ -1231,10 +1231,6 @@ constructor(
                 )
                 discoveredScale = deviceService.saveScale(discoveredScale!!)
                 isScaleConnected = true
-
-                // Navigate promptly to GATHERING_NETWORK so the user does not feel stuck.
-                onNext()
-
                 // Defer dashboard 4→12 metrics update and user list fetch to avoid blocking the transition.
                 // These operations run in the background after navigation.
                 try {
@@ -1260,6 +1256,8 @@ constructor(
                   // Log errors but don't block navigation - these are background operations
                   AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
                 }
+                // Navigate promptly to GATHERING_NETWORK so the user does not feel stuck.
+                onNext()
               }
             }
 
@@ -1861,6 +1859,7 @@ constructor(
                     discoveredScale?.id ?: "",
                     discoveredScale?.preferences!!.toR4ScalePreferenceApiModel(),
                   )
+                  AppLog.d(TAG, "Scale settings updated successfully")
                   handleIntent(
                     BtWifiScaleSetupIntent.SetStepConnectionState(
                       BtWifiSetupStep.UPDATE_SETTINGS,
