@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceInfoRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
+import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +43,8 @@ constructor(
   private val appRepository: IAppRepository,
   private val accountRepository: IAccountRepository,
   private val healthConnectRepository: IHealthConnectRepository,
-  private val integrationRepository: IIntegrationRepository
+  private val integrationRepository: IIntegrationRepository,
+  private val entryService: IEntryService
 
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceInfoService {
   companion object {
@@ -83,6 +85,7 @@ constructor(
           if (networkState.available) {
             AppLog.d(TAG, "Network is available, checking for pending offline sync")
             offlineHandlerService.handleOfflineSync()
+            entryService.syncOperations()
             healthConnectRepository.syncIntegration()
             integrationRepository.updateLocalAccount()
           } else {

@@ -226,7 +226,8 @@ object ServiceModule {
     appRepository: IAppRepository,
     accountRepository: IAccountRepository,
     healthConnectRepository: IHealthConnectRepository,
-    integrationRepository: IIntegrationRepository
+    integrationRepository: IIntegrationRepository,
+    entryService: IEntryService
   ): IDeviceInfoService =
     DeviceInfoService(
       context,
@@ -239,6 +240,7 @@ object ServiceModule {
       accountRepository,
       healthConnectRepository,
       integrationRepository,
+      entryService
     )
 
     /**
