@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toDoublePreserve
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
@@ -206,7 +207,7 @@ object GraphUtil {
     val immediatePoint = graphLines.points
       .filter { it.x.value.toLong() > timeStamp }
       .minByOrNull { it.x.value.toLong() }
-    return immediatePoint?.y?.value as Double?
+    return immediatePoint?.y?.value?.toFloat()?.toDoublePreserve()
   }
 
   fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
@@ -215,7 +216,7 @@ object GraphUtil {
     val previousPoint = graphLines.points
       .filter { it.x.value.toLong() < timeStamp }
       .maxByOrNull { it.x.value.toLong() }
-    return previousPoint?.y?.value as Double?
+    return previousPoint?.y?.value?.toFloat()?.toDoublePreserve()
   }
 
   /**
@@ -253,8 +254,8 @@ object GraphUtil {
     }
 
     // Get all metric values (including previous/next for range calculation)
-    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Double? }
-      .filter { it.isFinite() } // Filter out NaN/Infinity values
+    val allMetricValues =
+      metricGraphLine.points.map { it.y.value.toFloat().toDoublePreserve() }.filter { it.isFinite() }
 
     if (allMetricValues.isEmpty()) {
       return metricGraphLine
