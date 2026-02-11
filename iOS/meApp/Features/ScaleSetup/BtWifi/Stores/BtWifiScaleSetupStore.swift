@@ -1399,7 +1399,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Revert unsaved changes for each customize screen
         switch settingToRevert {
         case .dashboardMetrics:
-            discardDashboardCustomization()
+            // Check if user has saved dashboard metrics locally
+            let hasSavedDashboardMetrics = hasSavedSettings && selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            
+            if hasSavedDashboardMetrics {
+                // User has saved locally - revert any unsaved changes and exit edit mode
+                // but keep dashboardMetrics in selectedCustomizeItems for API persistence on "next"
+                dashboardStore.cancelEdit()
+                // Don't remove from selectedCustomizeItems - keep it for API persistence
+            } else {
+                // User hasn't saved - discard all changes and remove from selectedCustomizeItems
+                discardDashboardCustomization()
+            }
         case .scaleMode:
             if let savedScale = savedScale {
                 // Restore previously snapshotted values
