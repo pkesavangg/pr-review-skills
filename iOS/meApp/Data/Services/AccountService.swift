@@ -677,7 +677,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.update(from: dto)
             
             // Restore preserved metrics order (don't let API response overwrite it)
-            // This matches Android behavior where local order is preserved
             if let dashboardSettings = localAccount.dashboardSettings {
                 if let preserved = preservedDashboardMetrics, !preserved.isEmpty {
                     dashboardSettings.dashboardMetrics = preserved
