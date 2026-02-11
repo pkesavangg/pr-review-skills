@@ -516,7 +516,7 @@ object GraphUtil {
   fun getRelativeStart(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
     when (segment) {
       GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getRelativeDayStart(it)
-      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getMonthStart(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getRelativeMonthStart(it)
     }
   }
 
