@@ -344,8 +344,6 @@ struct ManualEntryScreen: View {
                         return await entryStore.confirmDiscardChanges()
                     }
                 }
-                .onChange(of: entryStore.weightUnit) { oldValue, newValue in
-                }
                 .onDisappear {
                     // Stop periodic time sync when leaving screen
                     entryStore.stopAutoTimeSync()
