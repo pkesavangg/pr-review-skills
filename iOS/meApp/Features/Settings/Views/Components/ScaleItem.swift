@@ -16,7 +16,7 @@ struct ScaleItemView: View {
     let onTap: () -> Void
     let hideChevron: Bool
     let isDisabled: Bool
-    let scaleType: ScaleType?
+    let scaleType: ScaleType
     
     init(
         scaleIcon: Image,
@@ -26,7 +26,7 @@ struct ScaleItemView: View {
         onTap: @escaping () -> Void,
         hideChevron: Bool = false,
         isDisabled: Bool = false,
-        scaleType: ScaleType? = nil
+        scaleType: ScaleType
     ) {
         self.scaleIcon = scaleIcon
         self.modelNumber = modelNumber
@@ -39,7 +39,6 @@ struct ScaleItemView: View {
     }
     
     private var shouldShowStatus: Bool {
-        guard let scaleType = scaleType else { return false }
         // Show status only for Bluetooth and BtWifi scales
         switch scaleType {
         case .bluetoothA3, .bluetoothA6, .bluetoothR4:
@@ -132,7 +131,8 @@ struct ScaleItemView_Previews: PreviewProvider {
                 modelNumber: "0412",
                 scaleName: "accucheck verve smart scale",
                 status: .connected,
-                onTap: {}
+                onTap: {},
+                scaleType: .bluetoothA6
             )
             Divider()
             ScaleItemView(
@@ -140,7 +140,8 @@ struct ScaleItemView_Previews: PreviewProvider {
                 modelNumber: "0412",
                 scaleName: "accucheck verve smart scale",
                 status: .notConnected,
-                onTap: {}
+                onTap: {},
+                scaleType: .bluetoothA6
             )
             Divider()
             ScaleItemView(
@@ -148,7 +149,8 @@ struct ScaleItemView_Previews: PreviewProvider {
                 modelNumber: "0412",
                 scaleName: "accucheck verve smart scale",
                 status: .setupIncomplete,
-                onTap: {}
+                onTap: {},
+                scaleType: .bluetoothA6
             )
             Divider()
         }
