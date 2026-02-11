@@ -3452,6 +3452,20 @@ class DashboardStore: ObservableObject {
         snapshotRemovedStreaks = state.ui.removedStreaks
     }
 
+    /// Returns true if there are unsaved changes (current state differs from snapshot)
+    func hasUnsavedChanges() -> Bool {
+        guard hasEditSnapshot else { return false }
+        return metricsManager.state.metrics.map { $0.label } != snapshotMetrics.map { $0.label } ||
+               metricsManager.state.activeMetricsCount != snapshotActiveMetricsCount ||
+               streakManager.state.streakItems.map { $0.label } != snapshotStreakItems.map { $0.label } ||
+               streakManager.state.activeStreakItemsCount != snapshotActiveStreakItemsCount ||
+               state.ui.isGoalCardRemoved != snapshotGoalCardRemoved ||
+               state.ui.goalCardPosition != snapshotGoalCardPosition ||
+               state.ui.streakGridOrder != snapshotStreakGridOrder ||
+               state.ui.removedMetrics != snapshotRemovedMetrics ||
+               state.ui.removedStreaks != snapshotRemovedStreaks
+    }
+    
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
     func cancelEdit() {
         logger.log(level: .info, tag: "DashboardStore", message: "Cancelling edit session and restoring snapshot.")
