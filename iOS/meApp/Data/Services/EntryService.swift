@@ -497,8 +497,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         
         do {
-            // 1. Push unsynced entries to remote
-            await pushUnsyncedEntriesToRemote(accountId: accountId)
+            // 1. Push unsynced entries to remote.
+            // Returns true if at least one local create was successfully synced; caller uses this to decide
+            // whether to show the goal met card (we only show it when the user actually added/received new entries).
+            let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
 
             // 2. Fetch latest from remote and merge, using last sync timestamp
             // Use count check instead of fetching all entries (avoids loading 3660+ Entry objects)
@@ -509,19 +511,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
                 lastSyncTimestamp = nil
             }
-            
+
             let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
-            await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
+            // Returns true if at least one new entry was inserted from remote (create that didn't exist locally);
+            // used to decide whether to show the goal met card (only when new entries arrived).
+            let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
             await loadDashboardData()
 
             // 5. Update sync timestamp and local state
             try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
             lastSyncTime = Date()
-            
-            // 6. Update progress, streak, and check for goal alerts
+
+            // 6. Update progress, streak, and check for goal alerts.
+            // Only show the goal met card when this sync actually processed new creates (local push or remote merge).
+            // Otherwise we'd show it on every login/pull-to-refresh even when nothing new was added.
             await updateProgressAndStreakInternal()
-            await checkGoalAlerts()
-            
+            if hadPushedCreates || hadMergedNewCreates {
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // Brief delay so the goal met card displays correctly after data settles
+                await checkGoalAlerts()
+            }
+
             await logger.log(level: .debug, tag: tag, message: "Full sync completed successfully")
 
         } catch {
@@ -529,13 +538,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
     
-    private func pushUnsyncedEntriesToRemote(accountId: String) async {
+    /// Pushes unsynced local entries to the remote API.
+    ///
+    /// - Returns: `true` if at least one create operation was successfully synced.
+    ///   The caller uses this to decide whether to show the goal met card: we only show it when
+    ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
+    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool {
         // 1. Get all unsynced entries (both new and delete operations)
         let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
-        
-        var successfulOps: [Entry] = []
-        var failedOps: [Entry] = []
-        
+
+        // Tracks whether we successfully synced at least one create to the API; drives goal met card visibility.
+        var hadSuccessfulCreate = false
+
         // 2. Try to sync with backend
         if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
             for operation in unsyncedEntries {
@@ -551,6 +565,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     try await remoteRepo.syncOperation(operation: dto)
 
                     if operationType == "create" {
+                        hadSuccessfulCreate = true
                         // R9: Use primitive-based update instead of mutating @Model
                         try await localRepo.updateEntrySyncStatus(
                             entryId: entryIdString,
@@ -579,6 +594,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 }
             }
         }
+        return hadSuccessfulCreate
     }
     /// Lightweight summary for a single month. Avoids computing all months when only one changes.
     func getMonthSummary(monthKey: String) async throws -> HistoryMonth? {
@@ -600,9 +616,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         
         do {
-            // 1. Push unsynced entries to remote
-            await pushUnsyncedEntriesToRemote(accountId: accountId)
-            
+            // 1. Push unsynced entries to remote (return value unused; goal alerts handled by saveNewEntry)
+            _ = await pushUnsyncedEntriesToRemote(accountId: accountId)
+
             // After syncing, update last sync timestamp and local state
             var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
             if (try? await localRepo.fetchEntryCount(forUserId: accountId)) == 0 {
@@ -627,8 +643,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
     
-    /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp)
-    private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async {
+    /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp).
+    ///
+    /// - Returns: `true` if at least one new entry was inserted (create from remote that didn't exist locally).
+    ///   The caller uses this to decide whether to show the goal met card: we only show it when
+    ///   new entries arrived from the server in this sync (not on every login or pull-to-refresh).
+    private func mergeRemoteOperations(_ remoteOps: [BathScaleOperationDTO], accountId: String) async -> Bool {
+        // Tracks whether we inserted at least one new entry from remote; drives goal met card visibility.
+        var hadNewCreates = false
         // Group operations by timestamp to determine final state for each timestamp
         let groupedOps = Dictionary(grouping: remoteOps) { op in
             op.entryTimestamp ?? ""
@@ -724,6 +746,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             } else {
                 // No local entry - only create if final operation is create
                 if finalOp.operationType == OperationType.create.rawValue {
+                    hadNewCreates = true
                     // Final state is create - add to local storage
                     let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
                     try? await localRepo.saveEntry(newEntry)
@@ -733,7 +756,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 // (entry was already deleted or never existed locally)
             }
         }
-        
+
         do {
             let latestEntry = try await getLatestEntry()
             if let entry = latestEntry {
@@ -745,8 +768,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to get latest entry: \(error.localizedDescription)")
         }
+        return hadNewCreates
     }
-    
+
     private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
         guard let allEntries = localEntries, allEntries.count > 1 else { return }
         for entry in allEntries where entry.id != keepId {

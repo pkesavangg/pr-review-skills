@@ -2347,6 +2347,15 @@ class DashboardStore: ObservableObject {
             let labelRange = getLabelDateRangeForWeek()
             result = filterOperationsInDateRangeByDay(start: labelRange.start, end: labelRange.end)
 
+        case .total:
+            // Total view shows full timeline (e.g. feb 2022 - feb 2026); use ALL ops in that range.
+            // visibleOperations uses a 1-year window and would undercount.
+            if let bounds = dataManager.getDateBounds(for: .total) {
+                result = filterOperationsInDateRange(start: bounds.min, end: bounds.max)
+            } else {
+                result = continuousOperations
+            }
+
         default:
             result = visibleOperations
         }
