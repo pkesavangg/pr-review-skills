@@ -296,7 +296,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Refresh data and invalidate caches
             viewModel.refreshData()
             viewModel.invalidateCache()
-            viewModel.invalidateXAxisCache()            
+            viewModel.invalidateXAxisCache()
             // Update local cache since data changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
