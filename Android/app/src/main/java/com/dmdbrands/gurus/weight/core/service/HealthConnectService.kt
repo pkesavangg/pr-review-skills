@@ -262,6 +262,11 @@ class HealthConnectService @Inject constructor(
         return false
       }
 
+      // Clear orphaned assignedTo from app updates (DataStore persists across updates;
+      // stale keys/IDs from previous version can cause false USER_CONFLICT)
+      val validAccountIds = accountRepository.getLoggedInAccounts().first().map { it.id }.toSet()
+      healthConnectRepository.clearOrphanedAssignedTo(validAccountIds)
+
       val allAccountData = healthConnectRepository.getAccountDataMap()
       val assignedToAccountId = allAccountData.values
         .firstOrNull { it.hasAssignedTo() }
