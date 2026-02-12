@@ -32,13 +32,13 @@ struct ConnectingBluetoothView: View {
                         .lineLimit(nil)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, .spacingXSM)
                 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.setupPressUnitButtonGifName(sku), height: 250)
                         .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
                                height: DevicePlatform.isMiniPhone ? 200 : 250)
-                        .scaleEffect(DevicePlatform.isMiniPhone ? 0.8 : 0.81)
+                        .scaleEffect(DevicePlatform.isMiniPhone ? 0.8 : 0.9)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 
@@ -70,7 +70,7 @@ struct ConnectingBluetoothView: View {
                             pairAgain?()
                         }
                     )
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.horizontal, .spacingSM)
                 default:
                     EmptyView()

@@ -29,7 +29,7 @@ struct ScaleSetupFinishView: View {
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, .spacingXSM)
                     Spacer()
                 }
                 AppIconView(icon: AppAssets.checkMarkLarge, size: IconSize(width: 180, height: 180))

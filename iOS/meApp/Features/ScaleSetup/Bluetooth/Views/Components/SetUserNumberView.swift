@@ -29,7 +29,7 @@ struct SetUserNumberView: View {
                         .foregroundColor(theme.textBody)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, .spacingXSM)
                 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.setupSetUserNumberGifName(sku), height: 250)
