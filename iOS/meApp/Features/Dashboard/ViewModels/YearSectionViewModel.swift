@@ -45,8 +45,7 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
     /// within the range of plotted data (first..last). Otherwise hide it.
     override func handleChartSelection(at date: Date?) {
         guard let date = date else { return }
-        guard dashboardStore != nil else { return }
-        let cal = Calendar.current
+        guard let store = dashboardStore else { return }
 
         // Exclude trailing phantom tick when snapping
         let ticks = xAxisValues
@@ -57,7 +56,7 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
         let snappedTick = realTicks.min { a, b in
             abs(a.timeIntervalSince(date)) < abs(b.timeIntervalSince(date))
         } ?? date
-        let snapped = monthNoon(for: snappedTick, using: cal)
+        let snapped = store.graphManager.snapScrollPosition(snappedTick, for: .year)
 
         // Determine first/last plotted months and only show selection if snapped month
         // lies within [firstMonth, lastMonth]. Otherwise, hide it (no line area).
@@ -66,8 +65,8 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
             .sorted()
         
         if let first = effectiveDates.first, let last = effectiveDates.last {
-            let firstMonth = monthNoon(for: first, using: cal)
-            let lastMonth = monthNoon(for: last, using: cal)
+            let firstMonth = store.graphManager.snapScrollPosition(first, for: .year)
+            let lastMonth = store.graphManager.snapScrollPosition(last, for: .year)
             
             if snapped >= firstMonth && snapped <= lastMonth {
                 selectedDate = snapped
@@ -80,14 +79,5 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
             selectedDate = nil
             showCrosshair = false
         }
-    }
-
-    private func monthNoon(for date: Date, using calendar: Calendar) -> Date {
-        var components = calendar.dateComponents([.year, .month], from: date)
-        components.day = 1
-        components.hour = 12
-        components.minute = 0
-        components.second = 0
-        return calendar.date(from: components) ?? date
     }
 }
