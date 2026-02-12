@@ -1897,10 +1897,9 @@ constructor(
                 ggDeviceDetail.broadcastIdString,
               )
             ) {
-              // Cancel timeout and stop scan to prevent dialog stacking from repeated callbacks
+              // Cancel timeout since we found a known scale
               pairingTimeoutJob?.cancel()
               pairingTimeoutJob = null
-              stopObservingDevices()
 
               dialogQueueService.showDialog(
                 DialogModel.Alert(
