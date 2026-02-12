@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
@@ -234,10 +235,10 @@ constructor(
     if (hasChanges) {
       dialogQueueService.enqueue(
         DialogModel.Confirm(
-          title = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Title,
-          message = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Message,
-          confirmText = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Leave,
-          cancelText = com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings.UnsavedExitPopup.Cancel,
+          title = AppPopupStrings.UnsavedExitPopup.Title,
+          message = AppPopupStrings.UnsavedExitPopup.Message,
+          confirmText = AppPopupStrings.UnsavedExitPopup.Leave,
+          cancelText = AppPopupStrings.UnsavedExitPopup.Cancel,
           onConfirm = {
             navigateBack()
             initScaleUserList()
