@@ -31,6 +31,14 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
     override var timePeriod: TimePeriod {
         return .year
     }
+
+    /// Keep year scrolling quantized to month boundaries during drag updates so
+    /// live drag behavior matches final settled snapping.
+    override func handleScrollPositionChange(_ newPosition: Date?) {
+        guard let newPosition = newPosition else { return }
+        let snapped = dashboardStore?.graphManager.snapScrollPosition(newPosition, for: .year) ?? newPosition
+        super.handleScrollPositionChange(snapped)
+    }
     
 
     /// Snap to nearest month tick; only show crosshair if the snapped date lies
@@ -38,6 +46,7 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
     override func handleChartSelection(at date: Date?) {
         guard let date = date else { return }
         guard dashboardStore != nil else { return }
+        let cal = Calendar.current
 
         // Exclude trailing phantom tick when snapping
         let ticks = xAxisValues
@@ -45,9 +54,10 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
         guard !realTicks.isEmpty else { return }
 
         // Snap to nearest tick by absolute time distance
-        let snapped = realTicks.min { a, b in
+        let snappedTick = realTicks.min { a, b in
             abs(a.timeIntervalSince(date)) < abs(b.timeIntervalSince(date))
         } ?? date
+        let snapped = monthNoon(for: snappedTick, using: cal)
 
         // Determine first/last plotted months and only show selection if snapped month
         // lies within [firstMonth, lastMonth]. Otherwise, hide it (no line area).
@@ -56,13 +66,11 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
             .sorted()
         
         if let first = effectiveDates.first, let last = effectiveDates.last {
-            let cal = Calendar.current
-            let snappedMonth = cal.date(from: cal.dateComponents([.year, .month], from: snapped)) ?? snapped
-            let firstMonth = cal.date(from: cal.dateComponents([.year, .month], from: first)) ?? first
-            let lastMonth = cal.date(from: cal.dateComponents([.year, .month], from: last)) ?? last
+            let firstMonth = monthNoon(for: first, using: cal)
+            let lastMonth = monthNoon(for: last, using: cal)
             
-            if snappedMonth >= firstMonth && snappedMonth <= lastMonth {
-                selectedDate = snappedMonth
+            if snapped >= firstMonth && snapped <= lastMonth {
+                selectedDate = snapped
                 showCrosshair = true
             } else {
                 selectedDate = nil
@@ -72,5 +80,14 @@ final class YearSectionViewModel: BaseSectionViewModel, Equatable {
             selectedDate = nil
             showCrosshair = false
         }
+    }
+
+    private func monthNoon(for date: Date, using calendar: Calendar) -> Date {
+        var components = calendar.dateComponents([.year, .month], from: date)
+        components.day = 1
+        components.hour = 12
+        components.minute = 0
+        components.second = 0
+        return calendar.date(from: components) ?? date
     }
 }

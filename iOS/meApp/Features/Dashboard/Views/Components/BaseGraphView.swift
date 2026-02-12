@@ -1087,10 +1087,11 @@ extension View {
                 majorAlignment: DateComponents(day: 31, hour: 12)
             )
         case .year:
-            // For year view: align to mid-December (centers the year boundary between Dec and Jan)
+            // For year view: align strictly to month ticks (1st day, local noon)
+            // so snapping always lands on month grid lines (e.g., Oct 2025, Nov 2025).
             return PagedChartScrollBehavior(
-                matching: DateComponents(hour: 12),
-                majorAlignment: DateComponents(month: 12, day: 20, hour: 12)
+                matching: DateComponents(day: 1, hour: 12),
+                majorAlignment: DateComponents(month: 1, day: 1, hour: 12)
             )
         case .total:
             // For total view: no specific alignment needed (non-scrollable)

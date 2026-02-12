@@ -62,11 +62,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let newPosition = newPosition else {
             return
         }
-        if state.isScrolling {
-            latestScrollPosition = newPosition
-        } else {
-            latestScrollPosition = nil
-        }
+        // Always keep the latest position candidate so small drags that do not
+        // spend long in `.interacting` still settle to a snapped endpoint.
+        latestScrollPosition = newPosition
     }
 
     func handleScrollStart() {
@@ -2416,10 +2414,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return calendar.date(from: components) ?? position
 
         case .year:
-            // Snap to start of month
+            // Snap to month tick (day 1 at local noon) to match yearly X-axis grid lines.
             var components = calendar.dateComponents([.year, .month], from: position)
             components.day = 1
-            components.hour = 0
+            components.hour = 12
             components.minute = 0
             components.second = 0
             return calendar.date(from: components) ?? position
