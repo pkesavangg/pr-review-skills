@@ -16,8 +16,10 @@ import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.Month
 import java.time.Period
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
@@ -144,7 +146,7 @@ object GraphUtil {
    */
   fun GraphSegment.visibleLabelsCount(): Double = when (this) {
     GraphSegment.WEEK -> 28 / 4.0
-    GraphSegment.MONTH -> (28 / 7.0).coerceAtLeast(1.0)
+    GraphSegment.MONTH -> (31 / 7.0).coerceAtLeast(1.0)
     GraphSegment.YEAR -> (366.0 / 31.0) // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
     GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
   }
@@ -695,4 +697,58 @@ object GraphUtil {
   }
 
   // endregion
+  data class Range(val startMillis: Long, val endMillis: Long)
+
+  fun clipRangeForGraph(
+    segment: GraphSegment,
+    startMillis: Long,
+    endMillis: Long,
+    zoneId: ZoneId = ZoneId.systemDefault()
+  ): Range {
+    if (endMillis < startMillis) return Range(startMillis, endMillis)
+    if (segment == GraphSegment.WEEK || segment == GraphSegment.TOTAL) return Range(startMillis, endMillis)
+
+    val start = Instant.ofEpochMilli(startMillis)
+    val end = Instant.ofEpochMilli(endMillis)
+
+    return when (segment) {
+      GraphSegment.MONTH -> lastFullMonthInsideMillisSafe(start, end, zoneId)
+      GraphSegment.YEAR -> lastFullYearInsideMillisSafe(start, end, zoneId)
+      else -> Range(startMillis, endMillis)
+    }
+  }
+
+  private fun lastFullMonthInsideMillisSafe(start: Instant, end: Instant, zoneId: ZoneId): Range {
+    val startYm = YearMonth.from(start.atZone(zoneId))
+    val endYm = YearMonth.from(end.atZone(zoneId))
+
+    var ym = endYm
+    while (!ym.isBefore(startYm)) {
+      val monthStart = ym.atDay(1).atStartOfDay(zoneId).toInstant()
+      val monthEndInclusive = ym.plusMonths(1).atDay(1).atStartOfDay(zoneId).toInstant().minusMillis(1)
+
+      if (start <= monthStart && end >= monthEndInclusive) {
+        return Range(monthStart.toEpochMilli(), monthEndInclusive.toEpochMilli())
+      }
+      ym = ym.minusMonths(1)
+    }
+    return Range(start.toEpochMilli(), end.toEpochMilli())
+  }
+
+  private fun lastFullYearInsideMillisSafe(start: Instant, end: Instant, zoneId: ZoneId): Range {
+    val startYear = start.atZone(zoneId).year
+    val endYear = end.atZone(zoneId).year
+
+    var y = endYear
+    while (y >= startYear) {
+      val yearStart = LocalDate.of(y, 1, 1).atStartOfDay(zoneId).toInstant()
+      val yearEndInclusive = LocalDate.of(y + 1, 1, 1).atStartOfDay(zoneId).toInstant().minusMillis(1)
+
+      if (start <= yearStart && end >= yearEndInclusive) {
+        return Range(yearStart.toEpochMilli(), yearEndInclusive.toEpochMilli())
+      }
+      y--
+    }
+    return Range(start.toEpochMilli(), end.toEpochMilli())
+  }
 }
