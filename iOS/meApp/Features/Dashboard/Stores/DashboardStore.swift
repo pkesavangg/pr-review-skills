@@ -2275,18 +2275,14 @@ class DashboardStore: ObservableObject {
 
     /// Returns the date range used by the month label for the current scroll position.
     /// If a full calendar month is contained, returns that month interval.
-    /// Otherwise returns a 1-month window starting at the day-aligned left edge.
+    /// Otherwise returns the visible window range.
     private func getLabelDateRangeForMonth() -> DateInterval {
         if let monthInterval = getFullyContainedMonthInterval() {
             return DateInterval(start: monthInterval.start, end: inclusiveEnd(fromExclusive: monthInterval.end))
         }
-
-        let calendar = Calendar.current
         let leftEdge = graphManager.state.xScrollPosition
-        let windowStart = calendar.startOfDay(for: leftEdge)
-        let endExclusive = calendar.date(byAdding: .month, value: 1, to: windowStart)
-            ?? windowStart.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
-        return DateInterval(start: windowStart, end: inclusiveEnd(fromExclusive: endExclusive))
+        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
+        return DateInterval(start: leftEdge, end: inclusiveEnd(fromExclusive: rightEdge))
     }
 
     /// Returns the date range used by the year label for the current scroll position.

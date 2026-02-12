@@ -40,6 +40,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastCachedSelectedMetric: String?
     private var lastCachedOperationsCount: Int = 0
     private var chartDataGenerationThrottle: Timer?
+    
+    /// Gregorian calendar used for yearly tick generation and yearly snap quantization.
+    /// This keeps rendered month grid lines and snap targets in the same calendar system.
+    private var yearlyTickCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = calendar.timeZone
+        cal.locale = calendar.locale
+        return cal
+    }
 
     // MARK: - Constants
 
@@ -62,11 +71,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let newPosition = newPosition else {
             return
         }
-        if state.isScrolling {
-            latestScrollPosition = newPosition
-        } else {
-            latestScrollPosition = nil
-        }
+        // Always keep the latest position candidate so small drags that do not
+        // spend long in `.interacting` still settle to a snapped endpoint.
+        latestScrollPosition = newPosition
     }
 
     func handleScrollStart() {
@@ -1723,10 +1730,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
 
-        // Use a stable Gregorian calendar and anchor ticks at local noon
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = calendar.timeZone
-        cal.locale = calendar.locale
+        // Use the same calendar as yearly snapping so rendered ticks and snap targets align.
+        let cal = yearlyTickCalendar
 
         var dates: [Date] = []
 
@@ -2416,13 +2421,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return calendar.date(from: components) ?? position
 
         case .year:
-            // Snap to start of month
-            var components = calendar.dateComponents([.year, .month], from: position)
+            // Snap to month tick (day 1 at local noon) to match yearly X-axis grid lines.
+            let cal = yearlyTickCalendar
+            var components = cal.dateComponents([.year, .month], from: position)
             components.day = 1
-            components.hour = 0
+            components.hour = 12
             components.minute = 0
             components.second = 0
-            return calendar.date(from: components) ?? position
+            return cal.date(from: components) ?? position
 
         case .total:
             // No snapping for total view (not scrollable)
