@@ -1,46 +1,95 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
 import java.time.Instant
+import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
+ * Filters [values] to those inside [visibleXRange] with optional [paddingMillis] on each side.
+ * If the result is empty, returns a single value at the visible start so the axis does not break.
+ */
+private fun filterToVisibleWithPadding(
+  values: List<Double>,
+  visibleXRange: ClosedFloatingPointRange<Double>,
+  paddingMillis: Double,
+): List<Double> {
+  val start = visibleXRange.start - paddingMillis
+  val end = visibleXRange.endInclusive + paddingMillis
+  val filtered = values.filter { it in start..end }
+  return if (filtered.isEmpty()) listOf(visibleXRange.start) else filtered
+}
+
+/**
  * Internal helper to remember the horizontal item placer for the X axis.
+ * The placer is memoized by [segment] so the same instance is reused until the segment changes,
+ * avoiding unnecessary chart redraws on recomposition.
  */
 @Composable
 internal fun rememberHorizontalAxisItemPlacer(
   segment: GraphSegment,
 ): HorizontalAxis.ItemPlacer {
-  val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()
-  return object : HorizontalAxis.ItemPlacer by defaultPlacer {
-    override fun getLabelValues(
-      context: CartesianDrawingContext,
-      visibleXRange: ClosedFloatingPointRange<Double>,
-      fullXRange: ClosedFloatingPointRange<Double>,
-      maxLabelWidth: Float,
-    ): List<Double> {
-      return if (segment == GraphSegment.YEAR)
-        fullXRange.monthStartTimestampsMillis()
-      else defaultPlacer.getLabelValues(
-        context, visibleXRange, fullXRange, maxLabelWidth,
-      )
-    }
+  return remember(segment) {
+    val defaultPlacer = HorizontalAxis.ItemPlacer.aligned()
+    object : HorizontalAxis.ItemPlacer by defaultPlacer {
+      override fun getLabelValues(
+        context: CartesianDrawingContext,
+        visibleXRange: ClosedFloatingPointRange<Double>,
+        fullXRange: ClosedFloatingPointRange<Double>,
+        maxLabelWidth: Float,
+      ): List<Double> {
+        return when (segment) {
+          GraphSegment.YEAR -> {
+            val all = fullXRange.monthStartTimestampsMillis()
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          GraphSegment.MONTH -> {
+            val all = monthAnchorStartOfDayMillisBetween(
+              startMillis = fullXRange.start.toLong(),
+              endMillis = fullXRange.endInclusive.toLong(),
+            )
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          else -> defaultPlacer.getLabelValues(
+            context, visibleXRange, fullXRange, maxLabelWidth,
+          )
+        }
+      }
 
-    override fun getLineValues(
-      context: CartesianDrawingContext,
-      visibleXRange: ClosedFloatingPointRange<Double>,
-      fullXRange: ClosedFloatingPointRange<Double>,
-      maxLabelWidth: Float
-    ): List<Double>? {
-      return if (segment == GraphSegment.YEAR)
-        fullXRange.monthStartTimestampsMillis()
-      else defaultPlacer.getLabelValues(
-        context, visibleXRange, fullXRange, maxLabelWidth,
-      )
+      override fun getLineValues(
+        context: CartesianDrawingContext,
+        visibleXRange: ClosedFloatingPointRange<Double>,
+        fullXRange: ClosedFloatingPointRange<Double>,
+        maxLabelWidth: Float
+      ): List<Double>? {
+        return when (segment) {
+          GraphSegment.YEAR -> {
+            val all = fullXRange.monthStartTimestampsMillis()
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          GraphSegment.MONTH -> {
+            val all = monthAnchorStartOfDayMillisBetween(
+              startMillis = fullXRange.start.toLong(),
+              endMillis = fullXRange.endInclusive.toLong(),
+            )
+            val padding = GraphUtil.calculateXStep(segment)
+            filterToVisibleWithPadding(all, visibleXRange, padding)
+          }
+          else -> defaultPlacer.getLabelValues(
+            context, visibleXRange, fullXRange, maxLabelWidth,
+          )
+        }
+      }
     }
   }
 }
@@ -70,3 +119,52 @@ fun ClosedFloatingPointRange<Double>.monthStartTimestampsMillis(): List<Double> 
 
   return timestamps
 }
+
+private val TARGET_DAYS = intArrayOf(1, 8, 15, 22, 29)
+
+/**
+ * Returns all matching LocalDate values within [startMillis, endMillis] (inclusive),
+ * for days-of-month 1, 8, 15, 22, 29 (29 only if the month supports it).
+ */
+fun monthAnchorDatesBetween(
+  startMillis: Long,
+  endMillis: Long,
+  zone: ZoneId = ZoneId.systemDefault()
+): List<LocalDate> {
+  if (startMillis > endMillis) return emptyList()
+
+  val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
+  val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
+
+  var ym = YearMonth.from(startDate)
+  val endYm = YearMonth.from(endDate)
+
+  val out = ArrayList<LocalDate>(/* rough guess */ 6 * (endYm.year - ym.year + 1))
+
+  while (!ym.isAfter(endYm)) {
+    val maxDay = ym.lengthOfMonth()
+
+    for (d in TARGET_DAYS) {
+      if (d > maxDay) continue // e.g., Feb 29 on non-leap years
+      val date = ym.atDay(d)
+      if (!date.isBefore(startDate) && !date.isAfter(endDate)) {
+        out.add(date)
+      }
+    }
+
+    ym = ym.plusMonths(1)
+  }
+
+  return out
+}
+
+/**
+ * Same as monthAnchorDatesBetween, but returns timestamps (millis) at start-of-day in [zone].
+ */
+fun monthAnchorStartOfDayMillisBetween(
+  startMillis: Long,
+  endMillis: Long,
+  zone: ZoneId = ZoneId.systemDefault()
+): List<Double> =
+  monthAnchorDatesBetween(startMillis, endMillis, zone)
+    .map { it.atStartOfDay(zone).toInstant().toEpochMilli().toDouble() }

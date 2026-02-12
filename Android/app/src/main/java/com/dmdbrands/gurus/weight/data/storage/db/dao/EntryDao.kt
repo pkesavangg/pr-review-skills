@@ -99,18 +99,12 @@ interface EntryDao {
   }
 
   /**
-   * Marks an entry as deleted if it is not already marked as deleted.
-   * Inserts a new delete operation entry with the current timestamp if needed.
-   * @param entry The entry to mark as deleted.
+   * Marks an entry as deleted by updating the existing row to operationType = "delete".
+   * The same row is kept so sync can send the delete to the server; display queries filter it out.
    */
   @Transaction
   suspend fun delete(entry: Entry) {
-    val deleteEntry = entry.entry.copy(
-      id = 0,
-      operationType = "delete",
-      opTimestamp = entry.entry.opTimestamp,
-    )
-    insertEntryEntity(deleteEntry)
+    update(entry.entry.copy(operationType = "delete"))
   }
 
   /**
@@ -128,7 +122,7 @@ interface EntryDao {
    * @return The latest Entry with relations if found, null otherwise
    */
   @Transaction
-  @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete') ORDER BY datetime(entryTimestamp) DESC LIMIT 1")
   fun getLatestEntry(accountId: String): Flow<PopulatedActiveEntry?>
 
   /**
@@ -138,7 +132,7 @@ interface EntryDao {
    * @return List of Entry containing entries and their related data for the account
    */
   @Transaction
-  @Query("SELECT * FROM entry_view WHERE accountId = :accountId")
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')")
   suspend fun getEntriesByAccount(accountId: String): List<PopulatedActiveEntry>
 
   /**
@@ -154,11 +148,13 @@ interface EntryDao {
         SELECT *
         FROM entry_view
         WHERE accountId = :accountId
+          AND (operationType IS NULL OR operationType != 'delete')
           AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
           AND entryTimestamp IN (
             SELECT MAX(entryTimestamp)
             FROM entry_view
             WHERE accountId = :accountId
+              AND (operationType IS NULL OR operationType != 'delete')
               AND datetime(entryTimestamp) BETWEEN datetime(:startTime) AND datetime(:endTime)
             GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp))
           )
@@ -178,7 +174,7 @@ interface EntryDao {
    * @return A Flow of entries for the specified device type with relations
    */
   @Transaction
-  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND deviceType = :deviceType")
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND deviceType = :deviceType AND (operationType IS NULL OR operationType != 'delete')")
   fun getEntriesByDeviceType(
     accountId: String,
     deviceType: String,
@@ -190,7 +186,7 @@ interface EntryDao {
    * @return The Entry with relations if found, null otherwise
    */
   @Transaction
-  @Query("SELECT * FROM entry WHERE id = :id")
+  @Query("SELECT * FROM entry WHERE id = :id AND (operationType IS NULL OR operationType != 'delete')")
   suspend fun getEntryById(id: Long): PopulatedEntry?
 
   /**
@@ -357,6 +353,7 @@ interface EntryDao {
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
+        AND (operationType IS NULL OR operationType != 'delete')
         AND strftime('%Y-%m', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME})) = :month
         ORDER BY datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}) DESC
     """,
@@ -425,6 +422,7 @@ interface EntryDao {
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
         WHERE e.accountId = :accountId
+          AND (e.operationType IS NULL OR e.operationType != 'delete')
         GROUP BY period
         ORDER BY period DESC
     """,
@@ -464,10 +462,12 @@ interface EntryDao {
         LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
         LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
         WHERE e.accountId = :accountId
+          AND (e.operationType IS NULL OR e.operationType != 'delete')
           AND e.entryTimestamp IN (
             SELECT MAX(entryTimestamp)
             FROM entry
             WHERE accountId = :accountId
+              AND (operationType IS NULL OR operationType != 'delete')
             GROUP BY strftime('%Y-%m', datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}))
           )
         ORDER BY period DESC
@@ -501,6 +501,7 @@ interface EntryDao {
     LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
     LEFT JOIN body_scale_entry_metric AS bsem ON e.id = bsem.id
     WHERE e.accountId = :accountId
+      AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
     ORDER BY period DESC
   """,
@@ -541,6 +542,7 @@ WITH daily_entries AS (
   LEFT JOIN body_scale_entry bse ON e.id = bse.id
   LEFT JOIN body_scale_entry_metric bsem ON e.id = bsem.id
   WHERE e.accountId = :accountId
+    AND (e.operationType IS NULL OR e.operationType != 'delete')
 ),
 distinct_days AS (
   SELECT DISTINCT day FROM daily_entries
@@ -630,6 +632,7 @@ ORDER BY d.day DESC
         FROM entry_view e
         LEFT JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId AND bse.weight IS NOT NULL
+          AND (e.operationType IS NULL OR e.operationType != 'delete')
     ),
     first_last AS (
         SELECT
@@ -699,6 +702,7 @@ ORDER BY d.day DESC
         LEFT JOIN body_scale_entry bse ON e.id = bse.id
         WHERE e.accountId = :accountId
           AND bse.weight IS NOT NULL
+          AND (e.operationType IS NULL OR e.operationType != 'delete')
           AND datetime(e.entryTimestamp) >= datetime('now', '-365 days')
           AND datetime(e.entryTimestamp) <= datetime('now')
     ),
@@ -758,7 +762,7 @@ ORDER BY d.day DESC
    * @param accountId The account ID
    * @return The oldest entry if found, null otherwise
    */
-  @Query("SELECT * FROM entry_view WHERE accountId = :accountId ORDER BY entryTimestamp ASC LIMIT 1")
+  @Query("SELECT * FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete') ORDER BY entryTimestamp ASC LIMIT 1")
   suspend fun getOldestEntry(accountId: String): PopulatedActiveEntry?
 
   /**
@@ -773,6 +777,7 @@ ORDER BY d.day DESC
         strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
         FROM entry_view
         WHERE accountId = :accountId
+          AND (operationType IS NULL OR operationType != 'delete')
         GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC}, ${LOCAL_TIME}))
         ORDER BY datetime(entryTimestamp,${UTC},${LOCAL_TIME}) DESC
         """,
@@ -784,7 +789,7 @@ ORDER BY d.day DESC
    * @param accountId The account ID
    * @return The total count of entries
    */
-  @Query("SELECT COUNT(entryTimestamp) as total FROM entry_view WHERE accountId = :accountId")
+  @Query("SELECT COUNT(entryTimestamp) as total FROM entry_view WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')")
   suspend fun getTotalCount(accountId: String): Int
 
   /**
@@ -799,6 +804,7 @@ ORDER BY d.day DESC
                 strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS date
             FROM entry_view
             WHERE accountId = :accountId
+              AND (operationType IS NULL OR operationType != 'delete')
             GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
             ORDER BY date ASC
         ),
@@ -848,6 +854,7 @@ ORDER BY d.day DESC
     """
         SELECT * FROM entry_view
         WHERE accountId = :accountId
+          AND (operationType IS NULL OR operationType != 'delete')
           AND entryTimestamp >= :startDate
           AND entryTimestamp <= :endDate
         ORDER BY datetime(entryTimestamp) DESC

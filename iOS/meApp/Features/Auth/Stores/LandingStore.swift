@@ -120,6 +120,9 @@ final class LandingStore: ObservableObject {
             return
         }
         
+        // R1: Extract @Model data before async boundary
+        let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
+
         Task {
             notificationService.showLoader(LoaderModel(text: loadingLang.loading))
             defer {
@@ -127,7 +130,6 @@ final class LandingStore: ObservableObject {
             }
             do {
                 try await accountService.switchAccount(to: account)
-                let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountID)")
             } catch {

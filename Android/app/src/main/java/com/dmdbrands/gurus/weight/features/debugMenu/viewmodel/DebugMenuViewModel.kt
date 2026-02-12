@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.debugMenu.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -11,8 +12,8 @@ import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -23,6 +24,7 @@ import com.dmdbrands.gurus.weight.features.debugMenu.strings.DebugMenuStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
 import android.app.Activity
 
@@ -63,14 +65,10 @@ class DebugMenuViewModel @Inject constructor(
               )
             }
 
-          // Set singular scale if only one scale
           singularScale = if (scales.size == 1) scales[0] else null
 
-          // Update state
-          _state.value = _state.value.copy(
-            hasScales = scales.isNotEmpty(),
-            isSendScaleLogEnabled = isSendScaleLogEnabled()
-          )
+          // Update state via intent so reducer sorts scaleList by createdAt (like AddScale SetSavedScales)
+          handleIntent(DebugMenuIntent.SetScaleList(scales))
         }
       }
   }
@@ -80,7 +78,9 @@ class DebugMenuViewModel @Inject constructor(
     /**
      * Get scale info by SKU, similar to Angular scaleInfoService.getScaleInfoBySku()
      */
-    private fun getScaleInfoBySku(sku: String): ScaleInfo? = ScaleDataHelper.findScaleInfoBySku(sku)
+    private fun getScaleInfoBySku(sku: String): ScaleInfo? {
+        return SCALES.find { it.sku == sku }
+    }
 
 
     /**
@@ -110,8 +110,10 @@ class DebugMenuViewModel @Inject constructor(
             is DebugMenuIntent.ResyncEntries -> onResyncEntries()
             is DebugMenuIntent.ClearAllData -> onClearAllData(intent.onDismiss)
             is DebugMenuIntent.SendScaleLogs -> onSendScaleLogs()
+            is DebugMenuIntent.SendScaleLogForScale -> onSendScaleLogForScale(intent.device)
             is DebugMenuIntent.ShowAppReview -> showAppReviewPrompt(null)
             is DebugMenuIntent.ShowAppReviewWithActivity -> showAppReviewPrompt(intent.activity)
+          else -> {}
         }
     }
 
@@ -135,7 +137,7 @@ class DebugMenuViewModel @Inject constructor(
   }
 
     /**
-     * Handles back navigation.
+     * Handles back navigation from Debug Menu screen.
      */
     private fun onBack() {
         viewModelScope.launch {
@@ -156,7 +158,6 @@ class DebugMenuViewModel @Inject constructor(
             dialogQueueService.showLoader(
                 message = DebugMenuStrings.Loading.SendLogs,
             )
-
             try {
                 val activeAccount = accountService.activeAccountFlow.first()
                 activeAccount?.let { account ->
@@ -244,49 +245,94 @@ class DebugMenuViewModel @Inject constructor(
     }
 
     /**
-     * Sends scale logs.
-     * Based on Angular sendScaleLog() method.
+     * Sends scale logs. Matches Ionic cs-menu sendScaleLog():
+     * - Single scale: show loader, send, toast on success; on error show restart alert if not network error.
      */
     private fun onSendScaleLogs() {
         viewModelScope.launch {
-            dialogQueueService.showLoader(
-                message = DebugMenuStrings.Loading.SendScaleLogs,
-            )
-
-            try {
-                if (singularScale != null) {
-                    // Send logs for singular scale using its broadcast ID
-                    val broadcastId = singularScale!!.device?.broadcastIdString ?: "00:00:00:00:00:00"
-                    exportService.sendScaleLog(broadcastId)
-                    AppLog.i(tag, "Scale logs sent for singular scale: $singularScale")
-                } else if (scales.size > 1) {
-                    // For multiple scales, send logs for the first connected scale
-                    val connectedScale = scales.find { it.connectionStatus == com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED }
-                    val broadcastId = connectedScale?.device?.broadcastIdString ?: "00:00:00:00:00:00"
-                    exportService.sendScaleLog(broadcastId)
-                    AppLog.i(tag, "Scale logs sent for connected scale: $singularScale")
-                } else {
-                    // No scales available
+            when {
+                singularScale != null -> {
+                    dialogQueueService.showLoader(message = DebugMenuStrings.Loading.SendScaleLogs)
+                    try {
+                        exportService.sendScaleLog(singularScale!!.getBroadcastIdString())
+                        dialogQueueService.showToast(Toast(message = DebugMenuStrings.Success.LogSent))
+                        AppLog.i(tag, "Scale logs sent for singular scale")
+                    } catch (e: Exception) {
+                        AppLog.e(tag, "Failed to send scale logs", e)
+                        if (!isNetworkError(e)) {
+                            showRestartAlertForScaleLog()
+                        }
+                    } finally {
+                        dialogQueueService.dismissLoader()
+                        _state.value = state.value.copy(isLoading = false)
+                    }
+                }
+                scales.size > 1 -> {
+                    navigationService.navigateTo(
+                        AppRoute.AccountSettings.ScaleLogsPicker
+                    )
+                }
+                else -> {
                     AppLog.w(tag, "No scales available for sending logs")
                     showErrorAlert()
-                    return@launch
                 }
+            }
+        }
+    }
 
-                dialogQueueService.showToast(
-                    Toast(
-                        message = DebugMenuStrings.Success.LogSent,
-                    ),
+    /**
+     * Sends scale log for the device selected from the scale picker.
+     * Matches Ionic ScaleLogsModalComponent onClick flow. On success navigates back to Debug Menu.
+     */
+    private fun onSendScaleLogForScale(device: Device) {
+        viewModelScope.launch {
+            if (device.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
+                AppLog.w(tag, "Selected scale not connected, skipping send")
+                _state.value = state.value.copy(
+                    scaleLogsPickerScales = emptyList(),
+                    isLoading = false,
                 )
-
-                AppLog.i(tag, "Scale logs sent successfully")
+                return@launch
+            }
+            dialogQueueService.showLoader(message = DebugMenuStrings.Loading.SendScaleLogs)
+            try {
+                exportService.sendScaleLog(device.getBroadcastIdString())
+                dialogQueueService.showToast(Toast(message = DebugMenuStrings.Success.LogSent))
+                AppLog.i(tag, "Scale logs sent for scale from picker")
+                navigationService.navigateBack()
             } catch (e: Exception) {
-                AppLog.e(tag, "Failed to send scale logs", e)
-                showErrorAlert()
+                AppLog.e(tag, "Failed to send scale logs for selected scale", e)
+                if (!isNetworkError(e)) {
+                    showRestartAlertForScaleLog()
+                }
+                _state.value = state.value.copy(
+                    scaleLogsPickerScales = emptyList(),
+                )
             } finally {
                 dialogQueueService.dismissLoader()
                 _state.value = state.value.copy(isLoading = false)
             }
         }
+    }
+
+    /** Returns true if the throwable is likely a network/connectivity error (like Ionic checkInternetError). */
+    private fun isNetworkError(e: Throwable): Boolean {
+        return e is java.io.IOException ||
+            e is java.net.UnknownHostException ||
+            e is java.net.ConnectException ||
+            e is java.net.SocketTimeoutException ||
+            (e is HttpException && e.code() == 0)
+    }
+
+    /** Restart alert for scale log errors (matches Ionic loggerMessage / menuHeader). */
+    private fun showRestartAlertForScaleLog() {
+        dialogQueueService.enqueue(
+            DialogModel.Alert(
+                title = DebugMenuStrings.Alerts.ErrorHeader,
+                message = DebugMenuStrings.Alerts.ErrorMessage,
+                onDismiss = {},
+            ),
+        )
     }
 
     /**

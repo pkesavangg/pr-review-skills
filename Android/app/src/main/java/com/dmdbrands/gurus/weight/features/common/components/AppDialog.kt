@@ -22,9 +22,10 @@ fun AppDialog(
   modifier: Modifier = Modifier,
   primaryActionType: ButtonType = ButtonType.InlineTextPrimary,
   dismissAction: ActionButton? = null,
+  dismissOnBackPress: ActionButton? = null,
   properties: DialogProperties = DialogProperties(),
 ) {
-  val dismissActionEvent = dismissAction?.action ?: confirmAction.action
+  val dismissActionEvent = dismissOnBackPress?.action ?: dismissAction?.action ?: confirmAction.action
   Dialog(
     onDismissRequest = dismissActionEvent,
     properties = DialogProperties(

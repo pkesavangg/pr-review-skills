@@ -70,28 +70,32 @@ final class GoalProgressViewModel: ObservableObject {
             return
         }
         
-        // Determine weight unit
+        // Extract all account relationship data BEFORE any async operations
+        // to avoid SwiftData concurrency issues
         let weightUnit = account.weightSettings?.weightUnit ?? .lb
+        let goalTypeValue = goalSettings.goalType ?? .none
+        let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
+        let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
+        let isWeightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
+        let weightlessWeight = account.weightlessSettings?.weightlessWeight
+
         unit = weightUnit.rawValue
-        
-        goalType = goalSettings.goalType ?? .none
-        
-        let initialWeightStored  = Int(goalSettings.initialWeight ?? 0)
-        let goalWeightStored     = Int(goalSettings.goalWeight    ?? 0)
-        
+        goalType = goalTypeValue
+
         // Current weight from latest entry (falls back to initial weight on error)
         var currentWeightStored: Int = initialWeightStored
         do {
             if let latest = try await entryService.getLatestEntry() {
+                // Extract Entry relationship data immediately
                 currentWeightStored = Int(latest.scaleEntry?.weight ?? 0)
             }
         } catch { /* ignore – keep fallback */ }
-        
+
         // Weightless baseline (tenths-lbs) offset
-        weightlessOn = account.weightlessSettings?.isWeightlessOn ?? false
+        weightlessOn = isWeightlessOn
         let baselineStored: Int = {
-            guard weightlessOn,
-                  let weight = account.weightlessSettings?.weightlessWeight else { return 0 }
+            guard isWeightlessOn,
+                  let weight = weightlessWeight else { return 0 }
             return Int(weight)
         }()
         

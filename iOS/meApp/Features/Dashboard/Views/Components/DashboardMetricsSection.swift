@@ -56,13 +56,18 @@ struct DashboardMetricsSection: View {
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
                 }
-                // In R4 setup, ensure all 12 metrics are visible and active regardless of current dashboard type or API state
-                if store.metricsManager.state.metrics.count < 12 || store.effectiveDashboardType == .dashboard4 {
-                    store.metricsManager.setupInitialMetrics(forceShowAll: true)
-                }
-                store.metricsManager.resetActiveMetricsCountToShowAll()
                 store.syncRemovalStateFromMetricsManager()
                 store.objectWillChange.send()
+            }
+        }
+        .onChange(of: store.metricsManager.state.metrics) { _, _ in
+            if parentView == .R4ScaleSetup {
+                store.debouncedSyncRemovalState()
+            }
+        }
+        .onChange(of: store.metricsManager.state.activeMetricsCount) { _, _ in
+            if parentView == .R4ScaleSetup {
+                store.debouncedSyncRemovalState()
             }
         }
         .onChange(of: parentView) { _, newValue in

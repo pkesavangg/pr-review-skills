@@ -22,10 +22,12 @@ struct WeightOnlyModeOverlay: ViewModifier {
 /// Internal view that handles the state and animation
 private struct WeightOnlyModeOverlayContent: View {
     @State private var shouldShowIndicator = false
+    @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
 
     var body: some View {
         Group {
-            if shouldShowIndicator {
+            // Hide FAB when AppSync camera screen is active
+            if shouldShowIndicator && tabViewModel.selectedTab != .appsync {
                 WeightOnlyModeIndicator()
                     .zIndex(1000) // Ensure it appears above other content
                     .transition(.opacity.combined(with: .scale))
@@ -65,4 +67,5 @@ extension View {
     }
     .withWeightOnlyModeIndicator()
     .environmentObject(Theme.shared)
+    .environmentObject(BottomTabBarViewModel())
 }

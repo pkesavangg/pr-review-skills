@@ -324,8 +324,11 @@ final class DateTimeTools {
         if randomizeSubMinute {
             let calendar = Calendar.current
             var comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: combined)
-            comps.second = Int.random(in: 0..<60)
-            comps.nanosecond = Int.random(in: 0..<1_000) * 1_000_000 // random ms ↦ ns
+            // Use current time's milliseconds to ensure unique timestamps that preserve creation order
+            let now = Date()
+            let nowComps = calendar.dateComponents([.second, .nanosecond], from: now)
+            comps.second = nowComps.second ?? 0
+            comps.nanosecond = nowComps.nanosecond ?? 0
             comps.timeZone = TimeZone.current
             combined = calendar.date(from: comps) ?? combined
         }

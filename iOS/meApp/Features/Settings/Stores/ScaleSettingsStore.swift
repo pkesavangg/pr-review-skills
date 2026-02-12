@@ -15,6 +15,7 @@ final class ScaleSettingsStore: ObservableObject {
     @Injector var bluetoothService: BluetoothService
     @Injector var logger: LoggerService
     @Injector var accountService: AccountService
+    @Injector var permissionsService: PermissionsService
     private var cancellables = Set<AnyCancellable>()
 
     // Store the device ID for safe refetching from MainActor context
@@ -147,7 +148,8 @@ final class ScaleSettingsStore: ObservableObject {
         // Refresh the scale from database first
         refreshScale()
         let device = scale
-        isDeviceConnected = device.isConnected ?? false
+        let isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+        isDeviceConnected = (device.isConnected ?? false) && isBluetoothOn
         isWifiConfigured = device.isWifiConfigured ?? false
 
         // Safely access relationship properties - we're guaranteed to be on MainActor
@@ -282,15 +284,18 @@ final class ScaleSettingsStore: ObservableObject {
         }
 
 
+        // Extract to DTO before async boundary (R9) — avoid mutating @Model after await
         let broadcastId = scale.broadcastIdString ?? "unknown"
+        let deviceId = scale.id
+        var dto = preference.toDTO()
         switch await bluetoothService.updateAccount(on: scale, preference: preference) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
-            // Mark preference as synced to avoid re-syncing
-            preference.isSynced = true
+            // Mark preference as synced via DTO to avoid @Model mutation after await (R9)
+            dto.isSynced = true
             Task { @MainActor in
                 do {
-                    try await scaleService.updateScalePreference(scale.id, preference)
+                    try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
                 } catch {
                     logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
                 }

@@ -774,6 +774,10 @@ class SettingsStore: ObservableObject {
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateWeightUnit: \(profileUpdateResult)")
                 
+                // Mark A6 scales as unsynced and re-sync devices so they get the updated unit on reconnect
+                let a6Store = A6ScaleSetupStore()
+                await a6Store.markA6ScalesUnsyncedForUnitUpdate()
+                
                 switch profileUpdateResult {
                 case .success(let statusArray):
                     // Suppress success toast during user selection to prevent misleading feedback,
@@ -1475,7 +1479,10 @@ class SettingsStore: ObservableObject {
     
     // MARK: - Multiple Accounts Educational Modal
     /// Presents the *Add Multiple Accounts* educational modal if the user has only one account and has not seen the modal before.
-    func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>) {
+    /// - Parameters:
+    ///   - router: The settings router (used when navigating from Settings screen)
+    ///   - tabViewModel: Optional tab bar view model (used when navigating from Dashboard or other tabs)
+    func presentAddAccountModalIfNeeded(router: Router<SettingsRoute>, tabViewModel: BottomTabBarViewModel? = nil) {
         guard accountService.allAccounts.count == 1 else { return }
         
         let flagKey = hasSeenAddMultipleAccountsModalKey
@@ -1505,7 +1512,12 @@ class SettingsStore: ObservableObject {
                 },
                 onAddAccount: {
                     self.notificationService.dismissModal()
-                    router.navigate(to: .myAccounts)
+                    // Use tabViewModel navigation if available (works from any tab), otherwise use router (Settings screen only)
+                    if let tabViewModel = tabViewModel {
+                        tabViewModel.navigateToSettings(route: .myAccounts)
+                    } else {
+                        router.navigate(to: .myAccounts)
+                    }
                 }
             )
             

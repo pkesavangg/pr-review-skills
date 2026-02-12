@@ -23,6 +23,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
@@ -33,8 +34,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.ceil
-import kotlin.math.floor
 import android.icu.util.Calendar
 import android.util.Log
 
@@ -407,20 +406,17 @@ class GraphViewModel @AssistedInject constructor(
     )
 
     val paddedValues: List<Double> =
-      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min, isSecondary)?.toDouble()) +
+      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min)) +
         visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
-        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max, isSecondary)?.toDouble())
+        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max))
 
     // Filter out NaN and infinite values before calculating min/max
     val validPaddedValues = paddedValues.filter { it.isFinite() }
 
     if (validPaddedValues.isNotEmpty()) {
-      val minValue = floor(validPaddedValues.min())
-      val maxValue = ceil(validPaddedValues.max())
-
       val graphMeta = generateNiceScale(
-        minValue = minValue,
-        maxValue = maxValue,
+        minValue = validPaddedValues.min(),
+        maxValue = validPaddedValues.max(),
         goalWeight = goal?.goalWeight ?: 0.0, isWeightLessMode = isWeightlessMode,
         targetTickCount = 4,
       )
@@ -511,6 +507,8 @@ class GraphViewModel @AssistedInject constructor(
 
           // Update UI on main thread
         }
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         Log.e("GraphViewModel", "Error handling scroll", e)
       }
@@ -567,7 +565,7 @@ class GraphViewModel @AssistedInject constructor(
         // Renormalize secondary metrics with cached Y-axis (iOS-style)
         // Y-axis values already validated above, safe to use here
         val normalizedSecondaryGraphLines = if (secondaryGraphLines.points.isNotEmpty()) {
-          secondaryGraphLines.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+          secondaryGraphLines.points.take(3).map { (it.y.value as? Double?) }
 
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
           val normalized = GraphUtil.normalizeMetricToWeightRange(
@@ -578,7 +576,7 @@ class GraphViewModel @AssistedInject constructor(
             maxX = endX,
           )
 
-          normalized.points.take(3).map { (it.y.value as? Number)?.toDouble() }
+          normalized.points.take(3).map { (it.y.value as? Double?) }
           normalized
         } else null
 

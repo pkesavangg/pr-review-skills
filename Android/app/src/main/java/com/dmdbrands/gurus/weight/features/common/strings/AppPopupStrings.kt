@@ -69,8 +69,9 @@ object AppPopupStrings {
   }
 
   object PermissionsPopup {
-    fun Title(permissionType: String) = when (permissionType) {
-      GGPermissionType.BLUETOOTH_SWITCH -> "It looks like your Bluetooth is disabled!"
+    fun Title(permissionType: String, isScaleSetupRequest: Boolean = false) = when (permissionType) {
+      GGPermissionType.BLUETOOTH_SWITCH -> if (isScaleSetupRequest) "Bluetooth is Turned Off"
+      else "It looks like your Bluetooth is disabled!"
       GGPermissionType.NEARBY_DEVICE -> "Nearby Devices Permission."
       GGPermissionType.LOCATION_SWITCH -> "Your Location may be disabled!"
       GGPermissionType.LOCATION -> "Weight Gurus needs location access to connect your scale."
@@ -80,8 +81,8 @@ object AppPopupStrings {
       else -> ""
     }
 
-    fun Message(permissionType: String) = when (permissionType) {
-      GGPermissionType.BLUETOOTH_SWITCH ->
+    fun Message(permissionType: String, isScaleSetupRequest: Boolean = false) = when (permissionType) {
+      GGPermissionType.BLUETOOTH_SWITCH -> if (isScaleSetupRequest) "Bluetooth is required to connect to your scale and collect measurements. Please turn on Bluetooth and try again." else
         "You will not be able to sync with your Bluetooth scale."
 
       GGPermissionType.NEARBY_DEVICE ->
@@ -110,9 +111,10 @@ object AppPopupStrings {
       else -> ""
     }
 
-    fun ConfirmButton(permissionType: String) = when (permissionType) {
+    fun ConfirmButton(permissionType: String, isScaleSetupRequest: Boolean = false) = when (permissionType) {
       GGPermissionType.ALL -> "App Permission"
-      GGPermissionType.BLUETOOTH_SWITCH, GGPermissionType.NOTIFICATION -> "Enable"
+      GGPermissionType.BLUETOOTH_SWITCH -> if (isScaleSetupRequest) "Turn on" else "Enable"
+      GGPermissionType.NOTIFICATION -> "Enable"
       else -> "Allow"
     }
 
