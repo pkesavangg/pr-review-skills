@@ -492,13 +492,7 @@ object AppPermissionsHelper {
           requiredPermissions.add(GGPermissionType.CAMERA)
         }
 
-        ScaleSetupType.Wifi -> {
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            requiredPermissions.add(GGPermissionType.NEARBY_DEVICE)
-          } else {
-            requiredPermissions.add(GGPermissionType.LOCATION_SWITCH)
-            requiredPermissions.add(GGPermissionType.LOCATION)
-          }
+        ScaleSetupType.Wifi,ScaleSetupType.EspTouchWifi -> {
           requiredPermissions.add(GGPermissionType.NOTIFICATION)
         }
 
