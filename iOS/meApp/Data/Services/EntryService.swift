@@ -259,7 +259,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         
         let account = try await accountService.getActiveAccount()
         let goalInitial = account?.goalSettings?.initialWeight.map(Int.init)
-        let initialWeight = (goalInitial != nil && goalInitial! > 0) ? goalInitial : firstEntryWeight
+        let initialWeight: Int?
+        if let goalInitial, goalInitial > 0 {
+            initialWeight = goalInitial
+        } else {
+            initialWeight = firstEntryWeight
+        }
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
         
         let streak = try await getStreak()
