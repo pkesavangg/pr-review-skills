@@ -175,9 +175,11 @@ constructor(
   }
 
   /**
-   * Resets scale discovered related properties when switching accounts.
+   * Resets scale discovered related properties when switching accounts or on logout.
    * This ensures that the new account can see discovered scales without
-   * being affected by the previous account's skip/ignore state.
+   * being affected by the previous account's skip/ignore state, and prevents
+   * showing a stale scale-discovered popup when deviceCallbackFlow does not run
+   * (e.g. after logout with Bluetooth off and then switching account).
    */
   private fun resetScaleDiscoveredState() {
     bluetoothPreferencesService.clearSkipDevices()
@@ -249,6 +251,7 @@ constructor(
           is AuthState.LoggedOut -> {
             stopScan()
             if (authState.isActiveAccount) {
+              resetScaleDiscoveredState()
               routeToLandingOrApp()
               dialogQueueService.clear()
             }
@@ -394,6 +397,7 @@ constructor(
       ggPermissionService.permissionCallBackFlow.collect { permissions ->
         if (permissions.isNotEmpty()) {
           if (AppPermissionsHelper.checkScanPermissions(permissions)) {
+            AppLog.d("AppViewModel", "Scan initialised")
             initialized = true
           } else {
             if (!initialized) {
@@ -436,6 +440,7 @@ constructor(
   }
 
   private fun subscribeDeviceCallback() {
+    ggPermissionService.resetCallbacks()
     deviceSubscribeJob = viewModelScope.launch {
       ggDeviceService.deviceCallbackFlow.collect { response ->
         AppLog.d(
@@ -513,6 +518,7 @@ constructor(
 
               // Check if same scale was shown recently (15 seconds)
               val isIgnored = data.macAddress == scaleToIgnore
+              AppLog.d(TAG, "isSkipped: $isSkipped, isIgnored: $isIgnored")
 
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
@@ -577,6 +583,7 @@ constructor(
             deviceDetail = data,
             connectionStatus = BLEStatus.DISCONNECTED,
           )
+          handleIntent(AppIntent.SetScaleDiscovered(false))
           checkCanShowWeightOnlyModeAlert()
         }
 
