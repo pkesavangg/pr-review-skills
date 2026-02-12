@@ -1,12 +1,12 @@
 package com.dmdbrands.gurus.weight.features.appPermissions.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.greatergoods.blewrapper.GGPermissionService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.greatergoods.blewrapper.GGPermissionService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -57,7 +57,9 @@ class AppPermissionsViewModel @Inject constructor(
   private fun subscribePairedScales() {
     viewModelScope.launch {
       deviceService.pairedScales.collect { pairedScales ->
+        AppLog.d("AppPermissionsViewModel", "Paired scales subscription: $pairedScales")
         val requiredPermissions = AppPermissionsHelper.getRequiredPermissionSets(pairedScales)
+        AppLog.d("AppPermissionsViewModel", "Required permissions: $requiredPermissions")
         handleIntent(AppPermissionsIntent.SetRequiredPermissions(requiredPermissions))
       }
     }

@@ -168,7 +168,7 @@ object FormValidations {
     // Use helper to check if SKU exists (handles variant SKU mapping e.g., 0022 -> 0383)
     val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
     when {
-      sku.isBlank() -> ValidationError(ValidationType.REQUIRED, ValidationMessages.SKU)
+      sku.isBlank() -> null // Don't show error for empty field, button will be disabled instead
       scaleInfo != null -> null
       else -> ValidationError(ValidationType.PATTERN, ValidationMessages.SKU)
     }

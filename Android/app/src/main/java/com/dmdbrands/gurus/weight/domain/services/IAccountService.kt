@@ -219,9 +219,6 @@ interface IAccountService {
  * Sealed class representing different authentication states.
  */
 sealed class AuthState {
-  data class LoggedIn(
-    val account: Account,
-  ) : AuthState()
 
   /**
    * Emitted by LoadingScreenViewModel after migration + loadData + autoLogin.

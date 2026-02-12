@@ -301,46 +301,55 @@ final class ScaleModesViewModel: ObservableObject {
     }
     
     private func performSaveOperation(onSuccess: (() -> Void)? = nil) async {
+        // Step 1: Read @Model synchronously on MainActor, extract to DTO
+        refreshScale()
         guard let preference = scale.r4ScalePreference else {
             logger.log(level: .error, tag: tag, message: "No R4 scale preference found for scale")
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: "Unable to save scale mode settings"))
             return
         }
-        
+
+        // Extract ALL data from @Model to DTO BEFORE any await
+        var dto = preference.toDTO()
+        let deviceId = scale.id
+        let isConnected = scale.isConnected == true
+
+        // Step 2: Apply mutations to DTO (synchronous, no await)
+        dto.shouldMeasureImpedance = (modeValue == .allBodyMetrics)
+        dto.shouldMeasurePulse = isHeartRateEnabled && (modeValue == .allBodyMetrics)
+        updateDisplayMetricsForHeartRate(dto: &dto)
+
         notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
-        
+
         do {
-            // Update the preference values
-            preference.shouldMeasureImpedance = (modeValue == .allBodyMetrics)
-            preference.shouldMeasurePulse = isHeartRateEnabled && (modeValue == .allBodyMetrics)
-            
-            // Handle heart rate display metrics
-            await updateDisplayMetricsForHeartRate(preference: preference)
-            
-            // Save to local database
-            try await scaleService.updateScalePreference(scale.id, preference)
+            // Step 3: Save to local database using DTO-based method
+            try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
             await scaleService.pushLocalChangesToServer()
-            
-            // Update the scale via Bluetooth if connected
-            if scale.isConnected == true {
-                let result = await bluetoothService.updateAccount(on: scale, preference: preference)
+
+            // Step 4: Bluetooth update if connected
+            if isConnected {
+                // BluetoothService internally re-fetches the preference from DB via fetchAttachedPreference(by:),
+                // so we refresh scale to ensure DB has our latest DTO values.
+                refreshScale()
+                guard let freshPreference = scale.r4ScalePreference else { return }
+                let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
                 switch result {
                 case .success(let response):
                     switch response {
                     case .userSelectionInProgress:
-                        preference.isSynced = false
-                        try await scaleService.updateScalePreference(scale.id, preference)
+                        dto.isSynced = false
+                        try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
                         notificationService.dismissLoader()
                         showUpdateAccountFailedAlert(onSuccess: onSuccess)
                         return
 
                     case .creationCompleted:
-                        preference.isSynced = true
-                        try await scaleService.updateScalePreference(scale.id, preference)
+                        dto.isSynced = true
+                        try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
 
                     default:
-                        preference.isSynced = false
-                        try await scaleService.updateScalePreference(scale.id, preference)
+                        dto.isSynced = false
+                        try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
                         throw BluetoothServiceError.updateProfileFailed(
                             NSError(
                                 domain: "ScaleModesViewModel",
@@ -354,38 +363,36 @@ final class ScaleModesViewModel: ObservableObject {
                     }
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to update scale via Bluetooth: \(error.localizedDescription)")
-                    // Keep preference as unsynced so it can be synced when device reconnects
-                    preference.isSynced = false
-                    try await scaleService.updateScalePreference(scale.id, preference)
-                    // Rethrow to trigger retry logic
+                    dto.isSynced = false
+                    try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
                     throw error
                 }
             } else {
                 // Device offline — mark preference to sync on reconnect
-                preference.isSynced = false
-                try await scaleService.updateScalePreference(scale.id, preference)
+                dto.isSynced = false
+                try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
                 logger.log(level: .info, tag: tag, message: "Scale mode saved while device offline - will sync when device reconnects")
             }
             await loadScaleModeData()
-            
+
             // Success - reset retry count and update state
             retryCount = 0
             originalModeValue = modeValue
             originalIsHeartRateEnabled = isHeartRateEnabled
-            
+
             notificationService.dismissLoader()
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ScaleModesStrings.preferencesSaved))
             onSuccess?()
-            
+
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save scale mode: \(error.localizedDescription)", data: error)
             notificationService.dismissLoader()
-            
+
             // Handle retry logic
             if retryCount < maxRetries {
                 retryCount += 1
                 logger.log(level: .info, tag: tag, message: "Retrying save operation (attempt \(retryCount)/\(maxRetries))")
-                
+
                 // Wait before retrying
                 try? await Task.sleep(nanoseconds: UInt64(retryDelay * 1_000_000_000))
                 await performSaveOperation(onSuccess: onSuccess)
@@ -396,24 +403,25 @@ final class ScaleModesViewModel: ObservableObject {
             }
         }
     }
-    
-    private func updateDisplayMetricsForHeartRate(preference: R4ScalePreference) async {
+
+    /// Updates displayMetrics on the DTO for heart rate enable/disable.
+    /// This is a pure data transformation — no async needed, no @Model access.
+    private func updateDisplayMetricsForHeartRate(dto: inout R4ScalePreferenceDTO) {
         let heartRateKey = ScaleMetrics.config.first { $0.name == "Heart Rate" }?.key ?? "heartRate"
         let goalMetricsKeys = ScaleMetrics.progressMetrics.map { $0.key }
-        
+
         // Add heart rate to display metrics if pulse is enabled and not already present
-        if preference.shouldMeasurePulse && !preference.displayMetrics.contains(heartRateKey) {
-            // Find insertion point (before goal metrics if they exist)
-            if let insertIndex = preference.displayMetrics.firstIndex(where: { goalMetricsKeys.contains($0) }) {
-                preference.displayMetrics.insert(heartRateKey, at: insertIndex)
+        if dto.shouldMeasurePulse && !dto.displayMetrics.contains(heartRateKey) {
+            if let insertIndex = dto.displayMetrics.firstIndex(where: { goalMetricsKeys.contains($0) }) {
+                dto.displayMetrics.insert(heartRateKey, at: insertIndex)
             } else {
-                preference.displayMetrics.append(heartRateKey)
+                dto.displayMetrics.append(heartRateKey)
             }
         }
-        
+
         // Remove heart rate from display metrics if pulse is disabled
-        if !preference.shouldMeasurePulse {
-            preference.displayMetrics.removeAll { $0 == heartRateKey }
+        if !dto.shouldMeasurePulse {
+            dto.displayMetrics.removeAll { $0 == heartRateKey }
         }
     }
     

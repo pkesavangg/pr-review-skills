@@ -8,7 +8,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -24,9 +23,9 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -120,15 +119,7 @@ fun GraphView(
     }
   }
 
-
-
-  LaunchedEffect(scrollState.value) {
-    if (state.markerIndex != null) {
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-    }
-  }
-
-  LaunchedEffect(state.markerIndex) {
+  LaunchedEffect(state.markerIndex == null) {
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
@@ -160,36 +151,27 @@ fun GraphView(
     horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
-      if (click == null) return@rememberGraphChart
+      if (click == null) {
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+        return@rememberGraphChart
+      }
+      // Capture visible labels synchronously (during draw). Use the full list from the placer
+      // so getTargetPoints can resolve the nearest label; do not filter by min/max here or
+      // we drop labels that are actually on screen and marker stays null.
       scope.launch {
+        val visibleRange = scrollState.visibleRange.firstOrNull()
+        val visibleLabels =
+          scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
+            if (visibleRange != null)
+              it in visibleRange.visibleXRange.start..visibleRange.visibleXRange.endInclusive
+            else
+              true
+          }
         var markerIndex: Double? = null
         val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
         val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
         val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
-        if (outOfBoundaryCondition) {
-          markerIndex = null
-        } else {
-          val min = GraphUtil.getStartRange(segment, state.minTarget)?.toDouble()
-          val max = GraphUtil.getEndRange(segment, state.maxTarget)?.toDouble()
-
-          if (min != null && max != null)
-            Log.i(
-              "GraphView",
-              " min : ${DateTimeConverter.timestampToIso(min.toLong())} max : $" +
-                "${DateTimeConverter.timestampToIso(max.toLong())}",
-            )
-          val visibleLabels =
-            scrollState
-              .getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
-              .filter { label ->
-
-                if (min != null && max != null) {
-                  label in min..max
-                } else {
-                  true // keep all when no bounds
-                }
-              }
-
+        if (!outOfBoundaryCondition) {
           val targetMarkerIndex =
             getTargetPoints(
               visibleLabels,
@@ -201,22 +183,16 @@ fun GraphView(
             )
           if (targetMarkerIndex.isNotEmpty()) {
             val targetIndex = targetMarkerIndex.first().toLong()
-            markerIndex = if (targetIndex in state.getStartTimestamp()..state.getEndTimestamp())
-              targetMarkerIndex.first()
-            else if (targetIndex < state.getStartTimestamp())
-              state.getStartTimestamp().toDouble()
-            else if (targetIndex > state.getEndTimestamp())
-              state.getEndTimestamp().toDouble()
-            else
-              null
+            markerIndex = when {
+              targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
+              targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
+              targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
+              else -> null
+            }
           }
-          if (markerIndex != null)
-            Log.i(
-              "GraphView",
-              "targetMarkerIndex : ${DateTimeConverter.timestampToIso(markerIndex.toLong())}",
-            )
         }
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+        if (state.markerIndex != markerIndex)
+          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       }
     },
   )
@@ -226,16 +202,13 @@ fun GraphView(
     modifier = modifier.height(chartHeight),
     scrollState = scrollState,
     animateIn = true,
+    consumeMoveEvents = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     onScrollStopped = { range ->
-      if (range != null) {
+      if (range != null && segment != GraphSegment.TOTAL) {
         val min = range.visibleXRange.start.toLong()
         val max = range.visibleXRange.endInclusive.toLong()
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
-        Log.i(
-          "GraphView",
-          "onScrollStopped : ${DateTimeConverter.timestampToIso(relativeMin)} , ${DateTimeConverter.timestampToIso(max)}",
-        )
         onScrollUpdate(relativeMin, max)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))

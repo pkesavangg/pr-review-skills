@@ -1,6 +1,6 @@
 import Foundation
 
-struct ScaleDTO: Codable {
+struct ScaleDTO: Codable, Sendable {
     var broadcastId: Int?
     var broadcastIdString: String?
     var createdAt: String?

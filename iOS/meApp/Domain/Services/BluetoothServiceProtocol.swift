@@ -30,7 +30,8 @@ protocol BluetoothServiceProtocol {
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { get }
 
     /// Publisher for new entry events.
-    var newEntryReceivedPublisher: AnyPublisher<Entry, Never> { get }
+    /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
+    var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { get }
 
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { get }
@@ -75,6 +76,8 @@ protocol BluetoothServiceProtocol {
     /// Deletes a scale from storage (and optionally from the physical device).
     /// - Returns: Result<UserDeletionResponse, BluetoothServiceError>
     func deleteDevice(_ device: Device, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError>
+    /// Deletes a user slot on the scale by broadcastId and token, without mutating any @Model object.
+    func deleteUserByToken(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError>
     /// Deletes the current app user's slot on the BT WiFi (R4) scale when possible.
     /// Attempts to use the device token if available; otherwise fetches users and matches by preference/display name.
     /// - Returns: Result<UserDeletionResponse, BluetoothServiceError>

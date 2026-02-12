@@ -134,7 +134,7 @@ constructor(
         throw MaxAccountsReachedException()
       }
       val savedAccount = accountRepository.login(email, password)
-      appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
+
       AppLog.d(TAG, "login() successful for email: $email")
       savedAccount
     } catch (e: HttpException) {
@@ -357,8 +357,20 @@ constructor(
       accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)
       AppLog.d(TAG, "Active account login status check successful")
       true
-    } catch (e: IOException) {
-      AppLog.w(TAG, "Network failure during login status check, falling back to local DB", e.toString())
+    } catch (e: java.net.UnknownHostException){
+      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}" )
+      checkActiveAccountLocalValidity()
+    }
+    catch (e: java.io.InterruptedIOException){
+      AppLog.w(TAG, "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}" )
+      checkActiveAccountLocalValidity()
+    }
+    catch (e: java.net.SocketTimeoutException) {
+      AppLog.w(TAG, "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}" )
+      checkActiveAccountLocalValidity()
+    }
+    catch (e: IOException) {
+      AppLog.w(TAG, "Network failure during login status check, falling back to local DB ${e.toString()}")
       checkActiveAccountLocalValidity()
     } catch (e: HttpException) {
       if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
@@ -468,7 +480,17 @@ constructor(
             // Other HTTP errors (500, 404, etc.) - don't mark as expired, just log
             AppLog.w(TAG, "HTTP error ${e.code()} while checking account ${account.id}, not marking as expired")
           }
-        } catch (e: Exception) {
+        }
+        catch (e: java.net.UnknownHostException){
+          AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}", )
+        }
+        catch (e: java.io.InterruptedIOException){
+          AppLog.w(TAG, "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}", )
+        }
+        catch (e: java.net.SocketTimeoutException) {
+          AppLog.w(TAG, "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}")
+        }
+        catch (e: Exception) {
           // Other exceptions - log but don't mark as expired
           AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
         }
@@ -625,7 +647,23 @@ constructor(
       AppLog.d(TAG, "Successfully switched to account: ${account.email}")
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
-    } catch (e: IOException) {
+    }
+    catch (e: java.net.UnknownHostException){
+      AppLog.w(TAG, "UnknownHostException failure during account switch ${e.toString()}")
+      showNetworkErrorAndThrow()
+      false
+    }
+    catch (e: java.io.InterruptedIOException){
+      AppLog.w(TAG, "InterruptedIOException failure failure during account switch ${e.toString()}")
+      showNetworkErrorAndThrow()
+      false
+    }
+    catch (e: java.net.SocketTimeoutException) {
+      AppLog.w(TAG, "SocketTimeoutException e.toString() ${e.toString()}")
+      showNetworkErrorAndThrow()
+      false
+    }
+    catch (e: IOException) {
       // Network failed during API call - check if account is valid locally
       AppLog.w(TAG, "Network failed during account switch, checking local validity", e.toString())
       val localAccount = getLoggedInAccounts().find { it.id == account.id }

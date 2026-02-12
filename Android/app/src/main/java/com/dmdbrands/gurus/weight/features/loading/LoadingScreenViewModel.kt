@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
+import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +37,7 @@ constructor(
   private val dashboardService: IDashboardService,
   private val deviceService: IDeviceService,
   private val ggDeviceService: GGDeviceService,
+  private val deviceInfoService: IDeviceInfoService
 ) : ViewModel() {
   private val TAG = "Loadingscreenviewmodel"
 
@@ -117,6 +119,7 @@ constructor(
     entryService.updateAllData(accountId = account.id)
     dashboardService.setAccountId(account.id)
     deviceService.setAccountId(account.id)
+    deviceInfoService.updateDeviceInfo()
     syncScales()
   }
 

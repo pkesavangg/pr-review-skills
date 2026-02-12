@@ -127,7 +127,7 @@ fun ScaleDetailsScreenContent(
       )
       Spacer(modifier = Modifier.height(spacing.xl))
       Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        if (state.scale?.isWeighOnlyModeEnabledByOthers == true) {
+        if (state.scale.isWeighOnlyModeEnabledByOthers && state.scale.connectionStatus == BLEStatus.CONNECTED) {
           AppNote(
             message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
             icon = AppIcons.Default.WeightOnlyMode,
