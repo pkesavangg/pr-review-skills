@@ -29,11 +29,13 @@ struct SetUserNumberView: View {
                         .foregroundColor(theme.textBody)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
                 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.setupSetUserNumberGifName(sku), height: 250)
                         .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
                                height: DevicePlatform.isMiniPhone ? 200 : 250)
+                        .scaleEffect(DevicePlatform.isMiniPhone ? 0.8 : 0.81)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 
