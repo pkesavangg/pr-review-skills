@@ -370,11 +370,10 @@ constructor(
         pairedScalesSubscribeJob?.cancel()
         // Reset initialized flag to ensure permission checks happen after login
         initialized = false
-
         if (fromLoadingScreen) {
-          // Wait for loading screen to finish before checking permissions
           delay(1000)
         }
+        deviceInfoService.updateDeviceInfo()
         subscribePermissions()
         subscribeDeviceCallback()
         subscribePairedScales()

@@ -1217,7 +1217,8 @@ constructor(
       if (weightlessWeight != null) {
         val displayWeight =
           WeightlessHelper.processStoredWeightToDisplay(weightlessWeight.toDouble(), account.weightUnit)
-        "On - ${displayWeight / 10}"
+        val unitLabel = account.weightUnit?.label ?: ""
+        "On - ${displayWeight / 10} $unitLabel"
       } else {
         "On"
       }
