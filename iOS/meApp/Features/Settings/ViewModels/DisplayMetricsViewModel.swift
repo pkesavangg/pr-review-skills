@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import SwiftData
 
 // MARK: - DisplayMetricsViewModel
 @MainActor
@@ -16,12 +17,58 @@ final class DisplayMetricsViewModel: ObservableObject {
     @Injector var bluetoothService: BluetoothService
     @Injector var logger: LoggerService
     @Injector var accountService: AccountService
-    
-    @Published var scale: Device
+
+    // Store the device ID for safe refetching from MainActor context
+    private let scaleId: PersistentIdentifier
+    private let scaleIdString: String
+
+    // Cached scale for fallback when model not found in context
+    private var cachedScale: Device?
+
+    // Returns the cached scale - use refreshScale() to update from database
+    var scale: Device {
+        if let cached = cachedScale {
+            return cached
+        }
+        logger.log(level: .error, tag: tag, message: "No cached scale available")
+        return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
+    }
+
+    /// Refreshes the scale from the database. Call this before operations that need fresh data.
+    func refreshScale() {
+        // First try registeredModel for already-loaded models (fastest path)
+        if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
+            cachedScale = freshScale
+            return
+        }
+
+        // If not in identity map, fetch from persistent store using FetchDescriptor
+        let idToFind = scaleIdString
+        let descriptor = FetchDescriptor<Device>(
+            predicate: #Predicate<Device> { device in
+                device.id == idToFind
+            }
+        )
+        do {
+            let results = try PersistenceController.shared.context.fetch(descriptor)
+            if let freshScale = results.first {
+                cachedScale = freshScale
+                return
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch scale from store: \(error.localizedDescription)")
+        }
+
+        // Keep existing cached value if fetch failed
+        if cachedScale != nil {
+            logger.log(level: .debug, tag: tag, message: "Using existing cached scale after refresh failed")
+        }
+    }
+
     @Published var metrics: [ScaleMetricSetting] = []
     @Published var progressMetrics: [ScaleMetricSetting] = []
     @Published var displayMetricsValue: String = ""
-    
+
     // Banner states
     @Published var showWeightOnlyBanner: Bool = false
     @Published var showWeightOnlyInfo: Bool = false
@@ -29,15 +76,17 @@ final class DisplayMetricsViewModel: ObservableObject {
     @Published var isWeightOnlyModeOn: Bool = false
     @Published var isHeartRateOn: Bool = false
     @Published var isHeartRateEnabled: Bool = false
-    
+
     // Track if changes have been made
     @Published var hasChanges: Bool = false
-    
+
     private let isWeighOnlyModeEnabledByOthers: Bool
     private let tag = "DisplayMetricsViewModel"
-    
+
     init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
-        self.scale = scale
+        self.scaleId = scale.persistentModelID
+        self.scaleIdString = scale.id
+        self.cachedScale = scale
         self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
         setupInitialValues()
     }
@@ -54,15 +103,9 @@ final class DisplayMetricsViewModel: ObservableObject {
     }
     
     func loadDisplayMetricsData() async {
-        // Refresh scale data from service
-        do {
-            if let updatedScale = try await scaleService.getDevices().first(where: { $0.id == scale.id }) {
-                scale = updatedScale
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to load scale data: \(error)")
-        }
-        
+        // Refresh scale data from database
+        refreshScale()
+
         // Load display metrics and update banner states
         loadDisplayMetrics()
         updateBannerStates()
@@ -72,6 +115,7 @@ final class DisplayMetricsViewModel: ObservableObject {
     }
     
     private func loadDisplayMetrics() {
+        refreshScale()
         guard let preference = scale.r4ScalePreference else {
             // Default metrics if no preference
             metrics = ScaleMetrics.bodyMetrics
@@ -281,32 +325,39 @@ final class DisplayMetricsViewModel: ObservableObject {
     }
     
     func saveDisplayMetrics() async {
+        // Step 1: Read @Model synchronously on MainActor, extract to DTO
+        refreshScale()
         guard let preference = scale.r4ScalePreference else { return }
-        
+
+        // Extract ALL data to DTO and local variables BEFORE any await
+        var dto = preference.toDTO()
+        let deviceId = scale.id
+        let isConnected = scale.isConnected == true
+
         notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
-        
+
         do {
-            let shouldMeasureImpedance = preference.shouldMeasureImpedance
-            
+            // Step 2: Apply mutations to DTO (synchronous)
+            let shouldMeasureImpedance = dto.shouldMeasureImpedance
+
             if shouldMeasureImpedance {
                 // Normal mode: Update display metrics from current UI state
                 let bodyEnabledKeys = metrics.filter { $0.isEnabled }.map { $0.key }
                 let progressEnabledKeys = progressMetrics.filter { $0.isEnabled }.map { $0.key }
-                
+
                 // Combine body and progress metrics while maintaining the order from the UI
-                preference.displayMetrics = bodyEnabledKeys + progressEnabledKeys
-                
+                dto.displayMetrics = bodyEnabledKeys + progressEnabledKeys
+
             } else {
                 // Weight-only mode: Only modify BMI, preserve all other metrics in their existing positions
-                var updatedDisplayMetrics = preference.displayMetrics
-                
+                var updatedDisplayMetrics = dto.displayMetrics
+
                 // Check if BMI is enabled in the UI
                 let isBMIEnabled = metrics.first(where: { $0.key == "bmi" })?.isEnabled ?? false
-                
+
                 if isBMIEnabled {
                     // Add BMI if not already present
                     if !updatedDisplayMetrics.contains("bmi") {
-                        // Find a good position to insert BMI (at the beginning of body metrics)
                         let progressMetricsKeys = ScaleMetrics.progressMetrics.map { $0.key }
                         if let firstProgressIndex = updatedDisplayMetrics.firstIndex(where: { progressMetricsKeys.contains($0) }) {
                             updatedDisplayMetrics.insert("bmi", at: firstProgressIndex)
@@ -318,41 +369,43 @@ final class DisplayMetricsViewModel: ObservableObject {
                     // Remove BMI if present
                     updatedDisplayMetrics.removeAll { $0 == "bmi" }
                 }
-                
+
                 // Update progress metrics normally
                 let progressEnabledKeys = progressMetrics.filter { $0.isEnabled }.map { $0.key }
-                
+
                 // Remove old progress metrics and add new ones in order
                 let progressMetricsKeys = ScaleMetrics.progressMetrics.map { $0.key }
                 updatedDisplayMetrics.removeAll { progressMetricsKeys.contains($0) }
                 updatedDisplayMetrics.append(contentsOf: progressEnabledKeys)
-                
-                preference.displayMetrics = updatedDisplayMetrics
+
+                dto.displayMetrics = updatedDisplayMetrics
             }
-            
-            // Save to local database
-            try await scaleService.updateScalePreference(scale.id, preference)
+
+            // Step 3: Save to local database using DTO-based method
+            try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
             await scaleService.pushLocalChangesToServer()
-            
-            // Update the scale via Bluetooth if connected
-            if scale.isConnected == true {
-                let result = await bluetoothService.updateAccount(on: scale, preference: preference)
+
+            // Step 4: Bluetooth update if connected
+            if isConnected {
+                // Refresh scale to ensure DB has our changes before bluetooth reads them
+                refreshScale()
+                guard let freshPreference = scale.r4ScalePreference else { return }
+                let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
                 switch result {
                 case .success(_):
                     logger.log(level: .info, tag: tag, message: "Scale metrics updated successfully via Bluetooth")
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to update scale via Bluetooth: \(error.localizedDescription)")
-                    // Rethrow to trigger retry logic
                     throw error
                 }
             }
-            
+
             notificationService.dismissLoader()
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.displayMetricsSaved))
-            
+
             // Reset changes flag after successful save
             hasChanges = false
-            
+
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save display metrics: \(error.localizedDescription)", data: error)
             notificationService.dismissLoader()

@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toDoublePreserve
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
@@ -130,7 +131,7 @@ object GraphUtil {
   ): Double =
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
-      GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
+      GraphSegment.MONTH -> 7.0 * ONE_DAY_MILLIS
       GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
       GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
@@ -142,8 +143,8 @@ object GraphUtil {
    * @return Visible labels count as Double.
    */
   fun GraphSegment.visibleLabelsCount(): Double = when (this) {
-    GraphSegment.WEEK -> 7.0
-    GraphSegment.MONTH -> (31.0 / 6.0).coerceAtLeast(1.0)
+    GraphSegment.WEEK -> 28 / 4.0
+    GraphSegment.MONTH -> (28 / 7.0).coerceAtLeast(1.0)
     GraphSegment.YEAR -> (366.0 / 31.0) // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
     GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
   }
@@ -200,22 +201,22 @@ object GraphUtil {
       )
     }
 
-  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the minimum timestamp that is still greater than the search timestamp
     // This works regardless of list order (ascending or descending)
     val immediatePoint = graphLines.points
       .filter { it.x.value.toLong() > timeStamp }
       .minByOrNull { it.x.value.toLong() }
-    return immediatePoint?.y?.value?.toLong()
+    return immediatePoint?.y?.value?.toFloat()?.toDoublePreserve()
   }
 
-  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the maximum timestamp that is still less than the search timestamp
     // This works regardless of list order (ascending or descending)
     val previousPoint = graphLines.points
       .filter { it.x.value.toLong() < timeStamp }
       .maxByOrNull { it.x.value.toLong() }
-    return previousPoint?.y?.value?.toLong()
+    return previousPoint?.y?.value?.toFloat()?.toDoublePreserve()
   }
 
   /**
@@ -253,9 +254,8 @@ object GraphUtil {
     }
 
     // Get all metric values (including previous/next for range calculation)
-    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Number }
-      .map { it.toDouble() }
-      .filter { it.isFinite() } // Filter out NaN/Infinity values
+    val allMetricValues =
+      metricGraphLine.points.map { it.y.value.toFloat().toDoublePreserve() }.filter { it.isFinite() }
 
     if (allMetricValues.isEmpty()) {
       return metricGraphLine
@@ -265,13 +265,13 @@ object GraphUtil {
     val visiblePoints = metricGraphLine.points.filter {
       it.x.value.toLong() in minX..maxX
     }
-    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
-    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
+    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX)?.toLong()?.toDouble()
+    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX)?.toLong()?.toDouble()
 
     val metricValuesForRange = buildList {
-      previousPoint?.let { add(it.toDouble()) }
+      previousPoint?.let { add(it) }
       addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
-      nextPoint?.let { add(it.toDouble()) }
+      nextPoint?.let { add(it) }
     }
 
     if (metricValuesForRange.isEmpty()) {
@@ -517,7 +517,7 @@ object GraphUtil {
   fun getRelativeStart(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
     when (segment) {
       GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getRelativeDayStart(it)
-      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getMonthStart(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getRelativeMonthStart(it)
     }
   }
 

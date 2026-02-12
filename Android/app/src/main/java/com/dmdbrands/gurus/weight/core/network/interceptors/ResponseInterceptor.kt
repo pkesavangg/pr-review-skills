@@ -1,8 +1,6 @@
 package com.dmdbrands.gurus.weight.core.network.interceptors
 
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
-import com.dmdbrands.gurus.weight.domain.services.AuthState
-import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.net.HttpURLConnection
@@ -26,13 +24,7 @@ constructor(private val appNavigationService: IAppNavigationService) : Intercept
         val response = chain.proceed(request)
         return when (response.code) {
             HttpURLConnection.HTTP_UNAUTHORIZED -> {
-                runBlocking {
-                    // Extract accountId from header
-                    val accountId = request.header("X-Account-Id")
-                    if (accountId != null) {
-                        appNavigationService.emitAuthEvent(AuthState.UnauthorizedLogout(accountId))
-                    }
-                }
+                // Unauthorised will handle the token authenticator itself
                 response
             }
 

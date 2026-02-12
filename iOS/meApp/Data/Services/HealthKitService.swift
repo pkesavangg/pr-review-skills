@@ -130,14 +130,47 @@ public final class HealthKitService: HealthKitServiceProtocol {
     }
     
     /// Writes a single `Entry` into Apple Health.
+    /// - Note: Prefer `syncNewData(notification:)` when crossing actor boundaries.
     func syncNewData(entry: Entry) async throws {
         let healthKitData = buildHealthKitData(from: [entry])
         try await hkPackage.saveData(healthKitData)
     }
-    
+
+    /// Writes entry data into Apple Health using an EntryNotification.
+    /// This method is safe to call from any actor as it uses extracted data.
+    func syncNewData(notification: EntryNotification) async throws {
+        let export = HealthKitExportExtended(
+            timestamp: notification.entryTimestamp,
+            weight: notification.weight,
+            bodyFat: notification.bodyFat,
+            muscleMass: notification.muscleMass,
+            bmi: notification.bmi,
+            pulse: notification.pulse
+        )
+        let healthKitData = buildHealthKitData(from: export)
+        try await hkPackage.saveData(healthKitData)
+    }
+
     /// Deletes a single `Entry` previously written to Apple Health.
+    /// - Note: Prefer `deleteEntry(notification:)` when crossing actor boundaries.
     func deleteEntry(entry: Entry) async throws -> Bool {
         let healthKitData = buildHealthKitData(from: [entry])
+        try await hkPackage.deleteEntry(healthKitData)
+        return true
+    }
+
+    /// Deletes entry data from Apple Health using an EntryNotification.
+    /// This method is safe to call from any actor as it uses extracted data.
+    func deleteEntry(notification: EntryNotification) async throws -> Bool {
+        let export = HealthKitExportExtended(
+            timestamp: notification.entryTimestamp,
+            weight: notification.weight,
+            bodyFat: notification.bodyFat,
+            muscleMass: notification.muscleMass,
+            bmi: notification.bmi,
+            pulse: notification.pulse
+        )
+        let healthKitData = buildHealthKitData(from: export)
         try await hkPackage.deleteEntry(healthKitData)
         return true
     }
@@ -308,6 +341,73 @@ public final class HealthKitService: HealthKitServiceProtocol {
         let bodyFat: Int?
         let muscleMass: Int?
         let bmi: Int?
+    }
+
+    /// Extended export struct that includes pulse for EntryNotification conversions.
+    private struct HealthKitExportExtended {
+        let timestamp: String
+        let weight: Int?
+        let bodyFat: Int?
+        let muscleMass: Int?
+        let bmi: Int?
+        let pulse: Int?
+    }
+
+    /// Converts a single extended export into HealthKitData payloads.
+    private func buildHealthKitData(from export: HealthKitExportExtended) -> [HealthKitData] {
+        var healthKitData: [HealthKitData] = []
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let normalizedTimestamp = normalizeTimestamp(export.timestamp)
+        guard let timestamp = formatter.date(from: normalizedTimestamp) else {
+            return healthKitData
+        }
+
+        if let weight = export.weight {
+            healthKitData.append(HealthKitData(
+                type: .weight,
+                value: ConversionTools.convertStoredToLbs(weight),
+                timestamp: timestamp
+            ))
+        }
+
+        if let bodyFat = export.bodyFat {
+            healthKitData.append(HealthKitData(
+                type: .bodyFat,
+                value: ConversionTools.convertStoredToLbs(bodyFat),
+                timestamp: timestamp
+            ))
+        }
+
+        if let pulse = export.pulse {
+            healthKitData.append(HealthKitData(
+                type: .heartRate,
+                value: Double(pulse),
+                timestamp: timestamp
+            ))
+        }
+
+        if let weight = export.weight, let bodyFat = export.bodyFat {
+            let convertedWeight = ConversionTools.convertStoredToLbs(weight)
+            let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
+            let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
+            healthKitData.append(HealthKitData(
+                type: .leanBodyMass,
+                value: leanBodyMass,
+                timestamp: timestamp
+            ))
+        }
+
+        if let bmi = export.bmi {
+            healthKitData.append(HealthKitData(
+                type: .bmi,
+                value: ConversionTools.convertStoredToLbs(bmi),
+                timestamp: timestamp
+            ))
+        }
+
+        return healthKitData
     }
     
     /// Writes the provided dataset to Apple Health and logs the outcome.

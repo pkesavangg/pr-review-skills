@@ -116,6 +116,10 @@ sealed class AppRoute : NavKey {
     @Serializable
     data object DebugMenu : AccountSettings()
 
+    /** Screen to choose a paired scale (e.g. 0412) when multiple scales; send log for selected scale. */
+    @Serializable
+    data object ScaleLogsPicker : AccountSettings()
+
     @Serializable
     data object AppPermissions : AccountSettings()
 

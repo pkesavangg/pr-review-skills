@@ -439,6 +439,33 @@ final class A6ScaleSetupStore: ObservableObject {
         bluetoothService.isSetupInProgress = false
     }
     
+    // MARK: - A6 Scale Unit Update
+    /// Marks A6 scale preferences as unsynced so updated units are applied on reconnect.
+    func markA6ScalesUnsyncedForUnitUpdate() async {
+        let a6Scales = scaleService.scales.filter { $0.protocolType == "A6" }
+        guard !a6Scales.isEmpty else {
+            LoggerService.shared.log(level: .debug, tag: tag, message: "No A6 scales found")
+            return
+        }
+
+        for scale in a6Scales {
+            guard let preference = scaleService.fetchAttachedPreferenceSync(by: scale.id) else { continue }
+
+            preference.isSynced = false
+            do {
+                try await scaleService.updateScalePreference(scale.id, preference)
+            } catch {
+                LoggerService.shared.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to update A6 scale \(scale.broadcastIdString ?? "unknown"): \(error)"
+                )
+            }
+        }
+
+        // Ensure SDK picks up updated unit on reconnect
+        bluetoothService.syncDevices(scaleService.scales)
+    }
     // Cancel active Combine subscription before releasing it.
     deinit {
         // Cancel active Combine subscription before releasing it.

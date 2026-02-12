@@ -154,7 +154,6 @@ object NetworkModule {
         @ApplicationContext context: Context,
         loggingInterceptor: HttpLoggingInterceptor,
         baseUrlInterceptor: BaseUrlInterceptor,
-        responseInterceptor: ResponseInterceptor,
         networkInterceptor: NetworkInterceptor,
         tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
@@ -171,7 +170,6 @@ object NetworkModule {
             .addInterceptor(networkInterceptor)
             .addInterceptor(baseUrlInterceptor)
             .addInterceptor(authTokenInterceptor)
-            .addInterceptor(responseInterceptor)
             .authenticator(tokenAuthenticator)
         return okHttpClient.build()
     }

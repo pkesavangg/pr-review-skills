@@ -263,38 +263,31 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                         widgets.append(.goalCard)
                     }
                 } else {
-                    // In non-edit mode, always place goal card at the top (position 0)
-                    // In edit mode, use the saved position
-                    if !isEditMode {
-                        // Always place goal card first, followed by streak items
-                        widgets.append(.goalCard)
-                        widgets.append(contentsOf: activeStreaks.map { .streak($0) })
-                    } else {
-                        // In edit mode, use the saved position
-                        let columns = DevicePlatform.isTablet ? 4 : 2
-                        let hasRemovedStreaks = !removedStreaks.isEmpty
-                        let maxPosition = streakCount
-                        let clampedGoal = min(goalCardPos, maxPosition)
-                        let goalIndex = effectiveGoalIndex(
-                            clampedGoalPos: clampedGoal,
-                            streakCount: streakCount,
-                            columns: columns,
-                            isEditMode: isEditMode,
-                            hasRemovedStreaks: hasRemovedStreaks
-                        )
+                    // Use the saved goal card position in both edit and non-edit mode
+                    // This ensures the position persists when user exits edit mode
+                    let columns = DevicePlatform.isTablet ? 4 : 2
+                    let hasRemovedStreaks = !removedStreaks.isEmpty
+                    let maxPosition = streakCount
+                    let clampedGoal = min(goalCardPos, maxPosition)
+                    let goalIndex = effectiveGoalIndex(
+                        clampedGoalPos: clampedGoal,
+                        streakCount: streakCount,
+                        columns: columns,
+                        isEditMode: isEditMode,
+                        hasRemovedStreaks: hasRemovedStreaks
+                    )
 
-                        var goalAdded = false
-                        for i in 0...maxPosition {
-                            if i == goalIndex && !goalAdded {
-                                widgets.append(.goalCard)
-                                goalAdded = true
-                            }
-                            if i < streakCount {
-                                widgets.append(.streak(activeStreaks[i]))
-                            }
+                    var goalAdded = false
+                    for i in 0...maxPosition {
+                        if i == goalIndex && !goalAdded {
+                            widgets.append(.goalCard)
+                            goalAdded = true
                         }
-                        if !goalAdded { widgets.append(.goalCard) }
+                        if i < streakCount {
+                            widgets.append(.streak(activeStreaks[i]))
+                        }
                     }
+                    if !goalAdded { widgets.append(.goalCard) }
                 }
             }
 

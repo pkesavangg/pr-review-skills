@@ -6,27 +6,51 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @MainActor
 final class ScaleNameViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var scaleService: ScaleService
     @Injector var logger: LoggerService
-    
-    private let scale: Device
+
+    // R6: Store PersistentIdentifier instead of @Model directly
+    private let scaleId: PersistentIdentifier
+    private let scaleIdString: String
+    private var cachedScale: Device?
     private let tag = "ScaleNameViewModel"
-    
+
+    var scale: Device {
+        cachedScale ?? Device(id: scaleIdString, accountId: "")
+    }
+
     init(scale: Device) {
-        self.scale = scale
+        self.scaleId = scale.persistentModelID
+        self.scaleIdString = scale.id
+        self.cachedScale = scale
+    }
+
+    func refreshScale() {
+        let context = PersistenceController.shared.context
+        if let fresh: Device = context.registeredModel(for: scaleId) {
+            cachedScale = fresh
+            return
+        }
+        let idString = scaleIdString
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == idString })
+        cachedScale = try? context.fetch(descriptor).first
     }
     
     func saveScaleName(_ newName: String, onSuccess: (() -> Void)? = nil) async {
+        refreshScale()
+        let deviceId = scaleIdString
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         do {
-            _ = try await scaleService.editDevice(scale.id, properties: ["nickname": newName])
+            _ = try await scaleService.editDevice(deviceId, properties: ["nickname": newName])
             await scaleService.pushLocalChangesToServer()
+            refreshScale()
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.scaleNameUpdated))
-            logger.log(level: .info, tag: tag, message: "Scale name updated successfully", data: ["scaleId": scale.id, "newName": newName])
+            logger.log(level: .info, tag: tag, message: "Scale name updated successfully", data: ["scaleId": deviceId, "newName": newName])
             onSuccess?()
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save scale name: \(error.localizedDescription)", data: error)

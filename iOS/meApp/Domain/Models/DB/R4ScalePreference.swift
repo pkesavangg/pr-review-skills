@@ -73,7 +73,8 @@ final class R4ScalePreference {
             shouldMeasurePulse: self.shouldMeasurePulse,
             timeFormat: self.timeFormat,
             tzOffset: self.tzOffset,
-            wifiFotaScheduleTime: self.wifiFotaScheduleTime
+            wifiFotaScheduleTime: self.wifiFotaScheduleTime,
+            isSynced: self.isSynced
         )
     }
 }

@@ -63,12 +63,11 @@ fun DebugMenuScreen() {
   }
   val cardAlignment = if (isTablet) CardAlignmentType.TopCenter else CardAlignmentType.TopStart
   CompositionLocalProvider(LocalCardAlignment provides cardAlignment){
-    DebugMenuContent(
-      state = state,
-      handleIntent = viewModel::handleIntent,
-    )
+      DebugMenuContent(
+        state = state,
+        handleIntent = viewModel::handleIntent,
+      )
   }
-
 }
 
 @Composable
@@ -235,11 +234,8 @@ private fun ScaleTroubleshootingSection(
       SettingsItem(
         title = DebugMenuStrings.Actions.SendScaleLog,
         type = SettingsItemType.None,
-        onClick = {
-          if (isSendScaleLogEnabled) {
-            handleIntent(DebugMenuIntent.SendScaleLogs)
-          }
-        },
+        enabled = isSendScaleLogEnabled,
+        onClick = { handleIntent(DebugMenuIntent.SendScaleLogs) },
       ),
     ),
   )
@@ -259,10 +255,6 @@ private fun DebugMenuScreenPreview() {
       timezoneOffset = "330",
       hasScales = true,
       isSendScaleLogEnabled = true,
-    )
-    DebugMenuContent(
-      state = previewState,
-      handleIntent = {},
     )
   }
 }

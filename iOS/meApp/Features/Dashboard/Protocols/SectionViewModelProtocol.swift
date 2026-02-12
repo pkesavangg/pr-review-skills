@@ -106,6 +106,6 @@ protocol SectionViewModelProtocol: ObservableObject {
     func updateCachedSeriesDataAsync()
     func getCachedGroupedSeries() -> [String: [GraphSeries]]
     func invalidateCache()
+    func invalidateXAxisCache()
     func getCachedSeriesData() -> [GraphSeries]
 }
-

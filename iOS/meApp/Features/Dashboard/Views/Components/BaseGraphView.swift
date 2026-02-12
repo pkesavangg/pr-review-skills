@@ -167,6 +167,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
                 .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
+
                 .transaction { t in
                     // Disable ALL animations during scroll and scroll-end transition
                     if viewModel.isScrolling || isInScrollEndTransition {
@@ -295,7 +296,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Refresh data and invalidate caches
             viewModel.refreshData()
             viewModel.invalidateCache()
-
+            viewModel.invalidateXAxisCache()
             // Update local cache since data changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
@@ -451,32 +452,62 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             let point = plottedPoint.original
             let xDate = plottedPoint.xDate  // Use precomputed
 
+            // Clamp value to the Y-axis domain so marks never overflow outside
+            // the plot area into the x-axis region during domain transitions.
+            let domainLower = viewModel.yAxisDomain.lowerBound
+            let domainUpper = viewModel.yAxisDomain.upperBound
+            let clampedValue = min(max(point.value, domainLower), domainUpper)
+            let isWithinDomain = point.value >= domainLower && point.value <= domainUpper
+
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
 
-            // Line mark
+            // Check if point is outside the active month interval (should be greyed out)
+            let isOutsideMonthInterval = isPointOutsideActiveMonth(date: point.date)
+
+            // Line color stays consistent (SwiftUI Charts applies color to entire interpolated line)
+            let lineColor = point.series == DashboardStrings.weight
+                ? theme.actionPrimary
+                : theme.actionSecondary
+
+            // Point color is greyed out if outside the active month
+            let pointColor = point.series == DashboardStrings.weight
+                ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
+                : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
+
+            // Line mark — uses clamped value so the line stops at the domain boundary
             LineMark(
                 x: .value("Date", xDate),
-                y: .value(point.series, point.value),
+                y: .value(point.series, clampedValue),
                 series: .value("Series", point.series)
             )
-            .foregroundStyle(point.series == DashboardStrings.weight
-                             ? theme.actionPrimary
-                             : theme.actionSecondary)
+            .foregroundStyle(lineColor)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
-            // Visible point mark
+            // Visible point mark — only shown when within domain to avoid
+            // dots sitting on the axis boundary
             PointMark(
                 x: .value("Date", xDate),
-                y: .value(point.series, point.value)
+                y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
-            .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
-            .foregroundStyle(point.series == DashboardStrings.weight
-                             ? theme.actionPrimary
-                             : theme.actionSecondary)
+            .symbolSize(isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
+            .foregroundStyle(pointColor)
         }
+    }
+
+    /// Checks if a point's date falls outside the active month interval.
+    /// Returns true only when in month period with a full month visible, not scrolling, and the point is outside that month.
+    private func isPointOutsideActiveMonth(date: Date) -> Bool {
+        // Don't grey out points while scrolling
+        guard !viewModel.isScrolling else { return false }
+
+        guard let monthInterval = dashboardStore.activeMonthInterval else {
+            return false
+        }
+        // Check if date is before month start or on/after month end
+        return date < monthInterval.start || date >= monthInterval.end
     }
 
     @ChartContentBuilder
@@ -531,7 +562,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     // MARK: - Goal Chip Callout
     @ViewBuilder
     private func goalChipCallout() -> some View {
-        if let goalWeight = viewModel.goalWeight {
+        if let goalWeight = viewModel.goalWeight, viewModel.chartFrame.height > 0 {
             let goalPosition = viewModel.getGoalChipPosition()
 
             goalWeightChip(goalWeight)
@@ -539,10 +570,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
                     y: goalPosition.yPosition
                 )
-                .animation(
-                    viewModel.shouldAnimateChartData ? .easeOut(duration: 0.3) : .none,
-                    value: goalPosition.yPosition
-                )
+                .animation(coordinatedChartAnimation, value: goalPosition.yPosition)
+        } else {
+            EmptyView()
         }
     }
 
@@ -822,15 +852,12 @@ extension View {
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: {
-                        let pos = viewModel.scrollPosition
-                        return pos
+                        viewModel.scrollPosition
                     },
                     set: { (newPosition: Date?) in
                         guard let newPosition = newPosition else { return }
-                        // Debounce scroll position updates to prevent multiple updates per frame
-                        DispatchQueue.main.async {
-                            viewModel.handleScrollPositionChange(newPosition)
-                        }
+                        // Throttling is handled in handleScrollPositionChange
+                        viewModel.handleScrollPositionChange(newPosition)
                     }
                 ))
                 .chartXAxis {
@@ -1044,36 +1071,32 @@ extension View {
 
     /// Returns the appropriate chart scroll target behavior based on the time period
     /// - Parameter period: The time period for the chart
-    /// - Returns: ChartScrollTargetBehavior configured for the specific period
-    func getChartScrollBehavior(for period: TimePeriod) -> some ChartScrollTargetBehavior {
+    /// - Returns: PagedChartScrollBehavior with paging support + date alignment
+    func getChartScrollBehavior(for period: TimePeriod) -> PagedChartScrollBehavior {
         switch period {
         case .week:
             // For week view: align to start of week (Sunday)
-            return .valueAligned(
-                matching: .init(hour: 12),
-                majorAlignment: .matching(.init(hour: 6, weekday: 1)), // Sunday = 1
-                limitBehavior: .automatic
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(hour: 6, weekday: 1) // Sunday = 1
             )
         case .month:
             // For month view: align to start of month (1st day)
-            return .valueAligned(
-                matching: .init(hour: 12),
-                majorAlignment: .matching(.init(day: 31, hour: 12)),
-                limitBehavior: .automatic
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(day: 31, hour: 12)
             )
         case .year:
             // For year view: align to mid-December (centers the year boundary between Dec and Jan)
-            return .valueAligned(
-                matching: .init(hour: 12),
-                majorAlignment: .matching(.init(month: 12, day: 20, hour: 12)),
-                limitBehavior: .automatic
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(month: 12, day: 20, hour: 12)
             )
         case .total:
             // For total view: no specific alignment needed (non-scrollable)
-            return .valueAligned(
-                matching: .init(hour: 0),
-                majorAlignment: .matching(.init(hour: 0)),
-                limitBehavior: .automatic
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 0),
+                majorAlignment: DateComponents(hour: 0)
             )
         }
     }
@@ -1088,40 +1111,31 @@ extension View {
         if isScrollable {
             self
                 .onChange(of: dashboardStore.state.graph.xScrollPosition) { oldPosition, newPosition in
-                    // Debounce to prevent multiple updates per frame
-                    DispatchQueue.main.async {
-                        viewModel.updateScrollPosition(to: newPosition)
-                    }
+                    // Only sync if position actually changed (programmatic navigation)
+                    // Skip if viewModel already has this position to avoid redundant updates
+                    guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.1 else { return }
+                    viewModel.updateScrollPosition(to: newPosition)
                 }
                 .onChange(of: dashboardStore.state.graph.isScrolling) { oldValue, newValue in
-                    // Debounce to prevent multiple updates per frame
-                    DispatchQueue.main.async {
-                        viewModel.isScrolling = newValue
-                        // Immediately clear local selection when scrolling starts to remove crosshair and label
-                        if newValue {
-                            localSelectedXValue.wrappedValue = nil
-                            // Also clear the view model's selection state immediately
-                            viewModel.clearSelection()
-                        }
+                    viewModel.isScrolling = newValue
+                    // Immediately clear local selection when scrolling starts to remove crosshair and label
+                    if newValue {
+                        localSelectedXValue.wrappedValue = nil
+                        // Also clear the view model's selection state immediately
+                        viewModel.clearSelection()
                     }
                 }
                 .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
                     // Clear local selection when period changes (similar to scrolling behavior)
-                    DispatchQueue.main.async {
-                        localSelectedXValue.wrappedValue = nil
-                        viewModel.clearSelection()
-                    }
+                    localSelectedXValue.wrappedValue = nil
+                    viewModel.clearSelection()
                 }
             // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
                 .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
-                    DispatchQueue.main.async {
-                        viewModel.syncYAxisFromStore()
-                    }
+                    viewModel.syncYAxisFromStore()
                 }
                 .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
-                    DispatchQueue.main.async {
-                        viewModel.syncYAxisFromStore()
-                    }
+                    viewModel.syncYAxisFromStore()
                 }
         } else {
             self

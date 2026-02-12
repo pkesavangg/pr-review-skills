@@ -79,7 +79,7 @@ object ScaleSetupStrings {
     const val Title = "Are you sure you want to skip Wi-Fi?"
     const val Message = "After setup, find additional Wi-Fi settings or the MAC Address via scale settings."
     const val Skip = "SKIP"
-    const val Back = "Go Back"
+    const val Back = "Back"
   }
 
   object PermissionAlerts {

@@ -129,12 +129,17 @@ constructor(
   }
 
   override suspend fun updateProgressMetrics(progressKeys: List<String>) {
-    AppLog.d("AccountRepository", "Updating progress metrics on server: $progressKeys")
-    userAPI.updateProgressMetrics(
-      request = ProgressMetricsRequest(
-        progressMetrics = progressKeys,
-      ),
-    )
+    try {
+      AppLog.d("AccountRepository", "Updating progress metrics on server: $progressKeys")
+      userAPI.updateProgressMetrics(
+        request = ProgressMetricsRequest(
+          progressMetrics = progressKeys,
+        ),
+      )
+    }
+    catch (e: Exception){
+      AppLog.e("AccountRepository", "Failed while updating the progress metrics")
+    }
     AppLog.d("AccountRepository", "Progress metrics updated successfully on server")
   }
 

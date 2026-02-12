@@ -514,15 +514,19 @@ final class WifiScaleSetupStore: ObservableObject {
                     } else {
                         kvStorage.setCodable(status, forKey: ssidTempKey)
                     }
-                }
-                let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
-                self.wifiStatus = wifiStatus
-                
-                // Auto-fill SSID only if user hasn't cleared it
-                if !hasUserManuallyClearedSSID {
-                    let newSSID = self.wifiStatus?.ssid ?? ""
-                    self.networkForm.setSSID(newSSID)
-                    self.previousSSID = newSSID // Keep in sync to avoid false clears
+                    self.wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
+
+                    // Only update form when we have a definitive read from the system.
+                    // When status.ssid is empty, do NOT call setSSID - iOS returns empty
+                    // intermittently during network transitions. Overwriting would both clear
+                    // valid data and trigger hasUserManuallyClearedSSID in formDidChange.
+                    if !hasUserManuallyClearedSSID {
+                        self.networkForm.setSSID(ssid)
+                        self.previousSSID = ssid
+                    }
+                } else {
+                    // status.ssid empty: keep cache for other consumers, but don't touch form
+                    self.wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
                 }
             }
         }

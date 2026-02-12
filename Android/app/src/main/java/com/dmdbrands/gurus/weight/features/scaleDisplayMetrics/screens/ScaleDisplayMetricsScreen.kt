@@ -58,11 +58,6 @@ fun ScaleDisplayMetricsScreenContent(
   val coroutineScope = rememberCoroutineScope()
 
   val lazyListState = rememberLazyListState()
-  val scroller = rememberScroller(
-    scrollableState = lazyListState,
-    pixelAmountProvider = { lazyListState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
-  )
-
   AppScaffold(
     title = ScaleDisplayMetricsStrings.Title,
     navigationIcon = {
@@ -117,7 +112,7 @@ fun ScaleDisplayMetricsScreenContent(
         state.scale?.let { scale ->
           ScaleMetricsSettingScreen(
             currentMetrics = scale.preferences?.displayMetrics ?: emptyList(),
-            parentScroller = scroller,
+            scrollState = lazyListState,
             onMetricsChanged = { enabledMetrics ->
               handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
             },

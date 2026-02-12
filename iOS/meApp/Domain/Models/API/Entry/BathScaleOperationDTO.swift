@@ -1,6 +1,6 @@
 import Foundation
 
-struct BathScaleOperationDTO: Codable {
+struct BathScaleOperationDTO: Codable, Sendable {
     let accountId: String?
     let bmr: Double?
     let bmi: Double?
