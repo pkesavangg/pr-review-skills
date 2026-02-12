@@ -258,7 +258,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let yearKey = yearDeltaResult.yearKey
         
         let account = try await accountService.getActiveAccount()
-        let initialWeight = account?.goalSettings?.initialWeight.map(Int.init) ?? firstEntryWeight
+        let goalInitial = account?.goalSettings?.initialWeight.map(Int.init)
+        let initialWeight = (goalInitial != nil && goalInitial! > 0) ? goalInitial : firstEntryWeight
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
         
         let streak = try await getStreak()

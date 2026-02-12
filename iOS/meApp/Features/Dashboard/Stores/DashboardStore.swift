@@ -1642,6 +1642,9 @@ class DashboardStore: ObservableObject {
     func handleSettingsChange() {
         Task {
             do {
+                // Refresh progress metrics (lbs/total, lbs/week, etc.) when goal/initial weight changes
+                try await self.streakManager.refreshStreakData()
+
                 try await self.goalManager.loadGoalData()
                 self.logger.log(level: .debug, tag: "DashboardStore", message: "Goal data reloaded after settings change")
             } catch {
