@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
@@ -79,6 +80,9 @@ internal fun StatCard(
       } else {
         // Handle null values based on key type
         when {
+          !isFromSetup && stat.key is DashboardKey.Milestone && stat.key.key == MilestoneKey.CURRENT_STREAK ->
+            append("0 days")
+
           !isFromSetup && stat.key is DashboardKey.Milestone && !isStreakMilestone(stat) ->
             append("0.0")
 
