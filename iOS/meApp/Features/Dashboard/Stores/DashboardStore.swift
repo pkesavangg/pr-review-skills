@@ -42,6 +42,8 @@ class DashboardStore: ObservableObject {
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
+    /// Previous account settings snapshot for diffing; used to avoid redundant streak refresh when only unit changes.
+    private var lastAccountSettingsSnapshot: AccountSettingsSnapshot?
     private static let allProgressMetricsRemovedKey = "dashboard.allProgressMetricsRemoved"
 
     // MARK: - UI Update Batching (Performance Optimization)
@@ -289,8 +291,14 @@ class DashboardStore: ObservableObject {
             .dropFirst()
             .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
             .sink { [weak self] snapshot in
-                self?.logger.log(level: .debug, tag: "DashboardStore", message: "Account settings changed (consolidated subscription)")
-                self?.handleSettingsChange()
+                guard let self else { return }
+                let previous = self.lastAccountSettingsSnapshot
+                self.lastAccountSettingsSnapshot = snapshot
+                // Only refresh streak when goal/initial weight changes; unit changes are handled by handleUnitChange
+                let goalRelatedChanged = previous == nil || previous?.goalWeight != snapshot.goalWeight
+                    || previous?.initialWeight != snapshot.initialWeight || previous?.goalType != snapshot.goalType
+                self.logger.log(level: .debug, tag: "DashboardStore", message: "Account settings changed (consolidated subscription)")
+                self.handleSettingsChange(shouldRefreshStreak: goalRelatedChanged)
             }
             .store(in: &cancellables)
 
@@ -1639,9 +1647,14 @@ class DashboardStore: ObservableObject {
 
     }
 
-    func handleSettingsChange() {
+    /// - Parameter shouldRefreshStreak: When false, skips streak refresh (e.g. when only unit changed; handleUnitChange handles that).
+    func handleSettingsChange(shouldRefreshStreak: Bool = true) {
         Task {
             do {
+                if shouldRefreshStreak {
+                    try await self.streakManager.refreshStreakData()
+                }
+
                 try await self.goalManager.loadGoalData()
                 self.logger.log(level: .debug, tag: "DashboardStore", message: "Goal data reloaded after settings change")
             } catch {
