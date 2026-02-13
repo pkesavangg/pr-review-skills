@@ -2109,7 +2109,15 @@ class DashboardStore: ObservableObject {
             cachedBounds: dataManager.getDateBounds(for: period)
         )
 
-        graphManager.updateScrollPosition(to: optimalScrollPosition)
+        // Keep section switches aligned to tick grids, but preserve explicit anchor semantics.
+        // - Do not snap when an anchor is provided (preserve temporal centering intent).
+        // - Do not force month snapping here (month uses its own tick scheme).
+        let shouldSnapProgrammaticPosition = period != .total && period != .month && anchorDate == nil
+        let alignedScrollPosition = shouldSnapProgrammaticPosition
+            ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
+            : optimalScrollPosition
+
+        graphManager.updateScrollPosition(to: alignedScrollPosition)
         // Delegate period update to graph manager (this will clear chart data cache)
         graphManager.updateSelectedPeriod(period)
 
@@ -2308,13 +2316,9 @@ class DashboardStore: ObservableObject {
             return nil
         }
         let endInclusive = inclusiveEnd(fromExclusive: endExclusive)
-
-        // Clamp to available data to avoid showing future months with no entries
-        if let bounds = dataManager.getDateBounds(for: .year) {
-            let clampedEnd = min(endInclusive, bounds.max)
-            return (start: start, end: clampedEnd)
-        }
-
+        
+        // Keep label aligned to the visible 12-month window, even if trailing months
+        // have no entries. This matches the rendered year grid/ticks behavior.
         return (start: start, end: endInclusive)
     }
 
@@ -3243,7 +3247,15 @@ class DashboardStore: ObservableObject {
             cachedBounds: nil
         )
 
-        self.graphManager.updateScrollPosition(to: optimalScrollPosition)
+        // Keep initialization aligned to tick grids, except month/total where forcing
+        // generic snapping can misalign with rendered month tick progression.
+        let period = state.graph.selectedPeriod
+        let shouldSnapProgrammaticPosition = period != .total && period != .month
+        let alignedScrollPosition = shouldSnapProgrammaticPosition
+            ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
+            : optimalScrollPosition
+
+        self.graphManager.updateScrollPosition(to: alignedScrollPosition)
 
         self.forceCompleteRecalculationAfterScrollPosition()
 
