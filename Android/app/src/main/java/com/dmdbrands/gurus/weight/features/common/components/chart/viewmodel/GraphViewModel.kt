@@ -443,10 +443,19 @@ class GraphViewModel @AssistedInject constructor(
       if (!isSecondary) {
         super.handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
       }
+
       return CartesianRangeValues(
         minY = graphMeta.min,
         maxY = graphMeta.max,
-        maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
+        maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
+          val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
+            ?: Calendar.getInstance().timeInMillis
+          val paddedEndX = Calendar.getInstance().apply {
+            timeInMillis = paddedEnd_StartRange
+            add(Calendar.DAY_OF_YEAR, 30)
+          }.timeInMillis
+          paddedEndX.toDouble()
+        } else GraphUtil.getEndRange(
           segment,
           Calendar.getInstance().timeInMillis,
         )?.toDouble(),
@@ -454,8 +463,17 @@ class GraphViewModel @AssistedInject constructor(
           ?.toDouble(),
       )
     }
+
     return CartesianRangeValues(
-      maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
+      maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
+        val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
+          ?: Calendar.getInstance().timeInMillis
+        val paddedEndX = Calendar.getInstance().apply {
+          timeInMillis = paddedEnd_StartRange
+          add(Calendar.DAY_OF_YEAR, 30)
+        }.timeInMillis
+        paddedEndX.toDouble()
+      } else GraphUtil.getEndRange(
         segment,
         Calendar.getInstance().timeInMillis,
       )?.toDouble(),

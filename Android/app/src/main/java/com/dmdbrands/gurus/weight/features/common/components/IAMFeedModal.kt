@@ -43,6 +43,7 @@ fun IAMFeedModal(
       },
       onCloseClick = onDismiss,
       modifier = modifier,
+      expiresAt = feedItem.expiresAt
     )
   }
 }

@@ -180,45 +180,39 @@ fun GraphView(
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
         return@rememberGraphChart
       }
-      // Capture visible labels synchronously (during draw). Use the full list from the placer
-      // so getTargetPoints can resolve the nearest label; do not filter by min/max here or
-      // we drop labels that are actually on screen and marker stays null.
-      scope.launch {
-        val visibleRange = scrollState.visibleRange.firstOrNull()
-        val visibleLabels =
-          scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
-            if (visibleRange != null)
-              it in visibleRange.visibleXRange.start..visibleRange.visibleXRange.endInclusive
-            else
-              true
-          }
-        var markerIndex: Double? = null
-        val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
-        val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
-        val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
-        if (!outOfBoundaryCondition) {
-          val targetMarkerIndex =
-            getTargetPoints(
-              visibleLabels,
-              targets,
-              click,
-              segment,
-              state.minTarget?.toDouble(),
-              state.maxTarget?.toDouble(),
-            )
-          if (targetMarkerIndex.isNotEmpty()) {
-            val targetIndex = targetMarkerIndex.first().toLong()
-            markerIndex = when {
-              targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
-              targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
-              targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
-              else -> null
-            }
+      val visibleLabels =
+        scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
+          if (state.minTarget != null && state.maxTarget != null)
+            it.toLong() in state.minTarget..state.maxTarget
+          else
+            true
+        }
+      var markerIndex: Double? = null
+      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
+      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
+      val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
+      if (!outOfBoundaryCondition) {
+        val targetMarkerIndex =
+          getTargetPoints(
+            visibleLabels,
+            targets,
+            click,
+            segment,
+            state.minTarget?.toDouble(),
+            state.maxTarget?.toDouble(),
+          )
+        if (targetMarkerIndex.isNotEmpty()) {
+          val targetIndex = targetMarkerIndex.first().toLong()
+          markerIndex = when {
+            targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
+            targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
+            targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
+            else -> null
           }
         }
-        if (state.markerIndex != markerIndex)
-          viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
       }
+      if (state.markerIndex != markerIndex)
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
     },
   )
   CartesianChartHost(
@@ -234,7 +228,9 @@ fun GraphView(
         val min = range.visibleXRange.start.toLong()
         val max = range.visibleXRange.endInclusive.toLong()
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
-        onScrollUpdate(relativeMin, max)
+        val relativeMax = GraphUtil.getRelativeEnd(segment, max)
+        val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
+        onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
       }

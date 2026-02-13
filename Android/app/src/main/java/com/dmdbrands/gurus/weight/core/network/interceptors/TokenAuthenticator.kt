@@ -240,23 +240,29 @@ class TokenAuthenticator @Inject constructor(
 
                 // Check error status (same as Angular: err.status === 401)
                 val errorStatus = getErrorStatus(e)
-                val isTokenInvalidated = errorStatus == 401
 
-                if (isTokenInvalidated) {
-                    // 401 error - logout (same as Angular)
-                    AppLog.e(TAG, "Token invalidated (401) - logging out user for account: $accountId")
-                    logoutUser(accountId, isCurrentAccount(accountId))
-                    deferred.complete(null)
-                    ongoingRefreshDeferred = null
-                    throw e
-                } else {
-                    // Other error - logout
-                    AppLog.e(TAG, "Token refresh error for account: $accountId")
-                    logoutUser(accountId, isCurrentAccount(accountId))
-                    deferred.complete(null)
-                    ongoingRefreshDeferred = null
-                    throw e
+              when (e) {
+                is java.net.UnknownHostException,
+                is java.net.SocketTimeoutException,
+                is java.io.InterruptedIOException,
+                is java.io.IOException -> {
+                  // network problem: don't logout
+                  deferred.complete(null)
+                  ongoingRefreshDeferred = null
+                  return null
                 }
+              }
+
+              // Only logout when refresh endpoint says 401/403
+              val httpCode = (e as? retrofit2.HttpException)?.code()
+                ?: (e.cause as? retrofit2.HttpException)?.code()
+
+              if (httpCode == 401 || errorStatus == 401) {
+                logoutUser(accountId, isCurrentAccount(accountId))
+              }
+              deferred.complete(null)
+              ongoingRefreshDeferred = null
+              return null
             }
         } else {
             // Already refreshing - wait for ongoing refresh to complete (same as Angular Promise subscription)

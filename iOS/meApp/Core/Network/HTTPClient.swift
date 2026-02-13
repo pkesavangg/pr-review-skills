@@ -73,15 +73,18 @@ final class HTTPClient {
         // Only check token expiration if needed and not skipped
         if needsAuth && !skipTokenCheck {
             let account = try await getAccount(accountId)
-            if tokenManager.checkTokenExpiration(expiresAt: account.expiresAt)
+            // Extract primitives from @Model before crossing async boundaries (R1)
+            let expiresAt = account.expiresAt
+            let acctId = account.accountId
+            if tokenManager.checkTokenExpiration(expiresAt: expiresAt)
             {
-                let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
+                let tokens = try await tokenManager.refreshToken(accountId: acctId)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                 return try await performRequest(newRequest)
             }
         }
-        
+
         do {
            return try await performRequest(request)
         } catch {
@@ -92,7 +95,9 @@ final class HTTPClient {
                     // This prevents infinite loops when 401 is legitimate (e.g., wrong password)
                     if needsAuth && !skipTokenCheck && !restartWithNewTokens {
                         let account = try await getAccount(accountId)
-                        let tokens = try await tokenManager.refreshToken(accountId: account.accountId)
+                        // Extract primitives from @Model before crossing async boundaries (R1)
+                        let acctId = account.accountId
+                        let tokens = try await tokenManager.refreshToken(accountId: acctId)
                         var newRequest = request
                         newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                         return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId, restartWithNewTokens: true)

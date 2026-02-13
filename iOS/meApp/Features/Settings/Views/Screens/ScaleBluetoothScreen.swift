@@ -72,7 +72,8 @@ struct ScaleBluetoothScreen: View {
             scaleName: getScaleDisplayName(),
             status: (scale.isConnected ?? false) ? ScaleConnectionStatus.connected : ScaleConnectionStatus.notConnected,
             onTap: {},
-            hideChevron: true
+            hideChevron: true,
+            scaleType: ScaleTypeHelper.determineScaleType(for: scale)
         )
     }
     

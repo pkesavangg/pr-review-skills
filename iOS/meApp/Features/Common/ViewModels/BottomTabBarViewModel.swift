@@ -98,9 +98,10 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
         bluetoothService.newEntryReceivedPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] event in
+            .sink { [weak self] _ in
                 guard let self else { return }
                 if !self.bluetoothService.isSetupInProgress {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
@@ -535,7 +536,9 @@ class BottomTabBarViewModel: ObservableObject {
         do {
             try await healthKitService.syncAllData()
             if let latestEntry = try await entryService.getLatestEntry() {
-                await integrationService.logHealthEntry(entry: latestEntry)
+                // Create notification to safely pass data across actor boundaries
+                let notification = EntryNotification(from: latestEntry)
+                await integrationService.logHealthEntry(notification: notification)
             }
             await MainActor.run {
                 notificationService.dismissLoader()

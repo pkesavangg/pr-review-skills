@@ -3,17 +3,25 @@
    See https://developer.android.com/about/versions/12/backup-restore#xml-changes
    for details.
 -->
+<!--    Android 12+ Backup / Restore / Transfer rules (data-extraction-rules)-->
+<!--    Notes:-->
+<!--    - "file", "database", "sharedpref", "root", "external" are the normal app storage-->
+<!--    domains (credential-protected storage / CE): available after the user unlocks.-->
+<!--    - Even if android:allowBackup="false" is set, keeping explicit rules helps protect-->
+<!--    against future manifest changes / build flavors and makes intent clear.-->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="file" path="."/>
+        <exclude domain="database" path="."/>
+        <exclude domain="sharedpref" path="."/>
+        <exclude domain="root" path="."/>
+        <exclude domain="external" path="."/>
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="."/>
+        <exclude domain="database" path="."/>
+        <exclude domain="sharedpref" path="."/>
+        <exclude domain="external" path="."/>
+        <exclude domain="root" path="."/>
     </device-transfer>
-    -->
 </data-extraction-rules>

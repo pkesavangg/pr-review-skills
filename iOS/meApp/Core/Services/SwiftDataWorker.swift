@@ -136,24 +136,62 @@ actor SwiftDataWorker {
     /// - Returns: ProgressFetchResult containing all extracted entry data
     func fetchProgressData(accountId: String) async throws -> ProgressFetchResult {
         let operationType = "create"
-        let descriptor = FetchDescriptor<Entry>(
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Calculate date ranges for week and month (date-based filtering like BEFORE commit)
+        guard let weekStartDate = calendar.date(byAdding: .day, value: -7, to: now),
+              let monthStartDate = calendar.date(byAdding: .day, value: -30, to: now) else {
+            throw NSError(domain: "SwiftDataWorker", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to calculate date ranges"])
+        }
+        
+        let isoFormatter = ISO8601DateFormatter()
+        let weekStartString = isoFormatter.string(from: weekStartDate)
+        let monthStartString = isoFormatter.string(from: monthStartDate)
+        let nowString = isoFormatter.string(from: now)
+        
+        // Fetch all entries ordered DESC (newest first)
+        let allDescriptor = FetchDescriptor<Entry>(
             predicate: #Predicate<Entry> { entry in
                 entry.accountId == accountId && entry.operationType == operationType
             },
             sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
         )
-
-        let entries = try modelContext.fetch(descriptor)
-
-        // Extract ALL data inside the actor - relationships are safe here
-        let allEntryData = entries.map { extractEntryData($0) }
+        let allEntries = try modelContext.fetch(allDescriptor)
+        let allEntryData = allEntries.map { extractEntryData($0) }
+        
+        // Fetch entries from last 7 days, ordered DESC (newest first)
+        let weekDescriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate<Entry> { entry in
+                entry.accountId == accountId 
+                && entry.operationType == operationType
+                && entry.entryTimestamp >= weekStartString
+                && entry.entryTimestamp <= nowString
+            },
+            sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+        )
+        let weekEntries = try modelContext.fetch(weekDescriptor)
+        let weekEntryData = weekEntries.map { extractEntryData($0) }
+        
+        // Fetch entries from last 30 days, ordered DESC (newest first)
+        let monthDescriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate<Entry> { entry in
+                entry.accountId == accountId 
+                && entry.operationType == operationType
+                && entry.entryTimestamp >= monthStartString
+                && entry.entryTimestamp <= nowString
+            },
+            sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+        )
+        let monthEntries = try modelContext.fetch(monthDescriptor)
+        let monthEntryData = monthEntries.map { extractEntryData($0) }
 
         return ProgressFetchResult(
             latestEntry: allEntryData.first,
-            weekEntries: Array(allEntryData.prefix(7)),
-            monthEntries: Array(allEntryData.prefix(30)),
+            weekEntries: weekEntryData,
+            monthEntries: monthEntryData,
             allEntries: allEntryData,
-            totalCount: entries.count
+            totalCount: allEntries.count
         )
     }
 

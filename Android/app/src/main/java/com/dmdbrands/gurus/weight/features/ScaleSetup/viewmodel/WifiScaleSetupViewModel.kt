@@ -256,7 +256,7 @@ constructor(
               }
             }
 
-            WifiScaleSetupStep.STEP_ON -> {
+            WifiScaleSetupStep.STEP_ON, WifiScaleSetupStep.SCALE_COUNTS -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
             }
 

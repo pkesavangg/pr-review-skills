@@ -278,7 +278,8 @@ final class HealthKitStore: ObservableObject {
             do {
                 try await healthKitService.syncAllData()
                 if let latestEntry = try? await entryService.getLatestEntry() {
-                    await integrationService.logHealthEntry(entry: latestEntry)
+                    let notification = EntryNotification(from: latestEntry)
+                    await integrationService.logHealthEntry(notification: notification)
                 }
                 // Dismiss loader before showing toast to avoid showing both at the same time
                 notificationService.dismissLoader()

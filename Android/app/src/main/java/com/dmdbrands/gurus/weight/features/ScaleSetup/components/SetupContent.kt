@@ -128,11 +128,12 @@ fun SetupContent(
           AppNote(
             message = noteMessage,
             showNote = true,
-            modifier = Modifier.padding(start = spacing.sm,end = spacing.sm, top = spacing.sm)
+            modifier = Modifier.padding(top = spacing.md)
           )
         }
 
         if (supportingButtonLabel != null && onSupportingButtonClick != null) {
+          Spacer(modifier = Modifier.height(spacing.md))
           AppButton(
             label = supportingButtonLabel,
             type = ButtonType.InlineTextPrimary,

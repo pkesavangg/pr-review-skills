@@ -255,7 +255,8 @@ extension Device {
         // For BtWifiR4 scales, check if WiFi setup is incomplete
         if type == .bluetoothR4 {
             let wifiOk = isWifiConfigured == true
-            if !wifiOk {
+            let weightOnly = !(r4ScalePreference?.shouldMeasureImpedance ?? true)
+            if !wifiOk && !weightOnly {
                 return .setupIncomplete
             }
         }

@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,7 +87,7 @@ fun <T> AppDraggableList(
   onMove: (from: Int, to: Int) -> Unit,
   modifier: Modifier = Modifier,
   contentPadding: PaddingValues = PaddingValues(0.dp),
-  parentScroller: Scroller? = null,
+  scrollState: ScrollableState? = null,
   verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(0.dp),
   keySelector: (T) -> Any,
   onDragStarted: () -> Unit = {},
@@ -95,8 +97,8 @@ fun <T> AppDraggableList(
   val lazyListState = rememberLazyListState()
   val hapticFeedback = LocalHapticFeedback.current
 
-  val scroller = parentScroller ?: rememberScroller(
-    scrollableState = lazyListState,
+  val scroller =  rememberScroller(
+    scrollableState = scrollState ?: lazyListState,
     pixelAmountProvider = { lazyListState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
   )
 

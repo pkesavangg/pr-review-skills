@@ -21,7 +21,7 @@ object GraphSnapHelper {
   fun getVisiblePaddingXStepForSegment(segment: GraphSegment): Pair<Double, Double> =
     when (segment) {
       GraphSegment.WEEK,
-      GraphSegment.MONTH -> 0.2 to 0.0
+      GraphSegment.MONTH -> 0.3 to 0.0
 
       GraphSegment.YEAR -> 0.5 to 0.0
       GraphSegment.TOTAL -> 0.0 to 0.0

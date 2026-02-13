@@ -239,6 +239,31 @@ class LogRepository
             }
         }
 
+        override suspend fun sendScaleLog(logs: List<LogEntry>) {
+            try {
+                if (logs.isEmpty()) {
+                    AppLog.w("LogRepository", "sendScaleLog called with empty logs")
+                    return
+                }
+                val request = SendLogRequest(
+                    logs = logs,
+                    version = AppStatusService.version,
+                )
+                val response = supportAPI.sendLog(request)
+                if (response.isSuccessful) {
+                    val responseText = response.body()?.string() ?: "No response body"
+                    AppLog.i("LogRepository", "Scale logs sent successfully. Response: $responseText")
+                } else {
+                    val errorText = response.errorBody()?.string() ?: "Unknown error"
+                    AppLog.e("LogRepository", "Failed to send scale logs. HTTP ${response.code()}: $errorText")
+                    throw Exception("Failed to send scale logs: HTTP ${response.code()} - $errorText")
+                }
+            } catch (e: Exception) {
+                AppLog.e("LogRepository", "Failed to send scale logs", e)
+                throw e
+            }
+        }
+
         fun updateAccountId(accountId: String) {
             currentAccountId = accountId
             AppLog.d("LogRepository", "Account ID updated to: $accountId")
