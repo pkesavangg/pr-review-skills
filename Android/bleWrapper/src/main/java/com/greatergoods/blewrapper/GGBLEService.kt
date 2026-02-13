@@ -49,4 +49,9 @@ class GGBLEService {
       lastActivityRef = WeakReference(activity)
     }
   }
+
+
+  fun reset(){
+    _deviceCallbackFlow.value = GGScanResponse.None
+  }
 }

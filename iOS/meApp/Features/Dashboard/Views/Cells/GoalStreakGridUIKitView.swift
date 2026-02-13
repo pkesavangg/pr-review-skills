@@ -174,16 +174,37 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     /// Builds the grid model using the saved order from DashboardStore UI state
     private func buildGridModelFromStoreState() -> MileStoneGridModel {
-        let allStreaks = store.streakItemsToShow
+        let isEditMode = store.state.ui.isEditMode
+        let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
+        
+        // Use manager streaks directly before API loads to avoid premature filtering
+        let managerStreaks = store.streakManager.state.streakItems
+        let allStreaks: [MetricItem]
+        
+        if !hasLoadedProgressMetrics && !isEditMode && !managerStreaks.isEmpty {
+            allStreaks = managerStreaks
+        } else {
+            allStreaks = store.streakItemsToShow
+        }
+        
         let goalCardPos = store.state.ui.goalCardPosition
         let streakOrder = store.state.ui.streakGridOrder
         let isGoalCardRemoved = store.state.ui.isGoalCardRemoved
-        let isEditMode = store.state.ui.isEditMode
-        let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
         let hasStreaks = !allStreaks.isEmpty
-        let hasValidGoal = !isGoalCardRemoved && (isEditMode || store.hasGoalSet)
+        let hasValidGoal = !isGoalCardRemoved
+        let hasStreakItemsInManager = !managerStreaks.isEmpty
+        
         if !hasStreaks && !hasValidGoal {
             return MileStoneGridModel(mileStones: [])
+        }
+        
+        // Fallback to manager streaks if API hasn't loaded yet
+        if !isEditMode {
+            if !hasLoadedProgressMetrics && !hasStreaks && !hasStreakItemsInManager {
+                return MileStoneGridModel(
+                    mileStones: hasValidGoal ? [.goalCard] : []
+                )
+            }
         }
 
         func orderedStreaks(from all: [MetricItem], using order: [String]) -> [MetricItem] {
@@ -195,11 +216,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 ordered.append(contentsOf: missing)
                 return ordered
             } else {
-                // In non-edit mode, only show streaks that are in the order (removed streaks already filtered by streakItemsToShow)
+                // Show streaks in order (removed streaks already filtered by streakItemsToShow)
                 guard !order.isEmpty else {
-                    return hasLoadedProgressMetrics ? all : []
+                    return all
                 }
-                return order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+                let ordered = order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+                // Append missing streaks if order is incomplete
+                if ordered.count < all.count {
+                    let orderedIds = Set(ordered.map { $0.id.uuidString })
+                    let missing = all.filter { !orderedIds.contains($0.id.uuidString) }
+                    return ordered + missing
+                }
+                return ordered
             }
         }
 
@@ -257,9 +285,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widgets.append(contentsOf: activeStreaks.map { .streak($0) })
             } else {
                 let streakCount = activeStreaks.count
-                // Show goal card always in edit mode; only when data exists in non-edit mode
+                // Show goal card if not removed; goal card handles "Set a Goal" button when no goal is set
                 if streakCount == 0 {
-                    if isEditMode || (store.hasGoalSet && !isGoalCardRemoved) {
+                    if !isGoalCardRemoved {
                         widgets.append(.goalCard)
                     }
                 } else {

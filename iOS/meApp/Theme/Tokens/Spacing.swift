@@ -5,6 +5,9 @@ public enum Spacing {
     /// Extra small spacing (8px)
     public static let xs: CGFloat = 8
     
+    /// Extra small medium spacing (12px)
+    public static let xsm: CGFloat = 12
+    
     /// Small spacing (16px)
     public static let sm: CGFloat = 16
     
@@ -37,6 +40,9 @@ public enum Spacing {
 public extension CGFloat {
     /// Extra small spacing (8)
     static let spacingXS = Spacing.xs
+    
+    /// Extra small medium spacing (12)
+    static let spacingXSM = Spacing.xsm
     
     /// Small spacing (16)
     static let spacingSM = Spacing.sm

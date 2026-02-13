@@ -31,6 +31,14 @@ final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
     override var timePeriod: TimePeriod {
         return .week
     }
+
+    /// Keep week scrolling quantized to day boundaries during drag updates so the
+    /// crosshair and visible domain stay aligned to vertical day grid lines.
+    override func handleScrollPositionChange(_ newPosition: Date?) {
+        guard let newPosition = newPosition else { return }
+        let snapped = dashboardStore?.graphManager.snapScrollPosition(newPosition, for: .week) ?? newPosition
+        super.handleScrollPositionChange(snapped)
+    }
     
 
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.

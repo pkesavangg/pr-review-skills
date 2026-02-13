@@ -773,11 +773,7 @@ class SettingsStore: ObservableObject {
                 // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateWeightUnit: \(profileUpdateResult)")
-                
-                // Mark A6 scales as unsynced and re-sync devices so they get the updated unit on reconnect
-                let a6Store = A6ScaleSetupStore()
-                await a6Store.markA6ScalesUnsyncedForUnitUpdate()
-                
+          
                 switch profileUpdateResult {
                 case .success(let statusArray):
                     // Suppress success toast during user selection to prevent misleading feedback,

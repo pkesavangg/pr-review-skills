@@ -95,72 +95,73 @@ struct PagedChartScrollBehavior: ChartScrollTargetBehavior {
         let absDrag = abs(dragDistance)
 
         // --- 1) FREE SCROLL REGION (in-between pages) ---
+        // Always route through the same final alignment phase so small drags and
+        // larger scroll gestures resolve to identical snapped positions.
+        var destination = min(max(proposedX, 0), maxOffset)
         let freeLimit = threshold * freeScrollMultiplier
         if absDrag < freeLimit {
-            let freeResult = min(max(proposedX, 0), maxOffset)
-            target.rect.origin.x = freeResult
-            return
-        }
-
-        // --- 2) PAGING REGION (1 or 2 pages) ---
-        // When scrolling toward an edge and proposedX hits the boundary,
-        // the drag distance is artificially limited. Scale threshold accordingly.
-        let isProposedAtEdge = (direction == .left && proposedX >= maxOffset - 1) ||
-                               (direction == .right && proposedX <= 1)
-        let effectiveTwoPageMultiplier = isProposedAtEdge ? twoPageMultiplier * 0.5 : twoPageMultiplier
-        let twoPageThreshold = threshold * effectiveTwoPageMultiplier
-
-        let pagesToJump: CGFloat
-        if absDrag > twoPageThreshold {
-            pagesToJump = 2
-        } else if absDrag > threshold {
-            pagesToJump = 1
+            destination = min(max(proposedX, 0), maxOffset)
         } else {
-            // Between freeLimit and threshold: soft snap to nearest page
-            let bounded = min(max(proposedX, 0), maxOffset)
-            let nearestPage = round(bounded / viewportW) * viewportW
-            let snapResult = min(max(nearestPage, 0), maxOffset)
-            target.rect.origin.x = snapResult
-            return
-        }
+            // --- 2) PAGING REGION (1 or 2 pages) ---
+            // When scrolling toward an edge and proposedX hits the boundary,
+            // the drag distance is artificially limited. Scale threshold accordingly.
+            let isProposedAtEdge = (direction == .left && proposedX >= maxOffset - 1) ||
+                                   (direction == .right && proposedX <= 1)
+            let effectiveTwoPageMultiplier = isProposedAtEdge ? twoPageMultiplier * 0.5 : twoPageMultiplier
+            let twoPageThreshold = threshold * effectiveTwoPageMultiplier
 
-        var destination: CGFloat
-        if pagesToJump > 0 {
-            destination = (dragDistance > 0)
-                ? (originalX - viewportW * pagesToJump)  // scrolling to see earlier content
-                : (originalX + viewportW * pagesToJump)  // scrolling to see later content
-        } else {
-            destination = originalX
-        }
-
-        // --- 3) BOUNDARY HANDLING ---
-        // First clamp to valid range
-        destination = min(max(destination, 0), maxOffset)
-
-        // Edge snapping - ONLY when moving TOWARD the edge, not away from it
-        // direction == .right means scrolling to see earlier content (moving away from right edge)
-        // direction == .left means scrolling to see later content (moving toward right edge)
-        // Use viewport-based distance (not percentage of total content) for edge detection
-        let distanceFromRightEdge = maxOffset - destination
-        let distanceFromLeftEdge = destination
-        let edgeSnapThreshold = viewportW * 0.15  // Snap when within 15% of viewport from edge
-
-        let shouldSnapToMaxOffset = distanceFromRightEdge <= edgeSnapThreshold && direction == .left
-        let shouldSnapToZero = distanceFromLeftEdge <= edgeSnapThreshold && direction == .right
-
-        if shouldSnapToMaxOffset {
-            destination = maxOffset
-        } else if shouldSnapToZero {
-            destination = 0
-        } else {
-            // Align to page boundaries
-            if direction == .right {
-                let offsetFromRight = maxOffset - destination
-                let pageFromRight = round(offsetFromRight / viewportW)
-                destination = maxOffset - (pageFromRight * viewportW)
+            let pagesToJump: CGFloat
+            let shouldApplyPageJump: Bool
+            if absDrag > twoPageThreshold {
+                pagesToJump = 2
+                shouldApplyPageJump = true
+            } else if absDrag > threshold {
+                pagesToJump = 1
+                shouldApplyPageJump = true
             } else {
-                let pageNumber = round(destination / viewportW)
-                destination = min(pageNumber * viewportW, maxOffset)
+                // Between freeLimit and threshold: soft snap to nearest page
+                let bounded = min(max(proposedX, 0), maxOffset)
+                let nearestPage = round(bounded / viewportW) * viewportW
+                destination = min(max(nearestPage, 0), maxOffset)
+                pagesToJump = 0
+                shouldApplyPageJump = false
+            }
+
+            if shouldApplyPageJump {
+                destination = (dragDistance > 0)
+                    ? (originalX - viewportW * pagesToJump)  // scrolling to see earlier content
+                    : (originalX + viewportW * pagesToJump)  // scrolling to see later content
+            }
+
+            // --- 3) BOUNDARY HANDLING ---
+            // First clamp to valid range
+            destination = min(max(destination, 0), maxOffset)
+
+            // Edge snapping - ONLY when moving TOWARD the edge, not away from it
+            // direction == .right means scrolling to see earlier content (moving away from right edge)
+            // direction == .left means scrolling to see later content (moving toward right edge)
+            // Use viewport-based distance (not percentage of total content) for edge detection
+            let distanceFromRightEdge = maxOffset - destination
+            let distanceFromLeftEdge = destination
+            let edgeSnapThreshold = viewportW * 0.15  // Snap when within 15% of viewport from edge
+
+            let shouldSnapToMaxOffset = distanceFromRightEdge <= edgeSnapThreshold && direction == .left
+            let shouldSnapToZero = distanceFromLeftEdge <= edgeSnapThreshold && direction == .right
+
+            if shouldSnapToMaxOffset {
+                destination = maxOffset
+            } else if shouldSnapToZero {
+                destination = 0
+            } else {
+                // Align to page boundaries
+                if direction == .right {
+                    let offsetFromRight = maxOffset - destination
+                    let pageFromRight = round(offsetFromRight / viewportW)
+                    destination = maxOffset - (pageFromRight * viewportW)
+                } else {
+                    let pageNumber = round(destination / viewportW)
+                    destination = min(pageNumber * viewportW, maxOffset)
+                }
             }
         }
 
