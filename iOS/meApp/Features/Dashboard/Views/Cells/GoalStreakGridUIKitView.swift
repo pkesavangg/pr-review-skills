@@ -265,8 +265,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widgets.append(contentsOf: activeStreaks.map { .streak($0) })
             } else {
                 let streakCount = activeStreaks.count
-                // Show goal card if it's not removed, regardless of edit mode or whether goal is set
-                // The goal card itself handles showing "Set a Goal" button when no goal is set
+                // Show goal card if not removed; goal card handles "Set a Goal" button when no goal is set
                 if streakCount == 0 {
                     if !isGoalCardRemoved {
                         widgets.append(.goalCard)

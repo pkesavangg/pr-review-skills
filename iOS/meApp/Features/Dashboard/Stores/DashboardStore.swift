@@ -3556,9 +3556,6 @@ class DashboardStore: ObservableObject {
 
         // Sync the removal state to ensure consistency after restoration
         syncRemovalStateFromMetricsManager()
-        // Don't call syncRemovalStateFromStreakManager() here - it would overwrite
-        // the restored streakGridOrder and removedStreaks from the snapshot.
-        // The snapshot already has the correct state, and we've restored it above.
 
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil
