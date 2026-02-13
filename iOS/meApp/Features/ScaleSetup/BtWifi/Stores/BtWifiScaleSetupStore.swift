@@ -1367,14 +1367,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Sync state so back button reverts to saved state
             Task { @MainActor in
                 self.dashboardStore.syncRemovalStateFromMetricsManager()
-                self.dashboardStore.syncRemovalStateFromStreakManager()
                 
                 // Save current state as snapshot for back button
                 self.dashboardStore.updateSnapshot()
                 
                 // Refresh UI to show changes
                 self.dashboardStore.state.ui.gridLayoutId = UUID()
-                self.dashboardStore.refreshDashboardState()
                 self.dashboardStore.objectWillChange.send()
             }
             break
