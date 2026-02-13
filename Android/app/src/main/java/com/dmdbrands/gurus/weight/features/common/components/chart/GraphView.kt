@@ -57,6 +57,7 @@ fun GraphView(
   state: GraphState,
   segment: GraphSegment = GraphSegment.WEEK,
   scrollTarget: Double? = null,
+  canScrollToAnchor: Boolean = false,
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
   onChartConsuming: (Boolean) -> Unit = {},
@@ -127,7 +128,7 @@ fun GraphView(
     }
   }
   LaunchedEffect(scrollTarget) {
-    if (scrollTarget == null) return@LaunchedEffect
+    if (scrollTarget == null || !canScrollToAnchor) return@LaunchedEffect
     val anchoredTarget = GraphUtil.getStartOnAnchored(segment, scrollTarget.toLong())
     val anchoredTargetRollingEnd = GraphUtil.getRollingWindowEnd(segment, anchoredTarget)
     if (anchoredTargetRollingEnd != null) {

@@ -149,6 +149,7 @@ fun GraphPagerView(
           modifier = Modifier.fillMaxWidth(),
           scrollTarget = state.scrollTarget,
           segment = currentSegment,
+          canScrollToAnchor = state.selectedSegment == currentSegment,
           state = graphState,
           viewModel = viewmodel,
           onChartConsuming = onChartConsuming,
