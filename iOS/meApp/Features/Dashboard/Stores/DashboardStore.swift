@@ -170,9 +170,9 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Private Helpers
 
-    /// Whether there are goal or streak items available to display
+    /// Goal card should be shown if it's not removed, regardless of whether a goal is set
     private var hasGoalOrStreaks: Bool {
-        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && (state.ui.isEditMode || hasGoalSet))
+        !streakItemsToShow.isEmpty || !state.ui.isGoalCardRemoved
     }
     // MARK: - Initialization
     init() {
@@ -1273,6 +1273,42 @@ class DashboardStore: ObservableObject {
         state.ui.streakGridOrder = defaultOrder
         state.ui.removedStreaks = []
     }
+    /// Rebuild streak order after refresh by matching labels (IDs change each refresh)
+    private func regenerateStreakGridOrderAfterRefresh(
+        oldStreakItems: [MetricItem],
+        oldOrder: [String]
+    ) {
+        let newItems = streakManager.state.streakItems
+        
+        guard !oldOrder.isEmpty else {
+            setupDefaultProgressMetricsOrder()
+            return
+        }
+        
+        // Maps for quick lookup
+        let oldIdToLabel = Dictionary(uniqueKeysWithValues:
+            oldStreakItems.map { ($0.id.uuidString, $0.label) }
+        )
+        
+        let labelToNewId = Dictionary(uniqueKeysWithValues:
+            newItems.map { ($0.label, $0.id.uuidString) }
+        )
+        
+        // Restore order using labels
+        var newOrder = oldOrder.compactMap {
+            oldIdToLabel[$0].flatMap { labelToNewId[$0] }
+        }
+        
+        // Append any new items not already included
+        let existingIds = Set(newOrder)
+        newOrder.append(contentsOf:
+            newItems
+                .map { $0.id.uuidString }
+                .filter { !existingIds.contains($0) }
+        )
+        
+        state.ui.streakGridOrder = newOrder
+    }
 
     // MARK: - View Helpers moved from DashboardScreen
     func reloadDashboardConfiguration(fullRefresh: Bool = false, updateMetrics: Bool = false) async {
@@ -1376,6 +1412,28 @@ class DashboardStore: ObservableObject {
             self.loadLatestEntryData()
             self.loadGoalCardData()
 
+            // Keep progress metrics visible during refresh
+            self.state.ui.hasLoadedProgressMetrics = true
+            self.state.ui.hasLoadedDashboardConfig = true
+            
+            Task {
+                do {
+                    // Save the old streak items to preserve order by label
+                    let oldStreakItems = self.streakManager.state.streakItems
+                    let oldOrder = self.state.ui.streakGridOrder
+                    
+                    try await self.streakManager.refreshStreakData()
+
+                    await MainActor.run {
+                        self.regenerateStreakGridOrderAfterRefresh(
+                            oldStreakItems: oldStreakItems,
+                            oldOrder: oldOrder
+                        )
+                    }
+                } catch {
+                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh streak data after entry change: \(error)")
+                }
+            }
 
             // Clear all caches to force recalculation (including continuousOperations)
             self.invalidateContinuousOperationsCache()
@@ -3498,7 +3556,9 @@ class DashboardStore: ObservableObject {
 
         // Sync the removal state to ensure consistency after restoration
         syncRemovalStateFromMetricsManager()
-        syncRemovalStateFromStreakManager()
+        // Don't call syncRemovalStateFromStreakManager() here - it would overwrite
+        // the restored streakGridOrder and removedStreaks from the snapshot.
+        // The snapshot already has the correct state, and we've restored it above.
 
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil

@@ -181,9 +181,17 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         let isEditMode = store.state.ui.isEditMode
         let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
         let hasStreaks = !allStreaks.isEmpty
-        let hasValidGoal = !isGoalCardRemoved && (isEditMode || store.hasGoalSet)
+        let hasValidGoal = !isGoalCardRemoved
         if !hasStreaks && !hasValidGoal {
             return MileStoneGridModel(mileStones: [])
+        }
+        // Prevent showing streaks/goal card until removal state and order are ready
+        if !isEditMode {
+            if !hasLoadedProgressMetrics {
+                return MileStoneGridModel(
+                    mileStones: hasValidGoal ? [.goalCard] : []
+                )
+            }
         }
 
         func orderedStreaks(from all: [MetricItem], using order: [String]) -> [MetricItem] {
@@ -196,8 +204,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return ordered
             } else {
                 // In non-edit mode, only show streaks that are in the order (removed streaks already filtered by streakItemsToShow)
-                guard !order.isEmpty else {
-                    return hasLoadedProgressMetrics ? all : []
+                if order.isEmpty {
+                    return all
                 }
                 return order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
             }
@@ -257,9 +265,10 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widgets.append(contentsOf: activeStreaks.map { .streak($0) })
             } else {
                 let streakCount = activeStreaks.count
-                // Show goal card always in edit mode; only when data exists in non-edit mode
+                // Show goal card if it's not removed, regardless of edit mode or whether goal is set
+                // The goal card itself handles showing "Set a Goal" button when no goal is set
                 if streakCount == 0 {
-                    if isEditMode || (store.hasGoalSet && !isGoalCardRemoved) {
+                    if !isGoalCardRemoved {
                         widgets.append(.goalCard)
                     }
                 } else {
