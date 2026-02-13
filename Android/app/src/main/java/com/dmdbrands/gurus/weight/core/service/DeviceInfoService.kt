@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.FcmTokenUtil
@@ -18,10 +20,14 @@ import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
@@ -49,9 +55,13 @@ constructor(
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceInfoService {
   companion object {
     private const val TAG = "DeviceInfoService"
+    private const val NETWORK_UNAVAILABLE_DEBOUNCE_MS = 2000L
   }
 
   private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+  /** Re-entry guard: skip sync if already running (tryLock semantics). */
+  private val onlineSyncGuard = AtomicBoolean(false)
 
   init {
     // Start monitoring network connectivity for auto-sync
@@ -59,11 +69,24 @@ constructor(
   }
 
   /**
+   * Starts monitoring network connectivity with debounced, stable availability.
+   * Only acts after network state has been stable for [NETWORK_DEBOUNCE_MS] ms to avoid
+   * flapping on Samsung mobile data. When stable and available, runs online sync once (guarded).
+   * Checks whether the app is currently in the foreground.
+   */
+  private fun isAppInForeground(): Boolean =
+    ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+
+  /**
    * Starts monitoring network connectivity to auto-sync when network becomes available.
    * Handles both initial state and state changes, including when app starts offline.
+   *
+   * Uses a debounce before showing network error toasts to avoid false positives
+   * caused by transient network loss during Android Doze mode or background-to-foreground
+   * transitions.
    */
+  @OptIn(FlowPreview::class)
   private fun startNetworkMonitoring() {
-    serviceScope.launch {
       // Get initial network state to handle app starting offline
       val initialNetworkState = connectivityObserver.getCurrentNetworkState()
       AppLog.d(TAG, "Initial network state: available=${initialNetworkState.available}")
@@ -73,26 +96,72 @@ constructor(
         AppLog.d(TAG, "App started offline, showing network error")
         showNetworkError()
       }
-
-      // Monitor network state changes
+    serviceScope.launch {
       connectivityObserver
         .observe()
+        .map { it.available }
         .distinctUntilChanged()
-        .collect { networkState ->
-          AppLog.d(TAG, "Network state changed: available=${networkState.available}")
-
-          // When network becomes available, check for pending sync
-          if (networkState.available) {
-            AppLog.d(TAG, "Network is available, checking for pending offline sync")
-            offlineHandlerService.handleOfflineSync()
-            entryService.syncOperations()
-            healthConnectRepository.syncIntegration()
-            integrationRepository.updateLocalAccount()
+        .collect { available ->
+          AppLog.d(TAG, "Network stable: available=$available")
+          if (available) {
+            runOnlineSyncOnce()
           } else {
-            AppLog.d(TAG, "Network is unavailable, skipping offline sync")
-            showNetworkError()
+            // Debounce: wait before showing the error to filter out transient
+            // unavailability caused by Doze mode exit or background-to-foreground
+            // transitions. A genuine outage will persist beyond this delay.
+            AppLog.d(TAG, "Network reported unavailable, debouncing before showing error")
+            delay(NETWORK_UNAVAILABLE_DEBOUNCE_MS)
+
+            // Re-check actual network state after the debounce window
+            val currentState = connectivityObserver.getCurrentNetworkState()
+            if (currentState.unAvailable && isAppInForeground()) {
+              AppLog.d(TAG, "Network still unavailable after debounce and app is in foreground, showing error")
+              showNetworkError()
+            } else {
+              AppLog.d(
+                TAG,
+                "Network recovered during debounce or app is in background, skipping toast " +
+                  "(available=${currentState.available}, foreground=${isAppInForeground()})"
+              )
+            }
           }
         }
+    }
+  }
+
+  /**
+   * Runs online sync (offline handler, entry sync, Health Connect, integration) at most one at a time.
+   * Returns immediately if a sync is already in progress. Each step is wrapped in try/catch so one
+   * failure does not prevent others or crash.
+   */
+  private suspend fun runOnlineSyncOnce() {
+    if (!onlineSyncGuard.compareAndSet(false, true)) {
+      AppLog.d(TAG, "Online sync already running, skipping")
+      return
+    }
+    try {
+      try {
+        offlineHandlerService.handleOfflineSync()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Offline sync failed", e)
+      }
+      try {
+        entryService.syncOperations()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Entry sync failed", e)
+      }
+      try {
+        healthConnectRepository.syncIntegration()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Health Connect sync failed", e)
+      }
+      try {
+        integrationRepository.updateLocalAccount()
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Integration update failed", e)
+      }
+    } finally {
+      onlineSyncGuard.set(false)
     }
   }
 
