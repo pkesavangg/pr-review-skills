@@ -281,14 +281,14 @@ class GraphViewModel @AssistedInject constructor(
       val start: Long =
         anchoredScrollTarget?.toLong()
           ?.takeIf { anchoredScrollTargetConsideration }
-          ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+          ?: _state.value.minTarget ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
           ?: GraphUtil.getStartRange(segment, endTimeStamp)
           ?: calendar.timeInMillis
 
       val end =
         GraphUtil.getRollingWindowEnd(segment, anchoredScrollTarget?.toLong())
           ?.takeIf { anchoredScrollTargetConsideration }
-          ?: endTimeStamp ?: calendar.timeInMillis
+          ?: _state.value.maxTarget ?: endTimeStamp ?: calendar.timeInMillis
 
       start to end
     }
