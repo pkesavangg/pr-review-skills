@@ -319,7 +319,7 @@ class MigrationService @Inject constructor(
    */
   private suspend fun migrateAccountData(context: Context): Boolean = withContext(Dispatchers.IO) {
     return@withContext try {
-      Log.d(TAG, "🏠 Starting account data migration from Capacitor Preferences")
+      Log.d(TAG, "Starting account data migration from Capacitor Preferences")
 
       // Try to locate and read Capacitor Preferences
       val accountJsonString =
@@ -338,7 +338,7 @@ class MigrationService @Inject constructor(
         return@withContext false
       }
 
-      Log.d(TAG, "📋 Successfully parsed IonicAccount: ${ionicAccount}")
+      Log.d(TAG, "Successfully parsed IonicAccount: ${ionicAccount}")
 
       // Convert to AccountEntity and UserAccount
       val accountEntity = IonicDataConverter.convertIonicAccountToAccountEntity(ionicAccount)
@@ -357,10 +357,10 @@ class MigrationService @Inject constructor(
       // Save account and related data
       saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
 
-      Log.i(TAG, "✅ Account migration successful: ${accountEntity.email}")
+      Log.i(TAG, "Account migration successful: ${accountEntity.email}")
       true
     } catch (e: Exception) {
-      Log.e(TAG, "❌ Account migration failed: ${e.message}")
+      Log.e(TAG, "Account migration failed: ${e.message}")
       false
     }
   }
@@ -383,10 +383,10 @@ class MigrationService @Inject constructor(
     themeModeMap.forEach { (key, value) ->
       val themeMode = value.toThemeMode()
       val syncTs = if (key == accountEntity.id && !lastSyncTimestamp.isNullOrBlank()) lastSyncTimestamp else ""
-      val refreshToken = if (key == accountEntity.id) ionicAccount.refreshToken else null
-      val accessToken = if (key == accountEntity.id) ionicAccount.accessToken else null
+      val refreshToken = if (key == accountEntity.id) ionicAccount.refreshToken else ""
+      val accessToken = if (key == accountEntity.id) ionicAccount.accessToken else ""
 
-      Log.d(TAG, "🌞 Theme mode for $key: $value")
+      Log.d(TAG, "Theme mode for $key: $value")
       userDataStore.addAccount(
         key,
         refreshToken = refreshToken ?: "",
