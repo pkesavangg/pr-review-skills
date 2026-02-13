@@ -2004,10 +2004,13 @@ class DashboardStore: ObservableObject {
             cachedBounds: dataManager.getDateBounds(for: period)
         )
 
-        // Keep section switches aligned to the same tick grid used during drag snapping.
-        let alignedScrollPosition = period == .total
-            ? optimalScrollPosition
-            : graphManager.snapScrollPosition(optimalScrollPosition, for: period)
+        // Keep section switches aligned to tick grids, but preserve explicit anchor semantics.
+        // - Do not snap when an anchor is provided (preserve temporal centering intent).
+        // - Do not force month snapping here (month uses its own tick scheme).
+        let shouldSnapProgrammaticPosition = period != .total && period != .month && anchorDate == nil
+        let alignedScrollPosition = shouldSnapProgrammaticPosition
+            ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
+            : optimalScrollPosition
 
         graphManager.updateScrollPosition(to: alignedScrollPosition)
         // Delegate period update to graph manager (this will clear chart data cache)
@@ -3139,9 +3142,13 @@ class DashboardStore: ObservableObject {
             cachedBounds: nil
         )
 
-        let alignedScrollPosition = state.graph.selectedPeriod == .total
-            ? optimalScrollPosition
-            : graphManager.snapScrollPosition(optimalScrollPosition, for: state.graph.selectedPeriod)
+        // Keep initialization aligned to tick grids, except month/total where forcing
+        // generic snapping can misalign with rendered month tick progression.
+        let period = state.graph.selectedPeriod
+        let shouldSnapProgrammaticPosition = period != .total && period != .month
+        let alignedScrollPosition = shouldSnapProgrammaticPosition
+            ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
+            : optimalScrollPosition
 
         self.graphManager.updateScrollPosition(to: alignedScrollPosition)
 
