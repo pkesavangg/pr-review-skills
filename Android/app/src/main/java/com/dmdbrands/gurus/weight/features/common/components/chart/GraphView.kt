@@ -136,7 +136,6 @@ fun GraphView(
         easing = LinearOutSlowInEasing,
       ),
     )
-    onChartConsuming(false)
   }
 
 
@@ -221,6 +220,7 @@ fun GraphView(
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
       }
+      onChartConsuming(false)
     },
   )
 }
