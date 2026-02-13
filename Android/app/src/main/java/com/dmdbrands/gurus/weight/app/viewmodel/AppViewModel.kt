@@ -440,7 +440,6 @@ constructor(
   }
 
   private fun subscribeDeviceCallback() {
-    ggPermissionService.resetCallbacks()
     deviceSubscribeJob = viewModelScope.launch {
       ggDeviceService.deviceCallbackFlow.collect { response ->
         AppLog.d(
@@ -845,6 +844,7 @@ constructor(
 
   private fun stopScan() {
     viewModelScope.launch {
+      ggPermissionService.resetCallbacks()
       ggPermissionService.stopScan()
       handleIntent(AppIntent.SetScanStatus(false))
       AppLog.i(TAG, "Scan stopped")
