@@ -2112,7 +2112,10 @@ class DashboardStore: ObservableObject {
         // Keep section switches aligned to tick grids, but preserve explicit anchor semantics.
         // - Do not snap when an anchor is provided (preserve temporal centering intent).
         // - Do not force month snapping here (month uses its own tick scheme).
-        let shouldSnapProgrammaticPosition = period != .total && period != .month && anchorDate == nil
+        // Week/year must always be tick-aligned after section switches; otherwise transitions
+        // can land between visible grid lines.
+        let requiresSnapWithAnchor = (period == .week || period == .year)
+        let shouldSnapProgrammaticPosition = period != .total && period != .month && (anchorDate == nil || requiresSnapWithAnchor)
         let alignedScrollPosition = shouldSnapProgrammaticPosition
             ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
             : optimalScrollPosition
