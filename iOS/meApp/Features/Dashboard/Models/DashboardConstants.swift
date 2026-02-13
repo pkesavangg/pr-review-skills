@@ -14,7 +14,11 @@ enum DashboardConstants {
     // MARK: - Time Intervals
     enum TimeInterval {
         static let day: Foundation.TimeInterval = 24 * 60 * 60
+        /// Week viewport length used for chart scrolling/visible-domain behavior.
+        /// Intentionally wider than 7 days for UX spacing.
         static let week: Foundation.TimeInterval = 7.15 * 24 * 60 * 60
+        /// Strict calendar week length (7 days) for week-boundary calculations.
+        static let calendarWeek: Foundation.TimeInterval = 7 * 24 * 60 * 60
         static let month: Foundation.TimeInterval = 32 * 24 * 60 * 60
         static let year: Foundation.TimeInterval = 365 * 24 * 60 * 60
         static let quarter: Foundation.TimeInterval = 90 * 24 * 60 * 60

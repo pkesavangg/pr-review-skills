@@ -478,7 +478,7 @@ final class DateTimeTools {
             }
         } else {
             // Many entries: repeat labels throughout scroll view
-            let totalWeeks = max(8, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.week)))
+            let totalWeeks = max(8, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.calendarWeek)))
             let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
             let bufferWeeks = 2
 
@@ -583,4 +583,3 @@ final class DateTimeTools {
         }
     }
 }
-
