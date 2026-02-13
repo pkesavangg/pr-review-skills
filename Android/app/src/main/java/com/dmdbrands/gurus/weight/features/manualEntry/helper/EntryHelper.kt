@@ -102,10 +102,11 @@ object EntryHelper {
 
   fun Double?.rounded(): Double? =
     this?.let {
-      BigDecimal.valueOf(it)
+      it.toBigDecimal()
         .setScale(1, RoundingMode.HALF_UP)
         .toDouble()
     }
+
   fun Float.toDouble1dp(rounding: RoundingMode = RoundingMode.HALF_UP): Double =
     if (this.isFinite()) BigDecimal.valueOf(this.toDouble()).setScale(1, rounding).toDouble() else this.toDouble()
 
@@ -223,7 +224,7 @@ object EntryHelper {
     return PeriodBodyScaleSummary(
       period = period, // assuming this is already suitable
       entryTimestamp = entryTimestamp, // assuming no conversion needed
-      weight = weight.div(10.0),
+      weight = weight.div(10.0).rounded()?: weight.div(10.0),
       bodyFat = bodyFat?.div(10.0),
       muscleMass = muscleMass?.div(10.0),
       water = water?.div(10.0),
@@ -246,7 +247,7 @@ object EntryHelper {
       entryTimestamp = entryTimestamp,
       entryCount = entryCount,
       change = change?.div(10),
-      avgWeight = avgWeight?.div(10),
+      avgWeight = avgWeight?.div(10).rounded(),
     )
   }
 
