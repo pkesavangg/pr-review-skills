@@ -723,7 +723,7 @@ object GraphUtil {
         // Show 7 days total: latest - 6 days to latest (inclusive)
         Calendar.getInstance().apply {
           timeInMillis = anchoredTimeStamp
-          add(Calendar.DAY_OF_YEAR, (-6).div(2))
+          add(Calendar.DAY_OF_YEAR, (-3))
         }.timeInMillis
       }
 
@@ -732,7 +732,7 @@ object GraphUtil {
         // This ensures day 1 of 31-day months is always included in the window
         Calendar.getInstance().apply {
           timeInMillis = anchoredTimeStamp
-          add(Calendar.DAY_OF_YEAR, (-30).div(2))
+          add(Calendar.DAY_OF_YEAR, (-15))
         }.timeInMillis
       }
 

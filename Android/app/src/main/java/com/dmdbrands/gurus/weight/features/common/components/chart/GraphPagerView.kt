@@ -108,7 +108,7 @@ fun GraphPagerView(
         onMarkerIndexChange(graphState.markerIndex)
       }
 
-      LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage) {
+      LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage, state.isConsuming) {
         if (graphState.minTarget != null && graphState.maxTarget != null && !state.isConsuming) {
           val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !graphState.isEmptyGraph) {
             val calendar = java.util.Calendar.getInstance()

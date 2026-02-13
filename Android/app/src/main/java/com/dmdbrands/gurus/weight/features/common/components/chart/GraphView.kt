@@ -10,7 +10,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -27,10 +26,8 @@ import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
@@ -129,18 +126,8 @@ fun GraphView(
   }
   LaunchedEffect(scrollTarget) {
     if (scrollTarget == null || !canScrollToAnchor) return@LaunchedEffect
-    val anchoredTarget = GraphUtil.getStartOnAnchored(segment, scrollTarget.toLong())
-    val anchoredTargetRollingEnd = GraphUtil.getRollingWindowEnd(segment, anchoredTarget)
-    if (anchoredTargetRollingEnd != null) {
-      onScrollUpdate(anchoredTarget, anchoredTargetRollingEnd)
-    }
-
-    Log.d(
-      "GraphView",
-      "segment : ${segment} scrolledtarget : ${DateTimeConverter.timestampToIso(scrollTarget.toLong())} anchoredStart : ${
-        DateTimeConverter.timestampToIso(anchoredTarget)
-      }",
-    )
+    val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
+    val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
     scrollState.animateScroll(
       Scroll.Absolute.x(anchoredTarget.toDouble()),
