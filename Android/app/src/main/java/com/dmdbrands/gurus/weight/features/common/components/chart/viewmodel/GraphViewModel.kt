@@ -46,6 +46,7 @@ import android.util.Log
 )
 class GraphViewModel @AssistedInject constructor(
   @Assisted val segment: GraphSegment,
+  @Assisted val anchoredScrollTarget: Double?,
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val entryService: IEntryService,
@@ -64,7 +65,7 @@ class GraphViewModel @AssistedInject constructor(
 
   @AssistedFactory
   interface Factory {
-    fun create(segment: GraphSegment): GraphViewModel
+    fun create(segment: GraphSegment, anchoredScrollTarget: Double?): GraphViewModel
   }
 
   private val dataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
@@ -76,6 +77,7 @@ class GraphViewModel @AssistedInject constructor(
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
   private var renormalizationJob: Job? = null
+  private var isInitialized: Boolean = false
 
   init {
     // Set loading state immediately to prevent blank screen
@@ -275,30 +277,30 @@ class GraphViewModel @AssistedInject constructor(
       }
       start to end
     } else {
-      // Apply same logic as GraphView: try rolling window start first, then fallback to start range
-      val start = _state.value.minTarget
-        ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
-        ?: GraphUtil.getStartRange(segment, endTimeStamp)
-        ?: calendar.timeInMillis
+      val anchoredScrollTargetConsideration = anchoredScrollTarget != null && !isInitialized
+      val start: Long =
+        anchoredScrollTarget?.toLong()
+          ?.takeIf { anchoredScrollTargetConsideration }
+          ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+          ?: GraphUtil.getStartRange(segment, endTimeStamp)
+          ?: calendar.timeInMillis
 
-      val end = _state.value.maxTarget ?: GraphUtil.getRollingWindowEnd(segment, endTimeStamp)
-      ?: GraphUtil.getEndRange(
-        segment,
-        endTimeStamp,
-      ) ?: calendar.timeInMillis
+      val end =
+        GraphUtil.getRollingWindowEnd(segment, anchoredScrollTarget?.toLong())
+          ?.takeIf { anchoredScrollTargetConsideration }
+          ?: endTimeStamp ?: calendar.timeInMillis
 
       start to end
     }
 
+
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
-    Log.i("GraphViewModel", "Setting up chart model producer  startx : $startX endX : $endX")
     super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
     val filteredData = data.filter {
       it.getTimeStamp() in startX..endX
     }
     if (filteredData.isNotEmpty())
       super.handleIntent(GraphIntent.UpdateTarget(filteredData))
-
 
     currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
       try {
@@ -384,6 +386,7 @@ class GraphViewModel @AssistedInject constructor(
         Log.e("GraphViewModel", "Error setting up chart model producer", e)
       }
     }
+    this.isInitialized = true
   }
 
   private fun calculateYAxisRange(

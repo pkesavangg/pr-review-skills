@@ -27,15 +27,19 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import android.util.Log
 
 /**
  * Composable for displaying a horizontal pager with 4 graph views for different segments.
  * Each page represents a different time segment (WEEK, MONTH, YEAR, TOTAL).
  *
  * @param state The dashboard state containing data and configuration.
- * @param selectedStat Optional selected stat for secondary graph lines.
  * @param onSelected Callback when entries are selected from the graph.
  * @param onPagerStateChange Callback when pager state changes.
+ * @param onSegmentChange Callback when segment is selected; receives new segment and anchor timestamp (current visible center from previous segment), or null if none.
+ * @param onScrollTargetConsumed Callback when the chart has scrolled to [state.scrollTarget] once.
+ * @param onRangeChange Callback for date range label updates.
+ * @param onMarkerIndexChange Callback when marker selection changes.
  * @param entries List of entries to be used by the graph viewmodels.
  */
 @Composable
@@ -43,8 +47,8 @@ fun GraphPagerView(
   state: DashboardState,
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
   onPagerStateChange: (Int) -> Unit,
-  onSegmentChange: (GraphSegment) -> Unit = {},
-  onScrollTargetChange: (Double?) -> Unit = {},
+  onSegmentChange: (GraphSegment, Long?) -> Unit = { _, _ -> },
+  onChartConsuming: (Boolean) -> Unit = {},
   onRangeChange: (String) -> Unit = { },
   onMarkerIndexChange: (Double?) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
@@ -54,18 +58,15 @@ fun GraphPagerView(
     pageCount = { GraphSegment.entries.size },
   )
 
-  var scrollTarget: Double? by remember {
-    mutableStateOf(null)
-  }
+  /** Visible center (midpoint) of the *currently displayed* segment only; used as anchor when user taps another segment. */
+  var currentVisibleCenter by remember { mutableStateOf<Long?>(null) }
   var subText: String by remember { mutableStateOf("") }
   var labelData by remember { mutableStateOf("") }
   var weightValue by remember { mutableStateOf(0.0) }
 
   LaunchedEffect(state.selectedSegment) {
-    onScrollTargetChange(scrollTarget)
     val targetPage = GraphSegment.entries.indexOf(state.selectedSegment)
     if (targetPage != pagerState.currentPage) {
-      // Update page directly
       pagerState.scrollToPage(targetPage)
     }
   }
@@ -86,7 +87,10 @@ fun GraphPagerView(
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
       val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
-        factory.create(currentSegment)
+        val anchoredTarget = state.scrollTarget?.let {
+          GraphUtil.getStartOnAnchored(currentSegment, it.toLong())
+        }
+        factory.create(currentSegment, anchoredTarget?.toDouble())
       }
       val graphState by viewmodel.state.collectAsState()
 
@@ -104,8 +108,8 @@ fun GraphPagerView(
         onMarkerIndexChange(graphState.markerIndex)
       }
 
-      LaunchedEffect(graphState.minTarget, graphState.maxTarget) {
-        if (graphState.minTarget != null && graphState.maxTarget != null) {
+      LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage) {
+        if (graphState.minTarget != null && graphState.maxTarget != null && !state.isConsuming) {
           val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !graphState.isEmptyGraph) {
             val calendar = java.util.Calendar.getInstance()
             calendar.timeInMillis = graphState.minTarget!!
@@ -121,15 +125,18 @@ fun GraphPagerView(
             graphState.minTarget!! to graphState.maxTarget!!
           }
           val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
+          Log.i(
+            "GraphView",
+            "segment : ${currentSegment} minTarget : ${minTarget} maxTarget : ${maxTarget} formattedRange : ${formattedRange}",
+          )
           subText = formattedRange
           onRangeChange(formattedRange)
-          if (currentSegment != GraphSegment.TOTAL) {
-            scrollTarget = (minTarget + maxTarget).div(2.0)
+          if (currentSegment != GraphSegment.TOTAL && page == pagerState.currentPage) {
+            currentVisibleCenter = (minTarget + maxTarget).div(2)
           }
         }
       }
       Column {
-        // Header section for current segment
         ChartHeader(
           state = graphState,
           segment = currentSegment,
@@ -137,27 +144,26 @@ fun GraphPagerView(
           rangeData = subText,
           weightValue = weightValue,
         )
-        // Graph view with crossfade animation
 
         GraphView(
-          modifier = Modifier
-            .fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth(),
           scrollTarget = state.scrollTarget,
           segment = currentSegment,
           state = graphState,
           viewModel = viewmodel,
+          onChartConsuming = onChartConsuming,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
     }
 
-    // Segment button group
     SegmentButtonGroup(
       data = GraphSegment.entries.toList(),
       selectedData = GraphSegment.entries[pagerState.currentPage],
       key = GraphSegment::name,
       onSelected = { segment ->
-        onSegmentChange(segment)
+        onChartConsuming(true)
+        onSegmentChange(segment, currentVisibleCenter)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
     )

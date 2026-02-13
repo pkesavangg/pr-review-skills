@@ -607,7 +607,7 @@ object GraphUtil {
         // This ensures day 1 of 31-day months is always included in the window
         Calendar.getInstance().apply {
           timeInMillis = endTimeStamp
-          add(Calendar.DAY_OF_YEAR, -28)
+          add(Calendar.DAY_OF_YEAR, -30)
         }.timeInMillis
       }
 
@@ -625,16 +625,37 @@ object GraphUtil {
     }
   }
 
-  fun getRollingWindowEnd(segment: GraphSegment, startTimeStamp: Long?): Long {
-    val calender = Calendar.getInstance()
-    calender.timeInMillis = startTimeStamp ?: 0
-    calender.apply {
-      add(Calendar.HOUR, 23)
-      add(Calendar.MINUTE, 59)
-      add(Calendar.SECOND, 59)
-      add(Calendar.MILLISECOND, 999)
+  fun getRollingWindowEnd(segment: GraphSegment, startTimeStamp: Long?): Long? = startTimeStamp?.let {
+    when (segment) {
+      GraphSegment.WEEK -> {
+        // Show 7 days total: latest - 6 days to latest (inclusive)
+        Calendar.getInstance().apply {
+          timeInMillis = startTimeStamp
+          add(Calendar.DAY_OF_YEAR, 6)
+        }.timeInMillis
+      }
+
+      GraphSegment.MONTH -> {
+        // Show 31 days total: latest - 30 days to latest (inclusive)
+        // This ensures day 1 of 31-day months is always included in the window
+        Calendar.getInstance().apply {
+          timeInMillis = startTimeStamp
+          add(Calendar.DAY_OF_YEAR, 30)
+        }.timeInMillis
+      }
+
+      GraphSegment.YEAR -> {
+        // Show 12 months total: latest - 11 months to latest (inclusive)
+        // This includes the latest entry month as the 12th month
+        // (e.g., Dec 20, 2024 -> Jan 20, 2024 = 12 months: Jan, Feb, ..., Dec)
+        Calendar.getInstance().apply {
+          timeInMillis = startTimeStamp
+          add(Calendar.MONTH, 11)
+        }.timeInMillis
+      }
+
+      GraphSegment.TOTAL -> null // Keep existing ±6 months logic
     }
-    return calender.timeInMillis
   }
 
   fun periodStarts(
@@ -691,6 +712,39 @@ object GraphUtil {
 
     // Calculate total months between years
     return ((endYear - startYear + 1) * 12)
+  }
+
+  fun getStartOnAnchored(segment: GraphSegment, anchoredTimeStamp: Long): Long {
+    return when (segment) {
+      GraphSegment.WEEK -> {
+        // Show 7 days total: latest - 6 days to latest (inclusive)
+        Calendar.getInstance().apply {
+          timeInMillis = anchoredTimeStamp
+          add(Calendar.DAY_OF_YEAR, (-6).div(2))
+        }.timeInMillis
+      }
+
+      GraphSegment.MONTH -> {
+        // Show 31 days total: latest - 30 days to latest (inclusive)
+        // This ensures day 1 of 31-day months is always included in the window
+        Calendar.getInstance().apply {
+          timeInMillis = anchoredTimeStamp
+          add(Calendar.DAY_OF_YEAR, (-30).div(2))
+        }.timeInMillis
+      }
+
+      GraphSegment.YEAR -> {
+        // Show 12 months total: latest - 11 months to latest (inclusive)
+        // This includes the latest entry month as the 12th month
+        // (e.g., Dec 20, 2024 -> Jan 20, 2024 = 12 months: Jan, Feb, ..., Dec)
+        Calendar.getInstance().apply {
+          timeInMillis = anchoredTimeStamp
+          add(Calendar.MONTH, -5)
+        }.timeInMillis
+      }
+
+      GraphSegment.TOTAL -> Calendar.getInstance().timeInMillis // Keep existing ±6 months logic
+    }
   }
 
   // endregion
