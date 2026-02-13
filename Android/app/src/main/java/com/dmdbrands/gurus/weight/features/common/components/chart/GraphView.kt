@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,8 +25,11 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+
+private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -40,6 +45,7 @@ import java.util.Calendar
  * @param onScroll Callback for scroll events, returns formatted date range.
  * @param onLabelUpdate Callback for label updates, returns updated label string.
  * @param viewModel The GraphViewModel instance (injected via Hilt).
+ * @param onScrollTargetConsumed Called once after scrolling to [scrollTarget] (so anchor is consumed and not re-applied).
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -48,8 +54,10 @@ fun GraphView(
   state: GraphState,
   segment: GraphSegment = GraphSegment.WEEK,
   scrollTarget: Double? = null,
+  canScrollToAnchor: Boolean = false,
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
+  onChartConsuming: (Boolean) -> Unit = {},
 ) {
 
   val scope = rememberCoroutineScope()
@@ -65,9 +73,8 @@ fun GraphView(
   val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  val initialScroll = remember(initialStartX) {
-    Scroll.Absolute.x(initialStartX)
-  }
+  val initialScroll = remember { Scroll.Absolute.x(initialStartX) }
+
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
       if (isDrag) {
@@ -87,8 +94,8 @@ fun GraphView(
         snapDurationMillis = 500,
       ),
     ),
+    key = segment,
   )
-
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
@@ -117,22 +124,28 @@ fun GraphView(
       )
     }
   }
+  LaunchedEffect(scrollTarget) {
+    if (scrollTarget == null || !canScrollToAnchor) return@LaunchedEffect
+    val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
+    val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
+    delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
+    scrollState.animateScroll(
+      Scroll.Absolute.x(anchoredTarget.toDouble()),
+      animationSpec = tween(
+        durationMillis = 150,
+        easing = LinearOutSlowInEasing,
+      ),
+    )
+    onChartConsuming(false)
+  }
+
+
 
   LaunchedEffect(state.markerIndex == null) {
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
   }
-
-  // LaunchedEffect(scrollTarget) {
-  //   if (scrollTarget != null) {
-  //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
-  //     if (destinationTarget != null)
-  //       scrollState.animateScroll(
-  //         Scroll.Absolute.x(destinationTarget.toDouble()),
-  //       )
-  //   }
-  // }
 
   val defaultMarker = rememberDefaultMarker(
     state = state,
