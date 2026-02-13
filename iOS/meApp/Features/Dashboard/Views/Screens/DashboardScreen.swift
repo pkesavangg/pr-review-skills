@@ -59,6 +59,7 @@ struct DashboardScreen: View {
             if let wrapper = openMetricInfoWithoutSelection {
                 metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
+            store.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
         }
         // Keep the metric info entry in sync with metric tile values while the sheet is open
         .task(id: store.state.metrics.metrics) {
@@ -78,9 +79,6 @@ struct DashboardScreen: View {
         .task(id: selectedEntry) {
             store.handleSelectedEntryChange(selectedEntry)
         }
-        .task(id: openMetricInfoWithoutSelection) {
-            store.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
-        }
         .task(id: store.currentUnit) {
             store.handleUnitChange()
         }
@@ -96,9 +94,6 @@ store.restartWiggleAnimations()
         }
         .onReceive(NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)) { _ in
             Task { await store.reloadDashboardConfiguration(fullRefresh: true) }
-        }
-        .task {
-            Task { await store.reloadDashboardConfiguration() }
         }
         .onReceive(
             Publishers.MergeMany([

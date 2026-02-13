@@ -54,6 +54,11 @@ class DashboardStore: ObservableObject {
     // MARK: - Debounced Sync
     /// Debounce task to prevent excessive sync calls during drag operations or rapid metric toggles
     private var syncDebounceTask: Task<Void, Never>?
+    
+    // MARK: - Initialization Tracking
+    /// Tracks whether dashboard initialization has completed to prevent race conditions
+    private var initializationTask: Task<Void, Never>?
+    @Published private(set) var isInitialized: Bool = false
 
     /// Batches multiple state changes into a single UI update (~1 frame at 60fps)
     /// Use this for non-critical updates that can be coalesced
@@ -170,9 +175,9 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Private Helpers
 
-    /// Whether there are goal or streak items available to display
+    /// Goal card should be shown if it's not removed, regardless of whether a goal is set
     private var hasGoalOrStreaks: Bool {
-        !streakItemsToShow.isEmpty || (!state.ui.isGoalCardRemoved && (state.ui.isEditMode || hasGoalSet))
+        !streakItemsToShow.isEmpty || !state.ui.isGoalCardRemoved
     }
     // MARK: - Initialization
     init() {
@@ -190,9 +195,28 @@ class DashboardStore: ObservableObject {
         // Set up reactive bindings
         setupBindings()
         setupSubscriptions()
-        // Initialize dashboard
-        Task {
+        
+        // Preemptively set flag to prevent empty state during initialization
+        if !streakManager.state.streakItems.isEmpty {
+            state.ui.hasLoadedProgressMetrics = true
+            if state.ui.streakGridOrder.isEmpty {
+                state.ui.streakGridOrder = streakManager.state.streakItems.map { $0.id.uuidString }
+            }
+        } else {
+            streakManager.setupInitialStreakItems()
+            if !streakManager.state.streakItems.isEmpty {
+                state.ui.hasLoadedProgressMetrics = true
+                state.ui.streakGridOrder = streakManager.state.streakItems.map { $0.id.uuidString }
+                state.ui.removedStreaks = []
+            }
+        }
+        
+        // Initialize dashboard - track task to prevent concurrent initialization
+        initializationTask = Task {
             await initializeDashboard()
+            await MainActor.run {
+                isInitialized = true
+            }
         }
     }
 
@@ -366,6 +390,14 @@ class DashboardStore: ObservableObject {
 
     var streakItemsToShow: [MetricItem] {
         let allStreaks = streakManager.state.streakItems
+        
+        guard !allStreaks.isEmpty else { return [] }
+        
+        // Show all streaks before API loads to prevent empty state
+        if !state.ui.isEditMode && !state.ui.hasLoadedProgressMetrics {
+            return allStreaks
+        }
+        
         let nonRemoved = allStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
         let removed = allStreaks.filter { state.ui.removedStreaks.contains($0.label) }
 
@@ -863,10 +895,12 @@ class DashboardStore: ObservableObject {
     // MARK: - Dashboard Initialization
 
     private func initializeDashboard() async {
-        // Set flags to suppress reactive updates during initialization
+        // Preserve early initialization flag to avoid hiding pre-loaded streaks
         await MainActor.run {
             state.ui.isResettingDashboard = true
-            state.ui.hasLoadedProgressMetrics = false
+            if streakManager.state.streakItems.isEmpty {
+                state.ui.hasLoadedProgressMetrics = false
+            }
             state.ui.hasLoadedMetricValues = false
         }
 
@@ -1050,6 +1084,11 @@ class DashboardStore: ObservableObject {
                     metricsManager.setupInitialMetrics()
                 }
             }
+            
+            // Use local data to avoid empty state during slow API calls
+            if !metricsManager.state.metrics.isEmpty {
+                state.ui.hasLoadedDashboardConfig = true
+            }
         }
     }
 
@@ -1168,8 +1207,15 @@ class DashboardStore: ObservableObject {
         await MainActor.run {
             let allStreaks = streakManager.state.streakItems
 
-            // Handle case where progressMetrics is empty or should be treated as all removed
-            if progressMetrics.isEmpty || shouldTreatAsAllRemoved {
+            // Don't mark all as removed on initial load (empty API before user config)
+            let isInitialLoad = state.ui.streakGridOrder.isEmpty && state.ui.removedStreaks.isEmpty
+            
+            if progressMetrics.isEmpty && isInitialLoad {
+                setupDefaultProgressMetricsOrder()
+                return
+            }
+            
+            if (progressMetrics.isEmpty || shouldTreatAsAllRemoved) && !isInitialLoad {
                 // All progress metrics are removed
                 state.ui.goalCardPosition = 0
                 state.ui.isGoalCardRemoved = true
@@ -1273,6 +1319,43 @@ class DashboardStore: ObservableObject {
         state.ui.streakGridOrder = defaultOrder
         state.ui.removedStreaks = []
     }
+    /// Rebuild streak order after refresh by matching labels (IDs change each refresh)
+    private func regenerateStreakGridOrderAfterRefresh(
+        oldStreakItems: [MetricItem],
+        oldOrder: [String]
+    ) {
+        let newItems = streakManager.state.streakItems
+        guard !oldOrder.isEmpty else {
+            setupDefaultProgressMetricsOrder()
+            return
+        }
+        
+        // Maps for quick lookup
+        let oldIdToLabel = Dictionary(
+            oldStreakItems.map { ($0.id.uuidString, $0.label) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        
+        let labelToNewId = Dictionary(
+            newItems.map { ($0.label, $0.id.uuidString) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        
+        // Restore order using labels
+        var newOrder = oldOrder.compactMap {
+            oldIdToLabel[$0].flatMap { labelToNewId[$0] }
+        }
+        
+        // Append any new items not already included
+        let existingIds = Set(newOrder)
+        newOrder.append(contentsOf:
+            newItems
+                .map { $0.id.uuidString }
+                .filter { !existingIds.contains($0) }
+        )
+        
+        state.ui.streakGridOrder = newOrder
+    }
 
     // MARK: - View Helpers moved from DashboardScreen
     func reloadDashboardConfiguration(fullRefresh: Bool = false, updateMetrics: Bool = false) async {
@@ -1375,7 +1458,29 @@ class DashboardStore: ObservableObject {
         DispatchQueue.main.async {
             self.loadLatestEntryData()
             self.loadGoalCardData()
+            
+            Task {
+                do {
+                    // Save the old streak items to preserve order by label
+                    let oldStreakItems = self.streakManager.state.streakItems
+                    let oldOrder = self.state.ui.streakGridOrder
+                    
+                    try await self.streakManager.refreshStreakData()
 
+                    await MainActor.run {
+                        self.regenerateStreakGridOrderAfterRefresh(
+                            oldStreakItems: oldStreakItems,
+                            oldOrder: oldOrder
+                        )
+                        
+                        // Set flags only after successful refresh to ensure UI state matches actual data
+                        self.state.ui.hasLoadedProgressMetrics = true
+                        self.state.ui.hasLoadedDashboardConfig = true
+                    }
+                } catch {
+                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh streak data after entry change: \(error)")
+                }
+            }
 
             // Clear all caches to force recalculation (including continuousOperations)
             self.invalidateContinuousOperationsCache()
@@ -3497,8 +3602,8 @@ class DashboardStore: ObservableObject {
         }
 
         // Sync the removal state to ensure consistency after restoration
+        // Skip syncing from StreakManager since snapshot already has the correct removal state
         syncRemovalStateFromMetricsManager()
-        syncRemovalStateFromStreakManager()
 
         // Clear selection/drag and exit edit mode without forcing relayout
         state.ui.selectedMetricLabel = nil

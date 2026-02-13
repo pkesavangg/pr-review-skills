@@ -33,7 +33,7 @@ struct DashboardMetricsSection: View {
             // Show skeleton while loading body metrics, otherwise show actual metrics
             if store.shouldShowBodyMetricsSkeleton {
                 skeletonMetricsGrid()
-            } else if store.shouldShowBodyMetrics {
+            } else if store.shouldShowBodyMetrics || !store.metricsToShow.isEmpty {
                 metricsGridSection()
             }
             
