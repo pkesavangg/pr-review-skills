@@ -1279,19 +1279,20 @@ class DashboardStore: ObservableObject {
         oldOrder: [String]
     ) {
         let newItems = streakManager.state.streakItems
-        
         guard !oldOrder.isEmpty else {
             setupDefaultProgressMetricsOrder()
             return
         }
         
         // Maps for quick lookup
-        let oldIdToLabel = Dictionary(uniqueKeysWithValues:
-            oldStreakItems.map { ($0.id.uuidString, $0.label) }
+        let oldIdToLabel = Dictionary(
+            oldStreakItems.map { ($0.id.uuidString, $0.label) },
+            uniquingKeysWith: { first, _ in first }
         )
         
-        let labelToNewId = Dictionary(uniqueKeysWithValues:
-            newItems.map { ($0.label, $0.id.uuidString) }
+        let labelToNewId = Dictionary(
+            newItems.map { ($0.label, $0.id.uuidString) },
+            uniquingKeysWith: { first, _ in first }
         )
         
         // Restore order using labels
@@ -1411,10 +1412,6 @@ class DashboardStore: ObservableObject {
         DispatchQueue.main.async {
             self.loadLatestEntryData()
             self.loadGoalCardData()
-
-            // Keep progress metrics visible during refresh
-            self.state.ui.hasLoadedProgressMetrics = true
-            self.state.ui.hasLoadedDashboardConfig = true
             
             Task {
                 do {
@@ -1429,9 +1426,18 @@ class DashboardStore: ObservableObject {
                             oldStreakItems: oldStreakItems,
                             oldOrder: oldOrder
                         )
+                        
+                        // Set flags only after successful refresh to ensure UI state matches actual data
+                        self.state.ui.hasLoadedProgressMetrics = true
+                        self.state.ui.hasLoadedDashboardConfig = true
                     }
                 } catch {
                     self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh streak data after entry change: \(error)")
+                    // Reset flags on error to prevent UI from showing stale state
+                    await MainActor.run {
+                        self.state.ui.hasLoadedProgressMetrics = false
+                        self.state.ui.hasLoadedDashboardConfig = false
+                    }
                 }
             }
 
@@ -3555,6 +3561,7 @@ class DashboardStore: ObservableObject {
         }
 
         // Sync the removal state to ensure consistency after restoration
+        // Skip syncing from StreakManager since snapshot already has the correct removal state
         syncRemovalStateFromMetricsManager()
 
         // Clear selection/drag and exit edit mode without forcing relayout

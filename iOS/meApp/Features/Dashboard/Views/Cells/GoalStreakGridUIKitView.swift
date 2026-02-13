@@ -204,8 +204,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 return ordered
             } else {
                 // In non-edit mode, only show streaks that are in the order (removed streaks already filtered by streakItemsToShow)
-                if order.isEmpty {
-                    return all
+                guard !order.isEmpty else {
+                    return hasLoadedProgressMetrics ? all : []
                 }
                 return order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
             }
