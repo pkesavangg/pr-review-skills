@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
@@ -246,10 +245,6 @@ constructor(
       try {
         AppLog.d(TAG, "Updating device connection status")
         delay(3000)
-        deviceService.onDeviceUpdate(
-          discoveredScale?.device!!,
-          connectionStatus = BLEStatus.CONNECTED,
-        )
         clearBluetoothTimeout() // Cancel timeout on success
         AppLog.d(TAG, "Waiting 3 seconds after connection")
         saveScale()
