@@ -163,6 +163,8 @@ class StreakCardCell: UICollectionViewCell {
         } else {
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
             longPress.minimumPressDuration = 0.5
+            longPress.cancelsTouchesInView = false
+            longPress.delaysTouchesBegan = false
             self.addGestureRecognizer(longPress)
 
             let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
@@ -421,6 +423,10 @@ class StreakCardCell: UICollectionViewCell {
             isLongPressed = true
             // Apply mild selection shadow to indicate selection like MetricCell
             applySelectionShadow()
+            // Enter edit mode on long press if not already in edit mode
+            if let store = currentStore, !store.state.ui.isEditMode {
+                store.toggleEditMode()
+            }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
                 configure(with: item, store: store)

@@ -78,6 +78,13 @@ struct MetricGridUIKitView: UIViewRepresentable {
         } else {
             // No content/layout changes. Avoid explicit reloads; just update wiggle state if needed
             if newIsEditMode != coordinator.lastIsEditMode {
+                // Update long press gesture duration based on edit mode
+                if let gesture = coordinator.longPressGestureRecognizer {
+                    gesture.minimumPressDuration = newIsEditMode ? 0.15 : 0.5
+                    // Ensure gesture is enabled
+                    gesture.isEnabled = true
+                }
+                
                 uiView.visibleCells.forEach { cell in
                     if let metricCell = cell as? MetricCell {
                         metricCell.isWiggling = newIsEditMode
@@ -177,8 +184,12 @@ struct MetricGridUIKitView: UIViewRepresentable {
 
         // Add long-press gesture for interactive movement with clamped bounds
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
-        longPress.minimumPressDuration = 0.15
+        // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
+        longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
         longPress.cancelsTouchesInView = false
+        longPress.delaysTouchesBegan = false
+        longPress.delaysTouchesEnded = false
+        context.coordinator.longPressGestureRecognizer = longPress
         collectionView.addGestureRecognizer(longPress)
 
         GridUIKitInteractionManager.addTapSink(to: collectionView, target: context.coordinator, action: #selector(Coordinator.consumeTap))
@@ -215,6 +226,7 @@ extension MetricGridUIKitView {
         
         var parent: MetricGridUIKitView
         var store: DashboardStore
+        var longPressGestureRecognizer: UILongPressGestureRecognizer?
         
         // MARK: - Drag Boundary Properties
         private var boundaryDetector: GridBoundaryDetector
@@ -384,8 +396,15 @@ extension MetricGridUIKitView {
 
             switch gesture.state {
             case .began:
-                // Only allow when edit mode is ON, otherwise let regular taps work
-                guard store.state.ui.isEditMode else { return }
+                // If not in edit mode, enter edit mode on long press
+                if !store.state.ui.isEditMode {
+                    // Check if long press is on a metric cell
+                    if let indexPath = collectionView.indexPathForItem(at: location) {
+                        store.toggleEditMode()
+                    }
+                    return
+                }
+                // Only allow interactive movement when edit mode is ON
                 guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
                 // Only allow interactive movement for active (non-removed) metrics
                 guard indexPath.item < firstRemovedIndex else { return }

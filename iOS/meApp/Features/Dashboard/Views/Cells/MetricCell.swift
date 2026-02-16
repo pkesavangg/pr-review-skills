@@ -201,6 +201,8 @@ class MetricCell: UICollectionViewCell {
 
             let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleMetricLongPressForInfo(_:)))
             longPress.minimumPressDuration = 0.5
+            longPress.cancelsTouchesInView = false
+            longPress.delaysTouchesBegan = false
             self.addGestureRecognizer(longPress)
 
             let selectTap = UITapGestureRecognizer(target: self, action: #selector(handleNonEditSelectTap(_:)))
@@ -510,6 +512,10 @@ class MetricCell: UICollectionViewCell {
         switch gesture.state {
         case .began:
             isLongPressed = true
+            // Enter edit mode on long press if not already in edit mode
+            if let store = currentStore, !store.state.ui.isEditMode {
+                store.toggleEditMode()
+            }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
                 configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
