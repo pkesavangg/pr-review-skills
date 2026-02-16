@@ -14,7 +14,7 @@
 		D01B21902E374CD6005D1CA2 /* ggInAppMessagingPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D01B218F2E374CD6005D1CA2 /* ggInAppMessagingPackage */; };
 		D01B21932E37534F005D1CA2 /* ggInAppMessagingPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D01B21922E37534F005D1CA2 /* ggInAppMessagingPackage */; };
 		D05336262E17C72500FFF083 /* AppSyncPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D05336252E17C72500FFF083 /* AppSyncPackage */; };
-		D0BCA1B12E3A42070094546D /* ggInAppMessagingPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D0BCA1B02E3A42070094546D /* ggInAppMessagingPackage */; };
+		D0751F612F42CB5900B58867 /* ggInAppMessagingPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D0751F602F42CB5900B58867 /* ggInAppMessagingPackage */; };
 		D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */ = {isa = PBXBuildFile; productRef = D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */; };
 /* End PBXBuildFile section */
 
@@ -86,7 +86,7 @@
 				481F096F2DF05C8D00799EAA /* FirebaseMessaging in Frameworks */,
 				10E5F8EC2F2DCF82001C1DD3 /* GGBluetoothSwiftPackage in Frameworks */,
 				D0D0CDE12E14F32B004FDC17 /* ggHealthKitPackage in Frameworks */,
-				D0BCA1B12E3A42070094546D /* ggInAppMessagingPackage in Frameworks */,
+				D0751F612F42CB5900B58867 /* ggInAppMessagingPackage in Frameworks */,
 				D01B21902E374CD6005D1CA2 /* ggInAppMessagingPackage in Frameworks */,
 				481F096D2DF05C8D00799EAA /* FirebaseCore in Frameworks */,
 				D05336262E17C72500FFF083 /* AppSyncPackage in Frameworks */,
@@ -167,8 +167,8 @@
 				10D170672E30E20D00D18116 /* gWifiScalePackage */,
 				D01B218F2E374CD6005D1CA2 /* ggInAppMessagingPackage */,
 				D01B21922E37534F005D1CA2 /* ggInAppMessagingPackage */,
-				D0BCA1B02E3A42070094546D /* ggInAppMessagingPackage */,
 				10E5F8EB2F2DCF82001C1DD3 /* GGBluetoothSwiftPackage */,
+				D0751F602F42CB5900B58867 /* ggInAppMessagingPackage */,
 			);
 			productName = meApp;
 			productReference = 105A1F9A2DE585B800FBB764 /* meApp.app */;
@@ -257,8 +257,8 @@
 				D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
 				D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */,
 				10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */,
-				D0BCA1AF2E3A42070094546D /* XCRemoteSwiftPackageReference "ggInAppMessagingPackage" */,
 				10E5F8EA2F2DCF82001C1DD3 /* XCRemoteSwiftPackageReference "ggBluetoothNativeLibrary" */,
+				D0751F5F2F42CB5900B58867 /* XCLocalSwiftPackageReference "../../ggInAppMessagingPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105A1F9B2DE585B800FBB764 /* Products */;
@@ -466,7 +466,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
@@ -511,7 +511,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
@@ -701,7 +701,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
@@ -844,7 +844,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 13;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
@@ -969,6 +969,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		D0751F5F2F42CB5900B58867 /* XCLocalSwiftPackageReference "../../ggInAppMessagingPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../ggInAppMessagingPackage;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -997,14 +1004,6 @@
 		D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/dmdbrands/ggAppSyncPackage";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
-		D0BCA1AF2E3A42070094546D /* XCRemoteSwiftPackageReference "ggInAppMessagingPackage" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/dmdbrands/ggInAppMessagingPackage";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -1054,9 +1053,8 @@
 			package = D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */;
 			productName = AppSyncPackage;
 		};
-		D0BCA1B02E3A42070094546D /* ggInAppMessagingPackage */ = {
+		D0751F602F42CB5900B58867 /* ggInAppMessagingPackage */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = D0BCA1AF2E3A42070094546D /* XCRemoteSwiftPackageReference "ggInAppMessagingPackage" */;
 			productName = ggInAppMessagingPackage;
 		};
 		D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */ = {
