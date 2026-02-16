@@ -152,7 +152,20 @@ constructor(
     )
 
     val account = state.value.account ?: return
-    val goal = state.value.form.controls.toGoal(
+    val controls = state.value.form.controls
+    
+    // If MAINTAIN mode and starting weight is empty, set it to current weight
+    if (controls.goalType.value == GoalType.MAINTAIN.value) {
+      val startingWeight = controls.startingWeight.value
+      if (startingWeight.isEmpty() || startingWeight.toDoubleOrNull() == null || startingWeight.toDoubleOrNull() == 0.0) {
+        val currentWeight = state.value.latestWeight
+        if (currentWeight != null && currentWeight > 0.0) {
+          controls.startingWeight.onValueChange(currentWeight.toInt().toString())
+        }
+      }
+    }
+    
+    val goal = controls.toGoal(
       fromUnit = account.weightUnit,
       toUnit = WeightUnit.LB,
     )
