@@ -84,7 +84,7 @@ internal fun StatCard(
             append("0 days")
 
           !isFromSetup && stat.key is DashboardKey.Milestone && !isStreakMilestone(stat) ->
-            append("0.0")
+            append("0")
 
           else ->
             append("--")
