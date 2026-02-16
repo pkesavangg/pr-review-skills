@@ -568,12 +568,14 @@ class BottomTabBarViewModel: ObservableObject {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
         /// Prevents showing scale discovery when Apple Health integration sheet is already presented
         /// to avoid dismissing the Apple Health sheet unexpectedly.
+        /// Also prevents showing during AppSync scanning to avoid interrupting the scanning flow.
         guard !bluetoothService.isSetupInProgress,
               bluetoothService.canShowScaleDiscoveredModal,
               !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
               !isAppleHealthSheetPresented, // Prevent scale discovery when Apple Health sheet is shown
+              selectedTab != .appsync, // Prevent scale discovery when AppSync camera is active
               event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
               !event.deviceInfo.sku.isEmpty else {
             return false
