@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import Combine
-import AppSyncPackage
 
 /// Store responsible for orchestrating the AppSync (scale setup) multi-step flow.
 @MainActor
@@ -211,12 +210,12 @@ final class AppSyncSetupStore: ObservableObject {
                     self.moveToNextStep()
                 },
                 onScanned: { result in
-                    // Treat non-positive scan values as an aborted/invalid weigh-in and step back.
-                    if result.weight <= 0 {
+                    // Move forward only for positive weight; otherwise return to the previous step.
+                    if result.weight > 0 {
+                        self.moveToNextStep()
+                    } else {
                         self.moveToPreviousStep()
-                        return
                     }
-                    self.moveToNextStep()
                 }
             ))
         case .finish:
