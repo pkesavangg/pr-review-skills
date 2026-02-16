@@ -863,16 +863,64 @@ extension View {
                 .chartXAxis {
                     let allTicks = viewModel.xAxisValues
                     let nonLastTicks = Array(allTicks.dropLast())
+                    let gridTicks: [Date] = {
+                        guard viewModel.timePeriod == .month, !nonLastTicks.isEmpty else {
+                            return nonLastTicks
+                        }
+                        let calendar = Calendar.current
+                        let sortedTicks = nonLastTicks.sorted()
+                        guard let firstTick = sortedTicks.first,
+                              let lastTick = sortedTicks.last else {
+                            return nonLastTicks
+                        }
+
+                        // Ensure month starts are always present as grid ticks so the solid
+                        // month-start line appears for every visible month.
+                        var monthStartTicks: [Date] = []
+                        var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
+                        while currentMonthStart <= lastTick {
+                            let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
+                            monthStartTicks.append(monthStartNoon)
+                            guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
+                            currentMonthStart = next
+                        }
+                        // Deduplicate by calendar day to avoid double lines when two ticks
+                        // represent the same day with different time components.
+                        let combined = nonLastTicks + monthStartTicks
+                        var uniqueByDay: [Date] = []
+                        var seenDays: Set<Date> = []
+                        for tick in combined.sorted() {
+                            let day = calendar.startOfDay(for: tick)
+                            if seenDays.insert(day).inserted {
+                                uniqueByDay.append(tick)
+                            }
+                        }
+                        return uniqueByDay
+                    }()
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
                     let adjustedLabelTicks: [Date] = allTicks
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
-                    AxisMarks(values: nonLastTicks) { value in
+                    AxisMarks(values: gridTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
                             // Solid line for start of week/month/year
                             AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
                                 .foregroundStyle(theme.statusIconSecondaryDisabled)
-                            AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
-                                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            // For month-start lines, show the tick below X-axis only when
+                            // the 1st day of month is also Sunday.
+                            if viewModel.timePeriod == .month {
+                                let calendar = Calendar.current
+                                let comps = calendar.dateComponents([.day, .weekday], from: date)
+                                let isMonthStartSunday = (comps.day == 1 && comps.weekday == 1)
+                                if isMonthStartSunday {
+                                    AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                        .foregroundStyle(theme.statusIconSecondaryDisabled)
+                                } else {
+                                    AxisTick().foregroundStyle(.clear)
+                                }
+                            } else {
+                                AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                    .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            }
                         } else {
                             // Default dotted line for other grid lines
                             AxisGridLine()
@@ -882,12 +930,27 @@ extension View {
 
                     // Labels for all tick values
                     AxisMarks(values: adjustedLabelTicks) { value in
+                        if viewModel.timePeriod == .month {
+                            // Hide default tick/gridline for month label marks so
+                            // month-start solid lines do not appear below the X-axis.
+                            AxisGridLine().foregroundStyle(.clear)
+                            AxisTick().foregroundStyle(.clear)
+                        }
                         AxisValueLabel {
                             if let date = value.as(Date.self),
                                let labelString = getCachedXAxisLabel(date) {
-                                Text(labelString)
-                                    .font(.caption)
-                                    .foregroundColor(theme.textSubheading)
+                                if viewModel.timePeriod == .month {
+                                    Text(labelString)
+                                        .font(.caption)
+                                        .foregroundColor(theme.textSubheading)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                        .padding(.horizontal, 2)
+                                        .background(theme.textInverse)
+                                } else {
+                                    Text(labelString)
+                                        .font(.caption)
+                                        .foregroundColor(theme.textSubheading)
+                                }
                             }
                         }
                     }
