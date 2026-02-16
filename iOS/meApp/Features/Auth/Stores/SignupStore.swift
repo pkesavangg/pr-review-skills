@@ -355,7 +355,7 @@ final class SignupStore: ObservableObject {
             return Goal(
                 type: .maintain,
                 goalWeight: convert(target),
-                initialWeight: convert(target),
+                initialWeight: 0,
                 goalType: .maintain
             )
         } else {
