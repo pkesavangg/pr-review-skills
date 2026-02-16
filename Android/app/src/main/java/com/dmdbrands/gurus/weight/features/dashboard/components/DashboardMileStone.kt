@@ -40,6 +40,7 @@ fun DashboardMilestone(
   visibleKeys: List<DashboardKey> = listOf(),
   onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
   onNavigateToGoal: () -> Unit = {},
+  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
   modifier: Modifier = Modifier
 ) {
   val currentDeviceType = getDeviceType()
@@ -125,6 +126,7 @@ fun DashboardMilestone(
         // Allow navigation to goal screen when not in edit mode
         onNavigateToGoal
       },
+      onLongClick = onLongClick,
       progress = progress,
       latestWeight = latestWeight,
     )

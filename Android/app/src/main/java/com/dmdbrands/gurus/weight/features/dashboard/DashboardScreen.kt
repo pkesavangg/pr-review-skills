@@ -2,6 +2,8 @@ package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +50,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardViewMode
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
+import android.R.attr.onClick
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,6 +180,19 @@ private fun DashboardScreenContent(
           )
         }
       } else {
+        Column(
+          modifier = Modifier.fillMaxSize().clickable(
+            onClick = {
+                if (inEditMode){
+                  currentVisibleMetrics = state.visibleKeys.filterIsInstance<DashboardKey.Metric>()
+                  currentVisibleMilestones = state.visibleKeys.filterIsInstance<DashboardKey.Milestone>()
+                  inEditMode = false
+                }
+            }
+          ),
+          verticalArrangement = Arrangement.Center,
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ){
         DashboardMetrics(
           metricData = state.data,
           inEditMode = inEditMode,
@@ -186,6 +202,12 @@ private fun DashboardScreenContent(
           onMetricClick = { stat ->
             handleIntent(DashboardIntent.SetSelectedStat(stat))
           },
+            onLongClick = {
+              if (!inEditMode){
+                handleIntent(DashboardIntent.SetSelectedStat(null))
+                inEditMode = true
+              }
+            },
           onMetricsChanged = { visibleMetrics ->
             currentVisibleMetrics = visibleMetrics
           },
@@ -205,6 +227,12 @@ private fun DashboardScreenContent(
           visibleKeys = currentVisibleMilestones,
           onMilestonesChanged = { visibleMilestones ->
             currentVisibleMilestones = visibleMilestones
+          },
+          onLongClick = { stat, progress ->
+            if (!inEditMode) {
+              handleIntent(DashboardIntent.SetSelectedStat(null))
+              inEditMode = true
+            }
           },
           onNavigateToGoal = {
             scope.launch {
@@ -263,6 +291,7 @@ private fun DashboardScreenContent(
         )
       }
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+    }
     }
   }
 }

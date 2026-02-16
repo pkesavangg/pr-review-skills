@@ -25,7 +25,6 @@ import com.dmdbrands.gurus.weight.features.common.components.reorderable.remembe
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 /**
@@ -53,6 +52,7 @@ fun DashboardMilestoneGrid(
   latestWeight: Double? = null,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
+  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
   onNavigateToGoal: () -> Unit = {},
 ) {
   val currentDeviceType = getDeviceType()
@@ -120,17 +120,17 @@ fun DashboardMilestoneGrid(
     columns = GridCells.Fixed(spanCount),
     state = lazyGridState,
     contentPadding = if (inEditMode || hasVisibleMetrics) {
-      PaddingValues(vertical = MeTheme.spacing.sm)
+      PaddingValues(vertical = spacing.sm)
     } else {
-      PaddingValues(bottom = MeTheme.spacing.sm)
+      PaddingValues(bottom = spacing.sm)
     },
     userScrollEnabled = false,
     modifier = Modifier
       .fillMaxWidth()
-      .padding(horizontal = if(isFromSetup) 0.dp else spacing.sm)
+      .padding(horizontal = if (isFromSetup) 0.dp else spacing.sm)
       .heightIn(max = 800.dp),
-    horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+    verticalArrangement = Arrangement.spacedBy(spacing.sm),
   ) {
     // Visible milestones (reorderable)
     items(
@@ -157,9 +157,18 @@ fun DashboardMilestoneGrid(
           isDragging = isDragging,
           isFromSetup = isFromSetup,
           isVisible = true,
+          modifier = Modifier.longPressDraggableHandle(
+            enabled = inEditMode,
+            onDragStarted = {
+              hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+            },
+            onDragStopped = {
+              hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+            },
+          ),
           onMilestoneMoved = handleMilestoneMoved,
           onNavigateToGoal = onNavigateToGoal,
-          reorderableScope = this,
+          onLongClick = onLongClick,
           latestWeight = latestWeight,
         )
       }
@@ -185,7 +194,6 @@ fun DashboardMilestoneGrid(
           isFromSetup = isFromSetup,
           onMilestoneMoved = handleMilestoneMoved,
           onNavigateToGoal = onNavigateToGoal,
-          reorderableScope = null,
           latestWeight = latestWeight,
         )
       }

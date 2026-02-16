@@ -1,11 +1,9 @@
 package com.dmdbrands.gurus.weight.features.dashboard.components
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import com.dmdbrands.gurus.weight.domain.model.common.Progress
-import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 
 /**
@@ -31,27 +29,11 @@ fun MilestoneItem(
   isDragging: Boolean = false,
   isVisible: Boolean = true,
   latestWeight: Double? = null,
+  modifier: Modifier = Modifier,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onNavigateToGoal: () -> Unit = {},
-  reorderableScope: ReorderableCollectionItemScope? = null
+  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
 ) {
-  val hapticFeedback = LocalHapticFeedback.current
-  val modifier = if (reorderableScope != null && inEditMode) {
-    with(reorderableScope) {
-      Modifier.longPressDraggableHandle(
-        enabled = inEditMode,
-        onDragStarted = {
-          hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-        },
-        onDragStopped = {
-          hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-        },
-
-        )
-    }
-  } else {
-    Modifier
-  }
   if (isGoalProgressMilestone(milestone)) {
     // Goal Progress Milestone Card
     GoalProgressMilestoneCard(
@@ -64,6 +46,9 @@ fun MilestoneItem(
       onBadgeClick = {
         onMilestoneMoved(!isVisible, milestone)
       },
+      onLongClick = {
+        onLongClick(null, it)
+      },
       onNavigateToGoal = onNavigateToGoal,
     )
   } else {
@@ -73,11 +58,32 @@ fun MilestoneItem(
       isDragging = isDragging,
       isFromSetup = isFromSetup,
       isSelected = null,
+      canLongPress = true,
       isVisible = isVisible,
       modifier = modifier,
+      onLongClick = {
+        onLongClick(milestone, null)
+      },
       onBadgeClick = {
         onMilestoneMoved(!isVisible, milestone)
       },
     )
   }
+}
+
+fun <T> Modifier.onLongPress(
+  enabled: Boolean = true,
+  key: T,
+  onLongPress: (T) -> Unit,
+  onClick: (T) -> Unit = {}
+): Modifier {
+  return this.combinedClickable(
+    enabled = enabled,
+    onLongClick = {
+      onLongPress(key)
+    },
+    onClick = {
+      onClick(key)
+    },
+  )
 }
