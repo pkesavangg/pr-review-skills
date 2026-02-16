@@ -1,11 +1,13 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.axis
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toDoublePreserve
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.fixed
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
@@ -48,6 +50,10 @@ fun endAxis(
 
   // Vico requires step > 0; pass actual Double step (yStep.roundToInt() would be 0 for small steps e.g. 0.2)
   val stepForPlacer = (yStep?.takeIf { it > 0 } ?: 1.0)
+  val animatableYStep = animateFloatAsState(
+    targetValue = stepForPlacer.toFloat(),
+    label = "animatableYStep",
+  )
 
   return VerticalAxis.rememberEnd(
     valueFormatter = CartesianValueFormatter { _, value, _ ->
@@ -55,7 +61,7 @@ fun endAxis(
         value.roundToInt().toString()
     },
     itemPlacer = VerticalAxis.ItemPlacer.step(
-      { stepForPlacer },
+      { animatableYStep.value.toDoublePreserve() },
     ),
     size = BaseAxis.Size.scroll(50.dp),
     line =
