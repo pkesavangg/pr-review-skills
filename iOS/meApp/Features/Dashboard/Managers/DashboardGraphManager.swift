@@ -1814,7 +1814,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .week, .month:
             return DateTimeTools.formatter("MMM d, yyyy").string(from: date)
         case .year, .total:
-            return DateTimeTools.formatter("MMM, yyyy").string(from: date)
+            return DateTimeTools.formatter("MMM yyyy").string(from: date)
         }
     }
 
