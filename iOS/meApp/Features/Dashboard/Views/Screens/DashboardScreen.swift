@@ -188,6 +188,17 @@ store.restartWiggleAnimations()
             }
         }
         .padding(.bottom, .spacingLG)
+        .frame(maxWidth: .infinity)
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    // Dismiss edit mode when tapping on horizontal spaces around action buttons
+                    if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                        store.cancelEdit()
+                    }
+                }
+        )
     }
     
     private func noEntrySection() -> some View {
