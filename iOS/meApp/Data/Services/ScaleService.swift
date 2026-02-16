@@ -685,17 +685,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     
     func updateAllScalesStatus(_ scales: [Device]? = nil) async throws {
         // Get current active accountId - CRITICAL: Only update devices for current account
-        let currentAccountId: String?
-        do {
-            currentAccountId = try await getAccountId()
-        } catch {
-            currentAccountId = nil
-        }
-        
-        guard let accountId = currentAccountId else {
-            logger.log(level: .debug, tag: tag, message: "No active account for updateAllScalesStatus")
-            return
-        }
+        let accountId = try await getAccountId()
         
         // Determine which device list to process. If none provided, fetch all scales from local storage for current account.
         let deviceList: [Device]
