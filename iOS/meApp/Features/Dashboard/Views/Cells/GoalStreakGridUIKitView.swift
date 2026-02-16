@@ -101,7 +101,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
                 // Update long press gesture duration based on edit mode
-                coordinator.longPressGestureRecognizer?.minimumPressDuration = newIsEditMode ? 0.15 : 0.5
+                if let longPress = coordinator.longPressGestureRecognizer {
+                    longPress.isEnabled = false
+                    longPress.minimumPressDuration = newIsEditMode ? 0.15 : 0.5
+                    longPress.isEnabled = true
+                }
                 
                 coordinator.isUpdating = true
                 UIView.performWithoutAnimation {
@@ -168,6 +172,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
         longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
         longPress.cancelsTouchesInView = false
+        longPress.delaysTouchesBegan = false
+        longPress.delaysTouchesEnded = false
         context.coordinator.longPressGestureRecognizer = longPress
         collectionView.addGestureRecognizer(longPress)
 
@@ -528,20 +534,20 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     return
                 }
             
-            // If not in edit mode, enter edit mode on long press
-            if !store.state.ui.isEditMode {
-                // Check if long press is on a goal card or streak item
-                let location = gesture.location(in: collectionView)
-                if let indexPath = collectionView.indexPathForItem(at: location) {
-                    store.toggleEditMode()
-                }
-                return
-            }
-
+            let location = gesture.location(in: collectionView)
+            
             switch gesture.state {
             case .began:
+                // Determine which item was long-pressed, if any
+                guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
+                
+                // If not in edit mode, enter edit mode on long press of a goal card or streak item,
+                // then immediately proceed to start the drag for the same item.
+                if !store.state.ui.isEditMode {
+                    store.toggleEditMode()
+                }
+                
                 prepareHapticsForDrag()
-                let location = gesture.location(in: collectionView)
                 if let indexPath = collectionView.indexPathForItem(at: location), indexPath.item < firstRemovedIndex {
                     configureBoundaryConstraints(for: collectionView)
                     boundaryDetector.updateGridBounds(for: collectionView)
