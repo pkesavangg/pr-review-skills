@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import AppSyncPackage
 
 /// Store responsible for orchestrating the AppSync (scale setup) multi-step flow.
 @MainActor
@@ -203,12 +204,18 @@ final class AppSyncSetupStore: ObservableObject {
             return AnyView(AppSyncScannerView(
                 showManualEntryButton: false,
                 onClose: {
-                    self.moveToNextStep()
+                    // Closing the scanner should return to the previous setup instruction step.
+                    self.moveToPreviousStep()
                 },
                 onManualEntry: {
                     self.moveToNextStep()
                 },
                 onScanned: { result in
+                    // Treat non-positive scan values as an aborted/invalid weigh-in and step back.
+                    if result.weight <= 0 {
+                        self.moveToPreviousStep()
+                        return
+                    }
                     self.moveToNextStep()
                 }
             ))
