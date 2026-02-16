@@ -500,15 +500,24 @@ class DashboardStore: ObservableObject {
             return cachedChartSeriesData ?? []
         }
 
-        // During scrolling, ALWAYS use cached data if available
-        // Chart data doesn't change during scroll - only the view changes
-        if state.graph.isScrolling, let cached = cachedChartSeriesData, !cached.isEmpty {
-            return cached
-        }
-
         // Check if cached data is still valid (same period, same data count, same metric, same Y-axis domain)
         let ops = continuousOperations
         let currentYAxisDomain = yAxisDomain
+        
+        // During scrolling, use cached data ONLY if the metric selection hasn't changed
+        // If metric selection changed, recalculate immediately
+        if state.graph.isScrolling, let cached = cachedChartSeriesData, !cached.isEmpty {
+            // Compare metric selection - handles both selection and deselection cases
+            let metricUnchanged = cachedChartSeriesMetric == state.ui.selectedMetricLabel
+            if metricUnchanged {
+                return cached
+            }
+            // Metric changed → clear cache
+            cachedChartSeriesData = nil
+            cachedChartSeriesMetric = nil
+        }
+
+        // Check if cached data is still valid (same period, same data count, same metric, same Y-axis domain)
         if let cached = cachedChartSeriesData,
            !cached.isEmpty,
            cachedChartSeriesPeriod == state.graph.selectedPeriod,
