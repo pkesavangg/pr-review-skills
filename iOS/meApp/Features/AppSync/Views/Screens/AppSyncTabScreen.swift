@@ -18,6 +18,8 @@ struct AppSyncTabScreen: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     // Store handling scan results
     @StateObject private var scanStore = AppSyncTabStore()
+    // Forces a fresh camera/scanner instance whenever AppSync tab is re-opened.
+    @State private var scannerSessionId = UUID()
 
     // MARK: - Body
     var body: some View {
@@ -26,17 +28,21 @@ struct AppSyncTabScreen: View {
                 // Full-screen camera/scanner view
                 AppSyncScannerView(
                     onClose: {
+                        scannerSessionId = UUID()
                         tabViewModel.restorePreviousTab()
                     },
                     onManualEntry: {
+                        scannerSessionId = UUID()
                         tabViewModel.selectTab(.entry)
                     },
                     onScanned: { data in
                         // Forward to store for processing, then return to dashboard
+                        scannerSessionId = UUID()
                         tabViewModel.restorePreviousTab()
                         scanStore.handleScanned(data, tabViewModel: tabViewModel)
                     }
                 )
+                .id(scannerSessionId)
             }
         }
         .onChange(of: tabViewModel.selectedTab, { oldValue, newValue in
