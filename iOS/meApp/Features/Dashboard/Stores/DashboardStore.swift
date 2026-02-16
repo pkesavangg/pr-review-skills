@@ -499,10 +499,6 @@ class DashboardStore: ObservableObject {
         guard !isProcessingScrollEnd else {
             return cachedChartSeriesData ?? []
         }
-
-        // Check if cached data is still valid (same period, same data count, same metric, same Y-axis domain)
-        let ops = continuousOperations
-        let currentYAxisDomain = yAxisDomain
         
         // During scrolling, use cached data ONLY if the metric selection hasn't changed
         // If metric selection changed, recalculate immediately
@@ -516,6 +512,10 @@ class DashboardStore: ObservableObject {
             cachedChartSeriesData = nil
             cachedChartSeriesMetric = nil
         }
+
+        // Prepare values used to validate whether cached chart data is still valid
+        let ops = continuousOperations
+        let currentYAxisDomain = yAxisDomain
 
         // Check if cached data is still valid (same period, same data count, same metric, same Y-axis domain)
         if let cached = cachedChartSeriesData,
