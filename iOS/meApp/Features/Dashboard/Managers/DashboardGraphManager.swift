@@ -1666,23 +1666,23 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // We'll compare using this exclusive boundary so Saturday is included.
         let weekEndExclusive = cal.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
 
-        // Calculate total weeks from start of oldest week to inclusive end of latest week
-        let timeInterval = weekEndExclusive.timeIntervalSince(weekStartForOldest)
-        let totalWeeks = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.week)))
-
-        for weekOffset in 0..<totalWeeks {
-            if let currentWeekStart = cal.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
-                // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
-                let startOfCurrentWeek = cal.startOfDay(for: currentWeekStart)
-                for dayOffset in 0...6 { // include Saturday
-                    if let dayStart = cal.date(byAdding: .day, value: dayOffset, to: startOfCurrentWeek),
-                       let dayDate = cal.date(byAdding: .hour, value: 12, to: dayStart) { // noon
-                        if dayDate >= weekStartForOldest && dayDate < weekEndExclusive {
-                            dates.append(dayDate)
-                        }
+        // Iterate week-by-week with calendar math to avoid drift from non-calendar viewport widths.
+        var currentWeekStart = weekStartForOldest
+        while currentWeekStart < weekEndExclusive {
+            // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
+            let startOfCurrentWeek = cal.startOfDay(for: currentWeekStart)
+            for dayOffset in 0...6 { // include Saturday
+                if let dayStart = cal.date(byAdding: .day, value: dayOffset, to: startOfCurrentWeek),
+                   let dayDate = cal.date(byAdding: .hour, value: 12, to: dayStart) { // noon
+                    if dayDate >= weekStartForOldest && dayDate < weekEndExclusive {
+                        dates.append(dayDate)
                     }
                 }
             }
+            guard let nextWeek = cal.date(byAdding: .weekOfYear, value: 1, to: currentWeekStart) else {
+                break
+            }
+            currentWeekStart = nextWeek
         }
         // Append a phantom tick one day after the last date so the real last tick (Saturday)
         // is not exactly at the right edge of the visible domain.

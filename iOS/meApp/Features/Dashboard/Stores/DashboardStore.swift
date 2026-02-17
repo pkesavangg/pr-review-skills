@@ -2430,7 +2430,7 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let windowStart = calendar.startOfDay(for: leftEdge)
         let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
-            ?? windowStart.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
+            ?? windowStart.addingTimeInterval(DashboardConstants.TimeInterval.calendarWeek)
         let windowEndInclusive = windowEndExclusive.addingTimeInterval(-1)
         return DateInterval(start: windowStart, end: windowEndInclusive)
     }
@@ -2596,7 +2596,7 @@ class DashboardStore: ObservableObject {
         let leftEdge = graphManager.state.xScrollPosition
         let windowStart = calendar.startOfDay(for: leftEdge)
         let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
-            ?? windowStart.addingTimeInterval(7 * DashboardConstants.TimeInterval.day)
+            ?? windowStart.addingTimeInterval(DashboardConstants.TimeInterval.calendarWeek)
 
         return graphManager.formatDateRange(
             minDate: windowStart,
