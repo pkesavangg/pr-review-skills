@@ -60,15 +60,6 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             }
             .store(in: &cancellables)
         
-        ggIAMService
-            .promoCodeCopied
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] feedSettings in
-                // If we ever need to handle the “promo code tapped/clicked” event ourselves, we can do it here.
-                // (The toast shown when the promo code is tapped is already handled inside the package.)
-            }
-            .store(in: &cancellables)
-        
         // Seed initial badge state for any late subscribers
         updateNotificationBadge()
     }
