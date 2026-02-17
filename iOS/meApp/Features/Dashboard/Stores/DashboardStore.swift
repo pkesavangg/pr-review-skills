@@ -2427,7 +2427,10 @@ class DashboardStore: ObservableObject {
             let noEntriesBeyondCurrentMonth = (lastEntryDate ?? .distantPast) <= endOfCurrentMonthInclusive
 
             if crossesIntoFutureMonth && noEntriesBeyondCurrentMonth {
-                return DateInterval(start: visibleWindow.start, end: endOfCurrentMonthInclusive)
+                // Ensure a valid interval even if the user scrolls entirely beyond the current month.
+                // In that case, clamp start to the same day as the clamped end (label becomes the current month).
+                let clampedStart = min(visibleWindow.start, endOfCurrentMonthInclusive)
+                return DateInterval(start: clampedStart, end: endOfCurrentMonthInclusive)
             }
         }
 
