@@ -156,7 +156,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         let requiresMeta = !(actionType == .click || actionType == .read || actionType == .trigger)
         return FeedAction(
             action: actionType,
-            osType: requiresMeta ? "ios" : nil,
+            osType: requiresMeta ? "iOS" : nil,
             meta: requiresMeta ? FeedActionMeta(variationId: variationId) : nil
         )
     }
