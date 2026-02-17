@@ -2398,12 +2398,43 @@ class DashboardStore: ObservableObject {
     /// If a full calendar month is contained, returns that month interval.
     /// Otherwise returns the visible window range.
     private func getLabelDateRangeForMonth() -> DateInterval {
+        let calendar = Calendar.current
+        let today = Date()
+        let hasAnyOps = !continuousOperations.isEmpty
+        let lastEntryDate = continuousOperations.last?.date
+
         if let monthInterval = getFullyContainedMonthInterval() {
-            return DateInterval(start: monthInterval.start, end: inclusiveEnd(fromExclusive: monthInterval.end))
+            // A full month is visible; always label the full calendar month.
+            let fullMonth = DateInterval(start: monthInterval.start, end: inclusiveEnd(fromExclusive: monthInterval.end))
+            return fullMonth
         }
+
         let leftEdge = graphManager.state.xScrollPosition
         let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
-        return DateInterval(start: leftEdge, end: inclusiveEnd(fromExclusive: rightEdge))
+        let visibleWindow = DateInterval(start: leftEdge, end: inclusiveEnd(fromExclusive: rightEdge))
+
+        // If the visible window crosses into a *future* month that has no entries,
+        // clamp the label to the end of the current month. This prevents labels like
+        // "Feb 13 – Mar 17, 2026" when the chart does not render March grid lines/ticks.
+        //
+        // We only clamp when:
+        // - The label would extend beyond the end of the current calendar month (today's month), AND
+        // - The latest entry is not beyond that month (i.e., no data in the future month).
+        if hasAnyOps,
+           let currentMonth = calendar.dateInterval(of: .month, for: today) {
+            let endOfCurrentMonthInclusive = inclusiveEnd(fromExclusive: currentMonth.end)
+            let crossesIntoFutureMonth = visibleWindow.end > endOfCurrentMonthInclusive
+            let noEntriesBeyondCurrentMonth = (lastEntryDate ?? .distantPast) <= endOfCurrentMonthInclusive
+
+            if crossesIntoFutureMonth && noEntriesBeyondCurrentMonth {
+                // Ensure a valid interval even if the user scrolls entirely beyond the current month.
+                // In that case, clamp start to the same day as the clamped end (label becomes the current month).
+                let clampedStart = min(visibleWindow.start, endOfCurrentMonthInclusive)
+                return DateInterval(start: clampedStart, end: endOfCurrentMonthInclusive)
+            }
+        }
+
+        return visibleWindow
     }
 
     /// Returns the date range used by the year label for the current scroll position.
