@@ -1710,16 +1710,32 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Calculate total months from start of oldest month to end of latest month
         let timeInterval = monthEndForLatest.timeIntervalSince(monthStartForOldest)
         let totalMonths = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.month)))
+        var sundayCalendar = Calendar(identifier: .gregorian)
+        sundayCalendar.timeZone = calendar.timeZone
+        sundayCalendar.locale = calendar.locale
+        sundayCalendar.firstWeekday = 1
 
         for monthOffset in 0..<totalMonths {
-            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest) {
-                for weekOffset in 0..<5 {
-                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
-                        if weekDate >= monthStartForOldest && weekDate <= monthEndForLatest {
-                            dates.append(weekDate)
-                        }
-                    }
-                }
+            guard let currentMonthStart = sundayCalendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest),
+                  let currentMonthEnd = sundayCalendar.dateInterval(of: .month, for: currentMonthStart)?.end else {
+                continue
+            }
+
+            let monthInterval = DateInterval(start: currentMonthStart, end: currentMonthEnd)
+            let monthTicks = DateTimeTools.sundayTicksForMonth(
+                in: monthInterval,
+                baseCalendar: calendar,
+                includeTrailingPhantom: false
+            )
+            dates.append(contentsOf: monthTicks.filter { $0 >= monthStartForOldest && $0 <= monthEndForLatest })
+        }
+
+        // Append one trailing phantom weekly tick so the last real month section remains selectable
+        // (e.g., in Feb 2025, keep the section after Feb 22/23 through month end).
+        if let last = dates.max() {
+            if let nextSunday = sundayCalendar.date(byAdding: .weekOfYear, value: 1, to: last),
+               let phantomNoon = sundayCalendar.date(bySettingHour: 12, minute: 0, second: 0, of: nextSunday) {
+                dates.append(phantomNoon)
             }
         }
         return dates
