@@ -88,8 +88,10 @@ struct DashboardMetricsSection: View {
     private func metricsGridSection() -> some View {
         Group {
             MetricGridUIKitView(parentView: parentView, store: store, onMetricLongPress: { label in
-                store.state.ui.selectedMetricLabel = label
-                openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
+                // Long press on any metric should directly open edit dashboard mode
+                if !store.state.ui.isEditMode {
+                    store.toggleEditMode()
+                }
             })
             .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
             .padding(.top, .spacingSM)

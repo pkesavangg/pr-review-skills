@@ -261,8 +261,26 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     
     /// Returns a dictionary of connected devices keyed by broadcastId.
     /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
+    /// Only returns connected devices for the current active account to prevent
+    /// cross-account connection status contamination when switching accounts.
     func getConnectedDevices() async -> [String: Any] {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.isConnected == true })
+        // Get current active accountId - CRITICAL: Only return devices for current account
+        let currentAccountId: String?
+        do {
+            currentAccountId = try await getAccountId()
+        } catch {
+            currentAccountId = nil
+        }
+        
+        guard let accountId = currentAccountId else {
+            logger.log(level: .debug, tag: tag, message: "No active account for getConnectedDevices")
+            return [:]
+        }
+        
+        // Filter by accountId to prevent cross-account contamination
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { 
+            $0.isConnected == true && $0.accountId == accountId 
+        })
         do {
             let connectedDevices = try localRepository.context.fetch(descriptor)
             var connectedDevicesDict: [String: Any] = [:]
@@ -666,19 +684,30 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
     
     func updateAllScalesStatus(_ scales: [Device]? = nil) async throws {
-        // Determine which device list to process. If none provided, fetch all scales from local storage.
+        // Get current active accountId - CRITICAL: Only update devices for current account
+        let accountId = try await getAccountId()
+        
+        // Determine which device list to process. If none provided, fetch all scales from local storage for current account.
         let deviceList: [Device]
         if let providedScales = scales {
-            deviceList = providedScales
+            // Filter provided scales to only include devices for current account
+            deviceList = providedScales.filter { $0.accountId == accountId && $0.isSoftDeleted != true }
         } else {
-            deviceList = try await localRepository.listScales().filter { $0.isSoftDeleted != true }
+            // Only fetch scales for the current account
+            deviceList = try await localRepository.listScales(forAccountId: accountId).filter { $0.isSoftDeleted != true }
         }
         
-        // Fetch a map of currently connected devices keyed by broadcastIdString
+        // Fetch a map of currently connected devices keyed by broadcastIdString (already filtered by accountId)
         let connectedDevices = await getConnectedDevices()
         
         // Iterate over each scale and refresh its status fields
         for device in deviceList {
+            // Double-check accountId to prevent cross-account updates
+            guard device.accountId == accountId else {
+                logger.log(level: .debug, tag: tag, message: "Skipping device \(device.id) - belongs to different account")
+                continue
+            }
+            
             // Reset flags before evaluation
             device.isConnected = false
             device.isWifiConfigured = false

@@ -100,6 +100,13 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
+                // Update long press gesture duration based on edit mode
+                if let longPress = coordinator.longPressGestureRecognizer {
+                    longPress.isEnabled = false
+                    longPress.minimumPressDuration = newIsEditMode ? 0.15 : 0.5
+                    longPress.isEnabled = true
+                }
+                
                 coordinator.isUpdating = true
                 UIView.performWithoutAnimation {
                     collectionView.reloadData()
@@ -162,7 +169,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // Add long-press gesture for interactive movement
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(context.coordinator.handleLongPress(_:)))
-        longPress.minimumPressDuration = 0.15
+        // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
+        longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
+        longPress.cancelsTouchesInView = false
+        longPress.delaysTouchesBegan = false
+        longPress.delaysTouchesEnded = false
+        context.coordinator.longPressGestureRecognizer = longPress
         collectionView.addGestureRecognizer(longPress)
 
         GridUIKitInteractionManager.addTapSink(
@@ -373,6 +385,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         // MARK: - Boundary Detection Properties
         public var boundaryDetector: GridBoundaryDetector
+        
+        // MARK: - Gesture Recognizer
+        var longPressGestureRecognizer: UILongPressGestureRecognizer?
 
         // MARK: - Haptics (system-like: prepared + throttled)
         private let boundaryFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -518,14 +533,21 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 guard let collectionView = gesture.view as? UICollectionView else {
                     return
                 }
-            guard store.state.ui.isEditMode else { 
-                return 
-            }
-
+            
+            let location = gesture.location(in: collectionView)
+            
             switch gesture.state {
             case .began:
+                // Determine which item was long-pressed, if any
+                guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
+                
+                // If not in edit mode, enter edit mode on long press of a goal card or streak item,
+                // then immediately proceed to start the drag for the same item.
+                if !store.state.ui.isEditMode {
+                    store.toggleEditMode()
+                }
+                
                 prepareHapticsForDrag()
-                let location = gesture.location(in: collectionView)
                 if let indexPath = collectionView.indexPathForItem(at: location), indexPath.item < firstRemovedIndex {
                     configureBoundaryConstraints(for: collectionView)
                     boundaryDetector.updateGridBounds(for: collectionView)

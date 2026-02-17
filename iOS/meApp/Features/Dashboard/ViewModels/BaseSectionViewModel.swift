@@ -133,9 +133,18 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var chartSeriesData: [GraphSeries] {
         guard let store = dashboardStore else { return [] }
         
-        // During scrolling, use cached data to prevent expensive recalculations
+        let currentMetric = store.state.ui.selectedMetricLabel
+        
+        // During scrolling, use cached data ONLY if the metric selection hasn't changed
+        // If metric changed (selection or deselection), get fresh data from store
         if isScrolling && !cachedChartSeriesData.isEmpty {
-            return cachedChartSeriesData
+            // Check if metric selection changed - handles both selection and deselection (nil) cases
+            if cachedChartSeriesMetric == currentMetric {
+                return cachedChartSeriesData
+            }
+            // Metric changed during scroll - clear cache to get fresh data
+            cachedChartSeriesData = []
+            cachedChartSeriesMetric = nil
         }
         
         let seriesData = store.chartSeriesData
@@ -143,6 +152,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Cache the data for potential reuse during scrolling
         if !isScrolling {
             cachedChartSeriesData = seriesData
+            cachedChartSeriesMetric = currentMetric
         }
         
         return seriesData
@@ -150,6 +160,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
+    // Track which metric was used when caching to detect metric changes during scrolling
+    private var cachedChartSeriesMetric: String? = nil
     
     // MARK: - Persistent Cache (survives view recreation)
     private var cachedSeriesData: [GraphSeries] = []
@@ -391,8 +403,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.isScrolling = true
         // Immediately clear selection when scroll starts to hide crosshair and label
         clearSelection()
-        // Clear cached data to ensure fresh data on scroll end
-        cachedChartSeriesData = []
+        // Cache current data and metric for use during scrolling
+        if let store = dashboardStore {
+            cachedChartSeriesData = store.chartSeriesData
+            cachedChartSeriesMetric = store.state.ui.selectedMetricLabel
+        } else {
+            cachedChartSeriesData = []
+            cachedChartSeriesMetric = nil
+        }
         dashboardStore?.handleScrollStart()
     }
     
@@ -401,6 +419,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.isScrolling = false
         // Clear cached data to ensure fresh data is generated
         cachedChartSeriesData = []
+        cachedChartSeriesMetric = nil
         dashboardStore?.handleScrollEndOptimized()
         
         // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
