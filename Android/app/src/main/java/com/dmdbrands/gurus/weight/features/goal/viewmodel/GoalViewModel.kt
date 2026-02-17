@@ -29,6 +29,7 @@ import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
+import kotlin.math.round
 import javax.inject.Inject
 
 /**
@@ -154,14 +155,14 @@ constructor(
     val account = state.value.account ?: return
     val controls = state.value.form.controls
     
-    // If MAINTAIN mode and starting weight is empty, set it to current weight
+    // If MAINTAIN mode, always use the latest entry as the initial weight.
+    // Starting weight input is hidden for maintain, so it may contain stale account data.
     if (controls.goalType.value == GoalType.MAINTAIN.value) {
-      val startingWeight = controls.startingWeight.value
-      if (startingWeight.isEmpty() || startingWeight.toDoubleOrNull() == null || startingWeight.toDoubleOrNull() == 0.0) {
-        val currentWeight = state.value.latestWeight
-        if (currentWeight != null && currentWeight > 0.0) {
-          controls.startingWeight.onValueChange(currentWeight.toInt().toString())
-        }
+      val currentWeight = state.value.latestWeight
+      if (currentWeight != null && currentWeight > 0.0) {
+        // Form stores weights as tenths (e.g. 152.1 -> "1521")
+        val currentWeightTenths = round(currentWeight * 10).toInt().toString()
+        controls.startingWeight.onValueChange(currentWeightTenths)
       }
     }
     

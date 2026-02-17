@@ -17,7 +17,6 @@ import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
-import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper.rounded
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +30,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.floor
+import kotlin.math.round
 
 /**
  * Service implementation for goal operations.
@@ -51,6 +51,16 @@ constructor(
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
+
+  private fun convertTenthsBetweenUnits(
+    weightTenths: Double,
+    fromUnit: WeightUnit,
+    toUnit: WeightUnit,
+  ): Double {
+    val displayWeight = weightTenths / 10.0
+    val convertedDisplayWeight = GoalHelper.convertWeight(displayWeight, fromUnit, toUnit)
+    return round(convertedDisplayWeight * 10)
+  }
 
   private val _goalStatusFlow = MutableStateFlow<Goal?>(null)
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
@@ -207,10 +217,15 @@ constructor(
       if (setNewGoal) {
         // User chose maintain - update goal to maintain at current weight
         val currentGoal = getCurrentGoal().first() ?: return
-        val convertedGoalWeight = GoalHelper.convertWeight(currentGoal.goalWeight, account.weightUnit, WeightUnit.LB).rounded()
+        val convertedGoalWeight =
+          convertTenthsBetweenUnits(
+            weightTenths = currentGoal.goalWeight,
+            fromUnit = account.weightUnit,
+            toUnit = WeightUnit.LB,
+          )
         updateGoal(
-          goalWeight = convertedGoalWeight ?: 0.0,
-          initialWeight = convertedGoalWeight ?: 0.0, // Use goal weight as initial weight for maintain
+          goalWeight = convertedGoalWeight,
+          initialWeight = convertedGoalWeight, // Use goal weight as initial weight for maintain
           goalType = GoalType.MAINTAIN.value,
           wasMet = true,
         )
@@ -224,14 +239,23 @@ constructor(
   private suspend fun handleGoalLeave(updateGoal: Boolean) {
     if (updateGoal) {
       val currentGoal = getCurrentGoal().first() ?: return
-      val convertedGoalWeight = GoalHelper.convertWeight(currentGoal.goalWeight, account?.weightUnit ?: WeightUnit.LB, WeightUnit.LB).rounded()
-      val convertedInitialWeight = GoalHelper.convertWeight(currentGoal.initialWeight, account?.weightUnit
-        ?: WeightUnit.LB,
-                                                            WeightUnit.LB).rounded()
+      val fromUnit = account?.weightUnit ?: WeightUnit.LB
+      val convertedGoalWeight =
+        convertTenthsBetweenUnits(
+          weightTenths = currentGoal.goalWeight,
+          fromUnit = fromUnit,
+          toUnit = WeightUnit.LB,
+        )
+      val convertedInitialWeight =
+        convertTenthsBetweenUnits(
+          weightTenths = currentGoal.initialWeight,
+          fromUnit = fromUnit,
+          toUnit = WeightUnit.LB,
+        )
       // Update goal with met status
       updateGoal(
-        goalWeight = convertedGoalWeight ?: 0.0,
-        initialWeight = convertedInitialWeight ?: 0.0,
+        goalWeight = convertedGoalWeight,
+        initialWeight = convertedInitialWeight,
         goalType = currentGoal.type,
         wasMet = true,
       )
