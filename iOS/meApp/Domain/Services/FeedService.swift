@@ -64,8 +64,8 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             .promoCodeCopied
             .receive(on: DispatchQueue.main)
             .sink { [weak self] feedSettings in
-                guard let self = self else { return }
-                notificationService.showToast(ToastModel(message: "Promo Code Copied!"))
+                // If we ever need to handle the “promo code tapped/clicked” event ourselves, we can do it here.
+                // (The toast shown when the promo code is tapped is already handled inside the package.)
             }
             .store(in: &cancellables)
         
