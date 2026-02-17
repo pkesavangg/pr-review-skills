@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -262,6 +263,7 @@ constructor(
         AppLog.d("EntryService", "Updated last 7 days: ${entries.size} entries")
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating last 7 days", e)
       _last7Days.value = emptyList()
     }
@@ -274,6 +276,7 @@ constructor(
         AppLog.d("EntryService", "Updated last 30 days: ${entries.size} entries")
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating last 30 days", e)
       _last30Days.value = emptyList()
     }
@@ -285,6 +288,7 @@ constructor(
         _monthYear.value = it
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating month year", e)
     }
   }
@@ -304,6 +308,7 @@ constructor(
       updateProgressCache(currentAccountId)
       AppLog.d("EntryService", "Entry data refreshed - streak values should update")
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error refreshing entry data", e)
     }
   }
@@ -325,6 +330,7 @@ constructor(
         _cachedStartingWeightStored.value = null
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating progress cache", e)
       _currentStreak.value = 0
       _longestStreak.value = 0
@@ -671,7 +677,10 @@ constructor(
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
       _lastUpdated.value = System.currentTimeMillis()
-      refreshEntryData()
+      val id = accountId!!
+      repositoryScope.launch {
+        refreshEntryData()
+      }
 
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
@@ -700,6 +709,7 @@ constructor(
           _latestEntry.value = latest
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating latest entry", e)
     }
   }
@@ -711,6 +721,7 @@ constructor(
           _monthlyBodyScaleAverages.value = it
         }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating monthly entry averages", e)
     }
   }
@@ -722,6 +733,7 @@ constructor(
           _daywiseBodyScaleAverages.value = it
         }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating day wise entry averages", e)
     }
   }
@@ -732,6 +744,7 @@ constructor(
         _monthlyAverage.value = months
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating monthly average", e)
     } finally {
     }
