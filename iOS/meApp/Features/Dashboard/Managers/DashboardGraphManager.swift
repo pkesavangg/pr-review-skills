@@ -50,6 +50,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return cal
     }
 
+    /// Gregorian calendar aligned with WeekSectionViewModel.plotXDate.
+    private var weekPlotCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        return cal
+    }
+
     // MARK: - Constants
 
     /// Position for single metric points within the Y-axis domain (0.0 = bottom, 1.0 = top)
@@ -169,8 +177,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         @inline(__always)
         func normalizedInterpolationDate(_ input: Date) -> Date {
             guard state.selectedPeriod == .week else { return input }
-            let dayStart = calendar.startOfDay(for: input)
-            return calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? input
+            let cal = weekPlotCalendar
+            let dayStart = cal.startOfDay(for: input)
+            return cal.date(byAdding: .hour, value: 12, to: dayStart) ?? input
         }
 
         // 1) Sort and map to (x,y) in display space (units or weightless delta)
