@@ -103,10 +103,12 @@ class FeedService @Inject constructor(
 
       ggIAMService.setAccountId(accountService.getCurrentAccount()?.id ?: "")
       val backendItems = feedRepository.fetchFeedItems()
+      val mergedItems = mergeFeedItemsWithLocalStorage(backendItems)
+      _localFeedItems.value = mergedItems
       // Sync with IAM service
-      ggIAMService.setFeedItems(backendItems)
+      ggIAMService.setFeedItems(mergedItems)
       // Emit updated items
-      _feedsChanged.emit(backendItems)
+      _feedsChanged.emit(mergedItems)
       updateNotificationBadge()
     } catch (error: Exception) {
       AppLog.e(TAG, "Failed to fetch feed items", error.toString())
@@ -378,11 +380,16 @@ class FeedService @Inject constructor(
       "read" -> FeedActionType.READ
       "click" -> FeedActionType.CLICK
       "trigger" -> FeedActionType.TRIGGER
+      "page_view" -> FeedActionType.PAGE_VIEW
+      "shop_now_click" -> FeedActionType.SHOP_NOW_CLICK
+      "variation_click" -> FeedActionType.VARIATION_CLICK
+      "promo_click" -> FeedActionType.PROMO_CLICK
+      "promo_copy" -> FeedActionType.PROMO_COPY
       "view" -> FeedActionType.VIEW
       "dismiss" -> FeedActionType.DISMISS
       else -> {
-        AppLog.w(TAG, "Unknown action type: $actionType, defaulting to READ")
-        FeedActionType.READ
+        AppLog.w(TAG, "Unknown action type: $actionType, defaulting to CLICK")
+        FeedActionType.CLICK
       }
     }
   }

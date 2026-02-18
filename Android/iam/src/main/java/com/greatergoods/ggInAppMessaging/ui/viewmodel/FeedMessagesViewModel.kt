@@ -20,6 +20,7 @@ class FeedMessagesViewModel @Inject constructor(
 ) : BaseIntentViewModel<FeedMessagesState, FeedMessagesIntent>() {
 
   private val tag = "FeedMessagesViewModel"
+  private val readSentElementIds = mutableSetOf<String>()
 
   override fun provideInitialState(): FeedMessagesState = FeedMessagesState()
 
@@ -107,6 +108,9 @@ class FeedMessagesViewModel @Inject constructor(
       IAMLogger.d(tag, "Feed type clicked: ${clickedItem?.feedType}")
 
       if (clickedItem != null) {
+        launch {
+          inAppMessagingService.emitFeedUpdate(clickedItem, "click")
+        }
         if (clickedItem.feedType == FeedTypes.LINK || clickedItem.feedType != FeedTypes.LANDING) {
         } else {
           IAMLogger.w(tag, "No landing page URL found for feed item: $elementId")
@@ -192,7 +196,7 @@ class FeedMessagesViewModel @Inject constructor(
 
         // Get current feed items
         val currentFeedItems = inAppMessagingService.getFeedItems()
-        val unreadItems = currentFeedItems.filter { it.isUnread }
+        val unreadItems = currentFeedItems.filter { it.isUnread && readSentElementIds.add(it.elementId) }
 
         if (unreadItems.isNotEmpty()) {
           IAMLogger.d(tag, "Found ${unreadItems.size} unread items to mark as read")

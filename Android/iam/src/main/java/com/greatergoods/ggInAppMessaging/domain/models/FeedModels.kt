@@ -1,5 +1,7 @@
 package com.greatergoods.ggInAppMessaging.domain.models
 
+import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -135,11 +137,36 @@ data class FeaturedProduct(
  */
 @Serializable
 enum class FeedActionType {
+  @SerializedName("click")
+  @SerialName("click")
   CLICK,
+  @SerializedName("view")
+  @SerialName("view")
   VIEW,
+  @SerializedName("dismiss")
+  @SerialName("dismiss")
   DISMISS,
+  @SerializedName("read")
+  @SerialName("read")
   READ,
-  TRIGGER
+  @SerializedName("trigger")
+  @SerialName("trigger")
+  TRIGGER,
+  @SerializedName("pageView")
+  @SerialName("pageView")
+  PAGE_VIEW,
+  @SerializedName("shopNowClick")
+  @SerialName("shopNowClick")
+  SHOP_NOW_CLICK,
+  @SerializedName("variationClick")
+  @SerialName("variationClick")
+  VARIATION_CLICK,
+  @SerializedName("promoClick")
+  @SerialName("promoClick")
+  PROMO_CLICK,
+  @SerializedName("promoCopy")
+  @SerialName("promoCopy")
+  PROMO_COPY
 }
 
 /**
@@ -149,4 +176,3 @@ enum class FeedActionType {
 data class GGInAppMessagingConfig(
   val baseNavigationPath: String = ""
 )
-

@@ -26,6 +26,7 @@ class FeedLandingViewModel @Inject constructor(
 
     private val tag = "FeedLandingViewModel"
     private val greaterGoodsUrl = "https://shop.greatergoods.com/"
+    private var pageViewTrackedElementId: String? = null
 
     override fun provideInitialState(): FeedLandingState = FeedLandingState()
 
@@ -64,6 +65,12 @@ class FeedLandingViewModel @Inject constructor(
      */
     fun setFeedItem(feedItem: FeedItem) {
         handleIntent(FeedLandingIntent.SetFeedItem(feedItem))
+        if (pageViewTrackedElementId != feedItem.elementId) {
+            pageViewTrackedElementId = feedItem.elementId
+            launch {
+                inAppMessagingService.emitFeedUpdate(feedItem, "page_view")
+            }
+        }
     }
 
     private fun handleOfferHeaderShopNowClick() {
@@ -73,6 +80,7 @@ class FeedLandingViewModel @Inject constructor(
                 if (feedItem != null) {
                     val linkTarget = feedItem.linkTarget
                     IAMLogger.d(tag, "Offer header shop now clicked: $linkTarget")
+                    inAppMessagingService.emitFeedUpdate(feedItem, "shop_now_click")
 
                     if (!linkTarget.isNullOrEmpty()) {
                         linkService.openInCustomTab(
@@ -104,6 +112,7 @@ class FeedLandingViewModel @Inject constructor(
                     IAMLogger.d(tag, "Promo code copy clicked: $promoCode")
 
                     if (!promoCode.isNullOrEmpty()) {
+                        inAppMessagingService.emitFeedUpdate(feedItem, "promo_copy")
                         // Copy to clipboard
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("Promo Code", promoCode)
@@ -145,6 +154,7 @@ class FeedLandingViewModel @Inject constructor(
                         val productLink = product.linkTarget
 
                         IAMLogger.d(tag, "Featured product clicked: $productIndex, link: $productLink")
+                        inAppMessagingService.emitFeedUpdate(feedItem, "variation_click", product.variationId)
 
                         if (!productLink.isNullOrEmpty()) {
                             linkService.openInCustomTab(
