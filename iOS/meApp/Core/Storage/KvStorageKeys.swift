@@ -45,6 +45,10 @@ public enum KvStorageKeys: String {
     case feedLastTriggeredAt = "feedLastTriggeredAt"
     case setAGoalCardViewed = "setAGoalCardViewed"
     
+    // MARK: - FCM Token Key
+    /// FCM token storage key (device-scoped, not account-scoped)
+    case fcmToken = "fcmToken"
+    
     // MARK: - Helper Methods
     
     /// Creates an account-scoped key for appearance mode

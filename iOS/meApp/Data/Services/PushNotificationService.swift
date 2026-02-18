@@ -31,12 +31,14 @@ class PushNotificationService: NSObject {
     private var processedMessageIds: [String] = []
     private var isProcessingNotification: Bool = false
     private let logger = LoggerService.shared
+    private let kvStorage = KvStorageService.shared
     
     // MARK: - Notification Settings
     
     /// Private initializer to enforce singleton pattern
     private override init() {
         super.init()
+        loadStoredFCMToken()
         fetchDeviceDetails()
         setupTokenRefresh()
         setupNetworkMonitoring()
@@ -204,6 +206,7 @@ class PushNotificationService: NSObject {
         Task { @MainActor [weak self] in
             guard let token = notification.userInfo?["token"] as? String, !token.isEmpty else { return }
             self?.fcmToken = token
+            self?.storeFCMToken(token)
             await self?.updateDeviceInfo()
         }
     }
@@ -231,6 +234,7 @@ class PushNotificationService: NSObject {
         do {
             let token = try await getFCMToken()
             fcmToken = token
+            storeFCMToken(token)
             await updateDeviceInfo()
         } catch {
         }
@@ -298,6 +302,26 @@ class PushNotificationService: NSObject {
             return "\(accountId)_\(baseKey)"
         }
         return baseKey
+    }
+    
+    // MARK: - FCM Token Storage
+    /// Loads the stored FCM token from local storage
+    private func loadStoredFCMToken() {
+        if let storedToken = kvStorage.getValue(forKey: KvStorageKeys.fcmToken.rawValue) as? String, !storedToken.isEmpty {
+            fcmToken = storedToken
+        }
+    }
+    
+    /// Stores the FCM token to local storage
+    /// - Parameter token: The FCM token to store
+    private func storeFCMToken(_ token: String) {
+        kvStorage.setValue(token, forKey: KvStorageKeys.fcmToken.rawValue)
+    }
+    
+    /// Retrieves the stored FCM token from local storage
+    /// - Returns: The stored FCM token, or nil if not found
+    func getStoredFCMToken() -> String? {
+        return kvStorage.getValue(forKey: KvStorageKeys.fcmToken.rawValue) as? String
     }
 }
 
