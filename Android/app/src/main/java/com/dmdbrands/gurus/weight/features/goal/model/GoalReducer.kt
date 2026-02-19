@@ -77,7 +77,7 @@ data class GoalFormControls(
     fun createWithWeightMatchValidation(
       goalType: GoalType = GoalType.LOSE_GAIN,
       weightUnit: WeightUnit? = WeightUnit.LB,
-      initialStartingWeight: String = "",
+      initialStartingWeight: String = "0",
       initialGoalWeight: String = "",
     ): GoalFormControls {
       val goalTypeControl = FormControl.create(
@@ -86,7 +86,10 @@ data class GoalFormControls(
       )
 
       val startingWeightValidators = if (goalType != GoalType.MAINTAIN) {
-       listOf(FormValidations.required(), FormValidations.weightValidator(weightUnit))
+       listOf(
+         FormValidations.required(),
+         FormValidations.weightValidator(weightUnit),
+       )
       } else {
         listOf(FormValidations.weightValidator(weightUnit))
       }
@@ -105,13 +108,23 @@ data class GoalFormControls(
         ),
       )
 
+      startingWeightControl.addValidator(
+        FormValidations.weightMatchValidator(goalWeightControl, goalTypeControl),
+      )
+
       // Set up cross-field validation: when starting weight changes, re-validate goal weight
       startingWeightControl.onValueChangeListener { _, _ ->
         goalWeightControl.validate()
       }
 
-      // Set up cross-field validation: when goal type changes, re-validate goal weight
+      // Set up cross-field validation: when goal weight changes, re-validate starting weight
+      goalWeightControl.onValueChangeListener { _, _ ->
+        startingWeightControl.validate()
+      }
+
+      // Set up cross-field validation: when goal type changes, re-validate both weights
       goalTypeControl.onValueChangeListener { _, _ ->
+        startingWeightControl.validate()
         goalWeightControl.validate()
       }
 
@@ -221,6 +234,10 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
         } else {
           // Add required validator for lose/gain mode
           controls.startingWeight.addValidator(FormValidations.required())
+          if (controls.startingWeight.value == "0") {
+            controls.startingWeight.forceShowError()
+            controls.startingWeight.validate()
+          }
         }
         state.copy() // same form reference; UI observes updated controls
       }
