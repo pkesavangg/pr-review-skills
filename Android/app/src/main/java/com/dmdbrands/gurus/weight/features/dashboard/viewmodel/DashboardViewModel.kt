@@ -56,6 +56,7 @@ constructor(
       subscribeMetrics()
       subscribeDashboardType()
       subscribeProgress()
+      subscribeProgressUpdating()
       subscribeLatestWeight()
       subscribeIsEmpty()
       subscribeWeightLess()
@@ -136,6 +137,14 @@ constructor(
     viewModelScope.launch {
       entryService.progress.collect {
         handleIntent(DashboardIntent.SetProgress(it))
+      }
+    }
+  }
+
+  private fun subscribeProgressUpdating() {
+    viewModelScope.launch {
+      entryService.isUpdating.collect {
+        handleIntent(DashboardIntent.SetProgressUpdating(it))
       }
     }
   }

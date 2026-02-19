@@ -49,6 +49,7 @@ fun DashboardMilestoneGrid(
   hasVisibleMetrics: Boolean = false,
   inEditMode: Boolean,
   isFromSetup: Boolean,
+  isProgressUpdating: Boolean = false,
   latestWeight: Double? = null,
   onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
   onMilestoneReordered: (List<Stat>) -> Unit,
@@ -152,6 +153,7 @@ fun DashboardMilestoneGrid(
       ) { isDragging ->
         MilestoneItem(
           progress = progress,
+          isProgressUpdating = isProgressUpdating,
           milestone = milestone,
           inEditMode = inEditMode,
           isDragging = isDragging,
@@ -188,6 +190,7 @@ fun DashboardMilestoneGrid(
       ) { milestone ->
         MilestoneItem(
           progress = progress,
+          isProgressUpdating = isProgressUpdating,
           milestone = milestone,
           inEditMode = true,
           isVisible = false,

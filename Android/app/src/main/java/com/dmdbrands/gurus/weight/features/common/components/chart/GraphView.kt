@@ -28,7 +28,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
@@ -126,7 +125,7 @@ fun GraphView(
     }
   }
   LaunchedEffect(scrollTarget) {
-    if (scrollTarget == null || !canScrollToAnchor) return@LaunchedEffect
+    if (scrollTarget == null || !canScrollToAnchor || state.isEmptyGraph) return@LaunchedEffect
     val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
     val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
@@ -161,7 +160,7 @@ fun GraphView(
     horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
-      if (click == null) {
+      if (click == null || state.isEmptyGraph) {
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
         return@rememberGraphChart
       }

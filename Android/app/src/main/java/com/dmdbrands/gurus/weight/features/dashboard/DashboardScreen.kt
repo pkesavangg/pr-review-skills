@@ -221,6 +221,7 @@ private fun DashboardScreenContent(
 
         DashboardMilestone(
           progress = state.progress,
+          isProgressUpdating = state.isProgressUpdating,
           latestWeight = state.latestWeight,
           inEditMode = inEditMode,
           hasVisibleMetrics = currentVisibleMetrics.isNotEmpty(),
