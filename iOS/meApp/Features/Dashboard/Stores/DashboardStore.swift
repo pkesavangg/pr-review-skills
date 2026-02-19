@@ -295,13 +295,7 @@ class DashboardStore: ObservableObject {
             .map { ($0.dailySummaries.count, $0.monthlySummaries.count) }
             .removeDuplicates { $0 == $1 }
             .dropFirst()
-            .sink { [weak self] counts in
-                let (dailyCount, monthlyCount) = counts
-                self?.logger.log(
-                    level: .info,
-                    tag: "DashboardStore",
-                    message: "Entry counts updated: daily=\(dailyCount), monthly=\(monthlyCount), total=\(dailyCount + monthlyCount)"
-                )
+            .sink { [weak self] _ in
                 self?.invalidateContinuousOperationsCache()
             }
             .store(in: &cancellables)
@@ -1856,6 +1850,7 @@ class DashboardStore: ObservableObject {
                 await loadProgressMetricsFromAccount()
 
                 commonPostSaveUIReset()
+                logger.log(level: .success, tag: "DashboardStore", message: "Dashboard changes saved successfully")
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
                 commonPostSaveUIReset()
@@ -3187,15 +3182,11 @@ class DashboardStore: ObservableObject {
     /// Reorder metrics during drag
     func reorderMetrics(from source: IndexSet, to destination: Int) {
         metricsManager.state.metrics.move(fromOffsets: source, toOffset: destination)
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Reordered metrics from \(source) to \(destination)")
     }
 
     /// Reorder streak items during drag
     func reorderStreakItems(from source: IndexSet, to destination: Int) {
         streakManager.state.streakItems.move(fromOffsets: source, toOffset: destination)
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Reordered streak items from \(source) to \(destination)")
     }
 
     /// Move a metric from source index to destination index (for UIKit drag and drop)
@@ -3239,8 +3230,6 @@ class DashboardStore: ObservableObject {
 
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)")
     }
 
     // MARK: - Graph State Management
@@ -3629,7 +3618,6 @@ class DashboardStore: ObservableObject {
     
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
     func cancelEdit() {
-        logger.log(level: .info, tag: "DashboardStore", message: "Cancelling edit session and restoring snapshot.")
         // Restore synchronous snapshots first to immediately revert UI/state
         if hasEditSnapshot {
             metricsManager.state.metrics = snapshotMetrics
@@ -3662,8 +3650,6 @@ class DashboardStore: ObservableObject {
 
     /// Resets the current edit session and starts a fresh one by reverting changes and creating new snapshot
     func resetEditSession() {
-        logger.log(level: .info, tag: "DashboardStore", message: "Resetting edit session and starting fresh.")
-
         // First, restore the original state from snapshot
         if hasEditSnapshot {
             metricsManager.state.metrics = snapshotMetrics
@@ -3699,7 +3685,5 @@ class DashboardStore: ObservableObject {
 
         // Force UI update to reflect the reset state
         forceImmediateUIUpdate()
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Edit session reset successfully - all changes reverted and fresh session started.")
     }
 }
