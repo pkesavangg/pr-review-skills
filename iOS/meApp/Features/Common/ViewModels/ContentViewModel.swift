@@ -79,6 +79,9 @@ final class ContentViewModel: ObservableObject {
 
                 // Heavy work off-main to avoid UI jank
                 let entries: [Entry] = await Task.detached(priority: .userInitiated) {
+                    // Migration runs before sync in the main initialization task above,
+                    // so opStack entries are available for the first sync
+                    await entryService.migrateFromSQLiteIfNeeded()
                     await entryService.syncAllEntriesWithRemote()
                     await entryService.loadDashboardData()
                     let allEntries = (try? await entryService.getAllEntries()) ?? []
@@ -103,12 +106,6 @@ final class ContentViewModel: ObservableObject {
             // Start Bluetooth operations after dashboard is ready
             if afterUpdate {
                 await bluetoothService.startBluetoothOperations()
-            }
-
-            // Run migration in background so it doesn't block first-frame rendering
-            let entryService = self.entryService
-            Task.detached(priority: .utility) {
-                await entryService.migrateFromSQLiteIfNeeded()
             }
         }
     }

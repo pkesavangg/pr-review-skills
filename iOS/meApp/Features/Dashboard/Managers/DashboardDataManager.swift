@@ -189,17 +189,15 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Private Methods
     private func updateStateFromDailySummaries(_ dailySummaries: [BathScaleWeightSummary]) {
-        // Update state from EntryService published properties
-        state.dailySummaries = dailySummaries.map { $0 }
-
-        // Pre-sort once and cache (eliminates repeated sorting on every getContinuousOperations call)
+        // Update caches FIRST — state mutation fires $state synchronously and
+        // subscribers (e.g. DashboardStore chart re-init) read cachedSortedDailySummaries
+        // via getContinuousOperations(). If state is set first, subscribers see stale caches.
         cachedSortedDailySummaries = dailySummaries.sorted { $0.date < $1.date }
-
-        // Cache date bounds (eliminates repeated min/max calculations)
         cachedDailyMinDate = cachedSortedDailySummaries.first?.date
         cachedDailyMaxDate = cachedSortedDailySummaries.last?.date
 
-        // Update cache for backward compatibility
+        // Update state LAST — triggers $state publisher and downstream subscribers
+        state.dailySummaries = dailySummaries.map { $0 }
         state.dailyCache = Dictionary(
             uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
         )
@@ -208,17 +206,13 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     }
 
     private func updateStateFromMonthlySummaries(_ monthlySummaries: [BathScaleWeightSummary]) {
-        // Update state from EntryService published properties
-        state.monthlySummaries = monthlySummaries.map { $0 }
-
-        // Pre-sort once and cache (eliminates repeated sorting on every getContinuousOperations call)
+        // Update caches FIRST (same reason as daily — see above)
         cachedSortedMonthlySummaries = monthlySummaries.sorted { $0.date < $1.date }
-
-        // Cache date bounds (eliminates repeated min/max calculations)
         cachedMonthlyMinDate = cachedSortedMonthlySummaries.first?.date
         cachedMonthlyMaxDate = cachedSortedMonthlySummaries.last?.date
 
-        // Update cache for backward compatibility
+        // Update state LAST
+        state.monthlySummaries = monthlySummaries.map { $0 }
         state.monthlyCache = Dictionary(
             uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
         )

@@ -289,6 +289,32 @@ class DashboardStore: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Invalidate continuousOperations cache when summary counts change
+        // (e.g. after migration inserts entries without firing entrySaved)
+        dataManager.$state
+            .map { ($0.dailySummaries.count, $0.monthlySummaries.count) }
+            .removeDuplicates { $0 == $1 }
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.invalidateContinuousOperationsCache()
+            }
+            .store(in: &cancellables)
+
+        // Re-initialize chart when data transitions from empty → non-empty
+        // so the scroll position is recalculated to show the new data
+        dataManager.$state
+            .map { $0.hasAnyEntries }
+            .removeDuplicates()
+            .dropFirst()
+            .filter { $0 == true }
+            .sink { [weak self] _ in
+                guard let self else { return }
+                if self.state.ui.hasInitializedChart {
+                    self.state.ui.hasInitializedChart = false
+                    self.initializeChart()
+                }
+            }
+            .store(in: &cancellables)
 
     }
 

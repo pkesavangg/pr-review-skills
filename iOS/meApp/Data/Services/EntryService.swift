@@ -34,6 +34,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountId: String? = nil
+    /// Tracks the active sync task so concurrent callers can await it instead of skipping.
+    private var activeSyncTask: Task<Void, Never>?
 
     @MainActor
     init(accountService: AccountServiceProtocol) {
@@ -441,24 +443,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Should be called once on app startup before other operations
     /// This method migrates data for ALL users found in the opStack tables
     public func migrateFromSQLiteIfNeeded() async {
-        guard migrationService.isMigrationNeeded() else {
+        guard migrationService.isMigrationNeeded() else { 
             await logger.log(level: .info, tag: tag, message: "No SQLite migration needed")
-            return
-        }
+            return }
         
         do {
             await logger.log(level: .info, tag: tag, message: "Starting SQLite migration for all users in opStack")
-            
             // Migrate data for all users found in the opStack tables
             let migratedData = try await migrationService.migrateAllUsersEntryData()
-            
-            let totalMigrated = migratedData.values.reduce(0, +)
-            await logger.log(level: .info, tag: tag, message: "SQLite migration completed: \(totalMigrated) entries migrated for \(migratedData.count) users")
-            
-            // Log migration details per user
-            for (userId, count) in migratedData {
-                await logger.log(level: .info, tag: tag, message: "User \(userId): \(count) entries migrated")
-            }
             
             // Update dashboard data after migration (only for current active user if available)
             do {
@@ -466,7 +458,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 if migratedData[accountId] != nil {
                     await loadDashboardData()
                     await updateProgressAndStreakInternal()
-                    await logger.log(level: .info, tag: tag, message: "Dashboard data updated for current user: \(accountId)")
                 }
             } catch {
                 await logger.log(level: .info, tag: tag, message: "No active account found, skipping dashboard update")
@@ -474,8 +465,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             
             // Clean up SQLite database after successful migration
             try migrationService.cleanupAfterMigration()
-            await logger.log(level: .info, tag: tag, message: "✅ SQLite database cleaned up successfully")
-            await logger.log(level: .info, tag: tag, message: "🎉 Migration process completed!")
             
         } catch {
             await logger.log(level: .error, tag: tag, message: "SQLite migration failed: \(error.localizedDescription)")
@@ -484,32 +473,38 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     // MARK: - Sync Logic
     /// Sync all unsynced entries with the remote backend. Call this on app start or after network recovery.
+    /// If a sync is already in progress, callers await its completion (zero CPU overhead) instead of skipping.
     public func syncAllEntriesWithRemote() async {
-        guard !isSyncing else {
+        // If a sync is already running, piggyback on it — await the same task.
+        if let existingTask = activeSyncTask {
+            await existingTask.value
             return
         }
-        
-        isSyncing = true
-        defer { 
-            isSyncing = false
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.performSync()
         }
-        
+        activeSyncTask = task
+        isSyncing = true
+
+        await task.value
+
+        activeSyncTask = nil
+        isSyncing = false
+    }
+
+    /// The actual sync work — only one instance runs at a time.
+    private func performSync() async {
         let accountId: String
         do {
             accountId = try await getAccountId()
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available")
-            return
-        }
+            await logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available") return }
         
         do {
-            // 1. Push unsynced entries to remote.
-            // Returns true if at least one local create was successfully synced; caller uses this to decide
-            // whether to show the goal met card (we only show it when the user actually added/received new entries).
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
 
-            // 2. Fetch latest from remote and merge, using last sync timestamp
-            // Use count check instead of fetching all entries (avoids loading 3660+ Entry objects)
             let localEntryCount = try? await localRepo.fetchEntryCount(forUserId: accountId)
             var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
 
@@ -519,24 +514,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             let remoteOps = try await remoteRepo.fetchOperations(startTimestamp: lastSyncTimestamp)
-            // Returns true if at least one new entry was inserted from remote (create that didn't exist locally);
-            // used to decide whether to show the goal met card (only when new entries arrived).
             let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
             await loadDashboardData()
 
-            // 5. Update sync timestamp and local state
             try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: remoteOps.timestamp)
             lastSyncTime = Date()
 
-            // 6. Update progress, streak, and check for goal alerts.
-            // Only show the goal met card when this sync actually processed new creates (local push or remote merge).
-            // Otherwise we'd show it on every login/pull-to-refresh even when nothing new was added.
             await updateProgressAndStreakInternal()
             if hadPushedCreates || hadMergedNewCreates {
-                try? await Task.sleep(nanoseconds: 3_000_000_000) // Brief delay so the goal met card displays correctly after data settles
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
                 await checkGoalAlerts()
             }
-
             await logger.log(level: .debug, tag: tag, message: "Full sync completed successfully")
 
         } catch {
@@ -1088,13 +1076,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func loadDashboardData() async {
         do {
             let accountId = try await getAccountId()
-            await logger.log(level: .debug, tag: tag, message: "Loading dashboard data")
 
-            // Get all entries as DTOs - DTO conversion happens on background thread
             let dtos = try await getAllEntriesAsDTO()
-            let totalCount = dtos.count
 
-            // Aggregate on background thread to avoid blocking main thread
             let (dailyData, monthlyData) = await Task.detached(priority: .userInitiated) { [weak self] in
                 guard let self = self else { return ([BathScaleWeightSummary](), [BathScaleWeightSummary]()) }
                 let daily = self.aggregateByDayFromDTOs(dtos, accountId: accountId)
@@ -1102,13 +1086,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 return (daily, monthly)
             }.value
 
-            // Update published arrays on main actor
             dailySummaries = dailyData
             monthlySummaries = monthlyData
-
-            await logger.log(level: .info, tag: tag, message: "Dashboard data loaded - Entries count=\(totalCount), Daily: \(dailySummaries.count), Monthly: \(monthlySummaries.count)")
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Failed to load entries: \(error.localizedDescription)")
+            await logger.log(level: .error, tag: tag, message: "loadDashboardData failed: \(error.localizedDescription)")
         }
     }
     
