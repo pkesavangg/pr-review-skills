@@ -808,7 +808,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         guard let account = try await accountService.getActiveAccount() else {
             throw AccountError.noActiveAccount
         }
-        return account.accountId
+        // Extract primitive from @Model before crossing async boundaries
+        let accountId = account.accountId
+        return accountId
     }
     
     // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)

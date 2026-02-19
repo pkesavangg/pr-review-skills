@@ -1107,11 +1107,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let account = activeAccount else {
             throw AccountError.noActiveAccount
         }
-        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(account.accountId)")
+        // Extract primitives from @Model before crossing async boundaries
+        let accountId = account.accountId
+        let accessToken = account.accessToken ?? ""
+        let refreshToken = account.refreshToken ?? ""
+        let expiresAt = account.expiresAt ?? ""
+        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId)")
         return Tokens(
-            accessToken: account.accessToken ?? "",
-            refreshToken: account.refreshToken ?? "",
-            expiresAt: account.expiresAt ?? ""
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            expiresAt: expiresAt
         )
     }
 

@@ -48,7 +48,9 @@ final class IntegrationsService: IntegrationServiceProtocol {
         guard let account = try await accountService.getActiveAccount() else {
             return ""
         }
-        return account.accountId
+        // Extract primitive from @Model before crossing async boundaries
+        let accountId = account.accountId
+        return accountId
     }
     
     // MARK: - IntegrationServiceProtocol Implementation
