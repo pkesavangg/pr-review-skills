@@ -3,6 +3,7 @@ package com.greatergoods.ggInAppMessaging.ui.viewmodel
 import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.core.viewmodel.BaseIntentViewModel
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
+import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import com.greatergoods.ggInAppMessaging.domain.services.ILinkService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,10 +66,10 @@ class FeedLandingViewModel @Inject constructor(
      */
     fun setFeedItem(feedItem: FeedItem) {
         handleIntent(FeedLandingIntent.SetFeedItem(feedItem))
-        if (pageViewTrackedElementId != feedItem.elementId) {
+        if (feedItem.feedType == FeedTypes.LANDING && pageViewTrackedElementId != feedItem.elementId) {
             pageViewTrackedElementId = feedItem.elementId
             launch {
-                inAppMessagingService.emitFeedUpdate(feedItem, "page_view")
+                inAppMessagingService.emitFeedUpdate(feedItem, "pageView")
             }
         }
     }
@@ -80,7 +81,7 @@ class FeedLandingViewModel @Inject constructor(
                 if (feedItem != null) {
                     val linkTarget = feedItem.linkTarget
                     IAMLogger.d(tag, "Offer header shop now clicked: $linkTarget")
-                    inAppMessagingService.emitFeedUpdate(feedItem, "shop_now_click")
+                    inAppMessagingService.emitFeedUpdate(feedItem, "shopNowClick")
 
                     if (!linkTarget.isNullOrEmpty()) {
                         linkService.openInCustomTab(
@@ -112,7 +113,7 @@ class FeedLandingViewModel @Inject constructor(
                     IAMLogger.d(tag, "Promo code copy clicked: $promoCode")
 
                     if (!promoCode.isNullOrEmpty()) {
-                        inAppMessagingService.emitFeedUpdate(feedItem, "promo_copy")
+                        inAppMessagingService.emitFeedUpdate(feedItem, "promoClick")
                         // Copy to clipboard
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("Promo Code", promoCode)
@@ -154,7 +155,7 @@ class FeedLandingViewModel @Inject constructor(
                         val productLink = product.linkTarget
 
                         IAMLogger.d(tag, "Featured product clicked: $productIndex, link: $productLink")
-                        inAppMessagingService.emitFeedUpdate(feedItem, "variation_click", product.variationId)
+                        inAppMessagingService.emitFeedUpdate(feedItem, "variationClick", product.variationId)
 
                         if (!productLink.isNullOrEmpty()) {
                             linkService.openInCustomTab(

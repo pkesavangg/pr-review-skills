@@ -176,14 +176,14 @@ class FeedService @Inject constructor(
       if (itemIndex != -1) {
         val itemToUpdate = currentItems[itemIndex]
         val updatedItem = when (actionType) {
-          FeedActionType.READ -> {
+          FeedActionType.read -> {
             // Mark as read and clear trigger
             itemToUpdate.copy(
               isUnread = false,
               trigger = null,
             )
           }
-          FeedActionType.TRIGGER -> {
+          FeedActionType.trigger -> {
             // Clear trigger only
             itemToUpdate.copy(trigger = null)
           }
@@ -199,7 +199,7 @@ class FeedService @Inject constructor(
         ggIAMService.setFeedItems(updatedItems)
 
         // Notify that feed notification changed
-        if (actionType == FeedActionType.READ) {
+        if (actionType == FeedActionType.read) {
           ggIAMService.emitFeedNotificationChange()
         }
 
@@ -216,7 +216,7 @@ class FeedService @Inject constructor(
   }
 
   private fun buildFeedAction(actionType: FeedActionType, variationId: Int?): FeedAction {
-    val osType = if (requiresMeta(actionType)) "android" else null
+    val osType = if (requiresMeta(actionType)) "Android" else null
     val meta =
       if (requiresMeta(actionType)) com.dmdbrands.gurus.weight.domain.repository.FeedActionMeta(
         variationId,
@@ -230,9 +230,9 @@ class FeedService @Inject constructor(
   }
 
   private fun requiresMeta(actionType: FeedActionType): Boolean {
-    return !(actionType == FeedActionType.CLICK ||
-      actionType == FeedActionType.READ ||
-      actionType == FeedActionType.TRIGGER)
+    return !(actionType == FeedActionType.click ||
+      actionType == FeedActionType.read ||
+      actionType == FeedActionType.trigger)
   }
 
   override suspend fun getUnreadFeedCount(): Int {
@@ -288,6 +288,11 @@ class FeedService @Inject constructor(
 
       dialogQueueService.showDialog(dialog)
       AppLog.d(TAG, "Display IAM feed modal for item: ${feedItem.elementId}")
+
+      // Track feed modal open event
+      serviceScope.launch {
+        updateFeedItem(feedItem, FeedActionType.trigger, null)
+      }
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to show IAM feed modal", e.toString())
     }
@@ -376,20 +381,17 @@ class FeedService @Inject constructor(
    * Maps common action types from IAM service to FeedActionType
    */
   private fun convertStringToFeedActionType(actionType: String): FeedActionType {
-    return when (actionType.lowercase()) {
-      "read" -> FeedActionType.READ
-      "click" -> FeedActionType.CLICK
-      "trigger" -> FeedActionType.TRIGGER
-      "page_view" -> FeedActionType.PAGE_VIEW
-      "shop_now_click" -> FeedActionType.SHOP_NOW_CLICK
-      "variation_click" -> FeedActionType.VARIATION_CLICK
-      "promo_click" -> FeedActionType.PROMO_CLICK
-      "promo_copy" -> FeedActionType.PROMO_COPY
-      "view" -> FeedActionType.VIEW
-      "dismiss" -> FeedActionType.DISMISS
+    return when (actionType.trim()) {
+      "trigger" -> FeedActionType.trigger
+      "read" -> FeedActionType.read
+      "click" -> FeedActionType.click
+      "pageView" -> FeedActionType.pageView
+      "shopNowClick" -> FeedActionType.shopNowClick
+      "variationClick" -> FeedActionType.variationClick
+      "promoClick" -> FeedActionType.promoClick
       else -> {
-        AppLog.w(TAG, "Unknown action type: $actionType, defaulting to CLICK")
-        FeedActionType.CLICK
+        AppLog.w(TAG, "Unknown action type: $actionType, defaulting to click")
+        FeedActionType.click
       }
     }
   }
