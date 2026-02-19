@@ -193,10 +193,12 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.CREATION_FAILED, GGUserActionResponseType.UPDATE_COMPLETED -> {
+            dialogQueueService.dismissLoader()
             handleIntent(GoalIntent.Success)
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             handleIntent(GoalIntent.Success)
           }
         }

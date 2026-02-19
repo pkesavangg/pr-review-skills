@@ -422,6 +422,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -431,6 +432,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -541,6 +543,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -550,6 +553,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -644,6 +648,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -653,6 +658,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -772,6 +778,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -781,6 +788,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -1085,6 +1093,7 @@ constructor(
         val notificationSettings = getNotificationSettingsFromOption(notificationOption)
         val updatedAccount = notificationService.updateNotificationSettings(notificationSettings)
         if (updatedAccount != null) {
+          dialogQueueService.dismissLoader()
           dialogQueueService.showToast(Toast("Notification settings updated", "Success!"))
           AppLog.i(TAG, "Successfully updated notification settings - flow will update UI")
           // The activeAccountFlow will automatically emit the updated account and update the UI
