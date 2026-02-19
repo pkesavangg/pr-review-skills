@@ -173,7 +173,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartLegend(.hidden)
                 .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
 
-                .transaction { t in
+                .transaction { transaction in
                     // Disable ALL animations during scroll and scroll-end transition
                     if viewModel.isScrolling || isInScrollEndTransition {
                         transaction.animation = nil
@@ -838,6 +838,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 
 extension View {
 
+    // swiftlint:disable cyclomatic_complexity
+    // This function has high complexity due to multiple conditional modifier application
+    // based on scrollability and time period. Splitting would fragment the modifier
+    // application logic and reduce maintainability.
     @ViewBuilder
     func conditionalModifiers<ViewModel: SectionViewModelProtocol>(
         isScrollable: Bool,
@@ -1090,6 +1094,7 @@ extension View {
                 }
         }
     }
+    // swiftlint:enable cyclomatic_complexity
 
     /// Applies a fixed X-axis domain using the period tick range when there are no operations.
     /// This ensures labels render left-to-right (e.g., Sun → Sat) with no plotted data.

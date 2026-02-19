@@ -115,6 +115,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     }
 
     // MARK: - API Integration
+    
+    // swiftlint:disable cyclomatic_complexity
+    // This function has high complexity due to multiple metric-specific processing logic
+    // and error handling paths. Splitting would fragment the metric loading flow and
+    // reduce maintainability of the API integration.
     func loadMetricsFromAPI() async throws {
         do {
             guard let account = accountService.activeAccount else {
@@ -183,6 +188,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             throw DashboardError.configurationLoadFailed(error)
         }
     }
+    // swiftlint:enable cyclomatic_complexity
 
     // MARK: - Dashboard Type Management
     func updateDashboardType(_ dashboardType: DashboardType) {

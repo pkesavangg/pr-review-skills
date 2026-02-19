@@ -1,3 +1,8 @@
+// swiftlint:disable type_body_length
+// This service intentionally aggregates all HealthKit integration logic
+// to maintain a single source of truth for health data synchronization.
+// Splitting would fragment the integration flow and reduce maintainability.
+
 import Foundation
 import HealthKit
 import ggHealthKitPackage

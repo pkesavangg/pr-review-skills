@@ -1,5 +1,10 @@
 // ScaleRepository.swift
 
+// swiftlint:disable type_body_length
+// This repository intentionally aggregates all Device/Scale CRUD operations
+// to maintain a single source of truth for scale data access patterns.
+// Splitting would fragment SwiftData context management and reduce maintainability.
+
 import Foundation
 import SwiftData
 

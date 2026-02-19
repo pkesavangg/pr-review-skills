@@ -15,7 +15,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     // MARK: - Private Properties
     private var hasUpdatedWithRealData: Bool = false
-    private var originalStreakItems: [(value: String, label: String, unit: String?, preLabel: String?, icon: String?)] {
+    private var originalStreakItems: [MetricItem] {
         let streakLabels = getStreakLabels()
         return [
             MetricItem(value: DashboardStrings.placeholder, label: DashboardStrings.currentStreak, unit: nil, preLabel: nil, icon: AppAssets.streak),

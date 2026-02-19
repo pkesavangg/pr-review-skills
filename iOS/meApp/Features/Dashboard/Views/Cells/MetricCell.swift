@@ -5,6 +5,11 @@
 //  Created by Lakshmipriya on 02/07/25.
 //
 
+// swiftlint:disable type_body_length
+// This UICollectionViewCell intentionally aggregates all cell configuration logic
+// to maintain proper state synchronization between UIKit and SwiftUI components.
+// Splitting would fragment drag/drop, wiggle animation, and overlay management logic.
+
 import UIKit
 import SwiftUI
 

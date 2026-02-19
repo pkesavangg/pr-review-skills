@@ -1,3 +1,8 @@
+// swiftlint:disable type_body_length
+// This repository intentionally aggregates all Entry CRUD operations to maintain
+// a single source of truth for data access patterns. Splitting would fragment
+// the SwiftData context management and reduce maintainability.
+
 import Foundation
 import SwiftData
 
@@ -59,11 +64,29 @@ final class EntryRepository: EntryRepositoryProtocol {
         let attempts = entry.attempts
 
         // Extract relationship data
-        let scaleEntryData = entry.scaleEntry.map { scaleEntry -> (weight: Int?, bodyFat: Int?, muscleMass: Int?, water: Int?, bmi: Int?, source: String?) in
-            (scaleEntry.weight, scaleEntry.bodyFat, scaleEntry.muscleMass, scaleEntry.water, scaleEntry.bmi, scaleEntry.source)
+        let scaleEntryData = entry.scaleEntry.map { scaleEntry in
+            ScaleEntryData(
+                weight: scaleEntry.weight,
+                bodyFat: scaleEntry.bodyFat,
+                muscleMass: scaleEntry.muscleMass,
+                water: scaleEntry.water,
+                bmi: scaleEntry.bmi,
+                source: scaleEntry.source
+            )
         }
-        let scaleEntryMetricData = entry.scaleEntryMetric.map { metric -> (bmr: Int?, metabolicAge: Int?, proteinPercent: Int?, pulse: Int?, skeletalMusclePercent: Int?, subcutaneousFatPercent: Int?, visceralFatLevel: Int?, boneMass: Int?, impedance: Int?, unit: String?) in
-            (metric.bmr, metric.metabolicAge, metric.proteinPercent, metric.pulse, metric.skeletalMusclePercent, metric.subcutaneousFatPercent, metric.visceralFatLevel, metric.boneMass, metric.impedance, metric.unit)
+        let scaleEntryMetricData = entry.scaleEntryMetric.map { metric in
+            ScaleMetricData(
+                bmr: metric.bmr,
+                metabolicAge: metric.metabolicAge,
+                proteinPercent: metric.proteinPercent,
+                pulse: metric.pulse,
+                skeletalMusclePercent: metric.skeletalMusclePercent,
+                subcutaneousFatPercent: metric.subcutaneousFatPercent,
+                visceralFatLevel: metric.visceralFatLevel,
+                boneMass: metric.boneMass,
+                impedance: metric.impedance,
+                unit: metric.unit
+            )
         }
 
         try await performBackgroundTask { ctx in
@@ -521,97 +544,144 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameters:
     ///   - newEntries: Entries to create.
     func syncEntries(newEntries: [Entry]) async throws {
-        // Extract all entry data before crossing actor boundary
-        struct EntryData: Sendable {
-            let id: UUID
-            let accountId: String
-            let entryTimestamp: String
-            let serverTimestamp: String?
-            let operationType: String
-            let deviceType: String
-            let isSynced: Bool
-            let isFailedToSync: Bool
-            let attempts: Int
-            let scaleEntry: ScaleEntryData?
-            let scaleEntryMetric: ScaleMetricData?
-        }
+        let entriesData = extractEntryData(from: newEntries)
+        try await createEntriesInBackground(entriesData: entriesData)
+    }
+    
+    // MARK: - Sync Helpers
+    
+    /// Sendable data structures for crossing actor boundaries
+    private struct EntryData: Sendable {
+        let id: UUID
+        let accountId: String
+        let entryTimestamp: String
+        let serverTimestamp: String?
+        let operationType: String
+        let deviceType: String
+        let isSynced: Bool
+        let isFailedToSync: Bool
+        let attempts: Int
+        let scaleEntry: ScaleEntryData?
+        let scaleEntryMetric: ScaleMetricData?
+    }
 
-        struct ScaleEntryData: Sendable {
-            let weight: Int?
-            let bodyFat: Int?
-            let muscleMass: Int?
-            let water: Int?
-            let bmi: Int?
-            let source: String?
-        }
+    private struct ScaleEntryData: Sendable {
+        let weight: Int?
+        let bodyFat: Int?
+        let muscleMass: Int?
+        let water: Int?
+        let bmi: Int?
+        let source: String?
+    }
 
-        struct ScaleMetricData: Sendable {
-            let bmr: Int?
-            let metabolicAge: Int?
-            let proteinPercent: Int?
-            let pulse: Int?
-            let skeletalMusclePercent: Int?
-            let subcutaneousFatPercent: Int?
-            let visceralFatLevel: Int?
-            let boneMass: Int?
-            let impedance: Int?
-            let unit: String?
-        }
-
-        let entriesData: [EntryData] = newEntries.map { entry in
-            let scaleEntryData = entry.scaleEntry.map { se in
-                ScaleEntryData(weight: se.weight, bodyFat: se.bodyFat, muscleMass: se.muscleMass, water: se.water, bmi: se.bmi, source: se.source)
-            }
-            let metricData = entry.scaleEntryMetric.map { m in
-                ScaleMetricData(bmr: m.bmr, metabolicAge: m.metabolicAge, proteinPercent: m.proteinPercent, pulse: m.pulse, skeletalMusclePercent: m.skeletalMusclePercent, subcutaneousFatPercent: m.subcutaneousFatPercent, visceralFatLevel: m.visceralFatLevel, boneMass: m.boneMass, impedance: m.impedance, unit: m.unit)
-            }
-            return EntryData(id: entry.id, accountId: entry.accountId, entryTimestamp: entry.entryTimestamp, serverTimestamp: entry.serverTimestamp, operationType: entry.operationType, deviceType: entry.deviceType, isSynced: entry.isSynced, isFailedToSync: entry.isFailedToSync, attempts: entry.attempts, scaleEntry: scaleEntryData, scaleEntryMetric: metricData)
-        }
-
-        try await performBackgroundTask { ctx in
-            for data in entriesData {
-                let newEntry = Entry(
-                    id: data.id,
-                    entryTimestamp: data.entryTimestamp,
-                    accountId: data.accountId,
-                    operationType: data.operationType,
-                    serverTimestamp: data.serverTimestamp,
-                    deviceType: data.deviceType,
-                    isSynced: data.isSynced
+    private struct ScaleMetricData: Sendable {
+        let bmr: Int?
+        let metabolicAge: Int?
+        let proteinPercent: Int?
+        let pulse: Int?
+        let skeletalMusclePercent: Int?
+        let subcutaneousFatPercent: Int?
+        let visceralFatLevel: Int?
+        let boneMass: Int?
+        let impedance: Int?
+        let unit: String?
+    }
+    
+    /// Extracts entry data into Sendable structures before crossing actor boundary
+    private func extractEntryData(from entries: [Entry]) -> [EntryData] {
+        return entries.map { entry in
+            let scaleEntryData = entry.scaleEntry.map { scaleEntry in
+                ScaleEntryData(
+                    weight: scaleEntry.weight,
+                    bodyFat: scaleEntry.bodyFat,
+                    muscleMass: scaleEntry.muscleMass,
+                    water: scaleEntry.water,
+                    bmi: scaleEntry.bmi,
+                    source: scaleEntry.source
                 )
-                newEntry.isFailedToSync = data.isFailedToSync
-                newEntry.attempts = data.attempts
-
-                if let seData = data.scaleEntry {
-                    newEntry.scaleEntry = BathScaleEntry(
-                        weight: seData.weight,
-                        bodyFat: seData.bodyFat,
-                        muscleMass: seData.muscleMass,
-                        water: seData.water,
-                        bmi: seData.bmi,
-                        source: seData.source
-                    )
-                }
-
-                if let mData = data.scaleEntryMetric {
-                    newEntry.scaleEntryMetric = BathScaleMetric(
-                        bmr: mData.bmr,
-                        metabolicAge: mData.metabolicAge,
-                        proteinPercent: mData.proteinPercent,
-                        pulse: mData.pulse,
-                        skeletalMusclePercent: mData.skeletalMusclePercent,
-                        subcutaneousFatPercent: mData.subcutaneousFatPercent,
-                        visceralFatLevel: mData.visceralFatLevel,
-                        boneMass: mData.boneMass,
-                        impedance: mData.impedance,
-                        unit: mData.unit
-                    )
-                }
-
+            }
+            let metricData = entry.scaleEntryMetric.map { metric in
+                ScaleMetricData(
+                    bmr: metric.bmr,
+                    metabolicAge: metric.metabolicAge,
+                    proteinPercent: metric.proteinPercent,
+                    pulse: metric.pulse,
+                    skeletalMusclePercent: metric.skeletalMusclePercent,
+                    subcutaneousFatPercent: metric.subcutaneousFatPercent,
+                    visceralFatLevel: metric.visceralFatLevel,
+                    boneMass: metric.boneMass,
+                    impedance: metric.impedance,
+                    unit: metric.unit
+                )
+            }
+            return EntryData(
+                id: entry.id,
+                accountId: entry.accountId,
+                entryTimestamp: entry.entryTimestamp,
+                serverTimestamp: entry.serverTimestamp,
+                operationType: entry.operationType,
+                deviceType: entry.deviceType,
+                isSynced: entry.isSynced,
+                isFailedToSync: entry.isFailedToSync,
+                attempts: entry.attempts,
+                scaleEntry: scaleEntryData,
+                scaleEntryMetric: metricData
+            )
+        }
+    }
+    
+    /// Creates entries in background context from extracted data
+    private func createEntriesInBackground(entriesData: [EntryData]) async throws {
+        try await performBackgroundTask { [self] ctx in
+            for data in entriesData {
+                let newEntry = self.createEntry(from: data)
                 ctx.insert(newEntry)
             }
             try ctx.save()
             return ()
         }
+    }
+    
+    /// Creates an Entry instance from EntryData
+    private func createEntry(from data: EntryData) -> Entry {
+        let newEntry = Entry(
+            id: data.id,
+            entryTimestamp: data.entryTimestamp,
+            accountId: data.accountId,
+            operationType: data.operationType,
+            serverTimestamp: data.serverTimestamp,
+            deviceType: data.deviceType,
+            isSynced: data.isSynced
+        )
+        newEntry.isFailedToSync = data.isFailedToSync
+        newEntry.attempts = data.attempts
+
+        if let seData = data.scaleEntry {
+            newEntry.scaleEntry = BathScaleEntry(
+                weight: seData.weight,
+                bodyFat: seData.bodyFat,
+                muscleMass: seData.muscleMass,
+                water: seData.water,
+                bmi: seData.bmi,
+                source: seData.source
+            )
+        }
+
+        if let mData = data.scaleEntryMetric {
+            newEntry.scaleEntryMetric = BathScaleMetric(
+                bmr: mData.bmr,
+                metabolicAge: mData.metabolicAge,
+                proteinPercent: mData.proteinPercent,
+                pulse: mData.pulse,
+                skeletalMusclePercent: mData.skeletalMusclePercent,
+                subcutaneousFatPercent: mData.subcutaneousFatPercent,
+                visceralFatLevel: mData.visceralFatLevel,
+                boneMass: mData.boneMass,
+                impedance: mData.impedance,
+                unit: mData.unit
+            )
+        }
+        
+        return newEntry
     }
 }

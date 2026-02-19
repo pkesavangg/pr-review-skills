@@ -46,7 +46,8 @@ struct ScaleSetupFinishView: View {
 #Preview {
     ScaleSetupFinishView(
         title: "Your scale is paired and ready to go!",
-        description: "To sync new entries, tap the icon at the bottom right of the app when you see the result code display on your scale's screen.",
+        description: "To sync new entries, tap the icon at the bottom right of the app " +
+            "when you see the result code display on your scale's screen.",
         isAppSyncScaleSetup: true
     )
     .environmentObject(Theme.shared)

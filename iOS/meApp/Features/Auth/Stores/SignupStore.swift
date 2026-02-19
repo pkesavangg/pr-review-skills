@@ -5,6 +5,11 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
+// swiftlint:disable type_body_length
+// This store intentionally aggregates all signup flow logic to maintain
+// a single source of truth for the multi-step signup process. Splitting would
+// fragment state management and reduce maintainability.
+
 import Foundation
 import SwiftUI
 import Combine

@@ -1871,7 +1871,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     do {
                         try await self.scaleService.updateAllScalesStatus([savedScale])
                     } catch {
-                        LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): failed to update scale status for id \(savedScale.id): \(error.localizedDescription)")
+                        LoggerService.shared.log(
+                            level: .error,
+                            tag: self.tag,
+                            message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): " +
+                                "failed to update scale status for id \(savedScale.id): \(error.localizedDescription)"
+                        )
                         return
                     }
                     
@@ -1885,7 +1890,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             self.bluetoothService.syncDevices([refreshedScale])
                         }
                     } catch {
-                        LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): failed to refresh scale device for id \(savedScale.id): \(error.localizedDescription)")
+                        LoggerService.shared.log(
+                            level: .error,
+                            tag: self.tag,
+                            message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): " +
+                                "failed to refresh scale device for id \(savedScale.id): \(error.localizedDescription)"
+                        )
                     }
                 }
             }

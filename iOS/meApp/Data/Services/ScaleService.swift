@@ -377,7 +377,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     devicesUpdated += 1
                 }
 
-                if devices.count > 0 {
+                if !devices.isEmpty {
                     try localRepository.context.save()
                     logger.log(level: .info, tag: tag, message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)")
                 }
