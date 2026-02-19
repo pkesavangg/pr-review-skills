@@ -447,7 +447,6 @@ final class A6ScaleSetupStore: ObservableObject {
     func markA6ScalesUnsyncedForUnitUpdate() async {
         let a6Scales = scaleService.scales.filter { $0.protocolType == "A6" }
         guard !a6Scales.isEmpty else {
-            LoggerService.shared.log(level: .info, tag: tag, message: "No A6 scales found")
             return
         }
 

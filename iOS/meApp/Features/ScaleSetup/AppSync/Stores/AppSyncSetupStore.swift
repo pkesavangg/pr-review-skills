@@ -242,6 +242,7 @@ final class AppSyncSetupStore: ObservableObject {
                 self.logger.log(level: .error, tag: self.tag, message: "saveScale - missing active account")
                 return
             }
+            logger.log(level: .info, tag: tag, message: "AppSync save scale started. accountId=\(accountId), sku=\(scaleItem.sku)")
             // Remove any existing device with the same SKU to avoid duplicates
             // Map SKU for comparison (e.g., 0022 -> 0383) so 0022 and 0383 are treated as duplicates
             do {
@@ -273,7 +274,7 @@ final class AppSyncSetupStore: ObservableObject {
                 )
                 let response = try await self.scaleService.createDevice(newDevice)
                 await self.scaleService.syncAllScalesWithRemote()
-                logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
+                logger.log(level: .info, tag: tag, message: "AppSync scale saved successfully. scaleId=\(response.id), sku=\(scaleItem.sku), accountId=\(accountId)")
                 
                 // Post notification that scale was added
                 NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
@@ -283,7 +284,7 @@ final class AppSyncSetupStore: ObservableObject {
                 
                 self.dismissAction?()
             } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
+                logger.log(level: .error, tag: tag, message: "Failed to save AppSync scale: sku=\(scaleItem.sku), accountId=\(accountId), error=\(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
                 // Clear setup in progress flag even on error
                 bluetoothService.isSetupInProgress = false

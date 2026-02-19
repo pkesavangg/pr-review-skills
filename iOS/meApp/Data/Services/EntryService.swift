@@ -77,7 +77,16 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     // MARK: - CRUD
     func clearAllData() async {
-        try? await localRepo.deleteAllEntries()
+        do {
+            try await localRepo.deleteAllEntries()
+            await logger.log(level: .info, tag: tag, message: "Cleared all local entry data")
+        } catch {
+            await logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to clear local entry data: \(error.localizedDescription), offline=\(isOfflineError(error))"
+            )
+        }
     }
     
     /// Clears the last sync timestamp for the current user.
@@ -92,28 +101,48 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         entry.attempts = 0
 
         let entrySource = entry.scaleEntry?.source ?? "manual"
-        await logger.log(
-            level: .info,
-            tag: tag,
-            message: "New entry saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource)"
-        )
-        
-        try await localRepo.saveEntry(entry)
-        try await handleEntryAdded(entry)
-        
-        // Broadcast change
-        await syncUnsyncedEntries()
-        await checkGoalAlerts()
+        do {
+            try await localRepo.saveEntry(entry)
+            await logger.log(
+                level: .info,
+                tag: tag,
+                message: "New entry saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource)"
+            )
+            
+            try await handleEntryAdded(entry)
+            
+            // Broadcast change
+            await syncUnsyncedEntries()
+            await checkGoalAlerts()
+        } catch {
+            await logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource), error=\(error.localizedDescription), offline=\(isOfflineError(error))"
+            )
+            throw error
+        }
     }
     
     func saveNewEntries(_ entries: [Entry]) async throws {
-        for entry in entries {
-            entry.isSynced = false
-            try await localRepo.saveEntry(entry)
-            try await handleEntryAdded(entry)
+        await logger.log(level: .info, tag: tag, message: "Bulk entry save requested: count=\(entries.count)")
+        do {
+            for entry in entries {
+                entry.isSynced = false
+                try await localRepo.saveEntry(entry)
+                try await handleEntryAdded(entry)
+            }
+            
+            await logger.log(level: .info, tag: tag, message: "Bulk entry save completed: count=\(entries.count)")
+            await syncUnsyncedEntries()
+        } catch {
+            await logger.log(
+                level: .error,
+                tag: tag,
+                message: "Bulk entry save failed: count=\(entries.count), error=\(error.localizedDescription), offline=\(isOfflineError(error))"
+            )
+            throw error
         }
-        
-        await syncUnsyncedEntries()
     }
     
     func deleteEntry(_ entry: Entry) async throws {
@@ -121,9 +150,20 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         deletedEntry.operationType = OperationType.delete.rawValue
         deletedEntry.isSynced = false
         
-        try await localRepo.updateEntry(deletedEntry)
-        try await handleEntryDeleted(deletedEntry)
-        await syncUnsyncedEntries()
+        await logger.log(level: .info, tag: tag, message: "Entry delete requested: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)")
+        do {
+            try await localRepo.updateEntry(deletedEntry)
+            try await handleEntryDeleted(deletedEntry)
+            await syncUnsyncedEntries()
+            await logger.log(level: .info, tag: tag, message: "Entry delete queued for sync: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)")
+        } catch {
+            await logger.log(
+                level: .error,
+                tag: tag,
+                message: "Entry delete failed: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), error=\(error.localizedDescription), offline=\(isOfflineError(error))"
+            )
+            throw error
+        }
     }
     
     // MARK: - Query
@@ -278,11 +318,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
         
         let streak = try await getStreak()
-        
-        await logger.log(
-            level: .debug, tag: tag,
-            message: "Progress(year): latest=\(latestWeight), yearKey=\(yearKey), yearDelta=\(yearDelta)"
-        )
         
         return Progress(
             count: fetchResult.totalCount,
@@ -511,6 +546,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available")
             return
         }
+        await logger.log(level: .info, tag: tag, message: "Full entry sync started: accountId=\(accountId)")
         
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
@@ -535,10 +571,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 await checkGoalAlerts()
             }
-            await logger.log(level: .info, tag: tag, message: "Full sync completed successfully")
+            await logger.log(
+                level: .info,
+                tag: tag,
+                message: "Full entry sync completed successfully: accountId=\(accountId), hadPushedCreates=\(hadPushedCreates), hadMergedNewCreates=\(hadMergedNewCreates), remoteOperationCount=\(remoteOps.operations.count)"
+            )
 
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Sync failed: \(error.localizedDescription)")
+            await logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription), offline=\(isOfflineError(error))")
         }
     }
     
@@ -556,6 +596,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         var successfulCreateCount = 0
         var successfulDeleteCount = 0
         var failedSyncCount = 0
+        var offlineFailureCount = 0
+        var firstFailureReason: String?
 
         // 2. Try to sync with backend
         if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
@@ -581,12 +623,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                             attempts: currentAttempts
                         )
                         successfulCreateCount += 1
-                        await logger.log(level: .debug, tag: tag, message: "Entry create/update synced: \(entryId)")
                     } else {
                         try await localRepo.deleteEntry(byId: entryIdString)
                         try await handleEntryDeleted(entryId: entryId, entryTimestamp: entryTimestamp)
                         successfulDeleteCount += 1
-                        await logger.log(level: .debug, tag: tag, message: "Entry deleted: \(entryId)")
                     }
                 } catch {
                     // R9: Compute new sync values from extracted primitives (no @Model mutation)
@@ -600,7 +640,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         attempts: newAttempts
                     )
                     failedSyncCount += 1
-                    await logger.log(level: .error, tag: tag, message: "Sync failed: \(error)")
+                    if isOfflineError(error) {
+                        offlineFailureCount += 1
+                    }
+                    if firstFailureReason == nil {
+                        firstFailureReason = error.localizedDescription
+                    }
                 }
             }
             await logger.log(
@@ -608,6 +653,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 tag: tag,
                 message: "Unsynced entry push completed for accountId=\(accountId): createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)"
             )
+            if failedSyncCount > 0 {
+                await logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), offlineFailures=\(offlineFailureCount), firstFailure=\(firstFailureReason ?? "unknown")"
+                )
+            }
         }
         return hadSuccessfulCreate
     }
@@ -654,7 +706,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await updateProgressAndStreakInternal()
             await loadDashboardData()
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: \(error.localizedDescription)")
+            await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription), offline=\(isOfflineError(error))")
         }
     }
     
@@ -1023,8 +1075,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             self.progress = ProgressSummary(totalEntries: totalEntries, streak: streakValue.current)
             self.streak = streakValue.current
-
-            await logger.log(level: .debug, tag: tag, message: "Progress and streak updated: total=\(totalEntries), streak=\(streakValue.current)")
         } catch {
             await logger.log(level: .error, tag: tag, message: "Failed to update progress/streak: \(error.localizedDescription)")
         }
@@ -1127,8 +1177,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     func handleEntryAdded(_ entry: Entry) async throws {
         let accountId = try await getAccountId()
         
-        await logger.log(level: .debug, tag: tag, message: "Handling entry addition: \(entry.id)")
-        
         let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
         
@@ -1164,8 +1212,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     /// Handles entry update by treating as delete + add
     func handleEntryUpdated(_ entry: Entry) async throws {
-        await logger.log(level: .debug, tag: tag, message: "Handling entry update: \(entry.id)")
-        
         // For updates, we can treat as delete + add for simplicity
         try await handleEntryDeleted(entry)
         try await handleEntryAdded(entry)
@@ -1176,8 +1222,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Skips integration cleanup since that happens at original user-delete time.
     private func handleEntryDeleted(entryId: UUID, entryTimestamp: String) async throws {
         let accountId = try await getAccountId()
-
-        await logger.log(level: .debug, tag: tag, message: "Handling entry deletion (sync): \(entryId)")
 
         let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entryTimestamp)
         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entryTimestamp)
@@ -1206,8 +1250,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Handles entry deletion by updating affected day and month summaries
     func handleEntryDeleted(_ entry: Entry) async throws {
         let accountId = try await getAccountId()
-        
-        await logger.log(level: .debug, tag: tag, message: "Handling entry deletion: \(entry.id)")
         
         let dayKey = DateTimeTools.getLocalDateStringFromUTCDate(entry.entryTimestamp)
         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
@@ -1278,6 +1320,21 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Remove if no summary (empty month)
             monthlySummaries.removeAll { $0.period == monthKey }
         }
+    }
+
+    private func isOfflineError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else { return false }
+        return [
+            NSURLErrorNotConnectedToInternet,
+            NSURLErrorNetworkConnectionLost,
+            NSURLErrorTimedOut,
+            NSURLErrorInternationalRoamingOff,
+            NSURLErrorDataNotAllowed,
+            NSURLErrorCannotFindHost,
+            NSURLErrorCannotConnectToHost,
+            NSURLErrorDNSLookupFailed
+        ].contains(nsError.code)
     }
     
     deinit {

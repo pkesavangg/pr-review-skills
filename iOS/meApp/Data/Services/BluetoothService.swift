@@ -161,6 +161,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Initializes the Bluetooth service and subscribes to account changes.
      */
     func initialize() {
+        logger.log(level: .info, tag: tag, message: "Bluetooth service initialize called")
         accountService.$activeAccount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
@@ -198,9 +199,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
 
         if !isSmartScanStarted {
+            logger.log(level: .info, tag: tag, message: "Starting Bluetooth operations: clearing devices, scanning, syncing")
             clearDevices()
             await scan()
             syncDevices([])
+        } else {
+            logger.log(level: .info, tag: tag, message: "Bluetooth operations already running; skipping restart")
         }
     }
 
@@ -208,6 +212,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         guard let scales = scales, !scales.isEmpty else {
             bluetoothScales = []
             syncDevices([])
+            logger.log(level: .info, tag: tag, message: "Bluetooth scales update received empty list; synced zero devices")
             return
         }
         // Filter scales by allowed types only (common across all models)
@@ -229,6 +234,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
         }
         bluetoothScales = filteredScales
+        logger.log(level: .info, tag: tag, message: "Bluetooth scales updated. total=\(scales.count), filtered=\(filteredScales.count), setupInProgress=\(isSetupInProgress)")
 
         // Check if banner should be shown/hidden after scale updates
         if !isWeightOnlyModeAlertDismissed {
@@ -243,9 +249,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func handleAccountUpdate(_ account: Account?) async {
         if let account = account {
             self.activeAccount = account
+            logger.log(level: .info, tag: tag, message: "Bluetooth active account updated. accountId=\(account.accountId)")
             // Don't start scanning immediately - wait for dashboard to be ready
             // The scan will be triggered by startBluetoothOperations() when called from ContentViewModel
         } else if isSmartScanStarted {
+            logger.log(level: .info, tag: tag, message: "Bluetooth account cleared; stopping active scan")
             stopScan()
         }
     }
@@ -258,6 +266,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func stopScan() {
         ggBleSDK.stop()
         isSmartScanStarted = false
+        logger.log(level: .info, tag: tag, message: "Bluetooth scan stopped")
     }
 
     /**
@@ -266,6 +275,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func clearDevices() {
         skipDevices = []
         ggBleSDK.clearDevices()
+        logger.log(level: .info, tag: tag, message: "Bluetooth cached devices cleared")
     }
 
     // MARK: - Scanning & Pairing
@@ -274,10 +284,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      */
     func scan() async {
         guard activeAccount != nil else {
+            logger.log(level: .info, tag: tag, message: "Skipping Bluetooth scan: no active account")
             return
         }
+        logger.log(level: .info, tag: tag, message: "Starting Bluetooth smart scan")
         do {
             try await startSmartScan()
+            logger.log(level: .success, tag: tag, message: "Bluetooth smart scan started successfully")
         } catch {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.scanFailed(error).localizedDescription)
         }
@@ -348,6 +361,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             )
         }
         ggBleSDK.syncDevices(ggDevices)
+        logger.log(level: .info, tag: tag, message: "Synced devices to Bluetooth SDK. requested=\(devices.count), effective=\(scalesToSync.count)")
     }
 
     /**

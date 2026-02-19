@@ -215,9 +215,11 @@ class SettingsStore: ObservableObject {
     
     private func logout() {
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings logout started. accountId=\(activeAccount?.accountId ?? "nil")")
             notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut ))
             do {
                 try await accountService.logOut()
+                logger.log(level: .success, tag: tag, message: "Settings logout succeeded")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Logout failed:", data: error.localizedDescription)
             }
@@ -227,9 +229,11 @@ class SettingsStore: ObservableObject {
     
     private func logoutAllAccounts() {
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings logout-all started")
             notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut ))
             do {
                 try await accountService.logOutAllAccounts()
+                logger.log(level: .success, tag: tag, message: "Settings logout-all succeeded")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Logout all failed:", data: error.localizedDescription)
             }
@@ -239,6 +243,7 @@ class SettingsStore: ObservableObject {
     
     private func deleteAccount() {
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings delete-account started. accountId=\(activeAccount?.accountId ?? "nil")")
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingAccount ))
             do {
                 // Delete connected R4 scales before deleting account
@@ -257,6 +262,7 @@ class SettingsStore: ObservableObject {
                 try await integrationService.clearIntegration()
                 
                 try await accountService.deleteAccount()
+                logger.log(level: .success, tag: tag, message: "Settings delete-account succeeded")
             } catch  {
                 logger.log(level: .error, tag: tag, message: "Delete account failed:", data: error.localizedDescription)
             }
@@ -281,16 +287,19 @@ class SettingsStore: ObservableObject {
     func openPrivacy() {
         browserURL = legalURLs.privacyPolicy
         showPrivacyBrowser = true
+        logger.log(level: .info, tag: tag, message: "Opening settings privacy policy browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
     
     func openTerms() {
         browserURL = legalURLs.termsOfService
         showTermsBrowser = true
+        logger.log(level: .info, tag: tag, message: "Opening settings terms browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
     
     func openGreaterGoods() {
         browserURL = legalURLs.greaterGoodsWebsite
         showGreaterGoodsBrowser = true
+        logger.log(level: .info, tag: tag, message: "Opening Greater Goods browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
     
     // MARK: - Computed Profile Info
@@ -1456,9 +1465,11 @@ class SettingsStore: ObservableObject {
         guard !trimmedEmail.isEmpty else { return }
         
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings forgot password request started. email=\(trimmedEmail)")
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 try await accountService.requestPasswordReset(email: trimmedEmail)
+                logger.log(level: .success, tag: tag, message: "Settings forgot password request succeeded. email=\(trimmedEmail)")
                 notificationService.showToast(
                     ToastModel(
                         title: toastLang.success,
@@ -1466,7 +1477,7 @@ class SettingsStore: ObservableObject {
                     )
                 )
             } catch {
-                logger.log(level: .error, tag: tag, message: "Error: \(error)")
+                logger.log(level: .error, tag: tag, message: "Settings forgot password request failed. email=\(trimmedEmail), error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
             }
             notificationService.dismissLoader()
@@ -1504,9 +1515,11 @@ class SettingsStore: ObservableObject {
             let modalView = AddMultipleAccountsModalView(
                 initial: initial,
                 onClose: {
+                    self.logger.log(level: .info, tag: self.tag, message: "Dismissed add-multiple-accounts educational modal")
                     self.notificationService.dismissModal()
                 },
                 onAddAccount: {
+                    self.logger.log(level: .info, tag: self.tag, message: "Add account selected from educational modal. Navigating to My Accounts")
                     self.notificationService.dismissModal()
                     // Use tabViewModel navigation if available (works from any tab), otherwise use router (Settings screen only)
                     if let tabViewModel = tabViewModel {
@@ -1517,6 +1530,7 @@ class SettingsStore: ObservableObject {
                 }
             )
             
+            self.logger.log(level: .info, tag: self.tag, message: "Presenting add-multiple-accounts educational modal")
             self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
         }
     }

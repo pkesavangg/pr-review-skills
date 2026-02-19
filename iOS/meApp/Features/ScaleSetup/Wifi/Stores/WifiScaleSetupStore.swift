@@ -430,7 +430,6 @@ final class WifiScaleSetupStore: ObservableObject {
                     // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
                     self.hasUserManuallyClearedSSID = false
                     self.previousSSID = ""
-                    logger.log(level: .info, tag: tag, message: "Permissions skipped - cleared WiFi password form SSID and marked as pristine")
                     // Continue to next step.
                     self.moveToNextStep()
                 }
@@ -502,7 +501,6 @@ final class WifiScaleSetupStore: ObservableObject {
                 // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
                 self.hasUserManuallyClearedSSID = false
                 self.previousSSID = ""
-                logger.log(level: .info, tag: tag, message: "Wi-Fi permissions skipped: SSID cleared and will not be populated.")
             } else {
                 // Normal flow: update WiFi status and populate SSID
                 if let ssid = status.ssid, !ssid.isEmpty {
@@ -557,7 +555,6 @@ final class WifiScaleSetupStore: ObservableObject {
     private func setSkipCheckNetwork(_ skip: Bool) {
         skipCheckNetwork = skip
         httpClient.skipCheckNetwork = skip
-        logger.log(level: .info, tag: tag, message: "skipCheckNetwork set to: \(skip)")
     }
     
     
@@ -605,7 +602,6 @@ final class WifiScaleSetupStore: ObservableObject {
             do {
                 let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
                 self.scaleToken = scaleTokenResponse.token
-                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token")
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             }
@@ -815,7 +811,6 @@ final class WifiScaleSetupStore: ObservableObject {
                     .joined(separator: ":")
                 
                 self.retrievedMacAddress = formatted
-                self.logger.log(level: .info, tag: tag, message: "MAC address retrieved successfully")
                 return true
             }
             

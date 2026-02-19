@@ -288,6 +288,7 @@ final class SignupStore: ObservableObject {
         
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value
+        logger.log(level: .info, tag: tag, message: "Signup flow started. email=\(email), accountSwitching=\(isFromAccountSwitching)")
         
         let profile = generateProfile()
         let goal = generateGoalRequest()
@@ -299,8 +300,10 @@ final class SignupStore: ObservableObject {
             )
             // Create the goal if it's not skipped
             if let goal = goal {
+                logger.log(level: .info, tag: tag, message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
                 let _ = try await accountService.createGoal(goal)
             }
+            logger.log(level: .success, tag: tag, message: "Signup flow succeeded. email=\(email), goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)")
             if isFromAccountSwitching {
                 dismissAction?()
             } else {
@@ -308,7 +311,7 @@ final class SignupStore: ObservableObject {
             }
             resetForm()
         } catch {
-            logger.log(level: .error, tag: tag, message: "Signup Error: \(error)")
+            logger.log(level: .error, tag: tag, message: "Signup flow failed. email=\(email), error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
@@ -393,6 +396,7 @@ final class SignupStore: ObservableObject {
         if let message = toastMessage {
             notificationService.showToast(ToastModel(title: toastTitle, message: message))
         }
+        logger.log(level: .error, tag: tag, message: "Signup error handled. mappedToastShown=\(toastMessage != nil), errorType=\(String(describing: type(of: error)))")
     }
     
     private func setupFormObservers() {
