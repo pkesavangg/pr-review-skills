@@ -665,26 +665,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .info, tag: tag, message: "Refresh account requested for accountId=\(accountId)")
             
-            // Preserve local dashboard/progress metrics order before updating from API
-            // This prevents API response from overwriting the order we saved
-            let preservedDashboardMetrics = localAccount.dashboardSettings?.dashboardMetrics
-            let preservedProgressMetrics = localAccount.dashboardSettings?.progressMetrics
-            
             // Try to fetch from API
             let dto = try await apiRepo.fetchAccount(accountId: localAccount.accountId)
             
             // Update account from API response
             localAccount.update(from: dto)
-            
-            // Restore preserved metrics order (don't let API response overwrite it)
-            if let dashboardSettings = localAccount.dashboardSettings {
-                if let preserved = preservedDashboardMetrics, !preserved.isEmpty {
-                    dashboardSettings.dashboardMetrics = preserved
-                }
-                if let preserved = preservedProgressMetrics, !preserved.isEmpty {
-                    dashboardSettings.progressMetrics = preserved
-                }
-            }
             
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)

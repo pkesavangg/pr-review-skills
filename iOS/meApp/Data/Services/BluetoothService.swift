@@ -926,6 +926,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
         }
         skipDevices.removeAll()
+        // Clear skipped reconnect alerts on disconnect so they show again when returning to the account.
+        reconnectAlertSkippedDevices.removeAll()
     }
 
     /**
