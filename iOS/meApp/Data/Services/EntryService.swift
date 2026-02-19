@@ -500,7 +500,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         do {
             accountId = try await getAccountId()
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available") return }
+            await logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available")
+            return
+        }
         
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
