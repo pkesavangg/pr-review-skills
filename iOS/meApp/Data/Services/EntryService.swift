@@ -34,6 +34,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountId: String? = nil
+    private var lastLoggedEntryCountByAccount: [String: Int] = [:]
     /// Tracks the active sync task so concurrent callers can await it instead of skipping.
     private var activeSyncTask: Task<Void, Never>?
 
@@ -1080,6 +1081,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let accountId = try await getAccountId()
 
             let dtos = try await getAllEntriesAsDTO()
+            let totalEntries = dtos.count
+            if lastLoggedEntryCountByAccount[accountId] != totalEntries {
+                await logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Account total create type entries updated: accountId=\(accountId), totalEntries=\(totalEntries)"
+                )
+                lastLoggedEntryCountByAccount[accountId] = totalEntries
+            }
 
             let (dailyData, monthlyData) = await Task.detached(priority: .userInitiated) { [weak self] in
                 guard let self = self else { return ([BathScaleWeightSummary](), [BathScaleWeightSummary]()) }

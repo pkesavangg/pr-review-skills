@@ -231,6 +231,7 @@ final class AppSyncSetupStore: ObservableObject {
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
         
         guard let scaleItem else {
+            logger.log(level: .error, tag: tag, message: "saveScale - missing scale item")
             notificationService.dismissLoader()
             return
         }
@@ -238,6 +239,7 @@ final class AppSyncSetupStore: ObservableObject {
         Task {
             defer { self.notificationService.dismissLoader() }
             guard let accountId = self.accountService.activeAccount?.accountId else {
+                self.logger.log(level: .error, tag: self.tag, message: "saveScale - missing active account")
                 return
             }
             // Remove any existing device with the same SKU to avoid duplicates
@@ -248,7 +250,11 @@ final class AppSyncSetupStore: ObservableObject {
                 if let oldDevice = existingDevices.first(where: { 
                     DeviceHelper.mapSkuForDisplay($0.sku ?? "") == scaleLookupSku 
                 }) {
-                    try? await self.scaleService.deleteDevice(oldDevice.id, showToast: false)
+                    do {
+                        try await self.scaleService.deleteDevice(oldDevice.id, showToast: false)
+                    } catch {
+                        self.logger.log(level: .error, tag: self.tag, message: "Failed to delete existing duplicate device before save: \(error.localizedDescription)")
+                    }
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to remove existing device before saving: \(error.localizedDescription)")

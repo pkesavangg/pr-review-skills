@@ -269,7 +269,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
         
         guard let userNumber = self.selectedUserNumber else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to obtain scale token")
+            LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing selected user number")
             bluetoothConnectionState = .failure
             resetDiscoveryState()
             return
@@ -303,7 +303,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
                         await saveDiscoveredScaleWithLoader(isExiting: false)
                         startEntrySyncing()
                     }
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
+                    LoggerService.shared.log(level: .info, tag: tag, message: "Pairing creation completed")
                     break
                 case .failure(let error):
                     setConnectionFailure()
@@ -393,7 +393,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     private func syncNewScale() async {
-        guard let scale = discoveredScale else { return }
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "syncNewScale - missing discovered scale")
+            return
+        }
         
         // Create array with the single scale to sync
         let scalesToSync = [scale]
@@ -459,7 +462,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
             return
         }
         
-        guard let discoveryEvent, let device = discoveredScale else { return }
+        guard let discoveryEvent, let device = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveDiscoveredScale - missing discovery event or discovered scale")
+            return
+        }
         
         // Show appropriate loader message
         let loaderText = isExiting ? loaderLang.exiting : loaderLang.savingScale

@@ -557,7 +557,7 @@ final class WifiScaleSetupStore: ObservableObject {
     private func setSkipCheckNetwork(_ skip: Bool) {
         skipCheckNetwork = skip
         httpClient.skipCheckNetwork = skip
-        logger.log(level: .debug, tag: tag, message: "skipCheckNetwork set to: \(skip)")
+        logger.log(level: .info, tag: tag, message: "skipCheckNetwork set to: \(skip)")
     }
     
     
@@ -605,7 +605,7 @@ final class WifiScaleSetupStore: ObservableObject {
             do {
                 let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
                 self.scaleToken = scaleTokenResponse.token
-                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
+                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token")
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             }
@@ -636,11 +636,14 @@ final class WifiScaleSetupStore: ObservableObject {
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
         
         guard let scaleItem, let userNumber = selectedUserNumber else {
+            logger.log(level: .error, tag: tag, message: "saveScale - missing scale item or selected user number")
             notificationService.dismissLoader()
             return
         }
         
         guard let accountId = self.accountService.activeAccount?.accountId else {
+            logger.log(level: .error, tag: tag, message: "saveScale - missing active account")
+            notificationService.dismissLoader()
             return
         }
         
@@ -797,7 +800,9 @@ final class WifiScaleSetupStore: ObservableObject {
         do {
             // Initial delay to allow the Wi-Fi service to stabilize.
             try await Task.sleep(nanoseconds: 3 * 1_000_000_000) // Initial delay of 3 seconds
-        } catch {}
+        } catch {
+            logger.log(level: .info, tag: tag, message: "getMacAddress initial delay interrupted: \(error.localizedDescription)")
+        }
         
         while Date().timeIntervalSince(startDate) < timeout {
             if let bssid = self.wifiStatus?.bssid, !bssid.isEmpty {
@@ -810,7 +815,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     .joined(separator: ":")
                 
                 self.retrievedMacAddress = formatted
-                self.logger.log(level: .info, tag: tag, message: "MAC address retrieved: \(formatted)")
+                self.logger.log(level: .info, tag: tag, message: "MAC address retrieved successfully")
                 return true
             }
             

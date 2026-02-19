@@ -837,12 +837,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     try await remoteRepo.deleteScale(device.id)
                     // Successfully deleted from server, remove from local storage
                     try await localRepository.permanentlyRemoveDevice(device.id)
-                    logger.log(level: .info, tag: tag, message: "Successfully deleted device \(device.id) from server")
+                    logger.log(level: .debug, tag: tag, message: "Successfully deleted device \(device.id) from server")
                 } catch {
                     // Treat "Not found" as success; otherwise, log error and keep for retry
                     if error.localizedDescription.contains("Not found") {
                         try await localRepository.permanentlyRemoveDevice(device.id)
-                        logger.log(level: .info, tag: tag, message: "Device \(device.id) already deleted on server, removed locally")
+                        logger.log(level: .debug, tag: tag, message: "Device \(device.id) already deleted on server, removed locally")
                     }
                 }
             }
@@ -875,7 +875,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         }
                         device.isSynced = true
                         try await localRepository.updateDevice(device)
-                        logger.log(level: .info, tag: tag, message: "Successfully updated device \(device.id) on server")
+                        logger.log(level: .debug, tag: tag, message: "Successfully updated device \(device.id) on server")
                     } catch {
                         logger.log(level: .error, tag: tag, message: "Failed to update device \(device.id) on server: \(error.localizedDescription)")
                     }
@@ -916,7 +916,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         
                         // Use the old ID to find and update the device in the database
                         try await localRepository.updateDeviceWithNewId(oldId: oldId, updatedDevice: device)
-                        logger.log(level: .info, tag: tag, message: "Successfully created device \(device.id) on server")
+                        logger.log(level: .debug, tag: tag, message: "Successfully created device \(device.id) on server")
                     } catch {
                         logger.log(level: .error, tag: tag, message: "Failed to create device on server: \(error.localizedDescription)")
                     }

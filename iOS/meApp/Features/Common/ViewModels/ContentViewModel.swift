@@ -158,8 +158,6 @@ final class ContentViewModel: ObservableObject {
     /// - Parameter trigger: The trigger type ("login" or "entry")
     private func checkAccountFlags(trigger: String) async {
         do {
-            logger.log(level: .info, tag: "ContentViewModel", message: "Starting account flag check after \(trigger)")
-            
             let flag = try await accountFlagService.getAccountFlag()
             if flag != nil {
                 try await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.appReviewTriggerTimeout))

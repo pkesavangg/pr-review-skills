@@ -1941,7 +1941,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .success(let response):
             switch response {
             case .creationCompleted:
-                LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
+                LoggerService.shared.log(level: .debug, tag: tag, message: "Pairing creation completed")
                 await saveScale()
                 connectionState = .success
                 scaleSetupError = .none
@@ -2011,7 +2011,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Create unique scale ID using timestamp
             let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
             let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
-            let accountId = accountService.activeAccount?.accountId ?? ""
+            guard let accountId = accountService.activeAccount?.accountId else {
+                LoggerService.shared.log(level: .error, tag: tag, message: "saveScale - missing active account")
+                connectionState = .failure
+                return
+            }
             
             // Get device metadata for R4 scales
             var deviceMetadata: DeviceMetaData? = nil
@@ -2030,7 +2034,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     wifiMac: ""
                 )
                 deviceMetadata = DeviceMetaData(from: dto)
-                LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved device metadata for R4 scale")
+                LoggerService.shared.log(level: .debug, tag: tag, message: "Retrieved device metadata for R4 scale")
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
             }
@@ -2041,7 +2045,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             switch wifiMacResult {
             case .success(let macAddress):
                 wifiMacAddress = macAddress
-                LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved WiFi MAC address: \(macAddress)")
+                LoggerService.shared.log(level: .debug, tag: tag, message: "Retrieved WiFi MAC address for R4 scale")
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi MAC address: \(error.localizedDescription)")
             }
@@ -2104,7 +2108,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         do {
             let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
             self.scaleToken = scaleTokenResponse.token
-            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
+            LoggerService.shared.log(level: .debug, tag: tag, message: "Successfully fetched WiFi scale token")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             connectionState = .failure

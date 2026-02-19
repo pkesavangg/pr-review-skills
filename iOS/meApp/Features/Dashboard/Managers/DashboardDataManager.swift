@@ -59,7 +59,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Data Loading
     func loadInitialData() async throws {
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Dashboard data manager initialized - listening to EntryService published arrays")
+    
         // No need to load data here - ContentView handles data loading
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
@@ -125,8 +125,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Cache Management
     func clearCache() async throws {
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Clearing dashboard cache")
-
         // Clear local state
         state.dailyCache.removeAll()
         state.monthlyCache.removeAll()
@@ -143,8 +141,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         cachedDailyMaxDate = nil
         cachedMonthlyMinDate = nil
         cachedMonthlyMaxDate = nil
-
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Cache cleared successfully")
     }
 
     // MARK: - Data Validation
@@ -164,7 +160,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)")
         }
 
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Cache consistency validation passed")
+    
     }
 
     // MARK: - Data Analytics
@@ -202,7 +198,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
         )
 
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Updated daily summaries cache: \(cachedSortedDailySummaries.count) items, bounds: \(cachedDailyMinDate?.description ?? "nil") to \(cachedDailyMaxDate?.description ?? "nil")")
+    
     }
 
     private func updateStateFromMonthlySummaries(_ monthlySummaries: [BathScaleWeightSummary]) {
@@ -217,7 +213,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
         )
 
-        logger.log(level: .debug, tag: "DashboardDataManager", message: "Updated monthly summaries cache: \(cachedSortedMonthlySummaries.count) items, bounds: \(cachedMonthlyMinDate?.description ?? "nil") to \(cachedMonthlyMaxDate?.description ?? "nil")")
+    
     }
 
     private func calculateDateRange() -> DateRange? {
