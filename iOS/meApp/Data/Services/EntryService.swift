@@ -69,7 +69,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         guard let account = try await accountService.getActiveAccount() else {
             throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
         }
-        return account.accountId
+        // Extract primitive from @Model before crossing async boundaries
+        let accountId = account.accountId
+        return accountId
     }
     
     // MARK: - CRUD
