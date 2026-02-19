@@ -204,7 +204,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let pointCount = xs.count
         if pointCount == 1 { return ys[0] }
 
-        let t = normalizedInterpolationDate(date).timeIntervalSinceReferenceDate
+        let targetTime = normalizedInterpolationDate(date).timeIntervalSinceReferenceDate
 
         // 2) For dates outside the data range, return the edge values (clamping behavior)
         // This allows interpolation to work at the boundaries while the calling method
@@ -212,7 +212,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         if targetTime <= xs[0] { return ys[0] }
         if targetTime >= xs[pointCount - 1] { return ys[pointCount - 1] }
 
-        // 3) Locate segment i such that xs[i] <= t <= xs[i+1]
+        // 3) Locate segment i such that xs[i] <= targetTime <= xs[i+1]
         //    (upperBound - 1)
         var low = 0, high = pointCount - 1
         while low <= high {
@@ -1395,7 +1395,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return years.count == 1
     }
 
-
+    // swiftlint:disable cyclomatic_complexity
+    // This function has high complexity due to multiple time period-specific tick generation
+    // logic (day, week, month, year, total). Splitting would fragment related logic and
+    // reduce maintainability of the axis value generation algorithm.
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
         let minDate = operations.first?.date ?? scrollPosition
         let maxDate = operations.last?.date ?? scrollPosition
@@ -1559,6 +1562,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         return xAxisValues
     }
+    // swiftlint:enable cyclomatic_complexity
 
     /// Calculates the proper scroll position for chart initialization or segment changes
     /// This ensures the scroll position aligns with the computed X-axis values
