@@ -126,7 +126,7 @@ class PushNotificationService: NSObject {
         )
         do {
             try await apiRepo.updateDeviceInfo(payload)
-            logger.log(level: .success, tag: tag, message: "Device info updated", data: payload)
+            logger.log(level: .success, tag: tag, message: "Device info updated")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update device info: \(error.localizedDescription)")
             // Silently ignore network errors – will retry on next connectivity change

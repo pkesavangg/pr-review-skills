@@ -1465,11 +1465,11 @@ class SettingsStore: ObservableObject {
         guard !trimmedEmail.isEmpty else { return }
         
         Task {
-            logger.log(level: .info, tag: tag, message: "Settings forgot password request started. email=\(trimmedEmail)")
+            logger.log(level: .info, tag: tag, message: "Settings forgot password request started")
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 try await accountService.requestPasswordReset(email: trimmedEmail)
-                logger.log(level: .success, tag: tag, message: "Settings forgot password request succeeded. email=\(trimmedEmail)")
+                logger.log(level: .success, tag: tag, message: "Settings forgot password request succeeded")
                 notificationService.showToast(
                     ToastModel(
                         title: toastLang.success,
@@ -1477,7 +1477,7 @@ class SettingsStore: ObservableObject {
                     )
                 )
             } catch {
-                logger.log(level: .error, tag: tag, message: "Settings forgot password request failed. email=\(trimmedEmail), error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
+                logger.log(level: .error, tag: tag, message: "Settings forgot password request failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
             }
             notificationService.dismissLoader()

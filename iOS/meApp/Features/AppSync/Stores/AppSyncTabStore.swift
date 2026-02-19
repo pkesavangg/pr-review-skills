@@ -41,7 +41,7 @@ final class AppSyncTabStore: ObservableObject {
     /// `AppSyncEntryCardView` and shows the confirmation modal.
     /// - Parameter data: The `BodyCompData` coming from `AppSyncScannerView`.
     func handleScanned(_ data: BodyCompData, tabViewModel: BottomTabBarViewModel) {
-        logger.log(level: .info, tag: tag, message: "AppSync scan received. weightKg=\(data.weight), fat=\(data.fat), muscle=\(data.muscle), water=\(data.water)")
+        logger.log(level: .info, tag: tag, message: "AppSync scan received")
         // Determine preferred unit (kg / lbs) based on active account.
         let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
         
@@ -84,14 +84,14 @@ final class AppSyncTabStore: ObservableObject {
 
         // Persist for Save/Edit actions
         lastScannedData = metrics
-        logger.log(level: .info, tag: tag, message: "AppSync scan parsed successfully. storedWeight=\(storedWeight), storedBMI=\(storedBMI ?? -1), isMetric=\(isMetric)")
+        logger.log(level: .info, tag: tag, message: "AppSync scan parsed successfully. hasWeight=\(storedWeight > 0), hasBMI=\(storedBMI != nil), isMetric=\(isMetric)")
         // Present confirmation modal.
         showConfirmationModal(metrics: metrics, tabViewModel: tabViewModel)
     }
     
     // MARK: – Private helpers
     private func showConfirmationModal(metrics: AppSyncEntryMetrics, tabViewModel: BottomTabBarViewModel) {
-        logger.log(level: .info, tag: tag, message: "Presenting AppSync confirmation modal. storedWeight=\(metrics.storedWeight), isMetric=\(metrics.isMetric)")
+        logger.log(level: .info, tag: tag, message: "Presenting AppSync confirmation modal. isMetric=\(metrics.isMetric)")
         let modal = AppSyncEntryCardView(
             metrics: metrics,
             onSave: { [weak self] in

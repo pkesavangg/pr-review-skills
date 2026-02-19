@@ -288,7 +288,7 @@ final class SignupStore: ObservableObject {
         
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value
-        logger.log(level: .info, tag: tag, message: "Signup flow started. email=\(email), accountSwitching=\(isFromAccountSwitching)")
+        logger.log(level: .info, tag: tag, message: "Signup flow started. accountSwitching=\(isFromAccountSwitching)")
         
         let profile = generateProfile()
         let goal = generateGoalRequest()
@@ -303,7 +303,7 @@ final class SignupStore: ObservableObject {
                 logger.log(level: .info, tag: tag, message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
                 let _ = try await accountService.createGoal(goal)
             }
-            logger.log(level: .success, tag: tag, message: "Signup flow succeeded. email=\(email), goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)")
+            logger.log(level: .success, tag: tag, message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)")
             if isFromAccountSwitching {
                 dismissAction?()
             } else {
@@ -311,7 +311,7 @@ final class SignupStore: ObservableObject {
             }
             resetForm()
         } catch {
-            logger.log(level: .error, tag: tag, message: "Signup flow failed. email=\(email), error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
+            logger.log(level: .error, tag: tag, message: "Signup flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
