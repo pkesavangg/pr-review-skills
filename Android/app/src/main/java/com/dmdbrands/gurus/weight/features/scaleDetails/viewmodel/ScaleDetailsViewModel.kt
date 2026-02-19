@@ -351,10 +351,18 @@ constructor(
    * @param scaleName The scale name to update scale nickname for btwifi scale.
    */
   private fun updateScaleName() {
+    val nameControl = state.value.scaleNameForm.controls.name
+    val trimmedScaleName = nameControl.value.trim()
+
+    // Normalize scale name input before validation/save.
+    if (trimmedScaleName != nameControl.value) {
+      nameControl.onValueChange(trimmedScaleName)
+    }
+
     if (!state.value.scaleNameForm.isValid) {
       return
     }
-    val scaleName = state.value.scaleNameForm.controls.name.value
+    val scaleName = trimmedScaleName
     dialogQueueService.showLoader(
       message = ScaleNameDialogStrings.LoaderMessage,
     )
