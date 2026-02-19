@@ -98,11 +98,7 @@ class PushNotificationService: NSObject {
     }
     
     func updateDeviceInfo() async {
-        // Skip if the user hasn’t granted notification permission yet – don’t send an
-        // FCM token or any push-notification related info to the backend until allowed.
-        guard isNotificationAuthorized() else { return }
-        // Don't send empty token to backend – it can clear the device from push targeting.
-        guard let token = fcmToken, !token.isEmpty else { return }
+        let token = fcmToken ?? accountService.activeAccount?.fcmToken ?? ""
         
         guard !isDeviceInfoUpdating else { return }
         isDeviceInfoUpdating = true
@@ -130,9 +126,11 @@ class PushNotificationService: NSObject {
     
     // MARK: - Push Notification Registration
     func setupPushNotifications(isFromScaleSetup: Bool = false) async {
-        // If token already exists, simply update device info
+        // Always update device info regardless of notification permission.
+        await updateDeviceInfo()
+
+        // If token already exists, no need to re-register for push.
         if fcmToken != nil {
-            await updateDeviceInfo()
             return
         }
         
@@ -197,10 +195,6 @@ class PushNotificationService: NSObject {
     /// Handles FCM token refresh notifications
     /// - Parameter notification: The notification containing the new token
     @objc private func tokenRefreshNotification(_ notification: Notification) {
-        // Ignore token updates until the user grants notification permission so that `fcmToken`
-        // stays `nil` prior to consent (behaviour parity with DeviceService in Angular app).
-        guard isNotificationAuthorized() else { return }
-        
         Task { @MainActor [weak self] in
             guard let token = notification.userInfo?["token"] as? String, !token.isEmpty else { return }
             self?.fcmToken = token
@@ -233,6 +227,7 @@ class PushNotificationService: NSObject {
             fcmToken = token
             await updateDeviceInfo()
         } catch {
+            logger.log(level: .error, tag: "PushNotificationService", message: "Failed to register for push notifications: \(error.localizedDescription)")
         }
     }
     
@@ -300,4 +295,3 @@ class PushNotificationService: NSObject {
         return baseKey
     }
 }
-

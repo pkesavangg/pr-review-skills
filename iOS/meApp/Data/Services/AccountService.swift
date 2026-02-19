@@ -663,7 +663,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
 
         do {
-            logger.log(level: .info, tag: tag, message: "Refresh account requested for accountId=\(accountId)")
+            logger.log(level: .debug, tag: tag, message: "Refresh account requested for accountId=\(accountId)")
             
             // Preserve local dashboard/progress metrics order before updating from API
             // This prevents API response from overwriting the order we saved
@@ -689,7 +689,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            logger.log(level: .info, tag: tag, message: "Refresh account successful for accountId=\(accountId)")
+            logger.log(level: .debug, tag: tag, message: "Refresh account successful for accountId=\(accountId)")
             return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {

@@ -90,6 +90,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         entry.isSynced = false
         entry.operationType = OperationType.create.rawValue
         entry.attempts = 0
+
+        let entrySource = entry.scaleEntry?.source ?? "manual"
+        await logger.log(
+            level: .info,
+            tag: tag,
+            message: "New entry saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource)"
+        )
         
         try await localRepo.saveEntry(entry)
         try await handleEntryAdded(entry)
