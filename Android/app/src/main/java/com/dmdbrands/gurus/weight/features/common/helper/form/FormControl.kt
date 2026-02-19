@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.helper.form
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateOf
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +16,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
-import android.util.Log
 
 typealias Validator<T> = (T) -> ValidationError?
 typealias AsyncValidator<T> = suspend (T) -> ValidationError?
@@ -351,8 +351,8 @@ class FormGroup<T : Any>(
 
         for (validator in groupValidators) {
             val err = validator(controls)
-            Log.d("hello", "Group validator: $err")
             if (err != null) {
+                AppLog.e("Form", "Group validator: $err")
                 _groupError.value = err
                 return false
             }

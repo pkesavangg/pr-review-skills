@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.enum.NotifyScaleMode
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetric
+import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetricKeys
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.otherScaleMetrics
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.scaleMetrics
 import com.dmdbrands.library.ggbluetooth.enums.TimeFormat
@@ -18,22 +19,22 @@ object ScaleMetricsHelper {
 
   fun getAllMetrics(): List<String> {
     return listOf(
-      "bmi",
-      "bodyFatPercent",
-      "musclePercent",
-      "bodyWaterPercent",
-      "heartRate",
-      "bonePercent",
-      "visceralFatLevel",
-      "subcutaneousFatPercent",
-      "proteinPercent",
-      "skeletalMusclePercent",
-      "bmr",
-      "metabolicAge",
-      "goalProgress",
-      "dailyAverage",
-      "weeklyAverage",
-      "monthlyAverage",
+      ScaleMetricKeys.BMI,
+      ScaleMetricKeys.BODY_FAT_PERCENT,
+      ScaleMetricKeys.MUSCLE_PERCENT,
+      ScaleMetricKeys.BODY_WATER_PERCENT,
+      ScaleMetricKeys.HEART_RATE,
+      ScaleMetricKeys.BONE_PERCENT,
+      ScaleMetricKeys.VISCERAL_FAT_LEVEL,
+      ScaleMetricKeys.SUBCUTANEOUS_FAT_PERCENT,
+      ScaleMetricKeys.PROTEIN_PERCENT,
+      ScaleMetricKeys.SKELETAL_MUSCLE_PERCENT,
+      ScaleMetricKeys.BMR,
+      ScaleMetricKeys.METABOLIC_AGE,
+      ScaleMetricKeys.GOAL_PROGRESS,
+      ScaleMetricKeys.DAILY_AVERAGE,
+      ScaleMetricKeys.WEEKLY_AVERAGE,
+      ScaleMetricKeys.MONTHLY_AVERAGE,
     )
   }
 

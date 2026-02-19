@@ -32,7 +32,6 @@ struct MetricGridUIKitView: UIViewRepresentable {
     func updateUIView(_ uiView: UICollectionView, context: Context) {
         let coordinator = context.coordinator
         coordinator.store = store
-
         // Determine if content or layout actually changed
         let newIds = store.metricsToShow.map { $0.id }
         let newDashboardType = store.state.metrics.dashboardType
@@ -79,6 +78,18 @@ struct MetricGridUIKitView: UIViewRepresentable {
         } else {
             // No content/layout changes. Avoid explicit reloads; just update wiggle state if needed
             if newIsEditMode != coordinator.lastIsEditMode {
+                // Update long press gesture duration based on edit mode.
+                // Disable and re-enable the recognizer to cancel any in-progress gesture
+                // so the new minimumPressDuration is applied consistently.
+                if let longPress = coordinator.longPressGestureRecognizer {
+                    let newDuration: TimeInterval = newIsEditMode ? 0.15 : 0.5
+                    if longPress.minimumPressDuration != newDuration {
+                        longPress.isEnabled = false
+                        longPress.minimumPressDuration = newDuration
+                        longPress.isEnabled = true
+                    }
+                }
+                
                 uiView.visibleCells.forEach { cell in
                     if let metricCell = cell as? MetricCell {
                         metricCell.isWiggling = newIsEditMode
@@ -178,8 +189,11 @@ struct MetricGridUIKitView: UIViewRepresentable {
 
         // Add long-press gesture for interactive movement with clamped bounds
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleLongPress(_:)))
-        longPress.minimumPressDuration = 0.15
+        // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
+        longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
         longPress.cancelsTouchesInView = false
+        longPress.delaysTouchesBegan = false
+        context.coordinator.longPressGestureRecognizer = longPress
         collectionView.addGestureRecognizer(longPress)
 
         GridUIKitInteractionManager.addTapSink(to: collectionView, target: context.coordinator, action: #selector(Coordinator.consumeTap))
@@ -216,6 +230,7 @@ extension MetricGridUIKitView {
         
         var parent: MetricGridUIKitView
         var store: DashboardStore
+        var longPressGestureRecognizer: UILongPressGestureRecognizer?
         
         // MARK: - Drag Boundary Properties
         private var boundaryDetector: GridBoundaryDetector
@@ -360,8 +375,21 @@ extension MetricGridUIKitView {
 
         // MARK: - Gesture Sink
         @objc func consumeTap(_ sender: UITapGestureRecognizer) {
-            // No-op; presence of this recognizer ensures taps in the grid are handled here
-            // and not propagated to parent background .onTapGesture that cancels edit mode.
+            guard store.state.ui.isEditMode,
+                  let collectionView = sender.view as? UICollectionView else {
+                return
+            }
+            let location = sender.location(in: collectionView)
+            for cell in collectionView.visibleCells {
+                guard let metricCell = cell as? MetricCell else { continue }
+                let pointInCell = collectionView.convert(location, to: metricCell)
+                if metricCell.bounds.contains(pointInCell) {
+                    continue
+                }
+                if metricCell.handleOverlayTapIfNeeded(at: pointInCell) {
+                    return
+                }
+            }
         }
 
         // MARK: - Interactive Movement with Clamped Bounds
@@ -372,9 +400,16 @@ extension MetricGridUIKitView {
 
             switch gesture.state {
             case .began:
-                // Only allow when edit mode is ON, otherwise let regular taps work
-                guard store.state.ui.isEditMode else { return }
+                // Determine which item was long-pressed, if any
                 guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
+                
+                // If not in edit mode, enter edit mode on long press of a metric cell,
+                // then immediately proceed to start the drag for the same cell.
+                if !store.state.ui.isEditMode {
+                    store.toggleEditMode()
+                }
+                
+                // Only allow interactive movement when edit mode is ON
                 // Only allow interactive movement for active (non-removed) metrics
                 guard indexPath.item < firstRemovedIndex else { return }
 

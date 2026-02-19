@@ -56,6 +56,9 @@ protocol ScaleRepositoryProtocol {
     /// - Parameter preference: The R4ScalePreference to update.
     func patchScalePreference(_ scaleId: String,_ preference: R4ScalePreference) async throws
 
+    /// Updates scale preference from a DTO (safe for async boundaries — no @Model crossing required).
+    func patchScalePreference(_ scaleId: String, fromDTO dto: R4ScalePreferenceDTO) async throws
+
     // MARK: - Replace-All Sync Methods
 
     /// Replaces all local devices for the given account with fresh devices from server.

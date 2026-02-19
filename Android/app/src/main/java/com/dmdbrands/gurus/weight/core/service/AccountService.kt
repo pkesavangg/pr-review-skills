@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -133,7 +134,7 @@ constructor(
         throw MaxAccountsReachedException()
       }
       val savedAccount = accountRepository.login(email, password)
-      appNavigationService.emitAuthEvent(AuthState.LoggedIn(savedAccount))
+
       AppLog.d(TAG, "login() successful for email: $email")
       savedAccount
     } catch (e: HttpException) {
@@ -334,60 +335,95 @@ constructor(
 
   /**
    * Checks login status for the active account by calling getAccount API if online.
-   * If offline, checks local DB for isExpired status.
-   * @return true if account is valid (online or offline), false if expired
+   * If offline or on network/HTTP failure (except 401), falls back to local DB validity. Only 401 marks account expired.
+   * @return true if account is valid (online or offline), false if expired or unauthorized
    */
   override suspend fun checkLoginStatusForActiveAccount(): Boolean {
     AppLog.d(TAG, "checkLoginStatusForActiveAccount() called")
     if (!isNetworkAvailable()) {
       AppLog.d(TAG, "Offline mode: checking local DB for active account validity.")
-      val activeAccount = getCurrentAccount()
-      if (activeAccount == null) {
-        AppLog.d(TAG, "No active account found in offline mode. Returning false.")
-        return false
-      }
-      if (activeAccount.isExpired) {
-        AppLog.d(TAG, "Active account is expired in local DB. Returning false.")
-        return false
-      }
-      // Sync local account data to database when offline
-      try {
-        val accountInfo = activeAccount.toAccountInfo()
-        accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = false)
-        AppLog.d(TAG, "Synced local account data to database in offline mode")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to sync local account data in offline mode", e)
-      }
-      AppLog.d(TAG, "Active account is valid in local DB. Returning true.")
-      return true
+      return checkActiveAccountLocalValidity()
     }
-    // Online mode: keep existing logic
     return try {
       AppLog.d(TAG, "Checking network availability for checkLoginStatusForActiveAccount()")
       requireNetworkAvailable(onError = { showNetworkErrorAndThrow() })
-      // from local storage
       val activeAccount = getCurrentAccount()
       if (activeAccount == null) {
         AppLog.d(TAG, "No active account found in checkLoginStatusForActiveAccount(). Returning false.")
         return false
       }
       AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
-      // from api
       val accountInfo = accountRepository.getAccountFromAPI(activeAccount.id)
-      // Sync all settings with server data
       accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)
       AppLog.d(TAG, "Active account login status check successful")
       true
+    } catch (e: java.net.UnknownHostException){
+      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}" )
+      checkActiveAccountLocalValidity()
+    }
+    catch (e: java.io.InterruptedIOException){
+      AppLog.w(TAG, "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}" )
+      checkActiveAccountLocalValidity()
+    }
+    catch (e: java.net.SocketTimeoutException) {
+      AppLog.w(TAG, "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}" )
+      checkActiveAccountLocalValidity()
+    }
+    catch (e: IOException) {
+      AppLog.w(TAG, "Network failure during login status check, falling back to local DB ${e.toString()}")
+      checkActiveAccountLocalValidity()
+    } catch (e: HttpException) {
+      if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
+        val activeAccount = getCurrentAccount()
+        if (activeAccount != null) {
+          AppLog.w(TAG, "Active account is unauthorized (401). Marking as expired: ${activeAccount.id}")
+          accountRepository.markAccountExpired(activeAccount.id)
+          accountRepository.clearAccountTokens(activeAccount.id)
+        }
+        false
+      } else {
+        AppLog.w(TAG, "HTTP error ${e.code()} during active account check, falling back to local DB")
+        checkActiveAccountLocalValidity()
+      }
     } catch (e: Exception) {
-      AppLog.e(TAG, "Active account login status check failed", e)
-      false
+      AppLog.e(TAG, "Active account login status check failed, falling back to local DB", e)
+      checkActiveAccountLocalValidity()
     }
   }
 
   /**
+   * Helper method to check active account validity from local DB.
+   * @return true if account exists and is not expired, false otherwise
+   */
+  private suspend fun checkActiveAccountLocalValidity(): Boolean {
+    val activeAccount = getCurrentAccount()
+    if (activeAccount == null) {
+      AppLog.d(TAG, "No active account found in local DB. Returning false.")
+      return false
+    }
+    if (activeAccount.isExpired) {
+      AppLog.d(TAG, "Active account is expired in local DB. Returning false.")
+      return false
+    }
+    // Sync local account data to database when offline
+    try {
+      val accountInfo = activeAccount.toAccountInfo()
+      accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = false)
+      AppLog.d(TAG, "Synced local account data to database in offline mode")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to sync local account data in offline mode", e)
+    }
+    AppLog.d(TAG, "Active account is valid in local DB. Returning true.")
+    return true
+  }
+
+  /**
    * Checks login status for all logged-in accounts (non-active) by calling getAccount API if online.
-   * If offline, checks local DB for isExpired status for all accounts.
-   * @return true if all accounts are valid (online or offline), false if any are expired
+   * This is a best-effort check that refreshes account data and cleans up invalid accounts.
+   * Accounts that return 401 Unauthorized are marked as expired and removed.
+   * On network/HTTP failure, falls back to local DB validity (does not fail the check).
+   * @return true if the check completed (regardless of whether individual accounts were expired/removed),
+   *         false only if a fatal error prevented the check from completing
    */
   override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean {
     AppLog.d(TAG, "checkLoginStatusForLoggedInAccounts() called")
@@ -421,7 +457,7 @@ constructor(
       }
       val filterLoggedInAccounts = loggedInAccounts.filter { !it.isExpired }
 
-      // Run account checks in parallel with timeout to avoid blocking UI
+      // Run account checks - network failures don't mark accounts as expired
       for (account in filterLoggedInAccounts) {
         try {
           AppLog.d(TAG, "Checking login status for account: ${account.id}")
@@ -430,21 +466,47 @@ constructor(
           // Update account data with API response
           accountRepository.updateAccountInfo(account.id, accountInfo)
           AppLog.d(TAG, "Account ${account.id} login status check successful")
-        } catch (e: Exception) {
-          AppLog.e(TAG, "Account ${account.id} login status check failed", e)
-          // Mark account as expired in database
-          accountRepository.markAccountExpired(account.id)
-          // Clear tokens for this account
-          accountRepository.removeAccount(account.id)
+        } catch (e: IOException) {
+          // Network failure - don't mark account as expired, just log and continue
+          AppLog.w(TAG, "Network failure while checking account ${account.id}, skipping (not marking as expired)", e.toString())
+          // Continue to next account - network failures shouldn't invalidate accounts
+        } catch (e: HttpException) {
+          // Only mark as expired on 401 Unauthorized errors
+          if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
+            AppLog.w(TAG, "Account is unauthorized (401). Marking as expired: ${account.id}")
+            accountRepository.markAccountExpired(account.id)
+            accountRepository.removeAccount(account.id)
+          } else {
+            // Other HTTP errors (500, 404, etc.) - don't mark as expired, just log
+            AppLog.w(TAG, "HTTP error ${e.code()} while checking account ${account.id}, not marking as expired")
+          }
+        }
+        catch (e: java.net.UnknownHostException){
+          AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}", )
+        }
+        catch (e: java.io.InterruptedIOException){
+          AppLog.w(TAG, "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}", )
+        }
+        catch (e: java.net.SocketTimeoutException) {
+          AppLog.w(TAG, "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}")
+        }
+        catch (e: Exception) {
+          // Other exceptions - log but don't mark as expired
+          AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
         }
       }
       AppLog.d(TAG, "Logged-in accounts status check completed.")
       // Emit true to trigger integration checks
       _checkIntegrations.value = true
       true
+    } catch (e: IOException) {
+      AppLog.w(TAG, "Network failure during logged-in accounts check, proceeding with local state", e.toString())
+      _checkIntegrations.value = true
+      true
     } catch (e: Exception) {
-      AppLog.e(TAG, "Logged-in accounts status check failed", e)
-      false
+      AppLog.e(TAG, "Logged-in accounts status check failed, proceeding with local state", e)
+      _checkIntegrations.value = true
+      true
     }
   }
 
@@ -585,8 +647,39 @@ constructor(
       AppLog.d(TAG, "Successfully switched to account: ${account.email}")
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
+    }
+    catch (e: java.net.UnknownHostException){
+      AppLog.w(TAG, "UnknownHostException failure during account switch ${e.toString()}")
+      showNetworkErrorAndThrow()
+      false
+    }
+    catch (e: java.io.InterruptedIOException){
+      AppLog.w(TAG, "InterruptedIOException failure failure during account switch ${e.toString()}")
+      showNetworkErrorAndThrow()
+      false
+    }
+    catch (e: java.net.SocketTimeoutException) {
+      AppLog.w(TAG, "SocketTimeoutException e.toString() ${e.toString()}")
+      showNetworkErrorAndThrow()
+      false
+    }
+    catch (e: IOException) {
+      // Network failed during API call - check if account is valid locally
+      AppLog.w(TAG, "Network failed during account switch, checking local validity", e.toString())
+      val localAccount = getLoggedInAccounts().find { it.id == account.id }
+      if (localAccount != null && !localAccount.isExpired) {
+        // Account exists locally and is not expired, allow switch
+        AppLog.d(TAG, "Account is valid locally, proceeding with switch despite network failure")
+        accountRepository.switchToAccount(account.id)
+        appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
+        true
+      } else {
+        AppLog.w(TAG, "Account not valid locally or is expired, cannot switch")
+        showErrorToast(LoginError.Header, ToastStrings.Error.NetworkError.Message)
+        false
+      }
     } catch (e: HttpException) {
-      AppLog.e(TAG, "Failed to switch account", e)
+      AppLog.e(TAG, "Failed to switch account $e", e)
       handleAccountValidationError(account.id, e)
       false
     } catch (e: Exception) {

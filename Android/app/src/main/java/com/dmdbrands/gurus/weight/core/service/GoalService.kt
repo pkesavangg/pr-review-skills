@@ -407,6 +407,13 @@ constructor(
             handleGoalMet(false)
           }
         },
+        onDismiss = {
+          dialogQueueService.dismissCurrent()
+          isShowingAlert = false
+          CoroutineScope(Dispatchers.Main).launch {
+            handleGoalMet(true)
+          }
+        }
       ),
     )
   }

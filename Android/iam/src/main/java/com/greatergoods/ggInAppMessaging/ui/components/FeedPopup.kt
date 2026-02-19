@@ -46,6 +46,7 @@ fun FeedPopup(
   messageType: String = "",
   headline: String,
   supportingText: String,
+  expiresAt: String? = null,
   primaryButtonText: String = FeedPopupStrings.ShopNow,
   secondaryButtonText: String = FeedPopupStrings.MessageSettings,
   onPrimaryButtonClick: () -> Unit = {},
@@ -154,6 +155,8 @@ Row(
           color = iamColors.textBody,
           textType = TextType.Body,
           textAlign = TextAlign.Center,
+          enableRichText = true,
+          expiresAt = expiresAt,
         )
 
         Spacer(modifier = Modifier.padding(top = 16.dp))

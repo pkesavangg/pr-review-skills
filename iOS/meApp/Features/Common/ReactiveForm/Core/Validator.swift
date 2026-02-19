@@ -123,8 +123,11 @@ extension Validator where Value == String {
     }
     
     /// Validator that requires the control's value to match a known scale SKU.
+    /// Also checks if the entered value maps to a valid SKU (e.g., "0022" maps to "0383").
     public static let skuMatch = Validator(type: .skuMatch) { value in
-        SCALES.contains { $0.sku == value }
+        // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(value)
+        return SCALES.contains(where: { $0.sku == lookupSku })
     }
     
     /// Validator that checks for duplicate usernames in a provided user list

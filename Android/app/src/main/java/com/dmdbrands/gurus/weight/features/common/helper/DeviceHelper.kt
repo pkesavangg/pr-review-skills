@@ -7,6 +7,7 @@ object DeviceHelper {
   const val SKU_0412 = "0412"
   const val SKU_0376 = "0376"
   const val SKU_0380 = "0380"
+  const val SKU_0022 = "0022"
   const val SKU_0383 = "0383"
   const val SKU_0480 = "0480"
   const val SKU_0604 = "0604"
@@ -22,6 +23,15 @@ object DeviceHelper {
   const val SKU_0344 = "0344"
 
   fun GGDeviceDetail.getSKU() = SKU_MAP[deviceName] ?: DEFAULT_SKU
+
+  /**
+   * Maps a SKU to its display SKU for UI purposes only.
+   * For example, SKU 0022 is displayed as 0383.
+   * This should only be used for display, not for saving.
+   * @param sku The SKU to map for display
+   * @return The display SKU
+   */
+  fun mapSkuForDisplay(sku: String): String = if (sku == SKU_0022) SKU_0383 else sku
 
   private val SKU_MAP = mapOf(
     "MY_SCALE" to SKU_0480,
@@ -40,7 +50,7 @@ object DeviceHelper {
     "01270B" to SKU_0380,
     "gG BS 0412" to SKU_0412,
     "LS212-B" to SKU_0383,
-    "gG-RPM 0022" to SKU_0383,
+    "gG-RPM 0022" to SKU_0022,
     "gG PulseOx 0003" to SKU_0003,
     "gG-RPM 0040" to SKU_0604,
     "gG BGM 0005" to SKU_0005,

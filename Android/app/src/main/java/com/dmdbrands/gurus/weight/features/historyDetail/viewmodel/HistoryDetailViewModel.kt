@@ -106,7 +106,6 @@ class HistoryDetailViewModel @AssistedInject constructor(
                         viewModelScope.launch {
                             // Delete from entry service (local + API)
                             entryService.deleteEntry(entry)
-
                             // Try to delete from Health Connect (non-blocking)
                             try {
                                 healthConnectService.deleteEntry(entry)

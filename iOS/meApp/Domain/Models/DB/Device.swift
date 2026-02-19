@@ -237,8 +237,8 @@ final class Device {
     }
 }
 
-/// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.
-extension Device: @unchecked Sendable {}
+// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
+// Use PersistentIdentifier to pass references between contexts.
 // Extend `Device` to conform to `Identifiable` so it can be used with SwiftUI's `.sheet(item:)` API.
 extension Device: Identifiable {}
 
@@ -255,11 +255,13 @@ extension Device {
         // For BtWifiR4 scales, check if WiFi setup is incomplete
         if type == .bluetoothR4 {
             let wifiOk = isWifiConfigured == true
-            if !wifiOk {
+            let weightOnly = !(r4ScalePreference?.shouldMeasureImpedance ?? true)
+            if !wifiOk && !weightOnly {
                 return .setupIncomplete
             }
         }
         
         return .connected
     }
+    
 }

@@ -28,6 +28,14 @@ final class AppSyncTabStore: ObservableObject {
     // Holds last scanned raw data so Save/Edit actions have access.
     private var lastScannedData: AppSyncEntryMetrics?
     
+    private enum ScanIgnoreReason: String {
+        case invalidWeight = "invalid_weight"
+        case outOfRange = "out_of_range"
+    }
+    
+    private static let minWeightKg: Float = 10.0
+    private static let maxWeightKg: Float = 450.0
+    
     /// Converts the scanned body-composition data into the format expected by
     /// `AppSyncEntryCardView` and shows the confirmation modal.
     /// - Parameter data: The `BodyCompData` coming from `AppSyncScannerView`.
@@ -35,9 +43,12 @@ final class AppSyncTabStore: ObservableObject {
         // Determine preferred unit (kg / lbs) based on active account.
         let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
         
-        if data.weight <= 0 || data.weight.isNaN {
-            notificationHelperService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.restartApp))
-            tabViewModel.selectedTab = .dash
+        if let reason = validateScan(data) {
+            logger.log(
+                level: .error,
+                tag: "AppSyncTabStore",
+                message: "scan_ignored reason=\(reason.rawValue) weight=\(data.weight)"
+            )
             return
         }
         
@@ -137,5 +148,17 @@ final class AppSyncTabStore: ObservableObject {
         }
         notificationHelperService.dismissLoader()
         notificationHelperService.dismissModal()
+    }
+    
+    private func validateScan(_ data: BodyCompData) -> ScanIgnoreReason? {
+        if data.weight <= 0 || data.weight.isNaN || data.weight.isInfinite {
+            return .invalidWeight
+        }
+        
+        if data.weight < Self.minWeightKg || data.weight > Self.maxWeightKg {
+            return .outOfRange
+        }
+        
+        return nil
     }
 }

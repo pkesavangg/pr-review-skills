@@ -344,11 +344,5 @@ extension Account {
     }
 }
 
-// MARK: - Update Methods
-// swiftlint:disable cyclomatic_complexity
-extension Account {
-    // swiftlint:enable cyclomatic_complexity
-}
-
-/// Marked @unchecked Sendable due to SwiftData's built-in thread safety, allowing async/concurrent use.
-extension Account: @unchecked Sendable {}
+// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
+// Use PersistentIdentifier to pass references between contexts.

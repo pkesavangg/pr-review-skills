@@ -34,7 +34,7 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
     
 
     /// Month selection rules:
-    /// - Determine the current X-axis section [startTick, endTick) using month ticks (1, 8, 15, 22, 29).
+    /// - Determine the current X-axis section [startTick, endTick) using Sunday month ticks.
     /// - If there are chart points within this section, select the nearest point to the touch inside the section.
     /// - If there are no points inside the section, select the section's start tick (e.g., Jul 8).
     /// - Crosshair only shows when the touch is within [firstPoint, lastPoint].

@@ -142,8 +142,6 @@ final class Entry {
     }
 }
 
-/// @unchecked Sendable is used because Entry is a SwiftData @Model with thread-safe properties.
-/// SwiftData handles synchronization internally, allowing safe use in async contexts like
-/// HealthKit sync and background operations. We explicitly mark it Sendable to enable
-/// concurrent access without data races.
-extension Entry: @unchecked Sendable {}
+// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
+// Use PersistentIdentifier to pass references between contexts, and use
+// SwiftDataWorker or MainActor.run to safely access model properties.

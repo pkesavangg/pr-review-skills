@@ -31,9 +31,8 @@ struct AppSyncStrings {
 
     /// Text constants used in the "Time to weigh in" screen.
     struct WeighInTimeStrings {
-        static let title = "Let’s weigh in!"
-        static let description = "Set your scale on a hard, flat surface, step on, and wait for your results. " +
-            "When you see the barcode on the scale, press NEXT and aim your phone's camera at the code."
+        static let title = "Time to weigh in!"
+        static let description = "Set your scale on a hard, flat surface, step on, and wait for your results. When you see the barcode on the scale, press NEXT and aim your phone's camera at the code."
         static let boldWords: [String] = ["NEXT"]
     }
 }

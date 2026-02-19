@@ -100,9 +100,27 @@ object EntryHelper {
     )
   }
 
-  fun Double?.rounded(): Double? = this?.let { round(it * 10) / 10 }
+  fun Double?.rounded(): Double? =
+    this?.let {
+      it.toBigDecimal()
+        .setScale(1, RoundingMode.HALF_UP)
+        .toDouble()
+    }
+
   fun Float.toDouble1dp(rounding: RoundingMode = RoundingMode.HALF_UP): Double =
     if (this.isFinite()) BigDecimal.valueOf(this.toDouble()).setScale(1, rounding).toDouble() else this.toDouble()
+
+  /**
+   * Converts Float to Double while preserving decimal representation (avoids floating-point drift).
+   * Uses BigDecimal for exact string conversion then strips trailing zeros.
+   *
+   * @return Double representation of this Float.
+   */
+  fun Float.toDoublePreserve(): Double {
+    return BigDecimal(this.toString())
+      .stripTrailingZeros()
+      .toDouble()
+  }
 
   /**
    * Formats a weight value to display without decimal point if it's a whole number.
@@ -206,7 +224,7 @@ object EntryHelper {
     return PeriodBodyScaleSummary(
       period = period, // assuming this is already suitable
       entryTimestamp = entryTimestamp, // assuming no conversion needed
-      weight = weight.div(10.0),
+      weight = weight.div(10.0).rounded()?: weight.div(10.0),
       bodyFat = bodyFat?.div(10.0),
       muscleMass = muscleMass?.div(10.0),
       water = water?.div(10.0),
@@ -229,7 +247,7 @@ object EntryHelper {
       entryTimestamp = entryTimestamp,
       entryCount = entryCount,
       change = change?.div(10),
-      avgWeight = avgWeight?.div(10),
+      avgWeight = avgWeight?.div(10).rounded(),
     )
   }
 
@@ -269,10 +287,10 @@ object EntryHelper {
 
     val bodyScaleEntryEntity = BodyScaleEntryEntity(
       id = 0, // Will be auto-generated in DB
-      weight = if (unit.lowercase() == "kg") weightInKg.toDouble() else weight.toDouble(),
-      bodyFat = bodyFat.toDouble(),
-      muscleMass = muscleMass.toDouble(),
-      water = water.toDouble(),
+      weight = if (unit.lowercase() == "kg") weightInKg.toDoublePreserve() else weight.toDoublePreserve(),
+      bodyFat = bodyFat.toDoublePreserve(),
+      muscleMass = muscleMass.toDoublePreserve(),
+      water = water.toDoublePreserve(),
       bmi = bmi.toDouble1dp(),
       source = getScaleSetupType(protocolType),
     )
@@ -281,12 +299,12 @@ object EntryHelper {
       id = 0, // Will be same as scaleEntryEntity.id when inserted
       bmr = bmr.toDouble(),
       metabolicAge = metabolicAge,
-      proteinPercent = proteinPercent.toDouble(),
+      proteinPercent = proteinPercent.toDoublePreserve(),
       pulse = pulse,
-      skeletalMusclePercent = skeletalMusclePercent.toDouble(),
-      subcutaneousFatPercent = subcutaneousFatPercent.toDouble(),
+      skeletalMusclePercent = skeletalMusclePercent.toDoublePreserve(),
+      subcutaneousFatPercent = subcutaneousFatPercent.toDoublePreserve(),
       visceralFatLevel = visceralFatLevel.toDouble(),
-      boneMass = boneMass.toDouble(),
+      boneMass = boneMass.toDoublePreserve(),
       impedance = impedance.toInt(),
     )
 
@@ -308,8 +326,8 @@ object EntryHelper {
 
   fun getCalculatedBMI(weight: Float, unit: WeightUnit, height: Int): Double {
     val weightKg = when (unit.value) {
-      "kg" -> weight.toDouble()
-      else -> weight.toDouble() * 0.453592 // Convert lbs to kg
+      "kg" -> weight.toDoublePreserve()
+      else -> weight.toDoublePreserve() * 0.453592 // Convert lbs to kg
     }
     val heightCm = ConversionTools.convertStoredHeightToCm(height)
     return ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
@@ -342,23 +360,23 @@ object EntryHelper {
     // Calculate BMI if weight and height are available
     val calculatedBmi = if (weight != null && userHeight != null) {
       val weightKg = when (mode?.lowercase()) {
-        "kg" -> weight!!.toDouble()
-        else -> ConversionTools.convertStoredToKg(weight!!.toDouble() * 10) // Convert lbs to kg
+        "kg" -> weight!!.toDoublePreserve()
+        else -> ConversionTools.convertStoredToKg(weight!!.toDoublePreserve() * 10) // Convert lbs to kg
       }
       val heightCm = ConversionTools.convertStoredHeightToCm(userHeight)
       ConversionTools.calculateBMIFromMetric(weightKg, heightCm)
     } else {
       null
     }
-    val rawWeight = ConversionTools.convertAppSyncDisplayToStored(weight?.toDouble() ?: 0.0)
+    val rawWeight = ConversionTools.convertAppSyncDisplayToStored(weight?.toDoublePreserve() ?: 0.0)
     val convertedWeight = ConversionTools.convertStoredToDisplay(rawWeight, unit == WeightUnit.KG.value)
 
     val scaleEntry = BodyScaleEntryEntity(
       id = 0L, // Will be set by DB
       weight = if (isSaving) convertedWeight else rawWeight,
-      bodyFat = fat?.toDouble(),
-      muscleMass = muscle?.toDouble(),
-      water = water?.toDouble(),
+      bodyFat = fat?.toDoublePreserve(),
+      muscleMass = muscle?.toDoublePreserve(),
+      water = water?.toDoublePreserve(),
       bmi = calculatedBmi,
       source = "appsync scale",
     )

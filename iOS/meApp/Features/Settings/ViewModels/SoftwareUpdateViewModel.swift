@@ -5,6 +5,7 @@
 
 import Foundation
 import SwiftUI
+import SwiftData
 
 @MainActor
 final class SoftwareUpdateViewModel: ObservableObject {
@@ -17,16 +18,36 @@ final class SoftwareUpdateViewModel: ObservableObject {
     @Published var isUpdating: Bool = false
     @Published var updateScheduled: Bool = false
 
-    let scale: Device
+    // R6: Store PersistentIdentifier instead of @Model directly
+    private let scaleId: PersistentIdentifier
+    private let scaleIdString: String
+    private var cachedScale: Device?
     let currentFirmware: String?
     let latestVersion: String?
+
+    var scale: Device {
+        cachedScale ?? Device(id: scaleIdString, accountId: "")
+    }
 
     private let tag = "SoftwareUpdateViewModel"
 
     init(scale: Device, currentFirmware: String?, latestVersion: String?) {
-        self.scale = scale
+        self.scaleId = scale.persistentModelID
+        self.scaleIdString = scale.id
+        self.cachedScale = scale
         self.currentFirmware = currentFirmware
         self.latestVersion = latestVersion
+    }
+
+    func refreshScale() {
+        let context = PersistenceController.shared.context
+        if let fresh: Device = context.registeredModel(for: scaleId) {
+            cachedScale = fresh
+            return
+        }
+        let idString = scaleIdString
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { $0.id == idString })
+        cachedScale = try? context.fetch(descriptor).first
     }
 
     var hasUpdate: Bool {
@@ -36,6 +57,7 @@ final class SoftwareUpdateViewModel: ObservableObject {
     }
 
     func updateSoftware(isScheduled: Bool) async {
+        refreshScale()
         guard scale.isConnected == true else { return }
         isUpdating = true
         let ts: UInt32 = {
@@ -63,6 +85,7 @@ final class SoftwareUpdateViewModel: ObservableObject {
             }
         }()
         notificationService.showToast(ToastModel(title: "Updating", message: FirmwareUpdateStrings.updatingFirmware))
+        refreshScale() // R11: refresh before passing @Model to async bluetooth call
         let res = await bluetoothService.updateFirmware(on: scale, timestamp: ts)
         switch res {
         case .success:

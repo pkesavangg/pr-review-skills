@@ -32,6 +32,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private var scaleItem: ScaleItemInfo?
     private var discoveredScale: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
+    /// Flag to track if scale has been saved to prevent duplicate saves
+    private var isScaleSaved: Bool = false
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     // MARK: - Published State
@@ -142,13 +144,20 @@ final class BluetoothScaleSetupStore: ObservableObject {
         
         switch currentStep {
         case .permissions:
-            let targetStep: BluetoothScaleSetupStep = (bluetoothConnectionState == .success) ? .stepOn : .selectUser
-            if let index = steps.firstIndex(of: targetStep) {
-                currentStepIndex = index
+            // If scale is already saved and paired, navigate to stepOn
+            // Otherwise, navigate to selectUser
+            if isScaleSaved && bluetoothConnectionState == .success {
+                if let index = steps.firstIndex(of: .stepOn) {
+                    currentStepIndex = index
+                }
+            } else {
+                if let index = steps.firstIndex(of: .selectUser) {
+                    currentStepIndex = index
+                }
             }
             return
         case .setupFinished:
-            saveDiscoveredScale()
+            dismissAction?()
             return
         default:
             // Default behavior for other steps
@@ -172,7 +181,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
     
     // MARK: - Public Configuration
     func configure(with sku: String) {
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        // Pass original SKU to routes (not mapped), setup will save original SKU
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES.first
         self.scaleItem = resolved
         resetDiscoveryState()
         // Set setup in progress flag to prevent goal modals during setup
@@ -192,23 +204,13 @@ final class BluetoothScaleSetupStore: ObservableObject {
     func handleExit() {
         let alertLang = AlertStrings.ExitSetupAlert.self
         
-        // Check if we're on the last step (setupFinished)
-        let isLastStep = currentStep == .setupFinished
-        let shouldSaveScale = isLastStep && discoveredScale != nil && discoveryEvent != nil
-        
         let alert = AlertModel(
             title: alertLang.title,
             message: alertLang.message,
             buttons: [
                 AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
                     guard let self = self else { return }
-                    // If on last step and scale is ready, save it before dismissing
-                    if shouldSaveScale {
-                        self.saveDiscoveredScale()
-                    } else {
-                        // For other steps, just dismiss without saving
-                        self.dismissAction?()
-                    }
+                    self.dismissAction?()
                 },
                 AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
             ]
@@ -221,6 +223,14 @@ final class BluetoothScaleSetupStore: ObservableObject {
         switch currentStep {
         case .connectingBluetooth:
             pair()
+        case .stepOn:
+            // If scale is already saved, set up entry subscription
+            // This handles the case where user navigates to stepOn after Bluetooth is turned back on
+            if isScaleSaved, let savedScale = discoveredScale {
+                Task {
+                    await syncNewScaleAndListenForEntries()
+                }
+            }
         default:
             break
         }
@@ -293,6 +303,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
                         self.scaleToDelete = scaleToDelete
                         handleDuplicateScale()
                     } else {
+                        // Save scale immediately after pairing succeeds (similar to WiFi scales)
+                        await saveDiscoveredScaleWithLoader(isExiting: false)
                         startEntrySyncing()
                     }
                     LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
@@ -325,7 +337,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
                     }
                 },
                 AlertButtonModel(title: lang.pairButton, type: .primary) { _ in
-                    self.startEntrySyncing()
+                    Task {
+                        // Save scale immediately when user chooses to pair again
+                        await self.saveDiscoveredScaleWithLoader(isExiting: false)
+                        self.startEntrySyncing()
+                    }
                 }
             ]
         )
@@ -393,14 +409,14 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private func setupNewEntrySubscription() {
         // Cancel any existing subscription
         newEntrySubscription?.cancel()
-        
-        // Subscribe to new entry events
+
+        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
         newEntrySubscription = bluetoothService.newEntryReceivedPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] entry in
+            .sink { [weak self] _ in
                 guard let self = self else { return }
                 LoggerService.shared.log(level: .info, tag: self.tag, message: "New entry received, marking as synced")
-                
+
                 // Mark entry as synced and update UI
                 self.isEntrySynced = true
                 self.updateNextEnabled()
@@ -441,6 +457,12 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     private func saveDiscoveredScaleWithLoader(isExiting: Bool) async {
+        // Prevent duplicate saves
+        if isScaleSaved {
+            LoggerService.shared.log(level: .info, tag: tag, message: "Scale already saved, skipping duplicate save")
+            return
+        }
+        
         guard let discoveryEvent, let device = discoveredScale else { return }
         
         // Show appropriate loader message
@@ -507,6 +529,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
             
             await self.scaleService.syncAllScalesWithRemote()
             
+            isScaleSaved = true
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(savedScale.id)")
             
             // Post notification that scale was added
@@ -521,7 +544,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
             bluetoothService.isSetupInProgress = false
         }
         notificationService.dismissLoader()
-        dismissAction?()
+        // Only dismiss the screen if we're exiting, not when saving immediately after pairing
+        if isExiting {
+            dismissAction?()
+        }
     }
     
     // MARK: - Helpers
@@ -530,8 +556,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
         deviceDiscoveryCancellable = nil
         stepTimerTask?.cancel()
         cleanupEntrySubscription()
-        discoveredScale = nil
-        discoveryEvent = nil
+        // Preserve discoveredScale if scale is already saved, as we need it for entry subscription
+        if !isScaleSaved {
+            discoveredScale = nil
+            discoveryEvent = nil
+        }
         scaleToDelete = nil
     }
     
@@ -579,14 +608,25 @@ final class BluetoothScaleSetupStore: ObservableObject {
     /// Permissions screen.
     private func handlePermissionChange() {
         let permissionsOK = isBluetoothPermissionEnabled()
-        guard !permissionsOK else { return }
         
-        // If we are currently on the pairing step, navigate back so the user can
-        // re-grant permissions.
-        if ![.intro, .setupFinished].contains(currentStep) {
-            resetDiscoveryState()
-            if let permissionIndex = steps.firstIndex(of: .permissions) {
-                currentStepIndex = permissionIndex
+        if !permissionsOK {
+            // Reset connection state when permissions are lost to prevent incorrect navigation
+            // This ensures that when permissions are restored, we don't incorrectly navigate to stepOn
+            bluetoothConnectionState = .loading
+            
+            // If we are currently on the pairing step, navigate back so the user can
+            // re-grant permissions.
+            if ![.intro, .setupFinished].contains(currentStep) {
+                resetDiscoveryState()
+                if let permissionIndex = steps.firstIndex(of: .permissions) {
+                    currentStepIndex = permissionIndex
+                }
+            }
+        } else {
+            // When permissions are restored, if scale is already saved, restore connection state
+            // This allows proper navigation to stepOn when user taps NEXT from permissions
+            if isScaleSaved && discoveredScale != nil {
+                bluetoothConnectionState = .success
             }
         }
     }
@@ -625,6 +665,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
         bluetoothService.reapplySkipDevicesExcludingPaired()
         // Clear setup in progress flag when setup is dismissed
         bluetoothService.isSetupInProgress = false
+        // Reset saved flag
+        isScaleSaved = false
     }
 }
 // swiftlint:enable type_body_length

@@ -11,20 +11,21 @@ import java.util.TimeZone
 object GraphSnapHelper {
 
   /**
-   * Gets the padding amount in milliseconds for the given segment.
-   * Padding is applied before snapped positions to ensure visibility.
+   * Returns visible-window padding in xStep units (start, end) for the given segment.
+   * Only start padding is used (iOS-style); end padding is 0. Start = 0.2 xStep.
+   * TOTAL has no visible padding (non-scrollable).
    *
    * @param segment The graph segment type (WEEK, MONTH, YEAR, TOTAL).
-   * @return Padding amount in milliseconds.
+   * @return Pair of (visibleStartPaddingXStep, visibleEndPaddingXStep). Use 0 for TOTAL.
    */
-  fun getPaddingForSegment(segment: GraphSegment): Long {
-    return when (segment) {
-      GraphSegment.WEEK -> 5 * 60 * 60 * 1000L // 5 hours
-      GraphSegment.MONTH -> 5 * 60 * 60 * 1000L // 5 hours
-      GraphSegment.YEAR -> 5 * 24 * 60 * 60 * 1000L // 5 days
-      GraphSegment.TOTAL -> 0L // No padding for total
+  fun getVisiblePaddingXStepForSegment(segment: GraphSegment): Pair<Double, Double> =
+    when (segment) {
+      GraphSegment.WEEK,
+      GraphSegment.MONTH -> 0.3 to 0.0
+
+      GraphSegment.YEAR -> 0.5 to 0.0
+      GraphSegment.TOTAL -> 0.0 to 0.0
     }
-  }
 
   /**
    * Checks if a timestamp matches a snapped boundary for the given segment.
@@ -66,55 +67,19 @@ object GraphSnapHelper {
   }
 
   /**
-   * Applies padding to a scroll range if it matches snapped boundaries.
-   * This ensures padding is visible when snapping occurs.
-   *
-   * @param min The minimum timestamp of the scroll range.
-   * @param max The maximum timestamp of the scroll range.
-   * @param segment The graph segment type.
-   * @return Pair of (adjustedMin, adjustedMax) with padding applied if needed.
-   */
-  fun applyPaddingToScrollRange(min: Long, max: Long, segment: GraphSegment): Pair<Long, Long> {
-    if (segment == GraphSegment.TOTAL) {
-      return min to max
-    }
-
-    val padding = getPaddingForSegment(segment)
-    val isMinSnapped = isSnappedBoundary(min, segment)
-    isSnappedBoundary(max, segment)
-
-    // Apply padding before min if it's a snapped boundary
-    val adjustedMin = if (isMinSnapped && padding > 0) {
-      min - padding
-    } else {
-      min
-    }
-
-    // Keep max as is (padding is only applied at the start)
-    val adjustedMax = max
-
-    return adjustedMin to adjustedMax
-  }
-
-  /**
    * Gets the snapped position for drag events based on the graph segment.
-   * Applies padding before the snapped position to ensure visibility.
    *
    * @param xLabel The x-coordinate timestamp to snap.
    * @param segment The graph segment type (WEEK, MONTH, YEAR, TOTAL).
-   * @return The snapped timestamp position with padding applied (padding is subtracted to show space before).
+   * @return The snapped timestamp position.
    */
   fun getSnappedPositionOnDrag(xLabel: Double?, segment: GraphSegment): Double {
-    val snappedPosition = when (segment) {
+    return when (segment) {
       GraphSegment.WEEK -> snapToDayBoundary(xLabel)
       GraphSegment.YEAR -> snapToMonthBoundary(xLabel)
       GraphSegment.MONTH -> xLabel ?: 0.0
       GraphSegment.TOTAL -> 0.0
     }
-
-    // Apply padding: subtract padding from snapped position so there's space before it
-    val padding = getPaddingForSegment(segment)
-    return snappedPosition - padding
   }
 
   /**
@@ -186,12 +151,11 @@ object GraphSnapHelper {
 
   /**
    * Gets the snap position for fling events based on the graph segment and direction.
-   * Applies padding before the snapped position to ensure visibility.
    *
    * @param timeStamp The timestamp to snap.
    * @param segment The graph segment type (WEEK, MONTH, YEAR, TOTAL).
    * @param isForward True if flinging forward, false if backward.
-   * @return The snapped timestamp position with padding applied (padding is subtracted to show space before).
+   * @return The snapped timestamp position.
    */
   fun getSnapPositionOnFling(timeStamp: Double?, segment: GraphSegment, isForward: Boolean): Double {
     timeStamp ?: return 0.0
@@ -253,10 +217,6 @@ object GraphSnapHelper {
       }
     }
 
-    val snappedPosition = snapped.timeInMillis.toDouble()
-
-    // Apply padding: subtract padding from snapped position so there's space before it
-    val padding = getPaddingForSegment(segment)
-    return snappedPosition - padding
+    return snapped.timeInMillis.toDouble()
   }
 }

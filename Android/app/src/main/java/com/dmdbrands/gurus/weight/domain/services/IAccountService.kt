@@ -100,13 +100,18 @@ interface IAccountService {
 
   /**
    * Checks login status for the active account by calling the API and updating local data.
-   * @return true if the account is still valid, false if expired or network unavailable
+   * On network/HTTP failure (except 401), falls back to local DB validity. Only 401 marks account expired.
+   * @return true if the account is still valid, false if expired or unauthorized
    */
   suspend fun checkLoginStatusForActiveAccount(): Boolean
 
   /**
    * Checks login status for all logged-in (non-active) accounts by calling the API and updating local data.
-   * @return true if all accounts are valid, false if any account is expired
+   * This is a best-effort check that refreshes account data and cleans up invalid accounts.
+   * Accounts that return 401 Unauthorized are marked as expired and removed.
+   * On network/HTTP failure, falls back to local DB validity (does not fail the check).
+   * @return true if the check completed (regardless of whether individual accounts were expired/removed),
+   *         false only if a fatal error prevented the check from completing
    */
   suspend fun checkLoginStatusForLoggedInAccounts(): Boolean
 
@@ -214,7 +219,12 @@ interface IAccountService {
  * Sealed class representing different authentication states.
  */
 sealed class AuthState {
-  data class LoggedIn(
+
+  /**
+   * Emitted by LoadingScreenViewModel after migration + loadData + autoLogin.
+   * AppViewModel handles by starting observers only (no navigation or full initLoadingData).
+   */
+  data class LoggedInFromLoading(
     val account: Account,
   ) : AuthState()
 

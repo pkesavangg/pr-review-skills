@@ -64,6 +64,6 @@ object EntryScreenStrings {
     /** Optional subheading for the metrics section card. */
     const val METRICS_SECTION_SUBHEADING = "(optional)"
 
-    const val EntryAdded = "Entry added"
+  const val EntryAdded = "Entry added."
   const val EntryAddedTitle = "Success!"
 }

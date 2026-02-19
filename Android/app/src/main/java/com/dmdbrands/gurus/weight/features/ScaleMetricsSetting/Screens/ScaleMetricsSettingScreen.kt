@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Screens
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.components.ScaleMetricItem
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetric
+import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.ScaleMetricKeys
 import com.dmdbrands.gurus.weight.features.common.components.AppDraggableList
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -39,16 +43,16 @@ fun ScaleMetricsSettingScreen(
   currentMetrics: List<String> = emptyList(),
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
-  parentScroller: Scroller? = null,
+  scrollState : ScrollableState? = null,
   includeHeartRate: Boolean = true,
   showAllMetrics: Boolean = true,
 ) {
 
-  // Separate state for each metric group
-  var bodyMetricsState by remember(currentMetrics, includeHeartRate) {
-    val (bodyMetrics, otherMetrics) = ScaleMetricsHelper.createOrderedMetrics(currentMetrics)
+  // Separate state for each metric group - initialize once, update via LaunchedEffect only when needed
+  var bodyMetricsState by remember {
+    val (bodyMetrics, _) = ScaleMetricsHelper.createOrderedMetrics(currentMetrics)
     val updatedBodyMetrics = bodyMetrics.map { metric ->
-      if (metric.key == "heartRate") {
+      if (metric.key == ScaleMetricKeys.HEART_RATE) {
         metric.copy(isIncluded = includeHeartRate)
       } else {
         metric
@@ -57,22 +61,66 @@ fun ScaleMetricsSettingScreen(
 
     // If heartRate is excluded, move it to the end
     val reorderedMetrics = if (!includeHeartRate) {
-      val heartRateMetric = updatedBodyMetrics.find { it.key == "heartRate" }
-      val others = updatedBodyMetrics.filterNot { it.key == "heartRate" }
+      val heartRateMetric = updatedBodyMetrics.find { it.key == ScaleMetricKeys.HEART_RATE }
+      val others = updatedBodyMetrics.filterNot { it.key == ScaleMetricKeys.HEART_RATE }
       if (heartRateMetric != null) others + heartRateMetric else updatedBodyMetrics
     } else {
       updatedBodyMetrics
     }
     mutableStateOf(reorderedMetrics)
   }
+
   // Displayed list respects showAllMetrics, but state remains full
   val displayedBodyMetrics = if (showAllMetrics) {
     bodyMetricsState
   } else {
-    bodyMetricsState.filter { it.key == "bmi" }
+    bodyMetricsState.filter { it.key == ScaleMetricKeys.BMI }
   }
-  var otherMetricsState by remember(currentMetrics) {
+
+  var otherMetricsState by remember {
     mutableStateOf(ScaleMetricsHelper.createOrderedMetrics(currentMetrics).second)
+  }
+
+  // Sync state when currentMetrics or includeHeartRate changes from outside (only if different from our current state)
+  LaunchedEffect(currentMetrics, includeHeartRate) {
+    // Calculate what our current state would emit (only enabled metrics)
+    val currentEnabledMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key } +
+        otherMetricsState.filter { it.isEnabled }.map { it.key }
+
+    // Check if heart rate metric's isIncluded matches includeHeartRate parameter
+    val heartRateMetric = bodyMetricsState.find { it.key == ScaleMetricKeys.HEART_RATE }
+    val heartRateIncludedMatches = heartRateMetric?.isIncluded == includeHeartRate
+
+    // Only sync if currentMetrics is different from what we would emit OR if heart rate inclusion state doesn't match
+    // This prevents reset loops when onMetricsChanged updates the parent
+    // Use content comparison to check if lists are different (order-independent for safety)
+    val metricsMatch = currentEnabledMetrics.size == currentMetrics.size &&
+        currentEnabledMetrics.all { it in currentMetrics } &&
+        currentMetrics.all { it in currentEnabledMetrics } &&
+        heartRateIncludedMatches
+
+    if (!metricsMatch) {
+      val (bodyMetrics, otherMetrics) = ScaleMetricsHelper.createOrderedMetrics(currentMetrics)
+      val updatedBodyMetrics = bodyMetrics.map { metric ->
+        if (metric.key == ScaleMetricKeys.HEART_RATE) {
+          metric.copy(isIncluded = includeHeartRate)
+        } else {
+          metric
+        }
+      }
+
+      // If heartRate is excluded, move it to the end
+      val reorderedMetrics = if (!includeHeartRate) {
+        val heartRateMetric = updatedBodyMetrics.find { it.key == ScaleMetricKeys.HEART_RATE }
+        val others = updatedBodyMetrics.filterNot { it.key == ScaleMetricKeys.HEART_RATE }
+        if (heartRateMetric != null) others + heartRateMetric else updatedBodyMetrics
+      } else {
+        updatedBodyMetrics
+      }
+
+      bodyMetricsState = reorderedMetrics
+      otherMetricsState = otherMetrics
+    }
   }
 
   // Helper function to emit combined enabled metrics
@@ -80,7 +128,7 @@ fun ScaleMetricsSettingScreen(
     val enabledBodyMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key }
     val enabledOtherMetrics = otherMetricsState.filter { it.isEnabled }.map { it.key }
     val allEnabledKeys = enabledBodyMetrics + enabledOtherMetrics
-    // onMetricsChanged(allEnabledKeys)
+    onMetricsChanged(allEnabledKeys)
   }
 
   /**
@@ -132,7 +180,7 @@ fun ScaleMetricsSettingScreen(
       modifier = Modifier
         .clip(shape = RoundedCornerShape(borderRadius.sm))
         .heightIn(max = 600.dp),
-      parentScroller = parentScroller,
+      scrollState = scrollState,
       items = displayedBodyMetrics,
       onMove = { from, to ->
         val newList = bodyMetricsState.toMutableList()
@@ -209,22 +257,22 @@ fun DisplayMetricsScreenPreview() {
   MeAppTheme {
     ScaleMetricsSettingScreen(
       currentMetrics = listOf(
-        "bmi",
-        "bodyFatPercent",
-        "musclePercent",
-        "bodyWaterPercent",
-        "heartRate",
-        "bonePercent",
-        "visceralFatLevel",
-        "subcutaneousFatPercent",
-        "proteinPercent",
-        "skeletalMusclePercent",
-        "bmr",
-        "metabolicAge",
-        "goalProgress",
-        "dailyAverage",
-        "weeklyAverage",
-        "monthlyAverage",
+        ScaleMetricKeys.BMI,
+        ScaleMetricKeys.BODY_FAT_PERCENT,
+        ScaleMetricKeys.MUSCLE_PERCENT,
+        ScaleMetricKeys.BODY_WATER_PERCENT,
+        ScaleMetricKeys.HEART_RATE,
+        ScaleMetricKeys.BONE_PERCENT,
+        ScaleMetricKeys.VISCERAL_FAT_LEVEL,
+        ScaleMetricKeys.SUBCUTANEOUS_FAT_PERCENT,
+        ScaleMetricKeys.PROTEIN_PERCENT,
+        ScaleMetricKeys.SKELETAL_MUSCLE_PERCENT,
+        ScaleMetricKeys.BMR,
+        ScaleMetricKeys.METABOLIC_AGE,
+        ScaleMetricKeys.GOAL_PROGRESS,
+        ScaleMetricKeys.DAILY_AVERAGE,
+        ScaleMetricKeys.WEEKLY_AVERAGE,
+        ScaleMetricKeys.MONTHLY_AVERAGE,
       ),
       onMetricsChanged = { enabledKeys ->
         println("Enabled metrics: $enabledKeys")
