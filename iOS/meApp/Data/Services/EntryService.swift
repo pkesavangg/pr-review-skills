@@ -376,31 +376,34 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         let calendar = Calendar.current
 
-        // Extract unique days
-        let uniqueDays: [Date] = Array(
-            Set(entries.map { DateTimeTools.getLocalDateStringFromUTCDate($0.entryTimestamp) })
-        )
-        .compactMap { DateTimeTools.getDateFromDateString($0, format: "yyyy-MM-dd") }
-        .sorted(by: >)
+        // Extract unique calendar days (start-of-day in local timezone) so comparisons are consistent
+        let uniqueDayStrings = Set(entries.map { DateTimeTools.getLocalDateStringFromUTCDate($0.entryTimestamp) })
+        let uniqueDays: [Date] = uniqueDayStrings
+            .compactMap { DateTimeTools.getDateFromDateString($0, format: "yyyy-MM-dd") }
+            .map { calendar.startOfDay(for: $0) }
+            .sorted(by: >)
 
         guard !uniqueDays.isEmpty else { return Streak(current: 0, max: 0) }
+
+        let todayStart = calendar.startOfDay(for: Date())
+        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)!
 
         func isSameDay(_ a: Date, _ b: Date) -> Bool { calendar.isDate(a, inSameDayAs: b) }
 
         var currentStreak = 0
-        var dateToCheck = Date()
+        var dateToCheck: Date
 
-        if let first = uniqueDays.first, isSameDay(first, dateToCheck) {
+        if let first = uniqueDays.first, isSameDay(first, todayStart) {
             currentStreak = 1
-            dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
-        } else if let first = uniqueDays.first,
-                  isSameDay(first, calendar.date(byAdding: .day, value: -1, to: dateToCheck)!) {
+            dateToCheck = yesterdayStart
+        } else if let first = uniqueDays.first, isSameDay(first, yesterdayStart) {
             currentStreak = 1
-            dateToCheck = calendar.date(byAdding: .day, value: -1, to: dateToCheck)!
+            dateToCheck = calendar.date(byAdding: .day, value: -1, to: yesterdayStart)!
         } else {
-            return Streak(current: 0, max: Self.computeLongestStreak(from: uniqueDays.sorted()))
+            return Streak(current: 0, max: Self.computeLongestStreak(from: uniqueDays.sorted(), calendar: calendar))
         }
 
+        // Walk backward: for each consecutive day in uniqueDays (newest to oldest), count while it matches dateToCheck
         for day in uniqueDays.dropFirst() {
             if isSameDay(day, dateToCheck) {
                 currentStreak += 1
@@ -410,13 +413,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         }
 
-        let longestStreak = Self.computeLongestStreak(from: uniqueDays.sorted())
+        let longestStreak = Self.computeLongestStreak(from: uniqueDays.sorted(), calendar: calendar)
         return Streak(current: currentStreak, max: longestStreak)
     }
 
-    private static func computeLongestStreak(from days: [Date]) -> Int {
+    private static func computeLongestStreak(from days: [Date], calendar: Calendar = .current) -> Int {
         guard !days.isEmpty else { return 0 }
-        let calendar = Calendar.current
         var longest = 1
         var current = 1
 
