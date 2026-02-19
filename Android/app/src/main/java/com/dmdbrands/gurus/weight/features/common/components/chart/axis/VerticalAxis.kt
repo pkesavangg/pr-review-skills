@@ -1,10 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.axis
 
-import androidx.compose.animation.core.EaseInOut
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,9 +22,9 @@ import kotlin.math.roundToInt
 import android.graphics.Typeface
 
 @Composable
-fun startAxis(segment: GraphSegment) = VerticalAxis.rememberStart(
+fun startAxis(segment: GraphSegment, isSingleWindow: Boolean) = VerticalAxis.rememberStart(
   label = null,
-  size = if (segment == GraphSegment.TOTAL) BaseAxis.Size.fixed(8.dp) else BaseAxis.Size.scroll(
+  size = if (segment == GraphSegment.TOTAL || isSingleWindow) BaseAxis.Size.fixed(8.dp) else BaseAxis.Size.scroll(
     8.dp,
     isLabelsScrollable = true,
   ),
@@ -37,6 +33,7 @@ fun startAxis(segment: GraphSegment) = VerticalAxis.rememberStart(
     thickness = 1.dp,
   ),
   guideline = null,
+  tick = null,
   tickLength = 0.dp,
 )
 
@@ -49,22 +46,17 @@ fun endAxis(
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
 
-  val animatedStep = if (yStep != null) animateIntAsState(
-    targetValue = yStep.roundToInt(),
-    animationSpec = tween(durationMillis = 250, delayMillis = 0, easing = EaseInOut),
-    label = "animatedStep",
-  ) else null
+  // Vico requires step > 0; pass actual Double step (yStep.roundToInt() would be 0 for small steps e.g. 0.2)
+  val stepForPlacer = (yStep?.takeIf { it > 0 } ?: 1.0)
 
   return VerticalAxis.rememberEnd(
     valueFormatter = CartesianValueFormatter { _, value, _ ->
       if (isEmptyGraph && markerDecoration == null) " " else
         value.roundToInt().toString()
     },
-    itemPlacer = remember(animatedStep?.value) {
-      VerticalAxis.ItemPlacer.step(
-        { animatedStep?.value?.toDouble() },
-      )
-    },
+    itemPlacer = VerticalAxis.ItemPlacer.step(
+      { stepForPlacer },
+    ),
     size = BaseAxis.Size.scroll(50.dp),
     line =
       rememberAxisLineComponent(

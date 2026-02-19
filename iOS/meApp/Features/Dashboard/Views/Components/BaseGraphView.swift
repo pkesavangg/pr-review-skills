@@ -167,6 +167,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                 .chartYAxis { yAxisMarks }
                 .chartLegend(.hidden)
                 .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
+
                 .transaction { t in
                     // Disable ALL animations during scroll and scroll-end transition
                     if viewModel.isScrolling || isInScrollEndTransition {
@@ -295,7 +296,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             // Refresh data and invalidate caches
             viewModel.refreshData()
             viewModel.invalidateCache()
-
+            viewModel.invalidateXAxisCache()
             // Update local cache since data changed
             DispatchQueue.main.async {
                 self.updateCachedChartData()
@@ -451,32 +452,62 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
             let point = plottedPoint.original
             let xDate = plottedPoint.xDate  // Use precomputed
 
+            // Clamp value to the Y-axis domain so marks never overflow outside
+            // the plot area into the x-axis region during domain transitions.
+            let domainLower = viewModel.yAxisDomain.lowerBound
+            let domainUpper = viewModel.yAxisDomain.upperBound
+            let clampedValue = min(max(point.value, domainLower), domainUpper)
+            let isWithinDomain = point.value >= domainLower && point.value <= domainUpper
+
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
 
-            // Line mark
+            // Check if point is outside the active month interval (should be greyed out)
+            let isOutsideMonthInterval = isPointOutsideActiveMonth(date: point.date)
+
+            // Line color stays consistent (SwiftUI Charts applies color to entire interpolated line)
+            let lineColor = point.series == DashboardStrings.weight
+                ? theme.actionPrimary
+                : theme.actionSecondary
+
+            // Point color is greyed out if outside the active month
+            let pointColor = point.series == DashboardStrings.weight
+                ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
+                : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
+
+            // Line mark — uses clamped value so the line stops at the domain boundary
             LineMark(
                 x: .value("Date", xDate),
-                y: .value(point.series, point.value),
+                y: .value(point.series, clampedValue),
                 series: .value("Series", point.series)
             )
-            .foregroundStyle(point.series == DashboardStrings.weight
-                             ? theme.actionPrimary
-                             : theme.actionSecondary)
+            .foregroundStyle(lineColor)
             .interpolationMethod(.monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
-            // Visible point mark
+            // Visible point mark — only shown when within domain to avoid
+            // dots sitting on the axis boundary
             PointMark(
                 x: .value("Date", xDate),
-                y: .value(point.series, point.value)
+                y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
-            .symbolSize(viewModel.pointArea(isSelected: isThisPointSelected))
-            .foregroundStyle(point.series == DashboardStrings.weight
-                             ? theme.actionPrimary
-                             : theme.actionSecondary)
+            .symbolSize(isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
+            .foregroundStyle(pointColor)
         }
+    }
+
+    /// Checks if a point's date falls outside the active month interval.
+    /// Returns true only when in month period with a full month visible, not scrolling, and the point is outside that month.
+    private func isPointOutsideActiveMonth(date: Date) -> Bool {
+        // Don't grey out points while scrolling
+        guard !viewModel.isScrolling else { return false }
+
+        guard let monthInterval = dashboardStore.activeMonthInterval else {
+            return false
+        }
+        // Check if date is before month start or on/after month end
+        return date < monthInterval.start || date >= monthInterval.end
     }
 
     @ChartContentBuilder
@@ -531,7 +562,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     // MARK: - Goal Chip Callout
     @ViewBuilder
     private func goalChipCallout() -> some View {
-        if let goalWeight = viewModel.goalWeight {
+        if let goalWeight = viewModel.goalWeight, viewModel.chartFrame.height > 0 {
             let goalPosition = viewModel.getGoalChipPosition()
 
             goalWeightChip(goalWeight)
@@ -539,10 +570,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
                     x: viewModel.chartFrame.width > 0 ? viewModel.chartFrame.width - goalChipTrailingPadding : 320,
                     y: goalPosition.yPosition
                 )
-                .animation(
-                    viewModel.shouldAnimateChartData ? .easeOut(duration: 0.3) : .none,
-                    value: goalPosition.yPosition
-                )
+                .animation(coordinatedChartAnimation, value: goalPosition.yPosition)
+        } else {
+            EmptyView()
         }
     }
 
@@ -814,7 +844,7 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .chartXVisibleDomain(length: viewModel.visibleDomainLength *  1.05) // Add 5% extra length for trailing padding
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength)
                 // When there are no operations (empty-state), explicitly pin the
                 // X-axis domain to the current period tick range so labels render
                 // left-to-right (sun → mon → … → sat for week).
@@ -822,44 +852,75 @@ extension View {
                 .chartScrollableAxes(.horizontal)
                 .chartScrollPosition(x: Binding(
                     get: {
-                        let pos = viewModel.scrollPosition
-                        return pos
+                        viewModel.scrollPosition
                     },
                     set: { (newPosition: Date?) in
                         guard let newPosition = newPosition else { return }
-                        
-                        // Apply boundary clamping to prevent over-scrolling
-                        let clampedPosition: Date
-                        if let bounds = dashboardStore.dataManager.getDateBounds(for: viewModel.timePeriod) {
-                            clampedPosition = dashboardStore.graphManager.clampScrollPosition(
-                                newPosition,
-                                for: viewModel.timePeriod,
-                                minDate: bounds.min,
-                                maxDate: bounds.max
-                            )
-                        } else {
-                            clampedPosition = newPosition
-                        }
-                        
-                        // Debounce scroll position updates to prevent multiple updates per frame
-                        DispatchQueue.main.async {
-                            viewModel.handleScrollPositionChange(clampedPosition)
-                        }
+                        // Throttling is handled in handleScrollPositionChange
+                        viewModel.handleScrollPositionChange(newPosition)
                     }
                 ))
                 .chartXAxis {
                     let allTicks = viewModel.xAxisValues
                     let nonLastTicks = Array(allTicks.dropLast())
+                    let gridTicks: [Date] = {
+                        guard viewModel.timePeriod == .month, !nonLastTicks.isEmpty else {
+                            return nonLastTicks
+                        }
+                        let calendar = Calendar.current
+                        let sortedTicks = nonLastTicks.sorted()
+                        guard let firstTick = sortedTicks.first,
+                              let lastTick = sortedTicks.last else {
+                            return nonLastTicks
+                        }
+
+                        // Ensure month starts are always present as grid ticks so the solid
+                        // month-start line appears for every visible month.
+                        var monthStartTicks: [Date] = []
+                        var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
+                        while currentMonthStart <= lastTick {
+                            let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
+                            monthStartTicks.append(monthStartNoon)
+                            guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
+                            currentMonthStart = next
+                        }
+                        // Deduplicate by calendar day to avoid double lines when two ticks
+                        // represent the same day with different time components.
+                        let combined = nonLastTicks + monthStartTicks
+                        var uniqueByDay: [Date] = []
+                        var seenDays: Set<Date> = []
+                        for tick in combined.sorted() {
+                            let day = calendar.startOfDay(for: tick)
+                            if seenDays.insert(day).inserted {
+                                uniqueByDay.append(tick)
+                            }
+                        }
+                        return uniqueByDay
+                    }()
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
                     let adjustedLabelTicks: [Date] = allTicks
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
-                    AxisMarks(values: nonLastTicks) { value in
+                    AxisMarks(values: gridTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
                             // Solid line for start of week/month/year
                             AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
                                 .foregroundStyle(theme.statusIconSecondaryDisabled)
-                            AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
-                                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            // For month-start lines, show the tick below X-axis only when
+                            // the 1st day of month is also Sunday.
+                            if viewModel.timePeriod == .month {
+                                let calendar = Calendar.current
+                                let comps = calendar.dateComponents([.day, .weekday], from: date)
+                                let isMonthStartSunday = (comps.day == 1 && comps.weekday == 1)
+                                if isMonthStartSunday {
+                                    AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                        .foregroundStyle(theme.statusIconSecondaryDisabled)
+                                } else {
+                                    AxisTick().foregroundStyle(.clear)
+                                }
+                            } else {
+                                AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                    .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            }
                         } else {
                             // Default dotted line for other grid lines
                             AxisGridLine()
@@ -869,12 +930,27 @@ extension View {
 
                     // Labels for all tick values
                     AxisMarks(values: adjustedLabelTicks) { value in
+                        if viewModel.timePeriod == .month {
+                            // Hide default tick/gridline for month label marks so
+                            // month-start solid lines do not appear below the X-axis.
+                            AxisGridLine().foregroundStyle(.clear)
+                            AxisTick().foregroundStyle(.clear)
+                        }
                         AxisValueLabel {
                             if let date = value.as(Date.self),
                                let labelString = getCachedXAxisLabel(date) {
-                                Text(labelString)
-                                    .font(.caption)
-                                    .foregroundColor(theme.textSubheading)
+                                if viewModel.timePeriod == .month {
+                                    Text(labelString)
+                                        .font(.caption)
+                                        .foregroundColor(theme.textSubheading)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                        .padding(.horizontal, 2)
+                                        .background(theme.textInverse)
+                                } else {
+                                    Text(labelString)
+                                        .font(.caption)
+                                        .foregroundColor(theme.textSubheading)
+                                }
                             }
                         }
                     }
@@ -1058,36 +1134,33 @@ extension View {
 
     /// Returns the appropriate chart scroll target behavior based on the time period
     /// - Parameter period: The time period for the chart
-    /// - Returns: ChartScrollTargetBehavior configured for the specific period
-    func getChartScrollBehavior(for period: TimePeriod) -> some ChartScrollTargetBehavior {
+    /// - Returns: PagedChartScrollBehavior with paging support + date alignment
+    func getChartScrollBehavior(for period: TimePeriod) -> PagedChartScrollBehavior {
         switch period {
         case .week:
             // For week view: align to start of week (Sunday)
-            return .valueAligned(
-                matching: .init(hour: 12),
-                majorAlignment: .matching(.init(hour: 12, weekday: 1)), // Sunday = 1
-                limitBehavior: .automatic
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(hour: 6, weekday: 1) // Sunday = 1
             )
         case .month:
             // For month view: align to start of month (1st day)
-            return .valueAligned(
-                matching: .init(hour: 0),
-                majorAlignment: .matching(.init(day: 1)),
-                limitBehavior: .automatic
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(day: 31, hour: 12)
             )
         case .year:
-            // For year view: snap to any day at noon for finer-grained boundary handling
-            return .valueAligned(
-                matching: .init(hour: 12),
-                majorAlignment: .matching(.init(day: 1, hour: 12)),
-                limitBehavior: .automatic
+            // For year view: align strictly to month ticks (1st day, local noon)
+            // so snapping always lands on month grid lines (e.g., Oct 2025, Nov 2025).
+            return PagedChartScrollBehavior(
+                matching: DateComponents(day: 1, hour: 12),
+                majorAlignment: DateComponents(month: 1, day: 1, hour: 12)
             )
         case .total:
             // For total view: no specific alignment needed (non-scrollable)
-            return .valueAligned(
-                matching: .init(hour: 0),
-                majorAlignment: .matching(.init(hour: 0)),
-                limitBehavior: .automatic
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 0),
+                majorAlignment: DateComponents(hour: 0)
             )
         }
     }
@@ -1102,40 +1175,31 @@ extension View {
         if isScrollable {
             self
                 .onChange(of: dashboardStore.state.graph.xScrollPosition) { oldPosition, newPosition in
-                    // Debounce to prevent multiple updates per frame
-                    DispatchQueue.main.async {
-                        viewModel.updateScrollPosition(to: newPosition)
-                    }
+                    // Only sync if position actually changed (programmatic navigation)
+                    // Skip if viewModel already has this position to avoid redundant updates
+                    guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.1 else { return }
+                    viewModel.updateScrollPosition(to: newPosition)
                 }
                 .onChange(of: dashboardStore.state.graph.isScrolling) { oldValue, newValue in
-                    // Debounce to prevent multiple updates per frame
-                    DispatchQueue.main.async {
-                        viewModel.isScrolling = newValue
-                        // Immediately clear local selection when scrolling starts to remove crosshair and label
-                        if newValue {
-                            localSelectedXValue.wrappedValue = nil
-                            // Also clear the view model's selection state immediately
-                            viewModel.clearSelection()
-                        }
+                    viewModel.isScrolling = newValue
+                    // Immediately clear local selection when scrolling starts to remove crosshair and label
+                    if newValue {
+                        localSelectedXValue.wrappedValue = nil
+                        // Also clear the view model's selection state immediately
+                        viewModel.clearSelection()
                     }
                 }
                 .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
                     // Clear local selection when period changes (similar to scrolling behavior)
-                    DispatchQueue.main.async {
-                        localSelectedXValue.wrappedValue = nil
-                        viewModel.clearSelection()
-                    }
+                    localSelectedXValue.wrappedValue = nil
+                    viewModel.clearSelection()
                 }
             // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
                 .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
-                    DispatchQueue.main.async {
-                        viewModel.syncYAxisFromStore()
-                    }
+                    viewModel.syncYAxisFromStore()
                 }
                 .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
-                    DispatchQueue.main.async {
-                        viewModel.syncYAxisFromStore()
-                    }
+                    viewModel.syncYAxisFromStore()
                 }
         } else {
             self

@@ -24,6 +24,10 @@ protocol EntryRepositoryProtocol {
     /// - Parameter entry: The updated Entry object.
     func updateEntry(_ entry: Entry) async throws
 
+    /// Updates only the sync-related fields of an entry by its UUID string.
+    /// Use this instead of mutating @Model then calling updateEntry (R7/R9).
+    func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws
+
     /// Deletes an entry by its unique ID.
     /// - Parameter id: The ID of the entry to delete.
     func deleteEntry(byId id: String) async throws
@@ -91,6 +95,14 @@ protocol EntryRepositoryProtocol {
     ///   - entryTimestamp: The timestamp to check for.
     /// - Returns: True if the entry exists, false otherwise.
     func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool
+
+    /// Fetches entries and returns DTOs with all relationship data extracted on a background thread.
+    /// Use this instead of fetchEntries when you only need to read entry data to avoid main thread blocking.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - operationType: Optional operation type filter.
+    /// - Returns: An array of BathScaleOperationDTO objects.
+    func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO]
 
     // MARK: - Sync
 

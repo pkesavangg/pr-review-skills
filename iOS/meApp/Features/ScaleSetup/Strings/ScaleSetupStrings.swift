@@ -11,13 +11,19 @@ struct ScaleSetupStrings {
     static let troubleSettingUp = "If you're having trouble setting up your scale, press the help button in the top right to connect with our team."
     static let getScaleMacAddress = "Get your scale's MAC address"
     static let setupHeader: (String) -> String = { sku in
-        "Scale Setup - \(sku)"
+        // Map SKU for display (e.g., 0022 -> 0383) for UI
+        let displaySku = DeviceHelper.mapSkuForDisplay(sku)
+        return "Scale Setup - \(displaySku)"
     }
     static let modelTitle: (String) -> String = { sku in
-        "Model \(sku)"
+        // Map SKU for display (e.g., 0022 -> 0383) for UI
+        let displaySku = DeviceHelper.mapSkuForDisplay(sku)
+        return "Model \(displaySku)"
     }
     static let wakeYourScaleTitle = "Wake Your Scale"
     static let wakeYourScaleSubtitle = "Give it a little tap, so your phone can find it."
+    /// Subtitle for LCBT (A6) scales - user should step on the scale
+    static let wakeYourScaleSubtitleLCBT = "Step on the scale, so your phone can find it."
     static let gatheringNetworksTitle = "Gathering Networks"
     static let connectingToBluetooth = "Connecting to Bluetooth"
     static let connectedToBluetooth = "Connected to Bluetooth"

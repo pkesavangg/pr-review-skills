@@ -143,17 +143,17 @@ private fun DashboardScreenContent(
 
       GraphPagerView(
         state = state,
-        onSegmentChange = {
-          handleIntent(DashboardIntent.SetSelectedSegment(it))
+        onSegmentChange = { segment, anchorTimestamp ->
+          handleIntent(DashboardIntent.SetSelectedSegment(segment, anchorTimestamp))
+        },
+        onChartConsuming = {
+          handleIntent(DashboardIntent.SetIsChartConsuming(it))
         },
         onSelected = {
           handleIntent(DashboardIntent.SetData(it))
         },
         onPagerStateChange = { pagerState ->
           handleIntent(DashboardIntent.SetPagerState(pagerState))
-        },
-        onScrollTargetChange = { scrollTarget ->
-          handleIntent(DashboardIntent.SetScrollTarget(scrollTarget))
         },
         onRangeChange = {
           rangeText = it
@@ -168,7 +168,7 @@ private fun DashboardScreenContent(
         Column(
           modifier = Modifier.fillMaxSize(),
           verticalArrangement = Arrangement.Center,
-          horizontalAlignment = Alignment.CenterHorizontally
+          horizontalAlignment = Alignment.CenterHorizontally,
         ) {
           EmptyMetric(
             onConnectScaleClick = {

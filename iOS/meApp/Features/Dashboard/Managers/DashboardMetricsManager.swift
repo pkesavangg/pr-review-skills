@@ -130,6 +130,42 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             }
             updateDashboardType(dashboardType)
             
+            // If metrics exist locally, update from API only when data has changed
+           // Preserve local state during in-flow navigation
+            if !state.metrics.isEmpty {
+                if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
+                    let apiMetricArray = dashboardMetrics.split(separator: ",").map(String.init)
+                    let localMetricLabels = state.metrics.prefix(state.activeMetricsCount).map { $0.label }
+                    
+                    // Map local labels to API format for comparison
+                    let localApiMetrics = localMetricLabels.compactMap { displayLabel -> String? in
+                        switch displayLabel {
+                        case DashboardStrings.bmi: return "bmi"
+                        case DashboardStrings.bodyFat: return "bodyFat"
+                        case DashboardStrings.muscle: return "muscleMass"
+                        case DashboardStrings.water: return "water"
+                        case DashboardStrings.heartBpm: return "pulse"
+                        case DashboardStrings.bone: return "boneMass"
+                        case DashboardStrings.visceralFat: return "visceralFatLevel"
+                        case DashboardStrings.subFat: return "subcutaneousFatPercent"
+                        case DashboardStrings.protein: return "proteinPercent"
+                        case DashboardStrings.skelMuscle: return "skeletalMusclePercent"
+                        case DashboardStrings.bmrKcal: return "bmr"
+                        case DashboardStrings.metAge: return "metabolicAge"
+                        default: return nil
+                        }
+                    }
+                    
+                    // If API metrics differ from local, update from API (changes were saved)
+                    if localApiMetrics != apiMetricArray {
+                        logger.log(level: .info, tag: "DashboardMetricsManager", message: "API metrics differ from local, updating from API after save")
+                        updateMetricsOrder(from: apiMetricArray)
+                        return
+                    }
+                }
+                return
+            }
+            
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
                 updateMetricsOrder(from: metricArray)
@@ -210,6 +246,27 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             state.activeMetricsCount -= 1
         }
     }
+    
+    /// Synchronous version for immediate UI updates (used when already on MainActor)
+    func toggleMetricVisibilitySync(at index: Int) throws {
+        guard index < state.metrics.count else {
+            throw DashboardError.invalidMetricData("Invalid metric index: \(index)")
+        }
+        
+        let metric = state.metrics[index]
+        let isCurrentlyRemoved = index >= state.activeMetricsCount
+        
+        state.metrics.remove(at: index)
+        
+        if isCurrentlyRemoved {
+            // Add back to active section
+            state.metrics.insert(metric, at: state.activeMetricsCount)
+            state.activeMetricsCount += 1
+        } else {
+            state.metrics.append(metric)
+            state.activeMetricsCount -= 1
+        }
+    }
 
     func reorderMetrics(from source: IndexSet, to destination: Int) async throws {
         state.metrics.move(fromOffsets: source, toOffset: destination)
@@ -273,8 +330,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             DashboardStrings.water
         ]
 
+        let effectiveRemoved = removedMetrics.isEmpty ? getRemovedMetricLabels() : removedMetrics
         if isEditMode {
-            let effectiveRemoved = removedMetrics.isEmpty ? getRemovedMetricLabels() : removedMetrics
             // In edit mode, show all metrics (both removed and non-removed) so users can manage them
             // Non-removed metrics first, then removed metrics
             let nonRemovedMetrics = state.metrics.filter { !effectiveRemoved.contains($0.label) }
@@ -282,7 +339,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             return nonRemovedMetrics + removedMetricsArray
         } else {
             // In non-edit mode, only show non-removed metrics
-            let allUnremovedMetrics = state.metrics.filter { !removedMetrics.contains($0.label) }
+            let allUnremovedMetrics = state.metrics.filter { !effectiveRemoved.contains($0.label) }
             
             switch dashboardType {
             case .dashboard4:
@@ -557,18 +614,20 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             isSynced: true
         )
 
-        let bmiMetric = state.metrics.first(where: { $0.label == DashboardStrings.bmi })
-        let bodyFatMetric = state.metrics.first(where: { $0.label == DashboardStrings.bodyFat })
-        let muscleMetric = state.metrics.first(where: { $0.label == DashboardStrings.muscle })
-        let waterMetric = state.metrics.first(where: { $0.label == DashboardStrings.water })
-        let heartBpmMetric = state.metrics.first(where: { $0.label == DashboardStrings.heartBpm })
-        let boneMetric = state.metrics.first(where: { $0.label == DashboardStrings.bone })
-        let visceralFatMetric = state.metrics.first(where: { $0.label == DashboardStrings.visceralFat })
-        let subFatMetric = state.metrics.first(where: { $0.label == DashboardStrings.subFat })
-        let proteinMetric = state.metrics.first(where: { $0.label == DashboardStrings.protein })
-        let skelMuscleMetric = state.metrics.first(where: { $0.label == DashboardStrings.skelMuscle })
-        let bmrMetric = state.metrics.first(where: { $0.label == DashboardStrings.bmrKcal })
-        let metAgeMetric = state.metrics.first(where: { $0.label == DashboardStrings.metAge })
+        // Use dictionary for O(1) lookups instead of 12x O(n) .first(where:) calls
+        let metricsByLabel = Dictionary(uniqueKeysWithValues: state.metrics.map { ($0.label, $0) })
+        let bmiMetric = metricsByLabel[DashboardStrings.bmi]
+        let bodyFatMetric = metricsByLabel[DashboardStrings.bodyFat]
+        let muscleMetric = metricsByLabel[DashboardStrings.muscle]
+        let waterMetric = metricsByLabel[DashboardStrings.water]
+        let heartBpmMetric = metricsByLabel[DashboardStrings.heartBpm]
+        let boneMetric = metricsByLabel[DashboardStrings.bone]
+        let visceralFatMetric = metricsByLabel[DashboardStrings.visceralFat]
+        let subFatMetric = metricsByLabel[DashboardStrings.subFat]
+        let proteinMetric = metricsByLabel[DashboardStrings.protein]
+        let skelMuscleMetric = metricsByLabel[DashboardStrings.skelMuscle]
+        let bmrMetric = metricsByLabel[DashboardStrings.bmrKcal]
+        let metAgeMetric = metricsByLabel[DashboardStrings.metAge]
 
         // Convert display values back to stored values
         let bmiValue = parseDisplayInt(bmiMetric?.value)
@@ -762,83 +821,45 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             return cached
         }
         do {
-            let allEntries = try await entryService.getAllEntries()
-            // Extract entry IDs and refetch on main actor to safely access SwiftData properties
-            let entryIds = allEntries.map { $0.id }
-            let repository = EntryRepository()
-            let refetchedEntries = try await repository.refetchEntriesOnMainActor(entryIds: entryIds)
-            
-            // Extract all SwiftData values on main actor before doing computation
-            let extractedData = await MainActor.run {
-                refetchedEntries.values.map { entry -> (timestamp: String, values: [String: Double?]) in
-                    // Use toOperationDTO() to centralize extraction logic and avoid duplication
-                    let dto = entry.toOperationDTO()
-                    let values: [String: Double?] = [
-                        "bmi": dto.bmi,
-                        "bodyFat": dto.bodyFat,
-                        "muscleMass": dto.muscleMass,
-                        "water": dto.water,
-                        "pulse": dto.pulse,
-                        "boneMass": dto.boneMass,
-                        "visceralFat": dto.visceralFatLevel,
-                        "subFat": dto.subcutaneousFatPercent,
-                        "protein": dto.proteinPercent,
-                        "skelMuscle": dto.skeletalMusclePercent,
-                        "bmr": dto.bmr,
-                        "metabolicAge": dto.metabolicAge
-                    ]
-                    return (timestamp: entry.entryTimestamp, values: values)
-                }
-            }
-            
-            // Now compute fallback values in background task using extracted plain data
-            let computed = await Task.detached(priority: .utility) { () -> FallbackValues in
+            // Use getAllEntriesAsDTO() which does DTO conversion on background thread
+            // This avoids the 5+ second main thread hang from calling toOperationDTO() on 3660+ entries
+            let allDTOs = try await entryService.getAllEntriesAsDTO()
+
+            // Compute fallback values in background task using DTOs directly
+            let computed = await Task.detached(priority: .utility) { [allDTOs] () -> FallbackValues in
                 @inline(__always) func isValid(_ value: Double) -> Bool {
                     guard !value.isNaN && !value.isInfinite else { return false }
-                    if value >= 0 && value <= 100 { return true }
-                    if value >= 0 && value <= 300 { return true }
-                    if value >= 0 && value <= 50 { return true }
-                    if value >= 0 && value <= 10000 { return true }
-                    if value >= 0 && value <= 150 { return true }
                     return value >= 0
                 }
-                func latest(_ metricKey: String) -> (Double?, String?) {
+
+                // Find latest valid value for each metric from DTOs
+                func latestValue(_ extractor: (BathScaleOperationDTO) -> Double?) -> Double? {
                     var bestTs: String? = nil
                     var bestVal: Double? = nil
-                    for data in extractedData {
-                        guard let value = data.values[metricKey] else { continue }
-                        guard let doubleValue = value else { continue }
-                        if !isValid(doubleValue) { continue }
-                        let ts = data.timestamp
-                        if bestTs == nil || ts > bestTs! { bestTs = ts; bestVal = doubleValue }
+                    for dto in allDTOs {
+                        guard let value = extractor(dto), isValid(value) else { continue }
+                        guard let ts = dto.entryTimestamp else { continue }
+                        if bestTs == nil || ts > bestTs! {
+                            bestTs = ts
+                            bestVal = value
+                        }
                     }
-                    return (bestVal, bestTs)
+                    return bestVal
                 }
-                let bmi = latest("bmi").0
-                let bodyFat = latest("bodyFat").0
-                let muscleMass = latest("muscleMass").0
-                let water = latest("water").0
-                let pulse = latest("pulse").0
-                let boneMass = latest("boneMass").0
-                let visceralFat = latest("visceralFat").0
-                let subFat = latest("subFat").0
-                let protein = latest("protein").0
-                let skelMuscle = latest("skelMuscle").0
-                let bmrRaw = latest("bmr").0
-                let metabolicAge = latest("metabolicAge").0
+
                 return FallbackValues(
-                    bmi: bmi,
-                    bodyFat: bodyFat,
-                    muscleMass: muscleMass,
-                    water: water,
-                    pulse: pulse,
-                    boneMass: boneMass,
-                    visceralFat: visceralFat.map { $0 / 10.0 },
-                    subFat: subFat,
-                    protein: protein,
-                    skelMuscle: skelMuscle,
-                    bmr: bmrRaw.map { $0 / 10.0 },
-                    metabolicAge: metabolicAge
+                    bmi: latestValue { $0.bmi },
+                    bodyFat: latestValue { $0.bodyFat },
+                    muscleMass: latestValue { $0.muscleMass },
+                    water: latestValue { $0.water },
+                    pulse: latestValue { $0.pulse },
+                    boneMass: latestValue { $0.boneMass },
+                    visceralFat: latestValue { $0.visceralFatLevel }.map { $0 / 10.0 },
+                    subFat: latestValue { $0.subcutaneousFatPercent },
+                    protein: latestValue { $0.proteinPercent },
+                    skelMuscle: latestValue { $0.skeletalMusclePercent },
+                    bmr: latestValue { $0.bmr }.map { $0 / 10.0 },
+                    metabolicAge: latestValue { $0.metabolicAge }
                 )
             }.value
             cachedFallbackValues = computed

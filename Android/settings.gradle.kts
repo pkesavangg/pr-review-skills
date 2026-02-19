@@ -21,7 +21,7 @@ dependencyResolutionManagement {
         uri("https://maven.pkg.github.com/dmdbrands/ggBluetoothNativeLibrary")
       credentials {
         username = "Selva-GG"
-        password = "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"
+        password = "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"
       }
     }
     maven {
@@ -29,7 +29,7 @@ dependencyResolutionManagement {
         uri("https://maven.pkg.github.com/dmdbrands/vico")
       credentials {
         username = "Selva-GG"
-        password = "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"
+        password = "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"
       }
     }
   }

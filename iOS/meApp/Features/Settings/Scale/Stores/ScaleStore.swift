@@ -19,6 +19,7 @@ class ScaleStore: ObservableObject {
     @Injector private var scaleService: ScaleService
     @Injector private var bluetoothService: BluetoothService
     @Injector private var logger: LoggerService
+    @Injector private var permissionsService: PermissionsService
     
     @Published var scales: [Device] = []
     @Published var addScaleForm = AddScaleForm()    
@@ -71,10 +72,12 @@ class ScaleStore: ObservableObject {
     
     func updateSetupInProgressStatus(_ isInProgress: Bool) {
         self.bluetoothService.isSetupInProgress = isInProgress
+        if !isInProgress {
+            clearScaleDiscoveredInfo()
+        }
     }
     
     func clearScaleDiscoveredInfo() {
-        updateSetupInProgressStatus(false)
         bluetoothService.resumeSmartScan(clearOnlyPairing: false)
         Task {
             bluetoothService.syncDevices([])
@@ -84,6 +87,12 @@ class ScaleStore: ObservableObject {
     func determineConnectionStatus(for scale: Device) -> ScaleConnectionStatus {
         let st = ScaleTypeHelper.determineScaleType(for: scale)
         if st == .appsync { return .noStatus }
+        
+        // Check if Bluetooth is actually enabled - if not, scale cannot be connected
+        let isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+        if !isBluetoothOn {
+            return .notConnected
+        }
         
         // Only check for setupIncomplete if scale is actually connected
         guard scale.isConnected == true else {

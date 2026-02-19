@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -52,6 +54,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.rememberScroller
 
 @Composable
 fun CustomizeScaleSettings(
@@ -65,13 +68,14 @@ fun CustomizeScaleSettings(
 ) {
   val scope = rememberCoroutineScope()
   val pagerState = rememberPagerState(pageCount = { CustomizeSettings.entries.size })
+  val scrollState = rememberScrollState()
 
   // Initialize scale metrics with discovered scale's display metrics if available
   var scaleMetrics by remember { mutableStateOf(discoveredScale?.preferences?.displayMetrics ?: state.scaleMetrics) }
   var isAllBodyMetrics by remember { mutableStateOf(state.isAllBodyMetrics) }
   var isHeartRateOn by remember { mutableStateOf(state.isHeartRateOn) }
-  var visitedSteps: Set<CustomizeSettings> by remember { mutableStateOf(emptySet()) }
-  val hasSavedSettings = remember { mutableStateOf(false) }
+  // Initialize from state to preserve when returning from UPDATE_SETTINGS Try again
+  var visitedSteps by remember(state.visitedCustomizeSteps) { mutableStateOf(state.visitedCustomizeSteps) }
   val customizeSettings = remember(visitedSteps) {
     CustomizeSettingsList.map { it.copy(isVisited = visitedSteps.contains(it.step)) }
   }
@@ -83,6 +87,14 @@ fun CustomizeScaleSettings(
     mutableStateOf(state.dashboardKeys.filterIsInstance<DashboardKey.Milestone>())
   }
   var localUsername by remember { mutableStateOf(state.usernameForm.username.value) }
+  // Initialize hasSavedSettings from reducer state to preserve it when navigating back from error
+  val hasSavedSettings = remember { mutableStateOf(state.hasSavedSettings) }
+  // Sync reducer state to local state when navigating back from error (reducer state is true but local might be false)
+  LaunchedEffect(state.hasSavedSettings) {
+    if (state.hasSavedSettings && !hasSavedSettings.value) {
+      hasSavedSettings.value = true
+    }
+  }
   val keyboardController = LocalSoftwareKeyboardController.current
   val focusManager = LocalFocusManager.current
 
@@ -93,7 +105,7 @@ fun CustomizeScaleSettings(
       validators = listOf(
         FormValidations.required(),
         FormValidations.noWhiteSpace(),
-        FormValidations.maxLength(20,),
+        FormValidations.maxLength(20),
         FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
       ),
     )
@@ -144,7 +156,7 @@ fun CustomizeScaleSettings(
   HorizontalPagerWithBottomNavigation(
     modifier = Modifier
       .fillMaxSize()
-      .verticalScroll(rememberScrollState())
+      .verticalScroll(state = scrollState)
       .padding(vertical = spacing.md),
     steps = CustomizeSettings.entries,
     containerColor = MeTheme.colorScheme.secondaryBackground,
@@ -203,6 +215,7 @@ fun CustomizeScaleSettings(
               if (visitedSteps.isNotEmpty() && hasSavedSettings.value) {
                 val combinedDashboardKeys = (dashboardMetricKeys + dashboardMilestoneKeys).distinct()
                 onIntent(BtWifiScaleSetupIntent.SetHasSavedSettings(true))
+                onIntent(BtWifiScaleSetupIntent.Next)
                 onIntent(
                   BtWifiScaleSetupIntent.UpdateSettings(
                     dashboardKeys = combinedDashboardKeys,
@@ -226,6 +239,8 @@ fun CustomizeScaleSettings(
             enabled = hasUnsavedChanges && (pagerState.currentPage != CustomizeSettings.SCALE_USERNAME.ordinal || localUsernameFormControl.isValueValid()),
             onClick = {
               hasSavedSettings.value = true
+              // Update reducer state immediately so it's preserved if navigation back occurs
+              onIntent(BtWifiScaleSetupIntent.SetHasSavedSettings(true))
               scope.launch {
 
                 when (pagerState.currentPage) {
@@ -282,6 +297,7 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.DASHBOARD_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.DASHBOARD_METRICS)
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout(
           title = CustomizeSettingsStrings.DashboardMetrics.Title,
           subtitle = CustomizeSettingsStrings.DashboardMetrics.Subtitle,
@@ -316,13 +332,14 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_METRICS -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_METRICS)
-
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleDisplayMetrics.Title,
           subtitle = CustomizeSettingsStrings.ScaleDisplayMetrics.Subtitle,
         ) {
           ScaleMetricsSettingScreen(
             currentMetrics = scaleMetrics,
+            scrollState = scrollState,
             onMetricsChanged = { metrics ->
               // Only update local state, don't update reducer state until save
               updatedPreference = updatedPreference.copy(displayMetrics = metrics)
@@ -334,7 +351,7 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_MODE -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_MODE)
-
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout(
           title = CustomizeSettingsStrings.ScaleMode.Title,
         ) {
@@ -358,6 +375,7 @@ fun CustomizeScaleSettings(
 
       CustomizeSettings.SCALE_USERNAME -> {
         visitedSteps = visitedSteps + (CustomizeSettings.SCALE_USERNAME)
+        onIntent(BtWifiScaleSetupIntent.SetVisitedCustomizeSteps(visitedSteps))
         CustomizationLayout {
           SetupForm(
             formControl = localUsernameFormControl,

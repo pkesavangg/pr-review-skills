@@ -28,7 +28,7 @@ object ScaleSetupStrings {
       "If you exit early, you may not be able to access some features until set up."
     else "The scale will not be connected."
 
-    const val Back = "Back"
+    const val GoBack = "Go Back"
     const val Exit = "Exit"
     const val Return = "Return"
   }
@@ -79,7 +79,7 @@ object ScaleSetupStrings {
     const val Title = "Are you sure you want to skip Wi-Fi?"
     const val Message = "After setup, find additional Wi-Fi settings or the MAC Address via scale settings."
     const val Skip = "SKIP"
-    const val Back = "Go Back"
+    const val Back = "Back"
   }
 
   object PermissionAlerts {

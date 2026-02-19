@@ -148,6 +148,7 @@ struct DisplayMetricsScreen: View {
                     statusText: viewModel.isWeightOnlyModeOn ? commonLang.on.uppercased() : commonLang.off.uppercased()
                 )
                 .fontWeight(.regular)
+                Spacer()
                 ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
                     router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
                 })

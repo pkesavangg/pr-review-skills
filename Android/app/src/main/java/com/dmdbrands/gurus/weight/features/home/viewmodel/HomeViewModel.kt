@@ -15,9 +15,10 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
+import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
@@ -37,6 +38,7 @@ import com.greatergoods.libs.appsync.model.AppSyncResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -56,7 +58,8 @@ constructor(
   private val feedService: IFeedService,
   private val accountFlagService: AccountFlagService,
   private val appReviewManager: AppReviewManager,
-  private val ggInAppMessagingService: IInAppMessagingService
+  private val ggInAppMessagingService: IInAppMessagingService,
+  private val healthConnectService: IHealthConnectService,
 ) : BaseIntentViewModel<HomeState, HomeIntent>(HomeReducer()) {
   private val TAG = "HomeViewModel"
   override fun provideInitialState(): HomeState = HomeState()
@@ -68,6 +71,7 @@ constructor(
     subscribeToWeightOnlyModeEvents()
     subscribeToWeightOnlyModeAlertDismissed()
     observeFeedIndicator()
+    checkHealthConnectPermission()
     viewModelScope.launch {
       ggInAppMessagingService.setAccountId(accountService.activeAccount.first()?.id ?: "")
       val isModalTriggered = feedService.checkAndTriggerFeedModal()
@@ -75,6 +79,26 @@ constructor(
         checkAccountFlags("login")
       }
     }
+  }
+
+  /**
+   * Checks Health Connect permission with a short delay so the home screen is visible first.
+   * Shows the Health Connect popup from here when permission is disabled.
+   */
+  private fun checkHealthConnectPermission() {
+    viewModelScope.launch {
+      try {
+        delay(HEALTH_CONNECT_CHECK_DELAY_MS)
+        healthConnectService.checkHealthConnectPermissionDisabled()
+        AppLog.d(TAG, "Health Connect permission check completed")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to check Health Connect permission", e)
+      }
+    }
+  }
+
+  companion object {
+    private const val HEALTH_CONNECT_CHECK_DELAY_MS = 1000L
   }
 
   override fun handleIntent(intent: HomeIntent) {
@@ -113,7 +137,7 @@ constructor(
     viewModelScope.launch {
       deviceService.pairedScales.collect { savedScales ->
         val hasAppSyncScales = savedScales.any { savedScale ->
-          val scaleInfo = SCALES.find { it.sku == savedScale.sku }
+          val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
           scaleInfo?.setupType == ScaleSetupType.AppSync
         } && savedScales.isNotEmpty()
 

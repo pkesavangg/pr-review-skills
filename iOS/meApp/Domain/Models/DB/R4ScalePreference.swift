@@ -73,10 +73,11 @@ final class R4ScalePreference {
             shouldMeasurePulse: self.shouldMeasurePulse,
             timeFormat: self.timeFormat,
             tzOffset: self.tzOffset,
-            wifiFotaScheduleTime: self.wifiFotaScheduleTime
+            wifiFotaScheduleTime: self.wifiFotaScheduleTime,
+            isSynced: self.isSynced
         )
     }
 }
 
-/// Marked @unchecked Sendable due to SwiftData’s built-in thread safety, allowing async/concurrent use.
-extension R4ScalePreference: @unchecked Sendable {}
+// NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
+// Use PersistentIdentifier to pass references between contexts.

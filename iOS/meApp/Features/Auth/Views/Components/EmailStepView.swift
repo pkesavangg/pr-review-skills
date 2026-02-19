@@ -51,6 +51,9 @@ struct EmailStepView: View {
             Spacer()
         }
         .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
+        .onTapGesture {
+            hideKeyboard()
+        }
     }
 }
 

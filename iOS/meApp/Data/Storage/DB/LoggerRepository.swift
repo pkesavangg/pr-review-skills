@@ -25,9 +25,33 @@ final class LoggerRepository: LoggerRepositoryProtocol {
     }
 
     func saveLogEntry(_ entry: LogEntry) async {
-        modelContext.insert(entry)
+        // Extract all data before crossing actor boundary
+        let id = entry.id
+        let accountId = entry.accountId
+        let sessionId = entry.sessionId
+        let tag = entry.tag
+        let tagId = entry.tagId
+        let type = entry.type
+        let message = entry.message
+        let timestamp = entry.timestamp
+        let data = entry.data
+
         do {
-            try modelContext.save()
+            try await performBackgroundTask { ctx in
+                let newEntry = LogEntry(
+                    id: id,
+                    accountId: accountId,
+                    sessionId: sessionId,
+                    tag: tag,
+                    tagId: tagId,
+                    type: type,
+                    message: message,
+                    timestamp: timestamp,
+                    data: data
+                )
+                ctx.insert(newEntry)
+                try ctx.save()
+            }
         } catch {
             print("LoggerRepository save failed: \(error.localizedDescription)")
         }

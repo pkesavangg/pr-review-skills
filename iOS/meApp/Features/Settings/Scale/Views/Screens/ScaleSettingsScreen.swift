@@ -81,12 +81,17 @@ struct ScaleSettingsScreen: View {
             )
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            scaleSettingsStore.refreshScaleData()
+        }
     }
     
     // MARK: - Sections as Functions
     private func scaleImageSection() -> some View {
+        // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let sku = scale.sku ?? ""
-        let imagePath = SCALES.first(where: { $0.sku == sku })?.imgPath ?? AppAssets.scale0412 // fallback
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        let imagePath = SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? AppAssets.scale0412 // fallback
         return Image(imagePath)
             .resizable()
             .scaledToFit()
@@ -240,7 +245,7 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.sku.uppercased(),
-                    value: scale.sku,
+                    value: DeviceHelper.mapSkuForDisplay(scale.sku ?? ""),
                     chevronType: .none
                 )
             )
@@ -255,7 +260,7 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.productGuide,
-                    onTap: { scaleSettingsStore.openProductGuide(for: scale.sku ?? "") }
+                    onTap: { scaleSettingsStore.openProductGuide(for: DeviceHelper.mapSkuForDisplay(scale.sku ?? "")) }
                 )
             )
         }

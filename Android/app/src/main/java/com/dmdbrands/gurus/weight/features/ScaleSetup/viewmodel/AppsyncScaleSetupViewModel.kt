@@ -188,9 +188,9 @@ constructor(
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
-          message = ScaleSetupStrings.ExitSetupAlert.Message(true),
+          message = ScaleSetupStrings.ExitSetupAlert.Message(false),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
           onConfirm = {
             AppLog.d(TAG, "User confirmed exit setup")
             navigateBack()

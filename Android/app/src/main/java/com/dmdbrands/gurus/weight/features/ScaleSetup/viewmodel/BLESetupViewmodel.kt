@@ -172,6 +172,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
             try {
               if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress) && ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value) {
                 AppLog.w(TAG, "Known scale discovered with MAC: ${ggDeviceDetail.macAddress}")
+                stopObservingDevices()
                 dialogQueueService.showDialog(
                   DialogModel.Alert(
                     title = "Known Scale Discovered",
@@ -471,7 +472,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
           title = ScaleSetupStrings.ExitSetupAlert.Title,
           message = ScaleSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
           onConfirm = {
             AppLog.d(TAG, "User confirmed exit setup")
             onExit(isSetupFinished)

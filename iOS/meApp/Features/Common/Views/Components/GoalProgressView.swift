@@ -100,6 +100,8 @@ struct GoalProgressView: View {
                 Text("\(unitFor(value: abs(viewModel.delta))) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
         .padding(.vertical, .spacingMD)

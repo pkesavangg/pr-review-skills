@@ -256,7 +256,7 @@ constructor(
               }
             }
 
-            WifiScaleSetupStep.STEP_ON -> {
+            WifiScaleSetupStep.STEP_ON, WifiScaleSetupStep.SCALE_COUNTS -> {
               handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
             }
 
@@ -364,7 +364,7 @@ constructor(
         title = ScaleSetupStrings.ExitSetupAlert.Title,
         message = ScaleSetupStrings.ExitSetupAlert.Message(isConnected),
         confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-        cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
+        cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
         onConfirm = {
           navigateBack()
         },

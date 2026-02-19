@@ -167,7 +167,10 @@ final class SignupStore: ObservableObject {
         case .email:
             isNextEnabled = signupForm.email.isValid
         case .password:
-            isNextEnabled = (signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid)
+            // Check individual field validations AND form-level password match validation
+            let fieldsValid = signupForm.password.isValid && signupForm.confirmPassword.isValid && signupForm.zipcode.isValid
+            let passwordsMatch = !signupForm.formErrors[.passwordMatch]
+            isNextEnabled = fieldsValid && passwordsMatch
         }
     }
     
@@ -212,9 +215,11 @@ final class SignupStore: ObservableObject {
         case .password:
             signupForm.password.markAsTouched()
             signupForm.password.validate()
+            signupForm.validate()
         case .confirmPassword:
             signupForm.confirmPassword.markAsTouched()
             signupForm.confirmPassword.validate()
+            signupForm.validate()
         case .zipCode:
             signupForm.zipcode.markAsTouched()
             signupForm.zipcode.validate()
@@ -350,7 +355,7 @@ final class SignupStore: ObservableObject {
             return Goal(
                 type: .maintain,
                 goalWeight: convert(target),
-                initialWeight: convert(target),
+                initialWeight: 0,
                 goalType: .maintain
             )
         } else {
@@ -397,6 +402,33 @@ final class SignupStore: ObservableObject {
                 self?.updateNextButtonState()
             }
             .store(in: &cancellables)
+        
+        // React to password-related changes only when we're on the password step
+        let passwordChanges = Publishers.CombineLatest(
+            signupForm.password.$value,
+            signupForm.confirmPassword.$value
+        )
+
+        passwordChanges
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _, _ in
+                self?.signupForm.validate()
+                
+                if self?.currentStep == .password {
+                    self?.updateNextButtonState()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Update button state when form errors change (password step only)
+        signupForm.$formErrors
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard self?.currentStep == .password else { return }
+                self?.updateNextButtonState()
+            }
+            .store(in: &cancellables)
+        
         // Observe useMetric changes
         signupForm.useMetric.$value
             .dropFirst()

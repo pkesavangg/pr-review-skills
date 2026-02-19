@@ -167,6 +167,7 @@ fun OpenWeightOnlyModePopup(
   ) {
     WeightOnlyModePopup(
       onEnable = onEnable,
+      onClose = onClose,
       onDismiss = onDismiss,
     )
   }

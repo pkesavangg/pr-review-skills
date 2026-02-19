@@ -24,14 +24,20 @@ import javax.inject.Inject
 
 interface GGCacheDevice
 
+/**
+ * Service for managing BLE device operations.
+ * Uses a dynamic getter for ggBluetooth to ensure it always uses the latest instance
+ * bound to the current Activity, preventing unregistered ActivityResultLauncher crashes.
+ */
 class GGDeviceService @Inject constructor(
-  ggBleService: GGBLEService
+  private val ggBleService: GGBLEService
 ) : GGScanService() {
-  override val ggBluetooth: GGBluetooth = ggBleService.ggBluetooth
-  override val deviceCallbackFlow: MutableStateFlow<GGScanResponse> =
-    ggBleService._deviceCallbackFlow
-  override val permissionCallBackFlow: MutableStateFlow<GGPermissionStatusMap> =
-    ggBleService._permissionCallbackFlow
+  override val ggBluetooth: GGBluetooth
+    get() = ggBleService.ggBluetooth
+  override val deviceCallbackFlow: MutableStateFlow<GGScanResponse>
+    get() = ggBleService._deviceCallbackFlow
+  override val permissionCallBackFlow: MutableStateFlow<GGPermissionStatusMap>
+    get() = ggBleService._permissionCallbackFlow
 
   // Generic StateFlow for device cache
   private val _deviceCache: MutableStateFlow<Map<String, GGCacheDevice>> = MutableStateFlow(emptyMap())

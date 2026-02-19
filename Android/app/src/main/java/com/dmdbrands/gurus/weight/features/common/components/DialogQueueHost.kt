@@ -85,6 +85,9 @@ fun DialogQueueHost(
                             dialog.onCancel?.invoke()
                             dialogQueueViewModel.dismissCurrent()
                         },
+                    dismissOnBackPress = ActionButton(dialog.cancelText) {
+                      dialog.onDismiss?.let { it() }
+                    },
                     properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
                 )
             }

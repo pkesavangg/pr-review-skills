@@ -60,15 +60,6 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             }
             .store(in: &cancellables)
         
-        ggIAMService
-            .promoCodeCopied
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] feedSettings in
-                guard let self = self else { return }
-                notificationService.showToast(ToastModel(message: "Promo Code Copied!"))
-            }
-            .store(in: &cancellables)
-        
         // Seed initial badge state for any late subscribers
         updateNotificationBadge()
     }
@@ -165,7 +156,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         let requiresMeta = !(actionType == .click || actionType == .read || actionType == .trigger)
         return FeedAction(
             action: actionType,
-            osType: requiresMeta ? "ios" : nil,
+            osType: requiresMeta ? "iOS" : nil,
             meta: requiresMeta ? FeedActionMeta(variationId: variationId) : nil
         )
     }

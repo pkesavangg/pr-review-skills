@@ -17,6 +17,7 @@ struct UIState {
     var hasInitializedChart: Bool = false
     var hasLoadedDashboardConfig: Bool = false // Flag to track when body metrics config is loaded from API
     var hasLoadedProgressMetrics: Bool = false // Flag to track when progress metrics (goal card + streaks) are loaded
+    var hasLoadedMetricValues: Bool = false // Flag to track when actual metric values are loaded (not placeholders)
     var loaderOverride: LoaderModel? = nil
     var alertData: AlertModel? = nil
     var isEditMode: Bool = false
@@ -95,6 +96,9 @@ struct GraphState {
     var selectedXValue: Date? = nil
     var chartHeight: CGFloat = 0
     var annotationHeight: CGFloat = 0
+
+    // Graph readiness state - false until initial computation settles
+    var isGraphReady: Bool = false
 
     // Scroll and interaction state
     var isScrolling: Bool = false

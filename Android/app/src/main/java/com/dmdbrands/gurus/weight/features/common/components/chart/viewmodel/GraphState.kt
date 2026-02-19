@@ -42,6 +42,7 @@ import java.util.Calendar
  * @property endRangeX End range for X-axis.
  * @property separators Period separators for the graph.
  * @property isEmpty Whether the graph has no data.
+ * @property isSingleWindow Whether the current visible range lies within a single segment window.
  * @property segment Current graph segment (WEEK, MONTH, etc.).
  * @property goal Current goal for reference.
  * @property graphLines Primary graph lines data.
@@ -63,6 +64,7 @@ data class GraphState(
   val markerIndex: Double? = null,
   val isUpdating: Boolean = false,
   val isLoading: Boolean = false,
+  val isSingleWindow: Boolean = false,
 ) : IReducer.State {
   val graphKey: Int = data.hashCode()
   val graphLines: List<GraphLine> = listOf(this.data.getWeightGraphPoints())

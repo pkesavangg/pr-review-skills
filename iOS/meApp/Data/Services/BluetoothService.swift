@@ -56,7 +56,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         showWeightOnlyModeAlertSubject.eraseToAnyPublisher()
     }
     /// Publisher for new entry events.
-    var newEntryReceivedPublisher: AnyPublisher<Entry, Never> {
+    /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
+    var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> {
         newEntryReceivedSubject.eraseToAnyPublisher()
     }
     /// Publisher for firmware update progress.
@@ -80,7 +81,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     // MARK: - Subjects for Scale Discovery
     private let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
-    private let newEntryReceivedSubject = PassthroughSubject<Entry, Never>()
+    private let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
     private let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
     private let showWeightOnlyModeAlertSubject = PassthroughSubject<Bool, Never>()
     private let firmwareUpdateProgressSubject = PassthroughSubject<FirmwareUpdateStatus, Never>()
@@ -97,6 +98,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private var lastProfileUpdateAccountId: String?
     private var isUpdatingR4Profile = false
     private var lastAccountId: String?
+    private var isSyncingPreferences = false  // Guard against concurrent preference syncs
+    private var weightOnlyModeAlertDebounceTask: Task<Void, Never>?  // Debounce task for weight-only mode alert check
 
     // MARK: - Dependencies
     private let accountService: AccountService
@@ -106,7 +109,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private let ggBleSDK = GGBluetoothSwiftPackage.shared
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let tag = "BluetoothService"
-
+    
+    // Generic actor to serialize SDK operations per device to prevent callback conflicts
+    // The SDK only maintains one completion handler per operation type at a time
+    private nonisolated let sdkOperationSerializer = SDKOperationSerializer()
 
     // MARK: - Alert Dependencies (injected via shared instances for now)
     private var notificationService: NotificationHelperService { NotificationHelperService.shared }
@@ -407,7 +413,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             ggDevice.userNumber = userNumber ?? 0
             let preference = GGDevicePreference(displayName: displayName)
             ggDevice.preference = preference
-            let result = await ggBleSDK.confirmPair(ggDevice)
+            
+            // Serialize confirmPair calls per device to prevent SDK callback conflicts
+            let result = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):confirmPair"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.confirmPair(ggDevice)
+                }
+            }
+            
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -425,7 +441,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let result = await ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
+            
+            // Serialize deleteUser calls per device to prevent SDK callback conflicts
+            let result = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):deleteUser"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
+                }
+            }
+            
             return .success(UserDeletionResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -534,9 +560,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - Returns: Result<String, BluetoothServiceError>
      */
     func getConnectedWifiSSID(broadcastId: String) async -> Result<String, BluetoothServiceError> {
-        let ggDevice = mapToGGBTDevice(broadcastId)
-        let ssid = await ggBleSDK.getConnectedWifiSSID(ggDevice)
-        return .success(ssid)
+        do {
+            let ggDevice = mapToGGBTDevice(broadcastId)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let ssid = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getConnectedWifiSSID(ggDevice)
+            }
+            return .success(ssid)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.timeout)
+        }
     }
 
     /**
@@ -548,7 +583,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let mac = await ggBleSDK.getWifiMacAddress(ggDevice)
+            // Add timeout to prevent continuation leaks if SDK callback never fires
+            let mac = try await withTimeout(seconds: 10) {
+                await self.ggBleSDK.getWifiMacAddress(ggDevice)
+            }
             return .success(mac)
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -703,6 +741,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     /**
      Updates account-specific preferences (display name, metrics, etc.) on the device.
+     Serializes calls per device to prevent SDK callback conflicts when multiple calls happen concurrently.
      - Returns: Result<UserCreationResponse, BluetoothServiceError>
      */
     func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> {
@@ -711,7 +750,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             ggDevice.preference = mapToGGPreference(deviceId: device.id, preference: preference)
-            let result = await ggBleSDK.updateAccount(ggDevice)
+            
+            // Serialize updateAccount calls per device to prevent SDK callback conflicts
+            // The SDK only maintains one completion handler at a time, so concurrent calls overwrite each other
+           let result = try await sdkOperationSerializer.execute(
+               operationKey: "\(device.id):updateAccount"
+           ) { @MainActor in
+               // Add timeout to prevent continuation leaks if SDK callback never fires
+               try await self.withTimeout(seconds: 10) {
+                   await self.ggBleSDK.updateAccount(ggDevice)
+               }
+           }
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -736,9 +785,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
 
-            // Add timeout to prevent continuation leaks if SDK callback never fires
-            let users = try await withTimeout(seconds: 10) {
-                await self.ggBleSDK.getUsers(ggDevice)
+            // Serialize getUsers calls per device to prevent SDK callback conflicts
+            let users = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):getUsers"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.getUsers(ggDevice)
+                }
             }
 
             let deviceUsers = users.user.map { user in
@@ -775,14 +829,19 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 throw BluetoothServiceError.invalidBroadcastId
             }
 
-            let details = try await withTimeout(seconds: 10) {
-               try await self.ggBleSDK.getDeviceInfo(ggDevice)
+            // Serialize getDeviceInfo calls per device to prevent SDK callback conflicts
+            let details = try await sdkOperationSerializer.execute(
+                operationKey: "\(device.id):getDeviceInfo"
+            ) { @MainActor in
+                // Add timeout to prevent continuation leaks if SDK callback never fires
+                try await self.withTimeout(seconds: 10) {
+                    await self.ggBleSDK.getDeviceInfo(ggDevice)
+                }
             }
-            if let deviceDetails = details {
-              return .success(DeviceInfo(sdk: deviceDetails))
-            } else {
-              return .failure(.deviceNotConnected)
+            guard let deviceDetails = details else {
+                return .failure(.deviceNotConnected)
             }
+            return .success(DeviceInfo(sdk: deviceDetails))
 
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -1093,6 +1152,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - disconnect: Whether to disconnect after deletion
      - Returns: Result indicating success or failure
      */
+    /// Deletes a user slot on the scale by broadcastId and token, without mutating any @Model object.
+    /// Public wrapper around deleteScaleByBroadcastId for safe use from ViewModels.
+    func deleteUserByToken(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
+        return await deleteScaleByBroadcastId(broadcastId: broadcastId, token: token, disconnect: disconnect)
+    }
+
     private func deleteScaleByBroadcastId(broadcastId: String, token: String, disconnect: Bool) async -> Result<UserDeletionResponse, BluetoothServiceError> {
         // Create a temporary device for the deletion
         let tempDevice = Device(
@@ -1199,12 +1264,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             await handleWifiStatusUpdate(scanData)
         case .DEVICE_INFO_UPDATE:
             await scaleService.updateConnectedDevices(device: scanData, isConnected: true)
-            let deviceDetails = data.data as! GGDeviceDetails
-            let deviceInfo = DeviceInfo(sdk: deviceDetails)
 
-            if let deviceDetails = data.data as? GGDeviceDetails {
-                await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
+            guard let deviceDetails = data.data as? GGDeviceDetails else {
+                logger.log(level: .error, tag: tag, message: "DEVICE_INFO_UPDATE: Failed to cast data to GGDeviceDetails")
+                return
             }
+            let deviceInfo = DeviceInfo(sdk: deviceDetails)
+            await updateWeightOnlyModeStatus(deviceDetails: deviceDetails, deviceInfo: deviceInfo)
 
             deviceInfoUpdatedSubject.send(deviceInfo)
             if !isWeightOnlyModeAlertDismissed {
@@ -1226,26 +1292,47 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
 
     private func checkCanShowWeightOnlyModeAlert() async {
-        // Get connected scales that have weight-only mode enabled by others
-        let connectedScales = bluetoothScales.filter { scale in
-            (scale.isConnected ?? false)
-        }
+        // Cancel any existing debounce task to ensure only the latest call executes
+        weightOnlyModeAlertDebounceTask?.cancel()
+        
+        // Create new debounce task with 500ms delay
+        let debounceTask = Task { @MainActor [weak self] in
+            // Wait 500ms before executing - this ensures we use the latest state
+            try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+            
+            // Check if task was cancelled (another call came in)
+            guard !Task.isCancelled, let self = self else { return }
+            
+            // Get connected scales that have weight-only mode enabled by others
+            // Read the latest state at execution time, not when task was created
+            let connectedScales = self.bluetoothScales.filter { scale in
+                (scale.isConnected ?? false)
+            }
 
-        var hasWeightOnlyModeEnabledByOthers = false
+            var hasWeightOnlyModeEnabledByOthers = false
 
-        // Check each connected scale for weight-only mode condition
-        for scale in connectedScales {
-            if let isWeightOnlyEnabled = scale.isWeighOnlyModeEnabledByOthers, isWeightOnlyEnabled {
-                hasWeightOnlyModeEnabledByOthers = true
-                break
+            // Check each connected scale for weight-only mode condition
+            for scale in connectedScales {
+                if let isWeightOnlyEnabled = scale.isWeighOnlyModeEnabledByOthers, isWeightOnlyEnabled {
+                    hasWeightOnlyModeEnabledByOthers = true
+                    break
+                }
+            }
+
+            // Only send the final value after debounce period
+            if hasWeightOnlyModeEnabledByOthers && !self.isWeightOnlyModeAlertDismissed {
+                self.showWeightOnlyModeAlertSubject.send(true)
+            } else {
+                self.showWeightOnlyModeAlertSubject.send(false)
             }
         }
-
-        if hasWeightOnlyModeEnabledByOthers && !isWeightOnlyModeAlertDismissed {
-            showWeightOnlyModeAlertSubject.send(true)
-        } else {
-            showWeightOnlyModeAlertSubject.send(false)
-        }
+        
+        // Store the task so it can be cancelled by subsequent calls
+        weightOnlyModeAlertDebounceTask = debounceTask
+        
+        // Await the task completion so callers know the check has been scheduled and will complete
+        // If cancelled by a subsequent call, this will return immediately
+        await debounceTask.value
     }
 
     public func handleWeightOnlyModeAlertDismissed() {
@@ -1258,6 +1345,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     ///   - scale: The scale device to sync preferences for
     ///   - deviceInfo: The current device info from the scale
     private func syncPreferencesIfNeeded(for scale: Device, deviceInfo: DeviceInfo) async {
+   // Prevent concurrent sync operations - check and set atomically
+        guard !isSyncingPreferences else {
+            return
+        }
+        isSyncingPreferences = true
+        defer { isSyncingPreferences = false }
+
         guard scale.isConnected == true,
               let preference = fetchAttachedPreference(by: scale.id)
         else {
@@ -1265,17 +1359,27 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
 
         let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
-        let hasImpedanceMismatch = preference.shouldMeasureImpedance && !impedanceSwitchState
-        let hasUnsyncedPreferences = preference.isSynced == false
+        let hasMismatch = preference.shouldMeasureImpedance != impedanceSwitchState
 
-        guard hasImpedanceMismatch || hasUnsyncedPreferences else {
+        // Sync if there's a mismatch (regardless of isSynced flag)
+        guard hasMismatch else {
             return
         }
-
         let broadcastId = scale.broadcastIdString ?? "unknown"
         switch await updateAccount(on: scale, preference: preference) {
         case .success:
             logger.log(level: .info, tag: tag, message: "Synced preference settings to scale \(broadcastId)")
+            // Mark preference as synced to avoid re-syncing
+            preference.isSynced = true
+            // Await the database update to ensure isSynced = true is persisted
+            // before isSyncingPreferences is reset (via defer)
+            await Task { @MainActor in
+                do {
+                    try await scaleService.updateScalePreference(scale.id, preference)
+                } catch {
+                    logger.log(level: .error, tag: tag, message: "Failed to update preference sync status: \(error)")
+                }
+            }.value
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to sync preference settings to scale \(broadcastId): \(error)")
         }
@@ -1295,8 +1399,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return
         }
 
-        // Calculate weight-only mode status using the specified condition
-        let impedanceSwitchState = deviceInfo.impedanceSwitchState ?? false
+        // Sync already happened in updateWeightOnlyModeStatusFromDeviceDetails
+        // Wait briefly for sync to complete and scale to update
+        try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 second delay
+        
+        // Get app preference
         let shouldMeasureImpedance: Bool = {
             if let pref = scale.r4ScalePreference {
                 if let fetched = fetchAttachedPreference(by: pref.id) { return fetched.shouldMeasureImpedance }
@@ -1304,7 +1411,19 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             return false
         }()
-        let isWeightOnlyModeEnabledByOthers = !impedanceSwitchState && shouldMeasureImpedance
+        
+        // Get fresh device info after sync to calculate weight-only mode status
+        let updatedDeviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
+        let finalImpedanceSwitchState: Bool
+        if case .success(let updatedInfo) = updatedDeviceInfoResult {
+            finalImpedanceSwitchState = updatedInfo.impedanceSwitchState ?? false
+        } else {
+            // Fallback: assume scale matches app preference after sync
+            finalImpedanceSwitchState = shouldMeasureImpedance
+        }
+        
+        // Calculate weight-only mode status: enabled by others if scale has Weight Only BUT app wants All Body Metrics
+        let isWeightOnlyModeEnabledByOthers = !finalImpedanceSwitchState && shouldMeasureImpedance
 
         // Update the scale's weight-only mode status
         scale.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
@@ -1314,9 +1433,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             broadcastId: broadcastId,
             isWeightOnlyModeEnabledByOthers: isWeightOnlyModeEnabledByOthers
         )
-
-        // Sync preference settings to scale if needed (impedance mismatch or unsynced preferences)
-        await syncPreferencesIfNeeded(for: scale, deviceInfo: deviceInfo)
 
         logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for scale \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
     }
@@ -1335,11 +1451,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return
         }
 
-        // For connection events, we need to get device info to calculate weight-only mode status
-        // Since we don't have full DeviceInfo here, we'll get it from the scale
+        // Get device info and sync preferences FIRST before calculating status
+        // This prevents the scale from briefly showing the wrong mode
         let deviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
+            // Sync immediately to update scale mode before calculating status
+            await syncPreferencesIfNeeded(for: scale, deviceInfo: deviceInfo)
+            // Then update weight-only mode status with synced state
             await updateWeightOnlyModeStatus(deviceDetails: deviceDetails, deviceInfo: deviceInfo)
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to get device info for weight-only mode calculation: \(error)")
@@ -1490,7 +1609,9 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 return
             }
             try? await entryService.saveNewEntry(entry)
-            newEntryReceivedSubject.send(entry)
+            // Create notification to safely pass entry data across actor boundaries
+            let notification = EntryNotification(from: entry)
+            newEntryReceivedSubject.send(notification)
         } else if let entryList = entriesData as? GGEntryList {
             // Handle multiple entries
             let entries = entryList.list.compactMap { convertGGEntry($0) }
@@ -1502,11 +1623,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 try? await entryService.saveNewEntry(entry)
             }
             if !entries.isEmpty {
-                newEntryReceivedSubject.send(entries[0])
+                // Create notification to safely pass entry data across actor boundaries
+                let notification = EntryNotification(from: entries[0])
+                newEntryReceivedSubject.send(notification)
             }
         }
     }
-
     private func convertGGEntry(_ ggEntry: GGEntry) -> Entry? {
         guard let activeAccount = activeAccount else {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
@@ -1549,7 +1671,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             pulse: ggEntry.pulse,
             skeletalMusclePercent: roundMetric(ggEntry.skeletalMusclePercent),
             subcutaneousFatPercent: roundMetric(ggEntry.subcutaneousFatPercent),
-            visceralFatLevel: ggEntry.visceralFatLevel,
+            visceralFatLevel: ggEntry.visceralFatLevel * 10, // Multiply by 10 to match storage format (scale sends 5, store as 50)
             boneMass: roundMetric(ggEntry.boneMass),
             impedance: roundMetric(ggEntry.impedance),
             unit: ggEntry.unit.lowercased()
@@ -1779,6 +1901,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 }
+
 
 // MARK: - Helpers & Mapping
 private extension BluetoothService {

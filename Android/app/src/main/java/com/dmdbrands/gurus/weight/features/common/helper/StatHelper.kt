@@ -123,21 +123,23 @@ object StatHelper {
           value.toString()
         }
       }
+
       is String -> if (value.isBlank() || value == "0") null else value
       else -> null
     }
     val prefix = meta.valuePrefix(useShort).takeIf { it.isNotEmpty() }
-    
+
     // Handle pluralization for streak milestones (day vs days)
-    val suffix = if (this is DashboardKey.Milestone && 
-        (this.key == MilestoneKey.CURRENT_STREAK || this.key == MilestoneKey.LONGEST_STREAK) &&
-        value is Number) {
+    val suffix = if (this is DashboardKey.Milestone &&
+      (this.key == MilestoneKey.CURRENT_STREAK || this.key == MilestoneKey.LONGEST_STREAK) &&
+      value is Number
+    ) {
       val numValue = value.toDouble()
       if (numValue <= 1.0) "day" else "days"
     } else {
       meta.valueSuffix(useShort).takeIf { it.isNotEmpty() }
     }
-    
+
     val calculatedUnit = if (this is DashboardKey.Metric && (this.key == MetricKey.WEIGHT)) {
       unit.label
     } else {
@@ -203,7 +205,7 @@ object StatHelper {
 
     val stats = keysToUse.map { key ->
       val value = getMilestoneValue(progress, key)
-      DashboardKey.Milestone(key).toStat(value, useShort,unit, showMetricIcon = showMetricIcon)
+      DashboardKey.Milestone(key).toStat(value, useShort, unit, showMetricIcon = showMetricIcon)
     }
 
     return if (filterNulls) stats.filter { it.value != null } else stats
@@ -299,7 +301,6 @@ internal object StatMeta {
     MetricKey.HEART_RATE to StatMeta(
       labelProvider = { useShort -> MetricLabels.getLabel(MetricKey.HEART_RATE, useShort) },
       unit = "bpm",
-      unitProvider = { useShort -> if (useShort) "bpm" else null },
       icon = AppIcons.Metrics.Pulse,
     ),
     MetricKey.BONE_MASS to StatMeta(

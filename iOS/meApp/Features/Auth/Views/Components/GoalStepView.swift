@@ -106,6 +106,9 @@ struct GoalStepView: View {
             .padding(.bottom, .spacing3XL)
         }
         .scrollDismissesKeyboard(.interactively) // Dismiss keyboard when dragging
+        .onTapGesture {
+            hideKeyboard()
+        }
     }
 }
 
