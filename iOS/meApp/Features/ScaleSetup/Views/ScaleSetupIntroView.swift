@@ -36,7 +36,6 @@ struct ScaleSetupIntroView: View {
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textBody)
                         }
-                        .padding(.horizontal, .spacingLG)
 
                         Text(scaleSetupLang.troubleSettingUp)
                             .fontOpenSans(.body2)
