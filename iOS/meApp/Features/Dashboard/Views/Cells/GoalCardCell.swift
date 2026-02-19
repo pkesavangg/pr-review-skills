@@ -115,6 +115,10 @@ class GoalCardCell: UICollectionViewCell {
         case .began:
             isLongPressed = true
             applySelectionShadow()
+            // Enter edit mode on long press if not already in edit mode
+            if let store = currentStore, !store.state.ui.isEditMode {
+                store.toggleEditMode()
+            }
             // Reconfigure to hide overlay during long press
             if let store = currentStore {
                 configure(with: store)

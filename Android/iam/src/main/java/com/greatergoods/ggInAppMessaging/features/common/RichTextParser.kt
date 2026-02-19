@@ -1,6 +1,5 @@
 package com.greatergoods.ggInAppMessaging.features.common
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -8,41 +7,75 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import com.greatergoods.ggInAppMessaging.domain.models.TIMESTAMP
+import com.greatergoods.ggInAppMessaging.domain.models.UnitsOfTime
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 /**
- * Parser for rich text with custom markup tokens
- * Handles tokens like {{expiresAt}}, {{bold[text]}}, {{strike-bold-italic[text]}}, etc.
+ * Feed template parser equivalent to Angular FeedTemplatePipe.
+ * Handles {{expiresAt}} and {{bold[string]}} / {{italic[string]}} etc.
  */
 object RichTextParser {
 
-    /**
-     * Parses rich text with custom markup and returns AnnotatedString for Compose
-     * @param text The text with markup tokens
-     * @param expiresAt The expiration date string (ISO format)
+  /**
+   * Parses rich text with custom markup and returns AnnotatedString for Compose.
+   *
+   * @param text The template string (e.g. "Ends in {{expiresAt}}" or "The {{bold[All-in-One]}} sealer")
+   * @param expiresAt The expiration date string (ISO format), for {{expiresAt}} substitution
      * @return AnnotatedString with proper styling
      */
     fun parseRichText(text: String, expiresAt: String? = null): AnnotatedString {
-        return buildAnnotatedString {
-            var currentText = text
+    var currentText = text
 
-            // Replace {{expiresAt}} with formatted date
-            if (expiresAt != null) {
-                currentText = currentText.replace("{{expiresAt}}", formatExpirationDate(expiresAt))
-            }
-
-            // Parse and apply styling tokens
-            parseStyledTokens(currentText)
-        }
+    // Replace {{expiresAt}} with relative time (matches Angular transformDateToText)
+    if (expiresAt != null) {
+      currentText = currentText.replace("{{expiresAt}}", transformDateToText(expiresAt))
     }
+
+    return buildAnnotatedString {
+      parseStyledTokens(currentText)
+    }
+    }
+
+  /**
+   * Transforms expiry date to relative time string.
+   * Matches Angular feed-template.pipe.ts transformDateToText():
+   * - compareTime = date - Date.now()
+   * - if compareTime > 0: return "a minute" | "X minutes" | "X hours" | "X days " (trailing space for days)
+   * - else: return ""
+   */
+  private fun transformDateToText(expiresAt: String): String {
+    return try {
+      val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+      val date = inputFormat.parse(expiresAt) ?: return ""
+      val compareTime = date.time - System.currentTimeMillis()
+      if (compareTime <= 0) return ""
+      when {
+        compareTime <= TIMESTAMP.ONE_MINUTE -> UnitsOfTime.MINUTE
+        compareTime < TIMESTAMP.ONE_HOUR -> {
+          val expiresInMinutes = (compareTime / TIMESTAMP.ONE_MINUTE).toInt()
+          "$expiresInMinutes ${UnitsOfTime.MINUTES}"
+        }
+        compareTime < TIMESTAMP.TWO_DAYS -> {
+          val expiresInHours = (compareTime / TIMESTAMP.ONE_HOUR).toInt()
+          "$expiresInHours ${UnitsOfTime.HOURS}"
+        }
+        else -> {
+          val expiresInDays = (compareTime / TIMESTAMP.ONE_DAY).toInt()
+          "$expiresInDays ${UnitsOfTime.DAYS} "
+        }
+      }
+    } catch (e: Exception) {
+      ""
+    }
+  }
 
     /**
      * Parses styled tokens like {{bold[text]}}, {{strike-bold-italic[text]}}, etc.
      */
     private fun AnnotatedString.Builder.parseStyledTokens(text: String) {
-        val tokenRegex = Regex("\\{\\{([^\\[]+)\\[([^\\]]+)\\]\\}\\}")
+        val tokenRegex = Regex("\\{\\{([^\\[]+)\\[([^]]+)]\\}\\}")
         var lastIndex = 0
 
         tokenRegex.findAll(text).forEach { matchResult ->
@@ -107,25 +140,6 @@ object RichTextParser {
         }
     }
 
-    /**
-     * Formats expiration date from ISO string to readable format
-     * @param expiresAt ISO date string
-     * @return Formatted date string
-     */
-    private fun formatExpirationDate(expiresAt: String): String {
-        return try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-            val outputFormat = SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
-            val date = inputFormat.parse(expiresAt)
-            if (date != null) {
-                outputFormat.format(date)
-            } else {
-                expiresAt // Return original if parsing fails
-            }
-        } catch (e: Exception) {
-            expiresAt // Return original if parsing fails
-        }
-    }
 }
 
 /**

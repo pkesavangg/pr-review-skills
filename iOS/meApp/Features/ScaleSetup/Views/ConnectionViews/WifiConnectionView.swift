@@ -24,6 +24,8 @@ struct WifiConnectionView: View {
     var setupType: ScaleSetupType = .btWifiR4
     /// Optional error code to display when `state == .failure`.
     var errorCode: String? = nil
+    /// True when this view is used in the Scale Settings Wi-Fi setup flow (not initial scale setup).
+    var isFromSettingsFlow: Bool = false
     
     /// Called when the user taps the *Try Again* button (shown only on `.failure`).
     var onTryAgain: () -> Void = {}
@@ -115,7 +117,7 @@ struct WifiConnectionView: View {
                             )
                             
                             ButtonView(
-                                text: state == .noNetworks ? scaleSetupStrings.setupWifiLater : commonStrings.support,
+                                text: (state == .noNetworks && !isFromSettingsFlow) ? scaleSetupStrings.setupWifiLater : commonStrings.support,
                                 type: .inlineTextPrimary,
                                 size: .large,
                                 isDisabled: false,

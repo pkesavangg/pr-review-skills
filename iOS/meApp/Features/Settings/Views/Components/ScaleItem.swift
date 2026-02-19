@@ -16,6 +16,7 @@ struct ScaleItemView: View {
     let onTap: () -> Void
     let hideChevron: Bool
     let isDisabled: Bool
+    let scaleType: ScaleType
     
     init(
         scaleIcon: Image,
@@ -24,7 +25,8 @@ struct ScaleItemView: View {
         status: ScaleConnectionStatus,
         onTap: @escaping () -> Void,
         hideChevron: Bool = false,
-        isDisabled: Bool = false
+        isDisabled: Bool = false,
+        scaleType: ScaleType
     ) {
         self.scaleIcon = scaleIcon
         self.modelNumber = modelNumber
@@ -33,6 +35,17 @@ struct ScaleItemView: View {
         self.onTap = onTap
         self.hideChevron = hideChevron
         self.isDisabled = isDisabled
+        self.scaleType = scaleType
+    }
+    
+    private var shouldShowStatus: Bool {
+        // Show status only for Bluetooth and BtWifi scales
+        switch scaleType {
+        case .bluetoothA3, .bluetoothA6, .bluetoothR4:
+            return true
+        case .appsync, .wifi:
+            return false
+        }
     }
     
     private var statusIconDetails: (icon: String, color: Color) {
@@ -67,10 +80,10 @@ struct ScaleItemView: View {
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
                     .lineLimit(1)
-                    .padding(.bottom, status == .noStatus ? 0 : .spacingXS)
+                    .padding(.bottom, (status == .noStatus || !shouldShowStatus) ? 0 : .spacingXS)
                     .opacity(isDisabled ? 0.7 : 1)
                 
-                if status != .noStatus {
+                if status != .noStatus && shouldShowStatus {
                     HStack(spacing: .spacingXS) {
                         AppIconView(
                             icon: statusIconDetails.icon,
@@ -118,7 +131,8 @@ struct ScaleItemView_Previews: PreviewProvider {
                 modelNumber: "0412",
                 scaleName: "accucheck verve smart scale",
                 status: .connected,
-                onTap: {}
+                onTap: {},
+                scaleType: .bluetoothA6
             )
             Divider()
             ScaleItemView(
@@ -126,7 +140,8 @@ struct ScaleItemView_Previews: PreviewProvider {
                 modelNumber: "0412",
                 scaleName: "accucheck verve smart scale",
                 status: .notConnected,
-                onTap: {}
+                onTap: {},
+                scaleType: .bluetoothA6
             )
             Divider()
             ScaleItemView(
@@ -134,7 +149,8 @@ struct ScaleItemView_Previews: PreviewProvider {
                 modelNumber: "0412",
                 scaleName: "accucheck verve smart scale",
                 status: .setupIncomplete,
-                onTap: {}
+                onTap: {},
+                scaleType: .bluetoothA6
             )
             Divider()
         }

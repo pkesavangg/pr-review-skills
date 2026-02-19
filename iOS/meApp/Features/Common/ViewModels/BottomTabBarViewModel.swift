@@ -98,9 +98,10 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
         bluetoothService.newEntryReceivedPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] event in
+            .sink { [weak self] _ in
                 guard let self else { return }
                 if !self.bluetoothService.isSetupInProgress {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
@@ -535,7 +536,9 @@ class BottomTabBarViewModel: ObservableObject {
         do {
             try await healthKitService.syncAllData()
             if let latestEntry = try await entryService.getLatestEntry() {
-                await integrationService.logHealthEntry(entry: latestEntry)
+                // Create notification to safely pass data across actor boundaries
+                let notification = EntryNotification(from: latestEntry)
+                await integrationService.logHealthEntry(notification: notification)
             }
             await MainActor.run {
                 notificationService.dismissLoader()
@@ -565,12 +568,14 @@ class BottomTabBarViewModel: ObservableObject {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
         /// Prevents showing scale discovery when Apple Health integration sheet is already presented
         /// to avoid dismissing the Apple Health sheet unexpectedly.
+        /// Also prevents showing during AppSync scanning to avoid interrupting the scanning flow.
         guard !bluetoothService.isSetupInProgress,
               bluetoothService.canShowScaleDiscoveredModal,
               !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
               !isAppleHealthSheetPresented, // Prevent scale discovery when Apple Health sheet is shown
+              selectedTab != .appsync, // Prevent scale discovery when AppSync camera is active
               event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
               !event.deviceInfo.sku.isEmpty else {
             return false

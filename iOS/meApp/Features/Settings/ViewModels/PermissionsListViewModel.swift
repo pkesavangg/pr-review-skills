@@ -24,6 +24,7 @@ class PermissionsListViewModel: ObservableObject {
     // Combine
     private var cancellables: Set<AnyCancellable> = []
     private let tag = "PermissionsViewModel"
+    private let networkMonitor = NetworkMonitor.shared
     
     // MARK: - Initialiser
     init() {
@@ -34,20 +35,28 @@ class PermissionsListViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] permissionDict in
                 self?.apply(permissionDict)
-                Task {
-                    self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
-                }
+                self?.refreshWifiNetworkName()
             }
             .store(in: &cancellables)
-        NetworkMonitor.shared.$isConnected
+        networkMonitor.$isConnected
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isConnected in
                 self?.internetConnected = isConnected
-                Task {
-                    self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
+                self?.refreshWifiNetworkName()
+            }
+            .store(in: &cancellables)
+        networkMonitor.$connectionType
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] connectionType in
+                guard let self else { return }
+                if connectionType == .wifi {
+                    self.refreshWifiNetworkName()
+                } else {
+                    self.wifiNetworkName = nil
                 }
             }
             .store(in: &cancellables)
+        refreshWifiNetworkName()
     }
     
     // MARK: - Mapping Helpers
@@ -84,6 +93,12 @@ class PermissionsListViewModel: ObservableObject {
         Task {
            let result = await permissionsService.handlePermission(type)
            loggerService.log(level: .info, tag: tag, message: "Handled permission \(type): \(result)")
+        }
+    }
+
+    private func refreshWifiNetworkName() {
+        Task { [weak self] in
+            self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
         }
     }
 }

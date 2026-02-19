@@ -28,6 +28,7 @@ interface IDialogUtility {
 
   fun permissionAlert(
     permissionType: String,
+    isScaleSetupRequest: Boolean = false,
     onRequest: () -> Unit,
     onDismiss: (() -> Unit)? = null
   )

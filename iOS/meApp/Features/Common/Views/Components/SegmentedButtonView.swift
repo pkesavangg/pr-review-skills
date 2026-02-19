@@ -22,7 +22,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                     }
                 }) {
                     Text(segmentDisplayName(for: segment))
-                        .fontWeight(.bold)
+                        .fontOpenSans(.heading5)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
                         .frame(maxWidth: .infinity)
                         .lineLimit(1)

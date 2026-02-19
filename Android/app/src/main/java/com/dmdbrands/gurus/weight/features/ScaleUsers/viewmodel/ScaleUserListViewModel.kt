@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.ScaleUsers.strings.ScaleUsersStrings
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
@@ -226,7 +227,27 @@ constructor(
   }
 
   private fun onBack() {
-    navigateBack()
+    // Check if username has been changed
+    val originalUsername = state.value.scale?.preferences?.displayName ?: ""
+    val currentUsername = state.value.usernameForm.username.value
+    val hasChanges = currentUsername != originalUsername && currentUsername.isNotEmpty()
+
+    if (hasChanges) {
+      dialogQueueService.enqueue(
+        DialogModel.Confirm(
+          title = AppPopupStrings.UnsavedExitPopup.Title,
+          message = AppPopupStrings.UnsavedExitPopup.Message,
+          confirmText = AppPopupStrings.UnsavedExitPopup.Leave,
+          cancelText = AppPopupStrings.UnsavedExitPopup.Cancel,
+          onConfirm = {
+            navigateBack()
+            initScaleUserList()
+          },
+        ),
+      )
+    } else {
+      navigateBack()
+    }
   }
 
   private fun navigateBack() {

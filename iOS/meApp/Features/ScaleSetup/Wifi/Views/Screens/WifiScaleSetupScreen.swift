@@ -49,13 +49,13 @@ struct WifiScaleSetupScreen: View {
                 views: stepViews,
                 shouldApplyHorizontalPadding: { index in
                     let step = setupStore.steps[index]
-                    return step != .errorSelect && step != .selectUser && step != .apMode
+                    return step != .errorSelect && step != .selectUser
                 }
             )
             
             // Footer Buttons
             footerButtons
-                .padding(.spacingSM)
+                .padding(.horizontal, .spacingSM)
         }
         .environmentObject(setupStore)
         .onAppear {

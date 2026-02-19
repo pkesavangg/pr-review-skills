@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleModeSettings.screens.ScaleModeSettingsScreen
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -27,7 +26,6 @@ import com.dmdbrands.gurus.weight.features.scaleMode.viewmodel.ScaleModeViewMode
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import kotlinx.coroutines.launch
 
 @Composable
 fun ScaleModeScreen(scaleId: String) {
@@ -49,18 +47,13 @@ fun ScaleModeScreenContent(
   state: ScaleModeState,
   handleIntent: (ScaleModeIntent) -> Unit,
 ) {
-  val backStack = LocalNavBackStack.current
-  val coroutineScope = rememberCoroutineScope()
   val isAllBodyMetrics = state.isAllBodyMetrics
-
 
   AppScaffold(
     title = ScaleModeStrings.Title,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
-        coroutineScope.launch {
-          backStack.removeLast()
-        }
+        handleIntent(ScaleModeIntent.Back)
       }
     },
     actions = {

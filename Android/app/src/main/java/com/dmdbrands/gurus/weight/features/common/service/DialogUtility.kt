@@ -86,13 +86,14 @@ class DialogUtility @Inject constructor(
 
   override fun permissionAlert(
     permissionType: String,
+    isScaleSetupRequest: Boolean,
     onRequest: () -> Unit,
     onDismiss: (() -> Unit)?
   ) {
     val confirmDialog = DialogModel.Confirm(
-      title = AppPopupStrings.PermissionsPopup.Title(permissionType),
-      message = AppPopupStrings.PermissionsPopup.Message(permissionType),
-      confirmText = AppPopupStrings.PermissionsPopup.ConfirmButton(permissionType),
+      title = AppPopupStrings.PermissionsPopup.Title(permissionType, isScaleSetupRequest),
+      message = AppPopupStrings.PermissionsPopup.Message(permissionType, isScaleSetupRequest),
+      confirmText = AppPopupStrings.PermissionsPopup.ConfirmButton(permissionType, isScaleSetupRequest),
       cancelText = AppPopupStrings.PermissionsPopup.CancelButton(permissionType),
       onConfirm = {
         onRequest()

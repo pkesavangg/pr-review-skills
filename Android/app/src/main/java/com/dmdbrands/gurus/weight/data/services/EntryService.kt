@@ -710,12 +710,16 @@ constructor(
       } else {
         oldestEntry = entryRepository.getOldestEntry(accountId!!)
         if (oldestEntry is ScaleEntry) {
-          startingWeight = oldestEntry.scale.scaleEntry.weight.toDouble()
+          // oldestEntry weight is already in display format (lbs) from toEntry() conversion
+          // Convert from lbs to the current display unit (kg or lbs)
+          val weightInLbs = oldestEntry.scale.scaleEntry.weight.toDouble()
+          startingWeight = convertWeight(weightInLbs, WeightUnit.LB, unit)
         }
       }
 
       // Calculate total progress
       if (latestEntry != null && startingWeight != null && latestEntry is ScaleEntry) {
+        // latestEntry is already processed (converted to display format), so use it directly
         total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeight
       }
 

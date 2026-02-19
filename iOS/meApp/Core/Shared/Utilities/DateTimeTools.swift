@@ -324,8 +324,11 @@ final class DateTimeTools {
         if randomizeSubMinute {
             let calendar = Calendar.current
             var comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: combined)
-            comps.second = Int.random(in: 0..<60)
-            comps.nanosecond = Int.random(in: 0..<1_000) * 1_000_000 // random ms ↦ ns
+            // Use current time's milliseconds to ensure unique timestamps that preserve creation order
+            let now = Date()
+            let nowComps = calendar.dateComponents([.second, .nanosecond], from: now)
+            comps.second = nowComps.second ?? 0
+            comps.nanosecond = nowComps.nanosecond ?? 0
             comps.timeZone = TimeZone.current
             combined = calendar.date(from: comps) ?? combined
         }
@@ -427,6 +430,53 @@ final class DateTimeTools {
         }
     }
 
+    /// Returns Sunday ticks for a calendar month interval at local noon.
+    /// - Parameters:
+    ///   - monthInterval: Interval representing the target month (end is exclusive).
+    ///   - baseCalendar: Calendar providing timezone/locale context.
+    ///   - includeTrailingPhantom: Appends one extra Sunday tick after the last real Sunday.
+    static func sundayTicksForMonth(
+        in monthInterval: DateInterval,
+        baseCalendar: Calendar,
+        includeTrailingPhantom: Bool
+    ) -> [Date] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = baseCalendar.timeZone
+        cal.locale = baseCalendar.locale
+        cal.firstWeekday = 1 // Sunday
+
+        let monthStart = monthInterval.start
+        let monthEnd = monthInterval.end
+        let beforeMonthStart = monthStart.addingTimeInterval(-1)
+
+        guard let firstSunday = cal.nextDate(
+            after: beforeMonthStart,
+            matching: DateComponents(weekday: 1),
+            matchingPolicy: .nextTime,
+            direction: .forward
+        ) else {
+            return []
+        }
+
+        var ticks: [Date] = []
+        var sunday = firstSunday
+        while sunday < monthEnd {
+            let sundayNoon = cal.date(bySettingHour: 12, minute: 0, second: 0, of: sunday) ?? sunday
+            ticks.append(sundayNoon)
+            guard let nextSunday = cal.date(byAdding: .weekOfYear, value: 1, to: sunday) else { break }
+            sunday = nextSunday
+        }
+
+        if includeTrailingPhantom,
+           let last = ticks.last,
+           let nextSunday = cal.date(byAdding: .weekOfYear, value: 1, to: last) {
+            let phantomNoon = cal.date(bySettingHour: 12, minute: 0, second: 0, of: nextSunday) ?? nextSunday
+            ticks.append(phantomNoon)
+        }
+
+        return ticks
+    }
+
     /// Checks if entries are in the same era (same year)
     static func areEntriesInSameEra(_ summaries: [BathScaleWeightSummary]) -> Bool {
         guard !summaries.isEmpty else { return true }
@@ -475,7 +525,7 @@ final class DateTimeTools {
             }
         } else {
             // Many entries: repeat labels throughout scroll view
-            let totalWeeks = max(8, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.week)))
+            let totalWeeks = max(8, Int(ceil(maxDate.timeIntervalSince(minDate) / DashboardConstants.TimeInterval.calendarWeek)))
             let weekStart = calendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
             let bufferWeeks = 2
 
@@ -580,4 +630,3 @@ final class DateTimeTools {
         }
     }
 }
-

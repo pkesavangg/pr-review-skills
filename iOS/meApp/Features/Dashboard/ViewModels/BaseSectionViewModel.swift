@@ -39,6 +39,12 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     private var _lastXAxisPeriod: TimePeriod?
     /// Threshold for considering scroll position "same" (1 second tolerance)
     private let xAxisCacheThreshold: TimeInterval = 1.0
+
+    // MARK: - Scroll Position Throttling (Performance Optimization)
+    /// Last time scroll position was updated to prevent multiple updates per frame
+    private var lastScrollUpdateTime: Date = .distantPast
+    /// Minimum interval between scroll position updates (16ms ≈ 60fps)
+    private let scrollUpdateThrottleInterval: TimeInterval = 0.016
     
     // MARK: - Dependencies (injected from parent)
     var dashboardStore: DashboardStore?
@@ -127,9 +133,18 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var chartSeriesData: [GraphSeries] {
         guard let store = dashboardStore else { return [] }
         
-        // During scrolling, use cached data to prevent expensive recalculations
+        let currentMetric = store.state.ui.selectedMetricLabel
+        
+        // During scrolling, use cached data ONLY if the metric selection hasn't changed
+        // If metric changed (selection or deselection), get fresh data from store
         if isScrolling && !cachedChartSeriesData.isEmpty {
-            return cachedChartSeriesData
+            // Check if metric selection changed - handles both selection and deselection (nil) cases
+            if cachedChartSeriesMetric == currentMetric {
+                return cachedChartSeriesData
+            }
+            // Metric changed during scroll - clear cache to get fresh data
+            cachedChartSeriesData = []
+            cachedChartSeriesMetric = nil
         }
         
         let seriesData = store.chartSeriesData
@@ -137,6 +152,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Cache the data for potential reuse during scrolling
         if !isScrolling {
             cachedChartSeriesData = seriesData
+            cachedChartSeriesMetric = currentMetric
         }
         
         return seriesData
@@ -144,6 +160,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
+    // Track which metric was used when caching to detect metric changes during scrolling
+    private var cachedChartSeriesMetric: String? = nil
     
     // MARK: - Persistent Cache (survives view recreation)
     private var cachedSeriesData: [GraphSeries] = []
@@ -310,13 +328,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
                 operations = bracket.isEmpty ? chartOperations : bracket
             } else {
                 // Combine visible points with bracketing points for complete line coverage
-                // Manually deduplicate by entryTimestamp since BathScaleWeightSummary doesn't conform to Hashable
+                // Use Set for O(1) lookup instead of O(n) contains(where:) - fixes O(n²) performance
+                let visibleTimestamps = Set(visible.map { $0.entryTimestamp })
                 var combinedOperations = visible
-                for bracketOp in bracket {
-                    // Only add if not already present (check by entryTimestamp for uniqueness)
-                    if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
-                        combinedOperations.append(bracketOp)
-                    }
+                for bracketOp in bracket where !visibleTimestamps.contains(bracketOp.entryTimestamp) {
+                    combinedOperations.append(bracketOp)
                 }
                 operations = combinedOperations.sorted { $0.entryTimestamp < $1.entryTimestamp }
             }
@@ -353,22 +369,31 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
     
     // MARK: - Scroll Management
-    
-    /// Handles scroll position changes
+
+    /// Handles scroll position changes with throttling to prevent multiple updates per frame
     func handleScrollPositionChange(_ newPosition: Date?) {
         guard let newPosition = newPosition else {
             return
         }
-        
+
+        let now = Date()
+        let timeSinceLastUpdate = now.timeIntervalSince(lastScrollUpdateTime)
+
+        // Throttle updates to prevent multiple updates per frame (SwiftUI warning fix)
+        guard timeSinceLastUpdate >= scrollUpdateThrottleInterval else {
+            return
+        }
+
         let positionChange = abs(newPosition.timeIntervalSince(scrollPosition))
-        
+
         // Only update if position actually changed to prevent redundant updates
         guard positionChange > 0.1 else {
             return
         }
-        
+
+        lastScrollUpdateTime = now
         self.scrollPosition = newPosition
-        
+
         // Update dashboard store scroll position
         dashboardStore?.handleScrollPositionChange(newPosition)
     }
@@ -378,8 +403,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.isScrolling = true
         // Immediately clear selection when scroll starts to hide crosshair and label
         clearSelection()
-        // Clear cached data to ensure fresh data on scroll end
-        cachedChartSeriesData = []
+        // Cache current data and metric for use during scrolling
+        if let store = dashboardStore {
+            cachedChartSeriesData = store.chartSeriesData
+            cachedChartSeriesMetric = store.state.ui.selectedMetricLabel
+        } else {
+            cachedChartSeriesData = []
+            cachedChartSeriesMetric = nil
+        }
         dashboardStore?.handleScrollStart()
     }
     
@@ -388,6 +419,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.isScrolling = false
         // Clear cached data to ensure fresh data is generated
         cachedChartSeriesData = []
+        cachedChartSeriesMetric = nil
         dashboardStore?.handleScrollEndOptimized()
         
         // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
@@ -537,22 +569,17 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             switch timePeriod {
             case .week:
                 // 3-letter weekday starting from Sunday, lowercased (sun, mon, ... sat)
-                let fmt = DateFormatter()
-                fmt.locale = Locale(identifier: "en_US_POSIX")
-                fmt.calendar = calendar
-                fmt.dateFormat = "EEE"
-                return fmt.string(from: date).lowercased()
+                // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
+                return DateTimeTools.formatter("EEE").string(from: date).lowercased()
             case .month:
-                // Show day-of-month numerals: 1, 8, 15, 22, 29
-                let day = calendar.component(.day, from: date)
-                return String(day)
+                // Show day-of-month only for Sunday ticks.
+                let weekday = calendar.component(.weekday, from: date)
+                guard weekday == 1 else { return nil }
+                return String(calendar.component(.day, from: date))
             case .year:
                 // Single-letter month initials (j, f, m, a, m, j, j, a, s, o, n, d)
-                let fmt = DateFormatter()
-                fmt.locale = Locale(identifier: "en_US_POSIX")
-                fmt.calendar = calendar
-                fmt.dateFormat = "MMM"
-                return String(fmt.string(from: date).prefix(1)).lowercased()
+                // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
+                return String(DateTimeTools.formatter("MMM").string(from: date).prefix(1)).lowercased()
             default:
                 break
             }
@@ -771,22 +798,13 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             }
             return ticks
         case .month:
-            // Day-of-month ticks with February rule: exclude 29 even in leap years
+            // Sunday-only ticks within the current month.
             guard let monthInterval = calendar.dateInterval(of: .month, for: position) else { return [] }
-            // Include the 29th only for months with 30+ days. This excludes February (28/29).
-            let daysRange = calendar.range(of: .day, in: .month, for: monthInterval.start) ?? 1..<32
-            let include29 = daysRange.count >= 30
-            let validDays: [Int] = include29 ? [1, 8, 15, 22, 29, 31] : [1, 8, 15, 22, 29]
-            var ticks: [Date] = []
-            let compsYM = calendar.dateComponents([.year, .month], from: monthInterval.start)
-            for d in validDays {
-                var c = compsYM
-                c.day = d
-                if let date = calendar.date(from: c), monthInterval.contains(date) {
-                    ticks.append(midday(date))
-                }
-            }
-            return ticks
+            return DateTimeTools.sundayTicksForMonth(
+                in: monthInterval,
+                baseCalendar: calendar,
+                includeTrailingPhantom: true
+            ).map { midday($0) }
         case .year:
             // Start at Jan 1 of current year
             var comps = calendar.dateComponents([.year], from: position)

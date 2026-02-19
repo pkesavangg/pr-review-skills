@@ -100,6 +100,13 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         } else {
             // Only wiggle state might have changed; update visible cells without reload
             if newIsEditMode != coordinator.lastIsEditMode {
+                // Update long press gesture duration based on edit mode
+                if let longPress = coordinator.longPressGestureRecognizer {
+                    longPress.isEnabled = false
+                    longPress.minimumPressDuration = newIsEditMode ? 0.15 : 0.5
+                    longPress.isEnabled = true
+                }
+                
                 coordinator.isUpdating = true
                 UIView.performWithoutAnimation {
                     collectionView.reloadData()
@@ -162,7 +169,12 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // Add long-press gesture for interactive movement
         let longPress = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(context.coordinator.handleLongPress(_:)))
-        longPress.minimumPressDuration = 0.15
+        // Use longer duration when not in edit mode (to enter edit mode), shorter when in edit mode (for dragging)
+        longPress.minimumPressDuration = context.coordinator.store.state.ui.isEditMode ? 0.15 : 0.5
+        longPress.cancelsTouchesInView = false
+        longPress.delaysTouchesBegan = false
+        longPress.delaysTouchesEnded = false
+        context.coordinator.longPressGestureRecognizer = longPress
         collectionView.addGestureRecognizer(longPress)
 
         GridUIKitInteractionManager.addTapSink(
@@ -174,16 +186,37 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     /// Builds the grid model using the saved order from DashboardStore UI state
     private func buildGridModelFromStoreState() -> MileStoneGridModel {
-        let allStreaks = store.streakItemsToShow
+        let isEditMode = store.state.ui.isEditMode
+        let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
+        
+        // Use manager streaks directly before API loads to avoid premature filtering
+        let managerStreaks = store.streakManager.state.streakItems
+        let allStreaks: [MetricItem]
+        
+        if !hasLoadedProgressMetrics && !isEditMode && !managerStreaks.isEmpty {
+            allStreaks = managerStreaks
+        } else {
+            allStreaks = store.streakItemsToShow
+        }
+        
         let goalCardPos = store.state.ui.goalCardPosition
         let streakOrder = store.state.ui.streakGridOrder
         let isGoalCardRemoved = store.state.ui.isGoalCardRemoved
-        let isEditMode = store.state.ui.isEditMode
-        let hasLoadedProgressMetrics = store.state.ui.hasLoadedProgressMetrics
         let hasStreaks = !allStreaks.isEmpty
-        let hasValidGoal = !isGoalCardRemoved && (isEditMode || store.hasGoalSet)
+        let hasValidGoal = !isGoalCardRemoved
+        let hasStreakItemsInManager = !managerStreaks.isEmpty
+        
         if !hasStreaks && !hasValidGoal {
             return MileStoneGridModel(mileStones: [])
+        }
+        
+        // Fallback to manager streaks if API hasn't loaded yet
+        if !isEditMode {
+            if !hasLoadedProgressMetrics && !hasStreaks && !hasStreakItemsInManager {
+                return MileStoneGridModel(
+                    mileStones: hasValidGoal ? [.goalCard] : []
+                )
+            }
         }
 
         func orderedStreaks(from all: [MetricItem], using order: [String]) -> [MetricItem] {
@@ -195,11 +228,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 ordered.append(contentsOf: missing)
                 return ordered
             } else {
-                // In non-edit mode, only show streaks that are in the order (removed streaks already filtered by streakItemsToShow)
+                // Show streaks in order (removed streaks already filtered by streakItemsToShow)
                 guard !order.isEmpty else {
-                    return hasLoadedProgressMetrics ? all : []
+                    return all
                 }
-                return order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+                let ordered = order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+                // Append missing streaks if order is incomplete
+                if ordered.count < all.count {
+                    let orderedIds = Set(ordered.map { $0.id.uuidString })
+                    let missing = all.filter { !orderedIds.contains($0.id.uuidString) }
+                    return ordered + missing
+                }
+                return ordered
             }
         }
 
@@ -257,44 +297,37 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 widgets.append(contentsOf: activeStreaks.map { .streak($0) })
             } else {
                 let streakCount = activeStreaks.count
-                // Show goal card always in edit mode; only when data exists in non-edit mode
+                // Show goal card if not removed; goal card handles "Set a Goal" button when no goal is set
                 if streakCount == 0 {
-                    if isEditMode || (store.hasGoalSet && !isGoalCardRemoved) {
+                    if !isGoalCardRemoved {
                         widgets.append(.goalCard)
                     }
                 } else {
-                    // In non-edit mode, always place goal card at the top (position 0)
-                    // In edit mode, use the saved position
-                    if !isEditMode {
-                        // Always place goal card first, followed by streak items
-                        widgets.append(.goalCard)
-                        widgets.append(contentsOf: activeStreaks.map { .streak($0) })
-                    } else {
-                        // In edit mode, use the saved position
-                        let columns = DevicePlatform.isTablet ? 4 : 2
-                        let hasRemovedStreaks = !removedStreaks.isEmpty
-                        let maxPosition = streakCount
-                        let clampedGoal = min(goalCardPos, maxPosition)
-                        let goalIndex = effectiveGoalIndex(
-                            clampedGoalPos: clampedGoal,
-                            streakCount: streakCount,
-                            columns: columns,
-                            isEditMode: isEditMode,
-                            hasRemovedStreaks: hasRemovedStreaks
-                        )
+                    // Use the saved goal card position in both edit and non-edit mode
+                    // This ensures the position persists when user exits edit mode
+                    let columns = DevicePlatform.isTablet ? 4 : 2
+                    let hasRemovedStreaks = !removedStreaks.isEmpty
+                    let maxPosition = streakCount
+                    let clampedGoal = min(goalCardPos, maxPosition)
+                    let goalIndex = effectiveGoalIndex(
+                        clampedGoalPos: clampedGoal,
+                        streakCount: streakCount,
+                        columns: columns,
+                        isEditMode: isEditMode,
+                        hasRemovedStreaks: hasRemovedStreaks
+                    )
 
-                        var goalAdded = false
-                        for i in 0...maxPosition {
-                            if i == goalIndex && !goalAdded {
-                                widgets.append(.goalCard)
-                                goalAdded = true
-                            }
-                            if i < streakCount {
-                                widgets.append(.streak(activeStreaks[i]))
-                            }
+                    var goalAdded = false
+                    for i in 0...maxPosition {
+                        if i == goalIndex && !goalAdded {
+                            widgets.append(.goalCard)
+                            goalAdded = true
                         }
-                        if !goalAdded { widgets.append(.goalCard) }
+                        if i < streakCount {
+                            widgets.append(.streak(activeStreaks[i]))
+                        }
                     }
+                    if !goalAdded { widgets.append(.goalCard) }
                 }
             }
 
@@ -352,6 +385,9 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         
         // MARK: - Boundary Detection Properties
         public var boundaryDetector: GridBoundaryDetector
+        
+        // MARK: - Gesture Recognizer
+        var longPressGestureRecognizer: UILongPressGestureRecognizer?
 
         // MARK: - Haptics (system-like: prepared + throttled)
         private let boundaryFeedback = UIImpactFeedbackGenerator(style: .light)
@@ -497,14 +533,21 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 guard let collectionView = gesture.view as? UICollectionView else {
                     return
                 }
-            guard store.state.ui.isEditMode else { 
-                return 
-            }
-
+            
+            let location = gesture.location(in: collectionView)
+            
             switch gesture.state {
             case .began:
+                // Determine which item was long-pressed, if any
+                guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
+                
+                // If not in edit mode, enter edit mode on long press of a goal card or streak item,
+                // then immediately proceed to start the drag for the same item.
+                if !store.state.ui.isEditMode {
+                    store.toggleEditMode()
+                }
+                
                 prepareHapticsForDrag()
-                let location = gesture.location(in: collectionView)
                 if let indexPath = collectionView.indexPathForItem(at: location), indexPath.item < firstRemovedIndex {
                     configureBoundaryConstraints(for: collectionView)
                     boundaryDetector.updateGridBounds(for: collectionView)

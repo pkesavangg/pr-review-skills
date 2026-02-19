@@ -11,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.ScaleUsers.components.ScaleUserList
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListIntent
 import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListState
@@ -27,7 +26,6 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
-import kotlinx.coroutines.launch
 
 @Composable
 fun ScaleUserListScreen(scaleId: String) {
@@ -49,8 +47,6 @@ fun ScaleUserListScreenContent(
   state: ScaleUserListState,
   handleIntent: (ScaleUserListIntent) -> Unit,
 ) {
-  val backStack = LocalNavBackStack.current
-  val coroutineScope = rememberCoroutineScope()
   // Store the original username to compare against
   val originalUsername by remember {
     derivedStateOf {
@@ -77,9 +73,7 @@ fun ScaleUserListScreenContent(
     title = ScaleUsersStrings.Header,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
-        coroutineScope.launch {
-          backStack.removeLast()
-        }
+        handleIntent(ScaleUserListIntent.Back)
       }
     },
     actions = {

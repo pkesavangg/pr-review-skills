@@ -28,4 +28,8 @@ class GGPermissionService @Inject constructor(
   fun requestPermission(permissionType: String, callback: (Any?) -> Unit = {}) {
     ggBluetooth.requestPermission(permissionType, callback)
   }
+
+  fun resetCallbacks() {
+    ggBleService.reset()
+  }
 }

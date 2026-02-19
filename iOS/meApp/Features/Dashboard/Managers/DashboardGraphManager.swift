@@ -40,6 +40,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var lastCachedSelectedMetric: String?
     private var lastCachedOperationsCount: Int = 0
     private var chartDataGenerationThrottle: Timer?
+    
+    /// Gregorian calendar used for yearly tick generation and yearly snap quantization.
+    /// This keeps rendered month grid lines and snap targets in the same calendar system.
+    private var yearlyTickCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = calendar.timeZone
+        cal.locale = calendar.locale
+        return cal
+    }
 
     // MARK: - Constants
 
@@ -62,11 +71,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let newPosition = newPosition else {
             return
         }
-        if state.isScrolling {
-            latestScrollPosition = newPosition
-        } else {
-            latestScrollPosition = nil
-        }
+        // Always keep the latest position candidate so small drags that do not
+        // spend long in `.interacting` still settle to a snapped endpoint.
+        latestScrollPosition = newPosition
     }
 
     func handleScrollStart() {
@@ -443,7 +450,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         convertWeight: @escaping (Int) -> Double,
         yAxisDomain: ClosedRange<Double>
     ) -> [GraphSeries] {
-
         guard !allOperations.isEmpty else {
             logger.log(level: .debug, tag: "DashboardGraphManager", message: "No operations available for chart data generation")
             return []
@@ -459,17 +465,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return cachedChartSeriesData
         }
 
-        // During scrolling, use simplified data for better performance
-        let operationsToProcess = state.isScrolling ?
-        simplifyDataForScrolling(allOperations) :
-        allOperations
-
-        // Generate fresh data
+        // Generate fresh data using all operations
+        // Note: Windowing was tried but caused UI jumps during scrolling
+        // The ~8ms generation time with all 3660 points is acceptable
         var series: [GraphSeries] = []
 
         // Add weight series (always present) from operations to show continuous line
-        // removed verbose generation log to reduce noise
-        for summary in operationsToProcess {
+        for summary in allOperations {
             let displayWeight: Double
             if isWeightlessMode {
                 guard let anchorWeight = anchorWeight else { continue }
@@ -494,11 +496,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             operationsForYAxis = allOperations
         } else {
             let bracketingOperations = getBracketingOperations(from: allOperations)
+            // Use Set for O(1) lookup instead of O(n) contains(where:) - fixes O(n²) performance
+            let existingTimestamps = Set(visibleOperations.map { $0.entryTimestamp })
             var combinedOperations = visibleOperations
-            for bracketOp in bracketingOperations {
-                if !combinedOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp }) {
-                    combinedOperations.append(bracketOp)
-                }
+            for bracketOp in bracketingOperations where !existingTimestamps.contains(bracketOp.entryTimestamp) {
+                combinedOperations.append(bracketOp)
             }
             operationsForYAxis = combinedOperations.isEmpty ? allOperations : combinedOperations
         }
@@ -729,8 +731,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Log warning if there's a potential mismatch (for debugging)
         if state.selectedPeriod != .total {
             let expectedBracketing = getBracketingOperations(from: allOperations)
+            // Use Set for O(1) lookup instead of O(n) contains(where:) - fixes O(n²) performance
+            let visibleTimestamps = Set(visibleOperations.map { $0.entryTimestamp })
             let expectedCombined = visibleOperations + expectedBracketing.filter { bracketOp in
-                !visibleOperations.contains(where: { $0.entryTimestamp == bracketOp.entryTimestamp })
+                !visibleTimestamps.contains(bracketOp.entryTimestamp)
             }
             if operationsForYAxis.count != expectedCombined.count {
                 logger.log(level: .info, tag: "DashboardGraphManager",
@@ -1043,8 +1047,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 let adjustedLeftEdge = leftEdge.addingTimeInterval(-bufferTime)
                 let adjustedRightEdge = rightEdge.addingTimeInterval(bufferTime)
 
-                if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
-                   let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
+                // Use .first/.last for O(1) lookup on sorted array instead of O(n) map().min()/max()
+                if let cachedMin = lastCalculatedVisibleOps.first?.date,
+                   let cachedMax = lastCalculatedVisibleOps.last?.date,
                    cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
                     // Cached set is still fully inside current window → safe to reuse
                     return lastCalculatedVisibleOps
@@ -1083,8 +1088,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                     lastVisibleOpsScrollPosition = nil
                     lastVisibleOpsPeriod = nil
                     // Fall through to recalculation
-                } else if let cachedMin = lastCalculatedVisibleOps.map({ $0.date }).min(),
-                   let cachedMax = lastCalculatedVisibleOps.map({ $0.date }).max(),
+                // Use .first/.last for O(1) lookup on sorted array instead of O(n) map().min()/max()
+                } else if let cachedMin = lastCalculatedVisibleOps.first?.date,
+                   let cachedMax = lastCalculatedVisibleOps.last?.date,
                    cachedMin >= adjustedLeftEdge && cachedMax <= adjustedRightEdge {
                     return lastCalculatedVisibleOps
                 }
@@ -1131,7 +1137,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         lastVisibleOpsScrollPosition = state.xScrollPosition
         lastVisibleOpsPeriod = state.selectedPeriod
 
-        // Only log actual calculations, not cache hits
         logger.log(level: .debug, tag: "DashboardGraphManager", message: "Calculated visible operations: \(visibleOps.count) operations for period \(state.selectedPeriod), scroll position: \(state.xScrollPosition)")
         return visibleOps
     }
@@ -1181,20 +1186,37 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let leftEdge: Date = state.xScrollPosition
         let rightEdge: Date = state.xScrollPosition.addingTimeInterval(visibleDomainLength(for: state.selectedPeriod))
 
+        // Use binary search for O(log n) performance instead of O(n) filter
         // Find the last operation at or before the left edge
-        let previous = operations
-            .filter { $0.date <= leftEdge }
-            .max(by: { $0.date < $1.date })
+        var previous: BathScaleWeightSummary?
+        if let lastBeforeIdx = binarySearchLastIndex(in: operations, where: { $0.date <= leftEdge }) {
+            previous = operations[lastBeforeIdx]
+        }
 
         // Find the first operation at or after the right edge
-        let next = operations
-            .filter { $0.date >= rightEdge }
-            .min(by: { $0.date < $1.date })
+        var next: BathScaleWeightSummary?
+        if let firstAfterIdx = binarySearchFirstIndex(in: operations, where: { $0.date >= rightEdge }) {
+            next = operations[firstAfterIdx]
+        }
 
-        // If not found on one side, try to at least capture the closest on that side of the window
-        // This helps when the rightEdge lies beyond the last entry or leftEdge before the first.
-        let fallbackPrev = previous ?? operations.filter { $0.date < rightEdge }.max(by: { $0.date < $1.date })
-        let fallbackNext = next ?? operations.filter { $0.date > leftEdge }.min(by: { $0.date < $1.date })
+        // Fallback using binary search if not found on one side
+        let fallbackPrev: BathScaleWeightSummary?
+        if let prev = previous {
+            fallbackPrev = prev
+        } else if let lastBeforeRightIdx = binarySearchLastIndex(in: operations, where: { $0.date < rightEdge }) {
+            fallbackPrev = operations[lastBeforeRightIdx]
+        } else {
+            fallbackPrev = nil
+        }
+
+        let fallbackNext: BathScaleWeightSummary?
+        if let nxt = next {
+            fallbackNext = nxt
+        } else if let firstAfterLeftIdx = binarySearchFirstIndex(in: operations, where: { $0.date > leftEdge }) {
+            fallbackNext = operations[firstAfterLeftIdx]
+        } else {
+            fallbackNext = nil
+        }
 
         var result: [BathScaleWeightSummary] = []
         if let p = fallbackPrev { result.append(p) }
@@ -1212,7 +1234,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary]) {
-        guard operations.map(\.date).max() != nil else {
+        // Use .last for O(1) lookup on sorted array instead of O(n) map().max()
+        guard operations.last?.date != nil else {
             return
         }
         guard !state.isScrolling else {
@@ -1226,14 +1249,20 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
         // Use the same optimal scroll position calculation as initialization
         // This ensures consistent snapping behavior and prevents extra days being added
-        let allDates = operations.map { $0.date }
-        let cachedBounds = allDates.isEmpty ? nil : (min: allDates.min()!, max: allDates.max()!)
+        // Use .first/.last for O(1) lookup on sorted array instead of O(n) map().min()/max()
+        let cachedBounds: (min: Date, max: Date)? = {
+            guard let minDate = operations.first?.date,
+                  let maxDate = operations.last?.date else {
+                return nil
+            }
+            return (min: minDate, max: maxDate)
+        }()
         let optimalPosition = calculateOptimalScrollPosition(
             for: state.selectedPeriod,
             from: operations,
             anchorDate: nil,
             showingLatest: true,
-            cachedBounds: nil
+            cachedBounds: cachedBounds
         )
         updateScrollPosition(to: optimalPosition)
     }
@@ -1637,23 +1666,23 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // We'll compare using this exclusive boundary so Saturday is included.
         let weekEndExclusive = cal.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
 
-        // Calculate total weeks from start of oldest week to inclusive end of latest week
-        let timeInterval = weekEndExclusive.timeIntervalSince(weekStartForOldest)
-        let totalWeeks = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.week)))
-
-        for weekOffset in 0..<totalWeeks {
-            if let currentWeekStart = cal.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
-                // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
-                let startOfCurrentWeek = cal.startOfDay(for: currentWeekStart)
-                for dayOffset in 0...6 { // include Saturday
-                    if let dayStart = cal.date(byAdding: .day, value: dayOffset, to: startOfCurrentWeek),
-                       let dayDate = cal.date(byAdding: .hour, value: 12, to: dayStart) { // noon
-                        if dayDate >= weekStartForOldest && dayDate < weekEndExclusive {
-                            dates.append(dayDate)
-                        }
+        // Iterate week-by-week with calendar math to avoid drift from non-calendar viewport widths.
+        var currentWeekStart = weekStartForOldest
+        while currentWeekStart < weekEndExclusive {
+            // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
+            let startOfCurrentWeek = cal.startOfDay(for: currentWeekStart)
+            for dayOffset in 0...6 { // include Saturday
+                if let dayStart = cal.date(byAdding: .day, value: dayOffset, to: startOfCurrentWeek),
+                   let dayDate = cal.date(byAdding: .hour, value: 12, to: dayStart) { // noon
+                    if dayDate >= weekStartForOldest && dayDate < weekEndExclusive {
+                        dates.append(dayDate)
                     }
                 }
             }
+            guard let nextWeek = cal.date(byAdding: .weekOfYear, value: 1, to: currentWeekStart) else {
+                break
+            }
+            currentWeekStart = nextWeek
         }
         // Append a phantom tick one day after the last date so the real last tick (Saturday)
         // is not exactly at the right edge of the visible domain.
@@ -1681,16 +1710,32 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Calculate total months from start of oldest month to end of latest month
         let timeInterval = monthEndForLatest.timeIntervalSince(monthStartForOldest)
         let totalMonths = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.month)))
+        var sundayCalendar = Calendar(identifier: .gregorian)
+        sundayCalendar.timeZone = calendar.timeZone
+        sundayCalendar.locale = calendar.locale
+        sundayCalendar.firstWeekday = 1
 
         for monthOffset in 0..<totalMonths {
-            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest) {
-                for weekOffset in 0..<5 {
-                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
-                        if weekDate >= monthStartForOldest && weekDate <= monthEndForLatest {
-                            dates.append(weekDate)
-                        }
-                    }
-                }
+            guard let currentMonthStart = sundayCalendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest),
+                  let currentMonthEnd = sundayCalendar.dateInterval(of: .month, for: currentMonthStart)?.end else {
+                continue
+            }
+
+            let monthInterval = DateInterval(start: currentMonthStart, end: currentMonthEnd)
+            let monthTicks = DateTimeTools.sundayTicksForMonth(
+                in: monthInterval,
+                baseCalendar: calendar,
+                includeTrailingPhantom: false
+            )
+            dates.append(contentsOf: monthTicks.filter { $0 >= monthStartForOldest && $0 <= monthEndForLatest })
+        }
+
+        // Append one trailing phantom weekly tick so the last real month section remains selectable
+        // (e.g., in Feb 2025, keep the section after Feb 22/23 through month end).
+        if let last = dates.max() {
+            if let nextSunday = sundayCalendar.date(byAdding: .weekOfYear, value: 1, to: last),
+               let phantomNoon = sundayCalendar.date(bySettingHour: 12, minute: 0, second: 0, of: nextSunday) {
+                dates.append(phantomNoon)
             }
         }
         return dates
@@ -1701,10 +1746,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let startDate = min(visibleStart, visibleEnd)
         let endDate = max(visibleStart, visibleEnd)
 
-        // Use a stable Gregorian calendar and anchor ticks at local noon
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = calendar.timeZone
-        cal.locale = calendar.locale
+        // Use the same calendar as yearly snapping so rendered ticks and snap targets align.
+        let cal = yearlyTickCalendar
 
         var dates: [Date] = []
 
@@ -1782,14 +1825,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
 
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
-        let formatter = DateFormatter()
+        // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
         switch period {
         case .week, .month:
-            formatter.dateFormat = "MMM d, yyyy"
+            return DateTimeTools.formatter("MMM d, yyyy").string(from: date)
         case .year, .total:
-            formatter.dateFormat = "MMM, yyyy"
+            return DateTimeTools.formatter("MMM yyyy").string(from: date)
         }
-        return formatter.string(from: date)
     }
 
     func formatDateRange(minDate: Date, maxDate: Date, for period: TimePeriod) -> String {
@@ -1970,7 +2012,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         period: TimePeriod,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double
+        convertWeight: @escaping (Int) -> Double,
+        labelRange: DateInterval? = nil
     ) -> Double? {
         // Only apply to non-total periods
         guard period != .total, !allOperations.isEmpty else {
@@ -1996,8 +2039,15 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let effectiveStartBoundary = firstDataPoint.addingTimeInterval(-bufferTime)
         let effectiveEndBoundary = lastDataPoint.addingTimeInterval(bufferTime)
 
-        let validSampleDates = sampleDates.filter { sampleDate in
+        var validSampleDates = sampleDates.filter { sampleDate in
             sampleDate >= effectiveStartBoundary && sampleDate <= effectiveEndBoundary
+        }
+
+        // If a label range is provided, only include samples inside it.
+        if let labelRange {
+            validSampleDates = validSampleDates.filter { sampleDate in
+                sampleDate >= labelRange.start && sampleDate <= labelRange.end
+            }
         }
 
         // If no sample dates fall within the data boundaries, return nil
@@ -2387,13 +2437,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return calendar.date(from: components) ?? position
 
         case .year:
-            // Snap to start of month
-            var components = calendar.dateComponents([.year, .month], from: position)
+            // Snap to month tick (day 1 at local noon) to match yearly X-axis grid lines.
+            let cal = yearlyTickCalendar
+            var components = cal.dateComponents([.year, .month], from: position)
             components.day = 1
-            components.hour = 0
+            components.hour = 12
             components.minute = 0
             components.second = 0
-            return calendar.date(from: components) ?? position
+            return cal.date(from: components) ?? position
 
         case .total:
             // No snapping for total view (not scrollable)

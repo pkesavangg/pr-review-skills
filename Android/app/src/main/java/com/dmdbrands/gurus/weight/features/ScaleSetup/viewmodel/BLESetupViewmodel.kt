@@ -172,6 +172,7 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
             try {
               if (deviceService.scaleExistsByMac(ggDeviceDetail.macAddress) && ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value) {
                 AppLog.w(TAG, "Known scale discovered with MAC: ${ggDeviceDetail.macAddress}")
+                stopObservingDevices()
                 dialogQueueService.showDialog(
                   DialogModel.Alert(
                     title = "Known Scale Discovered",

@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Screens
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,7 +43,7 @@ fun ScaleMetricsSettingScreen(
   currentMetrics: List<String> = emptyList(),
   onMetricsChanged: (List<String>) -> Unit = {},
   modifier: Modifier = Modifier,
-  parentScroller: Scroller? = null,
+  scrollState : ScrollableState? = null,
   includeHeartRate: Boolean = true,
   showAllMetrics: Boolean = true,
 ) {
@@ -67,14 +69,14 @@ fun ScaleMetricsSettingScreen(
     }
     mutableStateOf(reorderedMetrics)
   }
-  
+
   // Displayed list respects showAllMetrics, but state remains full
   val displayedBodyMetrics = if (showAllMetrics) {
     bodyMetricsState
   } else {
     bodyMetricsState.filter { it.key == ScaleMetricKeys.BMI }
   }
-  
+
   var otherMetricsState by remember {
     mutableStateOf(ScaleMetricsHelper.createOrderedMetrics(currentMetrics).second)
   }
@@ -84,11 +86,11 @@ fun ScaleMetricsSettingScreen(
     // Calculate what our current state would emit (only enabled metrics)
     val currentEnabledMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key } +
         otherMetricsState.filter { it.isEnabled }.map { it.key }
-    
+
     // Check if heart rate metric's isIncluded matches includeHeartRate parameter
     val heartRateMetric = bodyMetricsState.find { it.key == ScaleMetricKeys.HEART_RATE }
     val heartRateIncludedMatches = heartRateMetric?.isIncluded == includeHeartRate
-    
+
     // Only sync if currentMetrics is different from what we would emit OR if heart rate inclusion state doesn't match
     // This prevents reset loops when onMetricsChanged updates the parent
     // Use content comparison to check if lists are different (order-independent for safety)
@@ -96,7 +98,7 @@ fun ScaleMetricsSettingScreen(
         currentEnabledMetrics.all { it in currentMetrics } &&
         currentMetrics.all { it in currentEnabledMetrics } &&
         heartRateIncludedMatches
-    
+
     if (!metricsMatch) {
       val (bodyMetrics, otherMetrics) = ScaleMetricsHelper.createOrderedMetrics(currentMetrics)
       val updatedBodyMetrics = bodyMetrics.map { metric ->
@@ -115,7 +117,7 @@ fun ScaleMetricsSettingScreen(
       } else {
         updatedBodyMetrics
       }
-      
+
       bodyMetricsState = reorderedMetrics
       otherMetricsState = otherMetrics
     }
@@ -178,7 +180,7 @@ fun ScaleMetricsSettingScreen(
       modifier = Modifier
         .clip(shape = RoundedCornerShape(borderRadius.sm))
         .heightIn(max = 600.dp),
-      parentScroller = parentScroller,
+      scrollState = scrollState,
       items = displayedBodyMetrics,
       onMove = { from, to ->
         val newList = bodyMetricsState.toMutableList()

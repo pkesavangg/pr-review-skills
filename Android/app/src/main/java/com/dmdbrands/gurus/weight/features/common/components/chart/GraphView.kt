@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,7 +10,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -24,9 +25,11 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
 import com.patrykandpatrick.vico.core.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import android.util.Log
+
+private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
 /**
  * Composable for displaying a graph/chart with interactive features.
@@ -42,6 +45,7 @@ import android.util.Log
  * @param onScroll Callback for scroll events, returns formatted date range.
  * @param onLabelUpdate Callback for label updates, returns updated label string.
  * @param viewModel The GraphViewModel instance (injected via Hilt).
+ * @param onScrollTargetConsumed Called once after scrolling to [scrollTarget] (so anchor is consumed and not re-applied).
  */
 @OptIn(FlowPreview::class)
 @Composable
@@ -50,8 +54,10 @@ fun GraphView(
   state: GraphState,
   segment: GraphSegment = GraphSegment.WEEK,
   scrollTarget: Double? = null,
+  canScrollToAnchor: Boolean = false,
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
+  onChartConsuming: (Boolean) -> Unit = {},
 ) {
 
   val scope = rememberCoroutineScope()
@@ -67,9 +73,8 @@ fun GraphView(
   val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  val initialScroll = remember(initialStartX) {
-    Scroll.Absolute.x(initialStartX)
-  }
+  val initialScroll = remember { Scroll.Absolute.x(initialStartX) }
+
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
       if (isDrag) {
@@ -89,8 +94,8 @@ fun GraphView(
         snapDurationMillis = 500,
       ),
     ),
+    key = segment,
   )
-
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
@@ -119,30 +124,27 @@ fun GraphView(
       )
     }
   }
-
-
-
-  LaunchedEffect(scrollState.value) {
-    if (state.markerIndex != null) {
-      viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-    }
+  LaunchedEffect(scrollTarget) {
+    if (scrollTarget == null || !canScrollToAnchor) return@LaunchedEffect
+    val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
+    val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
+    delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
+    scrollState.animateScroll(
+      Scroll.Absolute.x(anchoredTarget.toDouble()),
+      animationSpec = tween(
+        durationMillis = 150,
+        easing = LinearOutSlowInEasing,
+      ),
+    )
   }
 
-  LaunchedEffect(state.markerIndex) {
+
+
+  LaunchedEffect(state.markerIndex == null) {
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
       onScrollUpdate(state.minTarget, state.maxTarget)
     }
   }
-
-  // LaunchedEffect(scrollTarget) {
-  //   if (scrollTarget != null) {
-  //     val destinationTarget = GraphUtil.getStartRange(segment, scrollTarget.toLong())
-  //     if (destinationTarget != null)
-  //       scrollState.animateScroll(
-  //         Scroll.Absolute.x(destinationTarget.toDouble()),
-  //       )
-  //   }
-  // }
 
   val defaultMarker = rememberDefaultMarker(
     state = state,
@@ -160,64 +162,43 @@ fun GraphView(
     horizontalItemPlacer = horizontalItemPlacer,
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
-      if (click == null) return@rememberGraphChart
-      scope.launch {
-        var markerIndex: Double? = null
-        val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
-        val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
-        val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
-        if (outOfBoundaryCondition) {
-          markerIndex = null
-        } else {
-          val min = GraphUtil.getStartRange(segment, state.minTarget)?.toDouble()
-          val max = GraphUtil.getEndRange(segment, state.maxTarget)?.toDouble()
-
-          if (min != null && max != null)
-            Log.i(
-              "GraphView",
-              " min : ${DateTimeConverter.timestampToIso(min.toLong())} max : $" +
-                "${DateTimeConverter.timestampToIso(max.toLong())}",
-            )
-          val visibleLabels =
-            scrollState
-              .getVisibleAxisLabels(itemPlacer = horizontalItemPlacer)
-              .filter { label ->
-
-                if (min != null && max != null) {
-                  label in min..max
-                } else {
-                  true // keep all when no bounds
-                }
-              }
-
-          val targetMarkerIndex =
-            getTargetPoints(
-              visibleLabels,
-              targets,
-              click,
-              segment,
-              state.minTarget?.toDouble(),
-              state.maxTarget?.toDouble(),
-            )
-          if (targetMarkerIndex.isNotEmpty()) {
-            val targetIndex = targetMarkerIndex.first().toLong()
-            markerIndex = if (targetIndex in state.getStartTimestamp()..state.getEndTimestamp())
-              targetMarkerIndex.first()
-            else if (targetIndex < state.getStartTimestamp())
-              state.getStartTimestamp().toDouble()
-            else if (targetIndex > state.getEndTimestamp())
-              state.getEndTimestamp().toDouble()
-            else
-              null
-          }
-          if (markerIndex != null)
-            Log.i(
-              "GraphView",
-              "targetMarkerIndex : ${DateTimeConverter.timestampToIso(markerIndex.toLong())}",
-            )
-        }
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+      if (click == null) {
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+        return@rememberGraphChart
       }
+      val visibleLabels =
+        scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
+          if (state.minTarget != null && state.maxTarget != null)
+            it.toLong() in state.minTarget..state.maxTarget
+          else
+            true
+        }
+      var markerIndex: Double? = null
+      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
+      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
+      val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
+      if (!outOfBoundaryCondition) {
+        val targetMarkerIndex =
+          getTargetPoints(
+            visibleLabels,
+            targets,
+            click,
+            segment,
+            state.minTarget?.toDouble(),
+            state.maxTarget?.toDouble(),
+          )
+        if (targetMarkerIndex.isNotEmpty()) {
+          val targetIndex = targetMarkerIndex.first().toLong()
+          markerIndex = when {
+            targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
+            targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
+            targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
+            else -> null
+          }
+        }
+      }
+      if (state.markerIndex != markerIndex)
+        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
     },
   )
   CartesianChartHost(
@@ -226,20 +207,20 @@ fun GraphView(
     modifier = modifier.height(chartHeight),
     scrollState = scrollState,
     animateIn = true,
+    consumeMoveEvents = true,
     zoomState = rememberVicoZoomState(zoomEnabled = false),
     onScrollStopped = { range ->
-      if (range != null) {
+      if (range != null && segment != GraphSegment.TOTAL) {
         val min = range.visibleXRange.start.toLong()
         val max = range.visibleXRange.endInclusive.toLong()
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
-        Log.i(
-          "GraphView",
-          "onScrollStopped : ${DateTimeConverter.timestampToIso(relativeMin)} , ${DateTimeConverter.timestampToIso(max)}",
-        )
-        onScrollUpdate(relativeMin, max)
+        val relativeMax = GraphUtil.getRelativeEnd(segment, max)
+        val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
+        onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
       }
+      onChartConsuming(false)
     },
   )
 }

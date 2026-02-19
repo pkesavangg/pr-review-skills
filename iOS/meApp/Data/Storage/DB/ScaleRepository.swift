@@ -167,6 +167,31 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         try context.save()
     }
 
+    /// Updates the R4 scale preference for a scale from a DTO.
+    /// This avoids passing @Model objects across async boundaries.
+    func patchScalePreference(_ scaleId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {
+        let device = try fetchDeviceOrThrow(scaleId)
+        if let existing = device.r4ScalePreference {
+            existing.displayName = dto.displayName
+            existing.displayMetrics = dto.displayMetrics
+            existing.shouldFactoryReset = dto.shouldFactoryReset
+            existing.shouldMeasureImpedance = dto.shouldMeasureImpedance
+            existing.shouldMeasurePulse = dto.shouldMeasurePulse
+            existing.timeFormat = dto.timeFormat
+            existing.tzOffset = dto.tzOffset
+            existing.wifiFotaScheduleTime = dto.wifiFotaScheduleTime
+            existing.updatedAt = dto.updatedAt
+            existing.isSynced = dto.isSynced ?? false
+        } else {
+            let newPreference = R4ScalePreference(from: dto, scaleId: device.id)
+            newPreference.isSynced = dto.isSynced ?? false
+            device.r4ScalePreference = newPreference
+            context.insert(newPreference)
+        }
+        device.isSynced = false
+        try context.save()
+    }
+
     // MARK: - Replace-All Sync Methods
 
     /// Replaces all local devices for the given account with fresh devices from server.

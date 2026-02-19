@@ -59,7 +59,7 @@ struct AppSyncSetupScreen: View {
             // Footer Buttons
             if setupStore.currentStep != .appSync {
                 footerButtons
-                    .padding(.spacingSM)
+                    .padding(.horizontal, .spacingSM)
             }
         }
         .onAppear {
