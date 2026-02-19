@@ -33,10 +33,11 @@ final class IntegrationsService: IntegrationServiceProtocol {
     /// is integrated) without `EntryService` needing to know about integrations.
     init() {
         // Listen to new entries and forward to HealthKit when required.
+        // Uses EntryNotification (Sendable) to safely receive data across actor boundaries.
         entryService.entrySaved
-            .sink { [weak self] entry in
+            .sink { [weak self] notification in
                 // Fire-and-forget so the publisher chain is never blocked.
-                Task { await self?.logHealthEntry(entry: entry) }
+                Task { await self?.logHealthEntry(notification: notification) }
             }
             .store(in: &cancellables)
     }
@@ -118,7 +119,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
     }
     
     // MARK: - Entry Sync Operations ------------------------------------------------
-    
+
     /// Syncs a new entry to the integrated health service (e.g., HealthKit) if integration is active.
     /// This method checks if HealthKit integration is active and delegates to the appropriate service.
     func syncNewEntry(_ entry: Entry) async throws {
@@ -127,18 +128,21 @@ final class IntegrationsService: IntegrationServiceProtocol {
             // No integration active, nothing to sync
             return
         }
-        
+
+        // Create notification to safely pass data across actor boundaries
+        let notification = EntryNotification(from: entry)
+
         switch integrationInfo.type {
         case .healthKit:
-            // Delegate to HealthKit service for syncing
-            try await HealthKitService.shared.syncNewData(entry: entry)
+            // Delegate to HealthKit service for syncing using notification (safe cross-actor)
+            try await HealthKitService.shared.syncNewData(notification: notification)
             logger.log(level: .info, tag: "IntegrationService", message: "Successfully synced new entry to HealthKit: \(entry.id)")
         default:
             // Other integrations not implemented for entry sync yet
             logger.log(level: .debug, tag: "IntegrationService", message: "Entry sync not implemented for integration type: \(integrationInfo.type.rawValue)")
         }
     }
-    
+
     /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
     /// This method checks if HealthKit integration is active and delegates to the appropriate service.
     func deleteEntry(_ entry: Entry) async throws {
@@ -147,11 +151,14 @@ final class IntegrationsService: IntegrationServiceProtocol {
             // No integration active, nothing to delete
             return
         }
-        
+
+        // Create notification to safely pass data across actor boundaries
+        let notification = EntryNotification(from: entry)
+
         switch integrationInfo.type {
         case .healthKit:
-            // Delegate to HealthKit service for deletion
-            let success = try await HealthKitService.shared.deleteEntry(entry: entry)
+            // Delegate to HealthKit service for deletion using notification (safe cross-actor)
+            let success = try await HealthKitService.shared.deleteEntry(notification: notification)
             if success {
                 logger.log(level: .info, tag: "IntegrationService", message: "Successfully deleted entry from HealthKit: \(entry.id)")
             } else {
@@ -187,13 +194,13 @@ final class IntegrationsService: IntegrationServiceProtocol {
     }
     
     // MARK: - Health Integration Logging ------------------------------------------------
-    /// Sends the newly-created `Entry` to the `/integrations/health/log` endpoint when the
+    /// Sends the newly-created entry data to the `/integrations/health/log` endpoint when the
     /// current account is integrated with Apple Health and at least one permission is granted.
     ///
     /// Errors from the network layer are swallowed – only a log entry is written so that
     /// the caller (e.g. `EntryService`) never fails because of this background task.
-    /// - Parameter entry: The just-saved entry that should be forwarded to Apple Health log.
-    func logHealthEntry(entry: Entry) async {
+    /// - Parameter notification: The EntryNotification containing extracted entry data.
+    func logHealthEntry(notification: EntryNotification) async {
         do {
             // Ensure the account has the HealthKit integration enabled
             guard let integrationInfo = try await getStoredIntegrationData(),
@@ -206,9 +213,9 @@ final class IntegrationsService: IntegrationServiceProtocol {
             let approvedPermissions = HealthKitService.shared.getApprovedPermissionList()
             guard !approvedPermissions.isEmpty else { return }
 
-            // Build payload
+            // Build payload using extracted notification data (safe across actor boundaries)
             let sentAt = DateTimeTools.getCurrentDatetimeIsoString()
-            let timestamp = entry.entryTimestamp
+            let timestamp = notification.entryTimestamp
 
             // Include the granted HealthKit permissions in the `data` payload so that the
             // backend can store which permissions were active when the entry was logged.
@@ -216,16 +223,16 @@ final class IntegrationsService: IntegrationServiceProtocol {
                 "permissions": AnyCodable(approvedPermissions)
             ]
 
-            // Fire-and-forget network call
+            // Fire-and-forget network call using notification's extracted data
             _ = try await apiRepository.logHealthIntegration(
                 type: .healthKit,
                 sentAt: sentAt,
                 timestamp: timestamp,
-                weight: entry.scaleEntry?.weight,
-                bodyFat: entry.scaleEntry?.bodyFat,
-                muscleMass: entry.scaleEntry?.muscleMass,
-                water: entry.scaleEntry?.water,
-                bmi: entry.scaleEntry?.bmi,
+                weight: notification.weight,
+                bodyFat: notification.bodyFat,
+                muscleMass: notification.muscleMass,
+                water: notification.water,
+                bmi: notification.bmi,
                 data: dataDict
             )
         } catch {

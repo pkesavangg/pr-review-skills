@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.helper.form
 
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import java.util.Calendar
 
@@ -19,6 +19,7 @@ object ValidationType {
   const val FUTURE_TIME = "future_time"
   const val WEIGHT_MATCH = "weightMatch"
   const val BLANK = "blank"
+  const val INVALID_SCALE_DISPLAY_NAME = "invalidScaleDisplayName"
 }
 
 object ValidationMessages {
@@ -56,9 +57,11 @@ object FormValidations {
     length: Int,
     fieldName: String = "Field",
     customMessage: String? = null,
+    allowSpaces: Boolean = false,
   ): Validator<String> =
     { value ->
-      if (value.trim().length < length) {
+      val valueToCheck = if (allowSpaces) value else value.trim()
+      if (valueToCheck.length < length) {
         ValidationError(ValidationType.MIN_LENGTH, customMessage ?: "Minimum of $length characters needed")
       } else {
         null
@@ -69,9 +72,11 @@ object FormValidations {
     length: Int,
     fieldName: String? = null,
     customMessage: String? = null,
+    allowSpaces: Boolean = false,
   ): Validator<String> =
     { value ->
-      if (value.trim().length > length) {
+      val valueToCheck = if (allowSpaces) value else value.trim()
+      if (valueToCheck.length > length) {
         ValidationError(
           ValidationType.MAX_LENGTH,
           customMessage ?: if(fieldName.isNullOrEmpty()) "maximum value should be $length" else "$fieldName should not exceed $length characters"
@@ -160,10 +165,11 @@ object FormValidations {
 
   fun skuValidator(): Validator<String> = { value ->
     val sku = value.trim()
-    val skuExists = SCALES.any { it.sku == sku }
+    // Use helper to check if SKU exists (handles variant SKU mapping e.g., 0022 -> 0383)
+    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
     when {
-      sku.isBlank() -> ValidationError(ValidationType.REQUIRED, ValidationMessages.SKU)
-      skuExists -> null
+      sku.isBlank() -> null // Don't show error for empty field, button will be disabled instead
+      scaleInfo != null -> null
       else -> ValidationError(ValidationType.PATTERN, ValidationMessages.SKU)
     }
   }
@@ -319,6 +325,27 @@ object FormValidations {
           currentWeightValue.isNotEmpty() &&
           goalWeightValue == currentWeightValue) {
         ValidationError(ValidationType.WEIGHT_MATCH, ValidationMessages.WEIGHT_MATCH)
+      } else {
+        null
+      }
+    }
+
+  /**
+   * Validator that checks if the scale display name is "guest" (case-insensitive).
+   * This matches the Angular scaleDisplaynameValidator behavior.
+   * Returns error if the trimmed value (case-insensitive) equals "guest".
+   *
+   * @param customMessage Optional custom error message. If not provided, uses default message.
+   * @return Validator that returns error if value is "guest" (case-insensitive)
+   */
+  fun scaleDisplayNameValidator(customMessage: String? = null): Validator<String> =
+    { value ->
+      val trimmedValue = value.trim()
+      if (trimmedValue.isNotEmpty() && trimmedValue.equals("guest", ignoreCase = true)) {
+        ValidationError(
+          ValidationType.INVALID_SCALE_DISPLAY_NAME,
+          customMessage ?: "user name unavailable"
+        )
       } else {
         null
       }

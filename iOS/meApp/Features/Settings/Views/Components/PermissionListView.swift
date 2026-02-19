@@ -208,20 +208,23 @@ struct PermissionListView: View {
         }
     }
     
-    private func statusIcon(for isEnabled: Bool, required: Bool, showsChevron: Bool = false) -> AnyView {
-        // Choose icon: checkmark for enabled, minus for disabled.
-        let icon = isEnabled ? AppAssets.checkMarkCircle : AppAssets.minusCircleClear
+    private func statusIcon(for isEnabled: Bool, required: Bool, showsChevron: Bool = false, isRowDisabled: Bool = false) -> AnyView {
+        // Choose icon: checkmark for enabled, permission disabled icon for disabled (only for permission screen).
+        let icon = isEnabled ? AppAssets.checkMarkCircle : (setupType == .all ? AppAssets.permissionDisabled : AppAssets.minusCircleClear)
         
         // Determine colour:
-        //  - Enabled  ➜ primary action colour
-        //  - Disabled & required  ➜ error (red), except grey in Scale Setup
-        //  - Disabled & optional  ➜ utility / grey
+
+        //    - Disabled text permission (isRowDisabled) ➜ statusIconSecondaryDisabled (#D0CCCA)
+        //    - Disabled & not required ➜ statusIconSecondary (#7B726E)
+        //    - Disabled & required ➜ statusError (red), except grey in Scale Setup
         let colour: Color = {
             if isEnabled { return theme.actionPrimary }
+            if isRowDisabled { return theme.statusIconSecondaryDisabled }
+			if icon == AppAssets.minusCircleClear { return theme.statusIconSecondary }
             // In Scale Setup (setupType != .all), always show grey for disabled permissions
             if setupType != .all { return theme.statusUtilityPrimary }
-            if showsChevron || required { return theme.statusError }
-            return theme.statusUtilityPrimary
+            if required { return theme.statusError }
+            return theme.statusIconSecondary
         }()
         
         return AnyView(
@@ -266,7 +269,8 @@ struct PermissionListView: View {
                         leadingIcon: statusIcon(
                             for: isRowDisabled ? false : isEnabled,
                             required: isRowDisabled ? false : isRequired(category),
-                            showsChevron: showsChevron
+                            showsChevron: showsChevron,
+                            isRowDisabled: isRowDisabled
                         ),
                         onTap: {
                             if !isEnabled && !isRowDisabled {

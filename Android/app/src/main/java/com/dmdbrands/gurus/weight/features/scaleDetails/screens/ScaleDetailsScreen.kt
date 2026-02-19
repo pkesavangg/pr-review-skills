@@ -1,6 +1,10 @@
 package com.dmdbrands.gurus.weight.features.scaleDetails.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,16 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
@@ -37,6 +35,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.SettingsSection
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.SettingColorType
@@ -55,7 +54,6 @@ import com.dmdbrands.gurus.weight.features.scaleDetails.reducer.ScaleNameDialogF
 import com.dmdbrands.gurus.weight.features.scaleDetails.strings.ScaleDetailsStrings
 import com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel.ScaleDetailsViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
-import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import kotlinx.coroutines.launch
 
@@ -103,90 +101,6 @@ fun ScaleDetailsScreenContent(
   val isR4Scale = scaleSetupType == ScaleSetupType.BtWifiR4
   val canEnableTestingFeatures = state.enableTestingFeatures
 
-  var bottomSheetVisible by remember { mutableStateOf(false) }
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  if (bottomSheetVisible) {
-    ModalBottomSheet(
-      onDismissRequest = {
-        coroutineScope.launch {
-          sheetState.hide()
-          bottomSheetVisible = false
-          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
-        }
-      },
-      containerColor = colorScheme.primaryBackground,
-      modifier = Modifier.fillMaxSize(),
-      dragHandle = null,
-      sheetState = sheetState,
-      properties = ModalBottomSheetProperties(
-        shouldDismissOnBackPress = true,
-      ),
-    ) {
-      when (state.settingsScreenStep) {
-        ScaleSettingSteps.BLUETOOTH_SETTINGS -> {
-          BluetoothPermissionScreen(
-            state = state,
-            handleIntent = handleIntent,
-            onClose = {
-              coroutineScope.launch {
-                sheetState.hide()
-                bottomSheetVisible = false
-                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
-              }
-            },
-          )
-        }
-
-        ScaleSettingSteps.WIFI_MAC_ADDRESS -> {
-          WifiMacAddressScreen(
-            state = state,
-            handleIntent = handleIntent,
-            onClose = {
-              coroutineScope.launch {
-                sheetState.hide()
-                bottomSheetVisible = false
-                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
-              }
-            },
-          )
-        }
-
-        ScaleSettingSteps.SOFTWARE_UPDATE -> {
-          SoftwareUpdateScreen(
-            state = state,
-            handleIntent = handleIntent,
-            onClose = {
-              coroutineScope.launch {
-                sheetState.hide()
-                bottomSheetVisible = false
-                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
-              }
-            },
-          )
-        }
-
-        ScaleSettingSteps.ADDITIONAL_SETTINGS -> {
-          AdditionalSettingsScreen(
-            state = state,
-            handleIntent = handleIntent,
-            onClose = {
-              coroutineScope.launch {
-                sheetState.hide()
-                bottomSheetVisible = false
-                handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
-              }
-            },
-          )
-        }
-
-        ScaleSettingSteps.NONE -> {
-          bottomSheetVisible = false
-          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
-        }
-      }
-
-    }
-  }
 
   AppScaffold(
     title = scaleName,
@@ -205,15 +119,15 @@ fun ScaleDetailsScreenContent(
           .verticalScroll(rememberScrollState())
           .padding(vertical = spacing.md, horizontal = spacing.sm),
     ) {
-      // Scale Image
+      // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       AppScaleImage(
-        sku = device?.getSKU() ?: "",
+        sku = DeviceHelper.mapSkuForDisplay(device!!.getSKU()),
         modifier = Modifier.fillMaxWidth(),
         scaleImageSize = ScaleImageSize.Large,
       )
       Spacer(modifier = Modifier.height(spacing.xl))
       Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        if (state.scale?.isWeighOnlyModeEnabledByOthers == true) {
+        if (state.scale.isWeighOnlyModeEnabledByOthers && state.scale.connectionStatus == BLEStatus.CONNECTED) {
           AppNote(
             message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
             icon = AppIcons.Default.WeightOnlyMode,
@@ -223,7 +137,7 @@ fun ScaleDetailsScreenContent(
             },
           )
         }
-        // Show SetupIncomplete note if WiFi is not configured AND no SSID is connected
+        // Show SetupIncomplete note if Wi-Fi is not configured AND no SSID is connected
         val isWifiConfigured = state.scale?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
         if (!isWifiConfigured && state.scale?.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == ScaleSetupType.BtWifiR4) {
           AppNote(
@@ -312,12 +226,11 @@ fun ScaleDetailsScreenContent(
                     ),
                   onClick = {
                     handleIntent(SetSettingsScreenStep(ScaleSettingSteps.BLUETOOTH_SETTINGS))
-                    bottomSheetVisible = true
                   },
                 ),
               )
               if (scaleSetupType == ScaleSetupType.BtWifiR4) {
-                // WiFi is considered configured if we have isWifiConfigured=true OR if we have a connected SSID
+                // Wi-Fi is considered configured if we have isWifiConfigured=true OR if we have a connected SSID
                 val isWifiConfigured = device?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
                 add(
                   SettingsItem(
@@ -339,7 +252,6 @@ fun ScaleDetailsScreenContent(
 
                     onClick = {
                       handleIntent(SetSettingsScreenStep(ScaleSettingSteps.WIFI_MAC_ADDRESS))
-                      bottomSheetVisible = true
                     },
                   ),
                 )
@@ -369,7 +281,7 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(device?.getSKU() ?: ""),
+              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device!!.getSKU())),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,
@@ -413,7 +325,6 @@ fun ScaleDetailsScreenContent(
                   return@SettingsItem
                 }
                 handleIntent(SetSettingsScreenStep(ScaleSettingSteps.SOFTWARE_UPDATE))
-                bottomSheetVisible = true
               },
             ),
             SettingsItem(
@@ -426,7 +337,6 @@ fun ScaleDetailsScreenContent(
                   return@SettingsItem
                 }
                 handleIntent(SetSettingsScreenStep(ScaleSettingSteps.ADDITIONAL_SETTINGS))
-                bottomSheetVisible = true
               },
             ),
             SettingsItem(
@@ -446,6 +356,38 @@ fun ScaleDetailsScreenContent(
           ),
         )
       }
+    }
+  }
+
+  AnimatedContent(
+    targetState = state.settingsScreenStep,
+    label = "SettingsStepTransition",
+    transitionSpec = {
+      EnterTransition.None togetherWith ExitTransition.None
+    },
+  ) { step ->
+    when (step) {
+      ScaleSettingSteps.BLUETOOTH_SETTINGS ->
+        BluetoothPermissionScreen(state, handleIntent) {
+          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+        }
+
+      ScaleSettingSteps.WIFI_MAC_ADDRESS ->
+        WifiMacAddressScreen(state, handleIntent) {
+          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+        }
+
+      ScaleSettingSteps.SOFTWARE_UPDATE ->
+        SoftwareUpdateScreen(state, handleIntent) {
+          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+        }
+
+      ScaleSettingSteps.ADDITIONAL_SETTINGS ->
+        AdditionalSettingsScreen(state, handleIntent) {
+          handleIntent(SetSettingsScreenStep(ScaleSettingSteps.NONE))
+        }
+
+      ScaleSettingSteps.NONE -> Unit
     }
   }
 }

@@ -12,9 +12,9 @@ import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleReducer
 import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleState
 import com.dmdbrands.gurus.weight.features.addScale.strings.PairedScaleExistsAlert
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -94,9 +94,10 @@ constructor(
 
   private fun checkAndNavigateToScaleSetup(sku: String, replaceLast: Boolean = true) {
     AppLog.d(TAG, "Checking and navigating to scale setup for SKU: $sku")
-    val scaleInfo = SCALES.find { it.sku == sku }
+    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
     val setupType = scaleInfo?.setupType
-    val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == sku }
+    // Check saved scales using mapped SKU (savedScales contains ScaleInfo with mapped SKUs via toScaleInfo())
+    val isScaleAlreadyPaired = state.value.savedScales.any { it.sku == scaleInfo?.sku }
 
     AppLog.d(
       TAG,
@@ -110,7 +111,7 @@ constructor(
           title = PairedScaleExistsAlert.Title,
           message = PairedScaleExistsAlert.Message(scaleInfo.sku),
           confirmText = PairedScaleExistsAlert.Pair,
-          cancelText = PairedScaleExistsAlert.Cancel,
+          cancelText = PairedScaleExistsAlert.Return,
           onConfirm = {
             AppLog.d(TAG, "User confirmed pairing existing scale")
             navigateToSelectedScaleSetup(sku)
@@ -126,9 +127,10 @@ constructor(
 
   private fun navigateToSelectedScaleSetup(sku: String, replaceLast: Boolean = true) {
     AppLog.d(TAG, "Navigating to selected scale setup for SKU: $sku")
-    val scaleInfo = SCALES.find { it.sku == sku }
+    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
     if (scaleInfo != null) {
       AppLog.d(TAG, "Scale info found: ${scaleInfo.productName}, setup type: ${scaleInfo.setupType}")
+      // Pass original SKU to routes (not mapped), setup will save original SKU
       val route = when (scaleInfo.setupType) {
         ScaleSetupType.AppSync -> {
           AppLog.d(TAG, "Navigating to AppSync scale setup")

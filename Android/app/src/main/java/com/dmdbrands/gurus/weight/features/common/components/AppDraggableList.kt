@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,10 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.Scroller
+import sh.calvin.reorderable.mainAxisViewportSize
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.rememberScroller
 
 // --- Scope Interface and Implementation ---
 interface DraggableListItemScope {
@@ -81,6 +87,7 @@ fun <T> AppDraggableList(
   onMove: (from: Int, to: Int) -> Unit,
   modifier: Modifier = Modifier,
   contentPadding: PaddingValues = PaddingValues(0.dp),
+  scrollState: ScrollableState? = null,
   verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(0.dp),
   keySelector: (T) -> Any,
   onDragStarted: () -> Unit = {},
@@ -90,9 +97,16 @@ fun <T> AppDraggableList(
   val lazyListState = rememberLazyListState()
   val hapticFeedback = LocalHapticFeedback.current
 
+  val scroller =  rememberScroller(
+    scrollableState = scrollState ?: lazyListState,
+    pixelAmountProvider = { lazyListState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
+  )
+
   val reorderableState =
     rememberReorderableLazyListState(
       lazyListState = lazyListState,
+      scroller = scroller,
+      scrollThreshold = 140.dp,
       onMove = { from, to ->
         onMove(from.index, to.index)
         hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)

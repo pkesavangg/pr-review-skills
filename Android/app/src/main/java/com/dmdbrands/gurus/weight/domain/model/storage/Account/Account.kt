@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToKg
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools.convertStoredToLbs
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.calculateAge
+import com.dmdbrands.gurus.weight.domain.enums.ActivityLevel
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
@@ -43,6 +44,7 @@ data class Account(
   val streakTimestamp: String? = null, // nullable
   val dashboardType: String? = DashboardType.DASHBOARD_4_METRICS.value,
   val dashboardMetrics: List<String>? = emptyList(),
+  val progressMetrics: List<String>? = emptyList(),
   // Notification settings
   val shouldSendEntryNotifications: Boolean? = false,
   val shouldSendWeightInEntryNotifications: Boolean? = false,
@@ -97,6 +99,7 @@ data class Account(
       weight = initialWeight,
       height = heightCm,
       goalWeight = goalWeight,
+      isAthlete = activityLevel.equals(ActivityLevel.ATHLETE.name, ignoreCase = true),
       goalType = goalType,
       metrics = metricConfig,
     )
@@ -140,13 +143,14 @@ fun Account.toAccountInfo(): AccountInfo {
     weightUnit = this.weightUnit.value,
     isWeightlessOn = this.isWeightlessOn ?: false,
     height = this.height ?: 1700,
-    activityLevel = this.activityLevel ?: "normal",
+    activityLevel = this.activityLevel ?: ActivityLevel.NORMAL.name.lowercase(),
     dob = this.dob,
     weightlessTimestamp = this.weightlessTimestamp,
     weightlessWeight = this.weightlessWeight,
     isStreakOn = this.isStreakOn ?: false,
     dashboardType = this.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.value,
     dashboardMetrics = this.dashboardMetrics ?: emptyList(),
+    progressMetrics = this.progressMetrics ?: emptyList(),
     goalType = this.goalType,
     goalWeight = this.goalWeight?.toFloat(),
     initialWeight = this.initialWeight.toFloat(),

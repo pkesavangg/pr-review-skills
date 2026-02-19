@@ -31,6 +31,7 @@ data class DashboardState(
   val isEmpty: Boolean = false,
   val isRefreshing: Boolean = false,
   val weightless: Weightless? = null,
+  val isConsuming : Boolean = false,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
@@ -46,12 +47,23 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class UpdateVisibleKeys(val keys: List<DashboardKey>, val dashboardType: DashboardType) : DashboardIntent
   data class SetProgress(val progress: Progress) : DashboardIntent
 
-  data class SetSelectedSegment(val segment: GraphSegment) : DashboardIntent
+  /**
+   * Switches the selected segment. When [anchorTimestamp] is non-null, it is the visible center
+   * (midpoint) from the *previous* segment; the new segment will scroll to this anchor once.
+   */
+  data class SetSelectedSegment(
+    val segment: GraphSegment,
+    val anchorTimestamp: Long? = null,
+  ) : DashboardIntent
+
   data class SetSelectedStat(val stat: Stat?) : DashboardIntent
 
   data class SetData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
   data class SetPagerState(val pagerState: Int) : DashboardIntent
   data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
+
+  /** Called after the chart has scrolled to [scrollTarget] once; clears it to avoid double scroll. */
+  data class SetIsChartConsuming(val isConsuming: Boolean) : DashboardIntent
   data class SetDashboardType(val dashboardType: DashboardType) : DashboardIntent
   data class UpdateIsRefreshing(val isRefreshing: Boolean) : DashboardIntent
   object OnConnectScale : DashboardIntent
@@ -68,7 +80,15 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.UpdateIsEmpty -> state.copy(isEmpty = intent.isEmpty)
     is DashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys)
     is DashboardIntent.SetProgress -> state.copy(progress = intent.progress)
-    is DashboardIntent.SetSelectedSegment -> state.copy(selectedSegment = intent.segment)
+    is DashboardIntent.SetSelectedSegment -> if (intent.segment == state.selectedSegment) {
+      state
+    } else {
+      state.copy(
+        selectedSegment = intent.segment,
+        scrollTarget = intent.anchorTimestamp?.toDouble(),
+      )
+    }
+    is DashboardIntent.SetIsChartConsuming -> state.copy(isConsuming = intent.isConsuming)
     is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
     is DashboardIntent.SetData -> state.copy(data = intent.data)
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)

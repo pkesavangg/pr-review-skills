@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.enums.ActivityLevel
@@ -45,6 +46,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
+import android.util.Log
 
 /**
  * ViewModel for the settings feature, managing state and handling settings intents.
@@ -360,7 +362,7 @@ constructor(
           RadioButtonOption(Gender.FEMALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Female),
         ),
       selectedItem = state.value.account?.gender,
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedSex ->
         AppLog.d(TAG, "Biological sex modal onConfirm called with: $selectedSex")
         selectedSex?.let { gender ->
@@ -402,9 +404,12 @@ constructor(
             gender = gender,
             zipcode = currentAccount.zipcode,
           )
-        // Use offline handler service similar to Angular implementation
-        accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
-        val scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+        // IMPORTANT: Update scale first, then API. If we call the API first, activeAccountFlow
+        // emits and AppViewModel.startScan() runs ggDeviceService.updateProfile(), which races
+        // with our updateR4Profile callback so the loader never dismisses (see AppViewModel.startScan).
+        val updatedProfile = currentAccount.toGGBTUserProfile().copy(sex = gender)
+        val scaleResult = updateR4Profile(updatedProfile)
+        AppLog.d(TAG, "Scale result: $scaleResult")
         when (scaleResult) {
           GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
             dialogQueueService.enqueue(
@@ -425,10 +430,20 @@ constructor(
             )
           }
 
-          else -> {}
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
         }
+        accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
+
         AppLog.i(TAG, "Successfully updated biological sex")
       } catch (e: Exception) {
+        dialogQueueService.dismissLoader()
         AppLog.e(TAG, "Error updating biological sex", e)
       } finally {
         dialogQueueService.dismissLoader()
@@ -442,6 +457,7 @@ constructor(
       ggDeviceService.updateProfile(
         profile,
       ) { responseType ->
+        Log.d("CHECKING", "updating the profole in settingsviewmodel" + responseType.name)
         result.complete(responseType)
       }
     } catch (e: Exception) {
@@ -471,7 +487,7 @@ constructor(
           ),
         ),
       selectedItem = state.value.account?.activityLevel,
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedActivityLevel ->
         selectedActivityLevel?.let { activityLevel ->
           onActivityLevelUpdate(activityLevel)
@@ -487,18 +503,61 @@ constructor(
    * Follows the same pattern as Angular onActivitySelectionChange method.
    */
   private fun onActivityLevelUpdate(activityLevel: String) {
-    // Show loading dialog
     val currentAccount = state.value.account
+    if (currentAccount == null) {
+      AppLog.e(TAG, "No active account found for activity level update")
+      return
+    }
+    if (currentAccount.activityLevel == activityLevel) {
+      AppLog.d(TAG, "Activity level is already set to $activityLevel, no update needed")
+      return
+    }
 
     dialogQueueService.showLoader("Loading...")
     viewModelScope.launch {
       try {
         val bodyComposition =
           BodyCompUpdateRequest(
-            height = currentAccount?.height ?: 1700,
+            height = currentAccount.height ?: 1700,
             activityLevel = activityLevel,
-            weightUnit = currentAccount?.weightUnit?.value ?: "lb",
+            weightUnit = currentAccount.weightUnit.value,
           )
+        // IMPORTANT: Update scale first, then API (bodyCompositionService). API-first causes
+        // activeAccountFlow to emit and AppViewModel.startScan() to call updateProfile(), racing
+        // with our updateR4Profile callback so the loader never dismisses.
+        val updatedProfile =
+          currentAccount.toGGBTUserProfile().copy(isAthlete = (activityLevel == ActivityLevel.ATHLETE.name.lowercase()))
+        val scaleResult = updateR4Profile(updatedProfile)
+        AppLog.d(TAG, "Scale result: $scaleResult")
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+        }
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
@@ -526,7 +585,7 @@ constructor(
         state.value.account
           ?.weightUnit
           ?.value,
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedUnitType ->
         selectedUnitType?.let { unitType ->
           onUnitTypeUpdate(unitType)
@@ -568,6 +627,40 @@ constructor(
             activityLevel = currentAccount.activityLevel ?: "normal",
             weightUnit = newWeightUnit.value,
           )
+        // IMPORTANT: Update scale first, then API. API-first causes activeAccountFlow to emit
+        // and AppViewModel.startScan() to call updateProfile(), racing with our callback.
+        val updatedProfile = currentAccount.toGGBTUserProfile().copy(unit = newWeightUnit.value)
+        val scaleResult = updateR4Profile(updatedProfile)
+        AppLog.d(TAG, "Scale result: $scaleResult")
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+        }
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
         AppLog.i(TAG, "Successfully updated unit type")
       } catch (e: Exception) {
@@ -618,7 +711,7 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.HeightPicker,
-        params = mapOf("value" to currentHeightInput),
+        params = mapOf("value" to currentHeightInput, "confirmText" to RadioGroupModalStrings.Button.Save),
         onConfirm = { selectedHeight ->
           if (selectedHeight is HeightInput) {
             onHeightUpdate(selectedHeight)
@@ -627,7 +720,7 @@ constructor(
         onDismiss = {
           dialogQueueService.dismissCurrent()
         },
-        dismissOnBackPress = true
+        dismissOnBackPress = true,
       ),
     )
   }
@@ -660,8 +753,42 @@ constructor(
           BodyCompUpdateRequest(
             height = newStoredHeight,
             activityLevel = currentAccount.activityLevel ?: "normal",
-            weightUnit = currentAccount.weightUnit?.value ?: "lb",
+            weightUnit = currentAccount.weightUnit.value,
           )
+        val updatedProfile = currentAccount.toGGBTUserProfile().copy(
+          height = ConversionTools.convertStoredHeightToCm(newStoredHeight).toDouble(),
+        )
+        val scaleResult = updateR4Profile(updatedProfile)
+        AppLog.d(TAG, "Scale result: $scaleResult")
+        when (scaleResult) {
+          GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+            dialogQueueService.enqueue(
+              DialogModel.Alert(
+                title = AppPopupStrings.R4ProfileUpdatePending.Title,
+                message = AppPopupStrings.R4ProfileUpdatePending.Message,
+                onDismiss = { dialogQueueService.dismissCurrent() },
+              ),
+            )
+          }
+
+          GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+
+          else -> {
+            dialogQueueService.showToast(
+              Toast(
+                ToastStrings.Success.UpdateProfileSuccess.Message,
+                ToastStrings.Success.UpdateProfileSuccess.Header,
+              ),
+            )
+          }
+        }
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
       } catch (e: Exception) {
@@ -765,7 +892,7 @@ constructor(
         RadioButtonOption("SYSTEM", RadioGroupModalStrings.Appearance.System),
       ),
       selectedItem = getCurrentThemeModeString(),
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedTheme ->
         selectedTheme?.let { themeValue ->
           onAppearanceUpdate(themeValue.toString())
@@ -910,7 +1037,7 @@ constructor(
           state.value.account?.shouldSendEntryNotifications == true -> "On"
           else -> "Off"
         },
-      confirmText = RadioGroupModalStrings.Button.Ok,
+      confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedNotification ->
         selectedNotification?.let { notificationOption ->
           onNotificationUpdate(notificationOption)
@@ -1044,6 +1171,10 @@ constructor(
       val hasShown = userDataStore.hasShownAccountSwitchInfoModalForDevice()
       if (hasShown) return@launch
       val activeAccount = accountService.getCurrentAccount()
+
+      // Set the flag to true when modal is shown, so it persists even if app closes
+      userDataStore.setAccountSwitchInfoModalShownForDevice(true)
+
       dialogQueueService.enqueue(
         DialogModel.Custom(
           contentKey = DialogType.AccountSwitchInfoPopup,
@@ -1070,10 +1201,8 @@ constructor(
   }
 
   fun onAccountSwitchInfoDismiss() {
-    viewModelScope.launch {
-      userDataStore.setAccountSwitchInfoModalShownForDevice(true)
-      dialogQueueService.dismissCurrent()
-    }
+    // Flag is already set when modal is shown, just dismiss
+    dialogQueueService.dismissCurrent()
   }
 
   /**
@@ -1088,7 +1217,7 @@ constructor(
       if (weightlessWeight != null) {
         val displayWeight =
           WeightlessHelper.processStoredWeightToDisplay(weightlessWeight.toDouble(), account.weightUnit)
-        "On - ${displayWeight / 10}"
+            "On - ${displayWeight / 10}"
       } else {
         "On"
       }

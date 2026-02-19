@@ -54,10 +54,10 @@ class NetworkConnectivityObserver
                             network: Network,
                             capabilities: NetworkCapabilities,
                         ) {
-                            val updatedCapabilities = connectivityManager?.getNetworkCapabilities(network)
-                            val state =
-                                updatedCapabilities?.let { hasCapabilitiesChanged(it) }
-                                    ?: NetworkState(available = false, unAvailable = true)
+                            // Use the capabilities parameter directly instead of re-fetching.
+                            // Re-fetching can return null during network transitions and incorrectly
+                            // emit unavailable state when network is actually available.
+                            val state = networkStateFromCapabilities(capabilities)
                             trySend(state)
                         }
 
@@ -65,12 +65,15 @@ class NetworkConnectivityObserver
                             trySend(NetworkState(available = false, unAvailable = true))
                         }
                     }
-
+                // We only require NET_CAPABILITY_INTERNET in the NetworkRequest to avoid losing
+                // the network during validation transitions. However, in networkStateFromCapabilities()
+                // we check for both INTERNET and VALIDATED to ensure actual connectivity.
+                // This approach: (1) keeps tracking the network during transitions (prevents false onLost),
+                // (2) but only reports "available" when both capabilities are present (ensures real connectivity).
                 val networkRequest =
                     NetworkRequest
                         .Builder()
                         .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                         .build()
 
                 connectivityManager?.registerNetworkCallback(networkRequest, callback)
@@ -95,20 +98,44 @@ class NetworkConnectivityObserver
 
         /**
          * Helper to get the current network state from a ConnectivityManager.
+         *
+         * Falls back to checking all registered networks when activeNetwork returns null,
+         * which can happen transiently during background-to-foreground transitions before
+         * the OS fully re-establishes the network binding.
          */
         private fun getCurrentNetworkState(connectivityManager: ConnectivityManager?): NetworkState? {
-            val network = connectivityManager?.activeNetwork
-            val capabilities = connectivityManager?.getNetworkCapabilities(network)
-            return capabilities?.let { hasCapabilitiesChanged(it) }
+            if (connectivityManager == null) return null
+
+            val network = connectivityManager.activeNetwork
+            val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
+            if (capabilities != null) {
+                return networkStateFromCapabilities(capabilities)
+            }
+
+            // activeNetwork/capabilities can be null transiently when resuming from Doze mode.
+            // Check allNetworks as a fallback before declaring unavailable.
+            val hasAnyConnectedNetwork = connectivityManager.allNetworks.any { net ->
+                connectivityManager.getNetworkCapabilities(net)
+                    ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            }
+            return if (hasAnyConnectedNetwork) {
+                NetworkState(available = true, unAvailable = false)
+            } else {
+                null
+            }
         }
 
         /**
-         * Determines network state based on capabilities.
+         * Converts NetworkCapabilities to NetworkState.
+         * Treats network as "available" only when both INTERNET and VALIDATED capabilities
+         * are present, so we only report real connectivity (validated internet), which reduces
+         * flapping on Samsung mobile data and avoids acting on transient states.
+         * unAvailable is the inverse of available.
          */
-        private fun hasCapabilitiesChanged(capabilities: NetworkCapabilities): NetworkState {
-            val isConnected =
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            return NetworkState(available = isConnected, unAvailable = !isConnected)
+        private fun networkStateFromCapabilities(capabilities: NetworkCapabilities): NetworkState {
+            val hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            val hasValidated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            val available = hasInternet && hasValidated
+            return NetworkState(available = available, unAvailable = !available)
         }
     }

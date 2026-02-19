@@ -248,7 +248,7 @@ struct HKIntegrationModalStrings {
 /// Constants for form validation error messages
 struct FormErrorMessages {
     static let required = "This field is required"
-    static let leaveBlank = "must not leave blank"
+    static let leaveBlank = "This field is required"
     static let email = "must use a valid email"
     static let emailMaxLength = "email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
@@ -258,7 +258,7 @@ struct FormErrorMessages {
     static let maxLength = { (length: Int) in "maximum value should be \(length)" }
     static let min = { (value: Int) in "value must be at least \(value)" }
     static let max = { (value: Int) in "value must not exceed \(value)" }
-    static let noWhiteSpace = "must not be left blank"
+    static let noWhiteSpace = "This field is required"
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
@@ -445,6 +445,15 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
 
+    struct DeleteR4ScaleUserAlert {
+        static let title = "Are you sure you want to delete?"
+        static let message: (String) -> String = { name in
+            return "Deleting \(name) will remove them as a user of the scale and they'll need to reconnect."
+        }
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
+
     struct ExpiredUserLogOutAlert {
         static let title: (String) -> String = { name in
             return "\(name) was logged out"
@@ -519,6 +528,13 @@ struct AlertStrings {
         static let exitButton = "Exit"
     }
 
+    struct BluetoothTurnedOffAlert {
+        static let title = "Bluetooth is Turned Off"
+        static let message = "Bluetooth is required to connect to your scale. Please turn it on and try again."
+        static let cancelButton = "Cancel"
+        static let turnOnButton = "Turn On"
+    }
+
     struct ResetDashboardAlert {
         static let title = "Are you sure?"
         static let message = "Your dashboard display metrics will reset to default settings"
@@ -534,9 +550,9 @@ struct AlertStrings {
     }
 
     struct DeviceAlreadyPairedAlert {
-        static let title = "Device Already Paired"
+        static let title = "Device already paired"
         static let message: (String) -> String = { sku in
-            "The device with SKU: \(sku) is already paired. Do you want to pair it again?"
+            "The device with sku: \(sku) is already paired. Do you want to pair it again?"
         }
         static let returnButton = "RETURN"
         static let pairButton = "PAIR"
@@ -589,8 +605,8 @@ struct AlertStrings {
         static let wifiDisabledMessage = "1. Open Settings on your phone\n2. Tap Wi-Fi\n3. Toggle Wi-Fi on\n4. Return to this app"
 
         // MARK: - Camera
-        static let cameraDisabledTitle = "You have not given permission to access camera"
-        static let cameraDisabledMessage = "You will not be able to pair or sync with your AppSync scale. Please enable Camera access in Settings."
+        static let cameraDisabledTitle = "You have not given permission to access camera!"
+        static let cameraDisabledMessage = "You will not be able to pair or sync with your App sync scale. Please enable it from your app permissions."
 
         // MARK: - Notification
         static let notificationDisabledTitle = "Notifications are disabled!"
@@ -599,7 +615,7 @@ struct AlertStrings {
 
     struct ConfirmRestoreAlert {
         static let title = "Confirm Account Restore"
-        static let message = "Restoring this account will reconnect me.health and the scale. Scale settings may be reset."
+        static let message = "Restoring this account will reconnect Weight Gurus and the scale. Scale settings may be reset."
         static let restoreButton = "Restore"
         static let backButton = "Back"
     }
@@ -792,6 +808,7 @@ struct AppAssets {
     static let checkMarkCircle = "checkMarkCircle"
     static let circleOutline = "circleOutline"
     static let circleCheckFilled = "circleCheckFilled"
+    static let permissionDisabled = "permissionDisabled"
     static let wifi = "wifi"
     static let trash = "trash"
     static let filledCloseCircle = "filledCloseCircle"
@@ -806,6 +823,7 @@ struct AppAssets {
     static let userProfile = "userProfile"
     // Newly added from image
     static let exclamationDanger = "exclamationDanger"
+    static let exclamationMarkSimple = "exclamationMarkSimple"
     static let hkIntegrationCompleteSS = "hkIntegrationCompleteSS"
     static let hkPermissionsAllowedSS = "hkPermissionsAllowedSS"
     static let hkPermissionsNotAllowedSS = "hkPermissionsNotAllowedSS"

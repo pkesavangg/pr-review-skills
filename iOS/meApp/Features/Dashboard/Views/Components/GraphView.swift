@@ -57,24 +57,42 @@ struct GraphView: View {
         }
     }
 
+    // Show skeleton until graph is ready (set after settling delay)
+    private var shouldShowSkeleton: Bool {
+        !dashboardStore.state.graph.isGraphReady
+    }
+
     var body: some View {
-        VStack(alignment: .leading){
-            // Preserve layout height: fade the label out instead of removing it to avoid jump
-            Text(dashboardStore.weightLabel.lowercased())
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
-                // Hide immediately when the callout is shown (driven by the same VM flag)
-                .opacity(isShowingSelectionCallout ? 0 : 1)
-                .animation(.none, value: isShowingSelectionCallout)
-                .padding(.leading, .spacingSM)
-                .padding(.vertical, .spacingXS)
+        ZStack {
+            // Skeleton loader shown only during initial graph load
+            if shouldShowSkeleton {
+                GraphSkeletonView()
+            }
+
+            // Actual graph content
+            VStack(alignment: .leading) {
+                // Preserve layout height: fade the label out instead of removing it to avoid jump
+                Text(dashboardStore.weightLabel.lowercased())
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textSubheading)
+                    // Hide immediately when the callout is shown (driven by the same VM flag)
+                    .opacity(isShowingSelectionCallout ? 0 : 1)
+                    .animation(.none, value: isShowingSelectionCallout)
+                    .padding(.leading, .spacingSM)
+                    .padding(.vertical, .spacingXS)
                 chartView
                     .id(chartIdentity)
-
+            }
+            .opacity(shouldShowSkeleton ? 0 : 1)
         }
+        .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
+
+            // Note: The anchor-based scroll position is already calculated and set by
+            // WeightTrendView.onChange(of: localSelectedPeriod) before this handler runs.
+            // We only need to handle view model configuration and UI updates here.
 
             // Immediate lightweight operations (cheap)
             dashboardStore.clearSelection()
@@ -102,18 +120,7 @@ struct GraphView: View {
                     totalSectionViewModel.configure(with: dashboardStore)
                 }
 
-                // Calculate optimal scroll position
-                let optimal = dashboardStore.graphManager.calculateOptimalScrollPosition(
-                    for: newValue,
-                    from: dashboardStore.continuousOperations,
-                    showingLatest: true,
-                    cachedBounds: dashboardStore.dataManager.getDateBounds(for: newValue)
-                )
-                dashboardStore.graphManager.updateScrollPosition(to: optimal)
-                dashboardStore.updateSelectedPeriod(newValue)
-
-                // Force the active view model to sync with the optimal position
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms additional delay
+                // Force the active view model to sync with the scroll position set by WeightTrendView
                 guard !Task.isCancelled else { return }
 
                 let finalPosition = dashboardStore.state.graph.xScrollPosition
@@ -136,7 +143,6 @@ struct GraphView: View {
         .onReceive(accountService.$activeAccount) { _ in
             dashboardStore.handleSettingsChange()
         }
-        .animation(.easeInOut(duration: 0.2), value: dashboardStore.state.graph.selectedPeriod)
     }
 
     // MARK: - Chart View

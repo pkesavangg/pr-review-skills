@@ -16,6 +16,8 @@ final class LandingStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperService
     @Injector private var logger: LoggerService
     
+    private let networkMonitor = NetworkMonitor.shared
+    
     // MARK: Published State
     @Published var accounts: [Account] = []
     @Published var userItems: [UserItemInfo] = []
@@ -27,35 +29,87 @@ final class LandingStore: ObservableObject {
     
     // MARK: Private
     private var cancellables: Set<AnyCancellable> = []
+    private var connectionCheckTimeout: DispatchWorkItem?
     private let tag = "LandingStore"
     
     // MARK: Init
     init() {
-        // Keep the local list in-sync with `AccountService`.
+        setupAccountObservation()
+        setupNetworkMonitoring()
+    }
+    
+    // MARK: - Setup Methods
+    
+    /// Observes account changes and updates the local account list.
+    private func setupAccountObservation() {
         accountService.$allAccounts
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
                 guard let self = self else { return }
-                self.accounts = all.filter { $0.isLoggedIn == true }
+                //Only show logged-in accounts
+                let loggedInAccounts = all.filter { 
+                    $0.isLoggedIn == true && ($0.isExpired ?? false) == false
+                }
                 
-                let sortedAccounts = self.accounts.sorted { lhs, rhs in
+                // Sort logged-in accounts by last active time
+                let sortedLoggedInAccounts = loggedInAccounts.sorted { lhs, rhs in
                     let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
                     let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
                     return lhsDate > rhsDate
                 }
                 
-                self.userItems = sortedAccounts.map { account in
-                    UserItemInfo(
+                self.accounts = sortedLoggedInAccounts
+                
+                self.userItems = sortedLoggedInAccounts.map { account in
+                    return UserItemInfo(
                         accountID: account.accountId,
                         name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
                         email: account.email,
                         isSelected: false,
-                        isExpired: account.isExpired ?? false,
+                        isExpired: false, // Only logged-in accounts are shown
                         canShowSelection: false
                     )
                 }
             }
             .store(in: &cancellables)
+    }
+    
+    /// Observes network connectivity changes and shows toast when connection is lost.
+    /// Implements a delay mechanism to avoid false alerts during quick network toggles.
+    private func setupNetworkMonitoring() {
+        networkMonitor.$isConnected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isConnected in
+                self?.handleNetworkStatusChange(isConnected: isConnected)
+            }
+            .store(in: &cancellables)
+    }
+    
+    // MARK: - Network Monitoring
+    
+    /// Handles network status changes and shows toast when network disconnects.
+    /// - Parameter isConnected: Current network connection status.
+    private func handleNetworkStatusChange(isConnected: Bool) {
+        connectionCheckTimeout?.cancel()
+        
+        guard !isConnected else { return }
+        
+        // Delay the toast to avoid false alerts during quick toggles (similar to weightGurus)
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self, !self.networkMonitor.isConnected else { return }
+            self.showNoConnectionToast()
+        }
+        connectionCheckTimeout = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+    }
+    
+    /// Shows a toast notification when network connection is lost.
+    private func showNoConnectionToast() {
+        let toast = ToastModel(
+            message: toastLang.unableToConnect,
+            duration: 3.0
+        )
+        notificationService.showToast(toast)
     }
     
     // MARK: Intent(s)
@@ -66,6 +120,9 @@ final class LandingStore: ObservableObject {
             return
         }
         
+        // R1: Extract @Model data before async boundary
+        let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
+
         Task {
             notificationService.showLoader(LoaderModel(text: loadingLang.loading))
             defer {
@@ -73,7 +130,6 @@ final class LandingStore: ObservableObject {
             }
             do {
                 try await accountService.switchAccount(to: account)
-                let userName = account.firstName?.isEmpty == false ? account.firstName ?? account.email : account.email
                 notificationService.showToast(ToastModel(message: toastLang.switchingAccount(userName)))
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountID)")
             } catch {
@@ -92,6 +148,7 @@ final class LandingStore: ObservableObject {
     /// Returns `true` if another account can be added. If the maximum number of
     /// accounts has already been reached, shows an alert and returns `false`.
     func canAddMoreAccounts() -> Bool {
+        // accounts array already contains only logged-in, non-expired accounts
         if accounts.count >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return false

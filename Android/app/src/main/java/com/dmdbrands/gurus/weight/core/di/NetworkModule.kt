@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.di
 import androidx.annotation.RequiresApi
 import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
+import com.dmdbrands.gurus.weight.core.config.NetworkConfig
 import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.network.TokenManager
@@ -26,6 +27,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -152,11 +154,14 @@ object NetworkModule {
         @ApplicationContext context: Context,
         loggingInterceptor: HttpLoggingInterceptor,
         baseUrlInterceptor: BaseUrlInterceptor,
-        responseInterceptor: ResponseInterceptor,
         networkInterceptor: NetworkInterceptor,
         tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(NetworkConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(NetworkConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(NetworkConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+
         // Only add logging interceptor if the app is debuggable
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             okHttpClient.addInterceptor(loggingInterceptor)
@@ -165,7 +170,6 @@ object NetworkModule {
             .addInterceptor(networkInterceptor)
             .addInterceptor(baseUrlInterceptor)
             .addInterceptor(authTokenInterceptor)
-            .addInterceptor(responseInterceptor)
             .authenticator(tokenAuthenticator)
         return okHttpClient.build()
     }

@@ -62,7 +62,7 @@ enum class ButtonType {
 // style - block/inline
 
 // Button size options
-enum class ButtonSize { Small, Medium, Large }
+enum class ButtonSize { XSmall, Small, Medium, Large }
 
 // Text transformation options
 enum class TextTransform { NONE, UPPERCASE, LOWERCASE, CAPITALIZE }
@@ -197,6 +197,7 @@ object AppButtonDefaults {
   // Button height by size
   fun height(size: ButtonSize): Dp =
     when (size) {
+      ButtonSize.XSmall -> 16.dp
       ButtonSize.Small -> 35.dp
       ButtonSize.Medium -> 45.dp
       ButtonSize.Large -> 40.dp
@@ -212,6 +213,7 @@ object AppButtonDefaults {
       return 0.dp
     }
     return when (size) {
+      ButtonSize.XSmall -> MeTheme.spacing.xs
       ButtonSize.Small -> MeTheme.spacing.sm
       ButtonSize.Medium -> MeTheme.spacing.md
       ButtonSize.Large -> MeTheme.spacing.lg
@@ -221,6 +223,7 @@ object AppButtonDefaults {
   // Minimum width by size
   fun minWidth(size: ButtonSize): Dp =
     when (size) {
+      ButtonSize.XSmall -> 60.dp
       ButtonSize.Small -> 80.dp
       ButtonSize.Medium -> 130.dp
       ButtonSize.Large -> 160.dp
@@ -231,7 +234,7 @@ object AppButtonDefaults {
   fun textStyle(size: ButtonSize): TextStyle =
     when (size) {
       ButtonSize.Large, ButtonSize.Medium -> MeTheme.typography.button1
-      ButtonSize.Small -> MeTheme.typography.button2
+      ButtonSize.Small, ButtonSize.XSmall -> MeTheme.typography.button2
     }
 
   // Applies text transformation
@@ -308,7 +311,6 @@ fun AppButton(
   val shape = RoundedCornerShape(50)
   val vPadding = 0.dp
   val maxLines = 1
-
   val buttonModifier = modifier
     .then(
       if (type != ButtonType.InlineTextPrimary || type != ButtonType.InlineTextSecondary) {
@@ -353,7 +355,6 @@ fun AppButton(
         .clickable(
           enabled = enabled,
           interactionSource = interactionSource,
-          indication = null, // Disable ripple effect
           onClick = throttledClick
         ),
       contentAlignment = Alignment.Center

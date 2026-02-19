@@ -11,12 +11,15 @@ import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphPoint
 import com.dmdbrands.gurus.weight.features.common.model.chart.Label
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toDoublePreserve
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.Month
 import java.time.Period
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
@@ -62,8 +65,8 @@ object GraphUtil {
           GraphPoint(
             x =
               Label(
-                value = DateTimeConverter.isoToTimestamp (entry.entryTimestamp),
-            label = entry.period,
+                value = DateTimeConverter.isoToTimestamp(entry.entryTimestamp),
+                label = entry.period,
               ),
             y = Label(value = entry.weight, label = "${entry.prefix}${entry.weight.rounded() ?: 0}"),
           )
@@ -130,21 +133,23 @@ object GraphUtil {
   ): Double =
     when (segment) {
       GraphSegment.WEEK -> ONE_DAY_MILLIS
-      GraphSegment.MONTH -> 6 * ONE_DAY_MILLIS
+      GraphSegment.MONTH -> 7.0 * ONE_DAY_MILLIS
       GraphSegment.YEAR -> 31 * ONE_DAY_MILLIS
       GraphSegment.TOTAL -> 31 * ONE_DAY_MILLIS
     }.toDouble()
 
   /**
-   * Returns the number of intervals for the given [GraphSegment].
+   * Returns the visible labels count for the given segment (number of intervals / labels to show).
+   * Not an x range value. Double supports decimal values.
+   *
+   * @return Visible labels count as Double.
    */
-  fun GraphSegment.intervalCount(): Double =
-    when (this) {
-      GraphSegment.WEEK -> 7
-      GraphSegment.MONTH -> 5
-      GraphSegment.YEAR -> 11.75
-      GraphSegment.TOTAL -> 1000
-    }.toDouble() - 0.001
+  fun GraphSegment.visibleLabelsCount(): Double = when (this) {
+    GraphSegment.WEEK -> 28 / 4.0
+    GraphSegment.MONTH -> (31 / 7.0).coerceAtLeast(1.0)
+    GraphSegment.YEAR -> (366.0 / 31.0) // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
+    GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
+  }
   // endregion
 
   // region Formatting
@@ -198,22 +203,22 @@ object GraphUtil {
       )
     }
 
-  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getImmediateAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the minimum timestamp that is still greater than the search timestamp
     // This works regardless of list order (ascending or descending)
     val immediatePoint = graphLines.points
       .filter { it.x.value.toLong() > timeStamp }
       .minByOrNull { it.x.value.toLong() }
-    return immediatePoint?.y?.value?.toLong()
+    return immediatePoint?.y?.value?.toFloat()?.toDoublePreserve()
   }
 
-  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long, isSecondary: Boolean): Long? {
+  fun getPreviousAvailablePoint(graphLines: GraphLine, timeStamp: Long): Double? {
     // Find the point with the maximum timestamp that is still less than the search timestamp
     // This works regardless of list order (ascending or descending)
     val previousPoint = graphLines.points
       .filter { it.x.value.toLong() < timeStamp }
       .maxByOrNull { it.x.value.toLong() }
-    return previousPoint?.y?.value?.toLong()
+    return previousPoint?.y?.value?.toFloat()?.toDoublePreserve()
   }
 
   /**
@@ -251,9 +256,8 @@ object GraphUtil {
     }
 
     // Get all metric values (including previous/next for range calculation)
-    val allMetricValues = metricGraphLine.points.mapNotNull { it.y.value as? Number }
-      .map { it.toDouble() }
-      .filter { it.isFinite() } // Filter out NaN/Infinity values
+    val allMetricValues =
+      metricGraphLine.points.map { it.y.value.toFloat().toDoublePreserve() }.filter { it.isFinite() }
 
     if (allMetricValues.isEmpty()) {
       return metricGraphLine
@@ -263,14 +267,13 @@ object GraphUtil {
     val visiblePoints = metricGraphLine.points.filter {
       it.x.value.toLong() in minX..maxX
     }
-    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX, false)
-    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX, false)
-
+    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX)?.toLong()?.toDouble()
+    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX)?.toLong()?.toDouble()
 
     val metricValuesForRange = buildList {
-      previousPoint?.let { add(it.toDouble()) }
+      previousPoint?.let { add(it) }
       addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
-      nextPoint?.let { add(it.toDouble()) }
+      nextPoint?.let { add(it) }
     }
 
     if (metricValuesForRange.isEmpty()) {
@@ -288,9 +291,9 @@ object GraphUtil {
     val effectiveMetricMax: Double
 
     if (isSingleMetricPoint) {
-        val padding = 1.0
-        effectiveMetricMin = metricMin - padding
-        effectiveMetricMax = metricMax + padding
+      val padding = 1.0
+      effectiveMetricMin = metricMin - padding
+      effectiveMetricMax = metricMax + padding
     } else {
       // Add 5% padding (matching iOS implementation)
       val padding = metricRange * 0.05
@@ -325,12 +328,12 @@ object GraphUtil {
         // Validate position is finite before using (matching iOS guard checks)
         if (positionInRange.isFinite()) {
           point.copy(
-            y = point.y.copy(value = positionInRange)
+            y = point.y.copy(value = positionInRange),
           )
         } else if (useFallback) {
           // Fallback to middle of weight range (validated above)
           point.copy(
-            y = point.y.copy(value = safeFallbackValue)
+            y = point.y.copy(value = safeFallbackValue),
           )
         } else {
           // If fallback is also invalid, skip this point entirely
@@ -342,7 +345,7 @@ object GraphUtil {
 
         // Normalize to weight range
         val normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
-                              yAxisSpan / metricRangeSpan
+          yAxisSpan / metricRangeSpan
 
         // Apply safety bounds (keep slightly inside bounds)
         val safeMin = weightMin + epsilon
@@ -352,12 +355,12 @@ object GraphUtil {
         // Ensure finite value (matching iOS guard checks)
         if (finalValue.isFinite()) {
           point.copy(
-            y = point.y.copy(value = finalValue)
+            y = point.y.copy(value = finalValue),
           )
         } else if (useFallback) {
           // Fallback to middle of weight range (validated above)
           point.copy(
-            y = point.y.copy(value = safeFallbackValue)
+            y = point.y.copy(value = safeFallbackValue),
           )
         } else {
           // If fallback is also invalid, skip this point entirely
@@ -505,6 +508,38 @@ object GraphUtil {
   }
 
   /**
+   * Gets the related start timestamp for the given segment and timestamp.
+   * For WEEK or MONTH segment, returns the relative day start (noon rule) from [DateTimeConverter.getRelativeDayStart].
+   * For YEAR or TOTAL segment, returns the month start from [DateTimeConverter.getMonthStart].
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return Related start timestamp, or null if timeStamp is null
+   */
+  fun getRelativeStart(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
+    when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getRelativeDayStart(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getRelativeMonthStart(it)
+    }
+  }
+
+  /**
+   * Gets the related end timestamp for the given segment and timestamp.
+   * For WEEK or MONTH segment, returns the relative day end (noon rule) from [DateTimeConverter.getRelativeDayEnd].
+   * For YEAR or TOTAL segment, returns the month end from [DateTimeConverter.getMonthEnd].
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param timeStamp Reference timestamp in milliseconds
+   * @return Related end timestamp
+   */
+  fun getRelativeEnd(segment: GraphSegment, timeStamp: Long): Long = timeStamp.let {
+    when (segment) {
+      GraphSegment.WEEK, GraphSegment.MONTH -> DateTimeConverter.getDayEnd(it)
+      GraphSegment.YEAR, GraphSegment.TOTAL -> DateTimeConverter.getMonthEnd(it)
+    }
+  }
+
+  /**
    * Gets the start timestamp for the given graph segment.
    * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
    * @param timeStamp Reference timestamp in milliseconds
@@ -533,6 +568,26 @@ object GraphUtil {
   }
 
   /**
+   * Returns whether the range from [initialTimestamp] to [endTimestamp] lies entirely within
+   * a single segment window (e.g. same week for WEEK, same month for MONTH, same year for YEAR/TOTAL).
+   *
+   * @param segment The graph segment (WEEK, MONTH, YEAR, TOTAL)
+   * @param initialTimestamp Start of the range in milliseconds
+   * @param endTimestamp End of the range in milliseconds
+   * @return true if both timestamps fall in the same segment window, false otherwise or if either timestamp is null
+   */
+  fun isSingleWindow(
+    segment: GraphSegment,
+    initialTimestamp: Long?,
+    endTimestamp: Long?,
+  ): Boolean {
+    if (initialTimestamp == null || endTimestamp == null) return false
+    val windowStartInitial = getStartRange(segment, initialTimestamp) ?: return false
+    val windowStartEnd = getStartRange(segment, endTimestamp) ?: return false
+    return windowStartInitial == windowStartEnd
+  }
+
+  /**
    * Gets the rolling window start timestamp calculated backwards from latest entry using fixed durations.
    * This ensures the window shows exactly the period duration (7 days, 30 days, 365 days) ending at the latest entry.
    * The initial scroll position will be at the latest entry (end of window) to show data without empty space.
@@ -549,14 +604,16 @@ object GraphUtil {
           add(Calendar.DAY_OF_YEAR, -6)
         }.timeInMillis
       }
+
       GraphSegment.MONTH -> {
         // Show 31 days total: latest - 30 days to latest (inclusive)
         // This ensures day 1 of 31-day months is always included in the window
         Calendar.getInstance().apply {
           timeInMillis = endTimeStamp
-          add(Calendar.DAY_OF_YEAR, -28)
+          add(Calendar.DAY_OF_YEAR, -30)
         }.timeInMillis
       }
+
       GraphSegment.YEAR -> {
         // Show 12 months total: latest - 11 months to latest (inclusive)
         // This includes the latest entry month as the 12th month
@@ -566,6 +623,40 @@ object GraphUtil {
           add(Calendar.MONTH, -11)
         }.timeInMillis
       }
+
+      GraphSegment.TOTAL -> null // Keep existing ±6 months logic
+    }
+  }
+
+  fun getRollingWindowEnd(segment: GraphSegment, startTimeStamp: Long?): Long? = startTimeStamp?.let {
+    when (segment) {
+      GraphSegment.WEEK -> {
+        // Show 7 days total: latest - 6 days to latest (inclusive)
+        Calendar.getInstance().apply {
+          timeInMillis = startTimeStamp
+          add(Calendar.DAY_OF_YEAR, 6)
+        }.timeInMillis
+      }
+
+      GraphSegment.MONTH -> {
+        // Show 31 days total: latest - 30 days to latest (inclusive)
+        // This ensures day 1 of 31-day months is always included in the window
+        Calendar.getInstance().apply {
+          timeInMillis = startTimeStamp
+          add(Calendar.DAY_OF_YEAR, 30)
+        }.timeInMillis
+      }
+
+      GraphSegment.YEAR -> {
+        // Show 12 months total: latest - 11 months to latest (inclusive)
+        // This includes the latest entry month as the 12th month
+        // (e.g., Dec 20, 2024 -> Jan 20, 2024 = 12 months: Jan, Feb, ..., Dec)
+        Calendar.getInstance().apply {
+          timeInMillis = startTimeStamp
+          add(Calendar.MONTH, 11)
+        }.timeInMillis
+      }
+
       GraphSegment.TOTAL -> null // Keep existing ±6 months logic
     }
   }
@@ -626,5 +717,92 @@ object GraphUtil {
     return ((endYear - startYear + 1) * 12)
   }
 
+  fun getStartOnAnchored(segment: GraphSegment, anchoredTimeStamp: Long): Long {
+    return when (segment) {
+      GraphSegment.WEEK -> {
+        // Show 7 days total: latest - 6 days to latest (inclusive)
+        Calendar.getInstance().apply {
+          timeInMillis = anchoredTimeStamp
+          add(Calendar.DAY_OF_YEAR, (-3))
+        }.timeInMillis
+      }
+
+      GraphSegment.MONTH -> {
+        // Show 31 days total: latest - 30 days to latest (inclusive)
+        // This ensures day 1 of 31-day months is always included in the window
+        Calendar.getInstance().apply {
+          timeInMillis = anchoredTimeStamp
+          add(Calendar.DAY_OF_YEAR, (-15))
+        }.timeInMillis
+      }
+
+      GraphSegment.YEAR -> {
+        // Show 12 months total: latest - 11 months to latest (inclusive)
+        // This includes the latest entry month as the 12th month
+        // (e.g., Dec 20, 2024 -> Jan 20, 2024 = 12 months: Jan, Feb, ..., Dec)
+        Calendar.getInstance().apply {
+          timeInMillis = anchoredTimeStamp
+          add(Calendar.MONTH, -5)
+        }.timeInMillis
+      }
+
+      GraphSegment.TOTAL -> Calendar.getInstance().timeInMillis // Keep existing ±6 months logic
+    }
+  }
+
   // endregion
+  data class Range(val startMillis: Long, val endMillis: Long)
+
+  fun clipRangeForGraph(
+    segment: GraphSegment,
+    startMillis: Long,
+    endMillis: Long,
+    zoneId: ZoneId = ZoneId.systemDefault()
+  ): Range {
+    if (endMillis < startMillis) return Range(startMillis, endMillis)
+    if (segment == GraphSegment.WEEK || segment == GraphSegment.TOTAL) return Range(startMillis, endMillis)
+
+    val start = Instant.ofEpochMilli(startMillis)
+    val end = Instant.ofEpochMilli(endMillis)
+
+    return when (segment) {
+      GraphSegment.MONTH -> lastFullMonthInsideMillisSafe(start, end, zoneId)
+      GraphSegment.YEAR -> lastFullYearInsideMillisSafe(start, end, zoneId)
+      else -> Range(startMillis, endMillis)
+    }
+  }
+
+  private fun lastFullMonthInsideMillisSafe(start: Instant, end: Instant, zoneId: ZoneId): Range {
+    val startYm = YearMonth.from(start.atZone(zoneId))
+    val endYm = YearMonth.from(end.atZone(zoneId))
+
+    var ym = endYm
+    while (!ym.isBefore(startYm)) {
+      val monthStart = ym.atDay(1).atStartOfDay(zoneId).toInstant()
+      val monthEndInclusive = ym.plusMonths(1).atDay(1).atStartOfDay(zoneId).toInstant().minusMillis(1)
+
+      if (start <= monthStart && end >= monthEndInclusive) {
+        return Range(monthStart.toEpochMilli(), monthEndInclusive.toEpochMilli())
+      }
+      ym = ym.minusMonths(1)
+    }
+    return Range(start.toEpochMilli(), end.toEpochMilli())
+  }
+
+  private fun lastFullYearInsideMillisSafe(start: Instant, end: Instant, zoneId: ZoneId): Range {
+    val startYear = start.atZone(zoneId).year
+    val endYear = end.atZone(zoneId).year
+
+    var y = endYear
+    while (y >= startYear) {
+      val yearStart = LocalDate.of(y, 1, 1).atStartOfDay(zoneId).toInstant()
+      val yearEndInclusive = LocalDate.of(y + 1, 1, 1).atStartOfDay(zoneId).toInstant().minusMillis(1)
+
+      if (start <= yearStart && end >= yearEndInclusive) {
+        return Range(yearStart.toEpochMilli(), yearEndInclusive.toEpochMilli())
+      }
+      y--
+    }
+    return Range(start.toEpochMilli(), end.toEpochMilli())
+  }
 }

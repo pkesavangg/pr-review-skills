@@ -318,7 +318,10 @@ public enum BluetoothScaleType: String, Sendable, CaseIterable {
 ///     }
 ///     .store(in: &cancellables)
 /// ```
-public struct DeviceDiscoveryEvent: Sendable, Equatable {
+// NOTE: @unchecked Sendable because Device is @Model (not thread-safe).
+// This is safe ONLY because all creation (BluetoothService) and consumption
+// (stores/ViewModels) happen on @MainActor. Do NOT send across actor boundaries.
+public struct DeviceDiscoveryEvent: @unchecked Sendable, Equatable {
     let device: Device
     let deviceInfo: ScaleItemInfo
     let protocolType: ProtocolType

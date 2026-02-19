@@ -50,10 +50,13 @@ class BottomTabBarViewModel: ObservableObject {
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsService
     @Injector private var pushNotificationService: PushNotificationService
+    @Injector private var integrationService: IntegrationsService
     
     // MARK: - Permission Disabled Alert Tracking
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
     private var hasShownPermissionAlert: Bool = false
+    /// Tracks whether the Apple Health integration sheet is currently presented
+    private var isAppleHealthSheetPresented: Bool = false
     // MARK: - Goal Card Tracking
     /// Keeps track if the Set a Goal card has been shown in this app session.
     private var hasShownSetGoalCardThisSession: Bool = false
@@ -76,6 +79,10 @@ class BottomTabBarViewModel: ObservableObject {
     private let tag = "BottomTabBarViewModel"
     private var cancellables: Set<AnyCancellable> = []
     private let promptDelay = 3.0 // Delay before checking Apple Health integration status and set a goal prompt
+    /// Retains the Combine subscription for app-active notifications specifically used
+    /// when we need to re-check HealthKit permissions after the user is redirected to
+    /// the Apple Health app from the out-of-sync modal.
+    private var hkForegroundObserver: AnyCancellable? = nil
     
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
@@ -91,13 +98,29 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // Subscribe to new entry events (uses EntryNotification for safe cross-actor data passing)
         bluetoothService.newEntryReceivedPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] event in
+            .sink { [weak self] _ in
                 guard let self else { return }
                 if !self.bluetoothService.isSetupInProgress {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
                 }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for Apple Health sheet presentation/dismissal notifications
+        NotificationCenter.default.publisher(for: .appleHealthSheetPresented)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.isAppleHealthSheetPresented = true
+            }
+            .store(in: &cancellables)
+        
+        NotificationCenter.default.publisher(for: .appleHealthSheetDismissed)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.isAppleHealthSheetPresented = false
             }
             .store(in: &cancellables)
         
@@ -373,6 +396,16 @@ class BottomTabBarViewModel: ObservableObject {
         // Ensure active account exists before checking
         guard accountService.activeAccount != nil else { return }
         
+        // First check if permissions were restored after being out of sync
+        let permissionsRestored = await healthKitService.checkIfPermissionsRestoredAfterOutOfSync()
+        if permissionsRestored {
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                // Show success toast
+                self.notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+            }
+        }
+        
         do {
             if let modalState = try await healthKitService.shouldShowHKIntegrationModal() {
                 await MainActor.run { [weak self] in
@@ -405,14 +438,19 @@ class BottomTabBarViewModel: ObservableObject {
             onPrimary = { [weak self] in
                 guard let self else { return }
                 self.notificationService.dismissModal()
-                // Switch to Settings tab and queue navigation to the Integrations screen.
-                self.navigateToSettings(route: .integrations)
+                // Trigger connection flow directly instead of navigating to settings
+                Task {
+                    await self.handleHKConnectFlow(for: state)
+                }
             }
             onSecondary = nil
             
         case .outOfSync:
             onPrimary = { [weak self] in
                 guard let self else { return }
+                // Set flag indicating we're waiting for permissions to be restored
+                self.healthKitService.setWaitingForPermissionsRestored()
+                self.observeForegroundForHKPermissionChanges()
                 self.healthKitService.openAppleHealth()
                 self.notificationService.dismissModal()
             }
@@ -446,14 +484,98 @@ class BottomTabBarViewModel: ObservableObject {
         notificationService.showModal(modalData)
     }
     
+    private func handleHKConnectFlow(for _: HKIntegrationModalState) async {
+        do {
+            let success = try await healthKitService.integrate(turnOn: true)
+            
+            guard success else {
+                await showAlert(from: HKIntegrationHealthAccessStrings.integrationFailed)
+                return
+            }
+            
+            let permissionCount = healthKitService.getApprovedPermissionList().count
+            let hasFullPermissions = permissionCount >= HealthKitStore.wgTotalPermissionsCount
+            let entryCount = (try? await entryService.getEntryCount()) ?? 0
+            
+            if entryCount > 0 && hasFullPermissions {
+                await showSyncAlert()
+            } else {
+                await MainActor.run {
+                    notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+                }
+            }
+        } catch IntegrationError.userConflict {
+            await showAlert(from: HKIntegrationHealthAccessStrings.userConflict)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to connect HealthKit", data: error.localizedDescription)
+            await showAlert(from: HKIntegrationHealthAccessStrings.integrationFailed)
+        }
+    }
+    
+    private func showSyncAlert() async {
+        await MainActor.run {
+            let alert = AlertModel(
+                title: AlertStrings.SyncWeightHistoryAlert.title,
+                message: AlertStrings.SyncWeightHistoryAlert.message,
+                buttons: [
+                    AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.cancelButton, type: .secondary) { _ in },
+                    AlertButtonModel(title: AlertStrings.SyncWeightHistoryAlert.syncButton, type: .primary) { [weak self] _ in
+                        Task { await self?.performSync() }
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+    
+    private func performSync() async {
+        await MainActor.run {
+            notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
+        }
+        
+        do {
+            try await healthKitService.syncAllData()
+            if let latestEntry = try await entryService.getLatestEntry() {
+                // Create notification to safely pass data across actor boundaries
+                let notification = EntryNotification(from: latestEntry)
+                await integrationService.logHealthEntry(notification: notification)
+            }
+            await MainActor.run {
+                notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
+            }
+        } catch {
+            await MainActor.run {
+                notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
+            }
+        }
+    }
+    
+    private func showAlert(from content: HKIntegrationHealthAccessContent) async {
+        await MainActor.run {
+            let alert = AlertModel(
+                title: content.title,
+                message: content.description ?? "",
+                buttons: [AlertButtonModel(title: CommonStrings.ok, type: .primary) { _ in }]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+    
     // MARK: - Scale Discovery Handling
     private func shouldShowDiscoveredScale(for event: DeviceDiscoveryEvent) -> Bool {
         /// Checks if the scale discovery event should trigger the "Scale Discovered" sheet.
+        /// Prevents showing scale discovery when Apple Health integration sheet is already presented
+        /// to avoid dismissing the Apple Health sheet unexpectedly.
+        /// Also prevents showing during AppSync scanning to avoid interrupting the scanning flow.
         guard !bluetoothService.isSetupInProgress,
               bluetoothService.canShowScaleDiscoveredModal,
               !(bluetoothService.skipDevices.contains(event.device.broadcastIdString ?? "")),
               event.isNew,
               discoveredScale == nil,
+              !isAppleHealthSheetPresented, // Prevent scale discovery when Apple Health sheet is shown
+              selectedTab != .appsync, // Prevent scale discovery when AppSync camera is active
               event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
               !event.deviceInfo.sku.isEmpty else {
             return false
@@ -531,5 +653,33 @@ class BottomTabBarViewModel: ObservableObject {
             let modalData = ModalData(presentedView: AnyView(modalView))
             self.notificationService.showModal(modalData)
         }
+    }
+    
+    // MARK: - Apple Health Permission Observer
+    
+    /// Sets up a temporary observer that fires when the app becomes active again
+    /// (i.e. user returns from the Apple Health app). At that point we re-evaluate
+    /// granted permissions and, if all permissions are granted, show the success toast.
+    private func observeForegroundForHKPermissionChanges() {
+        // Avoid duplicating the observer.
+        if hkForegroundObserver != nil { return }
+        
+        hkForegroundObserver = NotificationCenter.default
+            .publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // Check again on main actor.
+                Task { @MainActor in
+                    let permissionsGranted = self.healthKitService.getApprovedPermissionList().count
+                    if permissionsGranted > 0 {
+                        // Permissions restored - clear the waiting flag and show success toast
+                        self.healthKitService.clearWaitingForPermissionsRestored()
+                        self.notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+                    }
+                    // Clean up observer
+                    self.hkForegroundObserver?.cancel()
+                    self.hkForegroundObserver = nil
+                }
+            }
     }
 }

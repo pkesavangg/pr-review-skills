@@ -106,11 +106,8 @@ object AppIcons {
     val StepOnGif = R.raw.step_on
     fun StepOnGif(sku: String): Int {
       return when (sku) {
-        "0375" -> R.raw.step_on_0375
-        "0376" -> R.raw.step_on_0376
-        "0380" -> R.raw.step_on_0380
-        "0382" -> R.raw.step_on_0382
-        else -> R.raw.step_on_0375
+        "0375", "0376", "0380", "0382" -> R.raw.step_on_scale
+        else -> R.raw.step_on_scale
       }
     }
 
@@ -174,9 +171,10 @@ object AppIcons {
     val WifiSmartConnectSelected = R.drawable.wifi_smart_connect_filled
     val WifiPair = R.raw.pair_0384
     val WifiPair0396 = R.raw.set_pair_mode_0396
-    val WifiStepOnApMode = R.raw.stepon_filled_0384
+    val WifiStepOnApMode = R.raw.step_on_scale
     val WifiStepOn = R.raw.step_on
     val WifiCountOn = R.raw.scale_counts_wifi
+    val wifiAPModeStepOn = R.drawable.stepon_filled_0396
     val WifiAPModeFilled0384 = R.drawable.ap_filled_0384
     val WifiAPModeOutlined0384 = R.drawable.ap_outlined_0384
   }

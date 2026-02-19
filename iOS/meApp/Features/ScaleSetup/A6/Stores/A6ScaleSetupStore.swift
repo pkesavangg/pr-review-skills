@@ -29,6 +29,7 @@ final class A6ScaleSetupStore: ObservableObject {
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
+    private var originalSku: String?
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
     /// Discovered scale information
@@ -74,7 +75,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(PermissionListView(setupType: .bluetooth))
             case .wakeUp:
                 return AnyView(ConnectionPromptView(
-                    subtitle: scaleSetupStrings.wakeYourScaleSubtitle
+                    subtitle: scaleSetupStrings.wakeYourScaleSubtitleLCBT,
+                    scaleImagePath: scaleItem.imgPath
                 ))
             case .connectingBluetooth:
                 return AnyView(
@@ -136,7 +138,10 @@ final class A6ScaleSetupStore: ObservableObject {
     func configure(with sku: String,
                    discoveredScale: Device? = nil,
                    discoveryEvent: DeviceDiscoveryEvent? = nil) {
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
+        self.originalSku = sku
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES.first
         self.scaleItem = resolved
         // Reset pairing/discovery state
         resetDiscoveryState()
@@ -282,6 +287,7 @@ final class A6ScaleSetupStore: ObservableObject {
         
         // Cancel any in-flight timeout task.
         stepTimerTask?.cancel()
+        // Note: originalSku is NOT reset here - it should persist for the entire setup flow
     }
     
     // MARK: - Scale Saving
@@ -296,9 +302,12 @@ final class A6ScaleSetupStore: ObservableObject {
                 return
             }
             
+            // This preserves the original SKU (e.g., "0022") passed to the setup flow
+            let finalSku = originalSku ?? scaleItem?.sku ?? discoveryEvent.device.sku
+            
             let savedScale = try await scaleService.createA6Scale(
                 device: scale,
-                sku: scaleItem?.sku ?? discoveryEvent.device.sku,
+                sku: finalSku,
                 accountId: accountId,
                 deviceMetadata: nil,
                 skipDuplicateCheck: false
@@ -430,6 +439,33 @@ final class A6ScaleSetupStore: ObservableObject {
         bluetoothService.isSetupInProgress = false
     }
     
+    // MARK: - A6 Scale Unit Update
+    /// Marks A6 scale preferences as unsynced so updated units are applied on reconnect.
+    func markA6ScalesUnsyncedForUnitUpdate() async {
+        let a6Scales = scaleService.scales.filter { $0.protocolType == "A6" }
+        guard !a6Scales.isEmpty else {
+            LoggerService.shared.log(level: .debug, tag: tag, message: "No A6 scales found")
+            return
+        }
+
+        for scale in a6Scales {
+            guard let preference = scaleService.fetchAttachedPreferenceSync(by: scale.id) else { continue }
+
+            preference.isSynced = false
+            do {
+                try await scaleService.updateScalePreference(scale.id, preference)
+            } catch {
+                LoggerService.shared.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to update A6 scale \(scale.broadcastIdString ?? "unknown"): \(error)"
+                )
+            }
+        }
+
+        // Ensure SDK picks up updated unit on reconnect
+        bluetoothService.syncDevices(scaleService.scales)
+    }
     // Cancel active Combine subscription before releasing it.
     deinit {
         // Cancel active Combine subscription before releasing it.

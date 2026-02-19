@@ -5,7 +5,9 @@ import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.CustomizeSettings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
@@ -55,6 +57,7 @@ data class ScaleUsernameFormControls(
           FormValidations.required(),
           FormValidations.noWhiteSpace(),
           FormValidations.maxLength(20,),
+          FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
         ),
       ),
     )
@@ -105,6 +108,7 @@ data class BtWifiScaleSetupState(
   val isAllBodyMetrics: Boolean = true, // Default to metrics mode (ScaleModeEnum.metrics)
   val isHeartRateOn: Boolean = false, // Default heart rate off
   val hasSavedSettings: Boolean = false, // Track if any customization settings have been saved
+  val visitedCustomizeSteps: Set<CustomizeSettings> = emptySet(), // Preserve visited steps when returning from UPDATE_SETTINGS Try again
   val scaleMetrics: List<String> = ScaleMetricsHelper.getAllMetrics(),
   val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO, // Track the initial step for button visibility logic
   val latestWeight: Double? = null, // Latest weight from entry service
@@ -207,6 +211,10 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
     val hasSavedSettings: Boolean,
   ) : BtWifiScaleSetupIntent
 
+  data class SetVisitedCustomizeSteps(
+    val steps: Set<CustomizeSettings>,
+  ) : BtWifiScaleSetupIntent
+
   data class SetScaleMetrics(
     val scaleMetrics: List<String>
   ) : BtWifiScaleSetupIntent
@@ -289,6 +297,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
         isHeartRateOn = intent.isHeartRateOn,
       )
       is BtWifiScaleSetupIntent.SetHasSavedSettings -> state.copy(hasSavedSettings = intent.hasSavedSettings)
+      is BtWifiScaleSetupIntent.SetVisitedCustomizeSteps -> state.copy(visitedCustomizeSteps = intent.steps)
       is BtWifiScaleSetupIntent.SetScaleMetrics -> state.copy(scaleMetrics = intent.scaleMetrics)
       is BtWifiScaleSetupIntent.SetInitialStep -> state.copy(initialStep = intent.initialStep)
       is BtWifiScaleSetupIntent.UpdateUsernameForm -> state.copy(
@@ -297,6 +306,9 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
             initialValue = intent.username,
             validators = listOf(
               FormValidations.required(),
+              FormValidations.noWhiteSpace(),
+              FormValidations.maxLength(20,),
+              FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
             ),
           )
         )

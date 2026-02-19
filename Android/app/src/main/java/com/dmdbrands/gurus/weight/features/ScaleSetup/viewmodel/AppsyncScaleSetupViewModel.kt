@@ -188,9 +188,9 @@ constructor(
       dialogQueueService.enqueue(
         DialogModel.Confirm(
           title = ScaleSetupStrings.ExitSetupAlert.Title,
-          message = ScaleSetupStrings.ExitSetupAlert.Message(true),
+          message = ScaleSetupStrings.ExitSetupAlert.Message(false),
           confirmText = ScaleSetupStrings.ExitSetupAlert.Exit,
-          cancelText = ScaleSetupStrings.ExitSetupAlert.Return,
+          cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
           onConfirm = {
             AppLog.d(TAG, "User confirmed exit setup")
             navigateBack()
@@ -202,27 +202,38 @@ constructor(
 
   private fun checkAndSaveScale() {
     AppLog.d(TAG, "Checking and saving scale for SKU: $sku")
+
+    // Fail fast: Validate SKU before launching coroutine
+    val currentSku = state.value.sku
+    if (currentSku.isBlank()) {
+      AppLog.e(TAG, "SKU is null or blank, cannot save scale")
+      return
+    }
+
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     viewModelScope.launch {
       try {
-        val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == sku }
+
+        val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == currentSku }
         if (alreadyPairedScale != null) {
           AppLog.d(TAG, "Found already paired scale, deleting: ${alreadyPairedScale.id}")
           deviceService.deleteScale(alreadyPairedScale.id)
         }
 
-        val scaleInfo = SCALES.find { it.sku == state.value.sku }
-        AppLog.d(TAG, "Scale info found: ${scaleInfo?.productName}, bodyComp: ${state.value.bodyComp}")
+        val scaleInfo = SCALES.find { it.sku == currentSku }
+        val productName = scaleInfo?.productName ?: "Unknown Scale"
+
+        AppLog.d(TAG, "Scale info found: $productName, bodyComp: ${state.value.bodyComp}, SKU: $currentSku")
 
         val appSyncDevice = Device(
           device = GGDeviceDetail(
-            deviceName = scaleInfo?.productName ?: "",
+            deviceName = productName,
             macAddress = "",
             identifier = "",
           ),
-          sku = state.value.sku,
+          sku = currentSku,
           deviceType = ScaleSetupType.AppSync.value,
-          nickname = scaleInfo?.productName!!,
+          nickname = productName,
         )
 
         AppLog.d(TAG, "Saving AppSync device: ${appSyncDevice.id}")

@@ -52,7 +52,8 @@ struct WifiPasswordEntryView: View {
                                 inputType: .password,
                                 submitLabel: .done,
                                 errorMessage: store.networkForm.getError(for: store.networkForm.password),
-                                isDisabled: store.networkForm.networkHasNoPassword
+                                isDisabled: store.networkForm.networkHasNoPassword,
+                                focusField: .password
                             ),
                             value: $store.networkForm.password.value,
                             focusedField: $focusedField,
@@ -66,6 +67,11 @@ struct WifiPasswordEntryView: View {
                                 }
                             }
                         )
+                        .onChange(of: focusedField) { oldValue, newValue in
+                            if oldValue == .password && newValue != .password {
+                                store.networkForm.touchAndValidatePassword()
+                            }
+                        }
                         
                         CustomToggleView(isOn: $store.networkForm.networkHasNoPassword, text: lang.noPasswordToggle)
                             .padding(.top, 0)

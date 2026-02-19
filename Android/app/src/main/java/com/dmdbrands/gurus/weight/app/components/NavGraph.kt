@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.appSync.AppSync
 import com.dmdbrands.gurus.weight.features.changePassword.ChangePasswordScreen
 import com.dmdbrands.gurus.weight.features.dashboard.DashboardScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.DebugMenuScreen
+import com.dmdbrands.gurus.weight.features.debugMenu.screen.ScaleLogsPickerScreen
 import com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen
 import com.dmdbrands.gurus.weight.features.feed.FeedLandingScreen
 import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesScreen
@@ -72,6 +73,7 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
   entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
   entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
   entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
+  entry<AppRoute.AccountSettings.ScaleLogsPicker> { ScaleLogsPickerScreen() }
   entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
     ScaleDetailsScreen(scaleInfo.scaleId)
   }

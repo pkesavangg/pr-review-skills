@@ -32,46 +32,46 @@ struct ConnectingBluetoothView: View {
                         .lineLimit(nil)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, .spacingXSM)
                 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.setupPressUnitButtonGifName(sku), height: 250)
                         .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,
                                height: DevicePlatform.isMiniPhone ? 200 : 250)
+                        .scaleEffect(DevicePlatform.isMiniPhone ? 0.8 : 0.9)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 
                 // Connection state content
                 switch connectionState {
                 case .loading:
-                    VStack(spacing: .spacingMD) {
-                        HStack(alignment: .center, spacing: .spacingXS) {
-                            Text(lang.pairing)
-                                .fontOpenSans(.body1)
-                                .foregroundColor(theme.textBody)
-                            
-                            LoadingDotsView(color: theme.textBody)
-                                .offset(y: .spacingXS)
-                        }
-                    }
-                case .success:
-                    VStack(spacing: .spacingMD) {
-                        Text(lang.paired)
+                    HStack(alignment: .center, spacing: .spacingXS) {
+                        Text(lang.pairing)
                             .fontOpenSans(.body1)
                             .foregroundColor(theme.textBody)
+                        
+                        LoadingDotsView(color: theme.textBody)
+                            .offset(y: .spacingXS)
                     }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                case .success:
+                    Text(lang.paired)
+                        .fontOpenSans(.body1)
+                        .foregroundColor(theme.textBody)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     
                 case .failure:
-                    VStack(spacing: .spacingMD) {
-                        ButtonView(
-                            text: lang.pairAgain,
-                            type: .filledPrimary,
-                            size: .large,
-                            isDisabled: false,
-                            action: {
-                                pairAgain?()
-                            }
-                        )
-                    }
+                    ButtonView(
+                        text: lang.pairAgain,
+                        type: .filledPrimary,
+                        size: .large,
+                        isDisabled: false,
+                        action: {
+                            pairAgain?()
+                        }
+                    )
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, .spacingSM)
                 default:
                     EmptyView()
                 }

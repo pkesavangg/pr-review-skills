@@ -6,7 +6,7 @@
 //
 import Foundation
 import Combine
- 
+import SwiftData
 
 @MainActor
 final class UsersViewModel: ObservableObject {
@@ -19,8 +19,54 @@ final class UsersViewModel: ObservableObject {
     @Published var deviceUsers: [DeviceUser] = []
     @Published var currentDeviceUser: DeviceUser?
     @Published var isLoadingUsers: Bool = false
-    
-    private let scale: Device
+
+    // Store the device ID for safe refetching from MainActor context
+    private let scaleId: PersistentIdentifier
+    private let scaleIdString: String
+
+    // Cached scale for fallback when model not found in context
+    private var cachedScale: Device?
+
+    // Returns the cached scale - use refreshScale() to update from database
+    private var scale: Device {
+        if let cached = cachedScale {
+            return cached
+        }
+        logger.log(level: .error, tag: tag, message: "No cached scale available")
+        return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
+    }
+
+    /// Refreshes the scale from the database. Call this before operations that need fresh data.
+    private func refreshScale() {
+        // First try registeredModel for already-loaded models (fastest path)
+        if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
+            cachedScale = freshScale
+            return
+        }
+
+        // If not in identity map, fetch from persistent store using FetchDescriptor
+        let idToFind = scaleIdString
+        let descriptor = FetchDescriptor<Device>(
+            predicate: #Predicate<Device> { device in
+                device.id == idToFind
+            }
+        )
+        do {
+            let results = try PersistenceController.shared.context.fetch(descriptor)
+            if let freshScale = results.first {
+                cachedScale = freshScale
+                return
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to fetch scale from store: \(error.localizedDescription)")
+        }
+
+        // Keep existing cached value if fetch failed
+        if cachedScale != nil {
+            logger.log(level: .debug, tag: tag, message: "Using existing cached scale after refresh failed")
+        }
+    }
+
     private let tag = "UsersViewModel"
     private var cancellables = Set<AnyCancellable>()
     private let initialUsersList: [DeviceUser]
@@ -41,7 +87,9 @@ final class UsersViewModel: ObservableObject {
     }
     
     init(scale: Device, initialUsersList: [DeviceUser] = []) {
-        self.scale = scale
+        self.scaleId = scale.persistentModelID
+        self.scaleIdString = scale.id
+        self.cachedScale = scale
         self.initialUsersList = initialUsersList
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
@@ -85,6 +133,8 @@ final class UsersViewModel: ObservableObject {
         let result = await bluetoothService.getScaleUserList(for: scale)
         
         await MainActor.run {
+            // Refresh scale before accessing relationships in findCurrentUser
+            self.refreshScale()
             switch result {
             case .success(let users):
                 self.deviceUsers = users
@@ -118,16 +168,21 @@ final class UsersViewModel: ObservableObject {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
         
         do {
+            // Refresh scale to get latest data before accessing relationships
+            refreshScale()
             // Update the current user's name via Bluetooth service
             if currentDeviceUser != nil,
                let preference = scale.r4ScalePreference {
-                preference.displayName = newName
-                try await scaleService.updateScalePreference(
-                    scale.id,
-                    preference
-                )
+                // Extract to DTO before async to avoid @Model mutation (R9)
+                let deviceId = scale.id
+                var dto = preference.toDTO()
+                dto.displayName = newName
+                try await scaleService.updateScalePreference(deviceId, fromDTO: dto)
                 await scaleService.pushLocalChangesToServer()
-                let result = await bluetoothService.updateAccount(on: scale, preference: preference)
+                // Refresh scale before Bluetooth call to ensure fresh @Model data
+                refreshScale()
+                guard let freshPreference = scale.r4ScalePreference else { return }
+                let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
                 switch result {
                 case .success(_):
                     currentDeviceUser?.name = newName
@@ -164,11 +219,11 @@ final class UsersViewModel: ObservableObject {
 
     func showDeleteUserAlert(for user: DeviceUser, onDelete: @escaping () -> Void) {
         let alert = AlertModel(
-            title: AlertStrings.DeleteUserAlert.title(user.name),
-            message: AlertStrings.DeleteUserAlert.message(user.name),
+            title: AlertStrings.DeleteR4ScaleUserAlert.title,
+            message: AlertStrings.DeleteR4ScaleUserAlert.message(user.name),
             buttons: [
-                AlertButtonModel(title: AlertStrings.DeleteUserAlert.cancelButton, type: .secondary) { _ in },
-                AlertButtonModel(title: AlertStrings.DeleteUserAlert.removeButton, type: .primary) { _ in
+                AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.cancelButton, type: .secondary) { _ in },
+                AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.deleteButton, type: .danger) { _ in
                     // Check Bluetooth authorization and power state before proceeding with deletion
                     let isBluetoothAuthorized = self.permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
                     let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
@@ -195,15 +250,24 @@ final class UsersViewModel: ObservableObject {
     
     private func deleteUser(_ user: DeviceUser) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
-        
-        // Preserve the original token so we can restore it after the deletion call
-        let originalToken = scale.token
-        // Temporarily set the token to the user's token we want to delete
-        scale.token = user.token
-        logger.log(level: .debug, tag: tag, message: "Deleting user: \(user.name) with token: \(user.token ?? "nil") on scale \(scale.id)")
-        let result = await bluetoothService.deleteDevice(scale, disconnect: false)
-        // Restore the original token to avoid side-effects elsewhere in the app
-        scale.token = originalToken
+
+        // Refresh to get latest scale data
+        refreshScale()
+
+        // Extract primitives before async call — never mutate @Model to pass data
+        guard let broadcastId = scale.broadcastIdString, !broadcastId.isEmpty else {
+            logger.log(level: .error, tag: tag, message: "Missing broadcastId for scale")
+            notificationService.dismissLoader()
+            return
+        }
+        guard let userToken = user.token, !userToken.isEmpty else {
+            logger.log(level: .error, tag: tag, message: "Missing token for user to delete")
+            notificationService.dismissLoader()
+            return
+        }
+
+        logger.log(level: .debug, tag: tag, message: "Deleting user: \(user.name) with token: \(userToken) on scale \(scale.id)")
+        let result = await bluetoothService.deleteUserByToken(broadcastId: broadcastId, token: userToken, disconnect: false)
         
         switch result {
         case .success(_):

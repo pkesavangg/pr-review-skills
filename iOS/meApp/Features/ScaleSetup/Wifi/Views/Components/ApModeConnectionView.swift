@@ -16,48 +16,51 @@ struct ApModeConnectionView: View {
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: .spacingLG) {
-                VStack(alignment: .leading) {
-                    Text(lang.title)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
-                        .multilineTextAlignment(.leading)
-                        .padding(.bottom, .spacingXS)
-                    
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(lang.step1)
-                            .fontOpenSans(.body2)
-                            .foregroundColor(theme.textBody)
+            HStack {
+                VStack(alignment: .leading, spacing: .spacingLG) {
+                    VStack(alignment: .leading) {
+                        Text(lang.title)
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
+                            .multilineTextAlignment(.leading)
+                            .padding(.bottom, .spacingXS)
                         
-                        Text(lang.step2)
-                            .fontOpenSans(.body2)
-                            .foregroundColor(theme.textBody)
-                        
-                        Text(lang.step3.asAttributed(withBoldWords: lang.step3BoldWords))
-                            .foregroundColor(theme.textBody)
-                        
-                        VStack(alignment: .leading) {
-                            HStack(alignment: .top, spacing: 0) {
-                                Text(lang.step4Number)
-                                    .fontOpenSans(.body2)
-                                    .foregroundColor(theme.textBody)
-                                
-                                VStack(alignment: .leading) {
-                                    Text(lang.step4Text)
+                        VStack(alignment: .leading, spacing: .spacingXS) {
+                            Text(lang.step1)
+                                .fontOpenSans(.body2)
+                                .foregroundColor(theme.textBody)
+                            
+                            Text(lang.step2)
+                                .fontOpenSans(.body2)
+                                .foregroundColor(theme.textBody)
+                            
+                            Text(lang.step3.asAttributed(withBoldWords: lang.step3BoldWords))
+                                .foregroundColor(theme.textBody)
+                            
+                            VStack(alignment: .leading) {
+                                HStack(alignment: .top, spacing: 0) {
+                                    Text(lang.step4Number)
                                         .fontOpenSans(.body2)
                                         .foregroundColor(theme.textBody)
                                     
-                                    if !permissionsSkipped {
-                                        Text(lang.inactiveNote)
+                                    VStack(alignment: .leading) {
+                                        Text(lang.step4Text)
                                             .fontOpenSans(.body2)
                                             .foregroundColor(theme.textBody)
+                                        
+                                        if !permissionsSkipped {
+                                            Text(lang.inactiveNote)
+                                                .fontOpenSans(.body2)
+                                                .foregroundColor(theme.textBody)
+                                        }
                                     }
                                 }
                             }
-                        }
 
+                        }
                     }
                 }
+                Spacer()
             }
             .padding(.top, .spacingLG)
         }

@@ -241,7 +241,10 @@ final class WifiScaleSetupStore: ObservableObject {
     
     // MARK: - Configuration
     func configure(with sku: String) {
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES.first
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        // Pass original SKU to routes (not mapped), setup will save original SKU
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
+        let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES.first
         self.scaleItem = resolved
         // Start at intro
         currentStepIndex = 0
@@ -272,10 +275,12 @@ final class WifiScaleSetupStore: ObservableObject {
     // MARK: - Exit / Help
     func handleExit() {
         if currentStep == .setupFinish {
+            // Save scale before exiting from the last step
+            saveScale()
             dismissAction?()
             return
         }
-        
+
         let alertLang = AlertStrings.ExitSetupAlert.self
         let alert = AlertModel(
             title: alertLang.title,
@@ -355,8 +360,12 @@ final class WifiScaleSetupStore: ObservableObject {
             exitSetup()
             break
         case .stepOn:
-            // Persist the newly configured scale to the backend & local storage.
+            // Move to next step without saving
+            moveToNextStep()
+        case .setupFinish:
+            // Save scale before finishing setup
             saveScale()
+            moveToNextStep()
         default:
             moveToNextStep()
             break
@@ -505,15 +514,19 @@ final class WifiScaleSetupStore: ObservableObject {
                     } else {
                         kvStorage.setCodable(status, forKey: ssidTempKey)
                     }
-                }
-                let wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
-                self.wifiStatus = wifiStatus
-                
-                // Auto-fill SSID only if user hasn't cleared it
-                if !hasUserManuallyClearedSSID {
-                    let newSSID = self.wifiStatus?.ssid ?? ""
-                    self.networkForm.setSSID(newSSID)
-                    self.previousSSID = newSSID // Keep in sync to avoid false clears
+                    self.wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
+
+                    // Only update form when we have a definitive read from the system.
+                    // When status.ssid is empty, do NOT call setSSID - iOS returns empty
+                    // intermittently during network transitions. Overwriting would both clear
+                    // valid data and trigger hasUserManuallyClearedSSID in formDidChange.
+                    if !hasUserManuallyClearedSSID {
+                        self.networkForm.setSSID(ssid)
+                        self.previousSSID = ssid
+                    }
+                } else {
+                    // status.ssid empty: keep cache for other consumers, but don't touch form
+                    self.wifiStatus = kvStorage.getCodable(forKey: ssidTempKey, as: WifiStatus.self)
                 }
             }
         }
@@ -653,7 +666,6 @@ final class WifiScaleSetupStore: ObservableObject {
                 // Clear setup in progress flag after scale is saved
                 bluetoothService.isSetupInProgress = false
                 
-                moveToNextStep()
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")

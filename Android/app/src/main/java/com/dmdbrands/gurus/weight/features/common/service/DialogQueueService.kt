@@ -79,10 +79,12 @@ class DialogQueueService
          */
         override fun dismissCurrent() {
             val dismissed = _currentDialog.value
-            if (dialogQueue.isNotEmpty()) {
+            if (dismissed != null) {
                 dialogQueue.remove(dismissed)
                 _currentDialog.value = null
-                showNext()
+                if (dialogQueue.isNotEmpty()) {
+                    showNext()
+                }
             }
         }
 

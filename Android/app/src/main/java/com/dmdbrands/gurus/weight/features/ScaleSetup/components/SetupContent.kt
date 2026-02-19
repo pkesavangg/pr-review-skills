@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.AppsyncSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
+import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -37,10 +38,13 @@ fun SetupContent(
   title: String,
   modifier: Modifier = Modifier,
   subtitle: String? = null,
+  noteMessage: String? = null,
   setupFinished: Boolean = false,
   isGifImage: Boolean = false,
   supportingImage: Int? = null,
   loaderText: String? = null ,
+  supportingButtonLabel: String? = null,
+  onSupportingButtonClick: (() -> Unit)? = null,
   loaderClick: (() -> Unit)? = null,
   connectionState: ConnectionState? = null,
   content: (@Composable () -> Unit)? = null
@@ -118,6 +122,23 @@ fun SetupContent(
             onClick = {
               loaderClick?.invoke()
             },
+          )
+        }
+        noteMessage?.let {
+          AppNote(
+            message = noteMessage,
+            showNote = true,
+            modifier = Modifier.padding(top = spacing.md)
+          )
+        }
+
+        if (supportingButtonLabel != null && onSupportingButtonClick != null) {
+          Spacer(modifier = Modifier.height(spacing.md))
+          AppButton(
+            label = supportingButtonLabel,
+            type = ButtonType.InlineTextPrimary,
+            onClick = onSupportingButtonClick,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
           )
         }
       }

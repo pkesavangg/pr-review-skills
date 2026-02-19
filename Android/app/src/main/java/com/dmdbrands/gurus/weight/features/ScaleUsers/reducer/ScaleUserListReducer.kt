@@ -22,8 +22,9 @@ data class ScaleUsernameFormControls(
           FormValidations.required(),
           FormValidations.noWhiteSpace(),
           FormValidations.maxLength(20),
+          FormValidations.scaleDisplayNameValidator(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage),
           // Add duplicate name validator
-          { value ->
+        { value ->
             if (userList.isNotEmpty() && value.let { name ->
                 userList.any { user -> user.name.equals(name, ignoreCase = true) }
               }) {

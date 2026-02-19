@@ -33,8 +33,8 @@ data class LoginFormControls(
           initialValue = "",
           validators = listOf(
             FormValidations.required(LoginStrings.Errors.emailBlank),
-            FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, LoginStrings.PasswordLabel, LoginStrings.Errors.passwordlen),
-            FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH, LoginStrings.PasswordLabel, LoginStrings.Errors.maxLengthPassword),
+            FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, LoginStrings.PasswordLabel, LoginStrings.Errors.passwordlen, allowSpaces = true),
+            FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH, LoginStrings.PasswordLabel, LoginStrings.Errors.maxLengthPassword, allowSpaces = true),
           ),
         ),
     )

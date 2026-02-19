@@ -1,199 +1,301 @@
 package com.greatergoods.meapp.features.common.helper
 
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.round
 
+/**
+ * Data class representing Y-axis metadata (min, max, step, tick count).
+ */
 data class AxisMeta(
   val min: Double,
   val max: Double,
   val step: Double,
-  val count: Int,
+  val count: Int
 )
 
+/**
+ * Improved algorithm for Y-axis tick calculation optimized for gradual weight changes.
+ * Matches iOS implementation exactly.
+ */
 object ImprovedNiceScaleCalculator {
-  // Improved algorithm for Y-axis tick calculation optimized for gradual weight changes
-  // To follow the same IOS followed
-  private val niceNumbers = listOf(1.0, 2.0, 4.0, 5.0, 10.0, 15.0, 20.0, 25.0, 40.0, 50.0, 100.0, 200.0)
+  /** Classic nice numbers (1–2–5 × 10ⁿ) used by step pickers to avoid steps like 0.4, 4, 15, 25. */
+  private val classicNiceNumbers = listOf(1.0, 2.0, 5.0, 10.0)
 
+  private const val DOUBLE_EQUALITY_EPSILON = 1e-9
+  private const val MIN_PADDING_SAME_VALUE = 1.0
+  private const val TICK_BOUND_EPSILON = 1e-9
+
+  /** Snaps value down to the nearest multiple of step. */
+  private fun snapDown(value: Double, step: Double): Double =
+    if (step > 0) floor(value / step) * step else value
+
+  /** Snaps value up to the nearest multiple of step. */
+  private fun snapUp(value: Double, step: Double): Double =
+    if (step > 0) ceil(value / step) * step else value
+
+  /**
+   * Builds a sorted list of ticks from min to max using the given step.
+   * Uses shared snap logic to avoid floating-point artifacts.
+   */
+  private fun buildTicksFromStep(min: Double, max: Double, step: Double): List<Double> {
+    if (step <= 0) return listOf(min, max)
+    val start = snapDown(min, step)
+    val end = snapUp(max, step)
+    if (end < start) return listOf(min, max)
+    val ticks = mutableListOf<Double>()
+    var tick = start
+    val maxBound = end + TICK_BOUND_EPSILON
+    while (tick <= maxBound) {
+      ticks.add(round(tick / step) * step)
+      tick += step
+    }
+    return ticks.distinct().sorted()
+  }
+
+  /**
+   * Returns the smallest classic nice number (1, 2, 5, 10) × 10^n that is >= value.
+   * Used for step sizing in niceTicks and enforceTickLimits.
+   */
+  private fun nextNice(value: Double): Double {
+    val safe = kotlin.math.max(value, DOUBLE_EQUALITY_EPSILON)
+    val magnitude = 10.0.pow(floor(log10(safe)))
+    val normalized = value / magnitude
+    val nice = classicNiceNumbers.firstOrNull { it >= normalized } ?: 10.0
+    return nice * magnitude
+  }
+
+  /**
+   * Returns the largest classic nice number (1, 2, 5, 10) × 10^n that is <= value.
+   * Used when reducing step count in enforceTickLimits.
+   */
+  private fun prevNice(value: Double): Double {
+    val safe = kotlin.math.max(value, DOUBLE_EQUALITY_EPSILON)
+    val magnitude = 10.0.pow(floor(log10(safe)))
+    val normalized = value / magnitude
+    val candidate = classicNiceNumbers.sortedDescending().firstOrNull { it <= normalized }
+    return if (candidate != null) {
+      candidate * magnitude
+    } else {
+      magnitude / 10.0
+    }
+  }
+
+  /**
+   * Generate a nice Y-axis scale with optimal tick values for gradual changes.
+   * Matches iOS ImprovedNiceScaleCalculator.generateNiceScale implementation.
+   */
   fun generateNiceScale(
     minValue: Double,
     maxValue: Double,
     goalWeight: Double,
     isWeightLessMode: Boolean = false,
-    targetTickCount: Int = 5
+    targetTickCount: Int = 6
   ): AxisMeta {
-    val actualMin = kotlin.math.floor(minValue)
-    val actualMax = kotlin.math.ceil(maxValue)
-    val rawRange = actualMax - actualMin
+    val dataMin = minOf(minValue, maxValue)
+    val dataMax = maxOf(minValue, maxValue)
+    val desired = maxOf(3, minOf(6, targetTickCount))
 
-    return when {
-      rawRange < 5.0 -> handleSmallRange(actualMin, actualMax, goalWeight, isWeightLessMode, targetTickCount)
-      rawRange < 15.0 -> handleMediumRange(actualMin, actualMax, goalWeight, isWeightLessMode, targetTickCount)
-      else -> handleNormalRange(actualMin, actualMax, goalWeight, isWeightLessMode, targetTickCount)
-    }
-  }
-
-  private fun handleSmallRange(
-    dataMin: Double,
-    dataMax: Double,
-    goalWeight: Double,
-    isWeightLessMode: Boolean,
-    targetTickCount: Int
-  ): AxisMeta {
-    val range = maxOf(dataMax - dataMin, 2.0)
-    val padding = range * 0.2
-    val paddedMin = dataMin - padding
-    val paddedMax = dataMax + padding
-
-    val dataCenter = (dataMin + dataMax) / 2
-    val dataRange = dataMax - dataMin
-    val reasonableGoalRange = dataRange * 2
-
-    // Include goal weight if reasonable
-    val minBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      minOf(paddedMin, goalWeight)
-    else paddedMin
-
-    val maxBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      maxOf(paddedMax, goalWeight)
-    else paddedMax
-
-    // Calculate nice step based on range and target tick count
-    val rawRange = maxBound - minBound
-    val roughStep = rawRange / (targetTickCount - 1).coerceAtLeast(1)
-    val step = pickNiceStep(roughStep)
-
-    // Align min/max to nice step
-    val niceMin = kotlin.math.floor(minBound / step) * step
-    val niceMax = kotlin.math.ceil(maxBound / step) * step
-
-    // Apply weightless mode logic: allow negative values if true, otherwise clamp to 0
-    val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
-    val finalMax = niceMax
-
-    // Generate ticks and ensure count doesn't exceed target tick count
-    val ticks = generateTicks(finalMin, finalMax, step, targetTickCount)
-
-    return AxisMeta(finalMin, finalMax, step, ticks.size)
-  }
-
-  private fun handleMediumRange(
-    dataMin: Double,
-    dataMax: Double,
-    goalWeight: Double,
-    isWeightLessMode: Boolean,
-    targetTickCount: Int
-  ): AxisMeta {
+    // When min and max are the same, use minimal padding above and below instead of zero range
     val range = dataMax - dataMin
-    val padding = range * 0.15
-    val paddedMin = dataMin - padding
-    val paddedMax = dataMax + padding
+    val isSameValue = !range.isFinite() || range <= 0 || abs(range) < DOUBLE_EQUALITY_EPSILON
+    val (effectiveMin, effectiveMax) = if (isSameValue) {
+      val center = (dataMin + dataMax) / 2.0
+      Pair(center - MIN_PADDING_SAME_VALUE, center + MIN_PADDING_SAME_VALUE)
+    } else {
+      Pair(dataMin, dataMax)
+    }
 
-    val dataCenter = (dataMin + dataMax) / 2
-    val reasonableGoalRange = range * 2
+    // Generate nice ticks using classic algorithm (iOS matches this)
+    val (resultTicks, resultStep, resultDomain) = niceTicks(min = effectiveMin, max = effectiveMax, desiredTickCount = desired)
 
-    // Include goal weight if reasonable
-    val minBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      minOf(paddedMin, goalWeight)
-    else paddedMin
+    // Apply edge buffer so top/bottom data points don't touch chart edges
+    val (bufferedStep, bufferedTicks) = applyEdgeBufferToTicks(
+      dataMin = dataMin,
+      dataMax = dataMax,
+      step = resultStep,
+      ticks = resultTicks,
+      desiredTickCount = desired,
+    )
 
-    val maxBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      maxOf(paddedMax, goalWeight)
-    else paddedMax
-
-    // Calculate nice step based on range and target tick count
-    val rawRange = maxBound - minBound
-    val roughStep = rawRange / (targetTickCount - 1).coerceAtLeast(1)
-    val step = pickNiceStep(roughStep)
-
-    // Align min/max to nice step
-    val niceMin = kotlin.math.floor(minBound / step) * step
-    val niceMax = kotlin.math.ceil(maxBound / step) * step
+    // Align domain to adjusted tick range so plot bounds match horizontal rules
+    val domainMin = bufferedTicks.firstOrNull() ?: resultDomain.first
+    val domainMax = bufferedTicks.lastOrNull() ?: resultDomain.second
 
     // Apply weightless mode logic: allow negative values if true, otherwise clamp to 0
-    val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
-    val finalMax = niceMax
+    val finalMin = if (isWeightLessMode) domainMin else maxOf(domainMin, 0.0)
+    val finalMax = domainMax
 
-    // Generate ticks and ensure count doesn't exceed target tick count
-    val ticks = generateTicks(finalMin, finalMax, step, targetTickCount)
+    // iOS sanitization step: if not in weightless mode and domainMin < 0, recalculate with max(3, buffered.ticks.size)
+    val (finalTicks, finalStep) = if (!isWeightLessMode && domainMin < 0) {
+      val sanitizedDesiredTickCount = maxOf(3, bufferedTicks.size)
+      val (sanitizedTicks, sanitizedStep, _) = niceTicks(min = 0.0, max = finalMax, desiredTickCount = sanitizedDesiredTickCount)
+      val (sanitizedBufferedStep, sanitizedBufferedTicks) = applyEdgeBufferToTicks(
+        dataMin = dataMin,
+        dataMax = dataMax,
+        step = sanitizedStep,
+        ticks = sanitizedTicks,
+        desiredTickCount = sanitizedDesiredTickCount,
+      )
+      Pair(sanitizedBufferedTicks, sanitizedBufferedStep)
+    } else {
+      Pair(bufferedTicks, bufferedStep)
+    }
 
-    return AxisMeta(finalMin, finalMax, step, ticks.size)
+    return AxisMeta(
+      min = finalMin,
+      max = finalMax,
+      step = finalStep,
+      count = finalTicks.size
+    )
   }
 
-  private fun handleNormalRange(
+  /**
+   * Compute evenly spaced, human-friendly ticks using classic 1–2–5 × 10^n steps.
+   * Returns (ticks, step, domainMin to domainMax as Pair).
+   * Matches iOS YAxisCalculator.niceTicks implementation.
+   */
+  private fun niceTicks(
+    min: Double,
+    max: Double,
+    desiredTickCount: Int
+  ): Triple<List<Double>, Double, Pair<Double, Double>> {
+    val range = max - min
+    if (!range.isFinite() || range <= 0 || desiredTickCount <= 1) {
+      val lo = minOf(min, max)
+      val hi = maxOf(min, max)
+      val step = maxOf(hi - lo, 1.0)
+      return Triple(listOf(lo, hi), step, Pair(lo, hi))
+    }
+
+    val rawInterval = range / (desiredTickCount - 1).coerceAtLeast(1)
+    var step = nextNice(rawInterval)
+    if (step < 1.0) step = 1.0
+
+    val niceMin = snapDown(min, step)
+    val niceMax = snapUp(max, step)
+    val ticks = buildTicksFromStep(niceMin, niceMax, step)
+
+    val domainMin = ticks.firstOrNull() ?: niceMin
+    val domainMax = ticks.lastOrNull() ?: niceMax
+    val actualStep = if (ticks.size > 1) ticks[1] - ticks[0] else step
+
+    return Triple(ticks, actualStep, Pair(domainMin, domainMax))
+  }
+
+  /**
+   * Enforce tick limits (min 3, max 6) by adjusting step size.
+   * Returns Pair(step, ticks). Matches iOS YAxisCalculator.enforceTickLimits implementation.
+   */
+  internal fun enforceTickLimits(
+    min: Double,
+    max: Double,
+    initialStep: Double
+  ): Pair<Double, List<Double>> {
+    var step = maxOf(initialStep, DOUBLE_EQUALITY_EPSILON)
+    var snappedMin = snapDown(min, step)
+    var snappedMax = snapUp(max, step)
+    var ticks = buildTicksFromStep(snappedMin, snappedMax, step)
+
+    while (ticks.size > 6) {
+      step = nextNice(step * 1.999)
+      snappedMin = snapDown(min, step)
+      snappedMax = snapUp(max, step)
+      ticks = buildTicksFromStep(snappedMin, snappedMax, step)
+    }
+
+    while (ticks.size < 3 && step > 0.1) {
+      step = prevNice(step / 2.001)
+      snappedMin = snapDown(min, step)
+      snappedMax = snapUp(max, step)
+      ticks = buildTicksFromStep(snappedMin, snappedMax, step)
+    }
+
+    if (ticks.size >= 3) {
+      val diffs = ticks.zipWithNext { a, b -> b - a }
+      val mean = diffs.average()
+      val nonUniform = diffs.any { abs(it - mean) > maxOf(0.001, step * 0.05) }
+      if (nonUniform) {
+        val rng = (ticks.lastOrNull() ?: snappedMax) - (ticks.firstOrNull() ?: snappedMin)
+        step = maxOf(
+          calculateOptimalStep(rng, maxOf(3, minOf(6, ticks.size))),
+          DOUBLE_EQUALITY_EPSILON
+        )
+        snappedMin = snapDown(min, step)
+        snappedMax = snapUp(max, step)
+        ticks = buildTicksFromStep(snappedMin, snappedMax, step)
+      }
+    }
+
+    return Pair(step, ticks)
+  }
+
+  /**
+   * Ensures there is visual headroom/footroom between data extremes and the outermost ticks.
+   * Returns Pair(step, ticks). Matches iOS YAxisCalculator.applyEdgeBufferToTicks implementation.
+   */
+  internal fun applyEdgeBufferToTicks(
     dataMin: Double,
     dataMax: Double,
-    goalWeight: Double,
-    isWeightLessMode: Boolean,
-    targetTickCount: Int
-  ): AxisMeta {
-    val rawRange = dataMax - dataMin
-    val minimumRange = maxOf(rawRange, 10.0)
-    val padding = minimumRange * 0.1
-    val paddedMin = dataMin - padding
-    val paddedMax = dataMax + padding
+    step: Double,
+    ticks: List<Double>,
+    thresholdRatio: Double = 0.35,
+    maxTicks: Int = 6,
+    desiredTickCount: Int? = null
+  ): Pair<Double, List<Double>> {
+    if (ticks.isEmpty()) return Pair(step, ticks)
 
-    val dataCenter = (dataMin + dataMax) / 2
-    val reasonableGoalRange = rawRange * 2
+    var proposedMin = ticks.first()
+    var proposedMax = ticks.last()
+    var proposedStep = step
 
-    // Include goal weight if reasonable
-    val minBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      minOf(paddedMin, goalWeight)
-    else paddedMin
+    val tooCloseToTop = (proposedMax - dataMax) <= (proposedStep * thresholdRatio)
+    val tooCloseToBottom = (dataMin - proposedMin) <= (proposedStep * thresholdRatio)
 
-    val maxBound = if (kotlin.math.abs(goalWeight - dataCenter) <= reasonableGoalRange)
-      maxOf(paddedMax, goalWeight)
-    else paddedMax
+    if (tooCloseToTop) proposedMax += proposedStep
+    if (tooCloseToBottom) proposedMin -= proposedStep
 
-    // Calculate nice step based on range and target tick count
-    val range = maxBound - minBound
-    val roughStep = range / (targetTickCount - 1).coerceAtLeast(1)
-    val step = pickNiceStep(roughStep)
+    var (enforcedStep, enforcedTicks) = enforceTickLimits(min = proposedMin, max = proposedMax, initialStep = proposedStep)
 
-    // Align min/max to nice step
-    val niceMin = kotlin.math.floor(minBound / step) * step
-    val niceMax = kotlin.math.ceil(maxBound / step) * step
+    if (enforcedTicks.isNotEmpty()) {
+      val last = enforcedTicks.last()
+      if ((last - dataMax) < (enforcedStep * thresholdRatio) && enforcedTicks.size < maxTicks) {
+        proposedMax = last + enforcedStep
+        val next = enforceTickLimits(
+          min = enforcedTicks.firstOrNull() ?: proposedMin,
+          max = proposedMax,
+          initialStep = enforcedStep,
+        )
+        enforcedStep = next.first
+        enforcedTicks = next.second
+      }
 
-    // Apply weightless mode logic: allow negative values if true, otherwise clamp to 0
-    val finalMin = if (isWeightLessMode) niceMin else maxOf(niceMin, 0.0)
-    val finalMax = niceMax
+      val first = enforcedTicks.first()
+      if ((dataMin - first) < (enforcedStep * thresholdRatio) && enforcedTicks.size < maxTicks) {
+        proposedMin = first - enforcedStep
+        val next = enforceTickLimits(
+          min = proposedMin,
+          max = enforcedTicks.lastOrNull() ?: proposedMax,
+          initialStep = enforcedStep,
+        )
+        enforcedStep = next.first
+        enforcedTicks = next.second
+      }
+    }
 
-    // Generate ticks and ensure count doesn't exceed target tick count
-    val ticks = generateTicks(finalMin, finalMax, step, targetTickCount)
-
-    return AxisMeta(finalMin, finalMax, step, ticks.size)
+    return Pair(enforcedStep, enforcedTicks)
   }
 
   /**
-   * Generate ticks between min and max with the given step, ensuring count doesn't exceed target tick count.
+   * Calculate optimal step size using classic nice numbers (1–2–5 × 10ⁿ) only.
+   * Avoids steps like 0.4, 1.5, 4, 15, 25, 40.
    */
-  private fun generateTicks(min: Double, max: Double, step: Double, targetTickCount: Int): List<Double> {
-    val ticks = mutableListOf<Double>()
-    var current = min
-
-    while (current <= max && ticks.size < targetTickCount) {
-      ticks.add(current)
-      current += step
-    }
-
-    return ticks.distinct().sorted()
-  }
-
-  /**
-   * Pick a "nice" step size that is >= threshold using the nice numbers logic.
-   * This ensures step values are always from the predefined nice numbers list.
-   */
-  private fun pickNiceStep(threshold: Double): Double {
-    // Determine magnitude (power of 10)
-    val magnitude = 10.0.pow(kotlin.math.floor(kotlin.math.log10(maxOf(threshold, 1e-9))))
-    val normalized = threshold / magnitude
-
-    // Find first nice number >= normalized, otherwise bump magnitude
-    val candidate = niceNumbers.firstOrNull { it >= normalized }
-    return if (candidate != null && candidate * magnitude > 1) {
-      candidate * magnitude
-    } else {
-      // If none is big enough, move to next order of magnitude with the smallest nice number
-      (niceNumbers.firstOrNull() ?: 1.0) * magnitude * 10.0
-    }
+  internal fun calculateOptimalStep(range: Double, targetTickCount: Int): Double {
+    if (targetTickCount <= 1) return range
+    val rough = kotlin.math.max(range / (targetTickCount - 1).coerceAtLeast(1), DOUBLE_EQUALITY_EPSILON)
+    return nextNice(rough)
   }
 }

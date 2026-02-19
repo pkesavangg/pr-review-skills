@@ -31,6 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.loading.string.LoadingString
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -40,9 +41,12 @@ import kotlinx.coroutines.delay
 
 /**
  * Main splash/loading screen with logo and animated "loading..." indicator.
+ * Uses [LoadingScreenViewModel]; its init calls start() (migration, login check, loadData, navigate).
  */
 @Composable
-fun LoadingScreen() {
+fun LoadingScreen(
+  viewModel: LoadingScreenViewModel = hiltViewModel(),
+) {
   Box(
     modifier =
       Modifier

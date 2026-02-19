@@ -15,6 +15,8 @@ class PushNotificationService: NSObject {
     @Injector var entryService: EntryService
     @Injector private var permissionsService: PermissionsService
     @Injector private var accountService: AccountService
+    @Injector private var notificationService: NotificationHelperService
+    @Injector private var bluetoothService: BluetoothService
     // API repository for push-notification related network calls
     private let apiRepo: PushNotificationRepositoryAPIProtocol = PushNotificationRepositoryAPI()
     
@@ -67,8 +69,12 @@ class PushNotificationService: NSObject {
                 // the app state. This handles silent/data-only pushes and ensures visibility even when
                 // iOS suppresses remote-push banners in the foreground.
                 let aps = userInfo["aps"] as? [String: Any]
-                    let alert = aps?["alert"] as? [String: Any]
-                    let title = alert?["title"] as? String ?? "New Notification"
+                let alert = aps?["alert"] as? [String: Any]
+                let hasAlertContent = alert != nil
+                // This prevents duplicate notifications when iOS already shows the push notification banner
+                // Only show local notification if there's no alert content in the push payload
+                if !hasAlertContent {
+ let title = alert?["title"] as? String ?? "New Notification"
                     let body = alert?["body"] as? String ?? "You have a new message"
                     let content = UNMutableNotificationContent()
                     content.title = title
@@ -82,6 +88,7 @@ class PushNotificationService: NSObject {
                         trigger: nil
                     )
                     try await UNUserNotificationCenter.current().add(request)
+                }
             } catch {
                 logger.log(level: .error, tag: "PushNotificationService", message: "Failed to handle notification: \(error.localizedDescription)")
             }
@@ -94,6 +101,8 @@ class PushNotificationService: NSObject {
         // Skip if the user hasn’t granted notification permission yet – don’t send an
         // FCM token or any push-notification related info to the backend until allowed.
         guard isNotificationAuthorized() else { return }
+        // Don't send empty token to backend – it can clear the device from push targeting.
+        guard let token = fcmToken, !token.isEmpty else { return }
         
         guard !isDeviceInfoUpdating else { return }
         isDeviceInfoUpdating = true
@@ -108,7 +117,7 @@ class PushNotificationService: NSObject {
             deviceOSVersion: deviceInfo["osVersion"] ?? UIDevice.current.systemVersion,
             deviceUUID: deviceInfo["deviceUuid"] ?? UIDevice.current.identifierForVendor?.uuidString ?? "",
             deviceModel: deviceInfo["model"] ?? UIDevice.current.model,
-            fcmToken: fcmToken ?? ""
+            fcmToken: token
         )
         do {
             try await apiRepo.updateDeviceInfo(payload)
@@ -193,10 +202,9 @@ class PushNotificationService: NSObject {
         guard isNotificationAuthorized() else { return }
         
         Task { @MainActor [weak self] in
-            if let token = notification.userInfo?["token"] as? String {
-                self?.fcmToken = token
-                await self?.updateDeviceInfo()
-            }
+            guard let token = notification.userInfo?["token"] as? String, !token.isEmpty else { return }
+            self?.fcmToken = token
+            await self?.updateDeviceInfo()
         }
     }
     
@@ -232,9 +240,13 @@ class PushNotificationService: NSObject {
         guard isNetworkConnected else {
             return
         }
-        await fetchEntries()
+        await fetchEntries(showToast: false)
         await syncDevices()
-        await updateDeviceInfo()
+        if isNotificationAuthorized(), fcmToken == nil {
+            await registerForPushNotifications()
+        } else {
+            await updateDeviceInfo()
+        }
     }
     
     // MARK: - Entry/Operation Syncing
@@ -243,8 +255,17 @@ class PushNotificationService: NSObject {
         isFetchingEntries = true
         defer { isFetchingEntries = false }
         await entryService.syncAllEntriesWithRemote()
+        if showToast, !bluetoothService.isSetupInProgress, accountService.activeAccount != nil {
+            await showNewEntryToast()
+        }
     }
-    
+
+    private func showNewEntryToast() async {
+        await notificationService.showToast(ToastModel(
+            title: ToastStrings.success,
+            message: ToastStrings.entryAdded
+        ))
+    }
     // MARK: - Device/Scale Syncing
     private func syncDevices() async {
         await ScaleService.shared.syncAllScalesWithRemote()

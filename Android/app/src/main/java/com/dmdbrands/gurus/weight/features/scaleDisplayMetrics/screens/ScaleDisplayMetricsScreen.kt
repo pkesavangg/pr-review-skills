@@ -5,13 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Screens.ScaleMetricsSettingScreen
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.components.ScaleMetricsNotes
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsIntent
 import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.reducer.ScaleDisplayMetricsState
@@ -28,7 +29,8 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
-import kotlinx.coroutines.launch
+import sh.calvin.reorderable.mainAxisViewportSize
+import sh.calvin.reorderable.rememberScroller
 
 @Composable
 fun ScaleDisplayMetricsScreen(scaleId: String) {
@@ -50,16 +52,12 @@ fun ScaleDisplayMetricsScreenContent(
   state: ScaleDisplayMetricsState,
   handleIntent: (ScaleDisplayMetricsIntent) -> Unit,
 ) {
-  val backStack = LocalNavBackStack.current
-  val coroutineScope = rememberCoroutineScope()
-
+  val lazyListState = rememberLazyListState()
   AppScaffold(
     title = ScaleDisplayMetricsStrings.Title,
     navigationIcon = {
       AppIconButton(AppIcons.Default.Close) {
-        coroutineScope.launch {
-          backStack.removeLast()
-        }
+        handleIntent(ScaleDisplayMetricsIntent.Back)
       }
     },
     actions = {
@@ -81,6 +79,7 @@ fun ScaleDisplayMetricsScreenContent(
         Modifier
           .fillMaxSize()
           .padding(vertical = spacing.md, horizontal = spacing.sm),
+      state = lazyListState,
     ) {
       item {
         // Notes
@@ -101,16 +100,17 @@ fun ScaleDisplayMetricsScreenContent(
         )
       }
 
-        item {
+      item {
         // Display Metrics Component
         state.scale?.let { scale ->
           ScaleMetricsSettingScreen(
             currentMetrics = scale.preferences?.displayMetrics ?: emptyList(),
+            scrollState = lazyListState,
             onMetricsChanged = { enabledMetrics ->
               handleIntent(ScaleDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
             },
             includeHeartRate = scale.preferences?.shouldMeasurePulse == true,
-            showAllMetrics =  scale.preferences?.shouldMeasureImpedance == true ,
+            showAllMetrics = scale.preferences?.shouldMeasureImpedance == true,
           )
         }
       }

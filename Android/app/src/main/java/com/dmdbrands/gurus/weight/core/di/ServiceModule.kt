@@ -226,7 +226,8 @@ object ServiceModule {
     appRepository: IAppRepository,
     accountRepository: IAccountRepository,
     healthConnectRepository: IHealthConnectRepository,
-    integrationRepository: IIntegrationRepository
+    integrationRepository: IIntegrationRepository,
+    entryService: IEntryService
   ): IDeviceInfoService =
     DeviceInfoService(
       context,
@@ -239,6 +240,7 @@ object ServiceModule {
       accountRepository,
       healthConnectRepository,
       integrationRepository,
+      entryService
     )
 
     /**
@@ -275,7 +277,9 @@ object ServiceModule {
       exportAPI: IExportAPI,
       accountService: IAccountService,
       dialogQueueService: IDialogQueueService,
-    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService)
+      deviceService: com.greatergoods.blewrapper.GGDeviceService,
+      logRepository: ILogRepository,
+    ): IExportService = ExportService(exportAPI, accountService, dialogQueueService, deviceService, logRepository)
 
     /**
      * Provides the offline handler service implementation.
@@ -383,9 +387,18 @@ object ServiceModule {
     @Singleton
     fun provideDashboardService(
       dashboardRepository: IDashboardRepository,
-      accountRepository: IAccountRepository
+      accountRepository: IAccountRepository,
+      connectivityObserver: IConnectivityObserver,
+      dialogQueueService: IDialogQueueService,
+      appNavigationService: IAppNavigationService,
     ): IDashboardService =
-      DashboardService(dashboardRepository, accountRepository)
+      DashboardService(
+        dashboardRepository,
+        accountRepository,
+        connectivityObserver,
+        dialogQueueService,
+        appNavigationService,
+      )
 
     @Provides
     @Singleton

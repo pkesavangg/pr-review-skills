@@ -13,7 +13,7 @@ import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsH
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
-import com.dmdbrands.gurus.weight.features.common.model.SCALES
+import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
 import com.dmdbrands.gurus.weight.features.permissionSettings.PermissionSettings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -27,7 +27,8 @@ fun ScalePermissions(
     onRequestPermission: (String) -> Unit,
     wifiName: String? = null,
 ) {
-    val scaleSetupType = SCALES.find { it.sku == sku }!!.setupType
+    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
+    val scaleSetupType = scaleInfo!!.setupType
     val permissionGroups = AppPermissionsHelper.getRequiredPermissionsForSetupType(sku, permissions, null, wifiName)
     Column(
         modifier = modifier

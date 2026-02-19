@@ -8,7 +8,7 @@ import java.util.Locale
 
 object DateFormatHelper {
     /**
-     * Formats a date string (ISO8601, Zulu, or local) to 'MMMM d, yyyy' or returns 'Invalid Date'.
+     * Formats a date string (ISO8601, Zulu, or local) to 'MMMM d, yyyy' or returns '--' if unavailable.
      */
     fun formatDisplayDate(dateString: String): String =
         try {
@@ -25,6 +25,6 @@ object DateFormatHelper {
             }
             date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.getDefault()))
         } catch (e: Exception) {
-            "Invalid Date"
+            "--"
         }
 } 

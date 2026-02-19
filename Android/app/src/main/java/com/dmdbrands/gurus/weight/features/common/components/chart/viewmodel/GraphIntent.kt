@@ -38,6 +38,9 @@ sealed interface GraphIntent : IReducer.Intent {
   /** Update loading state */
   data class UpdateIsLoading(val isLoading: Boolean) : GraphIntent
 
+  /** Update whether the visible range is a single segment window */
+  data class UpdateIsSingleWindow(val isSingleWindow: Boolean) : GraphIntent
+
   /** Reset graph state */
   object ResetGraph : GraphIntent
 

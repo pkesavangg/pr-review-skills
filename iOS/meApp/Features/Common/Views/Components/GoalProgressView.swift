@@ -1,4 +1,4 @@
-import SwiftUI
+ import SwiftUI
 
 /// Stand-alone view that displays a user’s goal progress. It mirrors the
 /// styling of `GoalProgressCardView` but pulls its own data via
@@ -11,7 +11,7 @@ struct GoalProgressView: View {
     // MARK: - Environment
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
-    
+
     // MARK: - Constants
     private let lang = DashboardStrings.self
     // Dynamic unit label (lb/lbs or kg) based on a given display value
@@ -54,14 +54,14 @@ struct GoalProgressView: View {
         }
         .frame(height: 120)
     }
-    
+
     // MARK: No Goal Set UI
     private var noGoalSetView: some View {
         VStack(alignment: .center, spacing: .spacingXS) {
             Text(lang.reachYourGoals)
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
-            
+
             ButtonView(
                 text: lang.setGoalWeight,
                 type: .filledSuccess,
@@ -100,10 +100,13 @@ struct GoalProgressView: View {
                 Text("\(unitFor(value: abs(viewModel.delta))) to \(formatGoalWeight(viewModel.goalWeight)) goal weight")
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
         .padding(.vertical, .spacingMD)
-        .padding(.horizontal, .spacingSM)
+        .padding(.leading, .spacingSM)
+        .padding(.trailing, .spacingXS) // Reduced by 8pt to accommodate longer numbers
     }
 
     // MARK: - Sub-components

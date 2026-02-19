@@ -73,8 +73,11 @@ final class AppSyncSetupStore: ObservableObject {
     
     /// Call once the screen knows the SKU to prepare step flow.
     func configure(with sku: String) {
+        // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
+        // Pass original SKU to routes (not mapped), setup will save original SKU
+        let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         // Resolve SKU → ScaleItemInfo (fallback to first element).
-        let resolved = SCALES.first { $0.sku == sku } ?? SCALES[0]
+        let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES[0]
         self.scaleItem = resolved
         
         // Determine steps based on body-composition support.
@@ -200,13 +203,19 @@ final class AppSyncSetupStore: ObservableObject {
             return AnyView(AppSyncScannerView(
                 showManualEntryButton: false,
                 onClose: {
-                    self.moveToNextStep()
+                    // Closing the scanner should return to the previous setup instruction step.
+                    self.moveToPreviousStep()
                 },
                 onManualEntry: {
                     self.moveToNextStep()
                 },
                 onScanned: { result in
-                    self.moveToNextStep()
+                    // Move forward only for positive weight; otherwise return to the previous step.
+                    if result.weight > 0 {
+                        self.moveToNextStep()
+                    } else {
+                        self.moveToPreviousStep()
+                    }
                 }
             ))
         case .finish:
@@ -232,9 +241,13 @@ final class AppSyncSetupStore: ObservableObject {
                 return
             }
             // Remove any existing device with the same SKU to avoid duplicates
+            // Map SKU for comparison (e.g., 0022 -> 0383) so 0022 and 0383 are treated as duplicates
             do {
                 let existingDevices = try await self.scaleService.getDevices()
-                if let oldDevice = existingDevices.first(where: { $0.sku == scaleItem.sku }) {
+                let scaleLookupSku = DeviceHelper.mapSkuForDisplay(scaleItem.sku)
+                if let oldDevice = existingDevices.first(where: { 
+                    DeviceHelper.mapSkuForDisplay($0.sku ?? "") == scaleLookupSku 
+                }) {
                     try? await self.scaleService.deleteDevice(oldDevice.id, showToast: false)
                 }
             } catch {
@@ -242,12 +255,14 @@ final class AppSyncSetupStore: ObservableObject {
             }
             
             do {
+                let createdAt = DateTimeTools.getCurrentDatetimeIsoString()
                 let newDevice = Device(
                     id: UUID().uuidString,
                     accountId: accountId,
                     sku: scaleItem.sku,
                     deviceName: scaleItem.productName,
                     deviceType: DeviceType.scale.rawValue,
+                    createdAt: createdAt,
                     bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
                 let response = try await self.scaleService.createDevice(newDevice)
