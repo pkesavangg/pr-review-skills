@@ -126,8 +126,9 @@ final class LoggerService: LoggerServiceProtocol {
             // Format logs for API
             let logsPayload = formatLogsForAPI(logs, version: version)
             
+            print("sendLogsToServer Logs: \(logsPayload)")
             // Send to API using LoggerApiRepository
-            try await loggerApiRepository.sendLogs(logsPayload)
+            // try await loggerApiRepository.sendLogs(logsPayload)
             
             // Clear logs for the account after successful upload
             try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)

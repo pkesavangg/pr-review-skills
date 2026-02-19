@@ -528,7 +528,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 await checkGoalAlerts()
             }
-            await logger.log(level: .debug, tag: tag, message: "Full sync completed successfully")
+            await logger.log(level: .info, tag: tag, message: "Full sync completed successfully")
 
         } catch {
             await logger.log(level: .error, tag: tag, message: "Sync failed: \(error.localizedDescription)")
@@ -546,6 +546,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         // Tracks whether we successfully synced at least one create to the API; drives goal met card visibility.
         var hadSuccessfulCreate = false
+        var successfulCreateCount = 0
+        var successfulDeleteCount = 0
+        var failedSyncCount = 0
 
         // 2. Try to sync with backend
         if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
@@ -570,10 +573,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                             isFailedToSync: false,
                             attempts: currentAttempts
                         )
+                        successfulCreateCount += 1
                         await logger.log(level: .debug, tag: tag, message: "Entry create/update synced: \(entryId)")
                     } else {
                         try await localRepo.deleteEntry(byId: entryIdString)
                         try await handleEntryDeleted(entryId: entryId, entryTimestamp: entryTimestamp)
+                        successfulDeleteCount += 1
                         await logger.log(level: .debug, tag: tag, message: "Entry deleted: \(entryId)")
                     }
                 } catch {
@@ -587,9 +592,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         isFailedToSync: markAsFailed,
                         attempts: newAttempts
                     )
+                    failedSyncCount += 1
                     await logger.log(level: .error, tag: tag, message: "Sync failed: \(error)")
                 }
             }
+            await logger.log(
+                level: .info,
+                tag: tag,
+                message: "Unsynced entry push completed for accountId=\(accountId): createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)"
+            )
         }
         return hadSuccessfulCreate
     }
