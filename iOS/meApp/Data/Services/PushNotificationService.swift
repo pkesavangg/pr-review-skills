@@ -312,16 +312,25 @@ class PushNotificationService: NSObject {
         }
     }
     
-    /// Stores the FCM token to local storage
+    /// Stores the FCM token to local storage and updates the in-memory cache.
     /// - Parameter token: The FCM token to store
     private func storeFCMToken(_ token: String) {
+        // Keep the in-memory token in sync with the persisted value
+        fcmToken = token
         kvStorage.setValue(token, forKey: KvStorageKeys.fcmToken.rawValue)
     }
     
-    /// Retrieves the stored FCM token from local storage
-    /// - Returns: The stored FCM token, or nil if not found
+    /// Retrieves the cached FCM token.
+    ///
+    /// This method is intentionally non-`private` to allow selected consumers
+    /// (for example, account-related services during logout) to read the
+    /// last known FCM token. It should not be used as a general-purpose
+    /// storage API; use `storeFCMToken(_:)` and the push notification flows
+    /// within `PushNotificationService` to manage the token lifecycle.
+    ///
+    /// - Returns: The cached FCM token, or `nil` if not set.
     func getStoredFCMToken() -> String? {
-        return kvStorage.getValue(forKey: KvStorageKeys.fcmToken.rawValue) as? String
+        return fcmToken
     }
 }
 
