@@ -124,7 +124,7 @@ object StatHelper {
         }
       }
 
-      is String -> if (value.isBlank() || value == "0") null else value
+      is String -> if (value.isBlank() || value == "0" || value == "0.0" || value == "+0.0" || value == "-0.0") null else value
       else -> null
     }
     val prefix = meta.valuePrefix(useShort).takeIf { it.isNotEmpty() }
@@ -221,19 +221,19 @@ object StatHelper {
     return when (key) {
       MilestoneKey.CURRENT_STREAK -> progress.currentStreak.takeIf { it > 0 }
       MilestoneKey.LONGEST_STREAK -> progress.longestStreak.takeIf { it > 0 }
-      MilestoneKey.PER_WEEK -> progress.week.takeIf { it != null }?.let {
+      MilestoneKey.PER_WEEK -> progress.week.takeIf { it != null && it != 0.0 }?.let {
         if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 
-      MilestoneKey.PER_MONTH -> progress.month.takeIf { it != null }?.let {
+      MilestoneKey.PER_MONTH -> progress.month.takeIf { it != null && it != 0.0 }?.let {
         if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 
-      MilestoneKey.PER_YEAR -> progress.year.takeIf { it != null }?.let {
+      MilestoneKey.PER_YEAR -> progress.year.takeIf { it != null && it != 0.0 }?.let {
         if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 
-      MilestoneKey.TOTAL_CHANGE -> progress.total.takeIf { it != null }?.let {
+      MilestoneKey.TOTAL_CHANGE -> progress.total.takeIf { it != null && it != 0.0 }?.let {
         if (it >= 0) "+${it.rounded()}" else it.rounded().toString()
       }
 

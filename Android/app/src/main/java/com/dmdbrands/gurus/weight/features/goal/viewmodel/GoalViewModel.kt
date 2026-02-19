@@ -31,6 +31,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.round
 import javax.inject.Inject
 
 /**
@@ -154,7 +155,20 @@ constructor(
     )
 
     val account = state.value.account ?: return
-    val goal = state.value.form.controls.toGoal(
+    val controls = state.value.form.controls
+
+    // If MAINTAIN mode, always use the latest entry as the initial weight.
+    // Starting weight input is hidden for maintain, so it may contain stale account data.
+    if (controls.goalType.value == GoalType.MAINTAIN.value) {
+      val currentWeight = state.value.latestWeight
+      if (currentWeight != null && currentWeight > 0.0) {
+        // Form stores weights as tenths (e.g. 152.1 -> "1521")
+        val currentWeightTenths = round(currentWeight * 10).toInt().toString()
+        controls.startingWeight.onValueChange(currentWeightTenths)
+      }
+    }
+
+    val goal = controls.toGoal(
       fromUnit = account.weightUnit,
       toUnit = WeightUnit.LB,
     )
@@ -181,10 +195,12 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.CREATION_FAILED, GGUserActionResponseType.UPDATE_COMPLETED -> {
+            dialogQueueService.dismissLoader()
             handleIntent(GoalIntent.Success)
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             handleIntent(GoalIntent.Success)
           }
         }

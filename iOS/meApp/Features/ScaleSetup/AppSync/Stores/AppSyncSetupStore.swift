@@ -203,13 +203,19 @@ final class AppSyncSetupStore: ObservableObject {
             return AnyView(AppSyncScannerView(
                 showManualEntryButton: false,
                 onClose: {
-                    self.moveToNextStep()
+                    // Closing the scanner should return to the previous setup instruction step.
+                    self.moveToPreviousStep()
                 },
                 onManualEntry: {
                     self.moveToNextStep()
                 },
                 onScanned: { result in
-                    self.moveToNextStep()
+                    // Move forward only for positive weight; otherwise return to the previous step.
+                    if result.weight > 0 {
+                        self.moveToNextStep()
+                    } else {
+                        self.moveToPreviousStep()
+                    }
                 }
             ))
         case .finish:

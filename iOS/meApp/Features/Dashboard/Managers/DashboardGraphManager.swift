@@ -50,6 +50,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return cal
     }
 
+    /// Gregorian calendar aligned with WeekSectionViewModel.plotXDate.
+    private var weekPlotCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        return cal
+    }
+
     // MARK: - Constants
 
     /// Position for single metric points within the Y-axis domain (0.0 = bottom, 1.0 = top)
@@ -163,9 +171,20 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> Double? {
         guard !operations.isEmpty else { return nil }
 
+        // Keep interpolation X values aligned with the chart's plotted X values.
+        // Week view plots points at local noon (see WeekSectionViewModel.plotXDate),
+        // so interpolation must use the same normalization to avoid value-vs-line drift.
+        @inline(__always)
+        func normalizedInterpolationDate(_ input: Date) -> Date {
+            guard state.selectedPeriod == .week else { return input }
+            let cal = weekPlotCalendar
+            let dayStart = cal.startOfDay(for: input)
+            return cal.date(byAdding: .hour, value: 12, to: dayStart) ?? input
+        }
+
         // 1) Sort and map to (x,y) in display space (units or weightless delta)
         let sorted = operations.sorted { $0.date < $1.date }
-        let xs: [Double] = sorted.map { $0.date.timeIntervalSinceReferenceDate }
+        let xs: [Double] = sorted.map { normalizedInterpolationDate($0.date).timeIntervalSinceReferenceDate }
 
         func mapWeight(_ w: Int) -> Double {
             if isWeightlessMode {
@@ -179,7 +198,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let n = xs.count
         if n == 1 { return ys[0] }
 
-        let t = date.timeIntervalSinceReferenceDate
+        let t = normalizedInterpolationDate(date).timeIntervalSinceReferenceDate
 
         // 2) For dates outside the data range, return the edge values (clamping behavior)
         // This allows interpolation to work at the boundaries while the calling method
@@ -1666,23 +1685,23 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // We'll compare using this exclusive boundary so Saturday is included.
         let weekEndExclusive = cal.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
 
-        // Calculate total weeks from start of oldest week to inclusive end of latest week
-        let timeInterval = weekEndExclusive.timeIntervalSince(weekStartForOldest)
-        let totalWeeks = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.week)))
-
-        for weekOffset in 0..<totalWeeks {
-            if let currentWeekStart = cal.date(byAdding: .weekOfYear, value: weekOffset, to: weekStartForOldest) {
-                // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
-                let startOfCurrentWeek = cal.startOfDay(for: currentWeekStart)
-                for dayOffset in 0...6 { // include Saturday
-                    if let dayStart = cal.date(byAdding: .day, value: dayOffset, to: startOfCurrentWeek),
-                       let dayDate = cal.date(byAdding: .hour, value: 12, to: dayStart) { // noon
-                        if dayDate >= weekStartForOldest && dayDate < weekEndExclusive {
-                            dates.append(dayDate)
-                        }
+        // Iterate week-by-week with calendar math to avoid drift from non-calendar viewport widths.
+        var currentWeekStart = weekStartForOldest
+        while currentWeekStart < weekEndExclusive {
+            // Iterate 7 days per week; anchor to noon to avoid DST/timezone boundary issues
+            let startOfCurrentWeek = cal.startOfDay(for: currentWeekStart)
+            for dayOffset in 0...6 { // include Saturday
+                if let dayStart = cal.date(byAdding: .day, value: dayOffset, to: startOfCurrentWeek),
+                   let dayDate = cal.date(byAdding: .hour, value: 12, to: dayStart) { // noon
+                    if dayDate >= weekStartForOldest && dayDate < weekEndExclusive {
+                        dates.append(dayDate)
                     }
                 }
             }
+            guard let nextWeek = cal.date(byAdding: .weekOfYear, value: 1, to: currentWeekStart) else {
+                break
+            }
+            currentWeekStart = nextWeek
         }
         // Append a phantom tick one day after the last date so the real last tick (Saturday)
         // is not exactly at the right edge of the visible domain.
@@ -1710,16 +1729,32 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Calculate total months from start of oldest month to end of latest month
         let timeInterval = monthEndForLatest.timeIntervalSince(monthStartForOldest)
         let totalMonths = max(1, Int(ceil(timeInterval / DashboardConstants.TimeInterval.month)))
+        var sundayCalendar = Calendar(identifier: .gregorian)
+        sundayCalendar.timeZone = calendar.timeZone
+        sundayCalendar.locale = calendar.locale
+        sundayCalendar.firstWeekday = 1
 
         for monthOffset in 0..<totalMonths {
-            if let currentMonthStart = calendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest) {
-                for weekOffset in 0..<5 {
-                    if let weekDate = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: currentMonthStart) {
-                        if weekDate >= monthStartForOldest && weekDate <= monthEndForLatest {
-                            dates.append(weekDate)
-                        }
-                    }
-                }
+            guard let currentMonthStart = sundayCalendar.date(byAdding: .month, value: monthOffset, to: monthStartForOldest),
+                  let currentMonthEnd = sundayCalendar.dateInterval(of: .month, for: currentMonthStart)?.end else {
+                continue
+            }
+
+            let monthInterval = DateInterval(start: currentMonthStart, end: currentMonthEnd)
+            let monthTicks = DateTimeTools.sundayTicksForMonth(
+                in: monthInterval,
+                baseCalendar: calendar,
+                includeTrailingPhantom: false
+            )
+            dates.append(contentsOf: monthTicks.filter { $0 >= monthStartForOldest && $0 <= monthEndForLatest })
+        }
+
+        // Append one trailing phantom weekly tick so the last real month section remains selectable
+        // (e.g., in Feb 2025, keep the section after Feb 22/23 through month end).
+        if let last = dates.max() {
+            if let nextSunday = sundayCalendar.date(byAdding: .weekOfYear, value: 1, to: last),
+               let phantomNoon = sundayCalendar.date(bySettingHour: 12, minute: 0, second: 0, of: nextSunday) {
+                dates.append(phantomNoon)
             }
         }
         return dates
@@ -1814,7 +1849,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         case .week, .month:
             return DateTimeTools.formatter("MMM d, yyyy").string(from: date)
         case .year, .total:
-            return DateTimeTools.formatter("MMM, yyyy").string(from: date)
+            return DateTimeTools.formatter("MMM yyyy").string(from: date)
         }
     }
 
