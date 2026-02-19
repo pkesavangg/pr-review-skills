@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -24,6 +25,7 @@ import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,15 +57,13 @@ data class WeightSettings(
   val goal: Goal?
 )
 
-/**
- * Data class for intermediate progress calculation values.
- */
-private data class ProgressInputs(
+/** Holder for the five flows combined for progress; used to combine with progressCacheVersion. */
+private data class ProgressFlowInputs(
   val latest: Entry?,
   val last7: List<Entry>,
   val last30: List<Entry>,
+  val weightSettings: WeightSettings,
   val monthYear: List<HistoryMonth>,
-  val weightSettings: WeightSettings
 )
 
 @Singleton
@@ -138,6 +138,15 @@ constructor(
   private val _lastUpdated = MutableStateFlow<Long?>(null)
   override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
 
+  /** Cached progress-related values; updated only when entry data is refreshed to avoid DB hits on every progress emission. */
+  private val _activeAccount = MutableStateFlow<Account?>(null)
+  private val _currentStreak = MutableStateFlow(0)
+  private val _longestStreak = MutableStateFlow(0)
+  private val _totalCount = MutableStateFlow(0)
+  /** Stored-format weight (0.1 lb) when starting weight is derived from oldest entry; null when account has initial weight. */
+  private val _cachedStartingWeightStored = MutableStateFlow<Double?>(null)
+  /** Bumped when progress cache is updated so progress Flow re-emits without adding more flows to combine. */
+  private val _progressCacheVersion = MutableStateFlow(0)
 
   private var accountId: String? = null
   private var initialWeight: Double? = null
@@ -180,30 +189,56 @@ constructor(
 
   override val progress: Flow<Progress> =
     combine(
-      _latestEntry,
-      _last7Days,
-      _last30Days,
-      weightSettingsFlow,
-      _monthYear
-    ) { latest, last7, last30, weightSettings, monthYear ->
-      val inputs = ProgressInputs(latest, last7, last30, monthYear, weightSettings)
-      calculateProgress(
-        inputs.latest?.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
-        inputs.last7.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-        inputs.last30.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-        inputs.monthYear.map { it.process(inputs.weightSettings.weightUnit, inputs.weightSettings.weightless) },
-        processWeight(this.initialWeight ?: 0.0, inputs.weightSettings.weightUnit, inputs.weightSettings.weightless),
-        goal = inputs.weightSettings.goal?.copy(
+      combine(
+        _latestEntry,
+        _last7Days,
+        _last30Days,
+        weightSettingsFlow,
+        _monthYear,
+      ) { latest, last7, last30, weightSettings, monthYear ->
+        ProgressFlowInputs(latest, last7, last30, weightSettings, monthYear)
+      },
+      _progressCacheVersion.asStateFlow(),
+    ) { inputs, _ ->
+      if (accountId == null) {
+        Progress()
+      } else {
+        val startMs = System.currentTimeMillis()
+        val weightSettings = inputs.weightSettings
+        val unit = weightSettings.weightUnit ?: WeightUnit.LB
+        val weightless = weightSettings.weightless
+        val latestProcessed = inputs.latest?.process(unit, weightless)
+        val last7Processed = inputs.last7.map { it.process(unit, weightless) }
+        val last30Processed = inputs.last30.map { it.process(unit, weightless) }
+        val monthYearProcessed = inputs.monthYear.map { it.process(unit, weightless) }
+        val startingWeightDisplay = processWeight(
+          initialWeight ?: _cachedStartingWeightStored.value ?: 0.0,
+          unit,
+          weightless,
+        )
+        val goal = weightSettings.goal?.copy(
           goalWeight = processWeight(
-            inputs.weightSettings.goal.goalWeight,
-            inputs.weightSettings.weightUnit,
-            inputs.weightSettings.weightless,
+            weightSettings.goal.goalWeight,
+            unit,
+            weightless,
           ),
-          account = accountRepository.getActiveAccount().first(),
-        ),
-        unit = inputs.weightSettings.weightUnit ?: WeightUnit.LB,
-        lastUpdated = null,
-      )
+          account = _activeAccount.value,
+        )
+        val result = calculateProgressPure(
+          latestEntry = latestProcessed,
+          last7Days = last7Processed,
+          last30Days = last30Processed,
+          months = monthYearProcessed,
+          startingWeightDisplay = startingWeightDisplay,
+          currentStreak = _currentStreak.value,
+          longestStreak = _longestStreak.value,
+          totalCount = _totalCount.value,
+          unit = unit,
+          goal = goal,
+        )
+        AppLog.d("EntryService", "Progress emission took ${System.currentTimeMillis() - startMs}ms (cached DB)")
+        result
+      }
     }
 
 
@@ -228,6 +263,7 @@ constructor(
         AppLog.d("EntryService", "Updated last 7 days: ${entries.size} entries")
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating last 7 days", e)
       _last7Days.value = emptyList()
     }
@@ -240,6 +276,7 @@ constructor(
         AppLog.d("EntryService", "Updated last 30 days: ${entries.size} entries")
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating last 30 days", e)
       _last30Days.value = emptyList()
     }
@@ -251,6 +288,7 @@ constructor(
         _monthYear.value = it
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating month year", e)
     }
   }
@@ -267,11 +305,39 @@ constructor(
       updateLast7Days(currentAccountId)
       updateLast30Days(currentAccountId)
       updateMonthYear(currentAccountId)
-
+      updateProgressCache(currentAccountId)
       AppLog.d("EntryService", "Entry data refreshed - streak values should update")
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error refreshing entry data", e)
     }
+  }
+
+  /**
+   * Updates cached progress-related values (streak, count, starting weight) from the database.
+   * Called only when entry data is refreshed so that the progress Flow does not hit the DB on every emission.
+   */
+  private suspend fun updateProgressCache(accountId: String) {
+    try {
+      val entryDates = entryRepository.getStreakData(accountId)
+      _currentStreak.value = EntryServiceHelper.computeCurrentStreakFromDates(entryDates)
+      _longestStreak.value = entryRepository.getLongestStreakCount(accountId)
+      _totalCount.value = entryRepository.getTotalCount(accountId)
+      if (initialWeight == null || initialWeight == 0.0) {
+        val oldest = entryRepository.getOldestEntry(accountId)
+        _cachedStartingWeightStored.value = (oldest as? ScaleEntry)?.scale?.scaleEntry?.weight?.toDouble()
+      } else {
+        _cachedStartingWeightStored.value = null
+      }
+    } catch (e: Exception) {
+      if (e is CancellationException) throw e
+      AppLog.e("EntryService", "Error updating progress cache", e)
+      _currentStreak.value = 0
+      _longestStreak.value = 0
+      _totalCount.value = 0
+      _cachedStartingWeightStored.value = null
+    }
+    _progressCacheVersion.value = _progressCacheVersion.value + 1
   }
 
   /**
@@ -286,9 +352,12 @@ constructor(
     // Cancel all ongoing coroutines when switching accounts
     clearAllData()
     this.accountId = accountId
-    // Update account-related flows
+    // Update account-related flows and cache active account for progress (avoids getActiveAccount().first() in hot path)
     try {
-      this.initialWeight = accountRepository.getActiveAccount().first()?.initialWeight
+      val account = accountRepository.getActiveAccount().first()
+      _activeAccount.value = account
+      this.initialWeight = account?.initialWeight
+      _progressCacheVersion.value = _progressCacheVersion.value + 1
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error updating account flows", e)
     }
@@ -311,6 +380,9 @@ constructor(
     }
     repositoryScope.launch {
       updateMonthYear(accountId)
+    }
+    repositoryScope.launch {
+      updateProgressCache(accountId)
     }
 
     // Add new body scale data updates
@@ -356,6 +428,12 @@ constructor(
     _daywiseBodyScaleLatest.value = emptyList()
     _isUpdating.value = false
     _lastUpdated.value = null
+    _activeAccount.value = null
+    _currentStreak.value = 0
+    _longestStreak.value = 0
+    _totalCount.value = 0
+    _cachedStartingWeightStored.value = null
+    _progressCacheVersion.value = 0
     accountId = null
     initialWeight = null
     repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -599,6 +677,10 @@ constructor(
       // 7. Update last updated timestamp
       // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
       _lastUpdated.value = System.currentTimeMillis()
+      val id = accountId!!
+      repositoryScope.launch {
+        refreshEntryData()
+      }
 
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
@@ -627,6 +709,7 @@ constructor(
           _latestEntry.value = latest
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating latest entry", e)
     }
   }
@@ -638,6 +721,7 @@ constructor(
           _monthlyBodyScaleAverages.value = it
         }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating monthly entry averages", e)
     }
   }
@@ -649,6 +733,7 @@ constructor(
           _daywiseBodyScaleAverages.value = it
         }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating day wise entry averages", e)
     }
   }
@@ -659,138 +744,90 @@ constructor(
         _monthlyAverage.value = months
       }
     } catch (e: Exception) {
+      if (e is CancellationException) throw e
       AppLog.e("EntryService", "Error updating monthly average", e)
     } finally {
     }
   }
 
   /**
-   * Calculates progress based on the latest entry, last 7 days, and last 30 days data.
-   * This function is used by the progress Flow to reactively calculate progress.
+   * Pure in-memory progress calculation. No DB or repository calls.
+   * Used by the progress Flow with precomputed streak/count/starting weight from cached StateFlows.
    */
-  private suspend fun calculateProgress(
+  private fun calculateProgressPure(
     latestEntry: Entry?,
     last7Days: List<Entry>,
     last30Days: List<Entry>,
     months: List<HistoryMonth>,
-    initialWeight: Double?,
+    startingWeightDisplay: Double,
+    currentStreak: Int,
+    longestStreak: Int,
+    totalCount: Int,
     unit: WeightUnit,
     goal: Goal?,
-    lastUpdated: Long?,
   ): Progress {
-    if (accountId == null) {
-      return Progress()
+    var week: Double? = null
+    var initWeek: Entry? = null
+    var month: Double? = null
+    var initMonth: Entry? = null
+    var year: Double? = null
+    var initYear: HistoryMonth? = null
+    var total: Double? = null
+    initWeek = if (last7Days.isNotEmpty()) last7Days.last() else null
+    initMonth = if (last30Days.isNotEmpty()) last30Days.last() else null
+    initYear = if (months.isNotEmpty()) months.last() else null
+    if (latestEntry != null && initWeek != null && latestEntry is ScaleEntry && initWeek is ScaleEntry) {
+      week = latestEntry.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
     }
-    try {
-      var week: Double? = null
-      var initWeek: Entry? = null
-      var month: Double? = null
-      var initMonth: Entry? = null
-      var year: Double? = null
-      var initYear: HistoryMonth? = null
-      var total: Double? = null
-      var startingWeight: Double? = null
-      var oldestEntry: Entry? = null
-      // Get initial entries for each period
-      initWeek = if (last7Days.isNotEmpty()) last7Days.last() else null
-      initMonth = if (last30Days.isNotEmpty()) last30Days.last() else null
-      initYear = if (months.isNotEmpty()) months.last() else null
-      // Calculate week and month progress
-      if (latestEntry != null && initWeek != null && latestEntry is ScaleEntry && initWeek is ScaleEntry) {
-        week = latestEntry.scale.scaleEntry.weight.toDouble() - initWeek.scale.scaleEntry.weight.toDouble()
-      }
-
-      if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
-        month = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
-      }
-
-      // Get starting weight (either from account or oldest entry)
-      if (initialWeight != null && initialWeight != 0.0) {
-        startingWeight = initialWeight
-      } else {
-        oldestEntry = entryRepository.getOldestEntry(accountId!!)
-        if (oldestEntry is ScaleEntry) {
-          // oldestEntry weight is already in display format (lbs) from toEntry() conversion
-          // Convert from lbs to the current display unit (kg or lbs)
-          val weightInLbs = oldestEntry.scale.scaleEntry.weight.toDouble()
-          startingWeight = convertWeight(weightInLbs, WeightUnit.LB, unit)
+    if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
+      month = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
+    }
+    if (latestEntry != null && latestEntry is ScaleEntry) {
+      total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeightDisplay
+    }
+    val thirtyDaysAgoDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -30) }
+    if (initYear != null && initYear.entryTimestamp != null) {
+      try {
+        val yearMonthFormat = SimpleDateFormat("MMM yyyy", Locale.ENGLISH)
+        val initYearDate = yearMonthFormat.parse(initYear.entryTimestamp)
+        val initYearCalendar = Calendar.getInstance().apply {
+          if (initYearDate != null) time = initYearDate
+          set(Calendar.DAY_OF_MONTH, 1)
         }
-      }
-
-      // Calculate total progress
-      if (latestEntry != null && startingWeight != null && latestEntry is ScaleEntry) {
-        // latestEntry is already processed (converted to display format), so use it directly
-        total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeight
-      }
-
-      val thirtyDaysAgoDate = Calendar.getInstance().apply {
-        add(Calendar.DAY_OF_YEAR, -30) // Fixed: subtract 30 days, not add
-      }
-
-      if (initYear != null && initYear.entryTimestamp != null) {
-        try {
-          // Parse the MMM yyyy format (e.g., "May 2024")
-          val yearMonthFormat = SimpleDateFormat("MMM yyyy", Locale.ENGLISH)
-          val initYearDate = yearMonthFormat.parse(initYear.entryTimestamp)
-
-          val initYearCalendar = Calendar.getInstance().apply {
-            if (initYearDate != null) {
-              time = initYearDate
-            }
-            // Set to first day of the month for comparison
-            set(Calendar.DAY_OF_MONTH, 1)
+        val thirtyDaysAgoDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(thirtyDaysAgoDate.time)
+        val initYearDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(initYearCalendar.time)
+        if (initYearDateString >= thirtyDaysAgoDateString) {
+          if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
+            year = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
           }
-
-          val thirtyDaysAgoDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            .format(thirtyDaysAgoDate.time)
-          val initYearDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            .format(initYearCalendar.time)
-
-          if (initYearDateString >= thirtyDaysAgoDateString) {
-            // If initYear is within last 30 days, use initMonth for year calculation
-            if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
-              year = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
-            }
-          } else {
-            // If initYear is older than 30 days, use initYear for year calculation
-            if (latestEntry != null && initYear.avgWeight != null && latestEntry is ScaleEntry) {
-              year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
-            }
-          }
-
-        } catch (e: Exception) {
-          AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e)
-          // Fallback: use initYear for year calculation if parsing fails
+        } else {
           if (latestEntry != null && initYear.avgWeight != null && latestEntry is ScaleEntry) {
             year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
           }
         }
+      } catch (e: Exception) {
+        AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e)
+        if (latestEntry != null && initYear.avgWeight != null && latestEntry is ScaleEntry) {
+          year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
+        }
       }
-
-      // Get streak information
-      val currentStreak = getCurrentStreak()
-      val longestStreak = entryRepository.getLongestStreakCount(accountId!!)
-      val totalCount = entryRepository.getTotalCount(accountId!!)
-      return Progress(
-        latest = latestEntry,
-        goal = goal,
-        currentStreak = currentStreak,
-        longestStreak = longestStreak,
-        count = totalCount,
-        initWt = initialWeight ?: 0.0,
-        week = week,
-        month = month,
-        year = year,
-        total = total,
-        unit = unit,
-        initWeek = initWeek,
-        initMonth = initMonth,
-        initYear = initYear,
-      )
-    } catch (e: Exception) {
-      AppLog.e("EntryService", "Error calculating progress", e)
-      return Progress()
     }
+    return Progress(
+      latest = latestEntry,
+      goal = goal,
+      currentStreak = currentStreak,
+      longestStreak = longestStreak,
+      count = totalCount,
+      initWt = startingWeightDisplay,
+      week = week,
+      month = month,
+      year = year,
+      total = total,
+      unit = unit,
+      initWeek = initWeek,
+      initMonth = initMonth,
+      initYear = initYear,
+    )
   }
 
   /**
@@ -924,11 +961,8 @@ constructor(
 
       // Check all remaining entries
       for (entryTimestamp in remainingDates) {
-        val entryDate = Calendar.getInstance().apply {
-          time = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            .parse(entryTimestamp)
-        }
-
+        val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(entryTimestamp) ?: break
+        val entryDate = Calendar.getInstance().apply { time = parsed }
         if (datesAreSame(dateToCheck, entryDate)) {
           addOne()
         } else {
@@ -951,6 +985,40 @@ enum class OperationType {
 
 internal object EntryServiceHelper {
 
+  /**
+   * Computes current streak count from a list of entry dates (yyyy-MM-dd, newest first).
+   * Pure in-memory calculation; no DB access.
+   */
+  fun computeCurrentStreakFromDates(entryDates: List<String>): Int {
+    if (entryDates.isEmpty()) return 0
+    var score = 0
+    val dateToCheck = Calendar.getInstance()
+    fun datesAreSame(d1: Calendar, d2: Calendar): Boolean =
+      d1.get(Calendar.YEAR) == d2.get(Calendar.YEAR) &&
+        d1.get(Calendar.MONTH) == d2.get(Calendar.MONTH) &&
+        d1.get(Calendar.DAY_OF_YEAR) == d2.get(Calendar.DAY_OF_YEAR)
+    fun addOne() {
+      score++
+      dateToCheck.add(Calendar.DAY_OF_YEAR, -1)
+    }
+    val firstEntryTimestamp = entryDates.first()
+    val remainingDates = entryDates.drop(1)
+    val firstEntryDate = Calendar.getInstance().apply {
+      time = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(firstEntryTimestamp) ?: return 0
+    }
+    if (datesAreSame(dateToCheck, firstEntryDate)) {
+      addOne()
+    } else {
+      dateToCheck.add(Calendar.DAY_OF_YEAR, -1)
+      if (datesAreSame(dateToCheck, firstEntryDate)) addOne()
+    }
+    for (entryTimestamp in remainingDates) {
+      val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(entryTimestamp) ?: break
+      val entryDate = Calendar.getInstance().apply { time = parsed }
+      if (datesAreSame(dateToCheck, entryDate)) addOne() else break
+    }
+    return score
+  }
 
   fun processWeight(
     weight: Double,
