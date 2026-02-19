@@ -1094,10 +1094,8 @@ class DashboardStore: ObservableObject {
                 }
             }
             
-            // Use local data to avoid empty state during slow API calls
-            if !metricsManager.state.metrics.isEmpty {
-                state.ui.hasLoadedDashboardConfig = true
-            }
+            // DO NOT set hasLoadedDashboardConfig here - wait for API to load
+            // This ensures API metrics are shown, not just local ones
         }
     }
 
@@ -1120,6 +1118,8 @@ class DashboardStore: ObservableObject {
                 state.metrics.dashboardType = metricsManager.state.dashboardType
                 // Sync removal state after loading metrics to ensure UI state reflects API data
                 syncRemovalStateFromMetricsManager()
+                // Force UI update to show API metrics
+                scheduleUIUpdate()
             }
 
             // Load progress metrics (goal card + streaks) only if not already loaded
