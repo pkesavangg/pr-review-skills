@@ -1206,7 +1206,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
     /// - Parameter skipStateUpdate: If true, skips the state update to allow batch operations. Defaults to false.
     private func executeLogout(on localAccount: Account, isAutoLogout: Bool, skipStateUpdate: Bool = false) async throws {
-        let fcmToken = PushNotificationService.shared.getStoredFCMToken()
+        let fcmToken = PushNotificationService.shared.getStoredFCMToken(for: localAccount.accountId)
         do {
             logger.log(level: .info, tag: tag, message: "Executing logout (API) for accountId=\(localAccount.accountId)")
             try await apiRepo.logOut(fcmToken: fcmToken, accountId: localAccount.accountId)

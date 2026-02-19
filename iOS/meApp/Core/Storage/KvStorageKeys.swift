@@ -116,5 +116,12 @@ public enum KvStorageKeys: String {
     public static func setAGoalModalFlagKey(for accountId: String) -> String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
     }
+    
+    /// Creates an account-scoped key for FCM token storage
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for FCM token storage
+    public static func fcmTokenKey(for accountId: String) -> String {
+        return "\(Self.fcmToken.rawValue)_\(accountId)"
+    }
 }
 

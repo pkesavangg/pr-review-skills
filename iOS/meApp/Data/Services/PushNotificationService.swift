@@ -305,9 +305,11 @@ class PushNotificationService: NSObject {
     }
     
     // MARK: - FCM Token Storage
-    /// Loads the stored FCM token from local storage
+    /// Loads the stored FCM token from local storage for the active account
     private func loadStoredFCMToken() {
-        if let storedToken = kvStorage.getValue(forKey: KvStorageKeys.fcmToken.rawValue) as? String, !storedToken.isEmpty {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        let key = KvStorageKeys.fcmTokenKey(for: accountId)
+        if let storedToken = kvStorage.getValue(forKey: key) as? String, !storedToken.isEmpty {
             fcmToken = storedToken
         }
     }
@@ -317,20 +319,26 @@ class PushNotificationService: NSObject {
     private func storeFCMToken(_ token: String) {
         // Keep the in-memory token in sync with the persisted value
         fcmToken = token
-        kvStorage.setValue(token, forKey: KvStorageKeys.fcmToken.rawValue)
+        // Store token for the active account
+        if let accountId = accountService.activeAccount?.accountId {
+            let key = KvStorageKeys.fcmTokenKey(for: accountId)
+            kvStorage.setValue(token, forKey: key)
+        }
     }
     
-    /// Retrieves the cached FCM token.
+    /// Retrieves the stored FCM token for a specific account.
     ///
     /// This method is intentionally non-`private` to allow selected consumers
     /// (for example, account-related services during logout) to read the
-    /// last known FCM token. It should not be used as a general-purpose
+    /// last known FCM token for a specific account. It should not be used as a general-purpose
     /// storage API; use `storeFCMToken(_:)` and the push notification flows
     /// within `PushNotificationService` to manage the token lifecycle.
     ///
-    /// - Returns: The cached FCM token, or `nil` if not set.
-    func getStoredFCMToken() -> String? {
-        return fcmToken
+    /// - Parameter accountId: The account identifier to retrieve the token for
+    /// - Returns: The stored FCM token for the account, or `nil` if not found.
+    func getStoredFCMToken(for accountId: String) -> String? {
+        let key = KvStorageKeys.fcmTokenKey(for: accountId)
+        return kvStorage.getValue(forKey: key) as? String
     }
 }
 
