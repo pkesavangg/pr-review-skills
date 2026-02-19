@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
+import com.dmdbrands.gurus.weight.features.common.model.chart.AxisMeta
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -308,8 +309,10 @@ class GraphViewModel @AssistedInject constructor(
         val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
         // Pre-calculate Y-axis range for weight (primary) only
-        val primaryYAxisRange =
+        val axisMeta =
           calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
+        val primaryYAxisRange = axisMeta.axisRange
+        super.handleIntent(GraphIntent.UpdatePrimaryYAxis(primaryYAxisRange, axisMeta.axisStep))
         val normalizedSecondaryGraphLines = if (secondaryGraphLines != null &&
           secondaryGraphLines.points.isNotEmpty() &&
           primaryYAxisRange.minY != null &&
@@ -396,7 +399,7 @@ class GraphViewModel @AssistedInject constructor(
     max: Long,
     isSecondary: Boolean = false,
     isWeightlessMode: Boolean = false,
-  ): CartesianRangeValues {
+  ): AxisMeta {
     // Get the end and start timestamp
     val graphLines = graphLines.copy(
       points = graphLines.points.sortedBy { it.x.value.toLong() },
@@ -427,8 +430,34 @@ class GraphViewModel @AssistedInject constructor(
       // Validate graphMeta values are finite
       if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
         // Return default range if graphMeta is invalid
-        return CartesianRangeValues(
-          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
+        return AxisMeta(
+          axisRange = CartesianRangeValues(
+            maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
+              segment,
+              Calendar.getInstance().timeInMillis,
+            )?.toDouble(),
+            minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
+              segment,
+              initialTimestamp,
+            )
+              ?.toDouble(),
+          ),
+        )
+      }
+
+      return AxisMeta(
+        axisRange = CartesianRangeValues(
+          minY = graphMeta.min,
+          maxY = graphMeta.max,
+          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
+            val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
+              ?: Calendar.getInstance().timeInMillis
+            val paddedEndX = Calendar.getInstance().apply {
+              timeInMillis = paddedEnd_StartRange
+              add(Calendar.DAY_OF_YEAR, 30)
+            }.timeInMillis
+            paddedEndX.toDouble()
+          } else GraphUtil.getEndRange(
             segment,
             Calendar.getInstance().timeInMillis,
           )?.toDouble(),
@@ -437,16 +466,13 @@ class GraphViewModel @AssistedInject constructor(
             initialTimestamp,
           )
             ?.toDouble(),
-        )
-      }
+        ),
+        axisStep = graphMeta.step,
+      )
+    }
 
-      if (!isSecondary) {
-        super.handleIntent(GraphIntent.UpdatePrimaryYStep(graphMeta.step))
-      }
-
-      return CartesianRangeValues(
-        minY = graphMeta.min,
-        maxY = graphMeta.max,
+    return AxisMeta(
+      axisRange = CartesianRangeValues(
         maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
           val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
             ?: Calendar.getInstance().timeInMillis
@@ -461,24 +487,7 @@ class GraphViewModel @AssistedInject constructor(
         )?.toDouble(),
         minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
           ?.toDouble(),
-      )
-    }
-
-    return CartesianRangeValues(
-      maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
-        val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
-          ?: Calendar.getInstance().timeInMillis
-        val paddedEndX = Calendar.getInstance().apply {
-          timeInMillis = paddedEnd_StartRange
-          add(Calendar.DAY_OF_YEAR, 30)
-        }.timeInMillis
-        paddedEndX.toDouble()
-      } else GraphUtil.getEndRange(
-        segment,
-        Calendar.getInstance().timeInMillis,
-      )?.toDouble(),
-      minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
-        ?.toDouble(),
+      ),
     )
   }
 
@@ -522,8 +531,13 @@ class GraphViewModel @AssistedInject constructor(
           // This triggers renormalization when Y-axis domain changes
           withContext(Dispatchers.Main) {
             // Directly call renormalization with current scroll range to avoid reading stale state values
-            handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis, min = min, max = max)
-            super.handleIntent(GraphIntent.UpdatePrimaryYAxis(yRangeValues = primaryYAxis))
+            handleRenormalizationOnYAxisChange(newYAxisRange = primaryYAxis.axisRange, min = min, max = max)
+            super.handleIntent(
+              GraphIntent.UpdatePrimaryYAxis(
+                yRangeValues = primaryYAxis.axisRange,
+                yStep = primaryYAxis.axisStep,
+              ),
+            )
           }
 
           // Update UI on main thread
