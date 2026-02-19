@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
+import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -29,6 +30,7 @@ import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.round
 import javax.inject.Inject
 
@@ -154,7 +156,7 @@ constructor(
 
     val account = state.value.account ?: return
     val controls = state.value.form.controls
-    
+
     // If MAINTAIN mode, always use the latest entry as the initial weight.
     // Starting weight input is hidden for maintain, so it may contain stale account data.
     if (controls.goalType.value == GoalType.MAINTAIN.value) {
@@ -165,7 +167,7 @@ constructor(
         controls.startingWeight.onValueChange(currentWeightTenths)
       }
     }
-    
+
     val goal = controls.toGoal(
       fromUnit = account.weightUnit,
       toUnit = WeightUnit.LB,
@@ -340,7 +342,10 @@ constructor(
       AppLog.d(tag, "updateR4Profile - Error updating profile to scale: ${e.message}")
       result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
     }
-
-    return result.await()
+    return withTimeoutOrNull(ScaleProfileConstants.SCALE_PROFILE_UPDATE_TIMEOUT_MS) { result.await() }
+      ?: run {
+        AppLog.d(tag, "updateR4Profile - Timeout or no callback from scale; dismissing loader")
+        GGUserActionResponseType.EXCEPTION_ENCOUNTERED
+      }
   }
 }
