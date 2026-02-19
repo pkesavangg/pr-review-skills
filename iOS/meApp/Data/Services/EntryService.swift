@@ -84,7 +84,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await logger.log(
                 level: .error,
                 tag: tag,
-                message: "Failed to clear local entry data: \(error.localizedDescription), offline=\(isOfflineError(error))"
+                message: "Failed to clear local entry data: \(error.localizedDescription)"
             )
         }
     }
@@ -118,7 +118,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await logger.log(
                 level: .error,
                 tag: tag,
-                message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource), error=\(error.localizedDescription), offline=\(isOfflineError(error))"
+                message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource), error=\(error.localizedDescription)"
             )
             throw error
         }
@@ -139,7 +139,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await logger.log(
                 level: .error,
                 tag: tag,
-                message: "Bulk entry save failed: count=\(entries.count), error=\(error.localizedDescription), offline=\(isOfflineError(error))"
+                message: "Bulk entry save failed: count=\(entries.count), error=\(error.localizedDescription)"
             )
             throw error
         }
@@ -160,7 +160,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await logger.log(
                 level: .error,
                 tag: tag,
-                message: "Entry delete failed: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), error=\(error.localizedDescription), offline=\(isOfflineError(error))"
+                message: "Entry delete failed: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), error=\(error.localizedDescription)"
             )
             throw error
         }
@@ -578,7 +578,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             )
 
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription), offline=\(isOfflineError(error))")
+            await logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
         }
     }
     
@@ -596,7 +596,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         var successfulCreateCount = 0
         var successfulDeleteCount = 0
         var failedSyncCount = 0
-        var offlineFailureCount = 0
         var firstFailureReason: String?
 
         // 2. Try to sync with backend
@@ -640,9 +639,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         attempts: newAttempts
                     )
                     failedSyncCount += 1
-                    if isOfflineError(error) {
-                        offlineFailureCount += 1
-                    }
                     if firstFailureReason == nil {
                         firstFailureReason = error.localizedDescription
                     }
@@ -657,7 +653,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 await logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), offlineFailures=\(offlineFailureCount), firstFailure=\(firstFailureReason ?? "unknown")"
+                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), firstFailure=\(firstFailureReason ?? "unknown")"
                 )
             }
         }
@@ -706,7 +702,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await updateProgressAndStreakInternal()
             await loadDashboardData()
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription), offline=\(isOfflineError(error))")
+            await logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
         }
     }
     
@@ -1322,21 +1318,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
-    private func isOfflineError(_ error: Error) -> Bool {
-        let nsError = error as NSError
-        guard nsError.domain == NSURLErrorDomain else { return false }
-        return [
-            NSURLErrorNotConnectedToInternet,
-            NSURLErrorNetworkConnectionLost,
-            NSURLErrorTimedOut,
-            NSURLErrorInternationalRoamingOff,
-            NSURLErrorDataNotAllowed,
-            NSURLErrorCannotFindHost,
-            NSURLErrorCannotConnectToHost,
-            NSURLErrorDNSLookupFailed
-        ].contains(nsError.code)
-    }
-    
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()

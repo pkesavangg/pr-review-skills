@@ -519,7 +519,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         
         // Create locally and mark as unsynced - sync will handle server creation
         let createdDevice = try await createScaleInLocal(device)
-        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server")
+        logger.log(level: .info, tag: tag, message: "Created device \(device.id) locally, will sync to server", data: scaleLogDescriptor(createdDevice))
         await refreshScalesFromLocal()
         return createdDevice
     }
@@ -660,12 +660,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             if isPurelyLocal {
                 // Purely local device - delete immediately from local storage
                 try await localRepository.deleteScale(device.id)
-                logger.log(level: .info, tag: tag, message: "Deleted purely local device \(device.id)")
+                logger.log(level: .info, tag: tag, message: "Deleted purely local device \(device.id)", data: scaleLogDescriptor(device))
                 didChange = true
             } else {
                 // Device exists on server - mark for deletion and let sync handle it
                 try await localRepository.markDeviceAsDeleted(device.id)
-                logger.log(level: .info, tag: tag, message: "Marked device \(device.id) for deletion")
+                logger.log(level: .info, tag: tag, message: "Marked device \(device.id) for deletion", data: scaleLogDescriptor(device))
                 didChange = true
             }
         }
@@ -760,12 +760,41 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private func refreshScalesFromLocal() async {
         do {
             let accountId = try await getAccountId()
+            let previousSnapshot = self.scales.map { scaleLogDescriptor($0) }.sorted()
             let allScales = try await localRepository.listScales(forAccountId: accountId)
             let activeScales = allScales.filter { $0.isSoftDeleted != true }
             self.scales = activeScales
+            let currentSnapshot = activeScales.map { scaleLogDescriptor($0) }.sorted()
+            if previousSnapshot != currentSnapshot {
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Paired scale list changed. accountId=\(accountId), count=\(activeScales.count)",
+                    data: currentSnapshot
+                )
+            }
         } catch {
             self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
         }
+    }
+
+    private func scaleLogDescriptor(_ device: Device) -> String {
+        let scaleType = device.bathScale?.scaleType ?? "nil"
+        let bodyComp = device.bathScale?.bodyComp
+        let preferenceDisplayName = device.r4ScalePreference?.displayName ?? "nil"
+        let preferenceImpedance = device.r4ScalePreference?.shouldMeasureImpedance
+        let preferencePulse = device.r4ScalePreference?.shouldMeasurePulse
+        let preferenceTimeFormat = device.r4ScalePreference?.timeFormat ?? "nil"
+        let metadataFirmware = device.metaData?.firmwareRevision ?? "nil"
+        let metadataSoftware = device.metaData?.softwareRevision ?? "nil"
+        let metadataHardware = device.metaData?.hardwareRevision ?? "nil"
+        let metadataModel = device.metaData?.modelNumber ?? "nil"
+        let metadataSerial = device.metaData?.serialNumber ?? "nil"
+        let metadataManufacturer = device.metaData?.manufacturerName ?? "nil"
+        let metadataSystemId = device.metaData?.systemId ?? "nil"
+        let metadataLatest = device.metaData?.latestVersion ?? "nil"
+
+        return "id=\(device.id), accountId=\(device.accountId), sku=\(device.sku ?? "nil"), deviceName=\(device.deviceName ?? "nil"), nickname=\(device.nickname ?? "nil"), mac=\(device.mac ?? "nil"), wifiMac=\(device.wifiMac ?? "nil"), password=\(device.password.map(String.init) ?? "nil"), token=\(device.token ?? "nil"), broadcastId=\(device.broadcastId.map(String.init) ?? "nil"), broadcastIdString=\(device.broadcastIdString ?? "nil"), peripheralIdentifier=\(device.peripheralIdentifier ?? "nil"), userNumber=\(device.userNumber ?? "nil"), protocolType=\(device.protocolType ?? "nil"), createdAt=\(device.createdAt ?? "nil"), isConnected=\(device.isConnected.map(String.init) ?? "nil"), isWifiConfigured=\(device.isWifiConfigured.map(String.init) ?? "nil"), isSynced=\(device.isSynced.map(String.init) ?? "nil"), hasServerID=\(device.hasServerID), isSoftDeleted=\(device.isSoftDeleted.map(String.init) ?? "nil"), scaleType=\(scaleType), bodyComp=\(bodyComp.map(String.init) ?? "nil"), prefDisplayName=\(preferenceDisplayName), prefImpedance=\(preferenceImpedance.map(String.init) ?? "nil"), prefPulse=\(preferencePulse.map(String.init) ?? "nil"), prefTimeFormat=\(preferenceTimeFormat), fwRevision=\(metadataFirmware), swRevision=\(metadataSoftware), hwRevision=\(metadataHardware), modelNumber=\(metadataModel), serialNumber=\(metadataSerial), manufacturer=\(metadataManufacturer), systemId=\(metadataSystemId), latestVersion=\(metadataLatest)"
     }
     
     
@@ -777,21 +806,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         return account.accountId
     }
 
-    private func isOfflineError(_ error: Error) -> Bool {
-        let nsError = error as NSError
-        guard nsError.domain == NSURLErrorDomain else { return false }
-        return [
-            NSURLErrorNotConnectedToInternet,
-            NSURLErrorNetworkConnectionLost,
-            NSURLErrorTimedOut,
-            NSURLErrorInternationalRoamingOff,
-            NSURLErrorDataNotAllowed,
-            NSURLErrorCannotFindHost,
-            NSURLErrorCannotConnectToHost,
-            NSURLErrorDNSLookupFailed
-        ].contains(nsError.code)
-    }
-    
     // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)
     private func isDuplicateDevice(device: Device, remoteDTO: ScaleDTO) -> Bool {
         if let deviceBroadcastId = device.broadcastIdString, let remoteBroadcastId = remoteDTO.broadcastIdString, deviceBroadcastId == remoteBroadcastId { return true }
@@ -815,7 +829,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             var updatedCount = 0
             var createdCount = 0
             var failedCount = 0
-            var offlineFailureCount = 0
             // Handle deletions first
             let devicesMarkedForDeletion = try await localRepository.getDevicesMarkedForDeletion()
             for device in devicesMarkedForDeletion {
@@ -831,9 +844,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         deletedCount += 1
                     } else {
                         failedCount += 1
-                        if isOfflineError(error) {
-                            offlineFailureCount += 1
-                        }
                         logger.log(level: .error, tag: tag, message: "Failed to delete device \(device.id) on server: \(error.localizedDescription)")
                     }
                 }
@@ -870,9 +880,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         updatedCount += 1
                     } catch {
                         failedCount += 1
-                        if isOfflineError(error) {
-                            offlineFailureCount += 1
-                        }
                         logger.log(level: .error, tag: tag, message: "Failed to update device \(device.id) on server: \(error.localizedDescription)")
                     }
                 } else {
@@ -884,9 +891,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                                 _ = try await remoteRepo.editScale(device.id, properties: dto)
                             } catch {
                                 failedCount += 1
-                                if isOfflineError(error) {
-                                    offlineFailureCount += 1
-                                }
                                 logger.log(level: .error, tag: tag, message: "Failed to edit scale on server: \(error.localizedDescription)")
                             }
                         } else {
@@ -918,9 +922,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                         try await localRepository.updateDeviceWithNewId(oldId: oldId, updatedDevice: device)
                     } catch {
                         failedCount += 1
-                        if isOfflineError(error) {
-                            offlineFailureCount += 1
-                        }
                         logger.log(level: .error, tag: tag, message: "Failed to create device on server: \(error.localizedDescription)")
                     }
                 }
@@ -928,12 +929,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Log scale count after pushing changes
             if let accountId = accountId {
                 let scaleCount = try? await localRepository.listScales(forAccountId: accountId).filter { $0.isSoftDeleted != true }.count
-                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed: accountId=\(accountId), deleted=\(deletedCount), updated=\(updatedCount), created=\(createdCount), failures=\(failedCount), offlineFailures=\(offlineFailureCount), scalesCount=\(scaleCount ?? 0)")
+                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed: accountId=\(accountId), deleted=\(deletedCount), updated=\(updatedCount), created=\(createdCount), failures=\(failedCount), scalesCount=\(scaleCount ?? 0)")
             } else {
-                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed: deleted=\(deletedCount), updated=\(updatedCount), created=\(createdCount), failures=\(failedCount), offlineFailures=\(offlineFailureCount)")
+                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed: deleted=\(deletedCount), updated=\(updatedCount), created=\(createdCount), failures=\(failedCount)")
             }
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to push local changes to server: \(error.localizedDescription), offline=\(isOfflineError(error))")
+            logger.log(level: .error, tag: tag, message: "Failed to push local changes to server: \(error.localizedDescription)")
         }
     }
     
@@ -1051,7 +1052,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 message: "Pulled server scales and replaced local state: accountId=\(accountId), serverScales=\(serverScales.count), preservedUnsynced=\(unsyncedDevices.count), corrected=\(corrected), pruned=\(pruned)"
             )
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: accountId=\(accountId), error=\(error.localizedDescription), offline=\(isOfflineError(error))")
+            logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: accountId=\(accountId), error=\(error.localizedDescription)")
         }
     }
     
