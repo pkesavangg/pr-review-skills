@@ -50,6 +50,14 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return cal
     }
 
+    /// Gregorian calendar aligned with WeekSectionViewModel.plotXDate.
+    private var weekPlotCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        return cal
+    }
+
     // MARK: - Constants
 
     /// Position for single metric points within the Y-axis domain (0.0 = bottom, 1.0 = top)
@@ -163,9 +171,20 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     ) -> Double? {
         guard !operations.isEmpty else { return nil }
 
+        // Keep interpolation X values aligned with the chart's plotted X values.
+        // Week view plots points at local noon (see WeekSectionViewModel.plotXDate),
+        // so interpolation must use the same normalization to avoid value-vs-line drift.
+        @inline(__always)
+        func normalizedInterpolationDate(_ input: Date) -> Date {
+            guard state.selectedPeriod == .week else { return input }
+            let cal = weekPlotCalendar
+            let dayStart = cal.startOfDay(for: input)
+            return cal.date(byAdding: .hour, value: 12, to: dayStart) ?? input
+        }
+
         // 1) Sort and map to (x,y) in display space (units or weightless delta)
         let sorted = operations.sorted { $0.date < $1.date }
-        let xs: [Double] = sorted.map { $0.date.timeIntervalSinceReferenceDate }
+        let xs: [Double] = sorted.map { normalizedInterpolationDate($0.date).timeIntervalSinceReferenceDate }
 
         func mapWeight(_ w: Int) -> Double {
             if isWeightlessMode {
@@ -179,7 +198,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let n = xs.count
         if n == 1 { return ys[0] }
 
-        let t = date.timeIntervalSinceReferenceDate
+        let t = normalizedInterpolationDate(date).timeIntervalSinceReferenceDate
 
         // 2) For dates outside the data range, return the edge values (clamping behavior)
         // This allows interpolation to work at the boundaries while the calling method
