@@ -52,7 +52,7 @@ class PushNotificationService: NSObject {
             completion()
             return
         }
-        
+       
         if let messageId = userInfo["gcm.message_id"] as? String {
             if processedMessageIds.contains(messageId) {
                 logger.log(level: .info, tag: tag, message: "Skipping duplicate push notification. messageId=\(messageId)")
