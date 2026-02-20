@@ -170,8 +170,11 @@ class EntryRepository @Inject constructor(
       if (operation == null) {
         throw IllegalArgumentException("Operation cannot be null")
       }
+      AppLog.d("EntryRepository", "Sending operation to API: ${operation.id}")
       entryApi.sendOperation(operation)
+      AppLog.i("EntryRepository", "Operation sent successfully: ${operation.id}")
     } catch (e: Exception) {
+      AppLog.e("EntryRepository", "Failed to send operation to API: ${operation?.id}", e)
       throw e
     }
   }
@@ -193,6 +196,7 @@ class EntryRepository @Inject constructor(
       }
       response
     } catch (e: Exception) {
+      AppLog.e("EntryRepository", "getOperationsFromAPI failed for syncTimeStamp: $syncTimeStamp", e)
       null
     }
   }

@@ -21,8 +21,6 @@ import javax.inject.Singleton
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
-import android.util.Log
-
 /**
  * Represents the status of WiFi connection.
  */
@@ -101,7 +99,7 @@ class WifiScaleService @Inject constructor(
     onSuccess: () -> Unit,
     onError: (String) -> Unit
   ) {
-    Log.d("connectwifi4", setupType.toString())
+    AppLog.d(TAG, "connectWifi called with setupType: $setupType")
     CoroutineScope(Dispatchers.IO).launch {
       try {
         // Validate setup data
@@ -195,7 +193,6 @@ class WifiScaleService @Inject constructor(
           }
         }
       } catch (e: Exception) {
-        Log.d("connectwifiexception", e.toString())
         val errorMsg = "Connect failed: ${e.message}"
         AppLog.e(TAG, "Connect failed: ${e.message}", e)
         onError(errorMsg)
