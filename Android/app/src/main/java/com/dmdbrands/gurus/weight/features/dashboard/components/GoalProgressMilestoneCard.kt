@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -58,7 +59,8 @@ fun GoalProgressMilestoneCard(
   latestWeight: Double? = null,
   modifier: Modifier = Modifier,
   onBadgeClick: () -> Unit = {},
-  onNavigateToGoal: () -> Unit = {}
+  onNavigateToGoal: () -> Unit = {},
+  onLongClick: (Progress) -> Unit = {}
 ) {
   // Fine‑tunable badge offsets to match other cards' top‑right alignment
   val badgeOffsetX = (-5).dp
@@ -111,7 +113,7 @@ fun GoalProgressMilestoneCard(
         }
       }
     },
-    modifier = modifier
+    modifier = Modifier
       .graphicsLayer {
         rotationZ = if (inEditMode && isVisible) wiggleAngle else 0f
       }
@@ -120,6 +122,15 @@ fun GoalProgressMilestoneCard(
     Card(
       modifier = Modifier
         .wrapContentSize()
+        .combinedClickable(
+          enabled = true,
+          onClick = {
+
+          },
+          onLongClick = {
+            onLongClick(progress)
+          },
+        )
         .alpha(if (isVisible) 1f else 0.5f),
       colors = CardDefaults.cardColors(containerColor = MeTheme.colorScheme.primaryBackground),
     ) {
@@ -130,12 +141,12 @@ fun GoalProgressMilestoneCard(
         GoalMilestoneDisplay(
           account = account,
           latestWeight = latestWeight,
-          modifier = Modifier
+          modifier = modifier
             .fillMaxWidth(),
         )
-      }
-      else {
+      } else {
         EmptyGoal(
+          modifier = modifier,
           onSetGoalClick = onNavigateToGoal,
           inEditMode = inEditMode,
         )

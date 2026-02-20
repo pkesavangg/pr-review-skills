@@ -28,7 +28,6 @@ import javax.inject.Singleton
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import android.util.Log
 
 /**
  * Service responsible for handling migration business logic.
@@ -51,20 +50,20 @@ class MigrationService @Inject constructor(
   suspend fun performIonicMigration(context: Context): MigrationResult =
     withContext(Dispatchers.IO) {
       return@withContext try {
-        Log.i(TAG, "Starting Ionic database migration")
+        AppLog.i(TAG, "Starting Ionic database migration")
 
         val migrationResult = migrateIonicDatabase(context)
 
         if (migrationResult.isSuccess) {
           IonicDatabaseHelper.cleanupIonicDatabase(context)
-          Log.i(TAG, "Ionic database migration completed successfully")
+          AppLog.i(TAG, "Ionic database migration completed successfully")
         } else {
-          Log.e(TAG, "Ionic database migration failed: ${migrationResult.errorMessage}")
+          AppLog.e(TAG, "Ionic database migration failed: ${migrationResult.errorMessage}")
         }
 
         migrationResult
       } catch (t: Throwable) {
-        Log.e(TAG, "Ionic migration failed with exception: ${t.message}")
+        AppLog.e(TAG, "Ionic migration failed with exception: ${t.message}")
         MigrationResult.Companion.failure("Migration failed: ${t.message}")
       }
     }
@@ -78,19 +77,18 @@ class MigrationService @Inject constructor(
     var accountMigrated = false
 
     return try {
-      Log.i(TAG, "Starting Ionic migration with account data first")
+      AppLog.i(TAG, "Starting Ionic migration with account data first")
 
       // Step 1: Migrate account data from Capacitor Preferences
       accountMigrated = migrateAccountData(context)
       if (accountMigrated) {
-        Log.i(TAG, "Account migration completed successfully")
+        AppLog.i(TAG, "Account migration completed successfully")
       } else {
-        Log.w(TAG, "No account data found or account migration failed")
+        AppLog.w(TAG, "No account data found or account migration failed")
       }
 
       migrateDeviceData(context)
       migrateIntegration(context)
-      migrateTimestampKey(context)
       // Step 2: Locate and open Ionic database for entries
       val dbPath = IonicDatabaseHelper.locateIonicDb(context)
       if (dbPath == null) {
@@ -102,13 +100,13 @@ class MigrationService @Inject constructor(
       val regularEntries = if (tableExists(sqliteDb, "entry")) {
         migrateEntriesFromEntryTables(context, sqliteDb)
       } else {
-        Log.i(TAG, "entry table not present, skipping entry migration")
+        AppLog.i(TAG, "entry table not present, skipping entry migration")
         0
       }
       val opStackEntries = if (tableExists(sqliteDb, "opStack")) {
         migrateEntriesWithRawSQL(context, sqliteDb)
       } else {
-        Log.i(TAG, "opStack table not present (e.g. 4.0.1), skipping opStack migration")
+        AppLog.i(TAG, "opStack table not present (e.g. 4.0.1), skipping opStack migration")
         0
       }
       totalMigratedEntries = regularEntries + opStackEntries
@@ -116,13 +114,13 @@ class MigrationService @Inject constructor(
       // Step 5: Save migration timestamp
       IonicDatabaseHelper.saveMigrationTimestamp(context)
 
-      Log.i(
+      AppLog.i(
         TAG,
         "Migration completed: Account=$accountMigrated, OpStack Entries=$opStackEntries, Regular Entries=$regularEntries, Total=$totalMigratedEntries",
       )
       MigrationResult.Companion.success(totalMigratedEntries, accountMigrated)
     } catch (e: Exception) {
-      Log.e(TAG, "Migration failed: ${e.message}")
+      AppLog.e(TAG, "Migration failed: ${e.message}")
       MigrationResult.Companion.failure(e.message ?: "Unknown error")
     } finally {
       sqliteDb?.close()
@@ -152,7 +150,7 @@ class MigrationService @Inject constructor(
       )
       cursor.moveToFirst()
     } catch (e: Exception) {
-      Log.w(TAG, "tableExists failed for $tableName: ${e.message}")
+      AppLog.w(TAG, "tableExists failed for $tableName: ${e.message}")
       false
     } finally {
       cursor?.close()
@@ -185,7 +183,7 @@ class MigrationService @Inject constructor(
    */
   private suspend fun migrateIntegration(context: Context) {
     try {
-      Log.i(TAG, "Starting Health Connect integration settings migration...")
+      AppLog.i(TAG, "Starting Health Connect integration settings migration...")
 
       // Read all Health Connect integration settings from Capacitor storage
       val assignedToMap = CapacitorStorageHelper.locateAndReadIntegrationSettings(context, "healthConnectAssignedTo")
@@ -200,14 +198,14 @@ class MigrationService @Inject constructor(
         CapacitorStorageHelper.locateAndReadIntegrationSettings(context, "healthServerIntegration")
           .mapValues { (_, integrationStatusString) ->
             try {
-              Log.i(TAG, integrationStatusString.toString())
+              AppLog.i(TAG, integrationStatusString.toString())
               val gson = GsonBuilder()
                 .registerTypeAdapter(IntegratedDeviceInfo::class.java, IntegratedDeviceInfoAdapter())
                 .registerTypeAdapter(Preferences::class.java, PreferencesAdapter())
                 .create()
               gson.fromJson(integrationStatusString, IntegratedDeviceInfo::class.java)
             } catch (e: Exception) {
-              Log.e(TAG, "Failed to parse integration status: ${e.message}")
+              AppLog.e(TAG, "Failed to parse integration status: ${e.message}")
               null
             }
           }
@@ -230,7 +228,7 @@ class MigrationService @Inject constructor(
       val allKeys = maps.flatMap { it.keys }.toSet()
 
       if (allKeys.isEmpty()) {
-        Log.i(TAG, "No Health Connect integration settings found to migrate")
+        AppLog.i(TAG, "No Health Connect integration settings found to migrate")
         return
       }
 
@@ -250,9 +248,9 @@ class MigrationService @Inject constructor(
 
       // Save all consolidated integration settings to the database
       migrationRepository.saveIntegrationSettings(result)
-      Log.i(TAG, "Health Connect integration settings migration completed: ${result.size} accounts")
+      AppLog.i(TAG, "Health Connect integration settings migration completed: ${result.size} accounts")
     } catch (e: Exception) {
-      Log.e(TAG, "Integration settings migration failed: ${e.message}")
+      AppLog.e(TAG, "Integration settings migration failed: ${e.message}")
     }
   }
 
@@ -260,20 +258,24 @@ class MigrationService @Inject constructor(
    * Migrates per-account operations sync timestamp (timestampkey-{userId}) from Capacitor Storage
    * into UserDataStore so the app uses it for operations sync. Only updates accounts that already exist in UserDataStore.
    */
-  private suspend fun migrateTimestampKey(context: Context) {
+  private suspend fun migrateTimestampKey(context: Context , activeAccountID : String?) {
     try {
       val timestampMap = CapacitorStorageHelper.locateAndReadTimestampKeyFromCapacitorStorage(context)
       if (timestampMap.isEmpty()) {
-        Log.d(TAG, "No timestampkey entries found in Capacitor storage")
+        AppLog.d(TAG, "No timestampkey entries found in Capacitor storage")
         return
       }
       val userDataStore = UserDataStore(context)
+      AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries ${timestampMap}")
       timestampMap.forEach { (accountId, timestamp) ->
-        userDataStore.updateSyncTimestamp(accountId, timestamp)
+        if (accountId == activeAccountID ) {
+          AppLog.d(TAG, "Updating sync timestamp for $accountId: $timestamp")
+          userDataStore.updateSyncTimestamp(accountId, timestamp)
+          AppLog.d(TAG, "Migrated Sync timestamp updated for $accountId")
+        }
       }
-      Log.i(TAG, "Migrated ${timestampMap.size} operations sync timestamp(s) from Capacitor")
     } catch (e: Exception) {
-      Log.e(TAG, "Timestampkey migration failed: ${e.message}")
+      AppLog.e(TAG, "Timestampkey migration failed: ${e.message}")
     }
   }
 
@@ -281,34 +283,34 @@ class MigrationService @Inject constructor(
     return@withContext try {
       val devicesJsonMap =
         CapacitorStorageHelper.locateAndReadPairedScalesFromCapacitorStorage(context)
-      Log.d(
+      AppLog.d(
         TAG,
         "📱 Starting device data migration from Capacitor storage with ${devicesJsonMap} devices",
       )
       if (devicesJsonMap.isNullOrEmpty()) {
-        Log.w(TAG, "No device data found in Capacitor storage")
+        AppLog.w(TAG, "No device data found in Capacitor storage")
         return@withContext false
       }
       val ionicDeviceMap = IonicDataConverter.parseDevicesWithGson(devicesJsonMap)
-      Log.d("migrationdata","$ionicDeviceMap")
+      AppLog.d("migrationdata","$ionicDeviceMap")
       val deviceDetails = ionicDeviceMap.flatMap { (accountID, ionicScales) ->
         ionicScales.mapNotNull { scale ->
           val deviceDetail = scale.toDeviceDetails(accountID)
           if (deviceDetail == null) {
-            Log.w(TAG, "Skipping scale migration for account $accountID: SKU is null or empty")
+            AppLog.w(TAG, "Skipping scale migration for account $accountID: SKU is null or empty")
           }
           deviceDetail
         }
       }
       if (deviceDetails.isEmpty()) {
-        Log.w(TAG, "No valid devices to migrate (all devices had null/empty SKU)")
+        AppLog.w(TAG, "No valid devices to migrate (all devices had null/empty SKU)")
       } else {
-        Log.d(TAG, "Migrating ${deviceDetails.size} devices with valid SKU")
+        AppLog.d(TAG, "Migrating ${deviceDetails.size} devices with valid SKU")
       }
       migrationRepository.insertDevice(deviceDetails)
       true
     } catch (e: Exception) {
-      Log.e(TAG, "Migration failed: ${e.message}")
+      AppLog.e(TAG, "Migration failed: ${e.message}")
       false
     }
   }
@@ -319,14 +321,14 @@ class MigrationService @Inject constructor(
    */
   private suspend fun migrateAccountData(context: Context): Boolean = withContext(Dispatchers.IO) {
     return@withContext try {
-      Log.d(TAG, "Starting account data migration from Capacitor Preferences")
+      AppLog.d(TAG, "Starting account data migration from Capacitor Preferences")
 
       // Try to locate and read Capacitor Preferences
       val accountJsonString =
         CapacitorStorageHelper.locateAndReadAccountFromCapacitorStorage(context)
 
       if (accountJsonString.isNullOrEmpty()) {
-        Log.w(TAG, "No account data found in Capacitor storage")
+        AppLog.w(TAG, "No account data found in Capacitor storage")
         return@withContext false
       }
 
@@ -334,11 +336,11 @@ class MigrationService @Inject constructor(
       val ionicAccount = IonicDataConverter.parseAccountWithGson(accountJsonString)
 
       if (ionicAccount == null) {
-        Log.w(TAG, "Failed to parse account JSON with Gson")
+        AppLog.w(TAG, "Failed to parse account JSON with Gson")
         return@withContext false
       }
 
-      Log.d(TAG, "Successfully parsed IonicAccount: ${ionicAccount}")
+      AppLog.d(TAG, "Successfully parsed IonicAccount: ${ionicAccount}")
 
       // Convert to AccountEntity and UserAccount
       val accountEntity = IonicDataConverter.convertIonicAccountToAccountEntity(ionicAccount)
@@ -346,7 +348,7 @@ class MigrationService @Inject constructor(
         CapacitorStorageHelper.locateAndReadThemeModeFromCapacitorStorage(context)
 
       if (accountEntity == null) {
-        Log.w(TAG, "Failed to convert IonicAccount to AccountEntity")
+        AppLog.w(TAG, "Failed to convert IonicAccount to AccountEntity")
         return@withContext false
       }
 
@@ -356,11 +358,11 @@ class MigrationService @Inject constructor(
 
       // Save account and related data
       saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
-
-      Log.i(TAG, "Account migration successful: ${accountEntity.email}")
+      AppLog.d(TAG, "Account migration completed")
+      AppLog.i(TAG, "Account migration successful: ${accountEntity.email}")
       true
     } catch (e: Exception) {
-      Log.e(TAG, "Account migration failed: ${e.message}")
+      AppLog.e(TAG, "Account migration failed: ${e.message}")
       false
     }
   }
@@ -386,7 +388,7 @@ class MigrationService @Inject constructor(
       val refreshToken = if (key == accountEntity.id) ionicAccount.refreshToken else ""
       val accessToken = if (key == accountEntity.id) ionicAccount.accessToken else ""
 
-      Log.d(TAG, "Theme mode for $key: $value")
+      AppLog.d(TAG, "Theme mode for $key: $value")
       userDataStore.addAccount(
         key,
         refreshToken = refreshToken ?: "",
@@ -477,7 +479,7 @@ class MigrationService @Inject constructor(
             }
           }
         } catch (e: Exception) {
-          Log.w(TAG, "Failed to convert entry at position ${cursor.position}: ${e.message}")
+          AppLog.w(TAG, "Failed to convert entry at position ${cursor.position}: ${e.message}")
         }
       }
 
@@ -544,7 +546,7 @@ class MigrationService @Inject constructor(
             }
           }
         } catch (e: Exception) {
-          Log.w(TAG, "Failed to convert entry at position ${cursor.position}: ${e.message}")
+          AppLog.w(TAG, "Failed to convert entry at position ${cursor.position}: ${e.message}")
         }
       }
 
@@ -565,11 +567,11 @@ class MigrationService @Inject constructor(
    */
   suspend fun performEmergencyCleanup(context: Context) = withContext(Dispatchers.IO) {
     try {
-      Log.w(TAG, "Performing emergency cleanup")
+      AppLog.w(TAG, "Performing emergency cleanup")
       IonicDatabaseHelper.deleteRoomDbCompletely(context, "MeApp")
-      Log.i(TAG, "Emergency cleanup completed")
+      AppLog.i(TAG, "Emergency cleanup completed")
     } catch (e: Exception) {
-      Log.e(TAG, "Emergency cleanup failed: ${e.message}")
+      AppLog.e(TAG, "Emergency cleanup failed: ${e.message}")
     }
   }
 }

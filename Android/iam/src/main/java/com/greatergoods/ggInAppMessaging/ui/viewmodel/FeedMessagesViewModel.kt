@@ -3,6 +3,7 @@ package com.greatergoods.ggInAppMessaging.ui.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.core.viewmodel.BaseIntentViewModel
+import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedTypes
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,18 +21,19 @@ class FeedMessagesViewModel @Inject constructor(
 ) : BaseIntentViewModel<FeedMessagesState, FeedMessagesIntent>() {
 
   private val tag = "FeedMessagesViewModel"
+  private val readSentElementIds = mutableSetOf<String>()
 
   override fun provideInitialState(): FeedMessagesState = FeedMessagesState()
 
   init {
     subscribeToFeedItems()
-    markAllFeedItemsAsRead()
   }
 
   fun subscribeToFeedItems() {
     inAppMessagingService.feedItems
       .onEach { feedItems ->
         updateState(FeedMessagesReducer.onFeedItemsLoaded(feedItems)(currentState))
+        markAllFeedItemsAsRead(feedItems)
       }
       .launchIn(viewModelScope)
   }
@@ -88,6 +90,7 @@ class FeedMessagesViewModel @Inject constructor(
         val feedItems = inAppMessagingService.getFeedItems()
         IAMLogger.d(tag, "Loaded ${feedItems.size} feed items")
         updateState(FeedMessagesReducer.onFeedItemsLoaded(feedItems)(currentState))
+        markAllFeedItemsAsRead(feedItems)
       } catch (e: Exception) {
         IAMLogger.e(tag, "Failed to load feed items", e.toString())
         updateState(FeedMessagesReducer.onError("Failed to load feed items")(currentState))
@@ -107,9 +110,13 @@ class FeedMessagesViewModel @Inject constructor(
       IAMLogger.d(tag, "Feed type clicked: ${clickedItem?.feedType}")
 
       if (clickedItem != null) {
-        if (clickedItem.feedType == FeedTypes.LINK || clickedItem.feedType != FeedTypes.LANDING) {
-        } else {
-          IAMLogger.w(tag, "No landing page URL found for feed item: $elementId")
+        if (clickedItem.feedType == FeedTypes.LANDING) {
+          IAMLogger.d(tag, "Landing feed clicked. Skipping click action; landing screen will emit pageView")
+          return
+        }
+
+        launch {
+          inAppMessagingService.emitFeedUpdate(clickedItem, "click")
         }
       } else {
         IAMLogger.w(tag, "Feed item not found: $elementId")
@@ -185,29 +192,23 @@ class FeedMessagesViewModel @Inject constructor(
    * Mark all feed items as read when user opens the messages screen
    * This updates the unread status via API and triggers feed notification changes
    */
-  private fun markAllFeedItemsAsRead() {
+  private fun markAllFeedItemsAsRead(feedItems: List<FeedItem>) {
     launch {
       try {
-        IAMLogger.d(tag, "Marking all feed items as read")
+        val feedItemsToMarkRead = feedItems.filter { readSentElementIds.add(it.elementId) }
 
-        // Get current feed items
-        val currentFeedItems = inAppMessagingService.getFeedItems()
-        val unreadItems = currentFeedItems.filter { it.isUnread }
+        if (feedItemsToMarkRead.isNotEmpty()) {
+          IAMLogger.d(tag, "Marking ${feedItemsToMarkRead.size} feed items as read")
 
-        if (unreadItems.isNotEmpty()) {
-          IAMLogger.d(tag, "Found ${unreadItems.size} unread items to mark as read")
-
-          // Mark each unread item as read
-          unreadItems.forEach { feedItem ->
+          // Mark each feed item as read when feed list view is opened
+          feedItemsToMarkRead.forEach { feedItem ->
             markFeedItemAsRead(feedItem.elementId)
           }
 
           // Trigger feed notification change to update indicators
           inAppMessagingService.emitFeedNotificationChange()
 
-          IAMLogger.d(tag, "Successfully marked all feed items as read")
-        } else {
-          IAMLogger.d(tag, "No unread items found")
+          IAMLogger.d(tag, "Successfully marked feed items as read")
         }
       } catch (e: Exception) {
         IAMLogger.e(tag, "Failed to mark feed items as read", e.toString())

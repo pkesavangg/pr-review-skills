@@ -133,13 +133,13 @@ constructor(
 
       // Load all tokens into TokenManager's in-memory map
       try {
+        initEvents()
         tokenManager.loadAllTokens()
         tokenManager.getCurrentAccountID()
         AppLog.v(TAG, "Loaded all tokens into TokenManager")
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
       }
-      initEvents()
     }
   }
 
@@ -244,7 +244,6 @@ constructor(
             stopScan()
             resetScaleDiscoveredState()
             startObserversOnly(authState.account, fromLoadingScreen = true)
-            // LoadingScreenViewModel already did loadData + autoLogin; only start observers (feed, IAM, permissions, device callbacks, etc.)
             dashboardService.setSelectedKey(null)
           }
 
@@ -508,8 +507,9 @@ constructor(
           if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
             val currentRoute = navigationService.getCurrentRoute()
             val isSetupInProgress = deviceService.isSetupInProgress()
+            val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
 
-            if (currentRoute !is AppRoute.ScaleSetup && !isSetupInProgress) {
+            if (isOnMainScreen && currentRoute !is AppRoute.ScaleSetup && !isSetupInProgress) {
               // Check if device is in skipDevices list
               val isSkipped =
                 data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||

@@ -28,6 +28,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.util.Log
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
@@ -137,8 +138,6 @@ fun GraphView(
       ),
     )
   }
-
-
 
   LaunchedEffect(state.markerIndex == null) {
     if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {

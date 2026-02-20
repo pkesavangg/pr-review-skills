@@ -129,6 +129,7 @@ constructor(
 
   // Timeout constant - 5 minutes for all operations
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
+  private val permissionCheckTimeOut : Long = 5 * 1000
   // Delay to ensure scale is fully woken up before proceeding
   private val connectionDelay: Long = 2000L // 2 seconds
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
@@ -258,31 +259,6 @@ constructor(
       handleIntent(SetCurrentStep(initialStep))
     }
   }
-
-  /**
-   * Refreshes discoveredScale from device cache when re-entering CUSTOMIZE_SETTINGS after UPDATE_SETTINGS failure (e.g. Try again after BLE was off).
-   * If the SDK reconnected the scale when BLE was turned back on, the cache will have the updated device with CONNECTED status.
-   * Tries both [Device.device.broadcastId] and [Device.device.broadcastIdString] for lookup, since the cache may be keyed by either
-   * (e.g. AppViewModel keys by scan data.broadcastId, ScaleDetailsViewModel by device.broadcastId).
-   */
-  private fun refreshDiscoveredScaleFromCacheAndReconnectIfNeeded() {
-    val deviceDetail = discoveredScale?.device ?: return
-    val cache = ggDeviceService.deviceCache.value
-    val cachedDevice =
-      (deviceDetail.broadcastId?.let { cache[it] } ?: deviceDetail.broadcastIdString?.let { cache[it] }) as? Device
-        ?: return
-    val isConnected = cachedDevice.connectionStatus == BLEStatus.CONNECTED
-    if (isConnected) {
-      isScaleConnected = true
-    } else {
-      AppLog.d(
-        TAG,
-        "Scale not connected after refresh from cache; user may need to ensure BLE is on before tapping Next",
-      )
-    }
-    discoveredScale = cachedDevice
-  }
-
   /**
    * Initializes the username form with the active account name.
    * This ensures we have a valid username even in the connect popup flow.
@@ -540,10 +516,6 @@ constructor(
             BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
               loadDashboardKeys()
               loadGoalProgress()
-              // Returning from UPDATE_SETTINGS (e.g. Try again after BLE was off): refresh scale from cache and reconnect if needed
-              if (previousStep == BtWifiSetupStep.UPDATE_SETTINGS) {
-                refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
-              }
             }
 
             BtWifiSetupStep.UPDATE_SETTINGS -> {
@@ -1802,7 +1774,9 @@ constructor(
       try {
         updateSettingsTimeoutJob?.cancel()
         updateSettingsTimeoutJob = viewModelScope.launch {
-          delay(operationTimeout)
+          delay(permissionCheckTimeOut)
+          handlePermissionBasedErrors()
+          delay(operationTimeout - permissionCheckTimeOut)
           if (state.value.currentStep == BtWifiSetupStep.UPDATE_SETTINGS) {
             AppLog.w(TAG, "Update settings timeout reached")
             setUpdateSettingsError()
@@ -1816,8 +1790,6 @@ constructor(
           )
         }
         if (preferences != null) {
-          // Refresh from cache so we have latest connection state (e.g. after BLE turned back on).
-          refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
           // If scale is not connected yet (e.g. reconnection in progress), wait for it before updateAccount.
           if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
             val bid = discoveredScale?.device?.broadcastId ?: discoveredScale?.device?.broadcastIdString
@@ -1832,7 +1804,6 @@ constructor(
                 setUpdateSettingsError()
                 return@launch
               }
-              refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
             } else {
               setUpdateSettingsError()
               return@launch
@@ -1995,6 +1966,14 @@ constructor(
             }
           }
         }
+      }
+      GGScanResponseType.DEVICE_DISCONNECTED -> {
+        isScaleConnected = false
+        this.discoveredScale = discoveredScale?.copy(connectionStatus = BLEStatus.DISCONNECTED)
+      }
+      GGScanResponseType.DEVICE_CONNECTED -> {
+        isScaleConnected = true
+        this.discoveredScale = discoveredScale?.copy(connectionStatus = BLEStatus.CONNECTED)
       }
 
       else -> null

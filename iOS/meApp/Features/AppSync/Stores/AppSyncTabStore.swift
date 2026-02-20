@@ -34,7 +34,7 @@ final class AppSyncTabStore: ObservableObject {
         case outOfRange = "out_of_range"
     }
     
-    private static let minWeightKg: Float = 10.0
+    private static let minWeightKg: Float = 1.0
     private static let maxWeightKg: Float = 450.0
     
     /// Converts the scanned body-composition data into the format expected by
@@ -50,6 +50,12 @@ final class AppSyncTabStore: ObservableObject {
                 level: .error,
                 tag: tag,
                 message: "scan_ignored reason=\(reason.rawValue) weight=\(data.weight)"
+            )
+            notificationHelperService.showToast(
+                ToastModel(
+                    title: toastLang.somethingWentWrongTitle,
+                    message: toastLang.somethingWentWrong
+                )
             )
             return
         }

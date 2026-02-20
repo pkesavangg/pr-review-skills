@@ -6,7 +6,6 @@ import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.goal.model.GoalFormControls
 import kotlin.math.round
-import android.util.Log
 
 /**
  * Helper functions for Goal-related operations.
@@ -19,9 +18,10 @@ object GoalHelper {
     this.value.toDoubleOrNull() ?: default
 
   /**
-   * Rounds a Double to one decimal place.
+   * Goal + entry weights are represented as tenths (e.g. "1521" -> 152.1).
+   * This converts a "tenths" value into a normal display value.
    */
-  fun Double?.rounded(): Double? = this?.let { round(it * 10) / 10 }
+  private fun toDisplayFromTenths(value: Double): Double = value / 10.0
 
   /**
    * Core function to create a Goal with proper weight conversion.
@@ -34,8 +34,20 @@ object GoalHelper {
     fromUnit: WeightUnit,
     toUnit: WeightUnit
   ): Goal {
-    val processedStartingWeight = processWeight(startingWeight, fromUnit, toUnit)
-    val processedGoalWeight = processWeight(goalWeight, fromUnit, toUnit)
+    // Inputs come from UI form controls (and signup) in "tenths" format.
+    // Convert tenths -> display -> unit convert -> back to tenths for API/storage.
+    val processedStartingWeight =
+      processWeight(
+        weightTenths = startingWeight,
+        fromUnit = fromUnit,
+        toUnit = toUnit,
+      )
+    val processedGoalWeight =
+      processWeight(
+        weightTenths = goalWeight,
+        fromUnit = fromUnit,
+        toUnit = toUnit,
+      )
     // Determine specific goal type
     val specificGoalType = if (goalType == GoalType.MAINTAIN.value) {
       "maintain"
@@ -65,9 +77,11 @@ object GoalHelper {
   /**
    * Processes weight with unit conversion and rounding.
    */
-  fun processWeight(weight: Double, fromUnit: WeightUnit, toUnit: WeightUnit): Double {
-    val convertedWeight = convertWeight(weight, fromUnit, toUnit)
-    return convertedWeight.rounded() ?: weight
+  fun processWeight(weightTenths: Double, fromUnit: WeightUnit, toUnit: WeightUnit): Double {
+    val displayWeight = toDisplayFromTenths(weightTenths)
+    val convertedDisplayWeight = convertWeight(displayWeight, fromUnit, toUnit)
+    // Stored format is tenths in the target unit, represented as a whole number.
+    return round(convertedDisplayWeight * 10)
   }
 
   /**

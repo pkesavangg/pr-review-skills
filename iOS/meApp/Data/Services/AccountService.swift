@@ -668,26 +668,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .debug, tag: tag, message: "Refresh account requested for accountId=\(accountId)")
             
-            // Preserve local dashboard/progress metrics order before updating from API
-            // This prevents API response from overwriting the order we saved
-            let preservedDashboardMetrics = localAccount.dashboardSettings?.dashboardMetrics
-            let preservedProgressMetrics = localAccount.dashboardSettings?.progressMetrics
-            
             // Try to fetch from API
             let dto = try await apiRepo.fetchAccount(accountId: localAccount.accountId)
             
             // Update account from API response
             localAccount.update(from: dto)
-            
-            // Restore preserved metrics order (don't let API response overwrite it)
-            if let dashboardSettings = localAccount.dashboardSettings {
-                if let preserved = preservedDashboardMetrics, !preserved.isEmpty {
-                    dashboardSettings.dashboardMetrics = preserved
-                }
-                if let preserved = preservedProgressMetrics, !preserved.isEmpty {
-                    dashboardSettings.progressMetrics = preserved
-                }
-            }
             
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
@@ -1126,11 +1111,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let account = activeAccount else {
             throw AccountError.noActiveAccount
         }
-        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(account.accountId)")
+        // Extract primitives from @Model before crossing async boundaries
+        let accountId = account.accountId
+        let accessToken = account.accessToken ?? ""
+        let refreshToken = account.refreshToken ?? ""
+        let expiresAt = account.expiresAt ?? ""
+        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId)")
         return Tokens(
-            accessToken: account.accessToken ?? "",
-            refreshToken: account.refreshToken ?? "",
-            expiresAt: account.expiresAt ?? ""
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            expiresAt: expiresAt
         )
     }
 
@@ -1219,9 +1209,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
     /// - Parameter skipStateUpdate: If true, skips the state update to allow batch operations. Defaults to false.
     private func executeLogout(on localAccount: Account, isAutoLogout: Bool, skipStateUpdate: Bool = false) async throws {
+        let fcmToken = PushNotificationService.shared.getStoredFCMToken(for: localAccount.accountId)
         do {
             logger.log(level: .info, tag: tag, message: "Executing logout (API) for accountId=\(localAccount.accountId)")
-            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
+            try await apiRepo.logOut(fcmToken: fcmToken, accountId: localAccount.accountId)
         } catch {
             // Ignore API errors during logout
             logger.log(level: .error, tag: tag, message: "Logout API call failed for accountId=\(localAccount.accountId): \(error.localizedDescription)")

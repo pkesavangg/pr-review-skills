@@ -32,12 +32,14 @@ class PushNotificationService: NSObject {
     private var isProcessingNotification: Bool = false
     private let logger = LoggerService.shared
     private let tag = "PushNotificationService"
+    private let kvStorage = KvStorageService.shared
     
     // MARK: - Notification Settings
     
     /// Private initializer to enforce singleton pattern
     private override init() {
         super.init()
+        loadStoredFCMToken()
         fetchDeviceDetails()
         setupTokenRefresh()
         setupNetworkMonitoring()
@@ -215,6 +217,7 @@ class PushNotificationService: NSObject {
             guard let token = notification.userInfo?["token"] as? String, !token.isEmpty else { return }
             self?.fcmToken = token
             self?.logger.log(level: .info, tag: self?.tag ?? "PushNotificationService", message: "Received FCM token refresh notification")
+            self?.storeFCMToken(token)
             await self?.updateDeviceInfo()
         }
     }
@@ -244,6 +247,7 @@ class PushNotificationService: NSObject {
             let token = try await getFCMToken()
             fcmToken = token
             logger.log(level: .success, tag: tag, message: "Push registration succeeded. tokenReceived=true")
+            storeFCMToken(token)
             await updateDeviceInfo()
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to register for push notifications: \(error.localizedDescription)")
@@ -323,5 +327,42 @@ class PushNotificationService: NSObject {
             return "\(accountId)_\(baseKey)"
         }
         return baseKey
+    }
+    
+    // MARK: - FCM Token Storage
+    /// Loads the stored FCM token from local storage for the active account
+    private func loadStoredFCMToken() {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        let key = KvStorageKeys.fcmTokenKey(for: accountId)
+        if let storedToken = kvStorage.getValue(forKey: key) as? String, !storedToken.isEmpty {
+            fcmToken = storedToken
+        }
+    }
+    
+    /// Stores the FCM token to local storage and updates the in-memory cache.
+    /// - Parameter token: The FCM token to store
+    private func storeFCMToken(_ token: String) {
+        // Keep the in-memory token in sync with the persisted value
+        fcmToken = token
+        // Store token for the active account
+        if let accountId = accountService.activeAccount?.accountId {
+            let key = KvStorageKeys.fcmTokenKey(for: accountId)
+            kvStorage.setValue(token, forKey: key)
+        }
+    }
+    
+    /// Retrieves the stored FCM token for a specific account.
+    ///
+    /// This method is intentionally non-`private` to allow selected consumers
+    /// (for example, account-related services during logout) to read the
+    /// last known FCM token for a specific account. It should not be used as a general-purpose
+    /// storage API; use `storeFCMToken(_:)` and the push notification flows
+    /// within `PushNotificationService` to manage the token lifecycle.
+    ///
+    /// - Parameter accountId: The account identifier to retrieve the token for
+    /// - Returns: The stored FCM token for the account, or `nil` if not found.
+    func getStoredFCMToken(for accountId: String) -> String? {
+        let key = KvStorageKeys.fcmTokenKey(for: accountId)
+        return kvStorage.getValue(forKey: key) as? String
     }
 }

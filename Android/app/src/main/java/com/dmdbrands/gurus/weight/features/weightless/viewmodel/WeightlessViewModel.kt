@@ -150,6 +150,7 @@ constructor(
           isWeightlessOn = isWeightlessOn,
           weightlessWeight = weightlessWeight,
         )
+        dialogQueueService.dismissLoader()
         handleIntent(WeightlessIntent.Success)
         AppLog.i(tag, "Weightless settings saved successfully")
       } catch (e: Exception) {

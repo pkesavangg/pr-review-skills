@@ -45,6 +45,10 @@ public enum KvStorageKeys: String {
     case feedLastTriggeredAt = "feedLastTriggeredAt"
     case setAGoalCardViewed = "setAGoalCardViewed"
     
+    // MARK: - FCM Token Key
+    /// FCM token storage key (device-scoped, not account-scoped)
+    case fcmToken = "fcmToken"
+    
     // MARK: - Helper Methods
     
     /// Creates an account-scoped key for appearance mode
@@ -111,6 +115,13 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for goal met flag storage
     public static func setAGoalModalFlagKey(for accountId: String) -> String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
+    }
+    
+    /// Creates an account-scoped key for FCM token storage
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for FCM token storage
+    public static func fcmTokenKey(for accountId: String) -> String {
+        return "\(Self.fcmToken.rawValue)_\(accountId)"
     }
 }
 

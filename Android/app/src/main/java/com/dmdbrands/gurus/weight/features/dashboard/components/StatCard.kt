@@ -36,10 +36,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
-import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
@@ -58,6 +58,7 @@ internal fun StatCard(
   modifier: Modifier = Modifier,
   isFromSetup: Boolean = false,
   isPlaceHolder: Boolean = false,
+  onMetricLongClick: (Stat) -> Unit = {},
   onMetricClick: (Stat) -> Unit = {}
 ) {
   val contentHorizonalAlignment =
@@ -84,12 +85,11 @@ internal fun StatCard(
             append("0 days")
 
           !isFromSetup && stat.key is DashboardKey.Milestone && !isStreakMilestone(stat) ->
-            append("0.0")
+            append("0")
 
           else ->
             append("--")
         }
-
       }
     }
   }
@@ -109,14 +109,22 @@ internal fun StatCard(
   Card(
     modifier = Modifier
       .fillMaxSize()
+      .onLongPress(
+        key = stat,
+        enabled = enabled,
+        onClick = {
+          onMetricClick(stat)
+        },
+        onLongPress = {
+          onMetricLongClick(stat)
+        },
+      )
       .alpha(if (isVisible && !isPlaceHolder) 1f else 0.5f), // 50% opacity when not visible,
     shape = RoundedCornerShape(MeTheme.borderRadius.sm),
     colors = CardDefaults.cardColors(
       containerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
       disabledContainerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
     ),
-    enabled = enabled,
-    onClick = { onMetricClick(stat) },
   ) {
     Row(
       modifier = modifier
@@ -186,9 +194,9 @@ fun AnimatedStatCard(
   isFromSetup: Boolean = true,
   modifier: Modifier = Modifier,
   onBadgeClick: () -> Unit = {},
-  enabled: Boolean = true,
+  canLongPress : Boolean = false,
+  onLongClick: (Stat) -> Unit = {},
   onClick: () -> Unit = {},
-  reorderableScope: ReorderableCollectionItemScope? = null
 ) {
   // Wiggle animation
   val infiniteTransition = rememberInfiniteTransition()
@@ -242,11 +250,12 @@ fun AnimatedStatCard(
   ) {
     StatCard(
       stat = stat,
-      enabled = isSelected != null && !inEditMode,
+      enabled = (isSelected != null || canLongPress) && !inEditMode,
       isVisible = isVisible,
       isSelected = isSelected == true && !inEditMode,
       modifier = modifier,
       isFromSetup = isFromSetup,
+      onMetricLongClick = onLongClick,
     ) {
       onClick()
     }
