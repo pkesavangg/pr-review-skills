@@ -69,10 +69,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     // MARK: - Helper
     private func getAccountId() async throws -> String {
-        guard let account = try await accountService.getActiveAccount() else {
-            throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
+        try await MainActor.run {
+            guard let accountId = accountService.activeAccount?.accountId else {
+                throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
+            }
+            return accountId
         }
-        return account.accountId
+    }
+    
+    /// Reads goal initial weight on MainActor to avoid crossing SwiftData model objects between executors.
+    private func getGoalInitialWeight() async -> Int? {
+        await MainActor.run {
+            accountService.activeAccount?.goalSettings?.initialWeight.map(Int.init)
+        }
+    }
+    
+    /// Reads dashboard type on MainActor to avoid crossing SwiftData model objects between executors.
+    private func getDashboardType() async -> String? {
+        await MainActor.run {
+            accountService.activeAccount?.dashboardSettings?.dashboardType
+        }
     }
     
     // MARK: - CRUD
@@ -314,8 +330,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let yearStartDTO = yearDeltaResult.yearStartDTO
         let yearKey = yearDeltaResult.yearKey
         
-        let account = try await accountService.getActiveAccount()
-        let goalInitial = account?.goalSettings?.initialWeight.map(Int.init)
+        let goalInitial = await getGoalInitialWeight()
         let initialWeight: Int?
         if let goalInitial, goalInitial > 0 {
             initialWeight = goalInitial
@@ -861,10 +876,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Exports entries as CSV based on current dashboard type (4 or 12 metrics)
     func exportCSV() async throws {
         // Determine account and dashboard setting
-        guard let account = try await accountService.getActiveAccount() else {
+        guard let dashboardType = await getDashboardType() else {
             throw AccountError.noActiveAccount
         }
-        let useR4Endpoint = account.dashboardSettings?.dashboardType == DashboardType.dashboard12.rawValue
+        let useR4Endpoint = dashboardType == DashboardType.dashboard12.rawValue
         let _ = try await remoteRepo.exportCsv(useR4Endpoint: useR4Endpoint)
     }
     
