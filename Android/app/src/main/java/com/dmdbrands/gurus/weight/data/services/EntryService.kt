@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
-import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -141,7 +140,6 @@ constructor(
   override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
 
   /** Cached progress-related values; updated only when entry data is refreshed to avoid DB hits on every progress emission. */
-  private val _activeAccount = MutableStateFlow<Account?>(null)
   private val _currentStreak = MutableStateFlow(0)
   private val _longestStreak = MutableStateFlow(0)
   private val _totalCount = MutableStateFlow(0)
@@ -213,18 +211,20 @@ constructor(
         val last7Processed = inputs.last7.map { it.process(unit, weightless) }
         val last30Processed = inputs.last30.map { it.process(unit, weightless) }
         val monthYearProcessed = inputs.monthYear.map { it.process(unit, weightless) }
+        val account = accountRepository.getActiveAccount().first()
         val startingWeightDisplay = processWeight(
-          initialWeight ?: _cachedStartingWeightStored.value ?: 0.0,
+          account?.initialWeight ?: _cachedStartingWeightStored.value ?: 0.0,
           unit,
           weightless,
         )
+
         val goal = weightSettings.goal?.copy(
           goalWeight = processWeight(
             weightSettings.goal.goalWeight,
             unit,
             weightless,
           ),
-          account = _activeAccount.value,
+          account = account,
         )
         val result = calculateProgressPure(
           latestEntry = latestProcessed,
@@ -369,7 +369,6 @@ constructor(
     // Update account-related flows and cache active account for progress (avoids getActiveAccount().first() in hot path)
     try {
       val account = accountRepository.getActiveAccount().first()
-      _activeAccount.value = account
       this.initialWeight = account?.initialWeight
       _progressCacheVersion.value = _progressCacheVersion.value + 1
     } catch (e: Exception) {
@@ -442,7 +441,6 @@ constructor(
     _daywiseBodyScaleLatest.value = emptyList()
     _isUpdating.value = false
     _lastUpdated.value = null
-    _activeAccount.value = null
     _currentStreak.value = 0
     _longestStreak.value = 0
     _totalCount.value = 0

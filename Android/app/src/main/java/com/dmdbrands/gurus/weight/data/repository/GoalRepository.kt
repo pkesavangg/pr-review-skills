@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.data.api.IGoalAPI
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMapper
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
+import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.model.api.goal.GoalData
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -105,9 +106,6 @@ constructor(
             isSynced = false, // Mark as unsynced for later upload
           )
         updateGoalSettingsInDB(goalEntity)
-        // Return updated account - would need to be fetched from database
-        // For now, return the current account
-        // TODO: Fetch updated account from database with new goal settings
         account
       }
     } catch (e: Exception) {
@@ -130,7 +128,8 @@ constructor(
         Goal(
           goalWeight = activeAccount.goalWeight ?: 0.0,
           initialWeight = activeAccount.initialWeight,
-          type = activeAccount.goalType ?: "",
+          type = activeAccount.goalType ?: GoalType.LOSE_GAIN.value,
+          goalType = activeAccount.goalType ?: GoalType.LOSE_GAIN.value,
           percent = activeAccount.goalPercent,
           metPreviousGoal = activeAccount.metPreviousGoal ?: false,
         )

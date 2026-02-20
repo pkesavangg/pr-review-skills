@@ -150,12 +150,19 @@ class GraphViewModel @AssistedInject constructor(
       combine(
         dataFlow,
         dashboardService.selectedKey,
-        goalService.getCurrentGoal(),
-      ) { data, secondaryKey, goal ->
-        Triple(data, secondaryKey, goal)
+      ) { data, secondaryKey ->
+        Pair(data, secondaryKey)
       }
         .drop(1)
-        .collect { (data, secondaryKey, goal) ->
+        .collect { (data, secondaryKey) ->
+          val currentAccount = accountService.activeAccount.value
+          val changedGoal = currentAccount?.toGoal()
+          // Process goal with current unit and weightless mode to ensure correct unit conversion
+          val goal = changedGoal?.let { goal ->
+            val weightUnit = currentAccount.weightUnit
+            val weightless = currentAccount.toWeightless()
+            goal.process(weightUnit, weightless)
+          }
           handleIntent(GraphIntent.UpdateData(data))
           handleIntent(GraphIntent.UpdateGoal(goal))
           handleIntent(GraphIntent.SetSecondaryKey(secondaryKey))
