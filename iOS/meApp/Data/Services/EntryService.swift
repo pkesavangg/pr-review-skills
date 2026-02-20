@@ -1,7 +1,12 @@
+// swiftlint:disable type_body_length
 import Foundation
 import Combine
 import SwiftData
 
+/*
+ SwiftLint exception:
+ This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations. We therefore disable `type_body_length` for this file.
+ */
 final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
     @Injector var goalAlertService: GoalAlertService
@@ -224,6 +229,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
     
     // MARK: - Progress/Stats
+    
+    /// Helper struct to hold extracted entry weights and DTOs
+    private struct ExtractedEntryData {
+        let latestWeight: Int
+        let weekStartWeight: Int?
+        let monthStartWeight: Int?
+        let firstEntryWeight: Int?
+        let weekDTO: BathScaleOperationDTO?
+        let monthDTO: BathScaleOperationDTO?
+        let firstDTO: BathScaleOperationDTO?
+        let latestDTO: BathScaleOperationDTO
+    }
+    
     func getProgress() async throws -> Progress {
         let accountId = try await getAccountId()
 
@@ -326,8 +344,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         // Fallback, parse manually
         let comps = timestamp.split(separator: "-")
-        if comps.count == 2, let y = Int(comps[0]), let m = Int(comps[1]) {
-            var dc = DateComponents(); dc.year = y; dc.month = m; dc.day = 1
+        if comps.count == 2, let year = Int(comps[0]), let month = Int(comps[1]) {
+            var dc = DateComponents(); dc.year = year; dc.month = month; dc.day = 1
             if let dt = Calendar.current.date(from: dc) { return (dt, timestamp) }
         }
         return (Date(), timestamp)
@@ -385,7 +403,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         guard !uniqueDays.isEmpty else { return Streak(current: 0, max: 0) }
 
-        func isSameDay(_ a: Date, _ b: Date) -> Bool { calendar.isDate(a, inSameDayAs: b) }
+        func isSameDay(_ firstDate: Date, _ secondDate: Date) -> Bool {
+            calendar.isDate(firstDate, inSameDayAs: secondDate)
+        }
 
         var currentStreak = 0
         var dateToCheck = Date()
@@ -1040,9 +1060,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     
     private static func buildHistoryMonth(monthKey: String, monthEntries: [Entry]) -> HistoryMonth {
         // Build the `weights` concatenated string  "<w>|<ts>,<w>|<ts>"  like the SQL query
-        let weightPairs = monthEntries.compactMap { e -> String? in
-            guard let w = e.scaleEntry?.weight else { return nil }
-            return "\(w)|\(e.entryTimestamp)"
+        let weightPairs = monthEntries.compactMap { entry -> String? in
+            guard let weight = entry.scaleEntry?.weight else { return nil }
+            return "\(weight)|\(entry.entryTimestamp)"
         }
         let weightsConcat = weightPairs.joined(separator: ",")
         
@@ -1057,8 +1077,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let firstWeight = sortedByTime.first?.scaleEntry?.weight
         let lastWeight  = sortedByTime.last?.scaleEntry?.weight
         let change: String? = {
-            guard let f = firstWeight, let l = lastWeight else { return nil }
-            return String(format: "%.1f", Double(l - f))
+            guard let first = firstWeight, let last = lastWeight else { return nil }
+            return String(format: "%.1f", Double(last - first))
         }()
         
         return HistoryMonth(
@@ -1274,3 +1294,4 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         cancellables.removeAll()
     }
 }
+// swiftlint:enable type_body_length

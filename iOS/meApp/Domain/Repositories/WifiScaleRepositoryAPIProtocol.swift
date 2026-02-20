@@ -7,7 +7,7 @@ import Foundation
 @MainActor
 protocol WifiScaleRepositoryAPIProtocol {
     /// Fetches the scale token from the backend API.
-    /// - Parameter r: Optional parameter for the scale token request.
+    /// - Parameter request: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.
-    func getScaleToken(r: String?) async throws -> WifiScaleTokenResponse
+    func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse
 } 

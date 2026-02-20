@@ -16,14 +16,14 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     init() {}
     
     /// Fetches the scale token for WiFi scale operations.
-    /// - Parameter r: Optional parameter for the scale token request.
+    /// - Parameter request: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.
-    func getScaleToken(r: String?) async throws -> WifiScaleTokenResponse {
-        logger.log(level: .info, tag: tag, message: "getScaleToken called with r: \(r ?? "nil")")
+    func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse {
+        logger.log(level: .info, tag: tag, message: "getScaleToken called with request: \(request ?? "nil")")
         
         do {
-            let result = try await apiRepo.getScaleToken(r: r)
-            logger.log(level: .info, tag: tag, message: "Successfully fetched scale token: \(result.token)")
+            let result = try await apiRepo.getScaleToken(request: request)
+            logger.log(level: .info, tag: tag, message: "Successfully fetched scale token")
             return result
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch scale token: \(error.localizedDescription)")

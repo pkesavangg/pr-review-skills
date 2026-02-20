@@ -579,9 +579,10 @@ struct AlertStrings {
         static let yes = "YES"
     }
 
-    struct knownScaleDiscoveredAlert {
+    struct KnownScaleDiscoveredAlert {
         static let title = "Known Scale Discovered"
-        static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+        static let message = "Weight Gurus sees a scale that is already set up. " +
+            "If you are trying to set up a second scale, make sure only one is turned on at a time."
         static let exitButton = "Exit"
     }
 
@@ -596,9 +597,11 @@ struct AlertStrings {
         static let locationDisabledTitle = "To turn on Location Services"
         static let locationDisabledMessage = "1. Open your iPhone Settings\n2. Tap Privacy & Security\n3. Tap Location Settings\n4. Toggle Location Services on\n5. Return to this app"
         static let locationAuthTitle = "Weight Gurus needs location permissions."
-        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
+        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. " +
+            "On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
         static let locationWhyTitle = "Why are we asking your location permission?"
-        static let locationWhyMessage = "iOS requires location permission to connect with nearby Bluetooth devices. We don't track or store your location—it's just an Apple requirement for device setup."
+        static let locationWhyMessage = "iOS requires location permission to connect with nearby Bluetooth devices. " +
+            "We don't track or store your location—it's just an Apple requirement for device setup."
 
         // MARK: - WiFi
         static let wifiDisabledTitle = "To turn on Wi-Fi"
@@ -652,7 +655,8 @@ struct AlertStrings {
 
     struct PermissionDisabledAlert {
         static let title = "Unable to scan devices!"
-        static let message = "One or more required permissions or device services may be disabled. Visit the App Permissions screen in the Settings tab to check and enable the app’s permissions access."
+        static let message = "One or more required permissions or device services may be disabled. " +
+            "Visit the App Permissions screen in the Settings tab to check and enable the app's permissions access."
         static let dismissButton = "DISMISS"
         static let appPermissionButton = "APP PERMISSION"
     }
@@ -870,6 +874,7 @@ struct AppAssets {
     // MARK: - WiFi series
     static let scale0384 = "0384"
     static let scale0385 = "0385"
+    // swiftlint:disable:next identifier_name
     static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
 
     // MARK: - Bluetooth wifi series

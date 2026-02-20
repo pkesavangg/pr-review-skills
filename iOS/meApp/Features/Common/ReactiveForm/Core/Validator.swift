@@ -80,7 +80,7 @@ extension Validator where Value == String {
     /// Validator that prevents whitespace-only values
     public static let noWhiteSpace = Validator(type: .noWhiteSpace) { value in
         // Only fail if it's NOT empty but trimming removes everything (i.e. only whitespace)
-        value.isEmpty || value.trimmingCharacters(in: .whitespacesAndNewlines).count > 0
+        value.isEmpty || !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     /// Validator that requires the length of the control's value to be greater than

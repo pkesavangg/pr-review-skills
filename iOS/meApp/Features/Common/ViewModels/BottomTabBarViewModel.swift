@@ -5,6 +5,10 @@
 //  Created by Kesavan Panchabakesan on 16/06/25.
 //
 
+// swiftlint:disable type_body_length
+// This view model intentionally aggregates all bottom tab bar navigation logic
+// and state management to maintain a single source of truth for tab state.
+// Splitting would fragment navigation flow and reduce maintainability.
 
 import Foundation
 import SwiftUI

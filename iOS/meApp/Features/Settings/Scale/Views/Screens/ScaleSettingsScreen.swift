@@ -307,7 +307,9 @@ struct ScaleSettingsScreen: View {
                     toggleBinding: Binding(get: { scaleSettingsStore.isImpedanceSwitchedOnForSession }, set: { val in
                         scaleSettingsStore.isImpedanceSwitchedOnForSession = val
                     }),
-                    isDisabled: !scaleSettingsStore.isDeviceConnected || scaleSettingsStore.isScaleImpedanceSwitchedOn == true || (scaleSettingsStore.scale.r4ScalePreference?.shouldMeasureImpedance == false),
+                    isDisabled: !scaleSettingsStore.isDeviceConnected ||
+                        scaleSettingsStore.isScaleImpedanceSwitchedOn == true ||
+                        (scaleSettingsStore.scale.r4ScalePreference?.shouldMeasureImpedance == false),
                     onTap: {
                         Task { await scaleSettingsStore.setSessionImpedance(scaleSettingsStore.isImpedanceSwitchedOnForSession) }
                     }

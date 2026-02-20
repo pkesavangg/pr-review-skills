@@ -1,9 +1,14 @@
+// swiftlint:disable function_parameter_count
 import Foundation
 
 /// Protocol for abstracting all integration data access and operations (local or remote).
 ///
 /// This protocol defines the contract for interacting with integration data sources (e.g., local database, cache, or remote API).
 /// It includes CRUD operations, sync, and status management for integrations, matching the business flows in integration.service.ts and backend /integrations endpoints.
+/*
+ SwiftLint exception:
+ The `logHealthIntegration` function intentionally has many parameters to match the backend API contract and provide clear, explicit parameter names for all health integration data fields. Refactoring to a struct would add indirection and reduce clarity. We therefore disable `function_parameter_count` for this file.
+ */
 protocol IntegrationRepositoryAPIProtocol {
     // MARK: - CRUD
 
@@ -41,3 +46,4 @@ protocol IntegrationRepositoryAPIProtocol {
     func deleteHealthIntegration(deviceId: String) async throws
 
 }
+// swiftlint:enable function_parameter_count

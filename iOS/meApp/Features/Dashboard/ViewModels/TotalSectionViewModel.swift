@@ -180,8 +180,8 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         let clampedDate = min(max(date, first), last)
 
         // Snap to the nearest real data point date
-        if let nearest = ops.min(by: { a, b in
-            abs(a.date.timeIntervalSince(clampedDate)) < abs(b.date.timeIntervalSince(clampedDate))
+        if let nearest = ops.min(by: { first, second in
+            abs(first.date.timeIntervalSince(clampedDate)) < abs(second.date.timeIntervalSince(clampedDate))
         }) {
             selectedDate = nearest.date
             showCrosshair = true

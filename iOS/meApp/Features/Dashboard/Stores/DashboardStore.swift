@@ -1,3 +1,8 @@
+// swiftlint:disable type_body_length file_length function_body_length
+// This file intentionally aggregates all dashboard state management logic.
+// Breaking it into smaller files would fragment related functionality and reduce maintainability.
+// The createEntryForMetricInfo function is intentionally long to handle multiple entry creation scenarios.
+
 import SwiftUI
 import SwiftData
 import Combine
@@ -720,13 +725,13 @@ class DashboardStore: ObservableObject {
             }
             let sameYear = cal.isDate(sundayStart, equalTo: weekEnd, toGranularity: .year)
             if sameYear {
-                let s = DateTimeTools.formatter("MMM d").string(from: sundayStart)
-                let e = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
-                return "\(s) - \(e)"
+                let startString = DateTimeTools.formatter("MMM d").string(from: sundayStart)
+                let endString = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
+                return "\(startString) - \(endString)"
             } else {
-                let s = DateTimeTools.formatter("MMM d, yyyy").string(from: sundayStart)
-                let e = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
-                return "\(s) - \(e)"
+                let startString = DateTimeTools.formatter("MMM d, yyyy").string(from: sundayStart)
+                let endString = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
+                return "\(startString) - \(endString)"
             }
         case .month:
             return DateTimeTools.formatter("MMM, yyyy").string(from: today)
@@ -1704,7 +1709,12 @@ class DashboardStore: ObservableObject {
         }
 
         let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
-        logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)")
+        logger.log(
+            level: .debug,
+            tag: "DashboardStore",
+            message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), " +
+                "streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)"
+        )
     }
 
     func resetDragState() {
@@ -2846,8 +2856,8 @@ class DashboardStore: ObservableObject {
             // Helpers to convert Double? to Int? with 0 -> nil
             func intOrNil(_ x: Double?) -> Int? {
                 guard let x = x else { return nil }
-                let v = Int(x.rounded())
-                return v == 0 ? nil : v
+                let intValue = Int(x.rounded())
+                return intValue == 0 ? nil : intValue
             }
             func scaled10OrNil(_ x: Double?, metricLabel: String) -> Int? {
                 guard let x = x else { return nil }
@@ -2869,13 +2879,13 @@ class DashboardStore: ObservableObject {
                     return nil
                 }
                 // x is already in stored format (scaled by 10), so convert to Int directly
-                let v = Int(x.rounded())
-                return v == 0 ? nil : v
+                let intValue = Int(x.rounded())
+                return intValue == 0 ? nil : intValue
             }
 
             let storedWeight: Int? = {
-                let v = Int(point.weight.rounded())
-                return v == 0 ? nil : v
+                let weightValue = Int(point.weight.rounded())
+                return weightValue == 0 ? nil : weightValue
             }()
 
             // Use the actual point's timestamp
@@ -2917,11 +2927,11 @@ class DashboardStore: ObservableObject {
             // Map display weight to stored (handle weightless by adding anchor back)
             let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
             let displayAbsolute: Double? = {
-                if let w = interpolated {
+                if let interpolatedWeight = interpolated {
                     if isWeightlessModeEnabled, let anchor = weightlessAnchorWeight {
-                        return w + anchor
+                        return interpolatedWeight + anchor
                     } else {
-                        return w
+                        return interpolatedWeight
                     }
                 }
                 return nil
@@ -3009,13 +3019,13 @@ class DashboardStore: ObservableObject {
         // Helpers for averages: Double? -> Int? with 0 -> nil
         func intOrNil(_ x: Double?) -> Int? {
             guard let x = x else { return nil }
-            let v = Int(x.rounded())
-            return v == 0 ? nil : v
+            let intValue = Int(x.rounded())
+            return intValue == 0 ? nil : intValue
         }
         func scaled10OrNil(_ x: Double?) -> Int? {
             guard let x = x else { return nil }
-            let v = Int((x * 10.0).rounded())
-            return v == 0 ? nil : v
+            let intValue = Int((x * 10.0).rounded())
+            return intValue == 0 ? nil : intValue
         }
 
         // Weight average in stored units
@@ -3716,3 +3726,4 @@ class DashboardStore: ObservableObject {
         logger.log(level: .info, tag: "DashboardStore", message: "Edit session reset successfully - all changes reverted and fresh session started.")
     }
 }
+// swiftlint:enable type_body_length file_length function_body_length

@@ -5,6 +5,11 @@
 //  Created by Cursor AI on 12/01/25.
 //
 
+// swiftlint:disable type_body_length file_length cyclomatic_complexity function_body_length
+// This file intentionally aggregates all BtWifi scale setup orchestration logic.
+// Breaking it into smaller files would fragment the multi-step flow management and reduce maintainability.
+// The updateNextEnabled function has high complexity due to multiple step-specific validation rules.
+
 import Foundation
 import SwiftUI
 import Combine
@@ -1866,7 +1871,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     do {
                         try await self.scaleService.updateAllScalesStatus([savedScale])
                     } catch {
-                        LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): failed to update scale status for id \(savedScale.id): \(error.localizedDescription)")
+                        LoggerService.shared.log(
+                            level: .error,
+                            tag: self.tag,
+                            message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): " +
+                                "failed to update scale status for id \(savedScale.id): \(error.localizedDescription)"
+                        )
                         return
                     }
                     
@@ -1880,7 +1890,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             self.bluetoothService.syncDevices([refreshedScale])
                         }
                     } catch {
-                        LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): failed to refresh scale device for id \(savedScale.id): \(error.localizedDescription)")
+                        LoggerService.shared.log(
+                            level: .error,
+                            tag: self.tag,
+                            message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): " +
+                                "failed to refresh scale device for id \(savedScale.id): \(error.localizedDescription)"
+                        )
                     }
                 }
             }
@@ -2102,9 +2117,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         do {
-            let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
+            let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
             self.scaleToken = scaleTokenResponse.token
-            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
+            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             connectionState = .failure
@@ -2336,7 +2351,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Shows an alert when a known scale is discovered.
     private func showKnownScaleAlert() {
-        let alertStrings = AlertStrings.knownScaleDiscoveredAlert.self
+        let alertStrings = AlertStrings.KnownScaleDiscoveredAlert.self
         let alert = AlertModel(
             title: alertStrings.title,
             message: alertStrings.message,
@@ -3169,3 +3184,4 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return (!ssid1.isEmpty && ssid1 == ssid2) || (!mac1.isEmpty && mac1 == mac2)
     }
 }
+// swiftlint:enable type_body_length file_length cyclomatic_complexity function_body_length

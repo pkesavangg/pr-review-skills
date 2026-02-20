@@ -109,7 +109,7 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
         }()
 
         // Candidates within the section
-        let candidates = effectiveDates.filter { d in d >= startTick && d < sectionEnd }
+        let candidates = effectiveDates.filter { date in date >= startTick && date < sectionEnd }
 
         if candidates.isEmpty {
             // No data in section → select the start tick
@@ -117,11 +117,11 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
             showCrosshair = true
         } else {
             // Pick the nearest candidate inside the section with deterministic tie-break (earlier first)
-            if let chosen = candidates.min(by: { a, b in
-                let da = abs(a.timeIntervalSince(clampedDate))
-                let db = abs(b.timeIntervalSince(clampedDate))
-                if da == db { return a < b }
-                return da < db
+            if let chosen = candidates.min(by: { first, second in
+                let firstDistance = abs(first.timeIntervalSince(clampedDate))
+                let secondDistance = abs(second.timeIntervalSince(clampedDate))
+                if firstDistance == secondDistance { return first < second }
+                return firstDistance < secondDistance
             }) {
                 selectedDate = chosen
                 showCrosshair = true

@@ -1,6 +1,11 @@
+// swiftlint:disable type_body_length function_body_length
 import Foundation
 import Combine
 
+/*
+ SwiftLint exception:
+ This service intentionally aggregates all account-related operations to keep the account management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical account operations. The `syncUnsyncedAccounts` function is intentionally long to handle all offline sync scenarios in one place. We therefore disable `type_body_length` and `function_body_length` for this file.
+ */
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
     static let shared: AccountService = AccountService()
@@ -1269,3 +1274,4 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
       cancellables.removeAll()
     }
 }
+// swiftlint:enable type_body_length function_body_length

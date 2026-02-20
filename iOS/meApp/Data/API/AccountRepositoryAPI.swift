@@ -99,7 +99,16 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             let weightlessTimestamp: String
             let weightlessWeight: Int
         }
-        return try await httpClient.send(.updateWeightless, method: .patch, body: WeightlessRequest(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: weightlessWeight), needsAuth: true)
+        return try await httpClient.send(
+            .updateWeightless,
+            method: .patch,
+            body: WeightlessRequest(
+                isWeightlessOn: isWeightlessOn,
+                weightlessTimestamp: weightlessTimestamp,
+                weightlessWeight: weightlessWeight
+            ),
+            needsAuth: true
+        )
     }
 
     func deleteAccount(accountId: String) async throws {

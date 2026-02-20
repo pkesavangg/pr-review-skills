@@ -35,7 +35,7 @@ class NotificationHelperService: ObservableObject {
     }
     
     var isModalVisible: Bool {
-        modalViewData.count > 0
+        !modalViewData.isEmpty
     }
     
     func showAlert(_ alert: AlertModel) {

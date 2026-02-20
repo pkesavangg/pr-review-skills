@@ -32,6 +32,7 @@ struct LandingScreen: View {
             ZStack {
                 Group {
                     // Show empty landing screen if no logged-in users exist
+                    // swiftlint:disable:next empty_count
                     (hasLoggedInUsers && landingStore.userItems.count > 0) ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()

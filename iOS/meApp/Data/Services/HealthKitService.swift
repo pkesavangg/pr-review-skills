@@ -1,3 +1,8 @@
+// swiftlint:disable type_body_length
+// This service intentionally aggregates all HealthKit integration logic
+// to maintain a single source of truth for health data synchronization.
+// Splitting would fragment the integration flow and reduce maintainability.
+
 import Foundation
 import HealthKit
 import ggHealthKitPackage
@@ -188,7 +193,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     /// Returns `true` if at least one HealthKit permission is granted.
     func checkAuthorizationStatus() -> Bool {
         let approvedPermissionList = self.getApprovedPermissionList();
-        return approvedPermissionList.count > 0
+        return !approvedPermissionList.isEmpty
     }
     
     /// Lists the granted HealthKit permission identifiers.

@@ -79,7 +79,10 @@ struct BtWifiScaleSetupStrings {
     struct AccuCheckInfoModalViewStrings {
         static let title = "What is AccuCheck?"
         static let description1 = "AccuCheck is Greater Goods’ proprietary algorithm, designed to provide the most accurate results possible every time you weigh in—down to .01 lb."
-        static let description2 = "Shortly after getting on the scale, you’ll see an orange light. This means that you’ve been weighed. When you get off the scale, you’ll see a green light. This means that AccuCheck has double checked its work, and your weight has been verified. Essentially, AccuCheck is a second set of eyes, every time."
+        static let description2 = "Shortly after getting on the scale, you'll see an orange light. " +
+            "This means that you've been weighed. When you get off the scale, you'll see a green light. " +
+            "This means that AccuCheck has double checked its work, and your weight has been verified. " +
+            "Essentially, AccuCheck is a second set of eyes, every time."
     }
     
     struct ScaleMetricsCustomizationViewStrings {

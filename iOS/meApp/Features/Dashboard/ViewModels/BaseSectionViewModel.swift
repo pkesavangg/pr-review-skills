@@ -5,6 +5,10 @@
 //  Created by Assistant on 04/07/25.
 //
 
+// swiftlint:disable type_body_length
+// This file intentionally aggregates common functionality for all section view models.
+// Breaking it into smaller files would fragment related chart logic and reduce maintainability.
+
 import Foundation
 import SwiftUI
 import Charts
@@ -106,8 +110,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Converts a circle diameter (in pt) to the area value expected by Charts' `symbolSize`
     func symbolArea(forDiameter diameter: CGFloat) -> CGFloat {
-        let r = diameter / 2
-        return .pi * r * r
+        let radius = diameter / 2
+        return .pi * radius * radius
     }
     
     var dateRange: ClosedRange<Date> {
@@ -813,8 +817,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             guard let yearStart = calendar.date(from: comps) else { return [] }
             var ticks: [Date] = []
             // 13 ticks: each month start plus phantom at next year's Jan 1
-            for m in 0...12 {
-                if let monthStart = calendar.date(byAdding: DateComponents(month: m), to: yearStart) {
+            for monthOffset in 0...12 {
+                if let monthStart = calendar.date(byAdding: DateComponents(month: monthOffset), to: yearStart) {
                     let monthComps = calendar.dateComponents([.year, .month], from: monthStart)
                     let firstOfMonth = calendar.date(from: monthComps) ?? monthStart
                     ticks.append(midday(firstOfMonth))
@@ -835,3 +839,4 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return first...last
     }
 }
+// swiftlint:enable type_body_length

@@ -7,6 +7,7 @@
 //  This file provides a production-ready BluetoothService for iOS apps, wrapping the GGBluetoothSwiftPackage SDK and translating between app models and SDK models. It uses Combine for reactive updates and async/await for async plugin calls.
 //
 
+// swiftlint:disable type_body_length file_length cyclomatic_complexity
 import Foundation
 import Combine
 import GGBluetoothSwiftPackage
@@ -1760,8 +1761,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func calculateHeightCm(height: String?) -> Int {
         let storedHeight: Int = {
             if let heightStr = height,
-               let h = Double(heightStr) {
-                return Int(round(h)) // not optional, so no need for if-let
+               let heightValue = Double(heightStr) {
+                return Int(round(heightValue)) // not optional, so no need for if-let
             }
             return 680 // fallback: 68.0 inches (5'8")
         }()
@@ -1996,3 +1997,4 @@ private extension BluetoothService {
         }
     }
 }
+// swiftlint:enable type_body_length file_length cyclomatic_complexity

@@ -73,7 +73,8 @@ public struct WifiScaleSetupStrings {
                 note: "Error entering AP set-up mode. Please try again.",
                 messages: [
                     "It seems like your scale is having trouble communicating with your Wi-Fi network. The best way to fix it is to reset the Wi-Fi chip in your scale.",
-                    "To do this, start the scale setup process over and connect to another 2.4 GHz network when the app asks for your wi-fi network name and password.You can try using a phone as a hotspot or someone else's Wi-Fi network (friend, family, neighbor, etc).",
+                    "To do this, start the scale setup process over and connect to another 2.4 GHz network when the app asks for your wi-fi network name and password. " +
+                    "You can try using a phone as a hotspot or someone else's Wi-Fi network (friend, family, neighbor, etc).",
                     "If the scale connects fully OR simply doesn't get the t204, we should be back in business and can try to connect on your original network again.",
                     defaultLang
                 ]
@@ -82,14 +83,16 @@ public struct WifiScaleSetupStrings {
                 note: "Your scale timed out before receiving the connection info it needs to connect to the internet. Please try again.",
                 messages: [
                     "This is an issue with some phones and operating systems. First, try turning off your phone's data by putting it in Airplane Mode with Wi-Fi enabled and retry the setup.",
-                    "If the problem continues, download the app on another device and try to pair with that. Even if you connect the scale to your Wi-Fi through another device you'll still be able to track your weight on your own phone.",
+                    "If the problem continues, download the app on another device and try to pair with that. " +
+                    "Even if you connect the scale to your Wi-Fi through another device you'll still be able to track your weight on your own phone.",
                     defaultLang
                 ]
             ),
             .t206: ErrorDetail(
                 note: "Error waiting for a connection to form. Make sure credentials are correct and that you are within range of your Wi-Fi router and try again.",
                 messages: [
-                    "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT \"_5G\" at the end. You may need to forget the 5G network during setup if your phone continues to choose it by default.",
+                    "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT \"_5G\" at the end. " +
+                    "You may need to forget the 5G network during setup if your phone continues to choose it by default.",
                     "Check your router — the scale cannot pair with some Xfinity XFI, Cox, and Arris routers.",
                     "The router and scale may be too far apart. Move the scale closer to the router and try connecting again.",
                     "If you still can't connect or have one of the routers listed, tap the \"?\" in the top right corner to contact our customer service team, and we'll be happy to help."
@@ -98,7 +101,8 @@ public struct WifiScaleSetupStrings {
             .t163: ErrorDetail(
                 note: "Error waiting for a connection to form. Make sure credentials are correct and that you are within range of your Wi-Fi router and try again.",
                 messages: [
-                    "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT \"_5G\" at the end. You may need to forget the 5G network during setup if your phone continues to choose it by default.",
+                    "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT \"_5G\" at the end. " +
+                    "You may need to forget the 5G network during setup if your phone continues to choose it by default.",
                     "Check your router — the scale cannot pair with some Xfinity XFI, Cox, and Arris routers.",
                     "The router and scale may be too far apart. Move the scale closer to the router and try connecting again.",
                     "If you still can't connect or have one of the routers listed, tap the \"?\" in the top right corner to contact our customer service team, and we'll be happy to help."
@@ -107,7 +111,8 @@ public struct WifiScaleSetupStrings {
             .t164: ErrorDetail(
                 note: "The server not responding. Make sure you have an internet connection and try again.",
                 messages: [
-                    "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your network, ask them to whitelist, or give access to, your scale's MAC address.",
+                    "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your network, " +
+                    "ask them to whitelist, or give access to, your scale's MAC address.",
                     "To find your scales MAC address tap the button below and go through the MAC address search process.",
                     defaultLang
                 ]
@@ -122,7 +127,8 @@ public struct WifiScaleSetupStrings {
             .t315: ErrorDetail(
                 note: "The server not responding. Make sure you have an internet connection and try again.",
                 messages: [
-                    "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your network, ask them to whitelist, or give access to, your scale's MAC address.",
+                    "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your network, " +
+                    "ask them to whitelist, or give access to, your scale's MAC address.",
                     "To find your scales MAC address tap the button below and go through the MAC address search process.",
                     defaultLang
                 ]
@@ -130,7 +136,8 @@ public struct WifiScaleSetupStrings {
             .t323: ErrorDetail(
                 note: "Error forming a connection. Make sure you have an internet connection and try again.",
                 messages: [
-                    "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT \"_5G\" at the end. You may need to forget the 5G network during setup if your phone continues to choose it by default.",
+                    "Make sure you connect to a 2.4 GHz Wi-Fi network — typically the one WITHOUT \"_5G\" at the end. " +
+                    "You may need to forget the 5G network during setup if your phone continues to choose it by default.",
                     "Check your router — the scale cannot pair with some Xfinity XFI, Cox, and Arris routers.",
                     "The router and scale may be too far apart. Move the scale closer to the router and try connecting again.",
                     "If you still can't connect or have one of the routers listed, tap the \"?\" in the top right corner to contact our customer service team, and we'll be happy to help."
@@ -139,7 +146,8 @@ public struct WifiScaleSetupStrings {
             .t325: ErrorDetail(
                 note: "The server not responding. Make sure you have an internet connection and try again.",
                 messages: [
-                    "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your network, ask them to whitelist, or give access to, your scale's MAC address.",
+                    "Are you on a shared/community Wi-Fi network? If yes, and you happen to know who is in control of your network, " +
+                    "ask them to whitelist, or give access to, your scale's MAC address.",
                     "To find your scales MAC address tap the button below and go through the MAC address search process.",
                     defaultLang
                 ]

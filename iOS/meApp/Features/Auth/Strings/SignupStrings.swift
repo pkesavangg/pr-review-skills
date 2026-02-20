@@ -23,7 +23,8 @@ struct SignupStrings {
     
     struct SexStep {
         static let title = "What is your biological sex?"
-        static let subtitle = "This is also important in determining body metrics and healthy ranges according to CDC and AHA health guidelines. Please choose what most closely reflects your body type and makes you most comfortable."
+        static let subtitle = "This is also important in determining body metrics and healthy ranges according to CDC and AHA health guidelines. " +
+            "Please choose what most closely reflects your body type and makes you most comfortable."
     }
     
     struct HeightStep {

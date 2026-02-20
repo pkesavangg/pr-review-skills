@@ -1,3 +1,7 @@
+// swiftlint:disable type_body_length
+// This file intentionally aggregates WiFi scale setup orchestration logic.
+// Breaking it into smaller files would fragment the multi-step flow management.
+
 import Foundation
 import SwiftUI
 import Combine
@@ -603,9 +607,9 @@ final class WifiScaleSetupStore: ObservableObject {
         }
         Task {
             do {
-                let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
+                let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
                 self.scaleToken = scaleTokenResponse.token
-                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
+                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token")
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             }
@@ -847,3 +851,4 @@ final class WifiScaleSetupStore: ObservableObject {
         cancellables.removeAll()
     }
 }
+// swiftlint:enable type_body_length

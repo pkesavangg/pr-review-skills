@@ -5,8 +5,12 @@
 //  Created by Barath Chittibabu on 20/06/25.
 //
 
-
+// swiftlint:disable function_body_length line_length
 enum MetricContentRepository {
+    /*
+     SwiftLint exception:
+     This function intentionally contains all metric content definitions in a single switch statement for maintainability and discoverability. The long string literals are educational content that should remain readable and intact. Splitting would reduce clarity and make content updates more difficult. We therefore disable `function_body_length` and `line_length` for this file.
+     */
     static func content(for metric: BodyMetric) -> MetricDetailContent {
         switch metric {
         case .weight:
@@ -161,3 +165,4 @@ enum MetricContentRepository {
         }
     }
 }
+// swiftlint:enable function_body_length line_length
