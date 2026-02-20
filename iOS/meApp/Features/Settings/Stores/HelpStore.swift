@@ -104,11 +104,16 @@ class HelpStore: ObservableObject {
     /// Sends Weight Gurus application logs to support.
     func sendWeightGurusLog() {
         Task {
+            logger.log(level: .info, tag: tag, message: "Weight Gurus log upload started")
             notificationService.showLoader(LoaderModel(text: loaderLang.sendingLogs))
             do {
                 try await logger.sendLogsToServer()
+                logger.log(level: .info, tag: tag, message: "Weight Gurus log upload completed successfully")
                 notificationService.showToast(ToastModel(message: toastLang.logsSent))
             } catch {
+                if case HTTPError.noInternet = error {
+                    logger.log(level: .error, tag: tag, message: "Weight Gurus log upload failed: offline")
+                }
                 logger.log(level: .error, tag: tag, message: "Failed to send logs: \(error.localizedDescription)")
                 switch error {
                 case HTTPError.noInternet:
@@ -126,6 +131,7 @@ class HelpStore: ObservableObject {
         Task {
             let networkStatus = NetworkMonitor.shared.isConnected
             if networkStatus {
+                logger.log(level: .info, tag: tag, message: "Entry resync started")
                 notificationService.showLoader(LoaderModel(text: loaderLang.resync))
                 
                 do {
@@ -136,6 +142,7 @@ class HelpStore: ObservableObject {
                     // Resync with server
                     await entryService.syncAllEntriesWithRemote()
                     // Show success toast after a delay
+                    logger.log(level: .info, tag: tag, message: "Entry resync completed successfully")
                     notificationService.showToast(ToastModel(message: toastLang.synced))
                 } catch {
                     logger.log(level: .error, tag: tag, message: "Resync failed: \(error.localizedDescription)")
@@ -146,6 +153,7 @@ class HelpStore: ObservableObject {
                 }
                 notificationService.dismissLoader()
             } else {
+                logger.log(level: .error, tag: tag, message: "Entry resync blocked: offline")
                 showErrorToast()
             }
         }
@@ -155,6 +163,7 @@ class HelpStore: ObservableObject {
     func clearAllLocalData() {
         Task {
             let alertLang = AlertStrings.DataClearingAlert.self
+            logger.log(level: .info, tag: tag, message: "Clear all local data started")
             
             // Show loading indicator
             notificationService.showLoader(LoaderModel(text: LoaderStrings.pleaseWait))
@@ -176,6 +185,7 @@ class HelpStore: ObservableObject {
                     ]
                 )
                 notificationService.showAlert(alert)
+                logger.log(level: .info, tag: tag, message: "Clear all local data completed successfully")
                 
             } catch {
                 // Show error alert
@@ -195,7 +205,7 @@ class HelpStore: ObservableObject {
     
     /// Shows the system/app rating modal.
     func showAppRateModal() {
-        logger.log(level: .info, tag: tag, message: "Show Rate Modal tapped")
+        logger.log(level: .info, tag: tag, message: "Presenting app rating modal")
         // iOS: Request review prompt if available.
         AppRatingHelper.requestReview()
     }
@@ -228,7 +238,7 @@ class HelpStore: ObservableObject {
                 switch result {
                 case .success(let logs):
                     try await logger.sendScaleLogsToServer(deviceLogs: logs.logs)
-                    logger.log(level: .info, tag: tag, message: "Scale logs sent for device:", data: device.mac)
+                    logger.log(level: .info, tag: tag, message: "Scale logs upload completed successfully")
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to get scale logs: \(error.localizedDescription)")
                     notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.restartAndTryAgain))
@@ -237,6 +247,9 @@ class HelpStore: ObservableObject {
                 notificationService.showToast(ToastModel(message: toastLang.logsSent))
                 showScaleLogSheet = false // Hide sheet after sending
             } catch {
+                if case HTTPError.noInternet = error {
+                    logger.log(level: .error, tag: tag, message: "Scale log upload failed: offline")
+                }
                 logger.log(level: .error, tag: tag, message: "Failed to send scale log: \(error.localizedDescription)")
                 switch error {
                 case HTTPError.noInternet:
@@ -269,4 +282,3 @@ class HelpStore: ObservableObject {
         cancellables.forEach { $0.cancel() }
     }
 }
-

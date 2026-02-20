@@ -16,7 +16,6 @@ struct MyAccountsScreen: View {
     @State private var openItemID: UUID? = nil
     
     private let strings = MyAccountsStrings.self
-    
     var body: some View {
         VStack(spacing: 0) {
             // MARK: Header

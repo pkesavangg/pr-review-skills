@@ -25,6 +25,7 @@ final class ContentViewModel: ObservableObject {
 
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
+    private let tag = "ContentViewModel"
 
     init() {
         accountService.$activeAccount
@@ -61,15 +62,16 @@ final class ContentViewModel: ObservableObject {
 
     func performAppInitialization() {
         Task {
+            logger.log(level: .info, tag: tag, message: "App initialization started")
             contentViewState = .initializing
             let loggedIn = await checkLoginStatus()
             if loggedIn {
                 // Refresh account data to sync weightless settings and other account data
                 do {
                     try await accountService.refreshAccount()
-                    logger.log(level: .info, tag: "ContentViewModel", message: "Account data refreshed successfully during initialization")
+                    logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
                 } catch {
-                    logger.log(level: .error, tag: "ContentViewModel", message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
+                    logger.log(level: .error, tag: tag, message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
                 }
                 
                 // Capture dependencies to use off the main actor
@@ -79,6 +81,9 @@ final class ContentViewModel: ObservableObject {
 
                 // Heavy work off-main to avoid UI jank
                 let entries: [Entry] = await Task.detached(priority: .userInitiated) {
+                    // Migration runs before sync in the main initialization task above,
+                    // so opStack entries are available for the first sync
+                    await entryService.migrateFromSQLiteIfNeeded()
                     await entryService.syncAllEntriesWithRemote()
                     await entryService.loadDashboardData()
                     let allEntries = (try? await entryService.getAllEntries()) ?? []
@@ -88,6 +93,7 @@ final class ContentViewModel: ObservableObject {
 
                 // UI-affecting calls back on main actor
                 self.entries = entries
+                logger.log(level: .info, tag: tag, message: "Initialization loaded entries. count=\(entries.count)")
                 bluetoothService.initialize()
                 feedService.checkAndTriggerFeedModal()
                 
@@ -99,16 +105,12 @@ final class ContentViewModel: ObservableObject {
 
             let afterUpdate = await checkLoginStatus()
             await updateViewState(isLoggedIn: afterUpdate)
+            logger.log(level: .info, tag: tag, message: "App initialization completed. isLoggedIn=\(afterUpdate), state=\(contentViewState)")
             
             // Start Bluetooth operations after dashboard is ready
             if afterUpdate {
                 await bluetoothService.startBluetoothOperations()
-            }
-
-            // Run migration in background so it doesn't block first-frame rendering
-            let entryService = self.entryService
-            Task.detached(priority: .utility) {
-                await entryService.migrateFromSQLiteIfNeeded()
+                logger.log(level: .info, tag: tag, message: "Bluetooth operations started after initialization")
             }
         }
     }
@@ -124,6 +126,7 @@ final class ContentViewModel: ObservableObject {
             }
         } catch {
             currentAccount = nil
+            logger.log(level: .error, tag: tag, message: "Failed to update login status from local account state")
         }
         isLoggedIn = (currentAccount != nil)
         return isLoggedIn
@@ -153,6 +156,7 @@ final class ContentViewModel: ObservableObject {
     // MARK: - View State Management
     func updateViewState(isLoggedIn: Bool) async {
         contentViewState = isLoggedIn ? .dashboard : .landing
+        logger.log(level: .info, tag: tag, message: "Updated content view state. isLoggedIn=\(isLoggedIn), state=\(contentViewState)")
     }
     
     // MARK: - Account Flags
@@ -161,23 +165,21 @@ final class ContentViewModel: ObservableObject {
     /// - Parameter trigger: The trigger type ("login" or "entry")
     private func checkAccountFlags(trigger: String) async {
         do {
-            logger.log(level: .info, tag: "ContentViewModel", message: "Starting account flag check after \(trigger)")
-            
             let flag = try await accountFlagService.getAccountFlag()
             if flag != nil {
                 try await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.appReviewTriggerTimeout))
                 
                 let flagProcessed = try await accountFlagService.checkAccountFlag(trigger: trigger)
                 if flagProcessed {
-                    logger.log(level: .info, tag: "ContentViewModel", message: "Account flag processed successfully after \(trigger)")
+                    logger.log(level: .info, tag: tag, message: "Account flag processed successfully after \(trigger)")
                 } else {
-                    logger.log(level: .debug, tag: "ContentViewModel", message: "No matching account flag found for \(trigger) trigger")
+                    logger.log(level: .debug, tag: tag, message: "No matching account flag found for \(trigger) trigger")
                 }
             } else {
-                logger.log(level: .debug, tag: "ContentViewModel", message: "No account flags found after \(trigger)")
+                logger.log(level: .debug, tag: tag, message: "No account flags found after \(trigger)")
             }
         } catch {
-            logger.log(level: .error, tag: "ContentViewModel", message: "Error checking account flags after \(trigger): \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Error checking account flags after \(trigger): \(error.localizedDescription)")
         }
     }
     

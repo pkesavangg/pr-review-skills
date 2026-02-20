@@ -33,7 +33,7 @@ final class AccountMigrationService {
         logger.log(level: .info, tag: tag, message: "Starting account data migration from Ionic app")
         
         guard let accountData = getStoredIonicAccountData() else {
-            logger.log(level: .error, tag: tag, message: "No Ionic account data found to migrate")
+            logger.log(level: .info, tag: tag, message: "No Ionic account data found to migrate")
             return nil
         }
         
@@ -106,8 +106,6 @@ final class AccountMigrationService {
         
         // Mark migration as completed to prevent future runs
         kvStorage.setValue(true, forKey: KvStorageKeys.ionicToNativeAppMigrationCompleted.rawValue)
-        logger.log(level: .info, tag: tag, message: "Migration completion flag set")
-        
         // Clean up Ionic data after migration (cleanup all data regardless of account migration success)
         cleanupAfterMigration()
         cleanupAllGoalAlertData() // Clean up goal alert data for all accounts
@@ -200,7 +198,7 @@ final class AccountMigrationService {
         
         // Check if Ionic goal alert flag exists
         if let ionicGoalAlertValue = kvStorage.getValue(forKey: ionicGoalAlertKey) as? String {
-            logger.log(level: .info, tag: tag, message: "Found Ionic goal alert flag for account: \(accountId), value: \(ionicGoalAlertValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic goal alert flag for account: \(accountId)")
             
             // Convert string value to boolean for native app
             // Ionic stores as "true"/"false" strings, native uses Bool
@@ -209,7 +207,7 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(boolValue, forKey: nativeGoalAlertKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated goal alert flag for account: \(accountId) from '\(ionicGoalAlertValue)' to \(boolValue)")
+            logger.log(level: .info, tag: tag, message: "Migrated goal alert flag for account: \(accountId)")
         } else {
             logger.log(level: .info, tag: tag, message: "No goal alert flag found for account: \(accountId)")
         }
@@ -258,7 +256,7 @@ final class AccountMigrationService {
         
         // Check if Ionic goal card status flag exists
         if let ionicGoalCardStatusValue = kvStorage.getValue(forKey: ionicGoalCardStatusKey) as? String {
-            logger.log(level: .info, tag: tag, message: "Found Ionic goal card status for account: \(accountId), value: \(ionicGoalCardStatusValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic goal card status for account: \(accountId)")
             
             // Convert string value to boolean for native app
             // Ionic stores as "true"/"false" strings, native uses Bool
@@ -267,7 +265,7 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(boolValue, forKey: nativeGoalCardStatusKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated goal card status for account: \(accountId) from '\(ionicGoalCardStatusValue)' to \(boolValue)")
+            logger.log(level: .info, tag: tag, message: "Migrated goal card status for account: \(accountId)")
         } else {
             logger.log(level: .info, tag: tag, message: "No goal card status found for account: \(accountId)")
         }
@@ -317,7 +315,7 @@ final class AccountMigrationService {
         
         // Check if Ionic appearance setting exists
         if let ionicAppearanceValue = kvStorage.getValue(forKey: ionicAppearanceKey) as? String {
-            logger.log(level: .info, tag: tag, message: "Found Ionic appearance setting for account: \(accountId), value: \(ionicAppearanceValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic appearance setting for account: \(accountId)")
             
             // Map Ionic AppearanceType values to native AppearanceMode values
             let nativeAppearanceValue: String = {
@@ -336,7 +334,7 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(nativeAppearanceValue, forKey: nativeAppearanceKey)
             theme.loadAppearanceModeForAccount()
-            logger.log(level: .info, tag: tag, message: "Migrated appearance setting for account: \(accountId) from '\(ionicAppearanceValue)' to '\(nativeAppearanceValue)'")
+            logger.log(level: .info, tag: tag, message: "Migrated appearance setting for account: \(accountId)")
         } else {
             logger.log(level: .info, tag: tag, message: "No appearance setting found for account: \(accountId)")
         }
@@ -379,21 +377,21 @@ final class AccountMigrationService {
         var isIntegrated = false
         if let ionicIntegratedValue = kvStorage.getValue(forKey: ionicHealthKitKey) as? String {
             isIntegrated = ionicIntegratedValue.lowercased() == "true"
-            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit integration status for account: \(accountId), value: \(ionicIntegratedValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit integration status for account: \(accountId)")
         }
         
         // Get assigned account (for conflict detection)
         var assignedTo: String? = nil
         if let ionicAssignedValue = kvStorage.getValue(forKey: ionicAssignedToKey) as? String {
             assignedTo = ionicAssignedValue
-            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit assigned to: \(ionicAssignedValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit assigned-to value for account: \(accountId)")
         }
         
         // Check for deintegration flag
         var deIntegrated: String? = nil
         if let ionicDeintegratedValue = kvStorage.getValue(forKey: ionicDeintegratedKey) as? String {
             deIntegrated = ionicDeintegratedValue.lowercased() == "true" ? accountId : nil
-            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit deintegration flag for account: \(accountId), value: \(ionicDeintegratedValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit deintegration flag for account: \(accountId)")
         }
         
         // Only create integration info if there was any HealthKit data in the Ionic app
@@ -407,7 +405,7 @@ final class AccountMigrationService {
             
             do {
                 try integrationRepository.setIntegrationData(accountId: assignedTo ?? accountId, info: integrationInfo)
-                logger.log(level: .info, tag: tag, message: "Successfully migrated HealthKit integration data for account: \(accountId) - integrated: \(isIntegrated), assignedTo: \(assignedTo ?? "nil"), deIntegrated: \(deIntegrated ?? "nil")")
+                logger.log(level: .info, tag: tag, message: "Successfully migrated HealthKit integration data for account: \(accountId)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to migrate HealthKit integration data for account \(accountId): \(error.localizedDescription)")
             }
@@ -457,7 +455,7 @@ final class AccountMigrationService {
         
         // Check if Ionic notification alert flag exists
         if let ionicNotificationAlertValue = kvStorage.getValue(forKey: ionicNotificationAlertKey) as? String {
-            logger.log(level: .info, tag: tag, message: "Found Ionic notification alert flag for account: \(accountId), value: \(ionicNotificationAlertValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic notification alert flag for account: \(accountId)")
             
             // Convert string value to boolean for native app
             // Ionic stores as "true"/"false" strings, native uses Bool
@@ -466,7 +464,7 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(boolValue, forKey: nativeNotificationAlertKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated notification alert flag for account: \(accountId) from '\(ionicNotificationAlertValue)' to \(boolValue)")
+            logger.log(level: .info, tag: tag, message: "Migrated notification alert flag for account: \(accountId)")
         } else {
             logger.log(level: .info, tag: tag, message: "No notification alert flag found for account: \(accountId)")
         }
@@ -502,7 +500,7 @@ final class AccountMigrationService {
         
         // Check if Ionic global notification alert flag exists
         if let ionicNotificationAlertValue = kvStorage.getValue(forKey: ionicGlobalNotificationAlertKey) as? String {
-            logger.log(level: .info, tag: tag, message: "Found Ionic global notification alert flag, value: \(ionicNotificationAlertValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic global notification alert flag")
             
             // Convert string value to boolean for native app
             // Ionic stores as "true"/"false" strings, native uses Bool
@@ -511,7 +509,7 @@ final class AccountMigrationService {
             // Set the value in the native format for the active account
             kvStorage.setValue(boolValue, forKey: nativeNotificationAlertKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated global notification alert flag to account: \(accountId) from '\(ionicNotificationAlertValue)' to \(boolValue)")
+            logger.log(level: .info, tag: tag, message: "Migrated global notification alert flag to account: \(accountId)")
         } else {
             logger.log(level: .info, tag: tag, message: "No global notification alert flag found in Ionic app")
         }
@@ -587,7 +585,7 @@ final class AccountMigrationService {
         let nativeFeedInfoKey = KvStorageKeys.feedInfoKey(for: accountId)
         
         if let ionicFeedInfoValue = kvStorage.getValue(forKey: ionicFeedInfoKey) {
-            logger.log(level: .info, tag: tag, message: "Found Ionic feed info for account: \(accountId)", data: ionicFeedInfoValue)
+            logger.log(level: .info, tag: tag, message: "Found Ionic feed info for account: \(accountId)")
             
             // Try to decode the Ionic feed settings data
             var feedSettings: FeedSetting?
@@ -603,7 +601,7 @@ final class AccountMigrationService {
                 let showPopupMessage = dict["showPopupMessage"] as? Bool ?? true // Default to true if not found
                 let showNotificationBadge = dict["showNotificationBadge"] as? Bool ?? true // Default to true if not found
                 feedSettings = FeedSetting(showPopupMessage: showPopupMessage, showNotificationBadge: showNotificationBadge)
-                logger.log(level: .info, tag: tag, message: "Converted Ionic feed settings from dictionary for account: \(accountId) - popup: \(showPopupMessage), badge: \(showNotificationBadge)")
+                logger.log(level: .info, tag: tag, message: "Converted Ionic feed settings from dictionary for account: \(accountId)")
             }
             // Check if it's stored as a JSON string
             else if let jsonString = ionicFeedInfoValue as? String,
@@ -631,7 +629,7 @@ final class AccountMigrationService {
         let nativeFeedLastTriggeredKey = KvStorageKeys.feedLastTriggeredAtKey(for: accountId)
         
         if let ionicFeedLastTriggeredValue = kvStorage.getValue(forKey: ionicFeedLastTriggeredKey) {
-            logger.log(level: .info, tag: tag, message: "Found Ionic feed last triggered timestamp for account: \(accountId), value: \(ionicFeedLastTriggeredValue)")
+            logger.log(level: .info, tag: tag, message: "Found Ionic feed last triggered timestamp for account: \(accountId)")
             
             // Copy the value directly (it's already in the correct format - Double or String)
             kvStorage.setValue(ionicFeedLastTriggeredValue, forKey: nativeFeedLastTriggeredKey)
@@ -733,7 +731,6 @@ final class AccountMigrationService {
                         // Extract account ID from key
                         if let accountId = extractAccountIdFromKey(key, pattern: pattern) {
                             accountIds.insert(accountId)
-                            logger.log(level: .debug, tag: tag, message: "Found account ID: \(accountId) from key: \(key)")
                         }
                     }
                 } else {
@@ -742,14 +739,13 @@ final class AccountMigrationService {
                         // Extract account ID from key
                         if let accountId = extractAccountIdFromKey(key, pattern: pattern) {
                             accountIds.insert(accountId)
-                            logger.log(level: .debug, tag: tag, message: "Found account ID: \(accountId) from key: \(key)")
                         }
                     }
                 }
             }
         }
         
-        logger.log(level: .info, tag: tag, message: "Found \(accountIds.count) unique account IDs in UserDefaults: \(Array(accountIds))")
+        logger.log(level: .info, tag: tag, message: "Found \(accountIds.count) unique account IDs in UserDefaults")
         return accountIds
     }
     
@@ -818,7 +814,7 @@ final class AccountMigrationService {
     /// Gets stored Ionic account data from UserDefaults/Preferences
     private func getStoredIonicAccountData() -> IonicAccountData? {
         guard let accountString = kvStorage.getValue(forKey: MigrationKey.activeAccount.rawValue) as? String else {
-            logger.log(level: .error, tag: tag, message: "No active account string found in UserDefaults")
+            logger.log(level: .info, tag: tag, message: "No active account string found in UserDefaults")
             return nil
         }
         
@@ -830,7 +826,6 @@ final class AccountMigrationService {
         do {
             let decoder = JSONDecoder()
             let ionicAccount = try decoder.decode(IonicAccountData.self, from: accountData)
-            logger.log(level: .info, tag: tag, message: "Successfully parsed Ionic account data for: \(ionicAccount.email)")
             return ionicAccount
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to decode Ionic account data: \(error.localizedDescription)")
@@ -840,8 +835,6 @@ final class AccountMigrationService {
     
     /// Converts Ionic account data to SwiftUI Account model
     private func convertIonicDataToAccount(_ ionicData: IonicAccountData) throws -> Account {
-        logger.log(level: .info, tag: tag, message: "Converting Ionic data to Account model")
-        
         // Create AccountDTO first
         let accountDTO = AccountDTO(
             id: ionicData.id,
@@ -889,7 +882,6 @@ final class AccountMigrationService {
         account.isSynced = false
         account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
         
-        logger.log(level: .info, tag: tag, message: "Successfully converted Ionic data to Account model")
         return account
     }
 }
