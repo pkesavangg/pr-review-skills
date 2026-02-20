@@ -106,7 +106,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await logger.log(
                 level: .info,
                 tag: tag,
-                message: "New entry saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource)"
+                message: "New entry saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource)",
+                data: entry.toOperationDTO()
             )
             
             try await handleEntryAdded(entry)
@@ -130,6 +131,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             for entry in entries {
                 entry.isSynced = false
                 try await localRepo.saveEntry(entry)
+                await logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Bulk entry item saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)",
+                    data: entry.toOperationDTO()
+                )
                 try await handleEntryAdded(entry)
             }
             

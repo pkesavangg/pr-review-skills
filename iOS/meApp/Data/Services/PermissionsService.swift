@@ -46,7 +46,11 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
-        logger.log(level: .info, tag: tag, message: "Permission map set. count=\(permissions.count)")
+        let details = permissions
+            .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
+            .sorted()
+            .joined(separator: ", ")
+        logger.log(level: .info, tag: tag, message: "Permission map set. count=\(permissions.count), details=[\(details)]")
     }
 
     /// Updates a single permission entry and publishes the new dictionary.
@@ -57,7 +61,11 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         var current = self.permissions ?? [:]
         current[type] = state
         self.permissions = current
-        logger.log(level: .info, tag: tag, message: "Permission updated. type=\(type.rawValue), state=\(state.rawValue)")
+        let details = current
+            .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
+            .sorted()
+            .joined(separator: ", ")
+        logger.log(level: .info, tag: tag, message: "Permission updated. type=\(type.rawValue), state=\(state.rawValue), details=[\(details)]")
     }
 
     // MARK: - Permission Helper
@@ -139,7 +147,15 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
             }
         }
         requiredCategories = newRequired
-        logger.log(level: .info, tag: tag, message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) })")
+        let currentPermissionDetails = (permissions ?? [:])
+            .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
+            .sorted()
+            .joined(separator: ", ")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), details=[\(currentPermissionDetails)]"
+        )
     }
 
     /// Public accessor for the current set of required permission categories.

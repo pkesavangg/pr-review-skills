@@ -779,22 +779,18 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
 
     private func scaleLogDescriptor(_ device: Device) -> String {
-        let scaleType = device.bathScale?.scaleType ?? "nil"
-        let bodyComp = device.bathScale?.bodyComp
-        let preferenceDisplayName = device.r4ScalePreference?.displayName ?? "nil"
-        let preferenceImpedance = device.r4ScalePreference?.shouldMeasureImpedance
-        let preferencePulse = device.r4ScalePreference?.shouldMeasurePulse
-        let preferenceTimeFormat = device.r4ScalePreference?.timeFormat ?? "nil"
-        let metadataFirmware = device.metaData?.firmwareRevision ?? "nil"
-        let metadataSoftware = device.metaData?.softwareRevision ?? "nil"
-        let metadataHardware = device.metaData?.hardwareRevision ?? "nil"
-        let metadataModel = device.metaData?.modelNumber ?? "nil"
-        let metadataSerial = device.metaData?.serialNumber ?? "nil"
-        let metadataManufacturer = device.metaData?.manufacturerName ?? "nil"
-        let metadataSystemId = device.metaData?.systemId ?? "nil"
-        let metadataLatest = device.metaData?.latestVersion ?? "nil"
-
-        return "id=\(device.id), accountId=\(device.accountId), sku=\(device.sku ?? "nil"), deviceName=\(device.deviceName ?? "nil"), nickname=\(device.nickname ?? "nil"), mac=\(device.mac ?? "nil"), wifiMac=\(device.wifiMac ?? "nil"), password=\(device.password.map(String.init) ?? "nil"), token=\(device.token ?? "nil"), broadcastId=\(device.broadcastId.map(String.init) ?? "nil"), broadcastIdString=\(device.broadcastIdString ?? "nil"), peripheralIdentifier=\(device.peripheralIdentifier ?? "nil"), userNumber=\(device.userNumber ?? "nil"), protocolType=\(device.protocolType ?? "nil"), createdAt=\(device.createdAt ?? "nil"), isConnected=\(device.isConnected.map(String.init) ?? "nil"), isWifiConfigured=\(device.isWifiConfigured.map(String.init) ?? "nil"), isSynced=\(device.isSynced.map(String.init) ?? "nil"), hasServerID=\(device.hasServerID), isSoftDeleted=\(device.isSoftDeleted.map(String.init) ?? "nil"), scaleType=\(scaleType), bodyComp=\(bodyComp.map(String.init) ?? "nil"), prefDisplayName=\(preferenceDisplayName), prefImpedance=\(preferenceImpedance.map(String.init) ?? "nil"), prefPulse=\(preferencePulse.map(String.init) ?? "nil"), prefTimeFormat=\(preferenceTimeFormat), fwRevision=\(metadataFirmware), swRevision=\(metadataSoftware), hwRevision=\(metadataHardware), modelNumber=\(metadataModel), serialNumber=\(metadataSerial), manufacturer=\(metadataManufacturer), systemId=\(metadataSystemId), latestVersion=\(metadataLatest)"
+        let preference = fetchAttachedPreferenceSync(by: device.id)
+        let preferenceDisplayName = preference?.displayName ?? "nil"
+        let preferenceDisplayMetrics = preference?.displayMetrics.joined(separator: "|") ?? "nil"
+        let preferenceFactoryReset = preference != nil ? String(preference?.shouldFactoryReset ?? false) : "nil"
+        let preferenceImpedance = preference != nil ? String(preference?.shouldMeasureImpedance ?? false) : "nil"
+        let preferencePulse = preference != nil ? String(preference?.shouldMeasurePulse ?? false) : "nil"
+        let preferenceTimeFormat = preference?.timeFormat ?? "nil"
+        let preferenceTzOffset = preference != nil ? String(preference?.tzOffset ?? 0) : "nil"
+        let preferenceWifiFotaScheduleTime = preference?.wifiFotaScheduleTime.map(String.init) ?? "nil"
+        let preferenceUpdatedAt = preference?.updatedAt ?? "nil"
+        let preferenceIsSynced = preference != nil ? String(preference?.isSynced ?? false) : "nil"
+        return "id=\(device.id), accountId=\(device.accountId), sku=\(device.sku ?? "nil"), deviceName=\(device.deviceName ?? "nil"), nickname=\(device.nickname ?? "nil"), mac=\(device.mac ?? "nil"), wifiMac=\(device.wifiMac ?? "nil"), password=\(device.password.map(String.init) ?? "nil"), token=\(device.token ?? "nil"), broadcastId=\(device.broadcastId.map(String.init) ?? "nil"), broadcastIdString=\(device.broadcastIdString ?? "nil"), peripheralIdentifier=\(device.peripheralIdentifier ?? "nil"), userNumber=\(device.userNumber ?? "nil"), protocolType=\(device.protocolType ?? "nil"), createdAt=\(device.createdAt ?? "nil"), isConnected=\(device.isConnected.map(String.init) ?? "nil"), isWifiConfigured=\(device.isWifiConfigured.map(String.init) ?? "nil"), isSynced=\(device.isSynced.map(String.init) ?? "nil"), hasServerID=\(device.hasServerID), isSoftDeleted=\(device.isSoftDeleted.map(String.init) ?? "nil"), prefDisplayName=\(preferenceDisplayName), prefDisplayMetrics=\(preferenceDisplayMetrics), prefShouldFactoryReset=\(preferenceFactoryReset), prefImpedance=\(preferenceImpedance), prefPulse=\(preferencePulse), prefTimeFormat=\(preferenceTimeFormat), prefTzOffset=\(preferenceTzOffset), prefWifiFotaScheduleTime=\(preferenceWifiFotaScheduleTime), prefUpdatedAt=\(preferenceUpdatedAt), prefIsSynced=\(preferenceIsSynced)"
     }
     
     
