@@ -29,6 +29,19 @@ public final class HealthKitService: HealthKitServiceProtocol {
         self.context = PersistenceController.shared.context
     }
     
+    // MARK: - Helpers
+    private func getActiveAccountId() async -> String? {
+        await MainActor.run {
+            accountService.activeAccount?.accountId
+        }
+    }
+    
+    private func isHealthKitEnabledForActiveAccount() async -> Bool {
+        await MainActor.run {
+            accountService.activeAccount?.integrationSettings?.isHealthKitOn ?? false
+        }
+    }
+    
     // MARK: - HealthKitServiceProtocol
     
     /// Integrates or de-integrates Apple Health based on `turnOn`. Returns `true` when integration remains enabled after the call.
@@ -101,7 +114,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     /// Pushes the entire local entry history into Apple Health.
     public func syncAllData() async throws {
         // Get accountId on main actor first
-        let accountId = try await accountService.getActiveAccount()?.accountId
+        let accountId = await getActiveAccountId()
         guard let accountId else { return }
         logger.log(level: .info, tag: tag, message: "HealthKit full sync started. accountId=\(accountId)")
 
@@ -472,7 +485,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 if let integrationInfo = try await integrationService.getStoredIntegrationData(),
                    integrationInfo.isIntegrated,
                    integrationInfo.type == .healthKit {
-                    let accountId = try? await accountService.getActiveAccount()?.accountId
+                    let accountId = await getActiveAccountId()
                     let scopedOutOfSyncKey = KvStorageKeys.scopedHealthKitModalKey(outOfSyncHKModalFlagKeyBase, accountId: accountId)
                     if (kvStore.getValue(forKey: scopedOutOfSyncKey) as? Bool) != true {
                         kvStore.setValue(true, forKey: scopedOutOfSyncKey)
@@ -487,7 +500,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             // ------------------------------------------------------------
             // Show when HealthKit permissions have been granted (≥1) but we don't yet
             // have a stored integration record for the current device/account.
-            let accountId = try? await accountService.getActiveAccount()?.accountId
+            let accountId = await getActiveAccountId()
             let scopedFinishKey = KvStorageKeys.scopedHealthKitModalKey(finishHKModalFlagKeyBase, accountId: accountId)
             if (kvStore.getValue(forKey: scopedFinishKey) as? Bool) != true {
                 let approvedPermissions = getApprovedPermissionList()
@@ -511,12 +524,12 @@ public final class HealthKitService: HealthKitServiceProtocol {
             // ------------------------------------------------------------
             let scopedAddKey = KvStorageKeys.scopedHealthKitModalKey(addHKModalFlagKeyBase, accountId: accountId)
             if (kvStore.getValue(forKey: scopedAddKey) as? Bool) != true {
-                guard let account = try await accountService.getActiveAccount() else {
+                guard accountId != nil else {
                     return nil
                 }
 
                 // Account level flag from backend indicating HealthKit was enabled previously.
-                let isHealthKitOn = account.integrationSettings?.isHealthKitOn ?? false
+                let isHealthKitOn = await isHealthKitEnabledForActiveAccount()
                 if isHealthKitOn {
                     let storedIntegrationData = try await integrationService.getStoredIntegrationData()
                     if storedIntegrationData == nil {

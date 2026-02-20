@@ -46,10 +46,9 @@ final class IntegrationsService: IntegrationServiceProtocol {
     // MARK: - Helper
     @Sendable
     private func getAccountId() async throws -> String {
-        guard let account = try await accountService.getActiveAccount() else {
-            return ""
+        await MainActor.run {
+            accountService.activeAccount?.accountId ?? ""
         }
-        return account.accountId
     }
     
     // MARK: - IntegrationServiceProtocol Implementation

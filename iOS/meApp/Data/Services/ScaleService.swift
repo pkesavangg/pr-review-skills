@@ -84,8 +84,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             await resetAllConnectionStatusOnLaunch()
             
             // Trigger sync on app launch to fetch scales from server
-            if let account = try? await accountService.getActiveAccount() {
-                lastAccountId = account.accountId
+            if let accountId = await MainActor.run(body: { accountService.activeAccount?.accountId }) {
+                lastAccountId = accountId
                 await syncAllScalesWithRemote()
             }
             // Mark initialization complete after lastAccountId is set
@@ -796,10 +796,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     
     @Sendable
     private func getAccountId() async throws -> String {
-        guard let account = try await accountService.getActiveAccount() else {
-            throw AccountError.noActiveAccount
+        try await MainActor.run {
+            guard let accountId = accountService.activeAccount?.accountId else {
+                throw AccountError.noActiveAccount
+            }
+            return accountId
         }
-        return account.accountId
     }
 
     // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)
