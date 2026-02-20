@@ -347,7 +347,6 @@ class DashboardStore: ObservableObject {
                 // Only refresh streak when goal/initial weight changes; unit changes are handled by handleUnitChange
                 let goalRelatedChanged = previous == nil || previous?.goalWeight != snapshot.goalWeight
                     || previous?.initialWeight != snapshot.initialWeight || previous?.goalType != snapshot.goalType
-                self.logger.log(level: .debug, tag: "DashboardStore", message: "Account settings changed (consolidated subscription)")
                 self.handleSettingsChange(shouldRefreshStreak: goalRelatedChanged)
             }
             .store(in: &cancellables)
@@ -404,10 +403,7 @@ class DashboardStore: ObservableObject {
     // Expose effective dashboard type based on the active account only
     var effectiveDashboardType: DashboardType {
         // Prefer the current in-memory type to avoid accidental downgrades when metrics are empty
-        let result = state.metrics.dashboardType
-        logger.log(level: .debug, tag: "DashboardStore",
-                  message: "effectiveDashboardType: \(result.rawValue)")
-        return result
+        return state.metrics.dashboardType
     }
 
     var streakColumns: [GridItem] {
@@ -896,9 +892,7 @@ class DashboardStore: ObservableObject {
                 return goalManager.convertWeightToDisplay(Int(summary.weight))
             }
         }
-        if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
-            logger.log(level: .debug, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
-        }
+    
 
     }
 
@@ -1067,7 +1061,6 @@ class DashboardStore: ObservableObject {
         Task {
             do {
                 try await goalManager.loadGoalData()
-                logger.log(level: .info, tag: "DashboardStore", message: "Goal card data loaded successfully")
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Failed to load goal card data: \(error)")
             }
@@ -1078,7 +1071,6 @@ class DashboardStore: ObservableObject {
     private func initializeDataManager() async {
         do {
             try await dataManager.loadInitialData()
-            logger.log(level: .info, tag: "DashboardStore", message: "Data manager initialized successfully")
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to initialize data manager: \(error)")
         }
@@ -1192,7 +1184,6 @@ class DashboardStore: ObservableObject {
                 }
             }
 
-            logger.log(level: .info, tag: "DashboardStore", message: "Dashboard configuration loaded from API successfully")
         } catch {
             // On error, set up default metrics and streaks to prevent empty state
             await MainActor.run {
@@ -1311,12 +1302,6 @@ class DashboardStore: ObservableObject {
             )
 
             streakManager.state.activeStreakItemsCount = min(activeCount, allStreaks.count)
-
-            logger.log(
-                level: .debug,
-                tag: "DashboardStore",
-                message: "Active streaks synced: \(streakManager.state.activeStreakItemsCount)/\(allStreaks.count)"
-            )
 
             scheduleUIUpdate()
         }
@@ -1697,7 +1682,6 @@ class DashboardStore: ObservableObject {
 
         if state.ui.goalCardPosition != clampedPosition {
             state.ui.goalCardPosition = clampedPosition
-            logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position updated to: \(clampedPosition)")
             // Explicitly trigger objectWillChange to notify subscribers (like Save button enablement)
             forceImmediateUIUpdate()
         }
@@ -1711,13 +1695,11 @@ class DashboardStore: ObservableObject {
         if state.ui.goalCardPosition > maxPosition {
             // Only clamp if position is way beyond reasonable bounds
             state.ui.goalCardPosition = maxPosition
-            logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to: \(maxPosition) due to streak removal")
         }
 
         // Additional validation: ensure goal card position is never negative
         if state.ui.goalCardPosition < 0 {
             state.ui.goalCardPosition = 0
-            logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position clamped to 0 due to negative value")
         }
 
         // When no streaks are removed (all present), snap to row start to keep layout valid
@@ -1729,8 +1711,6 @@ class DashboardStore: ObservableObject {
             }
         }
 
-        let hasRemovedStreaks = !state.ui.removedStreaks.isEmpty
-        logger.log(level: .debug, tag: "DashboardStore", message: "Goal card position validated: \(state.ui.goalCardPosition), maxPosition: \(maxPosition), streakCount: \(streakItemsToShow.count), hasRemovedStreaks: \(hasRemovedStreaks), isEditMode: \(state.ui.isEditMode)")
     }
 
     func resetDragState() {
@@ -1751,7 +1731,7 @@ class DashboardStore: ObservableObject {
         UIView.clearWiggleIntervalCache()
 
         resetGridLayout()
-        logger.log(level: .debug, tag: "DashboardStore", message: "Restarting wiggle animations after app became active")
+    
     }
 
     func selectMetric(_ label: String) {
@@ -1796,7 +1776,6 @@ class DashboardStore: ObservableObject {
                 }
 
                 try await self.goalManager.loadGoalData()
-                self.logger.log(level: .debug, tag: "DashboardStore", message: "Goal data reloaded after settings change")
             } catch {
                 self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reload goal data after settings change: \(error)")
             }
@@ -1825,7 +1804,7 @@ class DashboardStore: ObservableObject {
         // Force UI update to reflect the new metric type
         scheduleUIUpdate()
 
-        logger.log(level: .debug, tag: "DashboardStore", message: "Dashboard type changed, updated metric type to: \(newDashboardType)")
+    
     }
 
     /// Handles unit changes by refreshing streak data and goal data
@@ -1834,16 +1813,10 @@ class DashboardStore: ObservableObject {
             do {
                 // Refresh streak data with new unit
                 try await streakManager.refreshStreakDataForUnitChange()
-                logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed streak data for unit change")
 
-                // Reload progress metrics from account to map removal state to new labels
-                // This ensures that removed streaks are correctly identified after unit change
                 await loadProgressMetricsFromAccount()
-                logger.log(level: .debug, tag: "DashboardStore", message: "Reloaded progress metrics after unit change")
 
-                // Refresh goal data with new unit
                 try await goalManager.refreshGoalDataForUnitChange()
-                logger.log(level: .debug, tag: "DashboardStore", message: "Refreshed goal data for unit change")
 
                 // Trigger UI update to refresh views with new unit
                 await MainActor.run {
@@ -1872,13 +1845,12 @@ class DashboardStore: ObservableObject {
                 // Note: AccountService.updateProgressMetrics() already updates activeAccount via updatePublishedState()
                 try await saveProgressMetricsToAPI()
 
-                logger.log(level: .info, tag: "DashboardStore", message: "Dashboard changes saved to API successfully")
-
                 // Reload progress metrics from already-updated account to sync UI state.
                 // This ensures that streaks added back in edit mode are properly reflected when exiting edit mode.
                 await loadProgressMetricsFromAccount()
 
                 commonPostSaveUIReset()
+                logger.log(level: .success, tag: "DashboardStore", message: "Dashboard changes saved successfully")
             } catch {
                 logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
                 commonPostSaveUIReset()
@@ -1975,12 +1947,7 @@ class DashboardStore: ObservableObject {
         let allMetricsRemoved = progressMetrics.isEmpty
         UserDefaults.standard.set(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
 
-        // Log the order being saved for debugging
-        logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics), allRemoved: \(allMetricsRemoved)")
-
-        // Save to API
         _ = try await accountService.updateProgressMetrics(metrics: progressMetrics)
-        logger.log(level: .info, tag: "DashboardStore", message: "Progress metrics saved to API successfully: \(progressMetrics)")
     }
 
     private func commonPostSaveUIReset() {
@@ -2000,7 +1967,6 @@ class DashboardStore: ObservableObject {
     private func resetGridOrder() {
         state.ui.streakGridOrder = []
         state.ui.goalCardPosition = 0
-        logger.log(level: .debug, tag: "DashboardStore", message: "Reset grid order to default")
     }
 
     /// Enhanced reset that properly restores removed items and reverses reordering
@@ -2244,7 +2210,6 @@ class DashboardStore: ObservableObject {
     func updateYAxisCache(force: Bool = false) {
         // Avoid domain updates during active scrolling unless explicitly forced
         if state.graph.isScrolling && !force {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Blocking Y-axis update during scroll (not forced)")
             return
         }
 
@@ -2295,14 +2260,11 @@ class DashboardStore: ObservableObject {
             // Y-axis domain changed - invalidate cached chart series to force metric recalculation
             cachedChartSeriesData = nil
             lastCachedYAxisDomain = nil
-            logger.log(level: .debug, tag: "DashboardStore",
-                      message: "Y-axis domain changed from \(previousDomain) to \(newYAxisDomain), invalidating cached chart series")
         }
 
         // Force a UI refresh so Charts read the updated cached domain/ticks immediately
         scheduleUIUpdate()
 
-        logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated (force=\(force))")
     }
 
 
@@ -3220,15 +3182,11 @@ class DashboardStore: ObservableObject {
     /// Reorder metrics during drag
     func reorderMetrics(from source: IndexSet, to destination: Int) {
         metricsManager.state.metrics.move(fromOffsets: source, toOffset: destination)
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Reordered metrics from \(source) to \(destination)")
     }
 
     /// Reorder streak items during drag
     func reorderStreakItems(from source: IndexSet, to destination: Int) {
         streakManager.state.streakItems.move(fromOffsets: source, toOffset: destination)
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Reordered streak items from \(source) to \(destination)")
     }
 
     /// Move a metric from source index to destination index (for UIKit drag and drop)
@@ -3246,7 +3204,7 @@ class DashboardStore: ObservableObject {
               destinationIndex >= 0 && destinationIndex < activeMetricsCount,
               sourceIndex < metricsToShow.count,
               destinationIndex < metricsToShow.count else {
-            // logger.log(level: .warning, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex). Active metrics count: \(activeMetricsCount)")
+            logger.log(level: .error, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex). Active metrics count: \(activeMetricsCount)")
             return
         }
 
@@ -3258,7 +3216,7 @@ class DashboardStore: ObservableObject {
         // Find the actual indices in the full metrics array
         guard let sourceActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == sourceMetric.id }),
               let destinationActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == destinationMetric.id }) else {
-            logger.log(level: .debug, tag: "DashboardStore", message: "Could not find actual indices for metrics")
+            logger.log(level: .error, tag: "DashboardStore", message: "Failed to map visible metrics to actual indices during move. sourceMetricId=\(sourceMetric.id), destinationMetricId=\(destinationMetric.id)")
             return
         }
 
@@ -3272,8 +3230,6 @@ class DashboardStore: ObservableObject {
 
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)")
     }
 
     // MARK: - Graph State Management
@@ -3390,10 +3346,6 @@ class DashboardStore: ObservableObject {
             try? await Task.sleep(nanoseconds: 200_000_000)
             guard !Task.isCancelled, self.isProcessingScrollEnd else { return }
             self.updateMetricsForCurrentView()
-
-            // Summary log at end of scroll
-            let count = self.visibleOperations.count
-            self.logger.log(level: .debug, tag: "DashboardStore", message: "Scroll end summary - period=\(self.state.graph.selectedPeriod), visibleOps=\(count)")
 
             // Mark scroll end processing as complete
             self.isProcessingScrollEnd = false
@@ -3563,7 +3515,6 @@ class DashboardStore: ObservableObject {
         // Force UI update
         scheduleUIUpdate()
 
-        logger.log(level: .debug, tag: "DashboardStore", message: "Forced complete recalculation after programmatic scroll position change")
     }
 
     /// Perform actions when dashboard appears
@@ -3602,7 +3553,6 @@ class DashboardStore: ObservableObject {
             self.scheduleUIUpdate()
         }
 
-        logger.log(level: .debug, tag: "DashboardStore", message: "Dashboard onAppear actions completed")
     }
 
     /// Force a complete refresh of the dashboard state
@@ -3668,7 +3618,6 @@ class DashboardStore: ObservableObject {
     
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
     func cancelEdit() {
-        logger.log(level: .info, tag: "DashboardStore", message: "Cancelling edit session and restoring snapshot.")
         // Restore synchronous snapshots first to immediately revert UI/state
         if hasEditSnapshot {
             metricsManager.state.metrics = snapshotMetrics
@@ -3701,8 +3650,6 @@ class DashboardStore: ObservableObject {
 
     /// Resets the current edit session and starts a fresh one by reverting changes and creating new snapshot
     func resetEditSession() {
-        logger.log(level: .info, tag: "DashboardStore", message: "Resetting edit session and starting fresh.")
-
         // First, restore the original state from snapshot
         if hasEditSnapshot {
             metricsManager.state.metrics = snapshotMetrics
@@ -3738,7 +3685,5 @@ class DashboardStore: ObservableObject {
 
         // Force UI update to reflect the reset state
         forceImmediateUIUpdate()
-
-        logger.log(level: .info, tag: "DashboardStore", message: "Edit session reset successfully - all changes reverted and fresh session started.")
     }
 }

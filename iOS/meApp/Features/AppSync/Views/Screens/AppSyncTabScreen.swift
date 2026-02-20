@@ -16,10 +16,12 @@ struct AppSyncTabScreen: View {
     // Theme & navigation
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
+    @Injector private var logger: LoggerService
     // Store handling scan results
     @StateObject private var scanStore = AppSyncTabStore()
     // Forces a fresh camera/scanner instance whenever AppSync tab is re-opened.
     @State private var scannerSessionId = UUID()
+    private let tag = "AppSyncTabScreen"
 
     /// Resets the scanner session so the next time the tab is shown a fresh camera instance is created.
     private func resetScannerSession() {
