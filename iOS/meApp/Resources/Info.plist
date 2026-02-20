@@ -39,7 +39,5 @@
     </array>
     <key>UIDesignRequiresCompatibility</key>
     <true/>
-  <key>NSLocalNetworkUsageDescription</key>
-  <string>Weight Gurus uses Local Network to pair with Wi-Fi scales.</string>
 </dict>
 </plist>
