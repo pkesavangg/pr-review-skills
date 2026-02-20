@@ -1,3 +1,4 @@
+import SwiftData
 //
 //  AdditionalSettingsViewModel.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Kesavan Panchabakesan on 01/09/25.
 //
 import SwiftUI
-import SwiftData
 
 // MARK: - AdditionalSettingsViewModel
 @MainActor
@@ -63,7 +63,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
         }
     }
 
-    @Published var deviceInfo: DeviceInfo? = nil
+    @Published var deviceInfo: DeviceInfo?
     @Published var isDeviceConnected: Bool = false
     @Published var isWifiConfigured: Bool = false
     @Published var startAnimationEnabled: Bool = false
@@ -183,7 +183,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func showHelpModal() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(ModelNumberHelpModalView(){
+            presentedView: AnyView(ModelNumberHelpModalView {
                 self.notificationService.dismissModal()
             }),
             backdropDismiss: true

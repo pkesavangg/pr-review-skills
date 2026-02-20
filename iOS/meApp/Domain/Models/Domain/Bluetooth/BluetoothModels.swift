@@ -20,7 +20,6 @@ public struct WifiConfig: Sendable, Equatable {
     public let ssid: String
     public let password: String?
 
-
     public init(ssid: String, password: String? = nil) {
         self.ssid = ssid
         self.password = password
@@ -75,7 +74,6 @@ public enum DeviceSettingValue: Sendable, Equatable {
         }
     }
 }
-
 
 /// Enumeration describing which data set should be cleared on the scale.
 public enum DeviceClearType: String, Sendable, CaseIterable {
@@ -326,13 +324,6 @@ public struct DeviceDiscoveryEvent: @unchecked Sendable, Equatable {
     let deviceInfo: ScaleItemInfo
     let protocolType: ProtocolType
     let isNew: Bool
-
-    init(device: Device, deviceInfo: ScaleItemInfo, protocolType: ProtocolType, isNew: Bool) {
-        self.device = device
-        self.deviceInfo = deviceInfo
-        self.protocolType = protocolType
-        self.isNew = isNew
-    }
 }
 
 /// Represents firmware update status
@@ -361,7 +352,3 @@ public struct DeviceLogEntry {
     /// The log content
     let log: String?
 }
-
-
-
-

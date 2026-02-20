@@ -6,9 +6,9 @@
 //  Reusable performance optimization utilities for iOS app
 //
 
+import Combine
 import Foundation
 import os
-import Combine
 
 // MARK: - Performance Optimizer
 

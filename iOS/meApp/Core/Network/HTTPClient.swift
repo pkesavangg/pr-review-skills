@@ -76,8 +76,7 @@ final class HTTPClient {
             // Extract primitives from @Model before crossing async boundaries (R1)
             let expiresAt = account.expiresAt
             let acctId = account.accountId
-            if tokenManager.checkTokenExpiration(expiresAt: expiresAt)
-            {
+            if tokenManager.checkTokenExpiration(expiresAt: expiresAt) {
                 let tokens = try await tokenManager.refreshToken(accountId: acctId)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")

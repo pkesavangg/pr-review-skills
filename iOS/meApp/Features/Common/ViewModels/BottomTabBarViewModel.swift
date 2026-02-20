@@ -5,15 +5,13 @@
 //  Created by Kesavan Panchabakesan on 16/06/25.
 //
 
+import Combine
 // swiftlint:disable type_body_length
 // This view model intentionally aggregates all bottom tab bar navigation logic
 // and state management to maintain a single source of truth for tab state.
-// Splitting would fragment navigation flow and reduce maintainability.
-
-import Foundation
-import SwiftUI
-import Combine
+// Splitting would fragment navigation flow and reduce maintainability.import Foundation
 import GGBluetoothSwiftPackage
+import SwiftUI
 
 @MainActor
 class BottomTabBarViewModel: ObservableObject {
@@ -23,23 +21,23 @@ class BottomTabBarViewModel: ObservableObject {
     // Inject GoalAlertService to handle goal alert navigation
     @Injector var goalAlertService: GoalAlertService
     // Publisher-driven sheet presentation for newly discovered scales
-    @Published var discoveredScale: Device? = nil
+    @Published var discoveredScale: Device?
     /// Holds the most recent Bluetooth discovery event used by the *Scale Discovered* sheet.
-    @Published var discoveryEvent: DeviceDiscoveryEvent? = nil
+    @Published var discoveryEvent: DeviceDiscoveryEvent?
     @Published var selectedTab: BottomTab = .dash
     @Published var canShowFeedNotificationBadge: Bool = false
     @Published var showAppSync: Bool = false
     @Published var showTabBar: Bool = true
     /// Holds the body-composition metrics captured by AppSync when the user taps **Edit** on the confirmation card.
     /// `ManualEntryScreen` will consume this to pre-populate its form, then reset it to `nil`.
-    @Published var pendingAppSyncEditMetrics: AppSyncEntryMetrics? = nil
+    @Published var pendingAppSyncEditMetrics: AppSyncEntryMetrics?
     /// Holds a pending navigation request to be performed by `SettingsScreen` once it appears.
     /// This is set when the user taps *Connect* in the *Add Apple Health Integration* modal.
-    @Published var pendingSettingsNavigation: SettingsRoute? = nil
+    @Published var pendingSettingsNavigation: SettingsRoute?
     /// Tracks the source tab that initiated navigation to settings screens.
     /// Used to return to the original tab when closing settings screens.
-    @Published var settingsNavigationSourceTab: BottomTab? = nil
-    @Published var setupPayload: ScaleDiscoverSheetInfo? = nil
+    @Published var settingsNavigationSourceTab: BottomTab?
+    @Published var setupPayload: ScaleDiscoverSheetInfo?
     /// Remembers the last selected non-AppSync tab to restore after closing scanner
     @Published private(set) var previousNonAppSyncTab: BottomTab = .dash
     
@@ -86,7 +84,7 @@ class BottomTabBarViewModel: ObservableObject {
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
     /// the Apple Health app from the out-of-sync modal.
-    private var hkForegroundObserver: AnyCancellable? = nil
+    private var hkForegroundObserver: AnyCancellable?
     
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
@@ -580,7 +578,7 @@ class BottomTabBarViewModel: ObservableObject {
               discoveredScale == nil,
               !isAppleHealthSheetPresented, // Prevent scale discovery when Apple Health sheet is shown
               selectedTab != .appsync, // Prevent scale discovery when AppSync camera is active
-              event.deviceInfo.setupType ==  .lcbt || event.deviceInfo.setupType == .btWifiR4,
+              event.deviceInfo.setupType == .lcbt || event.deviceInfo.setupType == .btWifiR4,
               !event.deviceInfo.sku.isEmpty else {
             return false
         }

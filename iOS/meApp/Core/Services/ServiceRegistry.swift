@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-
 import Foundation
 
 /// A singleton class responsible for registering and deregistering services
@@ -76,13 +75,11 @@ class ServiceRegistry {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
     }
 
-
     deinit {
         self.deregisterEssentialServices()
         self.deregisterSessionServices()
     }
 }
-
 
 // MARK: - Usage Example for Dependency Injection
 
@@ -125,5 +122,3 @@ Notes:
 - Make sure session services are registered before they're injected or accessed.
 - Use @MainActor for any service that interacts with UI or must run on the main thread.
 */
-
-

@@ -6,7 +6,6 @@
 //
 import SwiftUI
 
-
 // MARK: - SwipeState
 /// The swipe gesture's current state
 enum SwipeState {
@@ -103,7 +102,7 @@ struct SwipeableModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let dragGesture = DragGesture(minimumDistance: swipeMinimumDistance)
-            .updating($isDragging) { value, state, _ in
+            .updating($isDragging) { _, state, _ in
                 state = true
             }
             .onChanged(onDragChanged)
@@ -274,7 +273,7 @@ struct SwipeableModifier: ViewModifier {
 
         // Determine final state based on position and velocity
         let absOffset = abs(totalTranslation)
-        let _ = abs(gestureVelocity) > velocityThreshold
+        _ = abs(gestureVelocity) > velocityThreshold
         let velocityTowardsOpen = gestureVelocity < -velocityThreshold
         let velocityTowardsClose = gestureVelocity > velocityThreshold
 

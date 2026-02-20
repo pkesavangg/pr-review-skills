@@ -2,8 +2,8 @@
 // Sheet-style screen for creating/updating a Goal (maintain / lose / gain).
 // Follows the same interaction/UX pattern as `WeightlessScreen`.
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct GoalSettingScreen: View {
     @Environment(\.appTheme) private var theme
@@ -11,7 +11,7 @@ struct GoalSettingScreen: View {
     @EnvironmentObject private var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     
-    @State private var focusedField: FocusField? = nil
+    @State private var focusedField: FocusField?
     
     private let strings = GoalStrings.self
     private let commonLang = CommonStrings.self
@@ -82,11 +82,10 @@ struct GoalSettingScreen: View {
                                     maxValue: 999.9
                                 ),
                                 value: $settingsStore.goalForm.currentWeight.value,
-                                focusedField: $focusedField,
-                                onCommit: {
+                                focusedField: $focusedField
+                            )                                {
                                     focusedField = .goalWeight
                                 }
-                            )
                             .onChange(of: settingsStore.goalForm.currentWeight.value) { _, newValue in
                                 handleFieldValueChange(.currentWeight, newValue: newValue)
                             }
@@ -104,11 +103,10 @@ struct GoalSettingScreen: View {
                                 maxValue: 999.9
                             ),
                             value: $settingsStore.goalForm.goalWeight.value,
-                            focusedField: $focusedField,
-                            onCommit: {
+                            focusedField: $focusedField
+                        )                            {
                                 focusedField = nil
                             }
-                        )
                         .onChange(of: settingsStore.goalForm.goalWeight.value) { _, newValue in
                             handleFieldValueChange(.goalWeight, newValue: newValue)
                         }
@@ -185,13 +183,13 @@ struct GoalSettingScreen: View {
                     HStack { Text(strings.goalTypeLabel).bold(); Spacer(); Text(goalType.rawValue.capitalized) }
                     if let initial = goalSettings.initialWeight {
                         HStack {
-                            Text(strings.startingWeightLabel).bold(); Spacer();
+                            Text(strings.startingWeightLabel).bold(); Spacer()
                             Text(formatDisplayWeight(initial))
                         }
                     }
                     if let gWeight = goalSettings.goalWeight {
                         HStack {
-                            Text(strings.goalWeightLabel).bold(); Spacer();
+                            Text(strings.goalWeightLabel).bold(); Spacer()
                             Text(formatDisplayWeight(gWeight))
                         }
                     }

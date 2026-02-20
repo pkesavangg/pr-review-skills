@@ -1,6 +1,6 @@
+import Combine
 // swiftlint:disable type_body_length function_body_length
 import Foundation
-import Combine
 
 /*
  SwiftLint exception:
@@ -8,23 +8,23 @@ import Combine
  */
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
-    static let shared: AccountService = AccountService()
+    static let shared = AccountService()
     @Injector var notificationService: NotificationHelperService
     @Injector var logger: LoggerService
     @Injector var bluetoothService: BluetoothService
 
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
-    private let networkMonitor: NetworkMonitor = NetworkMonitor.shared
+    private let networkMonitor = NetworkMonitor.shared
     /// API repository for integration-related network calls
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
     /// Migration service for Ionic app data
     private let migrationService = AccountMigrationService()
 
-    @Published var activeAccount: Account? = nil
+    @Published var activeAccount: Account?
     @Published var allAccounts: [Account] = []
 
-    var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
+    var alertLang = AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
     private let tag = "AccountService"
 
@@ -47,7 +47,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             do {
                 try await syncUnsyncedAccounts() // Try to sync any offline changes
                 try await updatePublishedState()
-                let _ = try await refreshAllAccounts()
+                _ = try await refreshAllAccounts()
                 if activeAccount == nil {
                     /// migrate from ionic app if needed
                     try await migrateFromIonicAppIfNeeded()
@@ -56,14 +56,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Error: \(error.localizedDescription)")
             }
             $activeAccount
-                .sink(receiveValue: { data in
+                .sink { data in
                     if data == nil {
                         ServiceRegistry.shared.deregisterSessionServices()
                     } else {
                         ServiceRegistry.shared.registerSessionServices()
                         Theme.shared.setActiveAccount(data?.accountId)
                     }
-                })
+                }
                 .store(in: &cancellables)
             try await updatePublishedState()
         }
@@ -532,7 +532,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         let deviceId = DeviceInfoHelper.getDeviceId()
         do {
             logger.log(level: .info, tag: tag, message: "Update integration requested for accountId=\(accountId), type=\(integrationType.rawValue)")
-            let _ = try await integrationApiRepo.createHealthIntegration(
+            _ = try await integrationApiRepo.createHealthIntegration(
                 deviceId: deviceId,
                 type: integrationType,
                 preferences: preferences
@@ -857,7 +857,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await updateNotifications(notifications: notifications)
             }
 
-            
             // Handle Dashboard Type
             if let dashboardType = offlineDashboardTypeRaw,
                !isSynced {
@@ -899,7 +898,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 )
                 try await createGoal(goal)
             }
-
 
             // Handle Integration Settings
             if localAccount.integrationSettings != nil,
@@ -1141,7 +1139,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         allAccounts = try await localRepo.fetchAllAccounts()
         let nextActive = allAccounts.first { $0.isActiveAccount == true }
 
-        
         if forceRefresh || activeAccount?.accountId != nextActive?.accountId {
             activeAccount = nextActive
             // Always update theme when active account changes (including logout)
@@ -1178,7 +1175,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private func checkIfMaxAccountsReached(email: String) async throws {
         if try await hasReachedMaxAccounts() {
             allAccounts = try await localRepo.fetchAllAccounts().filter { $0.isLoggedIn == true }
-            if !(allAccounts.contains { $0.email == email } ) {
+            if !(allAccounts.contains { $0.email == email }) {
                 logger.log(level: .error, tag: tag, message: "Max accounts reached. Blocking new account creation")
                 throw AccountError.maxAccountsReached
             }

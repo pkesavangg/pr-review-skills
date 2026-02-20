@@ -77,7 +77,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Gets all devices that haven't been synced with the API.
     /// - Returns: An array of unsynced devices.
     func getUnsyncedDevices() async throws -> [Device] {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { ($0.isSynced ?? false) == false  })
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { ($0.isSynced ?? false) == false   })
         return try context.fetch(descriptor)
     }
 

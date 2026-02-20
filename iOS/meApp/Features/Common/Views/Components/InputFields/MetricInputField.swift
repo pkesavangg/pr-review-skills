@@ -1,3 +1,4 @@
+import Combine
 //
 //  MetricInputField.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Kesavan Panchabakesan on 10/06/25.
 //
 import SwiftUI
-import Combine
 
 // MARK: - Metric Input Field (Wrapper over AppInputField)
 
@@ -18,8 +18,8 @@ struct MetricInputField: View {
     @Binding var focusedField: FocusField?
     
     // Callbacks
-    var onCommit: (() -> Void)? = nil
-    var onEditingChanged: ((Bool) -> Void)? = nil
+    var onCommit: (() -> Void)?
+    var onEditingChanged: ((Bool) -> Void)?
     
     // Internal state and formatter
     @State private var displayValue: String = ""
@@ -49,7 +49,7 @@ struct MetricInputField: View {
             onCommit: onCommit,
             onEditingChanged: onEditingChanged
         )
-        .onChange(of: displayValue) { oldValue, newValue in
+        .onChange(of: displayValue) { _, newValue in
             handleValueChange(newValue)
         }
         .onChange(of: value) { oldValue, newValue in
@@ -119,7 +119,6 @@ struct MetricInputField: View {
         }
     }
 }
-
 
 // MARK: - Metric Input TestingView (for testing the MetricInputField)
 

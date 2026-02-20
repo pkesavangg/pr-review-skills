@@ -16,7 +16,7 @@ struct BIAInfoModalView: View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 
-                HStack{
+                HStack {
                     Spacer()
                     Image(AppAssets.xmarkSmall)
                         .resizable()
@@ -59,6 +59,6 @@ struct BIAInfoModalView: View {
 
 // MARK: - Preview
 #Preview {
-    BIAInfoModalView(onClose: {})
+    BIAInfoModalView {}
         .environmentObject(Theme.shared)
 }

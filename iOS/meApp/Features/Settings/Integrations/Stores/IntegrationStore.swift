@@ -4,8 +4,8 @@
 //  Created by Kesavan Panchabakesan on 26/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -28,7 +28,7 @@ class IntegrationStore: ObservableObject {
     /// Controls whether the Safari browser is presented.
     @Published var showBrowser: Bool = false
     /// The URL to load in the in-app browser.
-    @Published var browserURL: URL? = nil
+    @Published var browserURL: URL?
     @Published var skipInvalidIntegrationsCheck = false
     
     let appConstants = AppConstants.self.Product
@@ -42,15 +42,14 @@ class IntegrationStore: ObservableObject {
         browserURL ?? URL(string: appConstants.baseURL)!
     }
     
-    
     /// List of integrations to display.
     @Published var integrations: [IntegrationItem] = [
         .init(type: .fitbit, isSelected: false),
-        .init(type: .myFitnessPal, isSelected: false),
+        .init(type: .myFitnessPal, isSelected: false)
     ]
     
     // Tracks the integration operation awaiting confirmation from the API.
-    private var pendingAction: PendingIntegrationAction? = nil
+    private var pendingAction: PendingIntegrationAction?
     
     // Ensures we prompt for invalid integrations only once per screen lifecycle.
     private var hasCheckedInvalidIntegrations = false

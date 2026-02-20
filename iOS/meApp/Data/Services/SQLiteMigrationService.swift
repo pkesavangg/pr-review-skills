@@ -3,7 +3,7 @@ import SQLite3
 import SwiftData
 
 /// Service to migrate data from Ionic app's SQLite database to SwiftData
-//@MainActor
+// @MainActor
 final class SQLiteMigrationService {
     @Injector private var logger: LoggerService
     private let migrationLogBatchSize = 100 // Number of entries to log in batch during migration
@@ -71,8 +71,6 @@ final class SQLiteMigrationService {
             throw error
         }
     }
-    
-
     
     /// Checks if migration is needed by looking for the SQLite database
     func isMigrationNeeded() -> Bool {
@@ -144,8 +142,6 @@ final class SQLiteMigrationService {
         
         return tableCount >= 1 // At least 'opStack' table should exist
     }
-    
-
     
     private func migrateAllUsersEntries() async throws -> [String: Int] {
         let entryRepository = EntryRepository()
@@ -227,10 +223,6 @@ final class SQLiteMigrationService {
         
         return migratedData
     }
-    
-
-    
-
     
     private func createEntryFromSQLiteRow(statement: OpaquePointer, accountId: String) throws -> Entry {
         // Extract basic opStack operation data

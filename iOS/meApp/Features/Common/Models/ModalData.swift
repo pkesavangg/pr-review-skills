@@ -8,9 +8,9 @@ import SwiftUI
 
 struct ModalData: Identifiable, Equatable {
     let id = UUID()
-    var presentedView: AnyView = AnyView(EmptyView())
+    var presentedView = AnyView(EmptyView())
     var backdropDismiss: Bool = true
-    var onDismiss: (() -> Void)? = nil
+    var onDismiss: (() -> Void)?
     
     static func == (lhs: ModalData, rhs: ModalData) -> Bool {
         lhs.id == rhs.id

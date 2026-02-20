@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 12/06/25.
 //
 
-
 import SwiftUI
 
 // MARK: - Email Step View
@@ -56,7 +55,6 @@ struct EmailStepView: View {
         }
     }
 }
-
 
 #Preview(body: {
     EmailStepView(signupStore: SignupStore())

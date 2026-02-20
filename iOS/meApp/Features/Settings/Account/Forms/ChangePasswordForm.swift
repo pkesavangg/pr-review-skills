@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 20/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Form model used in Change-Password screen for validating the password change inputs.
 /// Validation rules:
@@ -18,7 +18,7 @@ class ChangePasswordForm: ObservableForm {
     // MARK: - Controls
     var currentPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var newPassword     = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
-    var confirmNewPassword  = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
+    var confirmNewPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
 
     // MARK: - Change publisher
     /// Emits whenever any of the underlying controls changes – convenient for Combine bindings.
@@ -26,7 +26,7 @@ class ChangePasswordForm: ObservableForm {
         Publishers.MergeMany([
             currentPassword.$value.map { _ in () }.eraseToAnyPublisher(),
             newPassword.$value.map { _ in () }.eraseToAnyPublisher(),
-            confirmNewPassword.$value.map { _ in () }.eraseToAnyPublisher(),
+            confirmNewPassword.$value.map { _ in () }.eraseToAnyPublisher()
         ])
         .eraseToAnyPublisher()
     }

@@ -5,9 +5,9 @@
 //  Created by Cursor AI on 08/07/25.
 //
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 /// Store responsible for orchestrating the A6 (LCBT) scale-setup multi-step flow.
 @MainActor
 final class A6ScaleSetupStore: ObservableObject {
@@ -25,7 +25,7 @@ final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
-    private var deviceDiscoveryCancellable: AnyCancellable? = nil
+    private var deviceDiscoveryCancellable: AnyCancellable?
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
@@ -59,7 +59,7 @@ final class A6ScaleSetupStore: ObservableObject {
     @Published var isNextEnabled: Bool = true
     
     /// Task handling time-based transitions during testing.
-    private var stepTimerTask: Task<Void, Never>? = nil
+    private var stepTimerTask: Task<Void, Never>?
     private let tag = "A6ScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self

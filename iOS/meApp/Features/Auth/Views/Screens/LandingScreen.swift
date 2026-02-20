@@ -13,7 +13,7 @@ struct LandingScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var router = Router<AuthRoute>()
     @StateObject private var landingStore = LandingStore()
-    @State private var openItemID: UUID? = nil
+    @State private var openItemID: UUID?
     let lang = LandingScreenStrings.self
     let commonLang = CommonStrings.self
     let itemHeight = 72
@@ -45,14 +45,14 @@ struct LandingScreen: View {
                         LogoView()
                             .padding(.bottom, 55)
 
-                        VStack(alignment: .center, spacing: .spacingSM){
+                        VStack(alignment: .center, spacing: .spacingSM) {
 
                             Button(action: {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .login(nil))
                                 }
 
-                            }, label:{
+                            }, label: {
                                 Text(commonLang.logIn.uppercased())
                                     .fontWeight(.bold)
                                     .fontOpenSans(.button1)
@@ -96,8 +96,8 @@ struct LandingScreen: View {
                                                 VStack(spacing: 0) {
                                                     UserListItemView(
                                                         user: item,
-                                                        openItemID: $openItemID,
-                                                        onTap: { id, needsLogin in
+                                                        openItemID: $openItemID
+                                                    )                                                        { id, needsLogin in
                                                             if needsLogin {
                                                                 // If the user is expired or logged out, allow login with the same email.
                                                                 // If the user modifies the email and the account limit has been reached, show the max accounts alert.
@@ -106,7 +106,6 @@ struct LandingScreen: View {
                                                                 landingStore.switchAccount(to: id)
                                                             }
                                                         }
-                                                    )
                                                     if index < landingStore.userItems.count - 1 {
                                                         Divider()
                                                             .frame(height: 0.5)

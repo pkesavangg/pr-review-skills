@@ -1,7 +1,7 @@
 import Foundation
-import Network
 import GGBluetoothSwiftPackage
 import ggWifiScalePackage
+import Network
 
 @MainActor
 final class WifiScaleService: WifiScaleServiceProtocol {
@@ -80,7 +80,6 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
     func smartConnect(_ info: WifiSetupInfo) async throws {
         
-
         let config = makeConfig(from: info)
         logger.log(level: .info, tag: tag, message: "smartConnect called with info: \(info)", data: config)
         do {
@@ -113,7 +112,6 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     ///   - info:       The setup parameters (SSID, password, token, etc.).
     func apMode(_ info: WifiSetupInfo) async throws {
         
-
         let config = makeConfig(from: info)
         logger.log(level: .info, tag: tag, message: "apMode called with info: \(info)", data: config)
         do {

@@ -1,8 +1,8 @@
+import Charts
+import Foundation
+import os
 // swiftlint:disable type_body_length file_length function_body_length identifier_name line_length
 import SwiftUI
-import Charts
-import os
-import Foundation
 
 /*
  SwiftLint exception:
@@ -269,8 +269,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 } else {
                     d0 = ((2 * h0 + h1) * slopes[0] - h0 * slopes[1]) / (h0 + h1)
                 }
-                if d0.sign != slopes[0].sign { d0 = 0 }
-                else if abs(d0) > 3 * abs(slopes[0]) { d0 = 3 * slopes[0] }
+                if d0.sign != slopes[0].sign { d0 = 0 } else if abs(d0) > 3 * abs(slopes[0]) { d0 = 3 * slopes[0] }
                 tangents[0] = d0
             }
             // d_{n-1}
@@ -284,8 +283,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 } else {
                     dn1 = ((2 * hm1 + hm2) * slopes[pointCount - 2] - hm1 * slopes[pointCount - 3]) / (hm1 + hm2)
                 }
-                if dn1.sign != slopes[pointCount - 2].sign { dn1 = 0 }
-                else if abs(dn1) > 3 * abs(slopes[pointCount - 2]) { dn1 = 3 * slopes[pointCount - 2] }
+                if dn1.sign != slopes[pointCount - 2].sign { dn1 = 0 } else if abs(dn1) > 3 * abs(slopes[pointCount - 2]) { dn1 = 3 * slopes[pointCount - 2] }
                 tangents[pointCount - 1] = dn1
             }
         }
@@ -295,10 +293,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let normalizedPosition2 = normalizedPosition * normalizedPosition
         let normalizedPosition3 = normalizedPosition2 * normalizedPosition
 
-        let h00 =  2 * normalizedPosition3 - 3 * normalizedPosition2 + 1
-        let h10 =      normalizedPosition3 - 2 * normalizedPosition2 + normalizedPosition
+        let h00 = 2 * normalizedPosition3 - 3 * normalizedPosition2 + 1
+        let h10 = normalizedPosition3 - 2 * normalizedPosition2 + normalizedPosition
         let h01 = -2 * normalizedPosition3 + 3 * normalizedPosition2
-        let h11 =      normalizedPosition3 -     normalizedPosition2
+        let h11 = normalizedPosition3 - normalizedPosition2
 
         let y = h00 * ys[segmentIndex]
         + h10 * segmentWidth * tangents[segmentIndex]
@@ -459,7 +457,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Generated fresh chart data: \(series.count) points, weightRange: \(currentWeightRange), selectedMetric: \(selectedMetric ?? "none")")
         return series
     }
-
 
     // MARK: - Chart Data Generation with Y-Axis Domain Consistency
 
@@ -1048,7 +1045,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.cachedYAxisTicks = newTicks
     }
 
-
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         // During active scrolling, reuse cache ONLY if it still lies fully within the
         // current strict window boundaries. This avoids left-edge "lingering" where a
@@ -1483,7 +1479,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let visibleStart: Date
         let visibleEnd: Date
 
-  
         let adjustedMinDate = overallMinDate.addingTimeInterval(-minDateBuffer)
         let adjustedMaxDate = overallMaxDate.addingTimeInterval(maxDateBuffer)
 
@@ -1542,7 +1537,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
         let entryCount = operations.count
-        let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
         let xAxisValues: [Date]
         switch period {
@@ -1852,7 +1847,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
         // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
         switch period {
@@ -2128,7 +2122,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
         return roundedAverage
     }
-
 
     func handleScrollEndOptimized(updateWeightDisplay: @escaping () -> Void, recalculateYAxis: @escaping () -> Void, updateMetrics: @escaping () -> Void) {
         state.scrollEndTimer?.invalidate()

@@ -5,9 +5,9 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
+import Combine
 import Foundation
 import GGBluetoothSwiftPackage
-import Combine
 
 @MainActor
 final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
@@ -16,7 +16,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
     // MARK: - Published Properties
     /// Latest permission status keyed by permission type. `nil` until first update from SDK.
-    @Published private(set) var permissions: [GGPermissionType: GGPermissionState]? = nil
+    @Published private(set) var permissions: [GGPermissionType: GGPermissionState]?
 
     /// Permission categories that are required based on the user’s connected devices.
     @Published private(set) var requiredCategories: Set<PermissionCategory> = []
@@ -40,7 +40,6 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
     
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
@@ -202,7 +201,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
                             let state = await self.showLocationDisabledAlert()
                             continuation.resume(returning: state)
                         }
-                    },
+                    }
                 ]
             )
             self.notificationService.showAlert(alert)

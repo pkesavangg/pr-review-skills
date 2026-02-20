@@ -5,9 +5,9 @@
 //  Created by Lakshmi Priya on 03/06/25.
 //
 
+import Combine
 import Foundation
 import SwiftData
-import Combine
 
 @MainActor
 final class IntegrationsService: IntegrationServiceProtocol {
@@ -17,7 +17,6 @@ final class IntegrationsService: IntegrationServiceProtocol {
     @Injector var logger: LoggerService
     @Injector var entryService: EntryService
     
-    
     // MARK: - Combine
     /// Holds Combine cancellables for the lifetime of the service.
     private var cancellables = Set<AnyCancellable>()
@@ -26,7 +25,6 @@ final class IntegrationsService: IntegrationServiceProtocol {
     private let apiRepository = IntegrationAPIRepository()
     private let localRepository = IntegrationRepository()
 
-    
     // MARK: - Initializer -------------------------------------------------
     /// Subscribes to `EntryService.entrySaved` so that every newly-created entry
     /// is automatically forwarded to the HealthKit log endpoint (if the account

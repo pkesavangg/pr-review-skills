@@ -24,5 +24,3 @@ struct ScaleDTO: Codable, Sendable {
     var userId: String?
     var userNumber: Int?
 }
-
-

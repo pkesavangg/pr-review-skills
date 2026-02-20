@@ -103,16 +103,14 @@ struct ConnectionIndicatorView: View {
     }
 }
 
-
-
 #Preview {
     ConnectionIndicatorView(image: AppAssets.wifi, isFailure: true)
 }
 
-//Testing View
+// Testing View
 struct TestConnectedIndicatorView: View {
     var body: some View {
-        VStack(spacing: 35){
+        VStack(spacing: 35) {
             ConnectionIndicatorView(image: AppAssets.wifi, isFailure: false)
             ConnectionIndicatorView(image: AppAssets.wifi, isFailure: true)
             ConnectionIndicatorView(image: AppAssets.meLogoLight, isFailure: true)

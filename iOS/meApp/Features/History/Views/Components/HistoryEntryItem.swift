@@ -5,8 +5,8 @@
 //  Created by Barath Chittibabu on 17/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// Reusable view that displays a single history entry with expandable metrics
 /// Supports selection, expansion, and swipe-to-delete functionality
@@ -20,7 +20,7 @@ struct HistoryEntryItem: View {
     let onTap: () -> Void
     let onDelete: () -> Void
     let onMetricTap: (Entry, BodyMetric) -> Void
-    var openItemID: Binding<UUID?>? = nil // Optional binding for swipeable open tracking
+    var openItemID: Binding<UUID?>? // Optional binding for swipeable open tracking
     
     // MARK: - Computed Properties
     
@@ -100,9 +100,8 @@ struct HistoryEntryItem: View {
                             metricType: item.metric,
                             value: item.value,
                             index: index,
-                            size: entry.metricItems.count,
-                            onTap: { onMetricTap(entry, item.metric) }
-                        )
+                            size: entry.metricItems.count
+                        )                            { onMetricTap(entry, item.metric) }
                         .id("\(entry.id.uuidString)-metric-\(index)")
                     }
                 }
@@ -117,7 +116,6 @@ struct HistoryEntryItem: View {
         }
     }
 }
-
 
 // MARK: - Preview
 
@@ -152,7 +150,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             unit: "kg"
         )
         
-        @State var openItemID: UUID? = nil
+        @State var openItemID: UUID?
         return VStack(spacing: .spacingMD) {
             HistoryEntryItem(
                 entry: entry,
@@ -179,6 +177,3 @@ struct HistoryEntryItem_Previews: PreviewProvider {
     }
 }
 #endif
-
-
-

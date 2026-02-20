@@ -48,6 +48,6 @@ struct ModelNumberHelpModalView: View {
 
 // MARK: - Preview
 #Preview {
-    ModelNumberHelpModalView(onClose: {})
+    ModelNumberHelpModalView {}
         .environmentObject(Theme.shared)
 }

@@ -54,7 +54,7 @@ protocol ScaleRepositoryProtocol {
 
     /// Updates scale preference. (PATCH /scale-r4/preference)
     /// - Parameter preference: The R4ScalePreference to update.
-    func patchScalePreference(_ scaleId: String,_ preference: R4ScalePreference) async throws
+    func patchScalePreference(_ scaleId: String, _ preference: R4ScalePreference) async throws
 
     /// Updates scale preference from a DTO (safe for async boundaries — no @Model crossing required).
     func patchScalePreference(_ scaleId: String, fromDTO dto: R4ScalePreferenceDTO) async throws

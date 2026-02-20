@@ -13,4 +13,3 @@ struct LoginScreenStrings {
     static let byLoggingIn = "by logging in, you are agreeing to our"
     static let passwordPlaceholder = "Enter your password"
 }
-

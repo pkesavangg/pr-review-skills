@@ -42,7 +42,7 @@ struct MonthSummaryItem: View {
 
     var body: some View {
       VStack(spacing: 0) {
-        HStack() {
+        HStack {
             // Month & entry count
             VStack(alignment: .leading) {
                 Text(monthYearText)
@@ -125,5 +125,3 @@ struct MonthSummaryItem_Previews: PreviewProvider {
     }
 }
 #endif
-
-

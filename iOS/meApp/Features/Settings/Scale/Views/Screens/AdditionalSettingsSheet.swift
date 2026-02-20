@@ -50,11 +50,10 @@ struct AdditionalSettingsSheet: View {
                             toggleBinding: Binding(get: { viewModel.startAnimationEnabled }, set: { val in
                                 viewModel.startAnimationEnabled = val
                             }),
-                            isDisabled: !(viewModel.isDeviceConnected),
-                            onTap: {
+                            isDisabled: !(viewModel.isDeviceConnected)
+                        )                            {
                                 Task { await viewModel.setStartAnimation(viewModel.startAnimationEnabled) }
                             }
-                        )
                     )
                     
                     ActionListItemView(
@@ -64,36 +63,31 @@ struct AdditionalSettingsSheet: View {
                             toggleBinding: Binding(get: { viewModel.endAnimationEnabled }, set: { val in
                                 viewModel.endAnimationEnabled = val
                             }),
-                            isDisabled: !(viewModel.isDeviceConnected),
-                            onTap: {
+                            isDisabled: !(viewModel.isDeviceConnected)
+                        )                            {
                                 Task { await viewModel.setEndAnimation(viewModel.endAnimationEnabled) }
                             }
-                        )
                     )
                     ActionListItemView(
                         config: ActionListItemConfig(
-                            title: lang.clearData,
-                            onTap: { showClearDataPicker = true }
-                        )
+                            title: lang.clearData
+                        )                            { showClearDataPicker = true }
                     )
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.timeFormat,
-                            value: (viewModel.scale.r4ScalePreference?.timeFormat ?? "12") + "H",
-                            onTap: { showTimeFormatPicker = true }
-                        )
+                            value: (viewModel.scale.r4ScalePreference?.timeFormat ?? "12") + "H"
+                        )                            { showTimeFormatPicker = true }
                     )
                     ActionListItemView(
                         config: ActionListItemConfig(
-                            title: lang.resetFirmware,
-                            onTap: { Task { await viewModel.resetFirmware() } }
-                        )
+                            title: lang.resetFirmware
+                        )                            { Task { await viewModel.resetFirmware() } }
                     )
                     ActionListItemView(
                         config: ActionListItemConfig(
-                            title: lang.restoreFactorySettings,
-                            onTap: { Task { await viewModel.restoreFactorySettings() } }
-                        )
+                            title: lang.restoreFactorySettings
+                        )                            { Task { await viewModel.restoreFactorySettings() } }
                     )
                 }
                 .listRowInsets()

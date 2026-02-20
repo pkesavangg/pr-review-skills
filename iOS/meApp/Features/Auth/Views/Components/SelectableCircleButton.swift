@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-
 import SwiftUI
 
 struct SelectableCircleButton: View {
@@ -30,7 +29,6 @@ struct SelectableCircleButton: View {
         .buttonStyle(.plain)
     }
 }
-
 
 #Preview {
     SelectableCircleButton(label: "Male", isSelected: true) {

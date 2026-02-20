@@ -70,4 +70,3 @@ protocol LoggerServiceProtocol {
     ///  - Throws: Error if sending fails
     func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry], version: String) async throws
 }
-

@@ -5,8 +5,8 @@
 //  Created by AI Assistant on 14/08/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Store for managing weight-only mode alert state and actions
 @MainActor
@@ -95,7 +95,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
                         )
                     )
                 }
-            case .failure(_):
+            case .failure:
                 await MainActor.run {
                     notificationService.showToast(
                         ToastModel(

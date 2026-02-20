@@ -9,9 +9,9 @@ import Foundation
 @MainActor
 class NotificationHelperService: ObservableObject {
     public static let shared = NotificationHelperService()
-    @Published var alertData: AlertModel? = nil
-    @Published var toastData: ToastModel? = nil
-    @Published var loaderData: LoaderModel? = nil
+    @Published var alertData: AlertModel?
+    @Published var toastData: ToastModel?
+    @Published var loaderData: LoaderModel?
     @Published var modalViewData: [ModalData] = []
     @Published var isOverlayActive: Bool = false
     
@@ -151,18 +151,16 @@ class NotificationHelperService: ObservableObject {
     func showModal(_ modal: ModalData) {
         let wrappedModal = ModalData(
             presentedView: modal.presentedView,
-            backdropDismiss: modal.backdropDismiss,
-            onDismiss: {
+            backdropDismiss: modal.backdropDismiss
+        )            {
                 modal.onDismiss?()
                 self.dismissModal()
             }
-        )
         DispatchQueue.main.async {
             self.modalViewData.append(wrappedModal)
             self.isOverlayActive = true
         }
     }
-    
     
     func dismissModal() {
         DispatchQueue.main.async {

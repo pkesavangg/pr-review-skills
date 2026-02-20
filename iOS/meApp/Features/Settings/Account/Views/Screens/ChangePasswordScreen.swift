@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 20/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - Change Password Screen
 /// A screen that allows users to change their account password.
@@ -18,7 +18,7 @@ struct ChangePasswordScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
 
-    @State private var focusedField: FocusField? = nil
+    @State private var focusedField: FocusField?
 
     private let labels = InputFieldLabels.self
     private let screenLang = ChangePasswordStrings.self

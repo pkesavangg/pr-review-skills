@@ -1,15 +1,15 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 
 /// Main scale state container
 struct ScaleState {
-    var ui: ScaleUIState = ScaleUIState()
-    var data: ScaleDataState = ScaleDataState()
-    var device: ScaleDeviceState = ScaleDeviceState()
-    var users: ScaleUsersState = ScaleUsersState()
-    var wifi: ScaleWifiState = ScaleWifiState()
-    var modes: ScaleModesState = ScaleModesState()
-    var metrics: ScaleMetricsState = ScaleMetricsState()
+    var ui = ScaleUIState()
+    var data = ScaleDataState()
+    var device = ScaleDeviceState()
+    var users = ScaleUsersState()
+    var wifi = ScaleWifiState()
+    var modes = ScaleModesState()
+    var metrics = ScaleMetricsState()
 }
 
 // MARK: - UI State
@@ -26,16 +26,16 @@ struct ScaleDataState {
     var addScaleForm = AddScaleForm()
     var wifiPasswordValidationForm = WifiPasswordValidationForm()
     var nicknameInput: String = ""
-    var browserURL: URL? = nil
+    var browserURL: URL?
 }
 
 // MARK: - Device State
 struct ScaleDeviceState {
-    var scale: Device? = nil
-    var firmwareVersion: String? = nil
-    var macAddress: String? = nil
-    var connectedWifiSSID: String? = nil
-    var deviceInfo: DeviceMetaData? = nil
+    var scale: Device?
+    var firmwareVersion: String?
+    var macAddress: String?
+    var connectedWifiSSID: String?
+    var deviceInfo: DeviceMetaData?
     var isBluetoothScale: Bool = false
     var isDeviceConnected: Bool = false
     var scaleTypeValue: String = "Bluetooth/Wi-Fi"
@@ -46,14 +46,14 @@ struct ScaleDeviceState {
 // MARK: - Users State
 struct ScaleUsersState {
     var deviceUsers: [DeviceUser] = []
-    var currentDeviceUser: DeviceUser? = nil
+    var currentDeviceUser: DeviceUser?
     var isLoadingUsers: Bool = false
 }
 
 // MARK: - WiFi State
 struct ScaleWifiState {
     var wifiConnectionState: ConnectionState = .loading
-    var connectedWifiNetwork: String? = nil
+    var connectedWifiNetwork: String?
     var wifiNetworks: [String] = ["greatergoods1", "great2542", "ggtesting"]
 }
 

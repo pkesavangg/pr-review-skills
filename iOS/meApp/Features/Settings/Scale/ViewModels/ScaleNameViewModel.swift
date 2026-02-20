@@ -5,8 +5,8 @@
 //  Created by Lakshmi Priya on 14/10/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @MainActor
 final class ScaleNameViewModel: ObservableObject {

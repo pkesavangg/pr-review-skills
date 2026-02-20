@@ -17,7 +17,7 @@ final class LoggerService: LoggerServiceProtocol {
     private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
     private let loggerApiRepository: LoggerApiRepositoryProtocol = LoggerApiRepository()
     private let sessionId: String = UUID().uuidString
-    private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
+    private let systemLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
     private var consoleMinimumLogLevel: LogLevel = .info
     private let kv = KvStorageService.shared

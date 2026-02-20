@@ -5,11 +5,11 @@
 //  Created by Lakshmi Priya on 02/06/25.
 //
 
+import Combine
 // swiftlint:disable type_body_length function_parameter_count
 import Foundation
-import SwiftData
-import Combine
 import GGBluetoothSwiftPackage
+import SwiftData
 
 /*
  SwiftLint exception:
@@ -486,7 +486,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         // If there's a temp device, add it locally first
         if let tempDevice = tempDevice {
             let accountId = try await getAccountId()
-            let existingDevices  = try await localRepository.listScales(forAccountId: accountId)
+            let existingDevices = try await localRepository.listScales(forAccountId: accountId)
             let existingDevice = existingDevices.first { localDevice in
                 // Check by ID first
                 if localDevice.id == tempDevice.id { return true }
@@ -808,7 +808,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
     }
     
-    
     @Sendable
     private func getAccountId() async throws -> String {
         guard let account = try await accountService.getActiveAccount() else {
@@ -888,8 +887,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 } else {
                     // Create new device on server
                     do {
-                        var createdDTO: ScaleDTO? = nil
-                        if device.isSynced == false  && device.hasServerID == true {
+                        var createdDTO: ScaleDTO?
+                        if device.isSynced == false && device.hasServerID == true {
                             do {
                                 _ = try await remoteRepo.editScale(device.id, properties: dto)
                             } catch {
@@ -982,7 +981,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                     }
                 }
                 // Fallback: try match by MAC (scoped to current account)
-                var matchedDevice: Device? = nil
+                var matchedDevice: Device?
                 if let mac = dto.mac, !mac.isEmpty {
                     let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac && $0.accountId == accountId })
                     if let found = try? localRepository.context.fetch(byMac).first {
@@ -1071,7 +1070,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         if let nickname = dto.nickname {
             properties["nickname"] = nickname
         }
-        //Add Properties here in order to update the device
+        // Add Properties here in order to update the device
         return properties
     }
     

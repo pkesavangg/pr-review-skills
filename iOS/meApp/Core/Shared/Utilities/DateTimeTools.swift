@@ -170,7 +170,6 @@ final class DateTimeTools {
         return Date()
     }
 
-
     static func getMonthStringFromDate(_ dateString: String) -> String {
         guard let date = parse(dateString) else { return invalidString }
         return formatter("yyyy-MM").string(from: date)
@@ -246,7 +245,6 @@ final class DateTimeTools {
     static func getTimeZoneInMinutes() -> Int {
         return TimeZone.current.secondsFromGMT() / 60
     }
-
 
     // MARK: - Helpers
 

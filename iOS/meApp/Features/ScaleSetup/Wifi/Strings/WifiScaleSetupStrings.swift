@@ -12,7 +12,7 @@ public struct WifiScaleSetupStrings {
     public struct ActivatePairingModeViewStrings {
         public static let title = "Activate Pairing Mode"
         public static let description = "On the back of your scale, press and hold the UNIT button. When SET UP 1 appears on the scale's screen, tap NEXT."
-        public static let boldWords = ["UNIT","SET UP 1"]
+        public static let boldWords = ["UNIT", "SET UP 1"]
     }
     
     public struct ErrorCodeSelectionViewStrings {

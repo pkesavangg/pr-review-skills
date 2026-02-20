@@ -372,4 +372,3 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         }
     }
 }
-

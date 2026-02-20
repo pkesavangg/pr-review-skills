@@ -17,13 +17,13 @@ struct ButtonView: View {
     /// Adjust this to change how the button and its text are positioned horizontally.
     var alignment: Alignment = .center
     /// Optional override for background color for styles that support it (e.g., .filledPrimary)
-    var backgroundColorOverride: Color? = nil
+    var backgroundColorOverride: Color?
     /// Optional horizontal padding for text buttons. Default is false.
     var padding: Bool = false
     /// Optional custom horizontal padding for filled primary buttons. If set, overrides default padding.
-    var customHorizontalPadding: CGFloat? = nil
+    var customHorizontalPadding: CGFloat?
     /// Optional custom vertical padding for filled primary buttons. If set, overrides default padding.
-    var customVerticalPadding: CGFloat? = nil
+    var customVerticalPadding: CGFloat?
     /// Optional bool to control frame usage for inline text buttons.
     /// If true, inline text buttons will use a frame; if false, they will not. Default is false.
     var useFrameForInlineText: Bool = false
@@ -32,7 +32,7 @@ struct ButtonView: View {
     var throttleInterval: TimeInterval = 0.5
     let action: () -> Void
     
-    @State private var lastTapTime: Date = Date.distantPast
+    @State private var lastTapTime = Date.distantPast
     
     var body: some View {
         Button(action: {
@@ -73,65 +73,65 @@ struct TestingCommonButtonsView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 20) {
-                //Filled Primary buttons
-                ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: true, action: {})
+                // Filled Primary buttons
+                ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .filledPrimary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .filledPrimary, size: .small, isDisabled: true) {}
                 
                 // Filled Secondary  buttons
-                ButtonView(text: "button", type: .filledSecondary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .filledSecondary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .filledSecondary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .filledSecondary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .filledSecondary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .filledSecondary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .filledSecondary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .filledSecondary, size: .small, isDisabled: true) {}
 
                 // outlined Primary buttons
-                ButtonView(text: "button", type: .outlinedPrimary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .outlinedPrimary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .outlinedPrimary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .outlinedPrimary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .outlinedPrimary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .outlinedPrimary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .outlinedPrimary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .outlinedPrimary, size: .small, isDisabled: true) {}
                 
                 // outlinedSecondary buttons
-                ButtonView(text: "button", type: .outlinedSecondary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .outlinedSecondary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .outlinedSecondary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .outlinedSecondary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .outlinedSecondary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .outlinedSecondary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .outlinedSecondary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .outlinedSecondary, size: .small, isDisabled: true) {}
                 
                 // textPrimary buttons
-                ButtonView(text: "button", type: .textPrimary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .textPrimary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .textPrimary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .textPrimary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .textPrimary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .textPrimary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .textPrimary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .textPrimary, size: .small, isDisabled: true) {}
                                 
                 // textSecondary buttons
-                ButtonView(text: "button", type: .textSecondary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .textSecondary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .textSecondary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .textSecondary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .textSecondary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .textSecondary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .textSecondary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .textSecondary, size: .small, isDisabled: true) {}
                 
                 // textTertiary buttons
-                ButtonView(text: "button", type: .textTertiary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .textTertiary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .textTertiary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .textTertiary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .textTertiary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .textTertiary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .textTertiary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .textTertiary, size: .small, isDisabled: true) {}
                 
                 // inlineTextPrimary buttons
-                ButtonView(text: "button", type: .inlineTextPrimary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .inlineTextPrimary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .inlineTextPrimary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .inlineTextPrimary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .inlineTextPrimary, size: .small, isDisabled: true) {}
                 
                 // inlineTextSecondary buttons
-                ButtonView(text: "button", type: .inlineTextSecondary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .inlineTextSecondary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .inlineTextSecondary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .inlineTextSecondary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .inlineTextSecondary, size: .small, isDisabled: true) {}
                                 
                 // inlineTextTertiary buttons
-                ButtonView(text: "button", type: .inlineTextTertiary, size: .large, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .inlineTextTertiary, size: .small, isDisabled: false, action: {})
-                ButtonView(text: "button", type: .inlineTextTertiary, size: .large, isDisabled: true, action: {})
-                ButtonView(text: "button", type: .inlineTextTertiary, size: .small, isDisabled: true, action: {})
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .large, isDisabled: false) {}
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .small, isDisabled: false) {}
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .large, isDisabled: true) {}
+                ButtonView(text: "button", type: .inlineTextTertiary, size: .small, isDisabled: true) {}
              }
             .padding()
         }
@@ -144,4 +144,3 @@ struct ContentView_Previews: PreviewProvider {
             .background(.gray)
     }
 }
-

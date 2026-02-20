@@ -5,10 +5,10 @@
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
 
-import Foundation
-import SwiftUI
 import FirebaseCore
 import FirebaseMessaging
+import Foundation
+import SwiftUI
 import UserNotifications
 
 // MARK: - AppDelegate
@@ -78,7 +78,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
         // Only handle tap if it's a new notification
-        if userInfo["gcm.message_id"] as? String != nil {
+        if userInfo["gcm.message_id"] is String {
             Task { @MainActor in
                  PushNotificationService.shared.handleNotification(userInfo) {
                     completionHandler()

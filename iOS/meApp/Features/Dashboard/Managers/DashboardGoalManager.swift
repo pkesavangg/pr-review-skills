@@ -66,7 +66,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 state.goalProgress = 1.0
             }
 
-
         } catch let error as DashboardError {
             throw error
         } catch {
@@ -109,7 +108,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             } else {
                 state.goalProgress = 1.0
             }
-
 
         } catch let error as DashboardError {
             throw error
@@ -164,7 +162,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             } else {
                 state.goalProgress = 1.0
             }
-
 
         } catch let error as DashboardError {
             throw error

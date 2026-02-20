@@ -79,13 +79,13 @@ struct HelpScreen: View {
     private func digitalManualSection() -> some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
             Group {
-                HStack{
+                HStack {
                     Text(lang.digitalManualTitle)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                     
                     Spacer()
-                    Button(action:{
+                    Button(action: {
                         helpStore.openHelp()
                     }, label: {
                         AppIconView(icon: AppAssets.helpCircle)
@@ -98,7 +98,7 @@ struct HelpScreen: View {
             }
             .padding(.horizontal, .spacingSM)
             // Scale list with segmented filter
-            ScaleManualListView() { scale in
+            ScaleManualListView { scale in
                 helpStore.openProductManual(sku: scale.sku)
             }
             .padding(.top, .spacingSM)

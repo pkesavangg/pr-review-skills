@@ -26,7 +26,7 @@ struct GoalStepView: View {
                     segments: GoalTypeSegment.allCases,
                     selectedSegment: $selectedSegment
                 )
-                .onChange(of: selectedSegment) { oldValue, newValue in
+                .onChange(of: selectedSegment) { _, newValue in
                     signupStore.signupForm.goalType.value = newValue.goalTypeValue
                     // Mark as dirty and touched when goal type changes
                     signupStore.signupForm.goalType.markAsDirty()
@@ -100,7 +100,7 @@ struct GoalStepView: View {
                 .padding(.top, .spacingMD)
             }
             .padding(.top, .spacingLG)
-            .onChange(of: signupStore.signupForm.goalType.value) { oldValue, newValue in
+            .onChange(of: signupStore.signupForm.goalType.value) { _, _ in
                 selectedSegment = GoalTypeSegment.fromGoalType(signupStore.signupForm.goalType.value)
             }
             .padding(.bottom, .spacing3XL)

@@ -15,7 +15,7 @@ struct IntegrationListItemView: View {
     var onTap: () -> Void
     /// Optional closure triggered **only** when the out-of-sync exclamation badge is tapped.
     /// If `nil`, the tap is ignored and row tap will be triggered instead.
-    var onBadgeTap: (() -> Void)? = nil
+    var onBadgeTap: (() -> Void)?
     let rowHeight: CGFloat = 64
     var body: some View {
         VStack {
@@ -55,7 +55,6 @@ struct IntegrationListItemView: View {
                 }
                 .frame(width: 42, height: 44)
                 .padding(.top, .spacingXS)
-
 
                 Text(item.type.displayName)
                     .fontOpenSans(.body2)

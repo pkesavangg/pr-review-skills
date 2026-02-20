@@ -8,8 +8,8 @@
 //  • Calling `BluetoothService.disconnectDevice` when the user actively closes the sheet.
 //  • Exposing the discovered `Device` and optional `DeviceDiscoveryEvent` to the UI.
 
-import Foundation
 import Combine
+import Foundation
 
 @MainActor
 final class ScaleDiscoveredSheetViewModel: ObservableObject {
@@ -20,7 +20,7 @@ final class ScaleDiscoveredSheetViewModel: ObservableObject {
     
     // MARK: – Dependencies
     @Injector private var bluetoothService: BluetoothService
-    private var timerTask: Task<Void, Never>? = nil
+    private var timerTask: Task<Void, Never>?
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     // MARK: – Lifecycle
     init(device: Device,

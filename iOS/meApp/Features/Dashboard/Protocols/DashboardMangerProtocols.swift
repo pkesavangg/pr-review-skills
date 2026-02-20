@@ -16,7 +16,6 @@ protocol DashboardDataManaging {
     func clearCache() async throws
 }
 
-
 /// Protocol defining goal management operations
 protocol DashboardGoalManaging {
     func loadGoalData() async throws
@@ -47,8 +46,6 @@ protocol DashboardGraphManaging {
     func calculateOptimalScrollPosition(for period: TimePeriod, from operations: [BathScaleWeightSummary], anchorDate: Date?, showingLatest: Bool, cachedBounds: (min: Date, max: Date)?) -> Date
     func forceVisibleOperationsRecalculation()
 }
-
-
 
 /// Protocol defining metrics management operations
 protocol DashboardMetricsManaging {

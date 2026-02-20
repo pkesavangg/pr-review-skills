@@ -85,10 +85,10 @@ struct TroubleShootingView: View {
     private func appTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.appTroubleshooting)) {
             Group {
-                ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, chevronType: .none, onTap: { helpStore.sendWeightGurusLog() }))
-                ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries,chevronType: .none, onTap: { helpStore.resyncEntries() }))
-                ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData,chevronType: .none, onTap: { helpStore.clearAllLocalData() }))
-                ActionListItemView(config: ActionListItemConfig(title: lang.rateApp,chevronType: .none, onTap: { helpStore.showAppRateModal() }))
+                ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, chevronType: .none) { helpStore.sendWeightGurusLog() })
+                ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, chevronType: .none) { helpStore.resyncEntries() })
+                ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, chevronType: .none) { helpStore.clearAllLocalData() })
+                ActionListItemView(config: ActionListItemConfig(title: lang.rateApp, chevronType: .none) { helpStore.showAppRateModal() })
             }
             .listRowInsets()
 
@@ -105,9 +105,8 @@ struct TroubleShootingView: View {
                         config: ActionListItemConfig(
                             title: lang.sendScaleLog,
                             chevronType: .none,
-                            isDisabled: !helpStore.isSendScaleLogEnabled,
-                            onTap: { helpStore.sendScaleLogHandler() }
-                        )
+                            isDisabled: !helpStore.isSendScaleLogEnabled
+                        )                            { helpStore.sendScaleLogHandler() }
                     )
                     .listRowInsets()
                 }

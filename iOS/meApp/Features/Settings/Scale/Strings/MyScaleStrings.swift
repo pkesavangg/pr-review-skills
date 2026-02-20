@@ -5,7 +5,7 @@
 //  Created by Lakshmi Priya on 23/06/25.
 //
 
-struct MyScaleStrings{
+struct MyScaleStrings {
     static let addEditScales = "Add & Edit Scales"
     static let connected = "Connected"
     static let notConnected = "Not Connected"

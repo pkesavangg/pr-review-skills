@@ -21,7 +21,7 @@ struct HistoryMetricItem: View {
     let onTap: () -> Void
     
     // iOS 17 fix: Prevent tap spam
-    @State private var lastTapTime: Date = Date.distantPast
+    @State private var lastTapTime = Date.distantPast
    
     // MARK: - Computed Properties
     /// Returns the background color based on index and total size, matching Android implementation
@@ -91,9 +91,8 @@ struct HistoryMetricItem_Previews: PreviewProvider {
                 metricType: .bmi,
                 value: 73,
                 index: 0,
-                size: 1,
-                onTap: {}
-            )
+                size: 1
+            )                {}
         }
         .themeable()
         .environmentObject(Theme.shared)

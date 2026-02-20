@@ -71,7 +71,6 @@ public class GridBoundaryDetector {
     private var lastContentSize: CGSize = .zero
     private var lastConstraintsHash: Int = 0
     
-    
     // MARK: - Initialization
     
     public init() {
@@ -335,5 +334,3 @@ public class GridBoundaryDetector {
         return gridBounds
     }
 }
-
-

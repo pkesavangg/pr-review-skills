@@ -21,7 +21,6 @@ struct AppSyncSetupScreen: View {
     var commonLang = CommonStrings.self
     let scaleSetupLang = ScaleSetupStrings.self
     
-    
     // Directly retrieve the pre-built views from the store.
     private var stepViews: [AnyView] { setupStore.stepViews }
     
@@ -50,12 +49,11 @@ struct AppSyncSetupScreen: View {
             
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews,
-                shouldApplyHorizontalPadding: { index in
+                views: stepViews
+            )                { index in
                     // Apply padding for all steps except the AppSync scanner step
                     setupStore.steps[index] != .appSync
                 }
-            )
             // Footer Buttons
             if setupStore.currentStep != .appSync {
                 footerButtons
@@ -88,13 +86,12 @@ struct AppSyncSetupScreen: View {
                        type: .inlineTextPrimary,
                        size: .small,
                        isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .finish,
-                       useFrameForInlineText: true,
-                       action: {
+                       useFrameForInlineText: true)                       {
                 withAnimation {
                     hideKeyboard()
                 }
                 setupStore.moveToPreviousStep()
-            })
+            }
             
             Spacer()
             
@@ -103,13 +100,12 @@ struct AppSyncSetupScreen: View {
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
                        customHorizontalPadding: .spacingXS / 2,
-                       customVerticalPadding: .spacingXS / 4,
-                       action: {
+                       customVerticalPadding: .spacingXS / 4)                       {
                 withAnimation {
                     hideKeyboard()
                 }
                 setupStore.moveToNextStep()
-            })
+            }
         }
     }
 }

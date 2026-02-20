@@ -15,7 +15,7 @@ struct LogoView: View {
     
     var body: some View {
         
-        VStack(alignment: .center, spacing: .spacingXS){
+        VStack(alignment: .center, spacing: .spacingXS) {
             
             Image(
                 isFromAccountSwitching
@@ -33,7 +33,6 @@ struct LogoView: View {
         }
     }
 }
-
 
 #Preview {
     LogoView()

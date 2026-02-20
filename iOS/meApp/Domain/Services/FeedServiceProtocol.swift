@@ -1,7 +1,7 @@
-import Foundation
 import Combine
-import SwiftUI
+import Foundation
 import ggInAppMessagingPackage
+import SwiftUI
 
 /// Protocol defining the service interface for managing feed items, including fetching, updating, and managing feed settings.
 @MainActor

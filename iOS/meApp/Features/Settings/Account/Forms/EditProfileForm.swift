@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 20/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Form model used in Edit-Profile screen for validating and capturing user profile changes.
 /// Mirrors the validation rules used during signup (name / email / zipcode / birthday) but omits
@@ -27,10 +27,10 @@ class EditProfileForm: ObservableForm {
     var formDidChange: AnyPublisher<Void, Never> {
         Publishers.MergeMany([
             firstName.$value.map { _ in () }.eraseToAnyPublisher(),
-            lastName.$value.map  { _ in () }.eraseToAnyPublisher(),
+            lastName.$value.map { _ in () }.eraseToAnyPublisher(),
             birthday.$value.map { _ in () }.eraseToAnyPublisher(),
-            email.$value.map     { _ in () }.eraseToAnyPublisher(),
-            zipcode.$value.map   { _ in () }.eraseToAnyPublisher(),
+            email.$value.map { _ in () }.eraseToAnyPublisher(),
+            zipcode.$value.map { _ in () }.eraseToAnyPublisher()
         ])
         .eraseToAnyPublisher()
     }

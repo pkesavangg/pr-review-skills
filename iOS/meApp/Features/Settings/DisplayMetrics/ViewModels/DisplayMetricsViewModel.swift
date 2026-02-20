@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 // MARK: - DisplayMetricsViewModel
 @MainActor
@@ -353,7 +353,7 @@ final class DisplayMetricsViewModel: ObservableObject {
                 var updatedDisplayMetrics = dto.displayMetrics
 
                 // Check if BMI is enabled in the UI
-                let isBMIEnabled = metrics.first(where: { $0.key == "bmi" })?.isEnabled ?? false
+                let isBMIEnabled = metrics.first { $0.key == "bmi" }?.isEnabled ?? false
 
                 if isBMIEnabled {
                     // Add BMI if not already present
@@ -392,7 +392,7 @@ final class DisplayMetricsViewModel: ObservableObject {
                 guard let freshPreference = scale.r4ScalePreference else { return }
                 let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
                 switch result {
-                case .success(_):
+                case .success:
                     logger.log(level: .info, tag: tag, message: "Scale metrics updated successfully via Bluetooth")
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to update scale via Bluetooth: \(error.localizedDescription)")

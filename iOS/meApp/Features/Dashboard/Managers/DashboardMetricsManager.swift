@@ -126,7 +126,6 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 throw DashboardError.noActiveAccount
             }
           
-            
             // Fully rely on dashboardType parameter from active account
             let dashboardTypeString = account.dashboardSettings?.dashboardType
             let dashboardType: DashboardType
@@ -296,7 +295,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// Sets placeholder values for all body metrics except weight (used when no exact data point is selected on the chart)
     func setPlaceholdersForAllMetrics() {
         let placeholder = DashboardStrings.placeholder
-        state.metrics = state.metrics.enumerated().map { index, item in
+        state.metrics = state.metrics.enumerated().map { _, item in
             // Only set placeholder for body metrics, not weight
             let bodyMetric = getBodyMetric(for: item.label)
             if bodyMetric == .weight {
@@ -845,8 +844,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
 
                 // Find latest valid value for each metric from DTOs
                 func latestValue(_ extractor: (BathScaleOperationDTO) -> Double?) -> Double? {
-                    var bestTs: String? = nil
-                    var bestVal: Double? = nil
+                    var bestTs: String?
+                    var bestVal: Double?
                     for dto in allDTOs {
                         guard let value = extractor(dto), isValid(value) else { continue }
                         guard let ts = dto.entryTimestamp else { continue }
@@ -926,18 +925,18 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
         }
         // Define all metrics and their conversion params in an array
         let metrics: [(label: String, shouldCompose: Bool, wholeNumber: Bool, fallbackValue: Double?)] = [
-            (DashboardStrings.bmi,           true,  false, fallbackValues.bmi),
-            (DashboardStrings.bodyFat,       true,  false, fallbackValues.bodyFat),
-            (DashboardStrings.muscle,        true,  false, fallbackValues.muscleMass),
-            (DashboardStrings.water,         true,  false, fallbackValues.water),
-            (DashboardStrings.heartBpm,      false, true,  fallbackValues.pulse),
-            (DashboardStrings.bone,          true,  false, fallbackValues.boneMass),
-            (DashboardStrings.visceralFat,   false, true,  fallbackValues.visceralFat),
-            (DashboardStrings.subFat,        true,  false, fallbackValues.subFat),
-            (DashboardStrings.protein,       true,  false, fallbackValues.protein),
-            (DashboardStrings.skelMuscle,    true,  false, fallbackValues.skelMuscle),
-            (DashboardStrings.bmrKcal,       false, true,  fallbackValues.bmr),
-            (DashboardStrings.metAge,        false, true,  fallbackValues.metabolicAge)
+            (DashboardStrings.bmi, true, false, fallbackValues.bmi),
+            (DashboardStrings.bodyFat, true, false, fallbackValues.bodyFat),
+            (DashboardStrings.muscle, true, false, fallbackValues.muscleMass),
+            (DashboardStrings.water, true, false, fallbackValues.water),
+            (DashboardStrings.heartBpm, false, true, fallbackValues.pulse),
+            (DashboardStrings.bone, true, false, fallbackValues.boneMass),
+            (DashboardStrings.visceralFat, false, true, fallbackValues.visceralFat),
+            (DashboardStrings.subFat, true, false, fallbackValues.subFat),
+            (DashboardStrings.protein, true, false, fallbackValues.protein),
+            (DashboardStrings.skelMuscle, true, false, fallbackValues.skelMuscle),
+            (DashboardStrings.bmrKcal, false, true, fallbackValues.bmr),
+            (DashboardStrings.metAge, false, true, fallbackValues.metabolicAge)
         ]
 
         for metric in metrics {
@@ -954,8 +953,8 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     
     private func findLatestValidValue<T: Comparable>(for metricExtractor: (Entry) -> T?, in entries: [Entry]) -> Double? {
         // O(n) pass without sorting; compares ISO timestamps lexicographically
-        var bestTs: String? = nil
-        var best: Double? = nil
+        var bestTs: String?
+        var best: Double?
         for entry in entries {
             guard let metricValue = metricExtractor(entry) else { continue }
             let doubleValue = Double("\(metricValue)") ?? 0.0

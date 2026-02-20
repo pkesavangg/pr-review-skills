@@ -193,7 +193,6 @@ struct BottomTabBarView: View {
     }
 }
 
-
 #Preview {
     BottomTabBarView()
         .environmentObject(Theme.shared)

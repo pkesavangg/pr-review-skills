@@ -1,3 +1,4 @@
+import Combine
 //
 //  SignupForm.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 import Foundation
-import Combine
 
 // MARK: SignupForm
 /// This form is responsible for managing the signup process.
@@ -27,7 +27,6 @@ class SignupForm: ObservableForm {
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
     
-    
     /// Publisher that merges all value changes in the form
     var formDidChange: AnyPublisher<Void, Never> {
         Publishers.MergeMany([
@@ -43,7 +42,7 @@ class SignupForm: ObservableForm {
             email.$value.map { _ in () }.eraseToAnyPublisher(),
             password.$value.map { _ in () }.eraseToAnyPublisher(),
             confirmPassword.$value.map { _ in () }.eraseToAnyPublisher(),
-            zipcode.$value.map { _ in () }.eraseToAnyPublisher(),
+            zipcode.$value.map { _ in () }.eraseToAnyPublisher()
         ])
         .eraseToAnyPublisher()
     }
@@ -113,7 +112,6 @@ class SignupForm: ObservableForm {
         : currentWeight.isValid && goalWeight.isValid
     }
 
-    
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isTouched || control.isDirty else { return nil }
 

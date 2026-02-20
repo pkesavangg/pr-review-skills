@@ -229,7 +229,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             if isEditMode {
                 // In edit mode, show ALL streaks (including removed ones)
                 // Order them according to the saved order, then append any missing ones at the end
-                var ordered = order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+                var ordered = order.compactMap { id in all.first { $0.id.uuidString == id }}
                 let missing = all.filter { streak in !order.contains(streak.id.uuidString) }
                 ordered.append(contentsOf: missing)
                 return ordered
@@ -238,7 +238,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 guard !order.isEmpty else {
                     return all
                 }
-                let ordered = order.compactMap { id in all.first(where: { $0.id.uuidString == id }) }
+                let ordered = order.compactMap { id in all.first { $0.id.uuidString == id }}
                 // Append missing streaks if order is incomplete
                 if ordered.count < all.count {
                     let orderedIds = Set(ordered.map { $0.id.uuidString })
@@ -255,8 +255,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             active.reserveCapacity(streaks.count)
             removed.reserveCapacity(streaks.count)
             for streak in streaks {
-                if store.isStreakRemoved(streak.label) { removed.append(streak) }
-                else { active.append(streak) }
+                if store.isStreakRemoved(streak.label) { removed.append(streak) } else { active.append(streak) }
             }
             return (active, removed)
         }
@@ -535,7 +534,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             // Use full grid height with generous bottom slack; block only a compact strip above the divider via exclude zone
             let dividerY = actualGridHeight
             boundaryDetector.updateGoalStreakConstraints(gridHeight: actualGridHeight + extraBottomSlack, dividerY: dividerY)
-            
             
         }
 
@@ -870,7 +868,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                     let rowStartIndex = targetRow * columns
                     let endOfSourceRow = sourceRowStart + (columns - 1)
                     
-                  
                     // Special case: if goal card is at row start and user drops on the adjacent slot in the same row,
                     // snap to the start of the NEXT row (e.g., 0->1 => 2, 2->3 => 4, 4->5 => 6)
                     if originalIndexPath.item == sourceRowStart && proposedIndexPath.item == endOfSourceRow {
@@ -980,8 +977,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 let allStreaksPresent = isAllStreaksPresent()
                 let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
                 
-                
-                
                 if allStreaksPresent && !hasRemovedStreaks {
                     // If last row is incomplete, allow flexible placement and keep exact destination
                     let gridColumns: Int = DevicePlatform.isTablet ? 4 : 2
@@ -1051,12 +1046,11 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             persistGridOrderToStore()
         }
         
-        
         /// Saves the current grid order to DashboardStore UI state
         private func persistGridOrderToStore() {
             // Preserve user's exact positioning - no reordering
             var newStreakOrder: [MetricItem] = []
-            var goalCardPosition: Int? = nil
+            var goalCardPosition: Int?
 
             for (index, widget) in gridModel.mileStones.enumerated() {
                 switch widget {
@@ -1072,8 +1066,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             // Save goal card position
             store.state.ui.goalCardPosition = goalCardPosition ?? 0
-            
-            
             
             // Force UI update to reflect the changes
             store.objectWillChange.send()

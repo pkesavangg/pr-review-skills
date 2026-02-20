@@ -14,7 +14,7 @@ struct PickerWithoutIndicatorsView<Content: View, Selection: Hashable>: View {
     var body: some View {
         Picker("", selection: $selection) {
             if !isHidden {
-                RemovePickerIndicator() {
+                RemovePickerIndicator {
                     isHidden = true
                 }
             } else {
@@ -26,7 +26,7 @@ struct PickerWithoutIndicatorsView<Content: View, Selection: Hashable>: View {
 }
 
 struct RemovePickerIndicator: UIViewRepresentable {
-    var result: () -> ()
+    var result: () -> Void
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView()

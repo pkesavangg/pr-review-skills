@@ -5,9 +5,8 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-
-import Foundation
 import Combine
+import Foundation
 
 /// A centralized app state object responsible for managing and exposing shared services.
 /// This allows for easier dependency injection and access to global services across the app.

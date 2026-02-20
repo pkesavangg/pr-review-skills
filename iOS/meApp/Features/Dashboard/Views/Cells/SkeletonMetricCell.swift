@@ -5,8 +5,8 @@
 //  Created for skeleton loading in UIKit collection view
 //
 
-import UIKit
 import SwiftUI
+import UIKit
 
 /// UICollectionViewCell that displays a skeleton loading state for metric cards
 class SkeletonMetricCell: UICollectionViewCell {

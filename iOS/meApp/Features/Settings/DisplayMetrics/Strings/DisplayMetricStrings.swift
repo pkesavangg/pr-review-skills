@@ -7,6 +7,6 @@
 
 import Foundation
 
-struct DisplayMetricStrings{
+struct DisplayMetricStrings {
     static let displayMetricsTitle = "Display Metrics"
 }

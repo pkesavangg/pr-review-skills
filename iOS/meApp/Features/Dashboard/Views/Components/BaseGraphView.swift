@@ -158,7 +158,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     }
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             ZStack {
                 // Main Chart
                 Chart {
@@ -327,7 +327,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         }
         // Rebuild cached points when Y-axis domain or ticks change so normalized metric points
         // are re-plotted against the latest domain
-        .onChange(of: viewModel.yAxisDomain) { oldDomain, newDomain in
+        .onChange(of: viewModel.yAxisDomain) { _, newDomain in
             // Check if this is a domain-only change (domain changed but data hash didn't)
             // This prevents metrics from animating/stretching when only Y-axis domain recalculates
             let wasDomainChangeOnly = previousYAxisDomain != nil &&
@@ -623,7 +623,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample key points for efficient hashing
-            let indices = newData.count <= 5 ? Array(0..<newData.count) : [0, newData.count/4, newData.count/2, (3*newData.count)/4, newData.count-1]
+            let indices = newData.count <= 5 ? Array(0..<newData.count) : [0, newData.count / 4, newData.count / 2, (3 * newData.count) / 4, newData.count - 1]
             for i in indices {
                 let point = newData[i]
                 hasher.combine(point.date.timeIntervalSince1970.bitPattern)
@@ -1184,13 +1184,13 @@ extension View {
     ) -> some View {
         if isScrollable {
             self
-                .onChange(of: dashboardStore.state.graph.xScrollPosition) { oldPosition, newPosition in
+                .onChange(of: dashboardStore.state.graph.xScrollPosition) { _, newPosition in
                     // Only sync if position actually changed (programmatic navigation)
                     // Skip if viewModel already has this position to avoid redundant updates
                     guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.1 else { return }
                     viewModel.updateScrollPosition(to: newPosition)
                 }
-                .onChange(of: dashboardStore.state.graph.isScrolling) { oldValue, newValue in
+                .onChange(of: dashboardStore.state.graph.isScrolling) { _, newValue in
                     viewModel.isScrolling = newValue
                     // Immediately clear local selection when scrolling starts to remove crosshair and label
                     if newValue {
