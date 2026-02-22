@@ -133,7 +133,7 @@ object GraphSnapHelper {
       timeInMillis = timestamp.toLong()
       set(Calendar.DAY_OF_MONTH, 1)
       set(Calendar.HOUR_OF_DAY, 0)
-      set(Calendar.MINUTE, 1)
+      set(Calendar.MINUTE, 0)
       set(Calendar.SECOND, 0)
       set(Calendar.MILLISECOND, 0)
     }
@@ -173,14 +173,14 @@ object GraphSnapHelper {
           val delta = ((currentDayOfWeek - firstDayOfWeek) + 7) % 7
           add(Calendar.DAY_OF_MONTH, -delta)
           set(Calendar.HOUR_OF_DAY, 0)
-          set(Calendar.MINUTE, 1)
+          set(Calendar.MINUTE, 0)
           set(Calendar.SECOND, 0)
           set(Calendar.MILLISECOND, 0)
         }
 
         GraphSegment.MONTH -> {
           set(Calendar.DAY_OF_MONTH, 1)
-          set(Calendar.HOUR_OF_DAY, 1)
+          set(Calendar.HOUR_OF_DAY, 0)
           set(Calendar.MINUTE, 0)
           set(Calendar.SECOND, 0)
           set(Calendar.MILLISECOND, 0)
@@ -188,7 +188,7 @@ object GraphSnapHelper {
 
         GraphSegment.YEAR -> {
           set(Calendar.DAY_OF_YEAR, 1)
-          set(Calendar.HOUR_OF_DAY, 1)
+          set(Calendar.HOUR_OF_DAY, 0)
           set(Calendar.MINUTE, 0)
           set(Calendar.SECOND, 0)
           set(Calendar.MILLISECOND, 0)

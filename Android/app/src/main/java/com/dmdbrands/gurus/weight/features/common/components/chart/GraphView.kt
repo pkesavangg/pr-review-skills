@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
@@ -20,6 +21,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
+import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
@@ -73,7 +75,22 @@ fun GraphView(
   val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  val initialScroll = remember { Scroll.Absolute.x(initialStartX) }
+
+  val (startPaddingXStep, _) = remember(state.isEmptyGraph, segment) {
+    if (!state.isEmptyGraph || segment != GraphSegment.TOTAL)
+      GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
+    else
+      0.0 to 0.0
+  }
+  val fadingEdges = rememberFadingEdges(
+    startWidth = 0.dp,
+    endWidth = 0.dp,
+    startPaddingXStep = startPaddingXStep.takeIf { it > 0.0 },
+    visibilityEasing = LinearEasing,
+  )
+  val initialScroll = remember(initialStartX, startPaddingXStep) {
+    Scroll.Absolute.xWithPadding(initialStartX, startPaddingXStep)
+  }
 
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
@@ -94,6 +111,7 @@ fun GraphView(
         snapDurationMillis = 500,
       ),
     ),
+    scrollStartPaddingXStep = startPaddingXStep,
     key = segment,
   )
   val horizontalItemPlacer =
@@ -158,6 +176,7 @@ fun GraphView(
     defaultMarker = defaultMarker,
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
+    fadingEdges = fadingEdges,
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
       if (click == null || state.isEmptyGraph) {
@@ -214,6 +233,12 @@ fun GraphView(
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
+        Log.d(
+          "GraphView",
+          "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(
+            max,
+          ),
+        )
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
