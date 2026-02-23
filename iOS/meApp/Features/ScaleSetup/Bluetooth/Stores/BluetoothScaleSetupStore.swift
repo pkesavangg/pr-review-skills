@@ -236,6 +236,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private func pair() {
         bluetoothConnectionState = .loading
         resetDiscoveryState()
+        LoggerService.shared.log(level: .info, tag: tag, message: "Bluetooth scale pairing started")
         
         // Begin scan for pairing-mode devices.
         bluetoothService.scanForPairing()
@@ -269,7 +270,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
         
         guard let userNumber = self.selectedUserNumber else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to obtain scale token")
+            LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing selected user number")
             bluetoothConnectionState = .failure
             resetDiscoveryState()
             return
@@ -303,7 +304,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
                         await saveDiscoveredScaleWithLoader(isExiting: false)
                         startEntrySyncing()
                     }
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
                     break
                 case .failure(let error):
                     setConnectionFailure()
@@ -353,7 +353,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
         // Check if user numbers match
         if Int(scaleToDelete.userNumber ?? "0") == selectedUserNumber {
-            LoggerService.shared.log(level: .info, tag: tag, message: "User numbers match, assigning old nickname and saving scale")
             // Assign the old scale's nickname to the discovered scale
             discoveredScale.nickname = scaleToDelete.nickname
             
@@ -378,7 +377,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
     
     private func syncNewScaleAndListenForEntries() async {
         guard discoveredScale != nil else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "No discovered scale to sync")
             return
         }
         
@@ -393,13 +391,14 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     private func syncNewScale() async {
-        guard let scale = discoveredScale else { return }
+        guard let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "syncNewScale - missing discovered scale")
+            return
+        }
         
         // Create array with the single scale to sync
         let scalesToSync = [scale]
         bluetoothService.syncDevices(scalesToSync)
-        
-        LoggerService.shared.log(level: .info, tag: tag, message: "Synced new scale for entry receiving")
     }
     
     private func setupNewEntrySubscription() {
@@ -411,7 +410,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                LoggerService.shared.log(level: .info, tag: self.tag, message: "New entry received, marking as synced")
 
                 // Mark entry as synced and update UI
                 self.isEntrySynced = true
@@ -455,11 +453,13 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private func saveDiscoveredScaleWithLoader(isExiting: Bool) async {
         // Prevent duplicate saves
         if isScaleSaved {
-            LoggerService.shared.log(level: .info, tag: tag, message: "Scale already saved, skipping duplicate save")
             return
         }
         
-        guard let discoveryEvent, let device = discoveredScale else { return }
+        guard let discoveryEvent, let device = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveDiscoveredScale - missing discovery event or discovered scale")
+            return
+        }
         
         // Show appropriate loader message
         let loaderText = isExiting ? loaderLang.exiting : loaderLang.savingScale
@@ -467,7 +467,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
         
         // Delete the existing scale if there's a duplicate
         if let scaleToDelete = scaleToDelete {
-            LoggerService.shared.log(level: .info, tag: tag, message: "Deleting existing scale with ID: \(scaleToDelete.id)")
             do {
                 let existingDevices = try await self.scaleService.getDevices()
                 if let oldDevice = existingDevices.first(where: { $0.id == scaleToDelete.id }) {
@@ -501,7 +500,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 wifiMac: ""
             )
             deviceMetadata = DeviceMetaData(from: dto)
-            LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved device metadata for Bluetooth scale")
         case .failure(let error):
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
         }

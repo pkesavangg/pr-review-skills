@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.AppsyncScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.AppsyncScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.AppsyncScaleSetupReducer
@@ -28,6 +29,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * ViewModel for the AppsyncScaleSetupScreen. Handles scale setup flow state and navigation.
@@ -213,7 +215,6 @@ constructor(
     dialogQueueService.showLoader(ScaleSetupStrings.SaveScaleLoader)
     viewModelScope.launch {
       try {
-
         val alreadyPairedScale = deviceService.pairedScales.first().find { it.sku == currentSku }
         if (alreadyPairedScale != null) {
           AppLog.d(TAG, "Found already paired scale, deleting: ${alreadyPairedScale.id}")
@@ -221,7 +222,7 @@ constructor(
         }
 
         val scaleInfo = SCALES.find { it.sku == currentSku }
-        val productName = scaleInfo?.productName ?: "Unknown Scale"
+        val productName = scaleInfo?.productName ?: ScaleSetupStrings.UnknownScale
 
         AppLog.d(TAG, "Scale info found: $productName, bodyComp: ${state.value.bodyComp}, SKU: $currentSku")
 
@@ -237,15 +238,43 @@ constructor(
         )
 
         AppLog.d(TAG, "Saving AppSync device: ${appSyncDevice.id}")
-        deviceService.saveScale(appSyncDevice)
-        AppLog.i(TAG, "Successfully saved AppSync scale")
-        dialogQueueService.dismissLoader()
-        navigateBack()
+        val savedDevice = deviceService.saveScale(appSyncDevice)
+        runAfterSaveComplete(savedDevice, currentSku)
       } catch (e: Exception) {
         AppLog.e(TAG, "Error checking and saving scale", e)
         dialogQueueService.dismissLoader()
         navigateBack()
       }
+    }
+  }
+
+  /**
+   * Runs after saveScale returns: waits for the scale to appear in pairedScales (so DB/flow
+   * updates are complete), then dismisses loader and navigates back. Uses a timeout so we
+   * don't block forever if the list doesn't update.
+   */
+  private suspend fun runAfterSaveComplete(savedDevice: Device?, currentSku: String) {
+    waitForScaleInPairedList(savedDevice, currentSku)
+    AppLog.i(TAG, "Successfully saved AppSync scale")
+    dialogQueueService.dismissLoader()
+    doNavigateBack()
+  }
+
+  /**
+   * Waits for the saved scale to appear in [deviceService.pairedScales] (with timeout).
+   * Ensures all DB/flow updates triggered by saveScale are visible before we navigate.
+   */
+  private suspend fun waitForScaleInPairedList(savedDevice: Device?, currentSku: String) {
+    val listWithScale = withTimeoutOrNull(ScaleSetupConstants.WAIT_FOR_SCALE_IN_LIST_MS) {
+      deviceService.pairedScales.first { list ->
+        list.any { device ->
+          if (savedDevice != null) device.id == savedDevice.id
+          else device.sku == currentSku && device.deviceType == ScaleSetupType.AppSync.value
+        }
+      }
+    }
+    if (listWithScale == null) {
+      AppLog.w(TAG, "Timeout waiting for scale in paired list; navigating anyway")
     }
   }
 
@@ -270,17 +299,22 @@ constructor(
   }
 
   /**
-   * Navigates back from the setup screen.
+   * Navigates back from the setup screen. Use from non-coroutine call sites (e.g. dialog callbacks).
    */
   private fun navigateBack() {
+    viewModelScope.launch { doNavigateBack() }
+  }
+
+  /**
+   * Performs navigation back. Suspend so it can be awaited in a coroutine (e.g. after save).
+   */
+  private suspend fun doNavigateBack() {
     AppLog.d(TAG, "Navigating back from AppSync scale setup")
-    viewModelScope.launch {
-      try {
-        navigationService.navigateBack()
-        AppLog.d(TAG, "Successfully navigated back from AppSync scale setup")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to navigate back from AppSync scale setup", e)
-      }
+    try {
+      navigationService.navigateBack()
+      AppLog.d(TAG, "Successfully navigated back from AppSync scale setup")
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to navigate back from AppSync scale setup", e)
     }
   }
 

@@ -292,7 +292,10 @@ final class A6ScaleSetupStore: ObservableObject {
     
     // MARK: - Scale Saving
     private func saveDiscoveredScale() async {
-        guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else { return }
+        guard let discoveryEvent = discoveryEvent, let scale = discoveredScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveDiscoveredScale - missing discovery event or discovered scale")
+            return
+        }
         
         // Use the proper service method to create the A6/LCBT scale with correct relationship handling
         do {
@@ -444,7 +447,6 @@ final class A6ScaleSetupStore: ObservableObject {
     func markA6ScalesUnsyncedForUnitUpdate() async {
         let a6Scales = scaleService.scales.filter { $0.protocolType == "A6" }
         guard !a6Scales.isEmpty else {
-            LoggerService.shared.log(level: .debug, tag: tag, message: "No A6 scales found")
             return
         }
 

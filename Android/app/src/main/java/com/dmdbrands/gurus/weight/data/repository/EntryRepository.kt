@@ -2,6 +2,7 @@
 package com.dmdbrands.gurus.weight.data.repository
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isValidIsoTimestamp
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.EntryApi
 import com.dmdbrands.gurus.weight.data.api.OperationsResponse
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
@@ -181,10 +182,13 @@ class EntryRepository @Inject constructor(
    * @return List of operations.
    */
   override suspend fun getOperationsFromAPI(syncTimeStamp: String): OperationsResponse? {
+    AppLog.d("EntryRepository","getOperationsFromAPI - $syncTimeStamp")
     return try {
       val response = if (syncTimeStamp.isNotBlank()) {
+        AppLog.d("EntryRepository","getOperationsFromAPI using sync timestamp - $syncTimeStamp")
         entryApi.getOperations(syncTimeStamp)
       } else {
+        AppLog.d("EntryRepository","getOperationsFromAPI without sync timestamp - $syncTimeStamp")
         entryApi.getAllOperations()
       }
       response

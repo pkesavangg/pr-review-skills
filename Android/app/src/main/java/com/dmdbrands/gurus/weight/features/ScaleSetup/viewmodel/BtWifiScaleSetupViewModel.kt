@@ -67,6 +67,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
@@ -129,6 +130,8 @@ constructor(
 
   // Timeout constant - 5 minutes for all operations
   private val operationTimeout: Long = 5 * 60 * 1000L // 5 minutes
+  private val permissionCheckTimeOut: Long = 5 * 1000
+
   // Delay to ensure scale is fully woken up before proceeding
   private val connectionDelay: Long = 2000L // 2 seconds
   override fun provideInitialState(): BtWifiScaleSetupState = BtWifiScaleSetupState()
@@ -176,8 +179,18 @@ constructor(
     observeStepChanges()
     initializeSetup()
     subscribeLatestWeight()
+    fallbackToErrorsIfPermissionIsDisabled()
     viewModelScope.launch {
       accountId = accountService.activeAccountFlow.first()?.id
+    }
+  }
+
+  private fun fallbackToErrorsIfPermissionIsDisabled() {
+    viewModelScope.launch {
+      state.map { it.currentStep }.collect {
+        delay(permissionCheckTimeOut)
+        handlePermissionBasedErrors()
+      }
     }
   }
 
@@ -260,30 +273,6 @@ constructor(
   }
 
   /**
-   * Refreshes discoveredScale from device cache when re-entering CUSTOMIZE_SETTINGS after UPDATE_SETTINGS failure (e.g. Try again after BLE was off).
-   * If the SDK reconnected the scale when BLE was turned back on, the cache will have the updated device with CONNECTED status.
-   * Tries both [Device.device.broadcastId] and [Device.device.broadcastIdString] for lookup, since the cache may be keyed by either
-   * (e.g. AppViewModel keys by scan data.broadcastId, ScaleDetailsViewModel by device.broadcastId).
-   */
-  private fun refreshDiscoveredScaleFromCacheAndReconnectIfNeeded() {
-    val deviceDetail = discoveredScale?.device ?: return
-    val cache = ggDeviceService.deviceCache.value
-    val cachedDevice =
-      (deviceDetail.broadcastId?.let { cache[it] } ?: deviceDetail.broadcastIdString?.let { cache[it] }) as? Device
-        ?: return
-    val isConnected = cachedDevice.connectionStatus == BLEStatus.CONNECTED
-    if (isConnected) {
-      isScaleConnected = true
-    } else {
-      AppLog.d(
-        TAG,
-        "Scale not connected after refresh from cache; user may need to ensure BLE is on before tapping Next",
-      )
-    }
-    discoveredScale = cachedDevice
-  }
-
-  /**
    * Initializes the username form with the active account name.
    * This ensures we have a valid username even in the connect popup flow.
    * Trims the name to 20 characters to prevent duplicate user errors.
@@ -325,12 +314,12 @@ constructor(
   private fun replaceAccount(userName: String? = null) {
     try {
       viewModelScope.launch {
-          discoveredScale =
-            discoveredScale!!.copy(
-              preferences = discoveredScale!!.preferences?.copy(displayName = userName),
-            )
-          handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
-          handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
+        discoveredScale =
+          discoveredScale!!.copy(
+            preferences = discoveredScale!!.preferences?.copy(displayName = userName),
+          )
+        handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Next))
+        handleIntent(SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
       }
     } catch (e: Exception) {
       AppLog.d(TAG, "Error replacing account ")
@@ -438,7 +427,7 @@ constructor(
             // In offline mode or if network check fails, emit default offline state
             AppLog.d(TAG, "Network state unavailable (offline mode), using default: ${e.message}")
             emit(defaultNetworkState)
-          }
+          },
       )
 
       // Use the same logic as ScaleSetupViewmodel.subscribePermissions to handle WIFI_SWITCH properly
@@ -451,7 +440,10 @@ constructor(
       ) { permissions, networkState ->
         updatePermissionsState(permissions, networkState.available)
         val areRequiredPermissionsEnabled =
-          AppPermissionsHelper.areRequiredPermissionsEnabled(state.value.permissions, setupType = ScaleSetupType.BtWifiR4)
+          AppPermissionsHelper.areRequiredPermissionsEnabled(
+            state.value.permissions,
+            setupType = ScaleSetupType.BtWifiR4,
+          )
         if (!areRequiredPermissionsEnabled) {
           // Use comprehensive permission-based error handling
           handlePermissionBasedErrors()
@@ -514,7 +506,6 @@ constructor(
 
             BtWifiSetupStep.DUPLICATES_FOUND -> {
               handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(ScaleSetupStrings.SetupButtons.Save))
-
             }
 
             BtWifiSetupStep.GATHERING_NETWORK -> {
@@ -540,10 +531,6 @@ constructor(
             BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
               loadDashboardKeys()
               loadGoalProgress()
-              // Returning from UPDATE_SETTINGS (e.g. Try again after BLE was off): refresh scale from cache and reconnect if needed
-              if (previousStep == BtWifiSetupStep.UPDATE_SETTINGS) {
-                refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
-              }
             }
 
             BtWifiSetupStep.UPDATE_SETTINGS -> {
@@ -572,7 +559,7 @@ constructor(
                 // Check if only network/WiFi permission is missing
                 val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
                   permissionMap = state.value.permissions,
-                  setupType = ScaleSetupType.BtWifiR4
+                  setupType = ScaleSetupType.BtWifiR4,
                 )
                 val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
                   disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
@@ -582,7 +569,10 @@ constructor(
                 if (!isOnlyNetworkPermissionMissing) {
                   setMeasurementFailed()
                 } else {
-                  AppLog.d(TAG, "Proceeding with STEP_ON - only network permission is missing, which is not required for measurement")
+                  AppLog.d(
+                    TAG,
+                    "Proceeding with STEP_ON - only network permission is missing, which is not required for measurement",
+                  )
                   stepOn()
                 }
               } else {
@@ -1340,32 +1330,32 @@ constructor(
 
   private suspend fun fetchUserList(duplicateUserName: String? = null, onSuccess: (() -> Unit)? = null) {
     try {
-        val userList = suspendCoroutine { continuation ->
-          ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
-            if (duplicateUserName != null) {
-              val user = response.user.first { it.name == duplicateUserName }
-              // Don't update discoveredScale token here - keep the original token for proper filtering
-              handleIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
-            }
-            continuation.resume(response.user)
-            onSuccess?.invoke()
+      val userList = suspendCoroutine { continuation ->
+        ggDeviceService.getUsers(discoveredScale!!.toGGBTDevice()) { response ->
+          if (duplicateUserName != null) {
+            val user = response.user.first { it.name == duplicateUserName }
+            // Don't update discoveredScale token here - keep the original token for proper filtering
+            handleIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
           }
+          continuation.resume(response.user)
+          onSuccess?.invoke()
         }
-        val filteredUserList = userList.filter { user -> user.token != discoveredScale?.token }
-        // Keep the active app user on top so duplicate detection (by name match) is straightforward.
-        // If currentUserName is null, sorting will keep original order (no user matches null).
-        val currentUserName = accountService.activeAccountFlow.first()?.firstName?.take(20)
-        val listWithActiveUserOnTop = if (currentUserName != null) {
-          filteredUserList.sortedByDescending { user ->
-            user.name.equals(currentUserName, ignoreCase = true)
-          }
-        } else {
-          // No active user name available - return list as-is
-          AppLog.w(TAG, "No active user name available for sorting user list")
-          filteredUserList
+      }
+      val filteredUserList = userList.filter { user -> user.token != discoveredScale?.token }
+      // Keep the active app user on top so duplicate detection (by name match) is straightforward.
+      // If currentUserName is null, sorting will keep original order (no user matches null).
+      val currentUserName = accountService.activeAccountFlow.first()?.firstName?.take(20)
+      val listWithActiveUserOnTop = if (currentUserName != null) {
+        filteredUserList.sortedByDescending { user ->
+          user.name.equals(currentUserName, ignoreCase = true)
         }
-        AppLog.d(TAG, "During fetching user list $userList")
-        handleIntent(BtWifiScaleSetupIntent.SetUserList(listWithActiveUserOnTop))
+      } else {
+        // No active user name available - return list as-is
+        AppLog.w(TAG, "No active user name available for sorting user list")
+        filteredUserList
+      }
+      AppLog.d(TAG, "During fetching user list $userList")
+      handleIntent(BtWifiScaleSetupIntent.SetUserList(listWithActiveUserOnTop))
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during fetching user list", e)
       // Show error state to user
@@ -1437,7 +1427,7 @@ constructor(
       // Get the list of disabled permissions to identify which specific permissions are missing
       val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
         permissionMap = state.value.permissions,
-        setupType = ScaleSetupType.BtWifiR4
+        setupType = ScaleSetupType.BtWifiR4,
       )
       AppLog.d(TAG, "Required permissions not enabled. Missing permissions: $disabledPermissions")
 
@@ -1576,7 +1566,7 @@ constructor(
             // wifi connection delay to ensure the connection state is shown properly on the UI.
             delay(connectionDelay)
             clearWifiPasswordForm()
-            if (initialStep == BtWifiSetupStep.GATHERING_NETWORK ) {
+            if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {
               if (!isAlreadyExited) {
                 isAlreadyExited = true
                 onExitSetup(true)
@@ -1772,7 +1762,6 @@ constructor(
           tzOffset = getTimeZoneInMinutes(),
         )
 
-
       // Save preferences to API
       deviceRepository.saveScalePreferencesToApi(updatedPreference)
       // Await syncDevices before proceeding
@@ -1816,8 +1805,6 @@ constructor(
           )
         }
         if (preferences != null) {
-          // Refresh from cache so we have latest connection state (e.g. after BLE turned back on).
-          refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
           // If scale is not connected yet (e.g. reconnection in progress), wait for it before updateAccount.
           if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
             val bid = discoveredScale?.device?.broadcastId ?: discoveredScale?.device?.broadcastIdString
@@ -1832,7 +1819,6 @@ constructor(
                 setUpdateSettingsError()
                 return@launch
               }
-              refreshDiscoveredScaleFromCacheAndReconnectIfNeeded()
             } else {
               setUpdateSettingsError()
               return@launch
@@ -1897,7 +1883,7 @@ constructor(
     dialogQueueService.enqueue(
       DialogModel.Custom(
         contentKey = DialogType.AccucheckModal,
-        dismissOnBackPress = true
+        dismissOnBackPress = true,
       ),
     )
   }
@@ -1995,6 +1981,16 @@ constructor(
             }
           }
         }
+      }
+
+      GGScanResponseType.DEVICE_DISCONNECTED -> {
+        isScaleConnected = false
+        this.discoveredScale = discoveredScale?.copy(connectionStatus = BLEStatus.DISCONNECTED)
+      }
+
+      GGScanResponseType.DEVICE_CONNECTED -> {
+        isScaleConnected = true
+        this.discoveredScale = discoveredScale?.copy(connectionStatus = BLEStatus.CONNECTED)
       }
 
       else -> null

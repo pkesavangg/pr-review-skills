@@ -31,12 +31,15 @@ class PushNotificationService: NSObject {
     private var processedMessageIds: [String] = []
     private var isProcessingNotification: Bool = false
     private let logger = LoggerService.shared
+    private let tag = "PushNotificationService"
+    private let kvStorage = KvStorageService.shared
     
     // MARK: - Notification Settings
     
     /// Private initializer to enforce singleton pattern
     private override init() {
         super.init()
+        loadStoredFCMToken()
         fetchDeviceDetails()
         setupTokenRefresh()
         setupNetworkMonitoring()
@@ -45,12 +48,14 @@ class PushNotificationService: NSObject {
     // MARK: - Notification Handling
     func handleNotification(_ userInfo: [AnyHashable: Any], completion: @escaping () -> Void) {
         guard !isProcessingNotification else {
+            logger.log(level: .info, tag: tag, message: "Skipping notification handling: already processing")
             completion()
             return
         }
-        
+       
         if let messageId = userInfo["gcm.message_id"] as? String {
             if processedMessageIds.contains(messageId) {
+                logger.log(level: .info, tag: tag, message: "Skipping duplicate push notification. messageId=\(messageId)")
                 completion()
                 return
             }
@@ -61,6 +66,7 @@ class PushNotificationService: NSObject {
         }
         
         isProcessingNotification = true
+        logger.log(level: .info, tag: tag, message: "Push notification handling started")
         Task {
             do {
                 await fetchEntries(showToast: true)
@@ -88,23 +94,24 @@ class PushNotificationService: NSObject {
                         trigger: nil
                     )
                     try await UNUserNotificationCenter.current().add(request)
+                    logger.log(level: .info, tag: tag, message: "Displayed local notification banner from data-only push")
                 }
             } catch {
-                logger.log(level: .error, tag: "PushNotificationService", message: "Failed to handle notification: \(error.localizedDescription)")
+                logger.log(level: .error, tag: tag, message: "Failed to handle notification: \(error.localizedDescription)")
             }
             isProcessingNotification = false
+            logger.log(level: .info, tag: tag, message: "Push notification handling completed")
             completion()
         }
     }
     
     func updateDeviceInfo() async {
-        // Skip if the user hasn’t granted notification permission yet – don’t send an
-        // FCM token or any push-notification related info to the backend until allowed.
-        guard isNotificationAuthorized() else { return }
-        // Don't send empty token to backend – it can clear the device from push targeting.
-        guard let token = fcmToken, !token.isEmpty else { return }
+        let token = fcmToken ?? accountService.activeAccount?.fcmToken ?? ""
         
-        guard !isDeviceInfoUpdating else { return }
+        guard !isDeviceInfoUpdating else {
+            logger.log(level: .info, tag: tag, message: "Skipping device info update: update already in progress")
+            return
+        }
         isDeviceInfoUpdating = true
         defer { isDeviceInfoUpdating = false }
         // Refresh local snapshot
@@ -121,22 +128,27 @@ class PushNotificationService: NSObject {
         )
         do {
             try await apiRepo.updateDeviceInfo(payload)
-            logger.log(level: .info, tag: "PushNotificationService", message: "Device info updated", data: payload)
+            logger.log(level: .success, tag: tag, message: "Device info updated")
         } catch {
-            logger.log(level: .error, tag: "PushNotificationService", message: "Failed to update device info: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Failed to update device info: \(error.localizedDescription)")
             // Silently ignore network errors – will retry on next connectivity change
         }
     }
     
     // MARK: - Push Notification Registration
     func setupPushNotifications(isFromScaleSetup: Bool = false) async {
-        // If token already exists, simply update device info
+        logger.log(level: .info, tag: tag, message: "Push setup started. isFromScaleSetup=\(isFromScaleSetup)")
+        // Always update device info regardless of notification permission.
+        await updateDeviceInfo()
+
+        // If token already exists, no need to re-register for push.
         if fcmToken != nil {
-            await updateDeviceInfo()
+            logger.log(level: .info, tag: tag, message: "Push setup skipped: FCM token already available")
             return
         }
         
         guard permissionsService.requiredCategories.contains(.notifications) else {
+            logger.log(level: .info, tag: tag, message: "Push setup skipped: notifications category not required")
             return
         }
         // Determine current permission state
@@ -148,6 +160,7 @@ class PushNotificationService: NSObject {
             let viewedKey = KvStorageKeys.notificationOnlyAlertShownKey(for: accountId)
             let hasViewedAlert = (KvStorageService.shared.getValue(forKey: viewedKey) as? Bool) ?? false
             if !hasViewedAlert || isFromScaleSetup {
+                logger.log(level: .info, tag: tag, message: "Requesting notification permission during push setup")
                 permissionResult = await permissionsService.handlePermission(.notification)
                 KvStorageService.shared.setValue(true, forKey: viewedKey)
             }
@@ -156,6 +169,8 @@ class PushNotificationService: NSObject {
         // Register only when permission has been granted and system notification authorization is allowed
         if permissionResult == .ENABLED && isNotificationAuthorized() {
             await registerForPushNotifications()
+        } else {
+            logger.log(level: .error, tag: tag, message: "Push setup not registering for remote notifications. permissionResult=\(permissionResult.rawValue), authorized=\(isNotificationAuthorized())")
         }
     }
     
@@ -173,6 +188,7 @@ class PushNotificationService: NSObject {
         networkMonitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor [weak self] in
                 self?.isNetworkConnected = path.status == .satisfied
+                self?.logger.log(level: .info, tag: self?.tag ?? "PushNotificationService", message: "Network status changed for push service. connected=\(path.status == .satisfied)")
                 if path.status == .satisfied {
                     await self?.networkOperations()
                 }
@@ -197,13 +213,11 @@ class PushNotificationService: NSObject {
     /// Handles FCM token refresh notifications
     /// - Parameter notification: The notification containing the new token
     @objc private func tokenRefreshNotification(_ notification: Notification) {
-        // Ignore token updates until the user grants notification permission so that `fcmToken`
-        // stays `nil` prior to consent (behaviour parity with DeviceService in Angular app).
-        guard isNotificationAuthorized() else { return }
-        
         Task { @MainActor [weak self] in
             guard let token = notification.userInfo?["token"] as? String, !token.isEmpty else { return }
             self?.fcmToken = token
+            self?.logger.log(level: .info, tag: self?.tag ?? "PushNotificationService", message: "Received FCM token refresh notification")
+            self?.storeFCMToken(token)
             await self?.updateDeviceInfo()
         }
     }
@@ -227,19 +241,25 @@ class PushNotificationService: NSObject {
     }
     
     private func registerForPushNotifications() async {
+        logger.log(level: .info, tag: tag, message: "Registering for remote push notifications")
         UIApplication.shared.registerForRemoteNotifications()
         do {
             let token = try await getFCMToken()
             fcmToken = token
+            logger.log(level: .success, tag: tag, message: "Push registration succeeded. tokenReceived=true")
+            storeFCMToken(token)
             await updateDeviceInfo()
         } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to register for push notifications: \(error.localizedDescription)")
         }
     }
     
     private func networkOperations() async {
         guard isNetworkConnected else {
+            logger.log(level: .info, tag: tag, message: "Skipping push network operations: offline")
             return
         }
+        logger.log(level: .info, tag: tag, message: "Push network operations started")
         await fetchEntries(showToast: false)
         await syncDevices()
         if isNotificationAuthorized(), fcmToken == nil {
@@ -247,17 +267,23 @@ class PushNotificationService: NSObject {
         } else {
             await updateDeviceInfo()
         }
+        logger.log(level: .info, tag: tag, message: "Push network operations completed")
     }
     
     // MARK: - Entry/Operation Syncing
     private func fetchEntries(showToast: Bool = false) async {
-        guard !isFetchingEntries else { return }
+        guard !isFetchingEntries else {
+            logger.log(level: .info, tag: tag, message: "Skipping entry sync: already running")
+            return
+        }
         isFetchingEntries = true
         defer { isFetchingEntries = false }
+        logger.log(level: .info, tag: tag, message: "Entry sync from push flow started. showToast=\(showToast)")
         await entryService.syncAllEntriesWithRemote()
         if showToast, !bluetoothService.isSetupInProgress, accountService.activeAccount != nil {
             await showNewEntryToast()
         }
+        logger.log(level: .info, tag: tag, message: "Entry sync from push flow completed")
     }
 
     private func showNewEntryToast() async {
@@ -268,12 +294,15 @@ class PushNotificationService: NSObject {
     }
     // MARK: - Device/Scale Syncing
     private func syncDevices() async {
+        logger.log(level: .info, tag: tag, message: "Scale sync from push flow started")
         await ScaleService.shared.syncAllScalesWithRemote()
+        logger.log(level: .info, tag: tag, message: "Scale sync from push flow completed")
     }
     
     // MARK: - Notification Tap Handling
     func handleNotificationTap(_ userInfo: [AnyHashable: Any]) {
         if let destination = userInfo["destination"] as? String {
+            logger.log(level: .info, tag: tag, message: "Push notification tap handled. destination=\(destination)")
             NotificationCenter.default.post(
                 name: .didReceiveNotification,
                 object: nil,
@@ -299,5 +328,41 @@ class PushNotificationService: NSObject {
         }
         return baseKey
     }
+    
+    // MARK: - FCM Token Storage
+    /// Loads the stored FCM token from local storage for the active account
+    private func loadStoredFCMToken() {
+        guard let accountId = accountService.activeAccount?.accountId else { return }
+        let key = KvStorageKeys.fcmTokenKey(for: accountId)
+        if let storedToken = kvStorage.getValue(forKey: key) as? String, !storedToken.isEmpty {
+            fcmToken = storedToken
+        }
+    }
+    
+    /// Stores the FCM token to local storage and updates the in-memory cache.
+    /// - Parameter token: The FCM token to store
+    private func storeFCMToken(_ token: String) {
+        // Keep the in-memory token in sync with the persisted value
+        fcmToken = token
+        // Store token for the active account
+        if let accountId = accountService.activeAccount?.accountId {
+            let key = KvStorageKeys.fcmTokenKey(for: accountId)
+            kvStorage.setValue(token, forKey: key)
+        }
+    }
+    
+    /// Retrieves the stored FCM token for a specific account.
+    ///
+    /// This method is intentionally non-`private` to allow selected consumers
+    /// (for example, account-related services during logout) to read the
+    /// last known FCM token for a specific account. It should not be used as a general-purpose
+    /// storage API; use `storeFCMToken(_:)` and the push notification flows
+    /// within `PushNotificationService` to manage the token lifecycle.
+    ///
+    /// - Parameter accountId: The account identifier to retrieve the token for
+    /// - Returns: The stored FCM token for the account, or `nil` if not found.
+    func getStoredFCMToken(for accountId: String) -> String? {
+        let key = KvStorageKeys.fcmTokenKey(for: accountId)
+        return kvStorage.getValue(forKey: key) as? String
+    }
 }
-

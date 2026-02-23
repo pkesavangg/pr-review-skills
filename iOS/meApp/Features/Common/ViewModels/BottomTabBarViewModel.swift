@@ -353,6 +353,7 @@ class BottomTabBarViewModel: ObservableObject {
         settingsNavigationSourceTab = sourceTab ?? selectedTab
         selectTab(.settings)
         pendingSettingsNavigation = route
+        logger.log(level: .info, tag: tag, message: "Navigating to settings route. route=\(route), sourceTab=\(settingsNavigationSourceTab?.rawValue ?? "nil")")
     }
     
     /// Navigates to the goal setting screen via the settings tab
@@ -374,6 +375,7 @@ class BottomTabBarViewModel: ObservableObject {
     func openScaleSetup(scale: Device, event: DeviceDiscoveryEvent?, isReconnect: Bool, isDuplicated: Bool) {
         let sku = scale.sku ?? event?.deviceInfo.sku ?? ""
         guard !sku.isEmpty, let setupType = event?.deviceInfo.setupType else { return }
+        logger.log(level: .info, tag: tag, message: "Opening scale setup flow. sku=\(sku), setupType=\(setupType), isReconnect=\(isReconnect), isDuplicated=\(isDuplicated)")
         bluetoothService.isSetupInProgress = true
         
         switch setupType {
@@ -420,7 +422,7 @@ class BottomTabBarViewModel: ObservableObject {
                 }
             }
         } catch {
-            // Silently ignore – logging is handled in `HealthKitService`
+            logger.log(level: .error, tag: tag, message: "Failed checking Apple Health integration modal state", data: error.localizedDescription)
         }
     }
     
@@ -480,11 +482,13 @@ class BottomTabBarViewModel: ObservableObject {
             onSecondaryTap: onSecondary
         )
         
+        logger.log(level: .info, tag: tag, message: "Presenting Apple Health integration modal. state=\(state)")
         let modalData = ModalData(presentedView: AnyView(modalView))
         notificationService.showModal(modalData)
     }
     
     private func handleHKConnectFlow(for _: HKIntegrationModalState) async {
+        logger.log(level: .info, tag: tag, message: "HealthKit connect flow started")
         do {
             let success = try await healthKitService.integrate(turnOn: true)
             
@@ -500,11 +504,13 @@ class BottomTabBarViewModel: ObservableObject {
             if entryCount > 0 && hasFullPermissions {
                 await showSyncAlert()
             } else {
+                logger.log(level: .success, tag: tag, message: "HealthKit connect flow succeeded without historical sync")
                 await MainActor.run {
                     notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
                 }
             }
         } catch IntegrationError.userConflict {
+            logger.log(level: .error, tag: tag, message: "HealthKit connect flow failed with user conflict")
             await showAlert(from: HKIntegrationHealthAccessStrings.userConflict)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to connect HealthKit", data: error.localizedDescription)
@@ -529,6 +535,7 @@ class BottomTabBarViewModel: ObservableObject {
     }
     
     private func performSync() async {
+        logger.log(level: .info, tag: tag, message: "HealthKit historical sync started")
         await MainActor.run {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
         }
@@ -544,11 +551,13 @@ class BottomTabBarViewModel: ObservableObject {
                 notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
             }
+            logger.log(level: .success, tag: tag, message: "HealthKit historical sync succeeded")
         } catch {
             await MainActor.run {
                 notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
             }
+            logger.log(level: .error, tag: tag, message: "HealthKit historical sync failed", data: error.localizedDescription)
         }
     }
     
@@ -651,6 +660,7 @@ class BottomTabBarViewModel: ObservableObject {
                 }
             )
             let modalData = ModalData(presentedView: AnyView(modalView))
+            self.logger.log(level: .info, tag: self.tag, message: "Presenting Set-a-Goal modal card from bottom tabs")
             self.notificationService.showModal(modalData)
         }
     }

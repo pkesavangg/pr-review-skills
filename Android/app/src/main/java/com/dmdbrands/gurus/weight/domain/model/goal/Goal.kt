@@ -41,7 +41,6 @@ data class Goal(
     } else {
       baseInitialWeight
     }.minus(weightlessValue)
-
     // Round to one decimal place
     val roundedGoalWeight = round(convertedGoalWeight * 10)
     val roundedInitialWeight = round(convertedInitialWeight * 10)

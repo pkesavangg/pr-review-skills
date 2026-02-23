@@ -29,17 +29,34 @@ public final class HealthKitService: HealthKitServiceProtocol {
         self.context = PersistenceController.shared.context
     }
     
+    // MARK: - Helpers
+    private func getActiveAccountId() async -> String? {
+        await MainActor.run {
+            accountService.activeAccount?.accountId
+        }
+    }
+    
+    private func isHealthKitEnabledForActiveAccount() async -> Bool {
+        await MainActor.run {
+            accountService.activeAccount?.integrationSettings?.isHealthKitOn ?? false
+        }
+    }
+    
     // MARK: - HealthKitServiceProtocol
     
     /// Integrates or de-integrates Apple Health based on `turnOn`. Returns `true` when integration remains enabled after the call.
     public func integrate(turnOn: Bool) async throws -> Bool {
+        let accountId = accountService.activeAccount?.accountId ?? "nil"
+        logger.log(level: .info, tag: tag, message: "HealthKit integrate requested. turnOn=\(turnOn), accountId=\(accountId)")
         if turnOn {
             do {
                 let isAlreadyIntegrated = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
                 if isAlreadyIntegrated {
+                    logger.log(level: .error, tag: tag, message: "HealthKit integrate blocked due to user conflict. accountId=\(accountId)")
                     throw IntegrationError.userConflict
                 }
             } catch {
+                logger.log(level: .error, tag: tag, message: "HealthKit integrate user conflict check failed. accountId=\(accountId), error=\(error.localizedDescription)")
                 throw IntegrationError.userConflict
             }
         }
@@ -47,6 +64,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
         if turnOn {
             let isAvailable = hkPackage.available();
             if !isAvailable {
+                logger.log(level: .error, tag: tag, message: "HealthKit integrate failed: HealthKit unavailable on device. accountId=\(accountId)")
                 return false
             }
             let authorizationResult = await hkPackage.requestAuthorization()
@@ -56,6 +74,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             }
             let permissions = getApprovedPermissionList()
             if permissions.isEmpty {
+                logger.log(level: .error, tag: tag, message: "HealthKit integrate failed: no permissions approved after authorization. accountId=\(accountId)")
                 return false
             }
             let accountID = accountService.activeAccount?.accountId ?? ""
@@ -66,12 +85,16 @@ public final class HealthKitService: HealthKitServiceProtocol {
             )
             do {
                 try await self.integrationService.setStoredIntegrationData(integrationInfo)
+                logger.log(level: .success, tag: tag, message: "HealthKit integrate succeeded. accountId=\(accountID), permissionsCount=\(permissions.count)")
                 return true
             } catch {
+                logger.log(level: .error, tag: tag, message: "HealthKit integrate failed while persisting integration data. accountId=\(accountID), error=\(error.localizedDescription)")
                 return false
             }
         } else {
+            logger.log(level: .info, tag: tag, message: "HealthKit de-integration requested. accountId=\(accountId)")
             try await clearHealthKit()
+            logger.log(level: .success, tag: tag, message: "HealthKit de-integration completed. accountId=\(accountId)")
             return false
         }
     }
@@ -91,8 +114,9 @@ public final class HealthKitService: HealthKitServiceProtocol {
     /// Pushes the entire local entry history into Apple Health.
     public func syncAllData() async throws {
         // Get accountId on main actor first
-        let accountId = try await accountService.getActiveAccount()?.accountId
+        let accountId = await getActiveAccountId()
         guard let accountId else { return }
+        logger.log(level: .info, tag: tag, message: "HealthKit full sync started. accountId=\(accountId)")
 
         // Materialize simple export values off the main actor to avoid cross-context @Model access
         let exports: [HealthKitExport] = try await Task.detached(priority: .userInitiated) {
@@ -119,11 +143,14 @@ public final class HealthKitService: HealthKitServiceProtocol {
         }.value
 
         let healthKitData = buildHealthKitData(from: exports)
+        logger.log(level: .info, tag: tag, message: "HealthKit full sync prepared payload. accountId=\(accountId), entriesCount=\(exports.count), payloadCount=\(healthKitData.count)")
         try await saveHealthKitData(finalData: healthKitData)
+        logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), payloadCount=\(healthKitData.count)")
     }
     
     /// Opens the Apple Health app so the user can review permissions.
     public func openAppleHealth() {
+        logger.log(level: .info, tag: tag, message: "Opening Apple Health app from integration flow")
         Task {
             await hkPackage.openAppleHealth()
         }
@@ -139,6 +166,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     /// Writes entry data into Apple Health using an EntryNotification.
     /// This method is safe to call from any actor as it uses extracted data.
     func syncNewData(notification: EntryNotification) async throws {
+        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp)")
         let export = HealthKitExportExtended(
             timestamp: notification.entryTimestamp,
             weight: notification.weight,
@@ -149,6 +177,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
         )
         let healthKitData = buildHealthKitData(from: export)
         try await hkPackage.saveData(healthKitData)
+        logger.log(level: .success, tag: tag, message: "HealthKit sync new entry completed. timestamp=\(notification.entryTimestamp), payloadCount=\(healthKitData.count)")
     }
 
     /// Deletes a single `Entry` previously written to Apple Health.
@@ -162,6 +191,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     /// Deletes entry data from Apple Health using an EntryNotification.
     /// This method is safe to call from any actor as it uses extracted data.
     func deleteEntry(notification: EntryNotification) async throws -> Bool {
+        logger.log(level: .info, tag: tag, message: "HealthKit delete entry started. timestamp=\(notification.entryTimestamp)")
         let export = HealthKitExportExtended(
             timestamp: notification.entryTimestamp,
             weight: notification.weight,
@@ -172,17 +202,26 @@ public final class HealthKitService: HealthKitServiceProtocol {
         )
         let healthKitData = buildHealthKitData(from: export)
         try await hkPackage.deleteEntry(healthKitData)
+        logger.log(level: .success, tag: tag, message: "HealthKit delete entry completed. timestamp=\(notification.entryTimestamp), payloadCount=\(healthKitData.count)")
         return true
     }
     
     /// Removes all Apple Health records previously generated by the app.
     public func clearHealthKit() async throws {
+        let accountId = accountService.activeAccount?.accountId ?? "nil"
+        logger.log(level: .info, tag: tag, message: "HealthKit clear requested. accountId=\(accountId)")
         do {
             try await self.integrationService.clearIntegrationStatus(integrationType: .healthKit)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to clear integration status", data: error.localizedDescription)
         }
-        try await hkPackage.deleteAllData()
+        do {
+            try await hkPackage.deleteAllData()
+            logger.log(level: .success, tag: tag, message: "HealthKit clear completed. accountId=\(accountId)")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "HealthKit clear failed during deleteAllData. accountId=\(accountId), error=\(error.localizedDescription)")
+            throw error
+        }
     }
     
     /// Returns `true` if at least one HealthKit permission is granted.
@@ -446,10 +485,11 @@ public final class HealthKitService: HealthKitServiceProtocol {
                 if let integrationInfo = try await integrationService.getStoredIntegrationData(),
                    integrationInfo.isIntegrated,
                    integrationInfo.type == .healthKit {
-                    let accountId = try? await accountService.getActiveAccount()?.accountId
+                    let accountId = await getActiveAccountId()
                     let scopedOutOfSyncKey = KvStorageKeys.scopedHealthKitModalKey(outOfSyncHKModalFlagKeyBase, accountId: accountId)
                     if (kvStore.getValue(forKey: scopedOutOfSyncKey) as? Bool) != true {
                         kvStore.setValue(true, forKey: scopedOutOfSyncKey)
+                        logger.log(level: .info, tag: tag, message: "HealthKit launch modal decision: outOfSync")
                         return .outOfSync
                     }
                 }
@@ -460,7 +500,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
             // ------------------------------------------------------------
             // Show when HealthKit permissions have been granted (≥1) but we don't yet
             // have a stored integration record for the current device/account.
-            let accountId = try? await accountService.getActiveAccount()?.accountId
+            let accountId = await getActiveAccountId()
             let scopedFinishKey = KvStorageKeys.scopedHealthKitModalKey(finishHKModalFlagKeyBase, accountId: accountId)
             if (kvStore.getValue(forKey: scopedFinishKey) as? Bool) != true {
                 let approvedPermissions = getApprovedPermissionList()
@@ -472,6 +512,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                         if !isUsedByAnotherAccount {
                             // Another account is already integrated; skip showing the Finish Adding prompt
                             kvStore.setValue(true, forKey: scopedFinishKey)
+                            logger.log(level: .info, tag: tag, message: "HealthKit launch modal decision: finishAdding")
                             return .finishAdding
                         }
                     }
@@ -483,12 +524,12 @@ public final class HealthKitService: HealthKitServiceProtocol {
             // ------------------------------------------------------------
             let scopedAddKey = KvStorageKeys.scopedHealthKitModalKey(addHKModalFlagKeyBase, accountId: accountId)
             if (kvStore.getValue(forKey: scopedAddKey) as? Bool) != true {
-                guard let account = try await accountService.getActiveAccount() else {
+                guard accountId != nil else {
                     return nil
                 }
 
                 // Account level flag from backend indicating HealthKit was enabled previously.
-                let isHealthKitOn = account.integrationSettings?.isHealthKitOn ?? false
+                let isHealthKitOn = await isHealthKitEnabledForActiveAccount()
                 if isHealthKitOn {
                     let storedIntegrationData = try await integrationService.getStoredIntegrationData()
                     if storedIntegrationData == nil {
@@ -496,6 +537,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
                         if !isUsedByAnotherAccount {
                             // Another account is already integrated; skip showing the Add Integration prompt
                             kvStore.setValue(true, forKey: scopedAddKey)
+                            logger.log(level: .info, tag: tag, message: "HealthKit launch modal decision: addIntegration")
                             return .addIntegration
                         }
                     }
@@ -517,6 +559,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
         let accountId = accountService.activeAccount?.accountId
         let scopedKey = KvStorageKeys.scopedHealthKitModalKey(waitingForHKPermissionsRestoredBase, accountId: accountId)
         kvStore.setValue(true, forKey: scopedKey)
+        logger.log(level: .info, tag: tag, message: "Set waiting-for-permissions-restored flag. accountId=\(accountId ?? "nil")")
     }
     
     /// Clears the flag indicating we're waiting for permissions to be restored.
@@ -524,6 +567,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
         let accountId = accountService.activeAccount?.accountId
         let scopedKey = KvStorageKeys.scopedHealthKitModalKey(waitingForHKPermissionsRestoredBase, accountId: accountId)
         kvStore.clearValue(forKey: scopedKey)
+        logger.log(level: .info, tag: tag, message: "Cleared waiting-for-permissions-restored flag. accountId=\(accountId ?? "nil")")
     }
     
     /// Checks if permissions were restored after being out of sync.
@@ -543,11 +587,12 @@ public final class HealthKitService: HealthKitServiceProtocol {
         if !approvedPermissions.isEmpty {
             // Permissions restored - clear the flag and return true
             kvStore.clearValue(forKey: scopedKey)
+            logger.log(level: .success, tag: tag, message: "HealthKit permissions restored after out-of-sync. accountId=\(accountId ?? "nil"), permissionsCount=\(approvedPermissions.count)")
             return true
         }
         
+        logger.log(level: .info, tag: tag, message: "HealthKit permissions still not restored after out-of-sync. accountId=\(accountId ?? "nil")")
         return false
     }
 
 }
-

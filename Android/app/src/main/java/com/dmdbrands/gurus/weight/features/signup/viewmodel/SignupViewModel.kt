@@ -97,9 +97,6 @@ constructor(
 
         basicFieldsValid
       } else {
-        if(stateValue.form.controls.goalType.value == GoalType.MAINTAIN.value){
-          stateValue.form.controls.currentWeight.setValue(stateValue.form.controls.goalWeight.value)
-        }
         // When goal is not skipped, validate all fields
         stateValue.form.validate()
       }
