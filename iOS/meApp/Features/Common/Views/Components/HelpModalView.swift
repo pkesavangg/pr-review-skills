@@ -20,6 +20,7 @@ struct HelpModalView: View {
     let appAssets = AppAssets.self
     let appConstants = AppConstants.Help.self
     let helpLang = HelpStrings.self
+    private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -63,8 +64,7 @@ struct HelpModalView: View {
         .background(theme.backgroundSecondary)
         .cornerRadius(.radiusXL)
         .inAppBrowser(
-// swiftlint:disable:next force_unwrapping
-            url: productURL ?? URL(string: AppConstants.Product.baseURL)!,
+            url: productURL ?? fallbackProductURL,
             isPresented: $showProductBrowser
         )
     }

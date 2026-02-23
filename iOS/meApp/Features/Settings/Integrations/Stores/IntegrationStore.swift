@@ -39,8 +39,7 @@ class IntegrationStore: ObservableObject {
     
     /// Convenience URL used by the view modifier – guaranteed non-optional.
     var presentingBrowserURL: URL {
-// swiftlint:disable:next force_unwrapping
-        browserURL ?? URL(string: appConstants.baseURL)!
+        browserURL ?? AppConstants.LegalURLs.greaterGoodsWebsite
     }
     
     /// List of integrations to display.
