@@ -1203,7 +1203,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     ///   - response: The API response containing account and token information
     ///   - existingAccount: An optional existing account to update, or nil to create a new account
     /// - Returns: The prepared account with authentication state set
-    private func prepareAuthenticatedAccount(from response: AccountResponse, existingAccount: Account?) async throws -> Account {
+    private func prepareAuthenticatedAccount(from response: AccountResponse, existingAccount: Account?) -> Account {
         let account: Account
         if let existing = existingAccount {
             // Update existing account in place
