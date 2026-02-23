@@ -11,6 +11,15 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Restore GoogleService-Info.plist
+          command: |
+            if [ -z "$GOOGLESERVICE_INFO_BASE64" ]; then
+              echo "Error: GOOGLESERVICE_INFO_BASE64 is not set. Add it as a CircleCI project/context secret (base64-encoded GoogleService-Info.plist)."
+              exit 1
+            fi
+            echo "$GOOGLESERVICE_INFO_BASE64" | base64 --decode > iOS/meApp/Resources/GoogleService-Info.plist
+            echo "GoogleService-Info.plist restored from secret."
+      - run:
           name: Show Xcode version
           command: xcodebuild -version
       - run:
