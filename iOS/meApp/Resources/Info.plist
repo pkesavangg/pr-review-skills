@@ -18,9 +18,9 @@
     <key>NSCameraUsageDescription</key>
     <string>Weight Gurus uses the camera to sync with AppSync scales.</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>This app uses bluetooth to pair and sync with bluetooth devices.</string>
+    <string>Weight Gurus uses Bluetooth to pair and sync with Bluetooth scales.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>Weight Gurus uses Bluetooth to connect to your compatible scales during setup.</string>
+    <string>Weight Gurus uses Bluetooth to pair and sync with Bluetooth scales.</string>
     <key>NSHealthShareUsageDescription</key>
     <string>Weight Gurus syncs weight and body composition data with Apple Health to help you track your fitness progress.</string>
     <key>NSHealthUpdateUsageDescription</key>
