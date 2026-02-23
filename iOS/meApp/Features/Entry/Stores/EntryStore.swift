@@ -291,7 +291,7 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func updateWeightUnitFromAccount(_ account: Account?) {
+    @MainActor private func updateWeightUnitFromAccount(_ account: Account?) {
         let unit = account?.weightSettings?.weightUnit ?? .lb
         
         if self.weightUnit != unit {
@@ -315,7 +315,7 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func calculateBMI() {
+    @MainActor private func calculateBMI() {
         guard isBmiAutoCalculationEnabled else { return }
         guard let weightDouble = Double(manualEntryForm.weight.value), weightDouble > 0 else {
             manualEntryForm.bmi.value = ""
@@ -358,7 +358,7 @@ final class EntryStore: ObservableObject {
         return Int(floor(value * 10))
     }
 
-    func resetForm() {
+    @MainActor func resetForm() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
         stopAutoTimeSync()
@@ -432,7 +432,7 @@ final class EntryStore: ObservableObject {
         timeSyncCancellable = nil
     }
 
-    private func performAutoTimeTick() {
+    @MainActor private func performAutoTimeTick() {
         guard isTimeSyncActive else { return }
         // Only auto-update when selected date is today, picker is not open, and user hasn't adjusted time
         guard Calendar.current.isDateInToday(manualEntryForm.date.value) else { return }

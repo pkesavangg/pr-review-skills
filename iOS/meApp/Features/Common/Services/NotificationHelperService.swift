@@ -38,7 +38,7 @@ class NotificationHelperService: ObservableObject {
         !modalViewData.isEmpty
     }
     
-    func showAlert(_ alert: AlertModel) {
+    @MainActor func showAlert(_ alert: AlertModel) {
         let wrappedButtons = alert.buttons.map { button in
             AlertButtonModel(
                 title: button.title,
@@ -60,12 +60,12 @@ class NotificationHelperService: ObservableObject {
         self.isOverlayActive = true
     }
     
-    func dismissAlert() {
+    @MainActor func dismissAlert() {
         self.alertData = nil
         self.updateOverlayState()
     }
     
-    func showToast(_ data: ToastModel) {
+    @MainActor func showToast(_ data: ToastModel) {
         var toast = data
         toast.onDismiss = { [weak self] in
             self?.dismissToast()
@@ -81,13 +81,13 @@ class NotificationHelperService: ObservableObject {
         self.hasActiveToasts = true
     }
     
-    func dismissToast() {
+    @MainActor func dismissToast() {
         self.toastData = nil
         // Don't immediately set hasActiveToasts to false - let ToastModifier manage this
         self.updateOverlayState()
     }
     
-    func showLoader(_ loader: LoaderModel) {
+    @MainActor func showLoader(_ loader: LoaderModel) {
         // Cancel any existing timeout task
         loaderTimeoutTask?.cancel()
         self.loaderData = loader
@@ -113,7 +113,7 @@ class NotificationHelperService: ObservableObject {
         }
     }
     
-    func dismissLoader() {
+    @MainActor func dismissLoader() {
         // Cancel timeout task
         loaderTimeoutTask?.cancel()
         loaderTimeoutTask = nil
@@ -122,7 +122,7 @@ class NotificationHelperService: ObservableObject {
         self.updateOverlayState()
     }
     
-    func dismissAllNotifications() {
+    @MainActor func dismissAllNotifications() {
         // Cancel timeout task
         loaderTimeoutTask?.cancel()
         loaderTimeoutTask = nil
@@ -134,7 +134,7 @@ class NotificationHelperService: ObservableObject {
         self.isOverlayActive = false
     }
     
-    func showModal(_ modal: ModalData) {
+    @MainActor func showModal(_ modal: ModalData) {
         let wrappedModal = ModalData(
             presentedView: modal.presentedView,
             backdropDismiss: modal.backdropDismiss
@@ -146,14 +146,14 @@ class NotificationHelperService: ObservableObject {
         self.isOverlayActive = true
     }
     
-    func dismissModal() {
+    @MainActor func dismissModal() {
         if !self.modalViewData.isEmpty {
             self.modalViewData.removeLast()
         }
         self.updateOverlayState()
     }
     
-    func dismissAllModals() {
+    @MainActor func dismissAllModals() {
         self.modalViewData = []
         self.isOverlayActive = false
     }

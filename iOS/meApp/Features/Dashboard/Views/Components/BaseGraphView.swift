@@ -263,10 +263,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     let targetPosition = viewModel.scrollPosition
                     // Temporarily set to a slightly different position to force binding update
                     viewModel.scrollPosition = targetPosition.addingTimeInterval(0.001)
+                    await Task.yield()
                     // Then immediately set to the correct position
-                    Task { @MainActor in
-                        viewModel.scrollPosition = targetPosition
-                    }
+                    viewModel.scrollPosition = targetPosition
                 }
             }
         }
@@ -346,10 +345,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 // Clear Y-axis label cache since domain change affects tick values
                 self.cachedYAxisLabels.removeAll()
                 // Reset flag after a brief delay to allow transaction to complete
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 100_000_000)
-                    self.isDomainChangeOnly = false
-                }
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                self.isDomainChangeOnly = false
             }
         }
         // Conditional scroll position syncing

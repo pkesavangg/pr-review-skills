@@ -1016,13 +1016,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             Task { @MainActor in
                 NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
                 // Small delay to allow connection status updates to complete and propagate to UI
-                Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 500_000_000)
-                    // Clear setup flag and dismiss the sheet
-                    self.bluetoothService.isSetupInProgress = false
-                    self.dismissAction?()
-                    self.checkGoalModalAfterSetup()
-                }
+                // Clear setup flag and dismiss the sheet
+                self.bluetoothService.isSetupInProgress = false
+                self.dismissAction?()
+                self.checkGoalModalAfterSetup()
             }
         case .permissions:
             moveToNextStep()
@@ -1195,14 +1193,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
             buttons: [
                 AlertButtonModel(title: alertStrings.goBackButton, type: .secondary) { _ in },
                 AlertButtonModel(title: alertStrings.deleteButton, type: .danger) { [weak self] _ in
-                    Task {
-                        await self?.deleteUserFromScale(user)
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        await self.deleteUserFromScale(user)
                         // Reset to normal state and retry connection
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 250_000_000)
-                            self?.scaleSetupError = .none
-                        }
-                        self?.navigateToStep(.connectingBluetooth)
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        self.scaleSetupError = .none
+                        self.navigateToStep(.connectingBluetooth)
                     }
                 }
             ]
