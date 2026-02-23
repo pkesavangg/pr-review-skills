@@ -166,7 +166,7 @@ fun GraphPagerView(
         onChartConsuming(true)
         onSegmentChange(segment, currentVisibleCenter)
       },
-      modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+      modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
     )
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))

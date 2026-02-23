@@ -609,9 +609,9 @@ constructor(
       }
       // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
       accountDao.logoutAccount(accountId)
+      markAccountExpired(accountId)
       // Clear tokens from DataStore and TokenManager
       userDataStore.clearAccountTokens(accountId)
-      tokenManager.clearTokens()
       AppLog.d(TAG, "Logout successful (API attempted: $apiLogoutAttempted)")
       true
     } catch (e: Exception) {

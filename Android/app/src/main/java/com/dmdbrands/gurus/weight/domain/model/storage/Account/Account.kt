@@ -112,6 +112,7 @@ fun Account?.toGoal(): Goal? {
     goalWeight = activeAccount.goalWeight ?: 0.0,
     initialWeight = activeAccount.initialWeight,
     type = activeAccount.goalType ?: "",
+    goalType = activeAccount.goalType ?: "",
     percent = activeAccount.goalPercent,
     metPreviousGoal = activeAccount.metPreviousGoal ?: false,
     account = activeAccount, // Include account for weightless info access

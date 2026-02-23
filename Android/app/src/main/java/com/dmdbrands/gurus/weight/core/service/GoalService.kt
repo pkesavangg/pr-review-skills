@@ -98,7 +98,7 @@ constructor(
           goalWeight = goalWeight,
           initialWeight = initialWeight,
           type = goalType,
-          metPreviousGoal = if (wasMet) true else null,
+          metPreviousGoal = wasMet,
         )
 
 
@@ -176,6 +176,7 @@ constructor(
     try {
       val account = accountRepository.getActiveAccount().first() ?: return
       val convertedCurrentWeight =  convertWeight(currentWeight, WeightUnit.LB, account.weightUnit)
+      val currentGoalWeight = convertWeight(account.goalWeight ?: 0.0, WeightUnit.LB, account.weightUnit)
       val currentGoal = getCurrentGoal().first() ?: return
       val hasShownAlert = goalAlertDataStore.hasShownAlert(account.id)
       val isSetupInProgress = deviceService.isSetupInProgress()
@@ -183,9 +184,9 @@ constructor(
       // Match Angular's conditions: don't show alerts during setup
       if (!isShowingAlert && !hasShownAlert && !isSetupInProgress) {
         val shouldShowAlert = when (currentGoal.type.lowercase()) {
-          "gain" -> convertedCurrentWeight >= currentGoal.goalWeight
-          "lose" -> convertedCurrentWeight <= currentGoal.goalWeight
-          "maintain" -> convertedCurrentWeight != currentGoal.goalWeight
+          "gain" -> convertedCurrentWeight >= currentGoalWeight
+          "lose" -> convertedCurrentWeight <= currentGoalWeight
+          "maintain" -> convertedCurrentWeight != currentGoalWeight
           else -> false
         }
 
@@ -216,10 +217,9 @@ constructor(
 
       if (setNewGoal) {
         // User chose maintain - update goal to maintain at current weight
-        val currentGoal = getCurrentGoal().first() ?: return
         val convertedGoalWeight =
           convertTenthsBetweenUnits(
-            weightTenths = currentGoal.goalWeight,
+            weightTenths = account.goalWeight ?: 0.0,
             fromUnit = account.weightUnit,
             toUnit = WeightUnit.LB,
           )
@@ -242,16 +242,17 @@ constructor(
       val fromUnit = account?.weightUnit ?: WeightUnit.LB
       val convertedGoalWeight =
         convertTenthsBetweenUnits(
-          weightTenths = currentGoal.goalWeight,
+          weightTenths = account?.goalWeight ?: 0.0,
           fromUnit = fromUnit,
           toUnit = WeightUnit.LB,
         )
       val convertedInitialWeight =
         convertTenthsBetweenUnits(
-          weightTenths = currentGoal.initialWeight,
+          weightTenths = account?.initialWeight ?: 0.0,
           fromUnit = fromUnit,
           toUnit = WeightUnit.LB,
         )
+
       // Update goal with met status
       updateGoal(
         goalWeight = convertedGoalWeight,
@@ -435,7 +436,7 @@ constructor(
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
           CoroutineScope(Dispatchers.Main).launch {
-            handleGoalMet(true)
+            handleGoalMet(false)
           }
         }
       ),

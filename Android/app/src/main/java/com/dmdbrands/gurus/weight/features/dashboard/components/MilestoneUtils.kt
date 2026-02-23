@@ -17,6 +17,14 @@ fun isGoalProgressMilestone(milestone: Stat): Boolean {
     }
 }
 
+/**
+ * True for milestone stats that display progress metrics (streak, count, week/month/year change, etc.),
+ * i.e. not the goal card. Used to show shimmer only on progress metric tiles while updating.
+ */
+fun isProgressMetricMilestone(milestone: Stat): Boolean {
+    return !isGoalProgressMilestone(milestone)
+}
+
 fun isStreakMilestone(milestone: Stat): Boolean {
     return when (milestone.key) {
         is DashboardKey.Milestone -> milestone.key.key == MilestoneKey.CURRENT_STREAK || milestone.key.key == MilestoneKey.LONGEST_STREAK

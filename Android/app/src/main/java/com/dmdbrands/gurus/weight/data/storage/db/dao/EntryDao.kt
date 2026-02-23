@@ -809,50 +809,23 @@ ORDER BY d.day DESC
 
   /**
    * Get the longest streak count for an account.
+   * Uses window function (row_number) + GROUP BY to compute max consecutive days; faster than recursive CTE for large datasets.
    * @param accountId The account ID
    * @return The longest streak count
    */
   @Query(
     """
-        WITH RECURSIVE dates AS (
-            SELECT
-                strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS date
-            FROM entry_view
-            WHERE accountId = :accountId
-              AND (operationType IS NULL OR operationType != 'delete')
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
-            ORDER BY date ASC
-        ),
-        streak_calc AS (
-            SELECT
-                date,
-                1 AS streak_length,
-                date AS streak_start
-            FROM dates
-            WHERE date = (SELECT MIN(date) FROM dates)
-
-            UNION ALL
-
-            SELECT
-                d.date,
-                CASE
-                    WHEN julianday(d.date) = julianday(sc.date) + 1 THEN sc.streak_length + 1
-                    ELSE 1
-                END AS streak_length,
-                CASE
-                    WHEN julianday(d.date) = julianday(sc.date) + 1 THEN sc.streak_start
-                    ELSE d.date
-                END AS streak_start
-            FROM dates d
-            JOIN streak_calc sc ON d.date > sc.date
-            WHERE d.date = (
-                SELECT MIN(d2.date)
-                FROM dates d2
-                WHERE d2.date > sc.date
+        SELECT COALESCE(MAX(streak_count), 0) AS longestStreak FROM (
+          SELECT COUNT(*) AS streak_count FROM (
+            SELECT day_start, row_number() OVER (ORDER BY day_start) AS row_num FROM (
+              SELECT strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS day_start
+              FROM entry_view
+              WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')
+              GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
             )
+          ) AS t1
+          GROUP BY strftime('%Y-%m-%d', date(day_start, '-' || (row_num - 1) || ' day'))
         )
-        SELECT COALESCE(MAX(streak_length), 0) AS longestStreak
-        FROM streak_calc
         """,
   )
   suspend fun getLongestStreakCount(accountId: String): Int

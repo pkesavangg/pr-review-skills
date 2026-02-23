@@ -70,25 +70,30 @@ class MigrationService @Inject constructor(
 
   /**
    * Core Ionic migration logic with account migration first, then entries.
+   * Uses the active account ID from account migration for all subsequent steps (devices, integration, entries, timestamp).
    */
   private suspend fun migrateIonicDatabase(context: Context): MigrationResult {
     var sqliteDb: SQLiteDatabase? = null
     var totalMigratedEntries = 0
     var accountMigrated = false
+    var activeAccountId: String? = null
 
     return try {
       AppLog.i(TAG, "Starting Ionic migration with account data first")
 
-      // Step 1: Migrate account data from Capacitor Preferences
-      accountMigrated = migrateAccountData(context)
-      if (accountMigrated) {
-        AppLog.i(TAG, "Account migration completed successfully")
-      } else {
+      // Step 1: Migrate account data from Capacitor Preferences and get active account ID
+      val accountResult = migrateAccountData(context)
+      accountMigrated = accountResult.first
+      activeAccountId = accountResult.second
+      if (accountMigrated && activeAccountId != null) {
+        AppLog.i(TAG, "Account migration completed successfully for activeAccountId=$activeAccountId")
+      } else if (!accountMigrated) {
         AppLog.w(TAG, "No account data found or account migration failed")
       }
 
-      migrateDeviceData(context)
-      migrateIntegration(context)
+      migrateDeviceData(context, activeAccountId)
+      migrateIntegration(context, activeAccountId)
+
       // Step 2: Locate and open Ionic database for entries
       val dbPath = IonicDatabaseHelper.locateIonicDb(context)
       if (dbPath == null) {
@@ -98,13 +103,13 @@ class MigrationService @Inject constructor(
 
       // Step 4: Migrate entries. Check table existence before querying to support 4.0.1 vs 4.2.0.
       val regularEntries = if (tableExists(sqliteDb, "entry")) {
-        migrateEntriesFromEntryTables(context, sqliteDb)
+        migrateEntriesFromEntryTables(context, sqliteDb, activeAccountId)
       } else {
         AppLog.i(TAG, "entry table not present, skipping entry migration")
         0
       }
       val opStackEntries = if (tableExists(sqliteDb, "opStack")) {
-        migrateEntriesWithRawSQL(context, sqliteDb)
+        migrateEntriesWithRawSQL(context, sqliteDb, activeAccountId)
       } else {
         AppLog.i(TAG, "opStack table not present (e.g. 4.0.1), skipping opStack migration")
         0
@@ -116,7 +121,7 @@ class MigrationService @Inject constructor(
 
       AppLog.i(
         TAG,
-        "Migration completed: Account=$accountMigrated, OpStack Entries=$opStackEntries, Regular Entries=$regularEntries, Total=$totalMigratedEntries",
+        "Migration completed: Account=$accountMigrated, activeAccountId=$activeAccountId, OpStack Entries=$opStackEntries, Regular Entries=$regularEntries, Total=$totalMigratedEntries",
       )
       MigrationResult.Companion.success(totalMigratedEntries, accountMigrated)
     } catch (e: Exception) {
@@ -180,8 +185,9 @@ class MigrationService @Inject constructor(
    * - healthConnectPermissionList: Granted permissions list
    *
    * @param context The Android context for accessing Capacitor storage
+   * @param activeAccountId When non-null, only integration settings for this account are migrated (same ID as account migration).
    */
-  private suspend fun migrateIntegration(context: Context) {
+  private suspend fun migrateIntegration(context: Context, activeAccountId: String?) {
     try {
       AppLog.i(TAG, "Starting Health Connect integration settings migration...")
 
@@ -224,16 +230,17 @@ class MigrationService @Inject constructor(
         grantedPermissionMap,
       )
 
-      // Get all unique account keys across all setting maps
+      // Get all unique account keys across all setting maps; when activeAccountId is set, only migrate that account
       val allKeys = maps.flatMap { it.keys }.toSet()
+      val keysToMigrate = if (activeAccountId != null) allKeys.filter { it == activeAccountId } else allKeys.toList()
 
-      if (allKeys.isEmpty()) {
-        AppLog.i(TAG, "No Health Connect integration settings found to migrate")
+      if (keysToMigrate.isEmpty()) {
+        AppLog.i(TAG, "No Health Connect integration settings found to migrate for activeAccountId=$activeAccountId")
         return
       }
 
       // Create consolidated IonicHealthConnectData for each account key
-      val result = allKeys.associateWith { key ->
+      val result = keysToMigrate.associateWith { key ->
         IonicHealthConnectData(
           assignedTo = assignedToMap[key] ?: "",
           integrated = integratedMap[key] ?: "",
@@ -279,13 +286,17 @@ class MigrationService @Inject constructor(
     }
   }
 
-  private suspend fun migrateDeviceData(context: Context): Boolean = withContext(Dispatchers.IO) {
+  /**
+   * Migrates device data from Capacitor storage.
+   * @param activeAccountId When non-null, only devices for this account are migrated (same ID as account migration).
+   */
+  private suspend fun migrateDeviceData(context: Context, activeAccountId: String?): Boolean = withContext(Dispatchers.IO) {
     return@withContext try {
       val devicesJsonMap =
         CapacitorStorageHelper.locateAndReadPairedScalesFromCapacitorStorage(context)
       AppLog.d(
         TAG,
-        "📱 Starting device data migration from Capacitor storage with ${devicesJsonMap} devices",
+        "📱 Starting device data migration from Capacitor storage with ${devicesJsonMap} devices, activeAccountId=$activeAccountId",
       )
       if (devicesJsonMap.isNullOrEmpty()) {
         AppLog.w(TAG, "No device data found in Capacitor storage")
@@ -293,7 +304,12 @@ class MigrationService @Inject constructor(
       }
       val ionicDeviceMap = IonicDataConverter.parseDevicesWithGson(devicesJsonMap)
       AppLog.d("migrationdata","$ionicDeviceMap")
-      val deviceDetails = ionicDeviceMap.flatMap { (accountID, ionicScales) ->
+      val mapToMigrate = if (activeAccountId != null) {
+        ionicDeviceMap.filterKeys { it == activeAccountId }
+      } else {
+        ionicDeviceMap
+      }
+      val deviceDetails = mapToMigrate.flatMap { (accountID, ionicScales) ->
         ionicScales.mapNotNull { scale ->
           val deviceDetail = scale.toDeviceDetails(accountID)
           if (deviceDetail == null) {
@@ -318,8 +334,9 @@ class MigrationService @Inject constructor(
   /**
    * Migrates account data from Capacitor Preferences storage using Gson.
    * Looks for the activeAccountKey and converts it to AccountEntity.
+   * @return Pair of (success, activeAccountId). When success is true, activeAccountId is the migrated account's ID for use in subsequent migration steps.
    */
-  private suspend fun migrateAccountData(context: Context): Boolean = withContext(Dispatchers.IO) {
+  private suspend fun migrateAccountData(context: Context): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
     return@withContext try {
       AppLog.d(TAG, "Starting account data migration from Capacitor Preferences")
 
@@ -329,7 +346,7 @@ class MigrationService @Inject constructor(
 
       if (accountJsonString.isNullOrEmpty()) {
         AppLog.w(TAG, "No account data found in Capacitor storage")
-        return@withContext false
+        return@withContext Pair(false, null)
       }
 
       // Parse JSON account data using Gson
@@ -337,7 +354,7 @@ class MigrationService @Inject constructor(
 
       if (ionicAccount == null) {
         AppLog.w(TAG, "Failed to parse account JSON with Gson")
-        return@withContext false
+        return@withContext Pair(false, null)
       }
 
       AppLog.d(TAG, "Successfully parsed IonicAccount: ${ionicAccount}")
@@ -349,7 +366,7 @@ class MigrationService @Inject constructor(
 
       if (accountEntity == null) {
         AppLog.w(TAG, "Failed to convert IonicAccount to AccountEntity")
-        return@withContext false
+        return@withContext Pair(false, null)
       }
 
       // Read last sync timestamp from Capacitor (Ionic key: timestampkey-{accountId})
@@ -359,11 +376,11 @@ class MigrationService @Inject constructor(
       // Save account and related data
       saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
       AppLog.d(TAG, "Account migration completed")
-      AppLog.i(TAG, "Account migration successful: ${accountEntity.email}")
-      true
+      AppLog.i(TAG, "Account migration successful: ${accountEntity.email}, activeAccountId=${accountEntity.id}")
+      Pair(true, accountEntity.id)
     } catch (e: Exception) {
       AppLog.e(TAG, "Account migration failed: ${e.message}")
-      false
+      Pair(false, null)
     }
   }
 
@@ -431,8 +448,9 @@ class MigrationService @Inject constructor(
   /**
    * Migrates entries using raw SQL queries.
    * Only called when opStack table exists. Uses opStack_metric if present, else selects from opStack only.
+   * @param activeAccountId When non-null, only entries for this account are migrated (same ID as account migration).
    */
-  private suspend fun migrateEntriesWithRawSQL(context: Context, sqliteDb: SQLiteDatabase): Int {
+  private suspend fun migrateEntriesWithRawSQL(context: Context, sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
     var migratedCount = 0
     var cursor: Cursor? = null
 
@@ -470,12 +488,15 @@ class MigrationService @Inject constructor(
         try {
           val scaleEntry = IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = true)
           if (scaleEntry != null) {
-            scaleEntries.add(scaleEntry)
-            // Process in batches
-            if (scaleEntries.size >= BATCH_SIZE) {
-              val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
-              migratedCount += batchResult
-              scaleEntries.clear()
+            val matchesAccount = activeAccountId == null || scaleEntry.entry.accountId == activeAccountId
+            if (matchesAccount) {
+              scaleEntries.add(scaleEntry)
+              // Process in batches
+              if (scaleEntries.size >= BATCH_SIZE) {
+                val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
+                migratedCount += batchResult
+                scaleEntries.clear()
+              }
             }
           }
         } catch (e: Exception) {
@@ -498,8 +519,9 @@ class MigrationService @Inject constructor(
   /**
    * Migrates entries from entry (and optionally entry_metric) tables using raw SQL queries.
    * Only called when entry table exists. Uses entry_metric if present, else selects from entry only.
+   * @param activeAccountId When non-null, only entries for this account are migrated (same ID as account migration).
    */
-  private suspend fun migrateEntriesFromEntryTables(context: Context, sqliteDb: SQLiteDatabase): Int {
+  private suspend fun migrateEntriesFromEntryTables(context: Context, sqliteDb: SQLiteDatabase, activeAccountId: String?): Int {
     var migratedCount = 0
     var cursor: Cursor? = null
 
@@ -537,12 +559,15 @@ class MigrationService @Inject constructor(
         try {
           val scaleEntry = IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = false)
           if (scaleEntry != null) {
-            scaleEntries.add(scaleEntry)
-            // Process in batches
-            if (scaleEntries.size >= BATCH_SIZE) {
-              val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
-              migratedCount += batchResult
-              scaleEntries.clear()
+            val matchesAccount = activeAccountId == null || scaleEntry.entry.accountId == activeAccountId
+            if (matchesAccount) {
+              scaleEntries.add(scaleEntry)
+              // Process in batches
+              if (scaleEntries.size >= BATCH_SIZE) {
+                val batchResult = migrationRepository.insertScaleEntries(scaleEntries)
+                migratedCount += batchResult
+                scaleEntries.clear()
+              }
             }
           }
         } catch (e: Exception) {
