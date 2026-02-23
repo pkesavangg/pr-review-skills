@@ -168,11 +168,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard !operations.isEmpty else { return nil }
 
         // Keep interpolation X values aligned with the chart's plotted X values.
-        // Week view plots points at local noon (see WeekSectionViewModel.plotXDate),
+        // Week and month views plot points at local noon (see corresponding plotXDate overrides),
         // so interpolation must use the same normalization to avoid value-vs-line drift.
         @inline(__always)
         func normalizedInterpolationDate(_ input: Date) -> Date {
-            guard state.selectedPeriod == .week else { return input }
+            guard state.selectedPeriod == .week || state.selectedPeriod == .month else { return input }
             let cal = weekPlotCalendar
             let dayStart = cal.startOfDay(for: input)
             return cal.date(byAdding: .hour, value: 12, to: dayStart) ?? input
