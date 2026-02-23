@@ -25,7 +25,13 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
 
     is GraphIntent.UpdatePrimaryYStep -> state.copy(primaryYStep = intent.step)
 
-    is GraphIntent.UpdatePrimaryYAxis -> state.copy(primaryYAxis = intent.yRangeValues, primaryYStep = intent.yStep)
+    is GraphIntent.UpdatePrimaryYAxis -> {
+      val yStep = intent.yStep ?: state.primaryYStep
+      state.copy(
+        primaryYAxis = intent.yRangeValues,
+        primaryYStep = yStep,
+      )
+    }
 
     is GraphIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
 

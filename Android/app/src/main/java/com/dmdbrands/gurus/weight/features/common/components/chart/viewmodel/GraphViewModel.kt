@@ -425,46 +425,28 @@ class GraphViewModel @AssistedInject constructor(
 
     // Filter out NaN and infinite values before calculating min/max
     val validPaddedValues = paddedValues.filter { it.isFinite() }
+    val goalWeight = goal?.goalWeight ?: 0.0
 
-    if (validPaddedValues.isNotEmpty()) {
-      val graphMeta = generateNiceScale(
-        minValue = validPaddedValues.min(),
-        maxValue = validPaddedValues.max(),
-        goalWeight = goal?.goalWeight ?: 0.0, isWeightLessMode = isWeightlessMode,
-        targetTickCount = 4,
-      )
+    val graphMeta = if (validPaddedValues.isNotEmpty()) generateNiceScale(
+      minValue = validPaddedValues.min(),
+      maxValue = validPaddedValues.max(),
+      goalWeight = goalWeight,
+      isWeightLessMode = isWeightlessMode,
+      targetTickCount = 4,
+    ) else generateNiceScale(
+      minValue = goalWeight - 10,
+      maxValue = goalWeight + 10,
+      goalWeight = goalWeight,
+      isWeightLessMode = isWeightlessMode,
+      targetTickCount = 3,
+    )
 
-      // Validate graphMeta values are finite
-      if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
-        // Return default range if graphMeta is invalid
-        return AxisMeta(
-          axisRange = CartesianRangeValues(
-            maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
-              segment,
-              Calendar.getInstance().timeInMillis,
-            )?.toDouble(),
-            minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
-              segment,
-              initialTimestamp,
-            )
-              ?.toDouble(),
-          ),
-        )
-      }
-
+    // Validate graphMeta values are finite
+    if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
+      // Return default range if graphMeta is invalid
       return AxisMeta(
         axisRange = CartesianRangeValues(
-          minY = graphMeta.min,
-          maxY = graphMeta.max,
-          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
-            val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
-              ?: Calendar.getInstance().timeInMillis
-            val paddedEndX = Calendar.getInstance().apply {
-              timeInMillis = paddedEnd_StartRange
-              add(Calendar.DAY_OF_YEAR, 30)
-            }.timeInMillis
-            paddedEndX.toDouble()
-          } else GraphUtil.getEndRange(
+          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
             segment,
             Calendar.getInstance().timeInMillis,
           )?.toDouble(),
@@ -474,12 +456,13 @@ class GraphViewModel @AssistedInject constructor(
           )
             ?.toDouble(),
         ),
-        axisStep = graphMeta.step,
       )
     }
 
     return AxisMeta(
       axisRange = CartesianRangeValues(
+        minY = graphMeta.min,
+        maxY = graphMeta.max,
         maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
           val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
             ?: Calendar.getInstance().timeInMillis
@@ -492,9 +475,13 @@ class GraphViewModel @AssistedInject constructor(
           segment,
           Calendar.getInstance().timeInMillis,
         )?.toDouble(),
-        minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
+        minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
+          segment,
+          initialTimestamp,
+        )
           ?.toDouble(),
       ),
+      axisStep = graphMeta.step,
     )
   }
 
@@ -524,9 +511,6 @@ class GraphViewModel @AssistedInject constructor(
           super.handleIntent(GraphIntent.UpdateTarget(filteredData))
         }
         if (isActive) {
-          // Pre-calculate all data on background thread
-          val graphLines = filterXValuesInRange(currentState.graphLines, min, max)
-          graphLines.flatMap { it.points.map { it.x.value.toDouble() } }
           val primaryYAxis = calculateYAxisRange(
             currentState.graphLines.first(),
             goal = currentState.goal,
