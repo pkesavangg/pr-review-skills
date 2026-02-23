@@ -363,7 +363,7 @@ constructor(
    * Starts long-lived observers only (no account setup or navigation).
    * Called when [AuthState.LoggedInFromLoading] is received; LoadingScreenViewModel already did loadData + autoLogin.
    */
-  private fun startObserversOnly(account: Account, fromLoadingScreen: Boolean = false) {
+  private fun startObserversOnly(account: Account) {
     viewModelScope.launch {
       try {
         permissionSubscribeJob?.cancel()
@@ -372,9 +372,6 @@ constructor(
         pairedScalesSubscribeJob?.cancel()
         // Reset initialized flag to ensure permission checks happen after login
         initialized = false
-        if (fromLoadingScreen) {
-          delay(1000)
-        }
         deviceInfoService.updateDeviceInfo()
         subscribePermissions()
         subscribeDeviceCallback()
