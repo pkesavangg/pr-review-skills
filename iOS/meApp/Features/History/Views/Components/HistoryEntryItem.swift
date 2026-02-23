@@ -96,15 +96,16 @@ struct HistoryEntryItem: View {
             if isExpanded, !entry.metricItems.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
-                        HistoryMetricItem(
-// swiftlint:disable:next force_unwrapping
-                            metric: BodyMetrics.config[item.metric]!,
-                            metricType: item.metric,
-                            value: item.value,
-                            index: index,
-                            size: entry.metricItems.count
-                        ) { onMetricTap(entry, item.metric) }
-                        .id("\(entry.id.uuidString)-metric-\(index)")
+                        if let metricConfig = BodyMetrics.config[item.metric] {
+                            HistoryMetricItem(
+                                metric: metricConfig,
+                                metricType: item.metric,
+                                value: item.value,
+                                index: index,
+                                size: entry.metricItems.count
+                            ) { onMetricTap(entry, item.metric) }
+                            .id("\(entry.id.uuidString)-metric-\(index)")
+                        }
                     }
                 }
                 .transition(.opacity)

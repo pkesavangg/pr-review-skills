@@ -47,9 +47,8 @@ struct HistoryMetricItem: View {
 
             // Value & Unit
             HStack(alignment: .firstTextBaseline, spacing: 0) {
-                if metric.preLabel != nil {
-// swiftlint:disable:next force_unwrapping
-                    Text(metric.preLabel!)
+                if let preLabel = metric.preLabel {
+                    Text(preLabel)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
@@ -88,14 +87,15 @@ struct HistoryMetricItem: View {
 struct HistoryMetricItem_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 0) {
-            HistoryMetricItem(
-// swiftlint:disable:next force_unwrapping
-                metric: BodyMetrics.config[.bmi]!,
-                metricType: .bmi,
-                value: 73,
-                index: 0,
-                size: 1
-            ) {}
+            if let bmiMetric = BodyMetrics.config[.bmi] {
+                HistoryMetricItem(
+                    metric: bmiMetric,
+                    metricType: .bmi,
+                    value: 73,
+                    index: 0,
+                    size: 1
+                ) {}
+            }
         }
         .themeable()
         .environmentObject(Theme.shared)

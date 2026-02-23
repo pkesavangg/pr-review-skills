@@ -22,9 +22,19 @@ struct MetricDetailView: View {
     let measurementLabel: String?
     
     private let placeholder = "--"
-
-// swiftlint:disable:next force_unwrapping
-    private var config: MetricData { BodyMetrics.config[metric]! }
+    private var config: MetricData {
+        BodyMetrics.config[metric]
+        ?? BodyMetrics.config[.weight]
+        ?? MetricData(
+            unit: "",
+            label: MetricStrings.weight,
+            bodyCompositionRelated: true,
+            icon: AppAssets.bmiIcon
+        )
+    }
+    private var fallbackBrowserURL: URL {
+        URL(string: URLStrings.baseUrl) ?? AppConstants.LegalURLs.greaterGoodsWebsite
+    }
 
     // Extract raw metric value from DTO (no SwiftData access needed)
     private var rawValue: Double? {
@@ -232,8 +242,7 @@ struct MetricDetailView: View {
             .padding(.horizontal, .spacingSM)
         }
         .inAppBrowser(
-// swiftlint:disable:next force_unwrapping
-          url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl)!,
+          url: presentingBrowserURL ?? fallbackBrowserURL,
           isPresented: $isBrowserPresented
       )
         .sheet(isPresented: $showScaleModesSheet) {

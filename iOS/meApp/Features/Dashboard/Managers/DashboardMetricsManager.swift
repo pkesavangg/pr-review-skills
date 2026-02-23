@@ -863,8 +863,12 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                     for dto in allDTOs {
                         guard let value = extractor(dto), isValid(value) else { continue }
                         guard let ts = dto.entryTimestamp else { continue }
-// swiftlint:disable:next force_unwrapping
-                        if bestTs == nil || ts > bestTs! {
+                        if let currentBestTs = bestTs {
+                            if ts > currentBestTs {
+                                bestTs = ts
+                                bestVal = value
+                            }
+                        } else {
                             bestTs = ts
                             bestVal = value
                         }
@@ -978,8 +982,15 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             let doubleValue = Double("\(metricValue)") ?? 0.0
             guard isValidMetricValue(doubleValue) else { continue }
             let ts = entry.entryTimestamp
-// swiftlint:disable:next force_unwrapping
-            if bestTs == nil || ts > bestTs! { bestTs = ts; best = doubleValue }
+            if let currentBestTs = bestTs {
+                if ts > currentBestTs {
+                    bestTs = ts
+                    best = doubleValue
+                }
+            } else {
+                bestTs = ts
+                best = doubleValue
+            }
         }
         return best
     }

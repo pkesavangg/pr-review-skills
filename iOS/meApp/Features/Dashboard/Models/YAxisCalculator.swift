@@ -388,8 +388,9 @@ struct YAxisCalculator {
                 min: fallbackMin,
                 max: fallbackMax,
                 step: fallbackStep,
-// swiftlint:disable:next force_unwrapping
-                ticks: (goalWeight != nil && (goalWeight ?? 0) > 0) ? buildGoalCentricFallback(goalWeight: goalWeight!).ticks : ticks,
+                ticks: (goalWeight != nil && (goalWeight ?? 0) > 0)
+                    ? buildGoalCentricFallback(goalWeight: goalWeight ?? 0).ticks
+                    : ticks,
                 domain: domainMin...domainMax,
                 average: (fallbackMin + fallbackMax) / 2
             )
@@ -640,11 +641,9 @@ extension YAxisCalculator {
         maxTicks: Int = 6
     ) -> (step: Double, ticks: [Double]) {
         guard !ticks.isEmpty else { return (step, ticks) }
-
-// swiftlint:disable:next force_unwrapping
-        var proposedMin = ticks.first!
-// swiftlint:disable:next force_unwrapping
-        var proposedMax = ticks.last!
+        guard let firstTick = ticks.first, let lastTick = ticks.last else { return (step, ticks) }
+        var proposedMin = firstTick
+        var proposedMax = lastTick
         let proposedStep = step
 
         // Determine if data is too close to outer ticks
