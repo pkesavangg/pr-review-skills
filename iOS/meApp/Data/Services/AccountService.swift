@@ -7,6 +7,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var logger: LoggerService
     @Injector var bluetoothService: BluetoothService
+    @Injector var keychainService: KeychainService
+    @Injector var kvStorage: KvStorageService
 
     private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
     private let localRepo: AccountRepositoryProtocol = AccountRepository()
@@ -29,6 +31,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             do {
                 if let activeAcct = try localRepo.fetchAllAccountsSync()
                     .first(where: { $0.isActiveAccount == true }) {
+                    hydrateTokensInAccount(activeAcct)
                     self.activeAccount = activeAcct
                     Theme.shared.setActiveAccount(activeAcct.accountId)
                 }
@@ -40,6 +43,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         // Load initial accounts from local storage
         Task {
             do {
+                try await migrateTokensToKeychainIfNeeded()
                 try await syncUnsyncedAccounts() // Try to sync any offline changes
                 try await updatePublishedState()
                 let _ = try await refreshAllAccounts()
@@ -103,21 +107,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } else {
                 // Create new account
                 account = Account(from: response.account)
-                account.accessToken = response.accessToken
-                account.refreshToken = response.refreshToken
-                account.expiresAt = response.expiresAt
                 account.isSynced = true
                 account.isLoggedIn = true
                 account.isActiveAccount = true
                 account.isExpired = false
                 account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
             }
-            
+            if let a = response.accessToken, let r = response.refreshToken, let e = response.expiresAt {
+                keychainService.setTokens(Tokens(accessToken: a, refreshToken: r, expiresAt: e), for: account.accountId)
+            }
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
-                try await localRepo.saveAccount(account)
+                try await saveAccountClearingTokens(account)
             } else {
-                try await localRepo.updateAccount(account)
+                try await updateAccountClearingTokens(account)
             }
             try await updatePublishedState()
             logger.log(level: .success, tag: tag, message: "Sign up successful for accountId=\(account.accountId), email=\(maskedEmail(email))")
@@ -165,21 +168,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } else {
                 // Create new account
                 account = Account(from: response.account)
-                account.accessToken = response.accessToken
-                account.refreshToken = response.refreshToken
-                account.expiresAt = response.expiresAt
                 account.isSynced = true
                 account.isLoggedIn = true
                 account.isActiveAccount = true
                 account.isExpired = false
                 account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
             }
-            
+            if let a = response.accessToken, let r = response.refreshToken, let e = response.expiresAt {
+                keychainService.setTokens(Tokens(accessToken: a, refreshToken: r, expiresAt: e), for: account.accountId)
+            }
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
-                try await localRepo.saveAccount(account)
+                try await saveAccountClearingTokens(account)
             } else {
-                try await localRepo.updateAccount(account)
+                try await updateAccountClearingTokens(account)
             }
             try await updatePublishedState()
             try await refreshAccount()
@@ -240,6 +242,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         do {
             logger.log(level: .info, tag: tag, message: "Delete account requested for accountId=\(accountId)")
             try await apiRepo.deleteAccount(accountId: accountId)
+            keychainService.deleteTokens(for: accountId)
             try await localRepo.deleteAccount(byId: accountId)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Account deleted for accountId=\(accountId)")
@@ -253,6 +256,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     func deleteAllAccounts() async throws {
         do {
             logger.log(level: .info, tag: tag, message: "Delete all accounts requested")
+            let accounts = try await localRepo.fetchAllAccounts()
+            for account in accounts {
+                keychainService.deleteTokens(for: account.accountId)
+            }
             try await localRepo.deleteAllAccounts()
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "All accounts deleted locally")
@@ -290,7 +297,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         account.isActiveAccount = true
         account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
         try await makeOtherAccountsInactive(except: account)
-        try await localRepo.updateAccount(account)
+        try await updateAccountClearingTokens(account)
         try await updatePublishedState()
 
         // Update theme with new active account
@@ -312,13 +319,21 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Fetches an account by its unique ID.
+    /// Hydrates tokens from Keychain (and migrates from account if Keychain is empty).
     func fetchAccount(byId id: String) async throws -> Account? {
-        return try await localRepo.fetchAccount(byId: id)
+        guard let account = try await localRepo.fetchAccount(byId: id) else { return nil }
+        hydrateTokensInAccount(account)
+        return account
     }
 
     /// Fetches all accounts stored locally.
+    /// Hydrates tokens from Keychain for each account (and migrates when Keychain is empty).
     func fetchAllAccounts() async throws -> [Account] {
-        return try await localRepo.fetchAllAccounts()
+        let accounts = try await localRepo.fetchAllAccounts()
+        for account in accounts {
+            hydrateTokensInAccount(account)
+        }
+        return accounts
     }
 
     // MARK: - Account Updates
@@ -333,7 +348,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.editAccount(updatedAccount)
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update account successful for accountId=\(updatedAccount.accountId)")
             return localAccount
@@ -341,7 +356,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             if HTTPError.isNetworkError(error) {
                 localAccount.update(from: updatedAccount.toAccountDTO())
                 localAccount.isSynced = false
-                try await localRepo.updateAccount(updatedAccount)
+                try await updateAccountClearingTokens(updatedAccount)
                 try await updatePublishedState()
                 logger.log(level: .error, tag: tag, message: "Update account saved offline for accountId=\(updatedAccount.accountId), offline=true, reason=network_error")
                 return updatedAccount
@@ -360,7 +375,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             logger.log(level: .info, tag: tag, message: "Create goal requested for accountId=\(accountId)")
             let response = try await apiRepo.createGoal(goal)
             localAccount.update(from: response)
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Create goal successful for accountId=\(accountId)")
@@ -371,7 +386,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.goalSettings?.goalWeight = Double(goal.goalWeight)
                 localAccount.goalSettings?.isSynced = false
                 localAccount.goalSettings?.initialWeight = Double(goal.initialWeight)
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(level: .error, tag: tag, message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
@@ -394,7 +409,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchProfile(profile)
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             notifyActiveAccountChanged()
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update profile successful for accountId=\(accountId)")
@@ -403,7 +418,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             if canSaveOffline && HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 localAccount.update(from: profile)
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 notifyActiveAccountChanged()
 
                 try await updatePublishedState()
@@ -426,7 +441,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchBodyComp(bodyComp)
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             if let freshAccount = try await localRepo.fetchAccount(byId: localAccount.accountId) {
                 if activeAccount?.accountId == freshAccount.accountId {
                     activeAccount = freshAccount
@@ -447,7 +462,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.weightSettings?.weightUnit = bodyComp.weightUnit
                 localAccount.weightSettings?.height = String(bodyComp.height)
                 localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 if activeAccount?.accountId == localAccount.accountId {
                     activeAccount = localAccount
                 }
@@ -477,8 +492,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.accountNotFound(id: accountId)
         }
 
+        keychainService.setTokens(tokens, for: accountId)
         localAccount.update(from: tokens)
-        try await localRepo.updateAccount(localAccount)
+        try await updateAccountClearingTokens(localAccount)
         try await updatePublishedState()
         logger.log(level: .info, tag: tag, message: "Tokens updated for accountId=\(accountId)")
     }
@@ -495,14 +511,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             // Persist canonical rawValue (e.g., "dashboard_12_metrics")
             localAccount.dashboardSettings?.dashboardType = type.rawValue
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Dashboard type updated for accountId=\(accountId) to \(type.rawValue)")
             return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 logger.log(level: .error, tag: tag, message: "Dashboard type saved offline for accountId=\(accountId)")
                 return localAccount
@@ -545,7 +561,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } else {
                 localAccount.integrationSettings?.isHealthKitOn = true
             }
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Integration updated for accountId=\(accountId), type=\(integrationType.rawValue)")
             return localAccount
@@ -561,7 +577,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     localAccount.integrationSettings?.isHealthKitOn = true
                     localAccount.isSynced = false
                 }
-                try? await localRepo.updateAccount(localAccount)
+                try? await updateAccountClearingTokens(localAccount)
                 try? await updatePublishedState()
                 logger.log(level: .error, tag: tag, message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue), offline=true, reason=network_error")
                 return localAccount
@@ -584,7 +600,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchNotification(notifications)
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Update notifications successful for accountId=\(accountId)")
@@ -594,7 +610,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.notificationSettings?.shouldSendEntryNotifications = notifications.shouldSendEntryNotifications
                 localAccount.notificationSettings?.shouldSendWeightInEntryNotifications = notifications.shouldSendWeightInEntryNotifications
                 localAccount.isSynced = false
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(level: .error, tag: tag, message: "Update notifications saved offline for accountId=\(accountId), offline=true, reason=network_error, shouldSendEntry=\(notifications.shouldSendEntryNotifications), shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)")
@@ -641,7 +657,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                         // Mark account as expired for error
                         if let expiredAccount = try await localRepo.fetchAccount(byId: account.accountId) {
                             expiredAccount.isExpired = true
-                            try await localRepo.updateAccount(expiredAccount)
+                            try await updateAccountClearingTokens(expiredAccount)
                         }
                     } catch {
                         // Ignore errors during logout
@@ -675,7 +691,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.update(from: dto)
             
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .debug, tag: tag, message: "Refresh account successful for accountId=\(accountId)")
             return localAccount
@@ -901,7 +917,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
             // Mark **local** account (the one in persistence) as synced
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Sync unsynced account data completed for accountId=\(localAccount.accountId)")
 
@@ -932,7 +948,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             try await integrationApiRepo.deleteHealthIntegration(deviceId: deviceId)
             try await refreshAccount()
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Integration deleted for accountId=\(accountId), type=\(type.rawValue)")
         } catch {
@@ -941,7 +957,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     localAccount.integrationSettings?.isHealthKitOn = false
                     localAccount.isSynced = false
                 }
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 logger.log(level: .error, tag: tag, message: "Delete integration saved offline for accountId=\(accountId), type=\(type.rawValue), offline=true, reason=network_error")
             }
@@ -990,14 +1006,14 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 dashboardSettings.progressMetrics = sentOrderString
             }
             
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update \(type) metrics successful: accountId=\(accountId)")
             return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                try? await localRepo.updateAccount(localAccount)
+                try? await updateAccountClearingTokens(localAccount)
                 logger.log(level: .error, tag: tag, message: "Update \(type) metrics saved offline for accountId=\(accountId), offline=true, reason=network_error, metrics=\(metrics)")
             }
             logger.log(level: .error, tag: tag, message: "Failed to update \(type) metrics: \(error)")
@@ -1018,7 +1034,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             logger.log(level: .info, tag: tag, message: "Update streak requested for accountId=\(accountId), isOn=\(isStreakOn)")
             let response = try await apiRepo.patchStreak(isStreakOn, streakTimestamp)
             localAccount.update(from: response)
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Update streak successful for accountId=\(accountId)")
             return localAccount
@@ -1038,7 +1054,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     )
                 }
                 localAccount.isSynced = false
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 logger.log(level: .error, tag: tag, message: "Update streak saved offline for accountId=\(accountId), offline=true, reason=network_error, isStreakOn=\(isStreakOn)")
                 return localAccount
@@ -1064,7 +1080,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let response = try await apiRepo.patchWeightless(isWeightlessOn, weightlessTimestamp, Int(weightlessWeight))
             localAccount.update(from: response)
             localAccount.isSynced = true
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             try await updatePublishedState()
             notifyActiveAccountChanged()
             logger.log(level: .info, tag: tag, message: "Update weightless successful for accountId=\(accountId)")
@@ -1075,7 +1091,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.weightlessSettings?.isWeightlessOn = isWeightlessOn
                 localAccount.weightlessSettings?.weightlessTimestamp = weightlessTimestamp
                 localAccount.weightlessSettings?.weightlessWeight = isWeightlessOn ? weightlessWeight : nil
-                try await localRepo.updateAccount(localAccount)
+                try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(level: .error, tag: tag, message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)")
@@ -1094,8 +1110,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         try await fetchAccount(byId: accountId!) :
         activeAccount
 
-        guard let account = account,
-              let refreshToken = account.refreshToken else {
+        guard let account = account else {
+            throw AccountError.noActiveAccount
+        }
+        let refreshToken = keychainService.getTokens(for: account.accountId)?.refreshToken ?? account.refreshToken
+        guard let refreshToken = refreshToken else {
             throw AccountError.noActiveAccount
         }
 
@@ -1107,16 +1126,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     /// Gets the active tokens (access and refresh) for the current active account.
+    /// Prefers Keychain; falls back to account fields for migration.
     func getActiveTokens() async throws -> Tokens {
         guard let account = activeAccount else {
             throw AccountError.noActiveAccount
         }
-        // Extract primitives from @Model before crossing async boundaries
         let accountId = account.accountId
+        if let tokens = keychainService.getTokens(for: accountId) {
+            logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId)")
+            return tokens
+        }
         let accessToken = account.accessToken ?? ""
         let refreshToken = account.refreshToken ?? ""
         let expiresAt = account.expiresAt ?? ""
-        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId)")
+        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId) (fallback from account)")
         return Tokens(
             accessToken: accessToken,
             refreshToken: refreshToken,
@@ -1174,6 +1197,54 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
 
+    /// Hydrates account token fields from Keychain (in-memory only; tokens are not persisted to SwiftData).
+    private func hydrateTokensInAccount(_ account: Account) {
+        if let tokens = keychainService.getTokens(for: account.accountId) {
+            account.accessToken = tokens.accessToken
+            account.refreshToken = tokens.refreshToken
+            account.expiresAt = tokens.expiresAt
+        }
+    }
+
+    /// One-time migration: copy tokens from SwiftData to Keychain, then clear on Account so SwiftData never persists them again.
+    private func migrateTokensToKeychainIfNeeded() async throws {
+        let key = KvStorageKeys.tokensMigratedToKeychain.rawValue
+        if kvStorage.getValue(forKey: key) as? Bool == true {
+            return
+        }
+        let accounts = try await localRepo.fetchAllAccounts()
+        for account in accounts {
+            guard let a = account.accessToken, let r = account.refreshToken, let e = account.expiresAt,
+                  !a.isEmpty, !r.isEmpty else { continue }
+            keychainService.setTokens(Tokens(accessToken: a, refreshToken: r, expiresAt: e), for: account.accountId)
+            account.accessToken = nil
+            account.refreshToken = nil
+            account.expiresAt = nil
+            try await updateAccountClearingTokens(account)
+        }
+        kvStorage.setValue(true, forKey: key)
+        logger.log(level: .info, tag: tag, message: "Tokens migrated from SwiftData to Keychain for \(accounts.count) account(s)")
+    }
+
+    /// Clears token fields on account before persist so tokens are never stored in SwiftData (Keychain only).
+    private func clearTokenFieldsBeforeSave(_ account: Account) {
+        account.accessToken = nil
+        account.refreshToken = nil
+        account.expiresAt = nil
+    }
+
+    /// Saves account to local store without persisting token fields (Keychain is source of truth).
+    private func saveAccountClearingTokens(_ account: Account) async throws {
+        clearTokenFieldsBeforeSave(account)
+        try await localRepo.saveAccount(account)
+    }
+
+    /// Updates account in local store without persisting token fields (Keychain is source of truth).
+    private func updateAccountClearingTokens(_ account: Account) async throws {
+        clearTokenFieldsBeforeSave(account)
+        try await localRepo.updateAccount(account)
+    }
+
     private func maskedEmail(_ email: String) -> String {
         let parts = email.split(separator: "@", maxSplits: 1)
         guard parts.count == 2 else { return "***" }
@@ -1201,7 +1272,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         let allAccounts = try await localRepo.fetchAllAccounts()
         for acc in allAccounts where acc.accountId != account.accountId {
             acc.isActiveAccount = false
-            try await localRepo.updateAccount(acc)
+            try await updateAccountClearingTokens(acc)
         }
     }
 
@@ -1219,11 +1290,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
 
         do {
+            keychainService.deleteTokens(for: localAccount.accountId)
             // Logout the account locally (happens regardless of API success/failure)
             localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
             localAccount.isActiveAccount = false
             localAccount.isExpired = isAutoLogout
-            try await localRepo.updateAccount(localAccount)
+            try await updateAccountClearingTokens(localAccount)
             logger.log(level: .info, tag: tag, message: "Local logout flags updated for accountId=\(localAccount.accountId)")
         } catch {
             // Ignore local persistence errors during logout
