@@ -631,7 +631,7 @@
 				105A21E62DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Dev;
+			defaultConfigurationName = Production;
 		};
 		105A1FC02DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meApp" */ = {
 			isa = XCConfigurationList;
@@ -640,7 +640,7 @@
 				105A21E72DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Dev;
+			defaultConfigurationName = Production;
 		};
 		105A1FC32DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meAppTests" */ = {
 			isa = XCConfigurationList;
@@ -649,7 +649,7 @@
 				105A21E82DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Dev;
+			defaultConfigurationName = Production;
 		};
 		105A1FC62DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meAppUITests" */ = {
 			isa = XCConfigurationList;
@@ -658,7 +658,7 @@
 				105A21E92DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Dev;
+			defaultConfigurationName = Production;
 		};
 /* End XCConfigurationList section */
 
