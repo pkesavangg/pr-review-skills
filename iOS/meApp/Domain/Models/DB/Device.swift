@@ -121,6 +121,7 @@ final class Device {
         }
 
     }
+    // swiftlint:disable:next function_body_length
     convenience init(from dto: ScaleDTO,
                      accountId: String? = nil,
                      protocolType: String? = nil,
@@ -209,7 +210,7 @@ final class Device {
 
     func toDTO() -> ScaleDTO {
         return ScaleDTO(
-            broadcastId: self.broadcastId != nil ? Int(self.broadcastId!) : nil,
+            broadcastId: self.broadcastId.map { Int($0) },
             broadcastIdString: self.broadcastIdString,
             createdAt: self.createdAt,
             id: self.id,
@@ -223,14 +224,14 @@ final class Device {
             metaData: self.metaData?.toDTO(),
             name: self.deviceName,
             nickname: self.nickname,
-            password: self.password != nil ? Int(self.password!) : nil,
+            password: self.password.map { Int($0) },
             peripheralIdentifier: self.peripheralIdentifier,
             preference: self.r4ScalePreference?.toDTO(),
             scaleToken: self.token,
             sku: self.sku,
             type: self.bathScale?.scaleType,
             userId: self.accountId,
-            userNumber: self.userNumber != nil ? Int(self.userNumber!) : nil
+            userNumber: self.userNumber.flatMap { Int($0) }
         )
     }
 }

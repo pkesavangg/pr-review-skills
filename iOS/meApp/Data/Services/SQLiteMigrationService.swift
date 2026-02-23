@@ -3,7 +3,6 @@ import SQLite3
 import SwiftData
 
 /// Service to migrate data from Ionic app's SQLite database to SwiftData
-// @MainActor
 final class SQLiteMigrationService {
     @Injector private var logger: LoggerService
     private let migrationLogBatchSize = 100 // Number of entries to log in batch during migration
@@ -17,7 +16,12 @@ final class SQLiteMigrationService {
     
     /// Path to the Ionic app's SQLite database (Capacitor stores in Library/CapacitorDatabase)
     private var databasePath: String {
-        let libraryPath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
+        guard let libraryPath = FileManager.default.urls(
+            for: .libraryDirectory,
+            in: .userDomainMask
+        ).first else {
+            return "CapacitorDatabase/WeightGurus4SQLite.db"
+        }
         let dbPath = libraryPath.appendingPathComponent("CapacitorDatabase/WeightGurus4SQLite.db").path
         return dbPath
     }
@@ -60,7 +64,11 @@ final class SQLiteMigrationService {
             
             let totalMigrated = migratedData.values.reduce(0, +)
             Task { @MainActor in
-                logger.log(level: .info, tag: tag, message: "OpStack migration completed successfully. Migrated \(totalMigrated) operations for \(migratedData.count) users")
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "OpStack migration completed successfully. Migrated \(totalMigrated) operations for \(migratedData.count) users"
+                )
             }
             return migratedData
             
@@ -143,8 +151,9 @@ final class SQLiteMigrationService {
         return tableCount >= 1 // At least 'opStack' table should exist
     }
     
+    // swiftlint:disable:next function_body_length
     private func migrateAllUsersEntries() async throws -> [String: Int] {
-        let entryRepository = EntryRepository()
+        let entryRepository = await MainActor.run { EntryRepository() }
         var migratedData: [String: Int] = [:]
         
         // Query to fetch ALL unsynced operations with metrics joined - no user filter
@@ -211,7 +220,11 @@ final class SQLiteMigrationService {
         
         let totalMigrated = migratedData.values.reduce(0, +)
         Task { @MainActor in
-            logger.log(level: .info, tag: tag, message: "Query completed. Rows found: \(rowsFound), Successfully migrated: \(totalMigrated) entries for \(migratedData.count) users")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Query completed. Rows found: \(rowsFound), Successfully migrated: \(totalMigrated) entries for \(migratedData.count) users"
+            )
         }
         
         // Log per-user migration counts

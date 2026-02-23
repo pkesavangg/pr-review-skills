@@ -8,6 +8,6 @@
 import Foundation
 /// Represents the type of device that recorded the entry.
 enum DeviceType: String, Codable, Equatable {
-    case scale = "scale"
-    case bpm = "bpm"
+    case scale
+    case bpm
 }

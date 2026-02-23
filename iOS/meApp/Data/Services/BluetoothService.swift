@@ -958,7 +958,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             case .success(let result):
                 logger.log(level: .info, tag: tag, message: "Successfully deleted R4 scale: \(scale.deviceName ?? "Unknown")", data: result)
             case .failure(let error):
-                logger.log(level: .error, tag: tag, message: "Failed to delete R4 scale \(scale.deviceName ?? "Unknown"): \(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to delete R4 scale \(scale.deviceName ?? "Unknown"): \(error.localizedDescription)"
+                )
             }
 
             // Disconnect the scale
@@ -986,7 +990,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - scale: The discovered scale device
      - isDuplicateUserError: Whether this is a duplicate user error (true) or user limit error (false)
      */
-    private func handleDeviceEventAlert(_ deviceData: GGScanResponseData, isDuplicateUserError: Bool) async {
+    private func handleDeviceEventAlert(_ deviceData: GGScanResponseData, isDuplicateUserError: Bool) async { // swiftlint:disable:this function_body_length
 
         guard let deviceDetails = deviceData as? GGDeviceDetails, !isSetupInProgress else {
             logger.log(level: .error, tag: tag, message: "Invalid device data for event alert")
@@ -1199,13 +1203,18 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 case .success(let scanResponse):
                     await self?.handleSmartScaleData(scanResponse)
                 case .failure(let error):
-                    self?.logger.log(level: .error, tag: self?.tag ?? "BluetoothService", message: BluetoothServiceError.scanFailed(error).localizedDescription)
+                    self?.logger.log(
+                        level: .error,
+                        tag: self?.tag ?? "BluetoothService",
+                        message: BluetoothServiceError.scanFailed(error).localizedDescription
+                    )
                 }
             }
         }
         isSmartScanStarted = true
     }
 
+    // swiftlint:disable:next function_body_length
     private func handleSmartScaleData(_ data: GGScanResponse) async {
         // Broad blocked-broadcast check for all event data types we can identify
         var bid: String?
@@ -1276,7 +1285,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         case .DEVICE_WAKE_UP:
             // Handle device wake up
             break
-            case .LIVE_MEASUREMENT:
+        case .LIVE_MEASUREMENT:
             if let liveData = data.data as? GGWeightEntry {
                 liveMeasurementSubject.send(liveData)
             } else {
@@ -1516,9 +1525,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         let isNew = !isKnown
 
         // Send unified discovery event
+        guard let scaleInfo else {
+            logger.log(level: .error, tag: tag, message: "Scale info not found for discovered device")
+            return
+        }
+
         let discoveryEvent = DeviceDiscoveryEvent(
             device: device,
-            deviceInfo: scaleInfo!,
+            deviceInfo: scaleInfo,
             protocolType: protocolType,
             isNew: isNew,
         )
@@ -1629,9 +1643,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             return nil
         }
         // Create timestamp in ISO8601 format
-        let entryDate = ggEntry.date != nil ?
-        Date(timeIntervalSince1970: TimeInterval(ggEntry.date!) / 1000) :
-        Date()
+        let entryDate = if let epoch = ggEntry.date {
+            Date(timeIntervalSince1970: TimeInterval(epoch) / 1000)
+        } else {
+            Date()
+        }
         let timestamp = ISO8601DateFormatter().string(from: entryDate)
 
         // Create the main Entry
@@ -1654,7 +1670,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             bodyFat: roundMetric(ggEntry.bodyFat),
             muscleMass: roundMetric(ggEntry.muscleMass),
             water: roundMetric(ggEntry.water),
-            bmi: ggEntry.bmi > 0 ? roundMetric(ggEntry.bmi) : ConversionTools.calculateBMI(weight: Double(ggEntry.weightInKg), height: calculateHeightCm(height: activeAccount.weightSettings?.height)),
+            bmi: ggEntry.bmi > 0
+                ? roundMetric(ggEntry.bmi)
+                : ConversionTools.calculateBMI(
+                    weight: Double(ggEntry.weightInKg),
+                    height: calculateHeightCm(height: activeAccount.weightSettings?.height)
+                ),
             source: sourceType.rawValue
         )
         // Create BathScaleMetric with detailed metrics

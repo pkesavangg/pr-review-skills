@@ -16,6 +16,7 @@ struct ChipView: View {
     var body: some View {
         Button(action: {
             onTap?()
+// swiftlint:disable:next multiple_closures_with_trailing_closure
         }) {
             Text(text)
                 .fontWeight(.bold)

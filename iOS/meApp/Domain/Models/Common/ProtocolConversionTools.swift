@@ -22,11 +22,14 @@ final class ProtocolConversionTools {
         }
 
         // Split into pairs, reverse, join, and uppercase
-        let regex = try! NSRegularExpression(pattern: ".{2}")
+        guard let regex = try? NSRegularExpression(pattern: ".{2}") else {
+            return convertedValue.uppercased()
+        }
         let nsrange = NSRange(convertedValue.startIndex..<convertedValue.endIndex, in: convertedValue)
         let matches = regex.matches(in: convertedValue, options: [], range: nsrange)
-        let hexPairs = matches.map {
-            String(convertedValue[Range($0.range, in: convertedValue)!])
+        let hexPairs = matches.compactMap { match -> String? in
+            guard let range = Range(match.range, in: convertedValue) else { return nil }
+            return String(convertedValue[range])
         }
         return hexPairs.reversed().joined().uppercased()
     }

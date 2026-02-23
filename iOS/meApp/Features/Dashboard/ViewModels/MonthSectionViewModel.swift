@@ -12,31 +12,19 @@ import SwiftUI
 /// ViewModel specifically for the Month time period chart view
 /// Handles all month-specific chart logic, scrolling, and day-based data processing
 @MainActor
-final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
-    
-    static func == (lhs: MonthSectionViewModel, rhs: MonthSectionViewModel) -> Bool {
-        // Compare essential properties that affect rendering
-        lhs.timePeriod == rhs.timePeriod &&
-        lhs.selectedDate == rhs.selectedDate &&
-        lhs.showCrosshair == rhs.showCrosshair &&
-        lhs.scrollPosition == rhs.scrollPosition &&
-        lhs.isScrolling == rhs.isScrolling &&
-        lhs.yAxisDomain == rhs.yAxisDomain &&
-        lhs.yAxisTicks == rhs.yAxisTicks &&
-        lhs.chartFrame == rhs.chartFrame &&
-        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
-    }
+final class MonthSectionViewModel: BaseSectionViewModel {
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
         return .month
     }
     
-    /// Month selection rules:
-    /// - Determine the current X-axis section [startTick, endTick) using Sunday month ticks.
-    /// - If there are chart points within this section, select the nearest point to the touch inside the section.
-    /// - If there are no points inside the section, select the section's start tick (e.g., Jul 8).
-    /// - Crosshair only shows when the touch is within [firstPoint, lastPoint].
+    // Month selection rules:
+    // - Determine the current X-axis section [startTick, endTick) using Sunday month ticks.
+    // - If there are chart points within this section, select the nearest point to the touch inside the section.
+    // - If there are no points inside the section, select the section's start tick (e.g., Jul 8).
+    // - Crosshair only shows when the touch is within [firstPoint, lastPoint].
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     override func handleChartSelection(at date: Date?) {
         guard let date = date else { return }
         guard dashboardStore != nil else { return }

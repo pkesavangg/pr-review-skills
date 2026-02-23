@@ -23,6 +23,7 @@ protocol LoggerServiceProtocol {
     /// - Returns: An array of `LogEntry` objects within the specified date range
     func getLogs(from: Date, to: Date) async throws -> [LogEntry]
     
+    // swiftlint:disable function_parameter_count
     /// Log a new entry with specified parameters
     /// - Parameters:
     ///   - level: The log level (e.g., info, debug, error)
@@ -40,6 +41,7 @@ protocol LoggerServiceProtocol {
              function: StaticString,
              line: UInt,
              accountId: String?)
+    // swiftlint:enable function_parameter_count
     
     /// Gets the current session ID
     /// - Returns: The current session ID as a string

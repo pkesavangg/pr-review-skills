@@ -96,6 +96,7 @@ struct SoftwareUpdateSheet: View {
                                         isPresented: $showTimePicker,
                                         time: $viewModel.selectedTime,
                                         selectedDate: viewModel.selectedDate,
+// swiftlint:disable:next line_length
                                         endTime: Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: viewModel.selectedDate) ?? viewModel.selectedDate
                                     )
                                     

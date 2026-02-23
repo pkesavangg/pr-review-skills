@@ -53,6 +53,7 @@ struct ScaleModesScreen: View {
                         if isR4ScaleSetup {
                             Button(action: {
                                 viewModel.openHelp()
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                             }) {
                                 Image(AppAssets.helpCircle)
                                     .accessibilityLabel("Help")
@@ -63,7 +64,7 @@ struct ScaleModesScreen: View {
                                 type: .inlineTextPrimary,
                                 size: .small,
                                 isDisabled: !viewModel.hasModeChanges
-                            )                                {
+                            ) {
                                     Task {
                                         await viewModel.handleScaleModeSave {
                                             if isPresentedAsSheet { dismiss() } else { router.navigateBack() }
@@ -299,6 +300,7 @@ final class ScaleModesViewModel: ObservableObject {
         await performSaveOperation(onSuccess: onSuccess)
     }
     
+// swiftlint:disable:next function_body_length
     private func performSaveOperation(onSuccess: (() -> Void)? = nil) async {
         // Step 1: Read @Model synchronously on MainActor, extract to DTO
         refreshScale()

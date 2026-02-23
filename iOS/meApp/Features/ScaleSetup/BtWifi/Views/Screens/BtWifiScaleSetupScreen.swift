@@ -81,7 +81,7 @@ struct BtWifiScaleSetupScreen: View {
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews
-            )                { index in
+            ) { index in
                     // Omit horizontal padding for Scale Metrics and Dashboard Metrics customization screens.
                     !(setupStore.steps[index] == .viewSettings &&
                       (setupStore.currentCustomizeSetting == .scaleMetrics ||
@@ -113,6 +113,7 @@ struct BtWifiScaleSetupScreen: View {
                                  discoveryEvent: discoveryEvent,
                                  saveScale: savedScale,
                                  isReconnect: isReconnect,
+// swiftlint:disable:next multiline_arguments
                                  isDuplicated: isDuplicated, isWifiSetupOnly: isWifiSetupOnly)
             
         }
@@ -148,7 +149,7 @@ struct BtWifiScaleSetupScreen: View {
                                type: .inlineTextPrimary,
                                size: .small,
                                isDisabled: setupStore.shouldDisableBackButton(),
-                               useFrameForInlineText: true)                               {
+                               useFrameForInlineText: true) {
                         withAnimation {
                             hideKeyboard()
                         }
@@ -160,7 +161,7 @@ struct BtWifiScaleSetupScreen: View {
                                size: .small,
                                isDisabled: !setupStore.isNextEnabled,
                                customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
-                               customVerticalPadding: .spacingXS / 4)                               {
+                               customVerticalPadding: .spacingXS / 4) {
                         withAnimation {
                             hideKeyboard()
                         }
@@ -175,7 +176,7 @@ struct BtWifiScaleSetupScreen: View {
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
                            customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
-                           customVerticalPadding: .spacingXS / 4)                           {
+                           customVerticalPadding: .spacingXS / 4) {
                     withAnimation {
                         hideKeyboard()
                     }
@@ -187,7 +188,7 @@ struct BtWifiScaleSetupScreen: View {
                            type: .inlineTextPrimary,
                            size: .small,
                            isDisabled: setupStore.shouldDisableBackButton(),
-                           useFrameForInlineText: true)                           {
+                           useFrameForInlineText: true) {
                     withAnimation {
                         hideKeyboard()
                     }
@@ -199,7 +200,7 @@ struct BtWifiScaleSetupScreen: View {
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
                            customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
-                           customVerticalPadding: .spacingXS / 4)                           {
+                           customVerticalPadding: .spacingXS / 4) {
                     withAnimation {
                         hideKeyboard()
                     }

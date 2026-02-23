@@ -100,7 +100,7 @@ struct WifiPasswordEntryView: View {
                 type: .inlineTextPrimary,
                 size: .small,
                 isDisabled: false
-            )                {
+            ) {
                     withAnimation {
                         hideKeyboard()
                         store.handleBackButtonClick()
@@ -114,7 +114,7 @@ struct WifiPasswordEntryView: View {
                 type: .filledPrimary,
                 size: .small,
                 isDisabled: !store.isFormValid
-            )                {
+            ) {
                     withAnimation {
                         hideKeyboard()
                         store.handleNextButtonClick()

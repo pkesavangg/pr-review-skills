@@ -45,9 +45,10 @@ class ScaleInfoUtils {
         return scales.first { $0.sku == lookupSku }
     }
 
-    /// Get scale information by scale name with fallback logic
-    /// - Parameter scaleName: The scale name to search for
-    /// - Returns: ScaleItemInfo if found, nil otherwise
+    // Get scale information by scale name with fallback logic
+    // - Parameter scaleName: The scale name to search for
+    // - Returns: ScaleItemInfo if found, nil otherwise
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func getScaleInfo(byScaleName scaleName: String?) -> ScaleItemInfo? {
         guard let scaleName = scaleName?.trimmingCharacters(in: .whitespacesAndNewlines) else {
             return nil

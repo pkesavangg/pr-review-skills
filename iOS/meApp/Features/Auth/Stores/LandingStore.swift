@@ -61,9 +61,10 @@ final class LandingStore: ObservableObject {
                 self.accounts = sortedLoggedInAccounts
                 
                 self.userItems = sortedLoggedInAccounts.map { account in
+                    let displayName = account.firstName?.isEmpty == false ? (account.firstName ?? account.email) : account.email
                     return UserItemInfo(
                         accountID: account.accountId,
-                        name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
+                        name: displayName,
                         email: account.email,
                         isSelected: false,
                         isExpired: false, // Only logged-in accounts are shown

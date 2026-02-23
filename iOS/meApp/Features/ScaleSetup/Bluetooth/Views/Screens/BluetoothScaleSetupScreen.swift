@@ -83,7 +83,7 @@ struct BluetoothScaleSetupScreen: View {
             ButtonView(text: commonLang.back,
                        type: .inlineTextPrimary,
                        size: .small,
-                       isDisabled: setupStore.isBackDisabled)                       {
+                       isDisabled: setupStore.isBackDisabled) {
                 withAnimation {
                     hideKeyboard()
                 }
@@ -95,7 +95,7 @@ struct BluetoothScaleSetupScreen: View {
             ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
-                       isDisabled: !setupStore.isNextEnabled)                       {
+                       isDisabled: !setupStore.isNextEnabled) {
                 withAnimation {
                     hideKeyboard()
                 }

@@ -67,7 +67,7 @@ struct GoalProgressView: View {
                 type: .filledSuccess,
                 size: .large,
                 isDisabled: isSetGoalButtonDisabled ?? false
-            )                {
+            ) {
                     tabViewModel.navigateToGoalSetting()
                 }
             .padding(.vertical, .spacingXS)

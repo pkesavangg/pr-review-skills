@@ -41,6 +41,7 @@ struct AppInputField: View {
                     // Floating label
                     Text(config.label)
                         .fontOpenSans((fieldIsFocused || !value.isEmpty) ? .subHeading2 : .subHeading1)
+// swiftlint:disable:next line_length
                         .foregroundColor(config.isDisabled ? theme.textBody.opacity(0.38) : (config.errorMessage != nil ? theme.textError : theme.textSubheading))
                         .offset(y: (fieldIsFocused || !value.isEmpty) ? -15 : 0)
                         .offset(x: 16)
@@ -57,7 +58,7 @@ struct AppInputField: View {
                         value: $value,
                         focusedField: $focusedField,
                         onCommit: onCommit
-                    )                        { focused in
+                    ) { focused in
                             fieldIsFocused = focused
                             onEditingChanged?(focused)
                             if focused {
@@ -133,6 +134,7 @@ struct AppInputField: View {
             if let customIcon = config.customIcon {
                 Button(action: {
                     config.onCustomIconTap?()
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                 }) {
                     AppIconView(icon: customIcon, size: IconSize(width: 35, height: 35))
                         .foregroundColor(theme.actionPrimary)
@@ -158,6 +160,7 @@ struct AppInputField: View {
             withAnimation {
                 value = ""
             }
+// swiftlint:disable:next multiple_closures_with_trailing_closure
         }) {
             AppIconView(icon: AppAssets.closeCircle)
                 .foregroundColor(config.errorMessage != nil ? theme.textError : theme.actionPrimary)
@@ -209,6 +212,7 @@ struct AppInputTestingField: View {
                     placeholder: "Enter your password",
                     inputType: .password,
                     submitLabel: .done,
+// swiftlint:disable:next multiline_arguments
                     errorMessage: password.count < 6 && !password.isEmpty ? "Password is too short" : nil, focusField: .password
                 ),
                 value: $password,
@@ -247,7 +251,7 @@ struct AppInputTestingField: View {
                     placeholder: "Enter model number",
                     inputType: .text,
                     customIcon: AppAssets.helpCircle
-                )                    {
+                ) {
                         print("Custom icon tapped")
                     },
                 value: $modelNumber,

@@ -138,6 +138,7 @@ struct MyScalesScreen: View {
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
+// swiftlint:disable:next vertical_parameter_alignment_on_call
                                 onCustomIconTap: {
                                     focusedField = nil
                                     hideKeyboard()
@@ -156,7 +157,7 @@ struct MyScalesScreen: View {
                         type: .filledPrimary,
                         size: .large,
                         isDisabled: !scaleStore.addScaleForm.isValid
-                    )                        {
+                    ) {
                             // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
                             let enteredValue = scaleStore.addScaleForm.modelNumberValue
                             let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
@@ -183,7 +184,7 @@ struct MyScalesScreen: View {
                         type: .textPrimary,
                         size: .large,
                         isDisabled: false
-                    )                        {
+                    ) {
                             focusedField = nil
                             hideKeyboard()
                             activeSheet = .scaleList
@@ -193,6 +194,7 @@ struct MyScalesScreen: View {
                 .padding(.vertical, .spacingLG)
                 .sheet(item: $activeSheet, onDismiss: {
                     scaleStore.updateSetupInProgressStatus(false)
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                 }) { sheet in
                     switch sheet {
                     case .scaleList:

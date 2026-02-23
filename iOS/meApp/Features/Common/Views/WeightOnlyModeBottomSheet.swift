@@ -88,7 +88,7 @@ struct WeightOnlyModeBottomSheet: View {
                 type: .filledPrimary,
                 size: .large,
                 isDisabled: false
-            )                {
+            ) {
                     // Handle primary action
                   onEnableAllBodyMetrics()
                   store.handleEnableBodyMetrics()
@@ -99,7 +99,7 @@ struct WeightOnlyModeBottomSheet: View {
                 type: .textPrimary,
                 size: .large,
                 isDisabled: false
-            )                {
+            ) {
                   onDismiss()
                   store.dismissWeightOnlyModeAlert {
                     dismiss()

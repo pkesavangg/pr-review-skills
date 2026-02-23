@@ -105,6 +105,7 @@ struct ScaleItemView: View {
             if !hideChevron && !isDisabled {
                 Button(action: {
                     onTap()
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                 }) {
                     AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 32, height: 32))
                         .foregroundColor(theme.actionPrimary)

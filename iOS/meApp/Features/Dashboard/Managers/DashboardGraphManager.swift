@@ -1,12 +1,12 @@
 import Charts
 import Foundation
 import os
-// swiftlint:disable type_body_length file_length function_body_length identifier_name line_length
+// swiftlint:disable type_body_length file_length function_body_length line_length
 import SwiftUI
 
 /*
  SwiftLint exception:
- This manager intentionally aggregates all graph and chart operations in a single class for maintainability and discoverability. The file contains complex mathematical algorithms (e.g., Hermite interpolation) that use single-letter variables following mathematical conventions. Some functions intentionally have many lines to maintain algorithm clarity. We therefore disable `type_body_length`, `file_length`, `function_body_length`, `identifier_name`, and `line_length` for this file.
+ This manager intentionally aggregates all graph and chart operations in a single class for maintainability and discoverability. The file contains complex mathematical algorithms (e.g., Hermite interpolation) that use single-letter variables following mathematical conventions. Some functions intentionally have many lines to maintain algorithm clarity. We therefore disable `type_body_length`, `file_length`, `function_body_length`, and `line_length` for this file.
  */
 
 /// Manages all graph and chart operations for the dashboard
@@ -166,8 +166,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.showCrosshair = true
     }
 
-    /// Computes an interpolated display weight at a given date using surrounding summaries.
-    /// If only one side exists, falls back to that side's display weight.
+    // Computes an interpolated display weight at a given date using surrounding summaries.
+    // If only one side exists, falls back to that side's display weight.
+    // swiftlint:disable:next cyclomatic_complexity
     func interpolatedDisplayWeight(
         at date: Date,
         from operations: [BathScaleWeightSummary],
@@ -363,7 +364,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func handleScrollEnd() async {
         state.scrollEndTimer?.invalidate()
-        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UI.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
+        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UIConstants.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
 
@@ -460,9 +461,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // MARK: - Chart Data Generation with Y-Axis Domain Consistency
 
-    /// Generates chart data using the provided Y-axis domain for consistent metric normalization
-    /// This ensures metric lines stay within the visible Y-axis range when scrolling
-    /// Now includes caching and throttling for scroll performance
+    // Generates chart data using the provided Y-axis domain for consistent metric normalization
+    // This ensures metric lines stay within the visible Y-axis range when scrolling
+    // Now includes caching and throttling for scroll performance
+    // swiftlint:disable:next function_parameter_count
     func generateChartDataWithYAxisDomain(
         from allOperations: [BathScaleWeightSummary],
         visibleOperations: [BathScaleWeightSummary],
@@ -549,6 +551,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             selectedMetric: selectedMetric
         )
 
+// swiftlint:disable:next multiline_arguments
         logger.log(level: .debug, tag: "DashboardGraphManager",
                    message: "Generated fresh chart data with Y-axis domain: \(series.count) points, " +
                    "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
@@ -689,6 +692,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
                 // Ensure normalized value is within safe bounds
                 guard normalizedValue >= safeMin && normalizedValue <= safeMax else {
+// swiftlint:disable:next multiline_arguments
                     logger.log(level: .info, tag: "DashboardGraphManager",
                                message: "Normalized value \(normalizedValue) out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
 
@@ -710,6 +714,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
 
+// swiftlint:disable:next multiline_arguments
         logger.log(level: .info, tag: "DashboardGraphManager",
                    message: "Generated normalized metric series for \(selectedMetric): \(normalizedSeries.count) points, " +
                    "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
@@ -718,10 +723,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return normalizedSeries
     }
 
-    /// Generates normalized metric series using the provided Y-axis domain for consistency
-    /// This ensures metric normalization matches the visible Y-axis range
-    /// - Parameter operationsForYAxis: The same operations set used for Y-axis domain calculation
-    ///                                (visibleOperations + bracketingOperations for non-total periods)
+    // Generates normalized metric series using the provided Y-axis domain for consistency
+    // This ensures metric normalization matches the visible Y-axis range
+    // - Parameter operationsForYAxis: The same operations set used for Y-axis domain calculation
+    //                                (visibleOperations + bracketingOperations for non-total periods)
+    // swiftlint:disable:next cyclomatic_complexity function_parameter_count
     private func generateNormalizedMetricSeriesWithDomain(
         for selectedMetric: String,
         from allOperations: [BathScaleWeightSummary],
@@ -759,7 +765,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 !visibleTimestamps.contains(bracketOp.entryTimestamp)
             }
             if operationsForYAxis.count != expectedCombined.count {
+// swiftlint:disable:next multiline_arguments
                 logger.log(level: .info, tag: "DashboardGraphManager",
+// swiftlint:disable:next vertical_parameter_alignment_on_call
                           message: "Potential operation set mismatch: operationsForYAxis has \(operationsForYAxis.count) items, expected \(expectedCombined.count) for metric normalization")
             }
         }
@@ -821,7 +829,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 let rangeRatio = weightRange / domainRange
                 // If weight range is more than 120% of domain, log a warning
                 if rangeRatio > 1.2 {
+// swiftlint:disable:next multiline_arguments
                     logger.log(level: .info, tag: "DashboardGraphManager",
+// swiftlint:disable:next vertical_parameter_alignment_on_call
                               message: "Potential domain-operation mismatch: weight range (\(minWeight)...\(maxWeight)) may exceed Y-axis domain (\(weightMin)...\(weightMax)) for metric \(selectedMetric)")
                 }
             }
@@ -895,6 +905,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             ))
         }
 
+// swiftlint:disable:next multiline_arguments
         logger.log(level: .info, tag: "DashboardGraphManager",
                    message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
                    "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax) (using visible+bracketing ops), " +
@@ -904,8 +915,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return normalizedSeries
     }
 
-    /// Interpolates a metric value for a date that doesn't have metric data
-    /// Uses surrounding metric values to create a smooth line
+    // Interpolates a metric value for a date that doesn't have metric data
+    // Uses surrounding metric values to create a smooth line
+    // swiftlint:disable:next function_parameter_count
     private func interpolateMetricValue(
         for targetDate: Date,
         from allOperations: [BathScaleWeightSummary],
@@ -1008,6 +1020,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
+// swiftlint:disable:next function_parameter_count
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
         let yAxisScale = YAxisCalculator.calculateYAxis(
             operations: operations,
@@ -1022,6 +1035,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return yAxisScale
     }
 
+// swiftlint:disable:next function_parameter_count
     func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) {
         let yAxisScale = getYAxisScale(
             from: operations,
@@ -1123,9 +1137,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let leftEdge = state.xScrollPosition
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
         let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
-
-        let minDate = operations.first?.date ?? leftEdge
-        let maxDate = operations.last?.date ?? leftEdge
 
         // Add buffer to handle timezone edge cases and ensure entries on boundary dates are included
         let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
@@ -1292,6 +1303,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
     }
 
+// swiftlint:disable:next cyclomatic_complexity
     private func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
         switch label {
         case DashboardStrings.bmi:
@@ -1559,15 +1571,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
     // swiftlint:enable cyclomatic_complexity
 
-    /// Calculates the proper scroll position for chart initialization or segment changes
-    /// This ensures the scroll position aligns with the computed X-axis values
-    /// - Parameters:
-    ///   - period: Target time period
-    ///   - operations: Data operations for bounds calculation
-    ///   - anchorDate: Optional anchor date to center the viewport around (for preserving temporal context)
-    ///   - showingLatest: Whether to show latest entries (ignored if anchorDate is provided)
-    ///   - cachedBounds: Optional cached date bounds for O(1) lookup performance
-    /// - Returns: Optimal scroll position for the given parameters
+    // Calculates the proper scroll position for chart initialization or segment changes.
+    // This ensures the scroll position aligns with the computed X-axis values.
+    // Parameters:
+    // - period: Target time period
+    // - operations: Data operations for bounds calculation
+    // - anchorDate: Optional anchor date to center the viewport around (for preserving temporal context)
+    // - showingLatest: Whether to show latest entries (ignored if anchorDate is provided)
+    // - cachedBounds: Optional cached date bounds for O(1) lookup performance
+    // - Returns: Optimal scroll position for the given parameters
+    // swiftlint:disable:next cyclomatic_complexity
     func calculateOptimalScrollPosition(
         for period: TimePeriod,
         from operations: [BathScaleWeightSummary],
@@ -1967,8 +1980,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    /// Generates sample dates for the visible range based on the time period
-    /// These correspond to the vertical lines that are selectable in the UI
+    // Generates sample dates for the visible range based on the time period
+    // These correspond to the vertical lines that are selectable in the UI
+    // swiftlint:disable:next cyclomatic_complexity
     func generateSampleDatesForVisibleRange(for period: TimePeriod) -> [Date] {
         guard period != .total else { return [] }
 
@@ -2259,6 +2273,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             simplifiedOps.append(lastOp)
         }
 
+// swiftlint:disable:next multiline_arguments
         logger.log(level: .debug, tag: "DashboardGraphManager",
                    message: "Simplified data for scrolling: \(operations.count) -> \(simplifiedOps.count) points")
 
@@ -2321,6 +2336,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             return allOperations
         }
 
+// swiftlint:disable:next multiline_arguments
         logger.log(level: .debug, tag: "DashboardGraphManager",
                    message: "Windowed chart data: \(allOperations.count) -> \(windowedOperations.count) operations (\(Int(savingsRatio * 100))% reduction)")
 
@@ -2398,8 +2414,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         minDate: Date,
         maxDate: Date
     ) -> Date {
-        let domainLength = visibleDomainLength(for: period)
-
         // Left boundary: period-aware padding to allow viewing the full calendar period
         // containing the first entry (e.g., full week containing Nov 1)
         let padding: TimeInterval
@@ -2474,4 +2488,4 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 }
-// swiftlint:enable type_body_length file_length function_body_length identifier_name line_length
+// swiftlint:enable type_body_length file_length function_body_length line_length

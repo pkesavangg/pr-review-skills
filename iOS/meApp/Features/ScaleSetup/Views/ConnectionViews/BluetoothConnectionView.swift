@@ -44,6 +44,7 @@ struct BluetoothConnectionView: View {
     }
     
     private var showErrorCode: Bool {
+// swiftlint:disable:next force_unwrapping
         state == .failure && errorCode != nil && !errorCode!.isEmpty
     }
     

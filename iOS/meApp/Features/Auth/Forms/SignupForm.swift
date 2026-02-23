@@ -112,13 +112,15 @@ class SignupForm: ObservableForm {
         : currentWeight.isValid && goalWeight.isValid
     }
 
-    func getError<T>(for control: FormControl<T>) -> String? {
+    func getError<T>(for control: FormControl<T>) -> String? { // swiftlint:disable:this cyclomatic_complexity function_body_length
         guard control.isTouched || control.isDirty else { return nil }
 
         if control === currentWeight && goalType.value == GoalType.maintain.rawValue {
             return nil
         }
-        if (control === email || control === password || control === confirmPassword || control === zipcode || control === firstName || control === lastName) && control.errors[.required] {
+        if (control === email || control === password || control === confirmPassword ||
+            control === zipcode || control === firstName || control === lastName) &&
+            control.errors[.required] {
             return FormErrorMessages.leaveBlank
         }
         if control.errors[.required] { return FormErrorMessages.required }
@@ -147,7 +149,7 @@ class SignupForm: ObservableForm {
                 return useMetric.value ? FormErrorMessages.minWeightKg : FormErrorMessages.minWeightLb
             }
         }
-        if control.errors[.maxValue], let _ = control.errors.value(for: .maxValue) as? Double {
+        if control.errors[.maxValue], control.errors.value(for: .maxValue) is Double {
             if control === currentWeight || control === goalWeight {
                 return useMetric.value ? FormErrorMessages.maxWeightKg : FormErrorMessages.maxWeightLb
             }

@@ -12,20 +12,7 @@ import SwiftUI
 /// ViewModel specifically for the Year time period chart view
 /// Handles all year-specific chart logic, scrolling, and month-based data processing
 @MainActor
-final class YearSectionViewModel: BaseSectionViewModel, Equatable {
-    
-    static func == (lhs: YearSectionViewModel, rhs: YearSectionViewModel) -> Bool {
-        // Compare essential properties that affect rendering
-        lhs.timePeriod == rhs.timePeriod &&
-        lhs.selectedDate == rhs.selectedDate &&
-        lhs.showCrosshair == rhs.showCrosshair &&
-        lhs.scrollPosition == rhs.scrollPosition &&
-        lhs.isScrolling == rhs.isScrolling &&
-        lhs.yAxisDomain == rhs.yAxisDomain &&
-        lhs.yAxisTicks == rhs.yAxisTicks &&
-        lhs.chartFrame == rhs.chartFrame &&
-        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
-    }
+final class YearSectionViewModel: BaseSectionViewModel {
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {

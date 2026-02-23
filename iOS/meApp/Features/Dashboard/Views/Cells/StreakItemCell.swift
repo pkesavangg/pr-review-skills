@@ -1,6 +1,5 @@
 // MARK: - Enhanced StreakCardCell with Wiggle Animation
 
-// swiftlint:disable type_body_length
 // This UICollectionViewCell intentionally aggregates all cell configuration logic
 // to maintain proper state synchronization between UIKit and SwiftUI components.
 // Splitting would fragment the drag/drop, wiggle animation, and overlay management logic.
@@ -9,6 +8,7 @@ import ObjectiveC
 import SwiftUI
 import UIKit
 
+// swiftlint:disable:next type_body_length
 class StreakCardCell: UICollectionViewCell {
     private static let overlayButtonSize: CGFloat = 48
     
@@ -63,13 +63,6 @@ class StreakCardCell: UICollectionViewCell {
     // MARK: - Configuration
     
     func configure(with item: MetricItem, store: DashboardStore, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
-        // Always reconfigure to ensure proper state synchronization
-        let needsReconfiguration = true
-        
-        if !needsReconfiguration {
-            return
-        }
-        
         setupBasicState(item: item, store: store)
         let swiftUIView = createSwiftUIView(item: item, store: store)
         setupHostingController(with: swiftUIView)
@@ -436,8 +429,8 @@ class StreakCardCell: UICollectionViewCell {
         set { objc_setAssociatedObject(self, &AssociatedKeys.metricSelectCallback, newValue, .OBJC_ASSOCIATION_COPY_NONATOMIC) }
     }
     private struct AssociatedKeys {
-        static var metricLongPressCallback = "metricLongPressCallback"
-        static var metricSelectCallback = "metricSelectCallback"
+        static var metricLongPressCallback: UInt8 = 0
+        static var metricSelectCallback: UInt8 = 0
     }
     
     @objc private func handleMetricLongPressForInfo(_ gesture: UILongPressGestureRecognizer) {

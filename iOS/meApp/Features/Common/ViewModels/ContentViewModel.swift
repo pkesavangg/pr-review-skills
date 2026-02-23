@@ -69,6 +69,7 @@ final class ContentViewModel: ObservableObject {
                     try await accountService.refreshAccount()
                     logger.log(level: .info, tag: "ContentViewModel", message: "Account data refreshed successfully during initialization")
                 } catch {
+// swiftlint:disable:next line_length
                     logger.log(level: .error, tag: "ContentViewModel", message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
                 }
                 
@@ -77,14 +78,10 @@ final class ContentViewModel: ObservableObject {
                 let feedService = self.feedService
                 let bluetoothService = self.bluetoothService
 
-                // Heavy work off-main to avoid UI jank
-                let entries: [Entry] = await Task.detached(priority: .userInitiated) {
-                    await entryService.syncAllEntriesWithRemote()
-                    await entryService.loadDashboardData()
-                    let allEntries = (try? await entryService.getAllEntries()) ?? []
-                    await feedService.fetchFeedItems()
-                    return allEntries
-                }.value
+                await entryService.syncAllEntriesWithRemote()
+                await entryService.loadDashboardData()
+                let entries = (try? await entryService.getAllEntries()) ?? []
+                await feedService.fetchFeedItems()
 
                 // UI-affecting calls back on main actor
                 self.entries = entries
@@ -107,7 +104,7 @@ final class ContentViewModel: ObservableObject {
 
             // Run migration in background so it doesn't block first-frame rendering
             let entryService = self.entryService
-            Task.detached(priority: .utility) {
+            Task(priority: .utility) {
                 await entryService.migrateFromSQLiteIfNeeded()
             }
         }
@@ -131,6 +128,7 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Data Loading (if logged in)
     private func loadData() async {
+// swiftlint:disable:next unused_optional_binding
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData()
@@ -177,6 +175,7 @@ final class ContentViewModel: ObservableObject {
                 logger.log(level: .debug, tag: "ContentViewModel", message: "No account flags found after \(trigger)")
             }
         } catch {
+// swiftlint:disable:next line_length
             logger.log(level: .error, tag: "ContentViewModel", message: "Error checking account flags after \(trigger): \(error.localizedDescription)")
         }
     }

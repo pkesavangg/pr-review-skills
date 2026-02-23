@@ -64,7 +64,7 @@ class ChangePasswordForm: ObservableForm {
         guard control.isTouched || control.isDirty else { return nil }
 
         if control.errors[.required] { return FormErrorMessages.required }
-        if control.errors[.minLength], let min = control.errors.value(for: .minLength) as? Int {
+        if control.errors[.minLength] {
             return FormErrorMessages.passwordMinLength
         }
         if control.errors[.maxLength] {

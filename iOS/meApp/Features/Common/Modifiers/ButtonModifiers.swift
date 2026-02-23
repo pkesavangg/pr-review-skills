@@ -80,6 +80,7 @@ struct AppPressableButtonStyle: ButtonStyle {
         self.customVerticalPadding = customVerticalPadding
     }
 
+// swiftlint:disable:next function_body_length
     func makeBody(configuration: Configuration) -> some View {
         let isPressed = configuration.isPressed
 

@@ -7,7 +7,7 @@
 
 /// /// Represents the type of operation that was performed on the entry.
 enum OperationType: String, Codable, Equatable {
-    case create = "create"
-    case update = "update"
-    case delete = "delete"
+    case create
+    case update
+    case delete
 }

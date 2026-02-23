@@ -6,14 +6,15 @@
 //
 
 import Combine
-// swiftlint:disable type_body_length
 // This view model intentionally aggregates all bottom tab bar navigation logic
 // and state management to maintain a single source of truth for tab state.
-// Splitting would fragment navigation flow and reduce maintainability.import Foundation
+// Splitting would fragment navigation flow and reduce maintainability.
+import Foundation
 import GGBluetoothSwiftPackage
 import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 class BottomTabBarViewModel: ObservableObject {
     @Injector var feedService: FeedService
     // Inject Bluetooth service to listen for new scale discovery events
@@ -86,6 +87,7 @@ class BottomTabBarViewModel: ObservableObject {
     /// the Apple Health app from the out-of-sync modal.
     private var hkForegroundObserver: AnyCancellable?
     
+// swiftlint:disable:next function_body_length
     init() {
         self.canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
         // Subscribe to Bluetooth discovery events to surface the half-sheet when appropriate
@@ -596,7 +598,8 @@ class BottomTabBarViewModel: ObservableObject {
     }
     
     // MARK: - Set Goal Card Prompt
-    /// Checks conditions to determine whether to show the *Set a Goal* card and presents it if needed.
+    // Checks conditions to determine whether to show the *Set a Goal* card and presents it if needed.
+    // swiftlint:disable:next cyclomatic_complexity
     private func checkSetGoalCardPrompt() async {
         guard !hasShownSetGoalCardThisSession else { return }
         guard !isCheckingSetGoalCard else { return }

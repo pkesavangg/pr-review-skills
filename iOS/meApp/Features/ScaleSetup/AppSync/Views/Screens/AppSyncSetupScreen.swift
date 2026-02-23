@@ -50,7 +50,7 @@ struct AppSyncSetupScreen: View {
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews
-            )                { index in
+            ) { index in
                     // Apply padding for all steps except the AppSync scanner step
                     setupStore.steps[index] != .appSync
                 }
@@ -86,7 +86,7 @@ struct AppSyncSetupScreen: View {
                        type: .inlineTextPrimary,
                        size: .small,
                        isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .finish,
-                       useFrameForInlineText: true)                       {
+                       useFrameForInlineText: true) {
                 withAnimation {
                     hideKeyboard()
                 }
@@ -100,7 +100,7 @@ struct AppSyncSetupScreen: View {
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
                        customHorizontalPadding: .spacingXS / 2,
-                       customVerticalPadding: .spacingXS / 4)                       {
+                       customVerticalPadding: .spacingXS / 4) {
                 withAnimation {
                     hideKeyboard()
                 }

@@ -63,6 +63,7 @@ struct HelpModalView: View {
         .background(theme.backgroundSecondary)
         .cornerRadius(.radiusXL)
         .inAppBrowser(
+// swiftlint:disable:next force_unwrapping
             url: productURL ?? URL(string: AppConstants.Product.baseURL)!,
             isPresented: $showProductBrowser
         )

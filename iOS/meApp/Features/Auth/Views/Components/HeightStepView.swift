@@ -26,7 +26,7 @@ struct HeightStepView: View {
                     text: signupStore.getFormattedHeight(),
                     style: .bordered,
                     isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
-                )                    {
+                ) {
                         signupStore.showHeightPicker()
                     }
                 .padding(.top, .spacingLG)
@@ -44,7 +44,8 @@ struct HeightStepView: View {
             displayValue: { $0 },
             pickerType: .heightInches,
             title: heightStepLang.pickerHeader
-        )            { newValues in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { newValues in
                 signupStore.updateFormHeight(fromMetric: false, values: newValues)
             }
         .pickerSheet(
@@ -54,7 +55,8 @@ struct HeightStepView: View {
             displayValue: { $0 },
             pickerType: .heightCm,
             title: heightStepLang.pickerHeader
-        )            { newValues in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { newValues in
                 signupStore.updateFormHeight(fromMetric: true, values: newValues)
             }
     }

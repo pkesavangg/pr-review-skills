@@ -43,6 +43,7 @@ struct PagedChartScrollBehavior: ChartScrollTargetBehavior {
         }
     }
 
+// swiftlint:disable:next cyclomatic_complexity function_body_length
     func updateTarget(_ target: inout ScrollTarget, context: ChartScrollTargetBehaviorContext) {
         let viewportW = context.containerSize.width
         let contentW = context.contentSize.width

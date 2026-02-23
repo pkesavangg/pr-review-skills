@@ -41,7 +41,7 @@ struct DuplicateUserView: View {
                             ),
                             value: $store.userNameForm.displayName.value,
                             focusedField: $focusedField
-                        )                            {
+                        ) {
                                 focusedField = .userName
                             }
                         .onChange(of: store.userNameForm.displayName.value) {

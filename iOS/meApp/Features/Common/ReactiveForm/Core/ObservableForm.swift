@@ -187,6 +187,7 @@ class BasicProfileForm: ObservableForm {
         validate()
     }
     
+// swiftlint:disable:next cyclomatic_complexity
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isDirty else { return nil }
         

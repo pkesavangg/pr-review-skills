@@ -223,7 +223,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         case .stepOn:
             // If scale is already saved, set up entry subscription
             // This handles the case where user navigates to stepOn after Bluetooth is turned back on
-            if isScaleSaved, let savedScale = discoveredScale {
+            if isScaleSaved, discoveredScale != nil {
                 Task {
                     await syncNewScaleAndListenForEntries()
                 }
@@ -262,6 +262,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
     }
     
+// swiftlint:disable:next function_body_length
     private func confirmPair() async {
         guard let scale = discoveredScale, discoveryEvent != nil else {
             LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing discovery event or scale")
@@ -311,6 +312,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
                     setConnectionFailure()
                     LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
                 }
+// swiftlint:disable:next switch_case_alignment
                 default:
                 setConnectionFailure()
                 LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
@@ -452,6 +454,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
     }
     
+// swiftlint:disable:next function_body_length
     private func saveDiscoveredScaleWithLoader(isExiting: Bool) async {
         // Prevent duplicate saves
         if isScaleSaved {

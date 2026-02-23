@@ -72,8 +72,9 @@ struct MileStoneGridModel {
         
     }
     
-    /// Reorders the grid so goal cards start on new rows when they wouldn't fit
-    /// Similar to Android's reorderGrid function
+    // Reorders the grid so goal cards start on new rows when they wouldn't fit
+    // Similar to Android's reorderGrid function
+// swiftlint:disable:next cyclomatic_complexity
     mutating func reorderGrid(spanCount: Int, hasRemovedStreaks: Bool = false) {
         if mileStones.isEmpty { return }
         

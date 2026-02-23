@@ -96,37 +96,39 @@ struct ActionListItemView: View {
         Section("Preview") {
             ActionListItemView(config: ActionListItemConfig(
                 title: "Default Row"
-            )                { print("Tapped Default Row") })
+            ) { print("Tapped Default Row") })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Value",
                 value: "Enabled"
-            )                { print("Tapped Value Row") })
+            ) { print("Tapped Value Row") })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Up/Down Chevron",
                 chevronType: .upDown
-            )                { print("Tapped Up/Down Row") })
+            ) { print("Tapped Up/Down Row") })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row without Chevron",
                 chevronType: .none
-            )                { print("Tapped No Chevron Row") })
+            ) { print("Tapped No Chevron Row") })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Dot",
                 showDot: true
-            )                { print("Tapped Dot Row") })
+            ) { print("Tapped Dot Row") })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Toggle Row",
+// swiftlint:disable:next multiline_arguments
                 chevronType: .none, toggleBinding: $toggleState
-            )                { print("Toggle tapped") })
+            ) { print("Toggle tapped") })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Destructive Row",
+// swiftlint:disable:next multiline_arguments
                 chevronType: .none, isDestructive: true
-            )                { print("Tapped Destructive Row") })
+            ) { print("Tapped Destructive Row") })
             .listRowInsets()
         }
     }

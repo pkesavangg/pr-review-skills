@@ -152,7 +152,7 @@ class NotificationHelperService: ObservableObject {
         let wrappedModal = ModalData(
             presentedView: modal.presentedView,
             backdropDismiss: modal.backdropDismiss
-        )            {
+        ) {
                 modal.onDismiss?()
                 self.dismissModal()
             }

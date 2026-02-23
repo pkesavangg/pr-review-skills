@@ -12,6 +12,7 @@
 
 import Foundation
 
+@MainActor
 final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
     private let httpClient = HTTPClient.shared
     

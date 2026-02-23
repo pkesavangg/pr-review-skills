@@ -44,6 +44,7 @@ struct HistoryEntryItem: View {
                 
                 // Weight value
                 HStack(spacing: .spacingXS) {
+// swiftlint:disable:next line_length
                     Text(WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings))
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
@@ -96,12 +97,13 @@ struct HistoryEntryItem: View {
                 VStack(spacing: 0) {
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
                         HistoryMetricItem(
+// swiftlint:disable:next force_unwrapping
                             metric: BodyMetrics.config[item.metric]!,
                             metricType: item.metric,
                             value: item.value,
                             index: index,
                             size: entry.metricItems.count
-                        )                            { onMetricTap(entry, item.metric) }
+                        ) { onMetricTap(entry, item.metric) }
                         .id("\(entry.id.uuidString)-metric-\(index)")
                     }
                 }

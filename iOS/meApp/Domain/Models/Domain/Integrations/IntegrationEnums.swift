@@ -5,8 +5,8 @@ import Foundation
 
 /// Enum for integration types
 enum IntegrationType: String, Codable {
-    case google = "google"
-    case fitbit = "fitbit"
+    case google
+    case fitbit
     case myFitnessPal = "mfp"
     case underArmour = "ua"
     case healthConnect = "healthconnect"

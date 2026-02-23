@@ -29,6 +29,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         return collectionView
     }
     
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func updateUIView(_ uiView: UICollectionView, context: Context) {
         let coordinator = context.coordinator
         coordinator.store = store
@@ -45,11 +46,6 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let selectionChanged = newSelectedLabel != coordinator.lastSelectedMetricLabel
         let removalStateChanged = newRemovedMetrics != coordinator.lastRemovedMetrics
         let activeMetricsCountChanged = newActiveMetricsCount != coordinator.lastActiveMetricsCount
-        
-        // Check if this is a reset operation (all metrics restored and order reset)
-        let isResetOperation = newRemovedMetrics.isEmpty && 
-                              newActiveMetricsCount == store.metricsManager.state.metrics.count &&
-                              !coordinator.lastRemovedMetrics.isEmpty
         
         // Disable system drag interaction; we use interactive movement with a clamped gesture
         uiView.dragInteractionEnabled = false
@@ -254,7 +250,12 @@ extension MetricGridUIKitView {
         }
         
         func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MetricCell", for: indexPath) as! MetricCell
+            guard let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: "MetricCell",
+                for: indexPath
+            ) as? MetricCell else {
+                return UICollectionViewCell()
+            }
             
             // Ensure we're using the current metricsToShow array to prevent stale data during reloads
             guard indexPath.item < store.metricsToShow.count else {
@@ -272,7 +273,7 @@ extension MetricGridUIKitView {
                 isBeingDragged: false,
                 parentView: parent.parentView,
                 onMetricLongPress: parent.onMetricLongPress
-            )                { label in
+            ) { label in
                     if label.isEmpty {
                         self.store.state.ui.selectedMetricLabel = nil
                     } else {
@@ -392,6 +393,7 @@ extension MetricGridUIKitView {
         }
 
         // MARK: - Interactive Movement with Clamped Bounds
+        // swiftlint:disable:next cyclomatic_complexity function_body_length
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard let collectionView = gesture.view as? UICollectionView else { return }
 
@@ -422,7 +424,7 @@ extension MetricGridUIKitView {
 
                 // Temporarily allow animations by clearing suppressed actions
                 if originalLayerActions == nil {
-                    originalLayerActions = collectionView.layer.actions as? [String: CAAction]
+                    originalLayerActions = collectionView.layer.actions
                     collectionView.layer.actions = [:]
                 }
 

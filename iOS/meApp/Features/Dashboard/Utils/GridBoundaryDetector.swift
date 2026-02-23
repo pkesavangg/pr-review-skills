@@ -149,6 +149,7 @@ public class GridBoundaryDetector {
         if isWithinPreciseBounds {
             // Check if location is in any exclude zone
             for excludeZone in currentConstraints.excludeZones {
+// swiftlint:disable:next for_where
                 if excludeZone.contains(locationInSuperview) {
                     return false // Location is in an excluded area
                 }

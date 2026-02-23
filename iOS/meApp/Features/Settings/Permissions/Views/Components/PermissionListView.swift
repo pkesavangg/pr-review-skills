@@ -104,6 +104,7 @@ struct PermissionListView: View {
     
     private var locationSection: some View {
         // Base rows for location services
+// swiftlint:disable:next large_tuple
         var rows: [(String, Bool, PermissionType)] = [
             (
                 viewModel.locationServicesEnabled
@@ -246,6 +247,7 @@ struct PermissionListView: View {
     /// - Returns: A view containing the header and a card-styled list of rows.
     @ViewBuilder
     private func sectionView(title: String,
+// swiftlint:disable:next large_tuple
                              rows: [(String, Bool, PermissionType)],
                              category: PermissionCategory) -> some View {
         VStack(alignment: .leading) {
@@ -272,7 +274,7 @@ struct PermissionListView: View {
                             showsChevron: showsChevron,
                             isRowDisabled: isRowDisabled
                         )
-                    )                        {
+                    ) {
                             if !isEnabled && !isRowDisabled {
                                 viewModel.handlePermission(permissionType)
                             }

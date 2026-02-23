@@ -451,7 +451,8 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Persists the edited profile via `AccountService`, showing loader / toast as appropriate.
+    // Persists the edited profile via `AccountService`, showing loader / toast as appropriate.
+// swiftlint:disable:next cyclomatic_complexity function_body_length
     func saveProfile(router: Router<SettingsRoute>) {
         guard editProfileForm.isValid else { return }
         
@@ -1138,10 +1139,11 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Converts the chosen picker values to stored format and persists via `updateBodyComp`.
-    /// - Parameters:
-    ///   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
-    ///   - values: Picker column values chosen by the user.
+    // Converts the chosen picker values to stored format and persists via `updateBodyComp`.
+    // - Parameters:
+    //   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
+    //   - values: Picker column values chosen by the user.
+// swiftlint:disable:next function_body_length
     func updateHeight(fromMetric: Bool, values: [String]) {
         // Validate height before updating
         guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
@@ -1315,7 +1317,8 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Saves Goal when presented via navigation push.
+    // Saves Goal when presented via navigation push.
+// swiftlint:disable:next function_body_length
     func saveGoal(router: Router<SettingsRoute>) {
         goalForm.validate()
         guard goalForm.isDirty, isGoalFormValid else { return }
@@ -1549,7 +1552,8 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.rawValue },
                 title: SettingsStrings.appearance,
                 showCancel: false
-            )                { vals in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         if let mode = vals.first { Theme.shared.appearanceMode = mode }
@@ -1573,7 +1577,8 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.title },
                 title: SettingsStrings.notifications,
                 showCancel: false
-            )                { vals in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let pref = vals.first { self.updateNotificationPreference(pref) }
                     
@@ -1593,7 +1598,8 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.biologicalSex,
                 showCancel: false
-            )                { vals in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let sex = vals.first { self.updateGender(sex) }
                 }
@@ -1611,7 +1617,8 @@ class SettingsStore: ObservableObject {
                 displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
                 title: SettingsStrings.unitType,
                 showCancel: false
-            )                { vals in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let unit = vals.first { self.updateWeightUnit(unit) }
                 }
@@ -1630,7 +1637,8 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.activityLevel,
                 showCancel: false
-            )                { vals in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let level = vals.first { self.updateActivityLevel(level) }
                 }
@@ -1650,7 +1658,8 @@ class SettingsStore: ObservableObject {
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
                     showCancel: false
-                )                    { vals in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+                ) { vals in
                         self.notificationService.dismissModal()
                         self.updateHeight(fromMetric: true, values: vals)
                     }
@@ -1667,7 +1676,8 @@ class SettingsStore: ObservableObject {
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
                     showCancel: false
-                )                    { vals in
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+                ) { vals in
                         self.notificationService.dismissModal()
                         self.updateHeight(fromMetric: false, values: vals)
                     }

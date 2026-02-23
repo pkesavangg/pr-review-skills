@@ -47,7 +47,7 @@ struct WifiScaleSetupScreen: View {
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews
-            )                { index in
+            ) { index in
                     let step = setupStore.steps[index]
                     return step != .errorSelect && step != .selectUser
                 }
@@ -84,7 +84,7 @@ struct WifiScaleSetupScreen: View {
                        type: .inlineTextPrimary,
                        size: .small,
                        isDisabled: setupStore.shouldDisableBackButton(),
-                       useFrameForInlineText: true)                       {
+                       useFrameForInlineText: true) {
                 withAnimation {
                     hideKeyboard()
                 }
@@ -96,7 +96,7 @@ struct WifiScaleSetupScreen: View {
                        size: .small,
                        isDisabled: !setupStore.isNextEnabled,
                        customHorizontalPadding: .spacingXS / 2,
-                       customVerticalPadding: .spacingXS / 4)                       {
+                       customVerticalPadding: .spacingXS / 4) {
                 withAnimation {
                     hideKeyboard()
                 }
@@ -106,6 +106,7 @@ struct WifiScaleSetupScreen: View {
         .overlay {
             HStack {
                 if setupStore.currentStep == .permissions && !setupStore.isForGetMac {
+// swiftlint:disable:next multiline_arguments
                     ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .
                                large, isDisabled: false) {
                         withAnimation {

@@ -382,7 +382,9 @@ class DashboardStore: ObservableObject {
     var effectiveDashboardType: DashboardType {
         // Prefer the current in-memory type to avoid accidental downgrades when metrics are empty
         let result = state.metrics.dashboardType
+// swiftlint:disable:next multiline_arguments
         logger.log(level: .debug, tag: "DashboardStore",
+// swiftlint:disable:next vertical_parameter_alignment_on_call
                   message: "effectiveDashboardType: \(result.rawValue)")
         return result
     }
@@ -642,6 +644,7 @@ class DashboardStore: ObservableObject {
 
         // Check if weightless mode is enabled
         if isWeightlessModeEnabled {
+// swiftlint:disable:next line_length
             return graphManager.calculateWeightlessDisplay(opsToUse, anchorWeight: weightlessAnchorWeight, period: state.graph.selectedPeriod, convertWeight: goalManager.convertWeightToDisplay)
         }
 
@@ -675,10 +678,10 @@ class DashboardStore: ObservableObject {
             return labelForMonthGridlines()
         case .week:
             return labelForWeekGridlines()
-        default:
-            let lastScrollPosition = graphManager.state.xScrollPosition
-            return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
         }
+
+        let lastScrollPosition = graphManager.state.xScrollPosition
+        return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
     }
 
     /// Reinitialize dashboard state when the active account changes
@@ -801,18 +804,14 @@ class DashboardStore: ObservableObject {
 
         // Calculate weight values with proper error handling
         let weightValues = opsToUse.compactMap { summary -> Double? in
-            do {
-                if isWeightlessModeEnabled {
-                    guard let anchorWeight = weightlessAnchorWeight else {
-                        return nil
-                    }
-                    let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
-                    return currentWeight - anchorWeight
-                } else {
-                    return goalManager.convertWeightToDisplay(Int(summary.weight))
+            if isWeightlessModeEnabled {
+                guard let anchorWeight = weightlessAnchorWeight else {
+                    return nil
                 }
-            } catch {
-                return nil
+                let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return goalManager.convertWeightToDisplay(Int(summary.weight))
             }
         }
 
@@ -874,6 +873,7 @@ class DashboardStore: ObservableObject {
             }
         }
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
+// swiftlint:disable:next line_length
             logger.log(level: .debug, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
         }
 
@@ -940,7 +940,7 @@ class DashboardStore: ObservableObject {
         // This ensures they're ready before UI renders, preventing gaps
         do {
             // Refresh account data to ensure we have latest dashboard settings
-            try? await accountService.refreshAccount()
+            _ = try? await accountService.refreshAccount()
 
             // Refresh streak data with real values from API
             try await streakManager.refreshStreakData()
@@ -1107,7 +1107,7 @@ class DashboardStore: ObservableObject {
     func loadDashboardConfigurationFromAPI() async {
         do {
             // Refresh account data from API to ensure we have latest dashboard settings
-            try? await accountService.refreshAccount()
+            _ = try? await accountService.refreshAccount()
 
             // Sync entries before loading metrics to ensure we have latest entry data from all devices
             // This ensures metric values (like BMI) are consistent across devices
@@ -1209,6 +1209,7 @@ class DashboardStore: ObservableObject {
 
         // Handle case where API defaults empty progress metrics back to all metrics
         let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
+// swiftlint:disable:next line_length
         let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
         let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
 
@@ -1344,11 +1345,11 @@ class DashboardStore: ObservableObject {
         // Maps for quick lookup
         let oldIdToLabel = Dictionary(
             oldStreakItems.map { ($0.id.uuidString, $0.label) }
-        )            { first, _ in first }
+        ) { first, _ in first }
         
         let labelToNewId = Dictionary(
             newItems.map { ($0.label, $0.id.uuidString) }
-        )            { first, _ in first }
+        ) { first, _ in first }
         
         // Restore order using labels
         var newOrder = oldOrder.compactMap {
@@ -1636,12 +1637,12 @@ class DashboardStore: ObservableObject {
 
         // Capture the current state BEFORE toggle to ensure we have the correct baseline
         let currentActiveCount = streakManager.state.activeStreakItemsCount
-        let isCurrentlyRemoved = streakIndex >= currentActiveCount
+        _ = streakIndex >= currentActiveCount
 
         // Call the underlying manager to actually reorder the array
         Task {
             // Perform the toggle operation atomically
-            try? await streakManager.toggleStreakVisibility(at: streakIndex)
+            _ = try? await streakManager.toggleStreakVisibility(at: streakIndex)
 
             await MainActor.run {
                 self.syncRemovalStateFromStreakManager()
@@ -1955,6 +1956,7 @@ class DashboardStore: ObservableObject {
         UserDefaults.standard.set(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
 
         // Log the order being saved for debugging
+// swiftlint:disable:next line_length
         logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics), allRemoved: \(allMetricsRemoved)")
 
         // Save to API
@@ -2273,7 +2275,9 @@ class DashboardStore: ObservableObject {
             // Y-axis domain changed - invalidate cached chart series to force metric recalculation
             cachedChartSeriesData = nil
             lastCachedYAxisDomain = nil
+// swiftlint:disable:next multiline_arguments
             logger.log(level: .debug, tag: "DashboardStore",
+// swiftlint:disable:next vertical_parameter_alignment_on_call
                       message: "Y-axis domain changed from \(previousDomain) to \(newYAxisDomain), invalidating cached chart series")
         }
 
@@ -2486,7 +2490,6 @@ class DashboardStore: ObservableObject {
             }
         }
 
-        let calendar = Calendar.current
         var result: [BathScaleWeightSummary]
 
         switch currentPeriod {
@@ -2511,8 +2514,6 @@ class DashboardStore: ObservableObject {
                 result = continuousOperations
             }
 
-        default:
-            result = visibleOperations
         }
 
         // Cache the result
@@ -2815,6 +2816,7 @@ class DashboardStore: ObservableObject {
         case .dashboard4:
             return [.weight, .bmi, .bodyFat, .muscleMass, .water]
         case .dashboard12:
+// swiftlint:disable:next line_length
             return [.weight, .bmi, .bodyFat, .muscleMass, .water, .pulse, .boneMass, .visceralFatLevel, .subcutaneousFatPercent, .proteinPercent, .skeletalMusclePercent, .bmr, .metabolicAge]
         }
     }
@@ -3245,6 +3247,7 @@ class DashboardStore: ObservableObject {
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
 
+// swiftlint:disable:next line_length
         logger.log(level: .info, tag: "DashboardStore", message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)")
     }
 
@@ -3365,6 +3368,7 @@ class DashboardStore: ObservableObject {
 
             // Summary log at end of scroll
             let count = self.visibleOperations.count
+// swiftlint:disable:next line_length
             self.logger.log(level: .debug, tag: "DashboardStore", message: "Scroll end summary - period=\(self.state.graph.selectedPeriod), visibleOps=\(count)")
 
             // Mark scroll end processing as complete
@@ -3477,7 +3481,7 @@ class DashboardStore: ObservableObject {
             for: metricLabel,
             selectedEntry: selectedEntry,
             selectedMetric: selectedMetric
-        )            { newValue in
+        ) { newValue in
                 self.state.ui.selectedMetricLabel = newValue
             }
     }

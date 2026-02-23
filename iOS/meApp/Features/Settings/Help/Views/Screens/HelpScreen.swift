@@ -47,11 +47,13 @@ struct HelpScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarHidden(true)
         .inAppBrowser(
+// swiftlint:disable:next force_unwrapping
             url: helpStore.productURL ?? URL(string: AppConstants.Product.baseURL)!,
             isPresented: $helpStore.showProductBrowser
         )
         // Debug menu sheet uses store's flag
         .sheet(isPresented: $helpStore.showDebugMenu,
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                onDismiss: { helpStore.dismissDebugMenu() }) {
             TroubleShootingView()
                 .environmentObject(helpStore)

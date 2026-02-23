@@ -303,6 +303,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                             self?.tryAgainButtonHandler(isFromBtConnection: true)
                         },
                         onSupport: {
+// swiftlint:disable:next closure_parameter_position
                             [weak self] in self?.showHelpModal()
                         }
                     )
@@ -386,6 +387,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         state: scaleSetupError == .noNetworkFound ? .noNetworks : .failure,
                         onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
                         onSupport: {
+// swiftlint:disable:next closure_parameter_position
                             [weak self] in self?.showHelpModal()
                         }
                     ))
@@ -413,6 +415,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         isFromSettingsFlow: isSettingsWifiSetup,
                         onTryAgain: { [weak self] in self?.tryAgainButtonHandler() },
                         onSupport: {
+// swiftlint:disable:next closure_parameter_position
                             [weak self] in self?.showHelpModal()
                         }
                     ))
@@ -426,6 +429,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         self?.tryAgainButtonHandler()
                     },
                     onSupport: {
+// swiftlint:disable:next closure_parameter_position
                         [weak self] in self?.showHelpModal()
                     }
                 ))
@@ -450,6 +454,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.handleScaleModeChange(scaleMode, heartRateEnabled: isPulseEnabled)
                                 }
                             )
+// swiftlint:disable:next switch_case_alignment
             case .scaleMetrics:
                 // Scale metrics customization screen.
                 ScaleMetricsCustomizationView(initialEnabledKeys: selectedScaleMetrics) { [weak self] metrics, _ in
@@ -652,6 +657,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         self.isDuplicated = isDuplicated
         
         // Log setup state similar to Angular version
+// swiftlint:disable:next line_length
         LoggerService.shared.log(level: .info, tag: tag, message: "BtWifi setup started - Is Wifi setup: \(isWifiSetupOnly), Is Duplicated: \(isDuplicated), Is Reconnecting: \(isReconnect)")
         
         // Set setup in progress flag immediately for ALL setup flows to prevent goal modals from appearing during setup
@@ -827,10 +833,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Set exiting flag first to prevent any navigation during exit
         isExiting = true
         
-        // Store current step to handle cleanup properly
-        let wasOnGatheringNetwork = currentStep == .gatheringNetwork
-        let wasOnAvailableWifiList = currentStep == .availableWifiList
-        
         // Cancel any ongoing network operations to prevent navigation
         cancelNetworkScanTimeout()
         fetchWifiNetworksTask?.cancel()
@@ -951,6 +953,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     
     /// Checks if the back button should be disabled based on the current step.
     func shouldDisableBackButton() -> Bool {
+// swiftlint:disable:next line_length
         return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings || currentStep == .availableWifiList
     }
     
@@ -1330,6 +1333,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             self.hasCustomizeChanges = true
             self.hasSavedSettings = true
+// swiftlint:disable:next switch_case_alignment
             case .scaleMode:
             // Update the attached preference with new scale mode settings
             if let savedScale = savedScale {
@@ -1342,6 +1346,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             self.hasCustomizeChanges = true
             self.hasSavedSettings = true
+// swiftlint:disable:next switch_case_alignment
             case .scaleMetrics:
             // Persist scale metrics changes immediately when Save is clicked
             if let savedScale = savedScale {
@@ -1358,6 +1363,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             self.hasCustomizeChanges = true
             self.hasSavedSettings = true
             self.selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
+// swiftlint:disable:next switch_case_alignment
             case .dashboardMetrics:
             hasCustomizeChanges = true
             hasSavedSettings = true
@@ -1410,6 +1416,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .scaleMode:
             if let savedScale = savedScale {
                 // Restore previously snapshotted values
+// swiftlint:disable:next line_length
                 let originalMode = initialScaleModeSnapshot ?? (savedScale.r4ScalePreference?.shouldMeasureImpedance == true ? .allBodyMetrics : .weightOnly)
                 let originalPulse = initialHeartRateEnabledSnapshot ?? (savedScale.r4ScalePreference?.shouldMeasurePulse ?? false)
                 selectedScaleMode = originalMode
@@ -1731,11 +1738,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 }
         case .scaleConnected:
             break
-            default:
-            // Reset skipCheckNetwork for all other steps (not stepOn)
-            if previousStep == .stepOn && currentStep != .stepOn {
-                cancelStepOnTimeout()
-            }
+        }
+
+        // Reset skipCheckNetwork for all other steps (not stepOn)
+        if previousStep == .stepOn && currentStep != .stepOn {
+            cancelStepOnTimeout()
         }
     }
     
@@ -1801,6 +1808,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 resetDiscoveryState()
                 navigateToStep(.permissions)
             }
+// swiftlint:disable:next switch_case_alignment
             case .availableWifiList:
             if noNetwork {
                 // Navigate back to gathering network screen to show "No Networks Found" error
@@ -1823,6 +1831,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 resetDiscoveryState()
                 navigateToStep(.permissions)
             }
+// swiftlint:disable:next switch_case_alignment
             case .stepOn where scaleSetupError != .updateSettingsFailed:
             // Skip network checks during stepOn screen - network access is not required for collecting measurements
             let bluetoothSwitchOff =
@@ -1833,6 +1842,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 cancelStepOnTimeout()
                 showBluetoothTurnedOffAlert()
             }
+// swiftlint:disable:next switch_case_alignment
             case .measurement:
             let bluetoothSwitchOff =
                 permissionsService.getPermissionState(.BLUETOOTH_SWITCH) != .ENABLED
@@ -1846,6 +1856,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Keep timeout running so error screen appears
                 showBluetoothTurnedOffAlert()
             }
+// swiftlint:disable:next switch_case_alignment
             case .updateSettings:
             let bluetoothSwitchOff =
                 permissionsService.getPermissionState(.BLUETOOTH_SWITCH) != .ENABLED
@@ -1870,6 +1881,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
                     do {
                         guard let refreshedScale = try await self.scaleService.getDevice(by: savedScale.id) else {
+// swiftlint:disable:next line_length
                             LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): device not found for id \(savedScale.id)")
                             return
                         }
@@ -1950,6 +1962,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     self.navigateToStep(.gatheringNetwork)
                 }
+// swiftlint:disable:next switch_case_alignment
                 case .duplicateUserError:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Duplicate User Error \(response)")
                 // Get user list from scale and check for duplicates
@@ -1973,15 +1986,18 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Set error state and navigate to gathering network
                 scaleSetupError = .duplicatesFound
                 navigateToStep(.gatheringNetwork)
+// swiftlint:disable:next switch_case_alignment
                 case .memoryFull:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
                 await getUserList()
                 // Set error state and navigate to gathering network
                 scaleSetupError = .maxUserReached
                 navigateToStep(.gatheringNetwork)
+// swiftlint:disable:next switch_case_alignment
                 case .inputDataError:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Input data error: \(response)")
                 connectionState = .failure
+// swiftlint:disable:next switch_case_alignment
                 default:
                 connectionState = .failure
                 LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
@@ -2257,6 +2273,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Update WiFi configuration status in local database
                 if let broadcastId = scale.broadcastIdString {
                     await scaleService.updateConnectedDeviceWifiStatus(broadcastId: broadcastId, isConfigured: true)
+// swiftlint:disable:next line_length
                     LoggerService.shared.log(level: .info, tag: tag, message: "Updated WiFi configuration status to true for broadcast ID: \(broadcastId)")
                 }
 
@@ -2269,6 +2286,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         self.navigateToStep(.customizeSettings)
                     }
                 }
+// swiftlint:disable:next switch_case_alignment
                 default:
                 LoggerService.shared.log(level: .error, tag: tag, message: "WiFi connection failed: \(response)")
                 self.connectionState = .failure
@@ -2522,7 +2540,9 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Build updated preference object
             let updatedPreferenceDTO = R4ScalePreferenceDTO(
                 scaleId: savedScale.id,
+// swiftlint:disable:next line_length
                 displayName: saveScaleUsername ? (userNameForm.displayName.value.isEmpty ? (firstName ?? "User") : userNameForm.displayName.value) : currentPreference.displayName,
+// swiftlint:disable:next line_length
                 displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics, // Only update if scale metrics were customized (independent from dashboard metrics)
                 shouldFactoryReset: false,
                 shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
@@ -2566,6 +2586,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             case .success:
                 LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - scale preference updated successfully")
             case .failure(let error):
+// swiftlint:disable:next line_length
                 LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update scale preference: \(error.localizedDescription)")
             }
             
@@ -2581,6 +2602,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     hasCustomizeChanges = false
                     hasSavedSettings = false
                     
+// swiftlint:disable:next line_length
                     LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
                     // Clear the selected items since they're now saved
                     selectedCustomizeItems.removeAll()
@@ -2589,18 +2611,21 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         self.navigateToStep(.stepOn)
                     }
                 } catch {
+// swiftlint:disable:next line_length
                     LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update scale preference locally: \(error.localizedDescription)")
                     await MainActor.run {
                         self.scaleSetupError = .updateSettingsFailed
                     }
                 }
             case .failure(let error):
+// swiftlint:disable:next line_length
                 LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update account: \(error.localizedDescription)")
                 await MainActor.run {
                     self.scaleSetupError = .updateSettingsFailed
                 }
             }
         } catch {
+// swiftlint:disable:next line_length
             LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update settings: \(error.localizedDescription)")
             await MainActor.run {
                 self.scaleSetupError = .updateSettingsFailed
@@ -2858,15 +2883,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
             return
         }
         
-        let currentMetricsOrder = await MainActor.run {
-            dashboardStore.metricsManager.state.metrics.map { $0.label }
-        }
-        
         do {
             let apiRepo = AccountRepositoryAPI()
             _ = try await apiRepo.patchDashboardType(.dashboard12)
             try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
         } catch {
+// swiftlint:disable:next line_length
             LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to update dashboard type on server: \(error.localizedDescription)")
         }
         
@@ -2891,7 +2913,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Only refresh account data to ensure we have latest settings, but don't reload metrics
         // This ensures the API has the updated dashboard type without resetting the metrics order
-        try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+        _ = try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
     }
     
     /// Checks if the current dashboard type is dashboard4
@@ -2903,7 +2925,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         return result
     }
     
-    /// Sets up dashboard metrics customization screen with proper state management
+    // Sets up dashboard metrics customization screen with proper state management.
     // First pairing upgrades dashboard and sets default order; subsequent pairings preserve current order
     private func setupDashboardMetricsCustomization() async {
         let isDashboardFour = isDashboardTypeFour
@@ -2927,10 +2949,12 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                 dashboardStore.syncRemovalStateFromMetricsManager()
                             }
                         } catch {
+// swiftlint:disable:next line_length
                             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to load dashboard metrics from API: \(error.localizedDescription)")
                         }
                     }
                 } else {
+// swiftlint:disable:next line_length
                     LoggerService.shared.log(level: .info, tag: tag, message: "Preserving existing dashboard metrics order and removal state (account-based, independent of scale)")
                 }
             }
@@ -3011,7 +3035,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             try await dashboardStore.saveProgressMetricsToAPI()
             
             // Refresh account (non-blocking)
-            try? await accountService.refreshAccount(
+            _ = try? await accountService.refreshAccount(
                 accountId: accountService.activeAccount?.accountId
             )
             

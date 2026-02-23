@@ -31,6 +31,7 @@ struct IntegrationListItemView: View {
                             onTap()
                         }
                         
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                     }) {
                         Image(item.type.iconAsset)
                             .resizable()
@@ -42,6 +43,7 @@ struct IntegrationListItemView: View {
                     if item.isOutOfSync {
                         Button(action: {
                             onBadgeTap?()
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                         }) {
                             AppIconView(
                                 icon: AppAssets.exclamationMark,

@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 final class HTTPClient {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService
@@ -24,7 +25,7 @@ final class HTTPClient {
         needsAuth: Bool = false,
         accountId: String? = nil
     ) async throws -> T {
-        try await checkConnectivity()
+        try checkConnectivity()
         
         let request = try await makeRequest(
             for: endpoint,
@@ -45,7 +46,7 @@ final class HTTPClient {
         needsAuth: Bool = false,
         accountId: String? = nil
     ) async throws -> R {
-        try await checkConnectivity()
+        try checkConnectivity()
         
         var request = try await makeRequest(
             for: endpoint,
@@ -112,24 +113,7 @@ final class HTTPClient {
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            if let urlError = error as? URLError,
-               urlError.code == .notConnectedToInternet ||
-               urlError.code == .networkConnectionLost ||
-               urlError.code == .cannotConnectToHost ||
-               urlError.code == .timedOut {
-                do {
-                    try await checkConnectivity()
-                } catch {
-                    // If connectivity check fails, throw network error
-                    throw error
-                }
-            }
-            throw error
-        }
+        let (data, response) = try await fetchData(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.invalidResponse
@@ -142,15 +126,7 @@ final class HTTPClient {
         
         // Check for success status
         guard status.isSuccess else {
-            // Attempt to decode server-provided error message for more context
-            if let apiError = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-               let serverMessage = apiError.error ?? apiError.message, !serverMessage.isEmpty {
-                throw HTTPError.apiError(message: serverMessage, code: status.rawValue)
-            }
-            if let status = HTTPStatusCode(rawValue: httpResponse.statusCode) {
-                throw HTTPError.from(status: status)
-            }
-            throw HTTPError.statusCode(status.rawValue)
+            throw parseErrorResponse(data: data, status: status, statusCode: httpResponse.statusCode)
         }
         
         // Handle 204 No Content
@@ -169,16 +145,7 @@ final class HTTPClient {
         
         // Attempt to decode response
         do {
-            // 🔹 Print raw JSON or text response for debugging
-            if let rawString = String(data: data, encoding: .utf8) {
-#if DEBUG
-                print("🔍 HTTPClient Raw Response: \(rawString)")
-#endif
-            } else {
-#if DEBUG
-                print("⚠️ HTTPClient Unable to decode data to string")
-#endif
-            }
+            logRawResponse(data: data)
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
 #if DEBUG
@@ -186,6 +153,48 @@ final class HTTPClient {
 #endif
             throw HTTPError.decodingError
         }
+    }
+
+    private func fetchData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await URLSession.shared.data(for: request)
+        } catch {
+            if let urlError = error as? URLError, shouldCheckConnectivity(for: urlError) {
+                try checkConnectivity()
+            }
+            throw error
+        }
+    }
+
+    private func shouldCheckConnectivity(for error: URLError) -> Bool {
+        error.code == .notConnectedToInternet ||
+        error.code == .networkConnectionLost ||
+        error.code == .cannotConnectToHost ||
+        error.code == .timedOut
+    }
+
+    private func parseErrorResponse(data: Data, status: HTTPStatusCode, statusCode: Int) -> HTTPError {
+        if let apiError = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+           let serverMessage = apiError.error ?? apiError.message,
+           !serverMessage.isEmpty {
+            return HTTPError.apiError(message: serverMessage, code: status.rawValue)
+        }
+
+        if let mappedStatus = HTTPStatusCode(rawValue: statusCode) {
+            return HTTPError.from(status: mappedStatus)
+        }
+
+        return HTTPError.statusCode(status.rawValue)
+    }
+
+    private func logRawResponse(data: Data) {
+#if DEBUG
+        if let rawString = String(data: data, encoding: .utf8) {
+            print("🔍 HTTPClient Raw Response: \(rawString)")
+        } else {
+            print("⚠️ HTTPClient Unable to decode data to string")
+        }
+#endif
     }
     
     // MARK: - Account Handling
@@ -197,7 +206,7 @@ final class HTTPClient {
             }
             return account
         } else {
-            guard let account = await accountService.activeAccount else {
+            guard let account = accountService.activeAccount else {
                 throw AccountError.noActiveAccount
             }
             return account
@@ -233,21 +242,23 @@ final class HTTPClient {
     }
     
     // MARK: - Connectivity Check
-    private func checkConnectivity() async throws {
-        let isConnected = await NetworkMonitor.shared.getCurrentConnectionStatus()
+    private func checkConnectivity() throws {
+        let isConnected = NetworkMonitor.shared.getCurrentConnectionStatus()
         if !isConnected {
             if !skipCheckNetwork {
-                await showToastIfNeeded(ToastStrings.unableToConnect)
+                showToastIfNeeded(ToastStrings.unableToConnect)
             }
             throw HTTPError.noInternet
         }
     }
     
-    private func showToastIfNeeded(_ message: String) async {
+    private func showToastIfNeeded(_ message: String) {
         let now = Date()
-        guard lastToastShownTime == nil || now.timeIntervalSince(lastToastShownTime!) >= 2.0 else { return }
+        if let lastToastShownTime, now.timeIntervalSince(lastToastShownTime) < 2.0 {
+            return
+        }
         lastToastShownTime = now
-        await notificationHelperService.showToast(ToastModel(message: message))
+        notificationHelperService.showToast(ToastModel(message: message))
     }
     
 }

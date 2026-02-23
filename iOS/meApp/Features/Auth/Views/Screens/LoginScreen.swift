@@ -43,6 +43,7 @@ struct LoginScreen: View {
                 onLeadingTap: {
                     store.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
+// swiftlint:disable:next closure_spacing
                 onTrailingTap: {  },
                 canShowBorder: isFromAccountSwitching,
                 canShowPresentationIndicator: isFromAccountSwitching,
@@ -125,7 +126,7 @@ struct LoginScreen: View {
                                         type: .filledPrimary,
                                         size: .large,
                                         isDisabled: !store.isFormValid || store.isFormSubmitting
-                                    )                                        {
+                                    ) {
                                             focusedField = nil
                                             store.loginForm.email.markAsDirty()
                                             store.loginForm.password.markAsDirty()
@@ -142,7 +143,7 @@ struct LoginScreen: View {
                                         type: .textPrimary,
                                         size: .small,
                                         isDisabled: false
-                                    )                                        {
+                                    ) {
                                             focusedField = nil
                                             store.showPasswordResetPrompt()
                                         }

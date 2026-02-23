@@ -85,6 +85,7 @@ struct TroubleShootingView: View {
     private func appTroubleshootingSection() -> some View {
         Section(header: sectionHeader(title: lang.appTroubleshooting)) {
             Group {
+// swiftlint:disable:next line_length
                 ActionListItemView(config: ActionListItemConfig(title: lang.sendWeightGurusLog, chevronType: .none) { helpStore.sendWeightGurusLog() })
                 ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, chevronType: .none) { helpStore.resyncEntries() })
                 ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, chevronType: .none) { helpStore.clearAllLocalData() })
@@ -106,7 +107,7 @@ struct TroubleShootingView: View {
                             title: lang.sendScaleLog,
                             chevronType: .none,
                             isDisabled: !helpStore.isSendScaleLogEnabled
-                        )                            { helpStore.sendScaleLogHandler() }
+                        ) { helpStore.sendScaleLogHandler() }
                     )
                     .listRowInsets()
                 }
