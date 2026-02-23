@@ -41,7 +41,6 @@ struct DisplayMetricsScreen: View {
                         }
                 },
                 onLeadingTap: { router.navigateBack() },
-                onTrailingTap: {},
                 canShowBorder: true
             )
             
