@@ -253,17 +253,18 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             // Precompute all labels to avoid state mutation during rendering
             precomputeLabels()
             // Flip on animation after first frame so the initial mount does not animate
-            DispatchQueue.main.async { enableYAxisAnimation = true }
+            Task { @MainActor in enableYAxisAnimation = true }
 
             // Force chart to sync with the initial scroll position after configuration
             if isScrollable {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000)
                     // Force the chart binding to update by triggering a small change and then setting the correct position
                     let targetPosition = viewModel.scrollPosition
                     // Temporarily set to a slightly different position to force binding update
                     viewModel.scrollPosition = targetPosition.addingTimeInterval(0.001)
                     // Then immediately set to the correct position
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         viewModel.scrollPosition = targetPosition
                     }
                 }
@@ -286,7 +287,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 chartRebuildToken += 1
 
                 // Exit transition state quickly - Y-axis updates at 0.6s will animate smoothly
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.005) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 5_000_000)
                     isInScrollEndTransition = false
                 }
             }
@@ -303,7 +305,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             viewModel.invalidateCache()
             viewModel.invalidateXAxisCache()
             // Update local cache since data changed
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.updateCachedChartData()
                 self.invalidateLabelCaches()
                 self.precomputeLabels()
@@ -319,7 +321,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             viewModel.handleSettingsChange()
 
             // Update local cache since display values changed
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.updateCachedChartData()
                 self.invalidateLabelCaches()
                 self.precomputeLabels()
@@ -338,13 +340,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             isDomainChangeOnly = wasDomainChangeOnly
             previousYAxisDomain = newDomain
 
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 // Use throttled update to prevent excessive updates during scroll
                 self.updateCachedChartDataThrottled()
                 // Clear Y-axis label cache since domain change affects tick values
                 self.cachedYAxisLabels.removeAll()
                 // Reset flag after a brief delay to allow transaction to complete
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000)
                     self.isDomainChangeOnly = false
                 }
             }

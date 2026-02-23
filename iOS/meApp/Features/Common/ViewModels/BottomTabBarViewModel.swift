@@ -128,19 +128,18 @@ class BottomTabBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + promptDelay) {
-            Task { [weak self] in
-                await self?.checkAppleHealthIntegrationStatus()
-                if self?.selectedTab == .dash {
-                    await self?.checkSetGoalCardPrompt()
-                }
-                self?.evaluateAndShowPermissionAlert()
-                let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications) ?? false
-                if notificationsRequired {
-                    await self?.pushNotificationService.setupPushNotifications()
-                } else {
-                    await self?.pushNotificationService.updateDeviceInfo()
-                }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(promptDelay * 1_000_000_000))
+            await self?.checkAppleHealthIntegrationStatus()
+            if self?.selectedTab == .dash {
+                await self?.checkSetGoalCardPrompt()
+            }
+            self?.evaluateAndShowPermissionAlert()
+            let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications) ?? false
+            if notificationsRequired {
+                await self?.pushNotificationService.setupPushNotifications()
+            } else {
+                await self?.pushNotificationService.updateDeviceInfo()
             }
         }
         
@@ -640,7 +639,8 @@ class BottomTabBarViewModel: ObservableObject {
     private func presentSetGoalCard() {
         guard accountService.activeAccount != nil else { return }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + promptDelay) { [weak self] in
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(promptDelay * 1_000_000_000))
             guard let self else { return }
             guard self.selectedTab == .dash else { return }
             guard self.accountService.activeAccount != nil else { return }

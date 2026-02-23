@@ -325,7 +325,8 @@ class StreakCardCell: UICollectionViewCell {
             isLongPressed = false
             
             // When restoring overlays, add a small delay to ensure layout is fully settled
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 200_000_000)
                 guard let self = self,
                       let item = self.representedItem,
                       let store = self.currentStore else { return }

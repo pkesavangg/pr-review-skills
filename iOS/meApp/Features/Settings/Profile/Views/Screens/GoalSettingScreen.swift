@@ -146,7 +146,8 @@ struct GoalSettingScreen: View {
                 
                 let confirmed = await settingsStore.confirmDiscardGoalChanges()
                 if confirmed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
                         router.navigateBack()
                         settingsStore.resetGoalForm()
                     }

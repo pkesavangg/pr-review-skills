@@ -96,7 +96,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     // Immediately revert to prevent SwiperView navigation
                     let previousIndex = oldValue
                     isRevertingStepIndex = true
-                    DispatchQueue.main.async { [weak self] in
+                    Task { @MainActor [weak self] in
                         guard let self, self.isExiting || self.isExitingFromStepOn else {
                             self?.isRevertingStepIndex = false
                             return
@@ -754,7 +754,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Delay state clearing until after sheet has started dismissing
         // This prevents state changes from happening before sheet dismissal animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 300_000_000)
             guard let self = self else { return }
             // Clear error and connection states after sheet dismissal has started
             if wasOnGatheringNetwork || wasOnAvailableWifiList {
@@ -778,7 +779,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         // Clean up the store to break retain cycles after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000)
             self?.cleanup()
         }
     }
@@ -824,7 +826,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             isExiting = true
             bluetoothService.isSetupInProgress = false
             dismissAction?()
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.performExitCleanup()
             }
             return
@@ -900,7 +902,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self?.scaleSetupError = .none
                 // Dismiss sheet first, then clear states after delay
                 self?.dismissAction?()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 300_000_000)
                     self?.connectionState = .success
                 }
             },
@@ -985,7 +988,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // cancel Wi‑Fi flow and clear any errors before proceeding
                 cancelWifi()
                 scaleSetupError = .none
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000)
                     self.navigateToStep(.customizeSettings)
                 }
             } else {
@@ -1009,10 +1013,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Post notification to refresh dashboard when setup completes
             // Add a small delay to ensure connection status updates have propagated to UI
             // This prevents flicker where scales show as "not connected" briefly
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
                 // Small delay to allow connection status updates to complete and propagate to UI
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)
                     // Clear setup flag and dismiss the sheet
                     self.bluetoothService.isSetupInProgress = false
                     self.dismissAction?()
@@ -1193,7 +1198,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     Task {
                         await self?.deleteUserFromScale(user)
                         // Reset to normal state and retry connection
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 250_000_000)
                             self?.scaleSetupError = .none
                         }
                         self?.navigateToStep(.connectingBluetooth)
@@ -1215,7 +1221,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 AlertButtonModel(title: alertStrings.skipButton, type: .primary) { [weak self] _ in
                     self?.cancelWifi()
                     self?.scaleSetupError = .none
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000)
                         self?.navigateToStep(.customizeSettings)
                     }
                 }
@@ -1281,7 +1288,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         default:
             break
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
             self.navigateToStep(.viewSettings)
         }
     }
@@ -1383,7 +1391,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         default:
             break
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
             self.currentCustomizeSetting = .none
         }
         self.moveToPreviousStep()
@@ -1438,7 +1447,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         }
         
         // Reset current customize setting after navigation completes to prevent showing placeholder during transition
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)
             self.currentCustomizeSetting = .none
         }
     }
@@ -1518,7 +1528,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 if self.discoveredScale == nil && self.currentStep == .wakeup {
                     // Navigate to connectingBluetooth first to maintain flow, then show the error
                     self.navigateToStep(.connectingBluetooth)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 250_000_000)
                         self.connectionState = .failure
                     }
                 }
@@ -1557,7 +1568,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         // Clear error state for other error types after a delay
         if scaleSetupError != .collectMeasurementFailed && targetStep != .gatheringNetwork {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 250_000_000)
                 self.scaleSetupError = .none
                 self.connectionState = .loading
             }
@@ -1959,7 +1971,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 await saveScale()
                 connectionState = .success
                 scaleSetupError = .none
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
                     self.navigateToStep(.gatheringNetwork)
                 }
 // swiftlint:disable:next switch_case_alignment
@@ -2279,7 +2292,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
                 // Navigate back to root after success delay (immediate when Wi-Fi-only flow)
                 let delay: TimeInterval = 2.0
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                     if self.isWifiSetupOnly {
                         self.dismissAction?()
                     } else {
@@ -2607,7 +2621,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     // Clear the selected items since they're now saved
                     selectedCustomizeItems.removeAll()
                     scaleSetupError = .none
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 250_000_000)
                         self.navigateToStep(.stepOn)
                     }
                 } catch {
@@ -2631,7 +2646,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self.scaleSetupError = .updateSettingsFailed
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
             self.bluetoothService.syncDevices([])
         }
     }
@@ -3121,7 +3137,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         // Re-apply skipped devices to BLE SDK, excluding paired scales
         bluetoothService.reapplySkipDevicesExcludingPaired()
         
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.isExiting = false
             self?.isExitingFromStepOn = false
         }

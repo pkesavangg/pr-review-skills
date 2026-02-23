@@ -56,17 +56,13 @@ class NotificationHelperService: ObservableObject {
             inputField: alert.inputField
         )
         
-        DispatchQueue.main.async {
-            self.alertData = wrappedAlert
-            self.isOverlayActive = true
-        }
+        self.alertData = wrappedAlert
+        self.isOverlayActive = true
     }
     
     func dismissAlert() {
-        DispatchQueue.main.async {
-            self.alertData = nil
-            self.updateOverlayState()
-        }
+        self.alertData = nil
+        self.updateOverlayState()
     }
     
     func showToast(_ data: ToastModel) {
@@ -76,32 +72,26 @@ class NotificationHelperService: ObservableObject {
         }
         /// Set up the active count change handler to update hasActiveToasts
         toast.onActiveCountChanged = { [weak self] count in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.hasActiveToasts = count > 0
             }
         }
         
-        DispatchQueue.main.async {
-            self.toastData = toast
-            self.hasActiveToasts = true
-        }
+        self.toastData = toast
+        self.hasActiveToasts = true
     }
     
     func dismissToast() {
-        DispatchQueue.main.async {
-            self.toastData = nil
-            // Don't immediately set hasActiveToasts to false - let ToastModifier manage this
-            self.updateOverlayState()
-        }
+        self.toastData = nil
+        // Don't immediately set hasActiveToasts to false - let ToastModifier manage this
+        self.updateOverlayState()
     }
     
     func showLoader(_ loader: LoaderModel) {
         // Cancel any existing timeout task
         loaderTimeoutTask?.cancel()
-        DispatchQueue.main.async {
-            self.loaderData = loader
-            self.isOverlayActive = true
-        }
+        self.loaderData = loader
+        self.isOverlayActive = true
         
         // Start timeout task
         loaderTimeoutTask = Task { @MainActor in
@@ -128,10 +118,8 @@ class NotificationHelperService: ObservableObject {
         loaderTimeoutTask?.cancel()
         loaderTimeoutTask = nil
         
-        DispatchQueue.main.async {
-            self.loaderData = nil
-            self.updateOverlayState()
-        }
+        self.loaderData = nil
+        self.updateOverlayState()
     }
     
     func dismissAllNotifications() {
@@ -139,13 +127,11 @@ class NotificationHelperService: ObservableObject {
         loaderTimeoutTask?.cancel()
         loaderTimeoutTask = nil
         
-        DispatchQueue.main.async {
-            self.alertData = nil
-            self.toastData = nil
-            self.loaderData = nil
-            self.modalViewData = []
-            self.isOverlayActive = false
-        }
+        self.alertData = nil
+        self.toastData = nil
+        self.loaderData = nil
+        self.modalViewData = []
+        self.isOverlayActive = false
     }
     
     func showModal(_ modal: ModalData) {
@@ -156,26 +142,20 @@ class NotificationHelperService: ObservableObject {
                 modal.onDismiss?()
                 self.dismissModal()
             }
-        DispatchQueue.main.async {
-            self.modalViewData.append(wrappedModal)
-            self.isOverlayActive = true
-        }
+        self.modalViewData.append(wrappedModal)
+        self.isOverlayActive = true
     }
     
     func dismissModal() {
-        DispatchQueue.main.async {
-            if !self.modalViewData.isEmpty {
-                self.modalViewData.removeLast()
-            }
-            self.updateOverlayState()
+        if !self.modalViewData.isEmpty {
+            self.modalViewData.removeLast()
         }
+        self.updateOverlayState()
     }
     
     func dismissAllModals() {
-        DispatchQueue.main.async {
-            self.modalViewData = []
-            self.isOverlayActive = false
-        }
+        self.modalViewData = []
+        self.isOverlayActive = false
     }
     
     /// Updates overlay state based on active notifications

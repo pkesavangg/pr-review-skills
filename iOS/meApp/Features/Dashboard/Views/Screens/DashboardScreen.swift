@@ -87,8 +87,11 @@ struct DashboardScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             if store.state.ui.isEditMode {
-                DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
-store.restartWiggleAnimations()
+                Task { @MainActor in
+                    try? await Task.sleep(
+                        nanoseconds: UInt64(WiggleAnimationConstants.wiggleRestartDelayAfterAppActive * 1_000_000_000)
+                    )
+                    store.restartWiggleAnimations()
                 }
             }
         }

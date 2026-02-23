@@ -1465,32 +1465,31 @@ class DashboardStore: ObservableObject {
 
     private func handleEntryLifecycleChange() {
         // EntryService handles incremental summaries; update dashboard state/UI consistently
-        DispatchQueue.main.async {
-            self.loadLatestEntryData()
-            self.loadGoalCardData()
-            
-            Task {
-                do {
-                    // Save the old streak items to preserve order by label
-                    let oldStreakItems = self.streakManager.state.streakItems
-                    let oldOrder = self.state.ui.streakGridOrder
-                    
-                    try await self.streakManager.refreshStreakData()
+        self.loadLatestEntryData()
+        self.loadGoalCardData()
+        
+        Task {
+            do {
+                // Save the old streak items to preserve order by label
+                let oldStreakItems = self.streakManager.state.streakItems
+                let oldOrder = self.state.ui.streakGridOrder
+                
+                try await self.streakManager.refreshStreakData()
 
-                    await MainActor.run {
-                        self.regenerateStreakGridOrderAfterRefresh(
-                            oldStreakItems: oldStreakItems,
-                            oldOrder: oldOrder
-                        )
-                        
-                        // Set flags only after successful refresh to ensure UI state matches actual data
-                        self.state.ui.hasLoadedProgressMetrics = true
-                        self.state.ui.hasLoadedDashboardConfig = true
-                    }
-                } catch {
-                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh streak data after entry change: \(error)")
+                await MainActor.run {
+                    self.regenerateStreakGridOrderAfterRefresh(
+                        oldStreakItems: oldStreakItems,
+                        oldOrder: oldOrder
+                    )
+                    
+                    // Set flags only after successful refresh to ensure UI state matches actual data
+                    self.state.ui.hasLoadedProgressMetrics = true
+                    self.state.ui.hasLoadedDashboardConfig = true
                 }
+            } catch {
+                self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to refresh streak data after entry change: \(error)")
             }
+        }
 
             // Clear all caches to force recalculation (including continuousOperations)
             self.invalidateContinuousOperationsCache()
@@ -1527,10 +1526,10 @@ class DashboardStore: ObservableObject {
                 self.updateMetricsForCurrentView()
             }
 
-            // Also schedule a follow-up domain recalc after brief propagation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                self.updateYAxisCache()
-            }
+        // Also schedule a follow-up domain recalc after brief propagation
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            self.updateYAxisCache()
         }
     }
 
@@ -2002,9 +2001,9 @@ class DashboardStore: ObservableObject {
         // Reset the saved order to restore default order
         resetGridOrder()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            Task { @MainActor in
-                do {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            do {
                     try await self.metricsManager.resetMetricsToDefaults()
                     try await self.streakManager.resetStreakData()
 
@@ -2050,7 +2049,7 @@ class DashboardStore: ObservableObject {
 
                     // Single UI update after all state changes are complete
                     self.forceImmediateUIUpdate()
-                } catch {
+            } catch {
                     self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
 
                     // Manually sync manager states even on error
@@ -2074,7 +2073,6 @@ class DashboardStore: ObservableObject {
                     // Mark metric values as loaded on error recovery too
                     self.state.ui.hasLoadedMetricValues = true
                     self.forceImmediateUIUpdate()
-                }
             }
         }
     }
@@ -3405,7 +3403,8 @@ class DashboardStore: ObservableObject {
         if phase == .idle {
             // Defer heavy computation to allow UI to remain responsive
             // This prevents the "hang" when user tries to scroll again immediately
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 50_000_000)
                 guard let self = self else { return }
 
                 // Update Y-axis cache after domain recalculation
@@ -3570,7 +3569,8 @@ class DashboardStore: ObservableObject {
         }
 
         // After positioning is complete, update Y-axis cache to ensure proper domain calculation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)
             self.updateYAxisCache()
             self.scheduleUIUpdate()
         }

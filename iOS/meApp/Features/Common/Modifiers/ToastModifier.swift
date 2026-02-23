@@ -133,7 +133,8 @@ struct ToastModifier: ViewModifier {
                         }
                         
                         // Delay the removal to match the animation
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 300_000_000)
                             if let firstToast = activeToasts.first {
                                 removeToast(id: firstToast.id)
                             }
@@ -163,7 +164,8 @@ struct ToastModifier: ViewModifier {
         isDragging = false
         
         // Add new toast after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
                 let newToastItem = (id: UUID(), toast: toast)
                 activeToasts.append(newToastItem)
@@ -176,7 +178,7 @@ struct ToastModifier: ViewModifier {
                 let newTimer = DispatchSource.makeTimerSource()
                 newTimer.schedule(deadline: .now() + toast.duration)
                 newTimer.setEventHandler {
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         removeToast(id: newToastItem.id)
                     }
                 }
@@ -201,7 +203,8 @@ struct ToastModifier: ViewModifier {
             toastToRemove?.onActiveCountChanged?(activeToasts.count)
             
             // Reset offset and dragging state after toast is removed
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)
                 offset = .zero
                 isDragging = false
             }

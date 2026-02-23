@@ -223,7 +223,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 // Still on wake-up step and nothing discovered → failure
                 if self.discoveredScale == nil && self.currentStep == .wakeUp {
                     self.moveToNextStep()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 250_000_000)
                         self.connectionState = .failure
                     }
                 }
@@ -251,7 +252,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 if discoveredScale != nil && discoveryEvent != nil {
                     await self.saveDiscoveredScale()
                     self.connectionState = .success
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
                         self.moveToNextStep()
                     }
                 }

@@ -299,9 +299,7 @@ final class EntryStore: ObservableObject {
             self.updateWeightValidators()
             self.calculateBMI()
             // Force UI update
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
         }
     }
 
@@ -321,9 +319,7 @@ final class EntryStore: ObservableObject {
         guard isBmiAutoCalculationEnabled else { return }
         guard let weightDouble = Double(manualEntryForm.weight.value), weightDouble > 0 else {
             manualEntryForm.bmi.value = ""
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
             return
         }
 
@@ -348,9 +344,7 @@ final class EntryStore: ObservableObject {
         manualEntryForm.bmi.validate()
         
         // Force UI update to ensure MetricInputField reflects the new BMI value immediately
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
-        }
+        self.objectWillChange.send()
     }
 
     private func updateWeightValidators() {
@@ -457,9 +451,7 @@ final class EntryStore: ObservableObject {
             manualEntryForm.time.value = clamped
             manualEntryForm.time.markAsPristine()
             // Ensure SwiftUI sees the nested change
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
         }
     }
 }

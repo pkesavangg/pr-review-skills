@@ -299,7 +299,7 @@ extension View {
                             },
                             onDragEnd: {
                                 // Ensure immediate state reset
-                                DispatchQueue.main.async {
+                                Task { @MainActor in
                                     onDragEnd?()
                                 }
                             }
