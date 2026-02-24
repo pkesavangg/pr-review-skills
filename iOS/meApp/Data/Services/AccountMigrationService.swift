@@ -6,6 +6,7 @@ import ggInAppMessagingPackage
 @MainActor
 final class AccountMigrationService {
     @Injector private var logger: LoggerService
+    @Injector private var keychainService: KeychainService
     private var accountRepo = AccountRepository()
     private let scaleMigrationService = ScaleMigrationService()
     private let theme = Theme.shared
@@ -872,10 +873,15 @@ final class AccountMigrationService {
         // Create Account from DTO
         let account = Account(from: accountDTO)
         
-        // Set additional properties from Ionic data
-        account.accessToken = ionicData.accessToken
-        account.refreshToken = ionicData.refreshToken
-        account.expiresAt = ionicData.expiresAt
+        // Store tokens in Keychain only (not in SwiftData), but only if non-empty
+        if !ionicData.accessToken.isEmpty,
+           !ionicData.refreshToken.isEmpty,
+           !ionicData.expiresAt.isEmpty {
+            keychainService.setTokens(
+                Tokens(accessToken: ionicData.accessToken, refreshToken: ionicData.refreshToken, expiresAt: ionicData.expiresAt),
+                for: account.accountId
+            )
+        }
         account.isLoggedIn = true
         account.isActiveAccount = true
         account.isExpired = false

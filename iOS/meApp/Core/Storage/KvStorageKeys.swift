@@ -31,6 +31,8 @@ public enum KvStorageKeys: String {
     // MARK: - Migration Keys
     /// Key for tracking if Ionic to native app migration has been completed
     case ionicToNativeAppMigrationCompleted = "ionicToNativeAppMigrationCompleted"
+    /// Key for tracking if account tokens have been migrated from SwiftData to Keychain
+    case tokensMigratedToKeychain = "tokensMigratedToKeychain"
     
     // MARK: - Account-Scoped Keys
     /// Goal met flag key suffix (per account)

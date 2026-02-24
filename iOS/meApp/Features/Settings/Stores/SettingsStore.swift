@@ -264,6 +264,8 @@ class SettingsStore: ObservableObject {
                 try await accountService.deleteAccount()
                 logger.log(level: .success, tag: tag, message: "Settings delete-account succeeded")
             } catch  {
+                let toastMessage: String = ToastStrings.somethingWentWrong
+                notificationService.showToast(ToastModel(message: toastMessage))
                 logger.log(level: .error, tag: tag, message: "Delete account failed:", data: error.localizedDescription)
             }
             notificationService.dismissLoader()

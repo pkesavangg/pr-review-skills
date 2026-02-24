@@ -32,6 +32,7 @@ class PushNotificationService: NSObject {
     private var isProcessingNotification: Bool = false
     private let logger = LoggerService.shared
     private let tag = "PushNotificationService"
+    @Injector private var keychainService: KeychainService
     private let kvStorage = KvStorageService.shared
     
     // MARK: - Notification Settings
@@ -329,40 +330,42 @@ class PushNotificationService: NSObject {
         return baseKey
     }
     
-    // MARK: - FCM Token Storage
-    /// Loads the stored FCM token from local storage for the active account
+    // MARK: - FCM Token Storage (Keychain)
+    /// Loads the stored FCM token from Keychain for the active account. Migrates from KvStorage if present.
     private func loadStoredFCMToken() {
         guard let accountId = accountService.activeAccount?.accountId else { return }
-        let key = KvStorageKeys.fcmTokenKey(for: accountId)
-        if let storedToken = kvStorage.getValue(forKey: key) as? String, !storedToken.isEmpty {
+        if let storedToken = keychainService.getFCMToken(for: accountId), !storedToken.isEmpty {
             fcmToken = storedToken
+            return
+        }
+        // One-time migration from KvStorage to Keychain
+        let legacyKey = KvStorageKeys.fcmTokenKey(for: accountId)
+        if let legacyToken = kvStorage.getValue(forKey: legacyKey) as? String, !legacyToken.isEmpty {
+            keychainService.setFCMToken(legacyToken, for: accountId)
+            kvStorage.clearValue(forKey: legacyKey)
+            fcmToken = legacyToken
         }
     }
-    
-    /// Stores the FCM token to local storage and updates the in-memory cache.
-    /// - Parameter token: The FCM token to store
+
+    /// Stores the FCM token in Keychain and updates the in-memory cache.
     private func storeFCMToken(_ token: String) {
-        // Keep the in-memory token in sync with the persisted value
         fcmToken = token
-        // Store token for the active account
         if let accountId = accountService.activeAccount?.accountId {
-            let key = KvStorageKeys.fcmTokenKey(for: accountId)
-            kvStorage.setValue(token, forKey: key)
+            keychainService.setFCMToken(token, for: accountId)
         }
     }
-    
-    /// Retrieves the stored FCM token for a specific account.
-    ///
-    /// This method is intentionally non-`private` to allow selected consumers
-    /// (for example, account-related services during logout) to read the
-    /// last known FCM token for a specific account. It should not be used as a general-purpose
-    /// storage API; use `storeFCMToken(_:)` and the push notification flows
-    /// within `PushNotificationService` to manage the token lifecycle.
-    ///
-    /// - Parameter accountId: The account identifier to retrieve the token for
-    /// - Returns: The stored FCM token for the account, or `nil` if not found.
+
+    /// Retrieves the stored FCM token for a specific account (Keychain first; migrates from KvStorage if present).
     func getStoredFCMToken(for accountId: String) -> String? {
-        let key = KvStorageKeys.fcmTokenKey(for: accountId)
-        return kvStorage.getValue(forKey: key) as? String
+        if let token = keychainService.getFCMToken(for: accountId), !token.isEmpty {
+            return token
+        }
+        let legacyKey = KvStorageKeys.fcmTokenKey(for: accountId)
+        if let legacyToken = kvStorage.getValue(forKey: legacyKey) as? String, !legacyToken.isEmpty {
+            keychainService.setFCMToken(legacyToken, for: accountId)
+            kvStorage.clearValue(forKey: legacyKey)
+            return legacyToken
+        }
+        return nil
     }
 }

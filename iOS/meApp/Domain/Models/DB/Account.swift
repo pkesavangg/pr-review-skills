@@ -13,9 +13,9 @@
 /// | isLoggedIn      | bool?   | If the user is logged in                    |
 /// | isExpired       | bool?   | Whether the account/session is expired      |
 /// | isActiveAccount | bool?   | Indicates if the account is active          |
-/// | accessToken     | string? | OAuth or app-specific access token           |
-/// | refreshToken    | string? | OAuth refresh token                         |
-/// | expiresAt       | string? | Access token expiration time                |
+/// | accessToken     | string? | In-memory only; tokens live in Keychain     |
+/// | refreshToken    | string? | In-memory only; tokens live in Keychain     |
+/// | expiresAt       | string? | In-memory only; tokens live in Keychain     |
 /// | fcmToken        | string? | Firebase Cloud Messaging token              |
 /// | lastActiveTime  | string? | Timestamp of last activity                  |
 /// | isSynced        | bool?   | Whether account is synced online            |
@@ -57,12 +57,12 @@ final class Account {
     var isExpired: Bool?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
-    /// OAuth or app-specific access token
-    var accessToken: String?
-    /// OAuth refresh token
-    var refreshToken: String?
-    /// Access token expiration time
-    var expiresAt: String?
+    /// OAuth or app-specific access token (in-memory only; source of truth is Keychain).
+    @Transient var accessToken: String?
+    /// OAuth refresh token (in-memory only; source of truth is Keychain).
+    @Transient var refreshToken: String?
+    /// Access token expiration time (in-memory only; source of truth is Keychain).
+    @Transient var expiresAt: String?
     /// Firebase Cloud Messaging token
     var fcmToken: String?
     /// Timestamp of last activity
