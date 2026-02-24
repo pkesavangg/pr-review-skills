@@ -687,16 +687,15 @@ constructor(
         )
       }
 
-      // 7. Update last updated timestamp and kick off refresh; clear isUpdating when refresh (which includes updateProgressCache) finishes
+      // 7. API sync is done: clear loader now. Then refresh caches in background.
+      // refreshEntryData() never returns (it uses Flow.collect {} which runs indefinitely),
+      // so we must clear _isUpdating here, not in a finally after refreshEntryData().
       _lastUpdated.value = System.currentTimeMillis()
-      val id = accountId!!
+
       repositoryScope.launch {
-        try {
-          refreshEntryData()
-        } finally {
-          _isUpdating.value = false
-        }
+        refreshEntryData()
       }
+        _isUpdating.value = false
 
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
@@ -716,7 +715,6 @@ constructor(
       AppLog.e("EntryService", "Error in syncOperations", e)
       _isUpdating.value = false
     }
-    // Normal path: _isUpdating is cleared in the launch above when updateProgressCache + refreshEntryData finish
   }
 
   private suspend fun updateLatestEntry(accountId: String) {
