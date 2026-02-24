@@ -18,51 +18,78 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
     // MARK: - KeychainServiceProtocol
 
     func setTokens(_ tokens: Tokens, for accountId: String) {
-        let key = keyForAccount(accountId)
         guard let data = try? jsonEncoder.encode(tokens) else { return }
-        deleteTokens(for: accountId)
+        let key = keyForAccount(accountId)
+        deleteItem(accountKey: key)
+        setData(data, accountKey: key)
+    }
+
+    func getTokens(for accountId: String) -> Tokens? {
+        guard let data = getData(accountKey: keyForAccount(accountId)) else { return nil }
+        return try? jsonDecoder.decode(Tokens.self, from: data)
+    }
+
+    func deleteTokens(for accountId: String) {
+        deleteItem(accountKey: keyForAccount(accountId))
+    }
+
+    func setFCMToken(_ token: String, for accountId: String) {
+        guard let data = token.data(using: .utf8) else { return }
+        let key = fcmKeyForAccount(accountId)
+        deleteItem(accountKey: key)
+        setData(data, accountKey: key)
+    }
+
+    func getFCMToken(for accountId: String) -> String? {
+        guard let data = getData(accountKey: fcmKeyForAccount(accountId)) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    func deleteFCMToken(for accountId: String) {
+        deleteItem(accountKey: fcmKeyForAccount(accountId))
+    }
+
+    // MARK: - Private (shared Keychain operations)
+
+    private func setData(_ data: Data, accountKey: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: key,
+            kSecAttrAccount as String: accountKey,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
         SecItemAdd(query as CFDictionary, nil)
     }
 
-    func getTokens(for accountId: String) -> Tokens? {
-        let key = keyForAccount(accountId)
+    private func getData(accountKey: String) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: key,
+            kSecAttrAccount as String: accountKey,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess,
-              let data = result as? Data,
-              let tokens = try? jsonDecoder.decode(Tokens.self, from: data) else {
-            return nil
-        }
-        return tokens
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        return data
     }
 
-    func deleteTokens(for accountId: String) {
-        let key = keyForAccount(accountId)
+    private func deleteItem(accountKey: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: accountKey
         ]
         SecItemDelete(query as CFDictionary)
     }
 
-    // MARK: - Private
-
     private func keyForAccount(_ accountId: String) -> String {
         "tokens_\(accountId)"
+    }
+
+    private func fcmKeyForAccount(_ accountId: String) -> String {
+        "fcm_\(accountId)"
     }
 }

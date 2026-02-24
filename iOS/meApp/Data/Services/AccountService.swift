@@ -243,6 +243,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             logger.log(level: .info, tag: tag, message: "Delete account requested for accountId=\(accountId)")
             try await apiRepo.deleteAccount(accountId: accountId)
             keychainService.deleteTokens(for: accountId)
+            keychainService.deleteFCMToken(for: accountId)
             try await localRepo.deleteAccount(byId: accountId)
             try await updatePublishedState()
             logger.log(level: .info, tag: tag, message: "Account deleted for accountId=\(accountId)")
@@ -259,6 +260,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             let accounts = try await localRepo.fetchAllAccounts()
             for account in accounts {
                 keychainService.deleteTokens(for: account.accountId)
+                keychainService.deleteFCMToken(for: account.accountId)
             }
             try await localRepo.deleteAllAccounts()
             try await updatePublishedState()
@@ -1291,6 +1293,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
         do {
             keychainService.deleteTokens(for: localAccount.accountId)
+            keychainService.deleteFCMToken(for: localAccount.accountId)
             // Logout the account locally (happens regardless of API success/failure)
             localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
             localAccount.isActiveAccount = false

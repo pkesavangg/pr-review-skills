@@ -18,4 +18,13 @@ public protocol KeychainServiceProtocol: Sendable {
     /// Removes stored tokens for the given account (e.g. on logout or account deletion).
     /// - Parameter accountId: The account identifier.
     func deleteTokens(for accountId: String)
+
+    /// Stores the FCM (Firebase Cloud Messaging) token for the given account.
+    func setFCMToken(_ token: String, for accountId: String)
+
+    /// Retrieves the stored FCM token for the given account.
+    func getFCMToken(for accountId: String) -> String?
+
+    /// Removes the stored FCM token for the given account (e.g. on logout or account deletion).
+    func deleteFCMToken(for accountId: String)
 }
