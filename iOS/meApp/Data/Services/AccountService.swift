@@ -93,29 +93,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-            // This logic is duplicated in signUp() and logIn() - consider refactoring into
-            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
-            let account: Account
-            if let existing = existingAccount {
-                // Update existing account in place
-                existing.update(from: response)
-                existing.isLoggedIn = true
-                existing.isActiveAccount = true
-                existing.isExpired = false
-                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-                account = existing
-            } else {
-                // Create new account
-                account = Account(from: response.account)
-                account.accessToken = response.accessToken
-                account.refreshToken = response.refreshToken
-                account.expiresAt = response.expiresAt
-                account.isSynced = true
-                account.isLoggedIn = true
-                account.isActiveAccount = true
-                account.isExpired = false
-                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-            }
+            let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -154,29 +132,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-            // This logic is duplicated in signUp() and logIn() - consider refactoring into
-            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
-            let account: Account
-            if let existing = existingAccount {
-                // Update existing account in place
-                existing.update(from: response)
-                existing.isLoggedIn = true
-                existing.isActiveAccount = true
-                existing.isExpired = false
-                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-                account = existing
-            } else {
-                // Create new account
-                account = Account(from: response.account)
-                account.accessToken = response.accessToken
-                account.refreshToken = response.refreshToken
-                account.expiresAt = response.expiresAt
-                account.isSynced = true
-                account.isLoggedIn = true
-                account.isActiveAccount = true
-                account.isExpired = false
-                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-            }
+            let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -1242,6 +1198,36 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     // MARK: - Private Helpers
+    /// Prepares an authenticated account from API response, either updating an existing account or creating a new one.
+    /// - Parameters:
+    ///   - response: The API response containing account and token information
+    ///   - existingAccount: An optional existing account to update, or nil to create a new account
+    /// - Returns: The prepared account with authentication state set
+    private func prepareAuthenticatedAccount(from response: AccountResponse, existingAccount: Account?) async throws -> Account {
+        let account: Account
+        if let existing = existingAccount {
+            // Update existing account in place
+            existing.update(from: response)
+            existing.isLoggedIn = true
+            existing.isActiveAccount = true
+            existing.isExpired = false
+            existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+            account = existing
+        } else {
+            // Create new account
+            account = Account(from: response.account)
+            account.accessToken = response.accessToken
+            account.refreshToken = response.refreshToken
+            account.expiresAt = response.expiresAt
+            account.isSynced = true
+            account.isLoggedIn = true
+            account.isActiveAccount = true
+            account.isExpired = false
+            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+        }
+        return account
+    }
+    
     /// Deletes the account locally by ID and updates the published state.
     private func deleteAccountLocally(accountId: String) async throws {
         do {

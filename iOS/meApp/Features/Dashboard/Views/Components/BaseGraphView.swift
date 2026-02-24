@@ -466,8 +466,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
-// swiftlint:disable:next force_unwrapping
-            let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
+            let isThisPointSelected = viewModel.showCrosshair && (vmSelected.map { xDate == $0 } ?? false)
 
             // Check if point is outside the active month interval (should be greyed out)
             let isOutsideMonthInterval = isPointOutsideActiveMonth(date: point.date)

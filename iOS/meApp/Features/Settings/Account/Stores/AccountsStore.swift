@@ -83,8 +83,7 @@ class AccountsStore: ObservableObject {
                     let needsLogin = !isLoggedIn || (isExpired && isLoggedIn)
                     return UserItemInfo(
                         accountID: $0.accountId,
-// swiftlint:disable:next force_unwrapping
-                        name: $0.firstName?.isEmpty == false ? $0.firstName! : $0.email,
+                        name: ($0.firstName?.isEmpty == false ? $0.firstName : nil) ?? $0.email,
                         email: $0.email,
                         isSelected: $0.isActiveAccount ?? false,
                         isExpired: needsLogin, // Logged-out and auto-logged-out accounts show "Log In" button

@@ -17,6 +17,7 @@ struct ScaleSettingsScreen: View {
     @State private var isSoftwareUpdatePresented = false
     
     private static let titleTruncationLength = 25
+    private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     private var truncatedTitle: String {
         let title = scale.nickname ?? scale.deviceName ?? ""
         return title.count > Self.titleTruncationLength ? "\(title.prefix(Self.titleTruncationLength))…" : title
@@ -66,8 +67,7 @@ struct ScaleSettingsScreen: View {
             .scrollContentBackground(.hidden)
         }
         .inAppBrowser(
-// swiftlint:disable:next force_unwrapping
-            url: scaleSettingsStore.productURL ?? URL(string: AppConstants.Product.baseURL)!,
+            url: scaleSettingsStore.productURL ?? fallbackProductURL,
             isPresented: $scaleSettingsStore.showProductBrowser
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())

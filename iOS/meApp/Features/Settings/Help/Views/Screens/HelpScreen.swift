@@ -14,6 +14,7 @@ struct HelpScreen: View {
     private let lang = HelpScreenStrings.self
     private let commonLang = CommonStrings.self
     private var appVersion: String { "\(AppInfo.appVersion)" }
+    private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -47,8 +48,7 @@ struct HelpScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarHidden(true)
         .inAppBrowser(
-// swiftlint:disable:next force_unwrapping
-            url: helpStore.productURL ?? URL(string: AppConstants.Product.baseURL)!,
+            url: helpStore.productURL ?? fallbackProductURL,
             isPresented: $helpStore.showProductBrowser
         )
         // Debug menu sheet uses store's flag
