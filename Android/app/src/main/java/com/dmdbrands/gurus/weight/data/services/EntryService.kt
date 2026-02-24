@@ -691,10 +691,11 @@ constructor(
       // refreshEntryData() never returns (it uses Flow.collect {} which runs indefinitely),
       // so we must clear _isUpdating here, not in a finally after refreshEntryData().
       _lastUpdated.value = System.currentTimeMillis()
-      _isUpdating.value = false
+
       repositoryScope.launch {
         refreshEntryData()
       }
+        _isUpdating.value = false
 
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
