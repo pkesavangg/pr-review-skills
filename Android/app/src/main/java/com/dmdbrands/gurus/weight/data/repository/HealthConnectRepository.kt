@@ -119,19 +119,6 @@ class HealthConnectRepository @Inject constructor(
     healthConnectDataStore.clearAssignedTo(accountId)
   }
 
-  override suspend fun clearOrphanedAssignedTo(validAccountIds: Set<String>) {
-    val allAccountData = getAccountDataMap()
-    for ((accountKey, data) in allAccountData) {
-      if (data.hasAssignedTo()) {
-        val assignedToValue = data.assignedTo
-        if (assignedToValue !in validAccountIds) {
-          AppLog.d(tag, "Clearing orphaned assignedTo for key $accountKey (assignedTo=$assignedToValue not in valid accounts)")
-          clearAssignedTo(accountKey)
-        }
-      }
-    }
-  }
-
   /**
    * Checks if Health Connect is already assigned to another account.
    * Similar to Angular's checkIfAppleHealthIsAlreadyUsed method.
@@ -389,28 +376,15 @@ class HealthConnectRepository @Inject constructor(
     try {
       AppLog.i(tag, "Setting Health Connect integration status: $integrated for account: $accountId")
       if (integrated) {
-        // Health Connect is device-level: only one account can have it. Clear other accounts'
-        // assignedTo before claiming for the current account (fixes multi-account conflict).
-        val allAccountData = getAccountDataMap()
-        for ((otherKey, data) in allAccountData) {
-          if (otherKey != accountId && data.hasAssignedTo()) {
-            clearAssignedTo(otherKey)
-          }
-        }
         setHcIntegrationStatus(accountId, true)
         // Set assignedTo to current account ID when integrating
         setAssignedTo(accountId, accountId)
       } else {
-        setHcIntegrationStatus(accountId, false)
-        // Always clear assignedTo when disconnecting (avoids stale state after app update
-        // when key/ID format may differ from previous version)
-        clearAssignedTo(accountId)
-        // Also clear any entry that has assignedTo==accountId (handles key mismatch from migration)
-        val allAccountData = getAccountDataMap()
-        for ((otherKey, data) in allAccountData) {
-          if (otherKey != accountId && data.hasAssignedTo() && data.assignedTo == accountId) {
-            clearAssignedTo(otherKey)
-          }
+        val healthConnectData = getAccountByID(accountId)
+        if (healthConnectData?.assignedTo == accountId) {
+          setHcIntegrationStatus(accountId, false)
+          // Clear assignedTo when disintegrating
+          clearAssignedTo(accountId)
         }
       }
     } catch (e: Exception) {

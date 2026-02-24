@@ -56,12 +56,6 @@ interface IHealthConnectRepository {
   suspend fun clearAssignedTo(accountId: String)
 
   /**
-   * Clears orphaned assignedTo entries that reference account IDs not in the current app.
-   * Used after app updates when DataStore may have stale keys/IDs from a previous version.
-   */
-  suspend fun clearOrphanedAssignedTo(validAccountIds: Set<String>)
-
-  /**
    * Checks if Health Connect is already assigned to another account.
    * @return true if Health Connect can be used by current account
    * @throws Exception if Health Connect is assigned to a different account
