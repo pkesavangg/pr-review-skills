@@ -200,7 +200,8 @@ struct MyScalesScreen: View {
                     case .scaleList:
                         ChooseYourScaleView { scale in
                             // Delay so the scale list sheet dismisses before presenting the next one
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 250_000_000)
                                 handleScaleSelection(scale)
                             }
                         }
@@ -280,7 +281,8 @@ struct MyScalesScreen: View {
                 if newPhase != .active {
                     shouldMaintainKeyboardFocus = true
                 } else if shouldMaintainKeyboardFocus {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 100_000_000)
                         focusedField = .modelNumber
                         shouldMaintainKeyboardFocus = false
                     }

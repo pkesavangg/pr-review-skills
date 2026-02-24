@@ -295,7 +295,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         hasChanges = true
         
         // Reorder on next run loop to ensure .moveDisabled() is updated first
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation {
                 self.metrics = ScaleMetricSetting.reorderOnToggle(items: self.metrics, key: key, isEnabled: isEnabled)
             }
@@ -318,7 +318,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         hasChanges = true
         
         // Reorder on next run loop to ensure .moveDisabled() is updated first
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation {
                 self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: key, isEnabled: isEnabled)
             }

@@ -424,7 +424,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         dashboardStore?.handleScrollEndOptimized()
         
         // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 700_000_000)
             self.syncYAxisFromStore()
         }
     }
@@ -637,7 +638,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Force a small change to trigger binding update
         let temp = position.addingTimeInterval(0.001)
         self.scrollPosition = temp
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.scrollPosition = position
         }
     }

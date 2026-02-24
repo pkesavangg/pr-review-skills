@@ -369,7 +369,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
     
     private func startEntrySyncing() {
         self.bluetoothConnectionState = .success
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
             self.moveToNextStep()
             // Sync the newly paired scale and start listening for entries
             Task {
@@ -418,7 +419,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 // Mark entry as synced and update UI
                 self.isEntrySynced = true
                 self.updateNextEnabled()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
                     self.moveToNextStep()
                 }
                 self.cleanupEntrySubscription()

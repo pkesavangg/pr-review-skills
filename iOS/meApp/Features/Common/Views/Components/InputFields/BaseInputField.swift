@@ -57,7 +57,7 @@ struct BaseInputField: View {
         
         // Restore focus after TextField is recreated on next run loop
         if wasFocused {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 isFocused = true
                 focusedField = fieldType
             }

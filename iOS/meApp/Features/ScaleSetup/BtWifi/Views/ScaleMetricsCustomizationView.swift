@@ -125,7 +125,7 @@ struct ScaleMetricsCustomizationView: View {
         saveMetrics()
         
         // Reorder on next run loop to ensure .moveDisabled() is updated first
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation {
                 self.bodyMetrics = ScaleMetricSetting.reorderOnToggle(items: self.bodyMetrics, key: metric.key, isEnabled: isEnabled)
             }
@@ -141,7 +141,7 @@ struct ScaleMetricsCustomizationView: View {
         saveMetrics()
         
         // Reorder on next run loop to ensure .moveDisabled() is updated first
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation {
                 self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: metric.key, isEnabled: isEnabled)
             }

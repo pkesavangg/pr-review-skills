@@ -152,7 +152,8 @@ struct AlertModifier: ViewModifier {
         let delays: [TimeInterval] = [0.3, 0.5, 0.7, 1.0]
         
         for delay in delays {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 guard self.alertData != nil else { return }
                 
                 if let alertWindow = self.findAlertWindow() {

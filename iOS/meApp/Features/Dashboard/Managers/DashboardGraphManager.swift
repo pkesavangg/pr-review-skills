@@ -1015,7 +1015,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         logger.log(level: .info, tag: "DashboardGraphManager", message: "Updated selected period to: \(period.rawValue)")
 
         // Clear the flag after a brief delay to allow scroll position to be set
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
             self.isChangingPeriod = false
         }
     }

@@ -1495,7 +1495,8 @@ class SettingsStore: ObservableObject {
             return
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard self.accountService.allAccounts.count == 1,
                   let activeAccount = self.accountService.activeAccount,
                   let firstName = activeAccount.firstName else {
@@ -1555,7 +1556,8 @@ class SettingsStore: ObservableObject {
 // swiftlint:disable:next multiple_closures_with_trailing_closure
             ) { vals in
                     self.notificationService.dismissModal()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 500_000_000)
                         if let mode = vals.first { Theme.shared.appearanceMode = mode }
                     }
                 }

@@ -228,15 +228,17 @@ final class WifiScaleSetupStore: ObservableObject {
             .sink { [weak self] _ in
                 guard let self else { return }
                 // Refresh Wi-Fi status after slight delay so underlying services are ready.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
                     self.getWifiStatus()
                 }
                 /// Check if location permissions are revoked and show alert if they are
                 /// If the user has revoked location permissions, this method will show an alert
                 /// prompting the user to enable location permissions
                 if self.currentStepIndex > 1 && !self.permissionsSkipped {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        Task { await self.showPermissionRevokedAlert() }
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        await self.showPermissionRevokedAlert()
                     }
                 }
             }

@@ -177,11 +177,11 @@ final class PerformanceOptimizer {
         backgroundQueue.async {
             do {
                 let result = try operation()
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     completion(.success(result))
                 }
             } catch {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     completion(.failure(error))
                 }
             }

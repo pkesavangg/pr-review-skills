@@ -31,7 +31,7 @@ struct RemovePickerIndicator: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.backgroundColor = .clear
-        DispatchQueue.main.async {
+        Task { @MainActor in
             if let pickerView = view.pickerView {
                 pickerView.backgroundColor = .clear
                 if pickerView.subviews.count >= 2 {
