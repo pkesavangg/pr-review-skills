@@ -5,10 +5,10 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
+import AppSyncPackage
+import Combine
 import Foundation
 import SwiftUI
-import Combine
-import AppSyncPackage
 
 /// Store responsible for handling AppSync scan results and presenting the
 /// confirmation card with **Save** / **Edit** actions.
@@ -130,7 +130,15 @@ final class AppSyncTabStore: ObservableObject {
             logger.log(level: .error, tag: tag, message: "AppSync save aborted: no active account")
             return
         }
-        logger.log(level: .info, tag: tag, message: "AppSync save started. accountId=\(accountId), storedWeight=\(data.storedWeight), hasBodyFat=\(data.storedBodyFat != nil), hasMuscle=\(data.storedMuscleMass != nil), hasWater=\(data.storedWaterWeight != nil)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: """
+            AppSync save started. accountId=\(accountId), storedWeight=\(data.storedWeight), \
+            hasBodyFat=\(data.storedBodyFat != nil), hasMuscle=\(data.storedMuscleMass != nil), \
+            hasWater=\(data.storedWaterWeight != nil)
+            """
+        )
 
         let entryTimestamp = DateTimeTools.getCurrentDatetimeIsoString()
 

@@ -5,7 +5,7 @@
 import Foundation
 
 @MainActor
-final class ScaleAPIRepository : ScaleRepositoryAPIProtocol{
+final class ScaleAPIRepository: ScaleRepositoryAPIProtocol {
     private let httpClient = HTTPClient.shared
     
     func listScales() async throws -> [ScaleDTO] {
@@ -70,4 +70,3 @@ final class ScaleAPIRepository : ScaleRepositoryAPIProtocol{
         ) as EmptyResponse
     }
 }
-

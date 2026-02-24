@@ -8,8 +8,9 @@
 import SwiftUI
 
 // MARK: - SettingsScreen
-/// Represents the settings screen of the application.
-/// This screen allows users to configure various application settings.
+// Represents the settings screen of the application.
+// This screen allows users to configure various application settings.
+// swiftlint:disable:next type_body_length
 struct SettingsScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
@@ -17,7 +18,6 @@ struct SettingsScreen: View {
     @StateObject private var router = Router<SettingsRoute>()
     // Dialog state controls
     // App-wide appearance picker state now in store
-    
     
     let settingsLang = SettingsStrings.self
     let commonLang = CommonStrings.self
@@ -72,11 +72,11 @@ struct SettingsScreen: View {
                     }
                 }
             }
-            .onChange(of: tabViewModel.pendingSettingsNavigation, { _, _ in
+            .onChange(of: tabViewModel.pendingSettingsNavigation) { _, _ in
                 if tabViewModel.selectedTab == .settings {
                     handlePendingSettingsNavigation()
                 }
-            })
+            }
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
@@ -86,26 +86,26 @@ struct SettingsScreen: View {
             selectedValues: [Theme.shared.appearanceMode],
             options: [AppearanceMode.allCases],
             displayValue: { $0.rawValue },
-            title: settingsLang.appearance,
-            onUpdate: { vals in
+            title: settingsLang.appearance
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { vals in
                 if let mode = vals.first {
                     Theme.shared.appearanceMode = mode
                 }
             }
-        )
         // Notifications picker
         .pickerSheet(
             isPresented: $settingsStore.showNotificationPicker,
             selectedValues: [settingsStore.notificationPreference],
             options: [NotificationPreference.allCases],
             displayValue: { $0.title },
-            title: settingsLang.notifications,
-            onUpdate: { vals in
+            title: settingsLang.notifications
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { vals in
                 if let pref = vals.first {
                     settingsStore.updateNotificationPreference(pref)
                 }
             }
-        )
         
         // Height picker sheets
         .pickerSheet(
@@ -114,34 +114,34 @@ struct SettingsScreen: View {
             options: settingsStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
-            title: settingsLang.height,
-            onUpdate: { newValues in
+            title: settingsLang.height
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { newValues in
                 settingsStore.updateHeight(fromMetric: false, values: newValues)
             }
-        )
         .pickerSheet(
             isPresented: $settingsStore.showHeightCmPicker,
             selectedValues: settingsStore.selectedHeightCm,
             options: settingsStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
-            title: settingsLang.height,
-            onUpdate: { newValues in
+            title: settingsLang.height
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { newValues in
                 settingsStore.updateHeight(fromMetric: true, values: newValues)
             }
-        )
         .pickerSheet(
             isPresented: $settingsStore.showGenderPicker,
             selectedValues: [settingsStore.activeAccount?.gender ?? .male],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
-            title: settingsLang.biologicalSex,
-            onUpdate: { vals in
+            title: settingsLang.biologicalSex
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { vals in
                 if let sex = vals.first {
                     settingsStore.updateGender(sex)
                 }
             }
-        )
         // Unit picker
         .pickerSheet(
             isPresented: $settingsStore.showUnitPicker,
@@ -150,26 +150,26 @@ struct SettingsScreen: View {
             displayValue: { unit in
                 unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs
             },
-            title: settingsLang.unitType,
-            onUpdate: { vals in
+            title: settingsLang.unitType
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { vals in
                 if let unit = vals.first {
                     settingsStore.updateWeightUnit(unit)
                 }
             }
-        )
         // Activity level picker
         .pickerSheet(
             isPresented: $settingsStore.showActivityPicker,
             selectedValues: [settingsStore.activeAccount?.weightSettings?.activityLevel ?? .normal],
             options: [[ActivityLevel.normal, ActivityLevel.athlete]],
             displayValue: { $0.rawValue.capitalized },
-            title: settingsLang.activityLevel,
-            onUpdate: { vals in
+            title: settingsLang.activityLevel
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { vals in
                 if let level = vals.first {
                     settingsStore.updateActivityLevel(level)
                 }
             }
-        )
     }
     
     private func profileHeader() -> some View {
@@ -197,31 +197,27 @@ struct SettingsScreen: View {
     
     private func accountSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.accountSettings)) {
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales,
-                                                            onTap: {router.navigate(to:.addEditScales)}))
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations, onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations) {
                 router.navigate(to: .integrations)
-            }))
+            })
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.exportData,
                 chevronType: .none,
-                isDisabled: !settingsStore.hasEntries,
-                onTap: {
+                isDisabled: !settingsStore.hasEntries
+            ) {
                     settingsStore.handleExport()
-                }
-            ))
+                })
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword,
-                                                            onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword) {
                 router.navigate(to: .changePassword)
-            }))
+            })
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.userProfile,
-                                                            onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.userProfile) {
                 router.navigate(to: .editProfile)
-            }))
+            })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -231,47 +227,41 @@ struct SettingsScreen: View {
     private func profileSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.profileSettings)) {
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.goalSetting,
-                onTap: {
+                title: settingsLang.goalSetting) {
                     router.navigate(to: .goal)
-                }))
+                })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.biologicalSex,
                 value: settingsStore.biologicalSexText,
-                chevronType: .upDown,
-                onTap: { settingsStore.presentGenderPicker() }))
+                chevronType: .upDown) { settingsStore.presentGenderPicker() })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.activityLevel,
                 value: settingsStore.activityLevelText,
-                chevronType: .upDown,
-                onTap: { settingsStore.presentActivityPicker() }))
+                chevronType: .upDown) { settingsStore.presentActivityPicker() })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.height,
                 value: settingsStore.heightText,
-                chevronType: .upDown,
-                onTap: { settingsStore.presentHeightPicker() }
-            ))
+                chevronType: .upDown
+            ) { settingsStore.presentHeightPicker() })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.unitType,
                 value: settingsStore.unitTypeText,
-                chevronType: .upDown,
-                onTap: { settingsStore.presentUnitPicker() }))
+                chevronType: .upDown) { settingsStore.presentUnitPicker() })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.weightless,
-                value: settingsStore.weightlessText,
-                onTap: {
+                value: settingsStore.weightlessText) {
                     router.navigate(to: .weightless)
-                }))
+                })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -283,23 +273,22 @@ struct SettingsScreen: View {
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.notifications,
                 value: settingsStore.notificationsOnText,
-                chevronType: .upDown,
-                onTap: { settingsStore.presentNotificationPicker() }))
+                chevronType: .upDown) { settingsStore.presentNotificationPicker() })
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsStore.messagesTitleText, showDot: settingsStore.canShowFeedNotificationBadge, onTap: {
+// swiftlint:disable:next line_length
+            ActionListItemView(config: ActionListItemConfig(title: settingsStore.messagesTitleText, showDot: settingsStore.canShowFeedNotificationBadge) {
                 router.navigate(to: .messages)
-            }))
+            })
             .id(settingsStore.canShowFeedNotificationBadge)
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions, onTap: {
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions) {
                 router.navigate(to: .appPermissions)
-            }))
+            })
             .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
-                chevronType: .upDown,
-                onTap: { settingsStore.presentAppearancePicker() }))
+                chevronType: .upDown) { settingsStore.presentAppearancePicker() })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -311,35 +300,31 @@ struct SettingsScreen: View {
                     SectionHeader(title: settingsLang.supportSettings)
         ) {
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.helpAndCustomerService,
-                onTap: {
+                title: settingsLang.helpAndCustomerService
+            ) {
                     router.navigate(to: .help)
-                }
-            ))
+                })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.privacyPolicy,
-                onTap: {
+                title: settingsLang.privacyPolicy
+            ) {
                     settingsStore.openPrivacy()
-                }
-            ))
+                })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.termsOfService,
-                onTap: {
+                title: settingsLang.termsOfService
+            ) {
                     settingsStore.openTerms()
-                }
-            ))
+                })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.greaterGoodsWebsite,
-                onTap: {
+                title: settingsLang.greaterGoodsWebsite
+            ) {
                     settingsStore.openGreaterGoods()
-                }
-            ))
+                })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -349,41 +334,37 @@ struct SettingsScreen: View {
     private func accountActionSection() -> some View {
         Section {
             ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.switchAccounts,
-                onTap: {
+                title: settingsLang.switchAccounts
+            ) {
                     router.navigate(to: .myAccounts)
-                }
-            ))
+                })
             .listRowInsets()
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.logOut,
-                chevronType: .none,
-                onTap: {
+                chevronType: .none
+            ) {
                     settingsStore.handleLogout()
-                }
-            ))
+                })
             .listRowInsets()
             
             if settingsStore.canShowLogOutAllItems {
                 ActionListItemView(config: ActionListItemConfig(
                     title: settingsLang.logOutAllAccount,
-                    chevronType: .none,
-                    onTap: {
+                    chevronType: .none
+                ) {
                         settingsStore.handleLogoutForAllAccounts()
-                    }
-                ))
+                    })
                 .listRowInsets()
             }
             
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.deleteAccount,
                 chevronType: .none,
-                isDestructive: true,
-                onTap: {
+                isDestructive: true
+            ) {
                     settingsStore.handleDeleteAccount()
-                }
-            ))
+                })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)

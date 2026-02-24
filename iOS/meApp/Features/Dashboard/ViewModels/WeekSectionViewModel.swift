@@ -5,27 +5,14 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// ViewModel specifically for the Week time period chart view
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
 @MainActor
-final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
-    
-    static func == (lhs: WeekSectionViewModel, rhs: WeekSectionViewModel) -> Bool {
-        // Compare essential properties that affect rendering
-        lhs.timePeriod == rhs.timePeriod &&
-        lhs.selectedDate == rhs.selectedDate &&
-        lhs.showCrosshair == rhs.showCrosshair &&
-        lhs.scrollPosition == rhs.scrollPosition &&
-        lhs.isScrolling == rhs.isScrolling &&
-        lhs.yAxisDomain == rhs.yAxisDomain &&
-        lhs.yAxisTicks == rhs.yAxisTicks &&
-        lhs.chartFrame == rhs.chartFrame &&
-        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
-    }
+final class WeekSectionViewModel: BaseSectionViewModel {
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
@@ -40,7 +27,6 @@ final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
         super.handleScrollPositionChange(snapped)
     }
     
-
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.
     /// We place each day's value at that day's local noon:
     /// - Visually centers the point within the day's time span on the timeline.
@@ -71,8 +57,8 @@ final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
         guard !realTicks.isEmpty else { return }
 
         // Snap to nearest tick by absolute time distance
-        let snapped = realTicks.min { a, b in
-            abs(a.timeIntervalSince(date)) < abs(b.timeIntervalSince(date))
+        let snapped = realTicks.min { first, second in
+            abs(first.timeIntervalSince(date)) < abs(second.timeIntervalSince(date))
         } ?? date
 
         // Determine whether the snapped X falls within the drawn line bounds.

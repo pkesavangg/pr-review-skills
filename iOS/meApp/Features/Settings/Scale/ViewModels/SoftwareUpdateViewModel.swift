@@ -4,8 +4,8 @@
 //
 
 import Foundation
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @MainActor
 final class SoftwareUpdateViewModel: ObservableObject {
@@ -13,8 +13,8 @@ final class SoftwareUpdateViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var logger: LoggerService
 
-    @Published var selectedDate: Date = Date()
-    @Published var selectedTime: Date = Date()
+    @Published var selectedDate = Date()
+    @Published var selectedTime = Date()
     @Published var isUpdating: Bool = false
     @Published var updateScheduled: Bool = false
 
@@ -97,5 +97,3 @@ final class SoftwareUpdateViewModel: ObservableObject {
         isUpdating = false
     }
 }
-
-

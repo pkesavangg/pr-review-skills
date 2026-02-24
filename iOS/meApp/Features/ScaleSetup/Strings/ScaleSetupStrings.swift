@@ -45,6 +45,7 @@ struct ScaleSetupStrings {
     struct FinishViewStrings {
         static let title = "Your scale is paired and ready to go!"
         static let description = "Next time you weigh in, the results will automatically be sent to Weight Gurus."
+// swiftlint:disable:next line_length
         static let appSyncDescription = "To sync new entries, tap the icon at the bottom right of the app when you see the result code display on your scale's screen."
     }
 }

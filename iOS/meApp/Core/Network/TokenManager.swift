@@ -18,7 +18,10 @@ actor TokenManager {
         if _accountService == nil {
             _accountService = DependencyContainer.shared.resolve(AccountService.self)
         }
-        return _accountService!
+        guard let accountService = _accountService else {
+            fatalError("AccountService dependency is not registered")
+        }
+        return accountService
     }
 
     private var isRefreshing = false

@@ -56,5 +56,3 @@ struct LegalLinksRow: View {
         privacyURL: AppConstants.LegalURLs.privacyPolicy
     )
 }
-
-

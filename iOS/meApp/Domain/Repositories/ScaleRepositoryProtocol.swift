@@ -4,6 +4,7 @@ import Foundation
 ///
 /// This protocol defines the contract for interacting with paired-scale data, including listing, creating,
 /// editing, deleting, and updating scale meta and preferences. Implementations may use local storage or remote API.
+@MainActor
 protocol ScaleRepositoryProtocol {
     /// Deletes all scales from local storage.
     func clearAllData() async throws
@@ -54,7 +55,7 @@ protocol ScaleRepositoryProtocol {
 
     /// Updates scale preference. (PATCH /scale-r4/preference)
     /// - Parameter preference: The R4ScalePreference to update.
-    func patchScalePreference(_ scaleId: String,_ preference: R4ScalePreference) async throws
+    func patchScalePreference(_ scaleId: String, _ preference: R4ScalePreference) async throws
 
     /// Updates scale preference from a DTO (safe for async boundaries — no @Model crossing required).
     func patchScalePreference(_ scaleId: String, fromDTO dto: R4ScalePreferenceDTO) async throws

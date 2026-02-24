@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 /// Protocol for business logic and orchestration related to paired-scale management.
 ///

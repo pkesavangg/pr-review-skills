@@ -32,19 +32,15 @@ struct DisplayMetricsScreen: View {
                         text: CommonStrings.save.uppercased(),
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: !viewModel.hasChanges,
-                        action: {
+                        isDisabled: !viewModel.hasChanges
+                    ) {
                             Task {
                                 await viewModel.saveDisplayMetrics()
                                 router.navigateBack()
                             }
                         }
-                    )
                 },
                 onLeadingTap: { router.navigateBack() },
-                onTrailingTap: {
-                    // TODO: ADD Action
-                },
                 canShowBorder: true
             )
             
@@ -149,9 +145,9 @@ struct DisplayMetricsScreen: View {
                 )
                 .fontWeight(.regular)
                 Spacer()
-                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false, action: {
+                ButtonView(text: commonLang.update.uppercased(), type: .textPrimary, size: .small, isDisabled: false) {
                     router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
-                })
+                }
                 .padding(.leading, 5)
             }
         }
@@ -160,7 +156,7 @@ struct DisplayMetricsScreen: View {
     private func weightOnlyInfo() -> some View {
         NoteBox {
             VStack(alignment: .leading, spacing: .spacingXS) {
-                HStack() {
+                HStack {
                     AppIconView(icon: AppAssets.weightOnlyMode, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                     
@@ -179,14 +175,12 @@ struct DisplayMetricsScreen: View {
     
     private func heartRateBanner() -> some View {
         HeartRateBanner(
-            isHeartRateOn: viewModel.isHeartRateOn,
-            onUpdate: {
+            isHeartRateOn: viewModel.isHeartRateOn
+        ) {
                 router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
             }
-        )
     }
 }
-
 
 #Preview {
     DisplayMetricsScreen(scale: Device(

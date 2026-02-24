@@ -11,11 +11,12 @@ struct ChipView: View {
     let text: String
     var style: ChipStyle = .normal
     var isSelected: Bool = false
-    var onTap: (() -> Void)? = nil
+    var onTap: (() -> Void)?
     
     var body: some View {
         Button(action: {
             onTap?()
+// swiftlint:disable:next multiple_closures_with_trailing_closure
         }) {
             Text(text)
                 .fontWeight(.bold)

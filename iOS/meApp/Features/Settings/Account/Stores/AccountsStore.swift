@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 24/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 // MARK: - Accounts Store
@@ -33,7 +33,7 @@ class AccountsStore: ObservableObject {
 
     @Published var canShowLoginScreen = false
     /// Holds the email to prefill in `LoginScreen` when opening from account switching flow.
-    @Published var emailForLogin: String? = nil
+    @Published var emailForLogin: String?
     @Published var canShowAccountSignupScreen = false
 
     private let tag = "AccountsStore"
@@ -83,7 +83,7 @@ class AccountsStore: ObservableObject {
                     let needsLogin = !isLoggedIn || (isExpired && isLoggedIn)
                     return UserItemInfo(
                         accountID: $0.accountId,
-                        name: $0.firstName?.isEmpty == false ? $0.firstName! : $0.email,
+                        name: ($0.firstName?.isEmpty == false ? $0.firstName : nil) ?? $0.email,
                         email: $0.email,
                         isSelected: $0.isActiveAccount ?? false,
                         isExpired: needsLogin, // Logged-out and auto-logged-out accounts show "Log In" button

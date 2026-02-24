@@ -137,6 +137,7 @@ struct BottomTabBarView: View {
         // Setup flow presentation
         .sheet(item: $viewModel.setupPayload, onDismiss: {
             viewModel.bluetoothService.isSetupInProgress = false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
         }) { payload in
             // Determine setup type from the scale item info
             let setupType = payload.event?.deviceInfo.setupType ?? .lcbt
@@ -192,7 +193,6 @@ struct BottomTabBarView: View {
         }
     }
 }
-
 
 #Preview {
     BottomTabBarView()

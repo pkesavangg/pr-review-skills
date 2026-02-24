@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 26/06/25.
 //
 
-
 import SwiftUI
 
 // MARK: - Apple Health Integration States
@@ -68,7 +67,7 @@ struct HKIntegrationHealthAccessView: View {
                             .stroke(theme.statusUtilitySecondary, lineWidth: 5)
                     }
                     .overlay {
-                        if state == .integrationFailed  || state == .userConflict {
+                        if state == .integrationFailed || state == .userConflict {
                             theme.supportOverlay
                                 .cornerRadius(.radiusSM)
                             Image(AppAssets.exclamationDanger)
@@ -78,7 +77,6 @@ struct HKIntegrationHealthAccessView: View {
                         }
                     }
                     .padding(.top, .spacing2XL)
-                
                 
                 // Title
                 Text(content.title)

@@ -50,7 +50,6 @@ struct MyScalesScreen: View {
         }
     }
     
-    
     @State private var activeSheet: ActiveSheet?
     
     private var focusBinding: Binding<FocusField?> {
@@ -63,7 +62,7 @@ struct MyScalesScreen: View {
     private func scaleIcon(for sku: String?) -> Image {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku ?? "")
-        let imagePath = SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? AppAssets.meLogoDark
+        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath ?? AppAssets.meLogoDark
         return Image(imagePath)
     }
     
@@ -107,7 +106,7 @@ struct MyScalesScreen: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing:0){
+        VStack(alignment: .leading, spacing: 0) {
             NavbarHeaderView(
                 title: lang.addEditScales,
                 leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
@@ -117,8 +116,8 @@ struct MyScalesScreen: View {
                 canShowBorder: true
             )
             
-            ScrollView (showsIndicators: false){
-                VStack(alignment: .leading, spacing: .spacingXS){
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(lang.addAScale)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
@@ -139,6 +138,7 @@ struct MyScalesScreen: View {
                             errorMessage: scaleStore.addScaleForm.getError(for: .modelNumber),
                             focusField: .modelNumber,
                             customIcon: AppAssets.helpCircle,
+// swiftlint:disable:next vertical_parameter_alignment_on_call
                                 onCustomIconTap: {
                                     focusedField = nil
                                     hideKeyboard()
@@ -156,8 +156,8 @@ struct MyScalesScreen: View {
                         text: CommonStrings.submit,
                         type: .filledPrimary,
                         size: .large,
-                        isDisabled: !scaleStore.addScaleForm.isValid,
-                        action: {
+                        isDisabled: !scaleStore.addScaleForm.isValid
+                    ) {
                             // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
                             let enteredValue = scaleStore.addScaleForm.modelNumberValue
                             let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
@@ -177,31 +177,31 @@ struct MyScalesScreen: View {
                             
                             handleScaleSelection(scaleWithOriginalSku, clearUI: true)
                         }
-                    )
                     .padding(.bottom, .spacingSM)
                     
                     ButtonView(
                         text: lang.cantFindModelNumber,
                         type: .textPrimary,
                         size: .large,
-                        isDisabled: false,
-                        action: {
+                        isDisabled: false
+                    ) {
                             focusedField = nil
                             hideKeyboard()
                             activeSheet = .scaleList
                         }
-                    )
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
                 .sheet(item: $activeSheet, onDismiss: {
                     scaleStore.updateSetupInProgressStatus(false)
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                 }) { sheet in
                     switch sheet {
                     case .scaleList:
                         ChooseYourScaleView { scale in
                             // Delay so the scale list sheet dismisses before presenting the next one
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 250_000_000)
                                 handleScaleSelection(scale)
                             }
                         }
@@ -225,7 +225,7 @@ struct MyScalesScreen: View {
                         }
                     }
                 }
-                .onChange(of: activeSheet) { oldSheet, newSheet in
+                .onChange(of: activeSheet) { _, newSheet in
                     // Observe changes to the activeSheet state.
                     // This is used to track whether a setup flow is being shown,
                     // and toggle the Bluetooth setup in-progress flag accordingly.
@@ -281,7 +281,8 @@ struct MyScalesScreen: View {
                 if newPhase != .active {
                     shouldMaintainKeyboardFocus = true
                 } else if shouldMaintainKeyboardFocus {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 100_000_000)
                         focusedField = .modelNumber
                         shouldMaintainKeyboardFocus = false
                     }
@@ -289,7 +290,6 @@ struct MyScalesScreen: View {
             }
         }
     }
-    
     
 }
 

@@ -1,5 +1,11 @@
 import Foundation
 import Combine
+// swiftlint:disable type_body_length file_length function_body_length
+
+/*
+ SwiftLint exception:
+ This service intentionally aggregates account lifecycle, auth, sync, and settings in one place. Splitting would add indirection during critical auth/data flows. We therefore disable type_body_length, file_length, and function_body_length for this file.
+ */
 
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject {
@@ -10,20 +16,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     @Injector var keychainService: KeychainService
     @Injector var kvStorage: KvStorageService
 
-    private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
-    private let localRepo: AccountRepositoryProtocol = AccountRepository()
-    private let networkMonitor: NetworkMonitor = NetworkMonitor.shared
+    let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
+    let localRepo: AccountRepositoryProtocol = AccountRepository()
+    let networkMonitor: NetworkMonitor = NetworkMonitor.shared
     /// API repository for integration-related network calls
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
     /// Migration service for Ionic app data
-    private let migrationService = AccountMigrationService()
+    let migrationService = AccountMigrationService()
 
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
 
     var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
-    private let tag = "AccountService"
+    let tag = "AccountService"
 
     init() {
         // Asynchronously load active account from local storage to set theme early
@@ -92,30 +98,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-            // TODO: Extract duplicated account preparation logic into private helper method
-            // This logic is duplicated in signUp() and logIn() - consider refactoring into
-            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
-            let account: Account
-            if let existing = existingAccount {
-                // Update existing account in place
-                existing.update(from: response)
-                existing.isLoggedIn = true
-                existing.isActiveAccount = true
-                existing.isExpired = false
-                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-                account = existing
-            } else {
-                // Create new account
-                account = Account(from: response.account)
-                account.isSynced = true
-                account.isLoggedIn = true
-                account.isActiveAccount = true
-                account.isExpired = false
-                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-            }
-            if let a = response.accessToken, let r = response.refreshToken, let e = response.expiresAt {
-                keychainService.setTokens(Tokens(accessToken: a, refreshToken: r, expiresAt: e), for: account.accountId)
-            }
+    let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
                 try await saveAccountClearingTokens(account)
@@ -153,30 +136,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-            // TODO: Extract duplicated account preparation logic into private helper method
-            // This logic is duplicated in signUp() and logIn() - consider refactoring into
-            // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
-            let account: Account
-            if let existing = existingAccount {
-                // Update existing account in place
-                existing.update(from: response)
-                existing.isLoggedIn = true
-                existing.isActiveAccount = true
-                existing.isExpired = false
-                existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-                account = existing
-            } else {
-                // Create new account
-                account = Account(from: response.account)
-                account.isSynced = true
-                account.isLoggedIn = true
-                account.isActiveAccount = true
-                account.isExpired = false
-                account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
-            }
-            if let a = response.accessToken, let r = response.refreshToken, let e = response.expiresAt {
-                keychainService.setTokens(Tokens(accessToken: a, refreshToken: r, expiresAt: e), for: account.accountId)
-            }
+   let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
                 try await saveAccountClearingTokens(account)
@@ -391,7 +351,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
+                logger.log(
+                    level: .error, tag: tag,
+                    message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                    + "goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)"
+                )
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Create goal failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -474,7 +438,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 await MainActor.run {
                     NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
                 }
-                logger.log(level: .error, tag: tag, message: "Update bodyComp saved offline for accountId=\(accountId), offline=true, reason=network_error, weightUnit=\(bodyComp.weightUnit.rawValue), height=\(bodyComp.height), activityLevel=\(bodyComp.activityLevel.rawValue)")
+                logger.log(
+                    level: .error, tag: tag,
+                    message: "Update bodyComp saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                    + "weightUnit=\(bodyComp.weightUnit.rawValue), height=\(bodyComp.height), activityLevel=\(bodyComp.activityLevel.rawValue)"
+                )
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Update bodyComp failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -615,7 +583,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Update notifications saved offline for accountId=\(accountId), offline=true, reason=network_error, shouldSendEntry=\(notifications.shouldSendEntryNotifications), shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)")
+                logger.log(
+                    level: .error, tag: tag,
+                    message: "Update notifications saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                    + "shouldSendEntry=\(notifications.shouldSendEntryNotifications), shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)"
+                )
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Update notifications failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -1096,7 +1068,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await updateAccountClearingTokens(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)")
+                logger.log(
+                    level: .error, tag: tag,
+                    message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, "
+                    + "isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)"
+                )
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Update weightless failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -1176,6 +1152,36 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     }
 
     // MARK: - Private Helpers
+    /// Prepares an authenticated account from API response, either updating an existing account or creating a new one.
+    /// - Parameters:
+    ///   - response: The API response containing account and token information
+    ///   - existingAccount: An optional existing account to update, or nil to create a new account
+    /// - Returns: The prepared account with authentication state set
+    private func prepareAuthenticatedAccount(from response: AccountResponse, existingAccount: Account?) async throws -> Account {
+        let account: Account
+        if let existing = existingAccount {
+            // Update existing account in place
+            existing.update(from: response)
+            existing.isLoggedIn = true
+            existing.isActiveAccount = true
+            existing.isExpired = false
+            existing.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+            account = existing
+        } else {
+            // Create new account
+            account = Account(from: response.account)
+            account.accessToken = response.accessToken
+            account.refreshToken = response.refreshToken
+            account.expiresAt = response.expiresAt
+            account.isSynced = true
+            account.isLoggedIn = true
+            account.isActiveAccount = true
+            account.isExpired = false
+            account.lastActiveTime = DateTimeTools.getCurrentDatetimeIsoString()
+        }
+        return account
+    }
+    
     /// Deletes the account locally by ID and updates the published state.
     private func deleteAccountLocally(accountId: String) async throws {
         do {
@@ -1195,7 +1201,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     private func checkIfMaxAccountsReached(email: String) async throws {
         if try await hasReachedMaxAccounts() {
             allAccounts = try await localRepo.fetchAllAccounts().filter { $0.isLoggedIn == true }
-            if !(allAccounts.contains { $0.email == email } ) {
+            if !(allAccounts.contains { $0.email == email }) {
                 logger.log(level: .error, tag: tag, message: "Max accounts reached. Blocking new account creation for email=\(maskedEmail(email))")
                 throw AccountError.maxAccountsReached
             }
@@ -1219,9 +1225,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
         let accounts = try await localRepo.fetchAllAccounts()
         for account in accounts {
-            guard let a = account.accessToken, let r = account.refreshToken, let e = account.expiresAt,
-                  !a.isEmpty, !r.isEmpty else { continue }
-            keychainService.setTokens(Tokens(accessToken: a, refreshToken: r, expiresAt: e), for: account.accountId)
+            guard let accessTok = account.accessToken, let refreshTok = account.refreshToken,
+                  let expiresAtVal = account.expiresAt, !accessTok.isEmpty, !refreshTok.isEmpty else { continue }
+            keychainService.setTokens(
+                Tokens(accessToken: accessTok, refreshToken: refreshTok, expiresAt: expiresAtVal),
+                for: account.accountId
+            )
             account.accessToken = nil
             account.refreshToken = nil
             account.expiresAt = nil

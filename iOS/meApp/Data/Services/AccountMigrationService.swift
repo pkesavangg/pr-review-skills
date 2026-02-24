@@ -1,10 +1,13 @@
 import Foundation
-import SwiftData
 import ggInAppMessagingPackage
+import SwiftData
 
-/// Service to migrate account data from Ionic app (Capacitor Preferences) to SwiftUI app (SwiftData)
+/*
+ SwiftLint exception:
+ This service intentionally aggregates all one-time migration routines to keep the migration flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during a limited-run migration window. We therefore disable `type_body_length` for this file.
+ */
 @MainActor
-final class AccountMigrationService {
+final class AccountMigrationService { // swiftlint:disable:this type_body_length
     @Injector private var logger: LoggerService
     @Injector private var keychainService: KeychainService
     private var accountRepo = AccountRepository()
@@ -99,11 +102,19 @@ final class AccountMigrationService {
                 logger.log(level: .info, tag: tag, message: "Account migration returned nil, but other migrations completed successfully")
             }
         } catch {
-            logger.log(level: .error, tag: tag, message: "Account migration failed: \(error.localizedDescription), but other migrations completed successfully")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Account migration failed: \(error.localizedDescription), but other migrations completed successfully"
+            )
             account = nil
         }
         
-        logger.log(level: .info, tag: tag, message: "Comprehensive migration completed. Account: \(account?.email ?? "none"), Total scales: \(totalScales)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Comprehensive migration completed. Account: \(account?.email ?? "none"), Total scales: \(totalScales)"
+        )
         
         // Mark migration as completed to prevent future runs
         kvStorage.setValue(true, forKey: KvStorageKeys.ionicToNativeAppMigrationCompleted.rawValue)
@@ -143,7 +154,11 @@ final class AccountMigrationService {
             let migratedDevices = try await scaleMigrationService.migrateScaleData(for: accountId)
             scaleMigrationService.cleanupAfterMigration(for: accountId)
             
-            logger.log(level: .info, tag: tag, message: "Scale migration completed for account: \(accountId). Migrated \(migratedDevices.count) scales")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Scale migration completed for account: \(accountId). Migrated \(migratedDevices.count) scales"
+            )
             return migratedDevices.count
         } catch {
             logger.log(level: .error, tag: tag, message: "Scale migration failed for account \(accountId): \(error.localizedDescription)")
@@ -208,7 +223,11 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(boolValue, forKey: nativeGoalAlertKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated goal alert flag for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Migrated goal alert flag for account: \(accountId) from '\(ionicGoalAlertValue)' to \(boolValue)"
+            )
         } else {
             logger.log(level: .info, tag: tag, message: "No goal alert flag found for account: \(accountId)")
         }
@@ -266,7 +285,11 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(boolValue, forKey: nativeGoalCardStatusKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated goal card status for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Migrated goal card status for account: \(accountId) from '\(ionicGoalCardStatusValue)' to \(boolValue)"
+            )
         } else {
             logger.log(level: .info, tag: tag, message: "No goal card status found for account: \(accountId)")
         }
@@ -313,7 +336,6 @@ final class AccountMigrationService {
         let ionicAppearanceKey = MigrationKey.appearanceKey(for: accountId)
         let nativeAppearanceKey = KvStorageKeys.appearanceModeKey(for: accountId)
         
-        
         // Check if Ionic appearance setting exists
         if let ionicAppearanceValue = kvStorage.getValue(forKey: ionicAppearanceKey) as? String {
             logger.log(level: .info, tag: tag, message: "Found Ionic appearance setting for account: \(accountId)")
@@ -335,7 +357,11 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(nativeAppearanceValue, forKey: nativeAppearanceKey)
             theme.loadAppearanceModeForAccount()
-            logger.log(level: .info, tag: tag, message: "Migrated appearance setting for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Migrated appearance setting for account: \(accountId) from '\(ionicAppearanceValue)' to '\(nativeAppearanceValue)'"
+            )
         } else {
             logger.log(level: .info, tag: tag, message: "No appearance setting found for account: \(accountId)")
         }
@@ -363,7 +389,7 @@ final class AccountMigrationService {
     
     /// Migrates HealthKit integration settings for a specific account
     /// - Parameter accountId: The account ID to migrate HealthKit integration data for
-    func migrateHealthKitIntegrationData(for accountId: String) {
+    func migrateHealthKitIntegrationData(for accountId: String) { // swiftlint:disable:this function_body_length
         logger.log(level: .info, tag: tag, message: "Starting HealthKit integration data migration for account: \(accountId)")
         
         // Get the integration repository to store the migrated data
@@ -378,21 +404,29 @@ final class AccountMigrationService {
         var isIntegrated = false
         if let ionicIntegratedValue = kvStorage.getValue(forKey: ionicHealthKitKey) as? String {
             isIntegrated = ionicIntegratedValue.lowercased() == "true"
-            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit integration status for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Found Ionic HealthKit integration status for account: \(accountId), value: \(ionicIntegratedValue)"
+            )
         }
         
         // Get assigned account (for conflict detection)
-        var assignedTo: String? = nil
+        var assignedTo: String?
         if let ionicAssignedValue = kvStorage.getValue(forKey: ionicAssignedToKey) as? String {
             assignedTo = ionicAssignedValue
             logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit assigned-to value for account: \(accountId)")
         }
         
         // Check for deintegration flag
-        var deIntegrated: String? = nil
+        var deIntegrated: String?
         if let ionicDeintegratedValue = kvStorage.getValue(forKey: ionicDeintegratedKey) as? String {
             deIntegrated = ionicDeintegratedValue.lowercased() == "true" ? accountId : nil
-            logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit deintegration flag for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Found Ionic HealthKit deintegration flag for account: \(accountId), value: \(ionicDeintegratedValue)"
+            )
         }
         
         // Only create integration info if there was any HealthKit data in the Ionic app
@@ -406,9 +440,20 @@ final class AccountMigrationService {
             
             do {
                 try integrationRepository.setIntegrationData(accountId: assignedTo ?? accountId, info: integrationInfo)
-                logger.log(level: .info, tag: tag, message: "Successfully migrated HealthKit integration data for account: \(accountId)")
+                let assignedToString = assignedTo ?? "nil"
+                let deIntegratedString = deIntegrated ?? "nil"
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Successfully migrated HealthKit integration data for account: \(accountId) - " +
+                        "integrated: \(isIntegrated), assignedTo: \(assignedToString), deIntegrated: \(deIntegratedString)"
+                )
             } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to migrate HealthKit integration data for account \(accountId): \(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to migrate HealthKit integration data for account \(accountId): \(error.localizedDescription)"
+                )
             }
         } else { 
             logger.log(level: .info, tag: tag, message: "No HealthKit integration data found for account: \(accountId)")
@@ -456,7 +501,11 @@ final class AccountMigrationService {
         
         // Check if Ionic notification alert flag exists
         if let ionicNotificationAlertValue = kvStorage.getValue(forKey: ionicNotificationAlertKey) as? String {
-            logger.log(level: .info, tag: tag, message: "Found Ionic notification alert flag for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Found Ionic notification alert flag for account: \(accountId), value: \(ionicNotificationAlertValue)"
+            )
             
             // Convert string value to boolean for native app
             // Ionic stores as "true"/"false" strings, native uses Bool
@@ -465,7 +514,11 @@ final class AccountMigrationService {
             // Set the value in the native format
             kvStorage.setValue(boolValue, forKey: nativeNotificationAlertKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated notification alert flag for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Migrated notification alert flag for account: \(accountId) from '\(ionicNotificationAlertValue)' to \(boolValue)"
+            )
         } else {
             logger.log(level: .info, tag: tag, message: "No notification alert flag found for account: \(accountId)")
         }
@@ -510,7 +563,11 @@ final class AccountMigrationService {
             // Set the value in the native format for the active account
             kvStorage.setValue(boolValue, forKey: nativeNotificationAlertKey)
             
-            logger.log(level: .info, tag: tag, message: "Migrated global notification alert flag to account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Migrated global notification alert flag to account: \(accountId) from '\(ionicNotificationAlertValue)' to \(boolValue)"
+            )
         } else {
             logger.log(level: .info, tag: tag, message: "No global notification alert flag found in Ionic app")
         }
@@ -571,14 +628,18 @@ final class AccountMigrationService {
         }
         
         let totalScales = migrationResults.reduce(0) { $0 + $1.scalesCount }
-        logger.log(level: .info, tag: tag, message: "Completed scale data migration for \(allAccountIds.count) accounts, total scales: \(totalScales)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Completed scale data migration for \(allAccountIds.count) accounts, total scales: \(totalScales)"
+        )
         
         return migrationResults
     }
     
     /// Migrates feed data for a specific account
     /// - Parameter accountId: The account ID to migrate feed data for
-    func migrateFeedData(for accountId: String) {
+    func migrateFeedData(for accountId: String) { // swiftlint:disable:this function_body_length
         logger.log(level: .info, tag: tag, message: "Starting feed data migration for account: \(accountId)")
         
         // Migrate feed settings info
@@ -602,7 +663,14 @@ final class AccountMigrationService {
                 let showPopupMessage = dict["showPopupMessage"] as? Bool ?? true // Default to true if not found
                 let showNotificationBadge = dict["showNotificationBadge"] as? Bool ?? true // Default to true if not found
                 feedSettings = FeedSetting(showPopupMessage: showPopupMessage, showNotificationBadge: showNotificationBadge)
-                logger.log(level: .info, tag: tag, message: "Converted Ionic feed settings from dictionary for account: \(accountId)")
+                let message = """
+                Converted Ionic feed settings from dictionary for account: \(accountId) - popup: \(showPopupMessage), badge: \(showNotificationBadge)
+                """
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: message
+                )
             }
             // Check if it's stored as a JSON string
             else if let jsonString = ionicFeedInfoValue as? String,
@@ -630,7 +698,11 @@ final class AccountMigrationService {
         let nativeFeedLastTriggeredKey = KvStorageKeys.feedLastTriggeredAtKey(for: accountId)
         
         if let ionicFeedLastTriggeredValue = kvStorage.getValue(forKey: ionicFeedLastTriggeredKey) {
-            logger.log(level: .info, tag: tag, message: "Found Ionic feed last triggered timestamp for account: \(accountId)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Found Ionic feed last triggered timestamp for account: \(accountId), value: \(ionicFeedLastTriggeredValue)"
+            )
             
             // Copy the value directly (it's already in the correct format - Double or String)
             kvStorage.setValue(ionicFeedLastTriggeredValue, forKey: nativeFeedLastTriggeredKey)
@@ -755,7 +827,7 @@ final class AccountMigrationService {
     ///   - key: The full UserDefaults key
     ///   - pattern: The pattern to match against
     /// - Returns: The extracted account ID if found
-    private func extractAccountIdFromKey(_ key: String, pattern: String) -> String? {
+    private func extractAccountIdFromKey(_ key: String, pattern: String) -> String? { // swiftlint:disable:this cyclomatic_complexity
         // For keys like "CapacitorStorage.notificationOnlyAlertShown_4EBA3nhaJwRCTJ9Veooo9U"
         // or "CapacitorStorage.4EBA3nhaJwRCTJ9Veooo9U-hasSeenSetNewGoal"
         
@@ -850,16 +922,16 @@ final class AccountMigrationService {
             activityLevel: ActivityLevel(rawValue: ionicData.activityLevel) ?? .normal,
             dob: ionicData.dob,
             weightlessTimestamp: ionicData.weightlessTimestamp,
-            weightlessWeight: ionicData.weightlessWeight != nil ? Double(ionicData.weightlessWeight!) : nil,
+            weightlessWeight: ionicData.weightlessWeight.map(Double.init),
             isStreakOn: ionicData.isStreakOn,
             streakTimestamp: nil, // Not in the provided data
             dashboardType: DashboardType(rawValue: ionicData.dashboardType.replacingOccurrences(of: "_", with: "")) ?? .dashboard4,
             dashboardMetrics: ionicData.dashboardMetrics.compactMap { BodyMetric(rawValue: $0) },
             progressMetrics: nil, // Not available in Ionic migration data
             goalType: GoalType(rawValue: ionicData.goalType ?? "") ?? .maintain,
-            goalWeight: ionicData.goalWeight != nil ? Double(ionicData.goalWeight!) : nil,
+            goalWeight: ionicData.goalWeight.map(Double.init),
             goalPercent: nil,
-            initialWeight: ionicData.initialWeight != nil ? Double(ionicData.initialWeight!) : nil,
+            initialWeight: ionicData.initialWeight.map(Double.init),
             shouldSendEntryNotifications: ionicData.shouldSendEntryNotifications,
             shouldSendWeightInEntryNotifications: ionicData.shouldSendWeightInEntryNotifications,
             isFitbitOn: ionicData.isFitbitOn,
@@ -890,4 +962,5 @@ final class AccountMigrationService {
         
         return account
     }
+// swiftlint:disable:next file_length
 }

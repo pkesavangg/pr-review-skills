@@ -5,9 +5,9 @@
 //  Created by Lakshmi Priya on 30/06/25.
 //
 
+import Combine
 import SwiftUI
 import UniformTypeIdentifiers
-import Combine
 
 struct DashboardScreen: View {
     @Environment(\.appTheme) private var theme
@@ -15,12 +15,12 @@ struct DashboardScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject var store = DashboardStore()
     let lang = DashboardStrings.self
-    @State private var selectedEntry: Entry? = nil
-    @State private var selectedMetric: BodyMetric? = nil
+    @State private var selectedEntry: Entry?
+    @State private var selectedMetric: BodyMetric?
     @State private var selectedMetricInfo: String?
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
     @State private var suppressOutsideCancel = false
-    @State private var metricInfoEntry: Entry? = nil
+    @State private var metricInfoEntry: Entry?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -87,8 +87,11 @@ struct DashboardScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             if store.state.ui.isEditMode {
-                DispatchQueue.main.asyncAfter(deadline: .now() + WiggleAnimationConstants.wiggleRestartDelayAfterAppActive) {
-store.restartWiggleAnimations()
+                Task { @MainActor in
+                    try? await Task.sleep(
+                        nanoseconds: UInt64(WiggleAnimationConstants.wiggleRestartDelayAfterAppActive * 1_000_000_000)
+                    )
+                    store.restartWiggleAnimations()
                 }
             }
         }
@@ -165,26 +168,26 @@ store.restartWiggleAnimations()
     private func actionButtons() -> some View {
         VStack(alignment: .center, spacing: .spacingSM) {
             if store.state.ui.isEditMode {
-                ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
                     store.saveChanges()
                     store.resetDragState()
-                })
-                ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    store.showResetDashboardAlert()
-                })
-            } else {
-                ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                    store.toggleEditMode()
-                })
-                if store.hasGoalSet {
-                    ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
-                        tabViewModel.navigateToGoalSetting()
-                    })
                 }
-                ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading, action: {
+                ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
+                    store.showResetDashboardAlert()
+                }
+            } else {
+                ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
+                    store.toggleEditMode()
+                }
+                if store.hasGoalSet {
+                    ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
+                        tabViewModel.navigateToGoalSetting()
+                    }
+                }
+                ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
                     let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                     openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
-                })
+                }
             }
         }
         .padding(.bottom, .spacingLG)
@@ -204,12 +207,11 @@ store.restartWiggleAnimations()
     private func noEntrySection() -> some View {
         NoEntryView(
             title: nil,
-            description: DashboardStrings.noEntriesMessage,
-            onButtonTap: {
+            description: DashboardStrings.noEntriesMessage
+        ) {
                 tabViewModel.pendingSettingsNavigation = .addEditScales
                 tabViewModel.selectedTab = .settings
                 tabViewModel.settingsNavigationSourceTab = .dash
             }
-        )
     }
 }

@@ -5,27 +5,14 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// ViewModel specifically for the Month time period chart view
 /// Handles all month-specific chart logic, scrolling, and day-based data processing
 @MainActor
-final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
-    
-    static func == (lhs: MonthSectionViewModel, rhs: MonthSectionViewModel) -> Bool {
-        // Compare essential properties that affect rendering
-        lhs.timePeriod == rhs.timePeriod &&
-        lhs.selectedDate == rhs.selectedDate &&
-        lhs.showCrosshair == rhs.showCrosshair &&
-        lhs.scrollPosition == rhs.scrollPosition &&
-        lhs.isScrolling == rhs.isScrolling &&
-        lhs.yAxisDomain == rhs.yAxisDomain &&
-        lhs.yAxisTicks == rhs.yAxisTicks &&
-        lhs.chartFrame == rhs.chartFrame &&
-        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
-    }
+final class MonthSectionViewModel: BaseSectionViewModel {
     
     // MARK: - Period-specific properties
     override var timePeriod: TimePeriod {
@@ -46,12 +33,12 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
         return noon
     }
     
-
-    /// Month selection rules:
-    /// - Determine the current X-axis section [startTick, endTick) using Sunday month ticks.
-    /// - If there are chart points within this section, select the nearest point to the touch inside the section.
-    /// - If there are no points inside the section, select the section's start tick (e.g., Jul 8).
-    /// - Crosshair only shows when the touch is within [firstPoint, lastPoint].
+    // Month selection rules:
+    // - Determine the current X-axis section [startTick, endTick) using Sunday month ticks.
+    // - If there are chart points within this section, select the nearest point to the touch inside the section.
+    // - If there are no points inside the section, select the section's start tick (e.g., Jul 8).
+    // - Crosshair only shows when the touch is within [firstPoint, lastPoint].
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     override func handleChartSelection(at date: Date?) {
         guard let date = date else { return }
         guard dashboardStore != nil else { return }
@@ -123,7 +110,7 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
         }()
 
         // Candidates within the section
-        let candidates = effectiveDates.filter { d in d >= startTick && d < sectionEnd }
+        let candidates = effectiveDates.filter { date in date >= startTick && date < sectionEnd }
 
         if candidates.isEmpty {
             // No data in section → select the start tick
@@ -131,11 +118,11 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
             showCrosshair = true
         } else {
             // Pick the nearest candidate inside the section with deterministic tie-break (earlier first)
-            if let chosen = candidates.min(by: { a, b in
-                let da = abs(a.timeIntervalSince(clampedDate))
-                let db = abs(b.timeIntervalSince(clampedDate))
-                if da == db { return a < b }
-                return da < db
+            if let chosen = candidates.min(by: { first, second in
+                let firstDistance = abs(first.timeIntervalSince(clampedDate))
+                let secondDistance = abs(second.timeIntervalSince(clampedDate))
+                if firstDistance == secondDistance { return first < second }
+                return firstDistance < secondDistance
             }) {
                 selectedDate = chosen
                 showCrosshair = true

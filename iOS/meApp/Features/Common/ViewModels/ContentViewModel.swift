@@ -3,8 +3,8 @@
 //
 // Created by Lakshmi Priya on 13/06/25.
 
-import Foundation
 import Combine
+import Foundation
 import UserNotifications
 
 @MainActor
@@ -16,10 +16,10 @@ final class ContentViewModel: ObservableObject {
     @Published var entries: [Entry] = []
 
     @Injector var accountService: AccountService
-    @Injector var scaleService : ScaleService
-    @Injector var feedService : FeedService
-    @Injector var entryService : EntryService
-    @Injector var logger : LoggerService
+    @Injector var scaleService: ScaleService
+    @Injector var feedService: FeedService
+    @Injector var entryService: EntryService
+    @Injector var logger: LoggerService
     @Injector var bluetoothService: BluetoothService
     @Injector var accountFlagService: AccountFlagService
 
@@ -51,7 +51,7 @@ final class ContentViewModel: ObservableObject {
             .store(in: &cancellables)
 
         entryService.entrySaved
-            .sink { [weak self] entry in
+            .sink { [weak self] _ in
                 guard let self else { return }
                 Task {
                     await self.checkAccountFlagsAfterEntry()
@@ -71,6 +71,8 @@ final class ContentViewModel: ObservableObject {
                     try await accountService.refreshAccount()
                     logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
                 } catch {
+// swiftlint:disable:next line_length
+                    logger.log(level: .error, tag: "ContentViewModel", message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
                     logger.log(level: .error, tag: tag, message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
                 }
                 
@@ -134,6 +136,7 @@ final class ContentViewModel: ObservableObject {
 
     // MARK: - Data Loading (if logged in)
     private func loadData() async {
+// swiftlint:disable:next unused_optional_binding
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData()

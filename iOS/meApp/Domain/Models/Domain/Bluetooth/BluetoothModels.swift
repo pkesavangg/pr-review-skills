@@ -20,7 +20,6 @@ public struct WifiConfig: Sendable, Equatable {
     public let ssid: String
     public let password: String?
 
-
     public init(ssid: String, password: String? = nil) {
         self.ssid = ssid
         self.password = password
@@ -69,13 +68,12 @@ public enum DeviceSettingValue: Sendable, Equatable {
 
   public func toGGBTSettingValue() -> GGBTSettingValue {
         switch self {
-        case .bool(let b): return .bool(b)
-        case .int(let i): return .int(i)
-        case .string(let s): return .string(s)
+        case .bool(let boolValue): return .bool(boolValue)
+        case .int(let intValue): return .int(intValue)
+        case .string(let stringValue): return .string(stringValue)
         }
     }
 }
-
 
 /// Enumeration describing which data set should be cleared on the scale.
 public enum DeviceClearType: String, Sendable, CaseIterable {
@@ -283,11 +281,11 @@ public enum UserDeletionResponse: String, Sendable, Codable, Equatable, CaseIter
 
 /// Scale type enumeration
 public enum BluetoothScaleType: String, Sendable, CaseIterable {
-    case bluetooth = "bluetooth"
-    case bluetoothScale = "bluetoothScale"
-    case lcbt = "lcbt"
-    case lcbtScale = "lcbtScale"
-    case btWifiR4 = "btWifiR4"
+    case bluetooth
+    case bluetoothScale
+    case lcbt
+    case lcbtScale
+    case btWifiR4
 }
 
 /// Unified device discovery event
@@ -318,21 +316,14 @@ public enum BluetoothScaleType: String, Sendable, CaseIterable {
 ///     }
 ///     .store(in: &cancellables)
 /// ```
-// NOTE: @unchecked Sendable because Device is @Model (not thread-safe).
-// This is safe ONLY because all creation (BluetoothService) and consumption
-// (stores/ViewModels) happen on @MainActor. Do NOT send across actor boundaries.
+/// NOTE: `@unchecked Sendable` because `Device` is `@Model` (not thread-safe).
+/// This is safe only because all creation (BluetoothService) and consumption
+/// (stores/ViewModels) happen on `@MainActor`. Do not send across actor boundaries.
 public struct DeviceDiscoveryEvent: @unchecked Sendable, Equatable {
     let device: Device
     let deviceInfo: ScaleItemInfo
     let protocolType: ProtocolType
     let isNew: Bool
-
-    init(device: Device, deviceInfo: ScaleItemInfo, protocolType: ProtocolType, isNew: Bool) {
-        self.device = device
-        self.deviceInfo = deviceInfo
-        self.protocolType = protocolType
-        self.isNew = isNew
-    }
 }
 
 /// Represents firmware update status
@@ -361,7 +352,3 @@ public struct DeviceLogEntry {
     /// The log content
     let log: String?
 }
-
-
-
-

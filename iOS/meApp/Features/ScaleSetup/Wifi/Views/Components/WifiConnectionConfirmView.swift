@@ -168,9 +168,8 @@ struct WifiConnectionConfirmView: View {
             text: wifiSetuplang.seeSomethingElse,
             type: .inlineTextPrimary,
             size: .large,
-            isDisabled: false,
-            action: { onClickButton?() }
-        )
+            isDisabled: false
+        ) { onClickButton?() }
     }
     
     private func handleCompleteSelection() {

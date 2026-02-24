@@ -1,7 +1,7 @@
 import Foundation
-import Network
 import GGBluetoothSwiftPackage
 import ggWifiScalePackage
+import Network
 
 @MainActor
 final class WifiScaleService: WifiScaleServiceProtocol {
@@ -16,14 +16,14 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     init() {}
     
     /// Fetches the scale token for WiFi scale operations.
-    /// - Parameter r: Optional parameter for the scale token request.
+    /// - Parameter request: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.
-    func getScaleToken(r: String?) async throws -> WifiScaleTokenResponse {
-        logger.log(level: .info, tag: tag, message: "WiFi scale token request started. requestType=\(r ?? "nil")")
+    func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse {
+        logger.log(level: .info, tag: tag, message: "getScaleToken called with request: \(request ?? "nil")")
         
         do {
-            let result = try await apiRepo.getScaleToken(r: r)
-            logger.log(level: .info, tag: tag, message: "WiFi scale token request succeeded")
+            let result = try await apiRepo.getScaleToken(request: request)
+            logger.log(level: .info, tag: tag, message: "Successfully fetched scale token")
             return result
         } catch {
             logger.log(level: .error, tag: tag, message: "WiFi scale token request failed: \(error.localizedDescription)")
@@ -79,6 +79,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// - Parameters:
     ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
     func smartConnect(_ info: WifiSetupInfo) async throws {
+        
         let config = makeConfig(from: info)
         logger.log(level: .info, tag: tag, message: "SmartConfig WiFi setup started")
         do {
@@ -109,6 +110,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// - Parameters:
     ///   - info:       The setup parameters (SSID, password, token, etc.).
     func apMode(_ info: WifiSetupInfo) async throws {
+        
         let config = makeConfig(from: info)
         logger.log(level: .info, tag: tag, message: "AP-mode WiFi setup started")
         do {

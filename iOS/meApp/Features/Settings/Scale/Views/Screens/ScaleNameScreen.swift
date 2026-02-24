@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ScaleNameScreen : View {
+struct ScaleNameScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.appTheme) private var theme
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
@@ -16,7 +16,7 @@ struct ScaleNameScreen : View {
     let commonLang = CommonStrings.self
 
     @State private var editedName: String = ""
-    @State private var focusedField: FocusField? = nil
+    @State private var focusedField: FocusField?
     @StateObject private var scaleNameForm = ScaleNameForm()
     @StateObject private var viewModel: ScaleNameViewModel
 
@@ -35,16 +35,16 @@ struct ScaleNameScreen : View {
                         text: commonLang.save.uppercased(),
                         type: .inlineTextPrimary,
                         size: .small,
-                        isDisabled: !scaleNameForm.isValid || editedName.trimmingCharacters(in: .whitespacesAndNewlines) == (scale.nickname ?? scale.deviceName ?? ""),
-                        action: {
+// swiftlint:disable:next line_length
+                        isDisabled: !scaleNameForm.isValid || editedName.trimmingCharacters(in: .whitespacesAndNewlines) == (scale.nickname ?? scale.deviceName ?? "")
+                    ) {
                             Task {
                                 let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
                                 await viewModel.saveScaleName(trimmedName) {
                                     router.navigateBack()
                                 }
                             }
-                        }
-                    ))
+                        })
                 },
                 onLeadingTap: {
                     Task {
@@ -99,7 +99,6 @@ struct ScaleNameScreen : View {
         }
     }
 }
-
 
 #Preview{
     let mockDevice = Device(

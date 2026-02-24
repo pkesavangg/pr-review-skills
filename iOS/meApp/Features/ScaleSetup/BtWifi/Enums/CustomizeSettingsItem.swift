@@ -7,10 +7,10 @@
 
 /// Settings items for the customize settings screen
 enum CustomizeSettingsItem: String, CaseIterable {
-    case dashboardMetrics = "dashboardMetrics"
-    case scaleMetrics = "scaleMetrics"
-    case scaleModes = "scaleModes"
-    case userName = "userName"
+    case dashboardMetrics
+    case scaleMetrics
+    case scaleModes
+    case userName
     
     var title: String {
         switch self {

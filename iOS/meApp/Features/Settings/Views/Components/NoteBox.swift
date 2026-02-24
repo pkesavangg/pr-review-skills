@@ -42,6 +42,7 @@ struct NoteBox<Content: View>: View {
         }
         NoteBox {
             VStack(alignment: .leading, spacing: 2) {
+// swiftlint:disable:next line_length
                 Text("**A user has Weight Only Mode on** Only weight and BMI will be collected. You can temporarily enable All Body Metrics and/or review users from scale settings.")
                     .fontOpenSans(.body3)
                     .foregroundColor(.black)
@@ -56,7 +57,8 @@ struct NoteBox<Content: View>: View {
             }
         }
         NoteBox {
-            Text("**NOTE:** If you have certain medical conditions — like implanted medical devices or you are pregnant — you should not use All Body Metrics Mode without first consulting your doctor.")
+            Text("**NOTE:** If you have certain medical conditions — like implanted medical devices or you are pregnant — " +
+                "you should not use All Body Metrics Mode without first consulting your doctor.")
                 .fontOpenSans(.body3)
                 .foregroundColor(.black)
         }

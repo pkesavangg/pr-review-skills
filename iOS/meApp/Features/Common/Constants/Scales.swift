@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 23/06/25.
 //
 
-
 /// Scales data for the scale list in the help screen
 let SCALES: [ScaleItemInfo] = [
     // AppSync series

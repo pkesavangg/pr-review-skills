@@ -17,6 +17,7 @@ struct ScaleSettingsScreen: View {
     @State private var isSoftwareUpdatePresented = false
     
     private static let titleTruncationLength = 25
+    private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     private var truncatedTitle: String {
         let title = scale.nickname ?? scale.deviceName ?? ""
         return title.count > Self.titleTruncationLength ? "\(title.prefix(Self.titleTruncationLength))…" : title
@@ -58,7 +59,7 @@ struct ScaleSettingsScreen: View {
                 deleteScaleSection()
                 
                 // Other section should be enable for the R4 scales and if canEnableTestingFeatures flag is true
-                if scaleType == .bluetoothR4  && AppConstants.canEnableTestingFeatures == true {
+                if scaleType == .bluetoothR4 && AppConstants.canEnableTestingFeatures == true {
                     othersSection()
                 }
             }
@@ -66,7 +67,7 @@ struct ScaleSettingsScreen: View {
             .scrollContentBackground(.hidden)
         }
         .inAppBrowser(
-            url: scaleSettingsStore.productURL ?? URL(string: AppConstants.Product.baseURL)!,
+            url: scaleSettingsStore.productURL ?? fallbackProductURL,
             isPresented: $scaleSettingsStore.showProductBrowser
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
@@ -91,7 +92,7 @@ struct ScaleSettingsScreen: View {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let sku = scale.sku ?? ""
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-        let imagePath = SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? AppAssets.scale0412 // fallback
+        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath ?? AppAssets.scale0412 // fallback
         return Image(imagePath)
             .resizable()
             .scaledToFit()
@@ -123,13 +124,12 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.deleteScale,
                     chevronType: .none,
-                    isDestructive: true,
-                    onTap: {
+                    isDestructive: true
+                ) {
                         scaleSettingsStore.handleScaleDelete(scaleId: scale.id) {
                             router.navigateBack()
                         }
                     }
-                )
             )
         }
         .listRowInsets()
@@ -143,39 +143,37 @@ struct ScaleSettingsScreen: View {
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.mode,
-                        value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only",
-                        onTap: {
+                        value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only"
+                    ) {
+// swiftlint:disable:next line_length
                             router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers))
                         }
-                    )
                 )
                 ActionListItemView(
                     config: ActionListItemConfig(
-                        title: lang.displayMetrics,
-                        onTap: { router.navigate(to: .displayMetrics(scale: scale, isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers)) }
-                    )
+                        title: lang.displayMetrics
+// swiftlint:disable:next line_length
+                    ) { router.navigate(to: .displayMetrics(scale: scale, isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers)) }
                 )
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.users,
                         value: scaleSettingsStore.displayName,
                         chevronType: scaleSettingsStore.isFetchingUsersList ? .loading : .right,
-                        isDisabled: !scaleSettingsStore.isDeviceConnected,
-                        onTap: {
+                        isDisabled: !scaleSettingsStore.isDeviceConnected
+                    ) {
                             Task {
                                 let fetchedUsersList = await scaleSettingsStore.ensureUsersList()
                                 router.navigate(to: .users(scale: scale, usersList: fetchedUsersList))
                             }
                         }
-                    )
                 )
             }
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.scaleName,
-                    value: scale.nickname ?? scale.deviceName,
-                    onTap: { router.navigate(to: .scaleNameScreen(scale: scale)) }
-                )
+                    value: scale.nickname ?? scale.deviceName
+                ) { router.navigate(to: .scaleNameScreen(scale: scale)) }
             )
             
             if let userNumber = scale.userNumber, scaleType != .bluetoothR4 {
@@ -192,25 +190,23 @@ struct ScaleSettingsScreen: View {
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.bluetooth,
-                    value: scaleSettingsStore.isDeviceConnected ? ScaleBluetoothStrings.connected : ScaleBluetoothStrings.notConnected,
-                    onTap: { router.navigate(to: .scaleBluetoothScreen(scale: scale)) }
-                )
+                    value: scaleSettingsStore.isDeviceConnected ? ScaleBluetoothStrings.connected : ScaleBluetoothStrings.notConnected
+                ) { router.navigate(to: .scaleBluetoothScreen(scale: scale)) }
             )
             if scaleType == .bluetoothR4 {
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.wifi,
                         value: scaleSettingsStore.connectedWifiSSID,
-                        isDisabled: !scaleSettingsStore.isDeviceConnected,
-                        onTap: { router.navigate(to: .wifi(scale: scale)) }
-                    )
+                        isDisabled: !scaleSettingsStore.isDeviceConnected
+                    ) { router.navigate(to: .wifi(scale: scale)) }
                 )
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.wifiMacAddress,
                         chevronType: scaleSettingsStore.isFetchingWifiMacAddress ? .loading : .right,
-                        isDisabled: !scaleSettingsStore.isDeviceConnected,
-                        onTap: {
+                        isDisabled: !scaleSettingsStore.isDeviceConnected
+                    ) {
                             Task {
                                 if let mac = scaleSettingsStore.wifiMacAddress {
                                     router.navigate(to: .wifiMacAddress(macAddress: mac))
@@ -222,7 +218,6 @@ struct ScaleSettingsScreen: View {
                                 }
                             }
                         }
-                    )
                 )
             }
         }
@@ -237,9 +232,8 @@ struct ScaleSettingsScreen: View {
                 config: ActionListItemConfig(
                     title: lang.scaleType,
                     value: scaleType.displayName,
-                    chevronType: .none,
-                    onTap: {}
-                )
+                    chevronType: .none
+                ) {}
             )
             
             ActionListItemView(
@@ -259,9 +253,8 @@ struct ScaleSettingsScreen: View {
             )
             ActionListItemView(
                 config: ActionListItemConfig(
-                    title: lang.productGuide,
-                    onTap: { scaleSettingsStore.openProductGuide(for: DeviceHelper.mapSkuForDisplay(scale.sku ?? "")) }
-                )
+                    title: lang.productGuide
+                ) { scaleSettingsStore.openProductGuide(for: DeviceHelper.mapSkuForDisplay(scale.sku ?? "")) }
             )
         }
         .listRowInsets()
@@ -283,8 +276,8 @@ struct ScaleSettingsScreen: View {
                     title: lang.softwareUpdate,
                     isDisabled: !(((scale.metaData?.latestVersion ?? "") != (scaleSettingsStore.firmwareVersion ?? ""))
                                    && scaleSettingsStore.isDeviceConnected
-                                   && scaleSettingsStore.isWifiConfigured),
-                    onTap: {
+                                   && scaleSettingsStore.isWifiConfigured)
+                ) {
                         let canProceed = ((scale.metaData?.latestVersion ?? "") != (scaleSettingsStore.firmwareVersion ?? ""))
                             && scaleSettingsStore.isDeviceConnected
                             && scaleSettingsStore.isWifiConfigured
@@ -292,13 +285,11 @@ struct ScaleSettingsScreen: View {
                             isSoftwareUpdatePresented = true
                         }
                     }
-                )
             )
             ActionListItemView(
                 config: ActionListItemConfig(
-                    title: lang.otherSettings,
-                    onTap: { isOtherSettingsSheetPresented = true }
-                )
+                    title: lang.otherSettings
+                ) { isOtherSettingsSheetPresented = true }
             )
             ActionListItemView(
                 config: ActionListItemConfig(
@@ -307,11 +298,12 @@ struct ScaleSettingsScreen: View {
                     toggleBinding: Binding(get: { scaleSettingsStore.isImpedanceSwitchedOnForSession }, set: { val in
                         scaleSettingsStore.isImpedanceSwitchedOnForSession = val
                     }),
-                    isDisabled: !scaleSettingsStore.isDeviceConnected || scaleSettingsStore.isScaleImpedanceSwitchedOn == true || (scaleSettingsStore.scale.r4ScalePreference?.shouldMeasureImpedance == false),
-                    onTap: {
+                    isDisabled: !scaleSettingsStore.isDeviceConnected ||
+                        scaleSettingsStore.isScaleImpedanceSwitchedOn == true ||
+                        (scaleSettingsStore.scale.r4ScalePreference?.shouldMeasureImpedance == false)
+                ) {
                         Task { await scaleSettingsStore.setSessionImpedance(scaleSettingsStore.isImpedanceSwitchedOnForSession) }
                     }
-                )
             )
         }
         .listRowInsets()

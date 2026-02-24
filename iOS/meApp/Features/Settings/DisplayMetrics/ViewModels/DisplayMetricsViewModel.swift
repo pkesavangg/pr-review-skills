@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 // MARK: - DisplayMetricsViewModel
 @MainActor
@@ -164,6 +164,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         
         // Then, add disabled metrics in their original ScaleMetrics order
         for metric in availableMetrics {
+// swiftlint:disable:next for_where
             if !displayMetricsKeys.contains(metric.key) {
                 var disabledMetric = metric
                 disabledMetric.isEnabled = false
@@ -294,7 +295,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         hasChanges = true
         
         // Reorder on next run loop to ensure .moveDisabled() is updated first
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation {
                 self.metrics = ScaleMetricSetting.reorderOnToggle(items: self.metrics, key: key, isEnabled: isEnabled)
             }
@@ -317,13 +318,14 @@ final class DisplayMetricsViewModel: ObservableObject {
         hasChanges = true
         
         // Reorder on next run loop to ensure .moveDisabled() is updated first
-        DispatchQueue.main.async {
+        Task { @MainActor in
             withAnimation {
                 self.progressMetrics = ScaleMetricSetting.reorderOnToggle(items: self.progressMetrics, key: key, isEnabled: isEnabled)
             }
         }
     }
     
+// swiftlint:disable:next function_body_length
     func saveDisplayMetrics() async {
         // Step 1: Read @Model synchronously on MainActor, extract to DTO
         refreshScale()
@@ -353,7 +355,7 @@ final class DisplayMetricsViewModel: ObservableObject {
                 var updatedDisplayMetrics = dto.displayMetrics
 
                 // Check if BMI is enabled in the UI
-                let isBMIEnabled = metrics.first(where: { $0.key == "bmi" })?.isEnabled ?? false
+                let isBMIEnabled = metrics.first { $0.key == "bmi" }?.isEnabled ?? false
 
                 if isBMIEnabled {
                     // Add BMI if not already present
@@ -392,7 +394,7 @@ final class DisplayMetricsViewModel: ObservableObject {
                 guard let freshPreference = scale.r4ScalePreference else { return }
                 let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
                 switch result {
-                case .success(_):
+                case .success:
                     logger.log(level: .info, tag: tag, message: "Scale metrics updated successfully via Bluetooth")
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to update scale via Bluetooth: \(error.localizedDescription)")

@@ -76,9 +76,9 @@ struct ScaleDiscoveredSheetStrings {
 
 struct WeightOnlyModeAlertStrings {
     static let title = "A User has Weight Only Mode on"
+// swiftlint:disable:next line_length
     static let enableAllBodyMetrics = "You can enable All Body Metrics for one session. This will temporarily disable Weight Only mode, and all body metrics will be collected."
 }
-
 
 /// Constants for toast messages used in the app
 struct ToastStrings {
@@ -87,6 +87,7 @@ struct ToastStrings {
     static let networkError = "Network Error"
     static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
     static let somethingWentWrong = "Something went wrong. Please try again. If the problem continues, contact customer service."
+// swiftlint:disable:next line_length
     static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
     static let emailInUse = "Email address is already in use"
     static let errorCreatingAccount = "Error creating account."
@@ -173,6 +174,7 @@ struct HKIntegrationHealthAccessStrings {
     static let notConnected = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integrate Apple Health",
+// swiftlint:disable:next line_length
         description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
         buttonTitle: "CONNECT"
     )
@@ -180,6 +182,7 @@ struct HKIntegrationHealthAccessStrings {
     static let permissionsAllowed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsAllowedSS,
         title: "Integrate Apple Health",
+// swiftlint:disable:next line_length
         description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
         buttonTitle: "CONNECT"
     )
@@ -198,6 +201,7 @@ struct HKIntegrationHealthAccessStrings {
     static let integrationFailed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integration Failed",
+// swiftlint:disable:next line_length
         description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. Then, come back to Weight Gurus and finish connecting.",
         buttonTitle: "OPEN APPLE HEALTH"
     )
@@ -205,6 +209,7 @@ struct HKIntegrationHealthAccessStrings {
     static let userConflict = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsAllowedSS,
         title: "User Conflict",
+// swiftlint:disable:next line_length
         description: "Another user has already connected to Apple Health on this device. Please ask them to log in to their account and disconnect the integration.",
         buttonTitle: "EXIT"
     )
@@ -225,7 +230,6 @@ struct HKIntegrationModalStrings {
         )
     )
 
-
     static let finishAdding = HKIntegrationModalContent(
         imageName: AppAssets.hkLogoLarge,
         title: "Finish Adding Apple Health",
@@ -242,8 +246,6 @@ struct HKIntegrationModalStrings {
         secondaryButtonTitle: nil
     )
 }
-
-
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
@@ -268,7 +270,7 @@ struct FormErrorMessages {
     static let maxWeightLb = "value should be less than 999 lbs"
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
-    static let maxValue = {(value: Int) in "value should be less than \(value)"}
+    static let maxValue = { (value: Int) in "value should be less than \(value)" }
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
     static let modelNumberInvalid = "model number invalid"
@@ -322,7 +324,8 @@ struct InputFieldLabels {
     static let metabolicAge = "metabolic age (yrs)"
 }
 
-/// Constants for Alert strings used in the app
+// Constants for Alert strings used in the app
+// swiftlint:disable:next type_body_length
 struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
@@ -579,26 +582,31 @@ struct AlertStrings {
         static let yes = "YES"
     }
 
-    struct knownScaleDiscoveredAlert {
+    struct KnownScaleDiscoveredAlert {
         static let title = "Known Scale Discovered"
-        static let message = "Weight Gurus sees a scale that is already set up. If you are trying to set up a second scale, make sure only one is turned on at a time."
+        static let message = "Weight Gurus sees a scale that is already set up. " +
+            "If you are trying to set up a second scale, make sure only one is turned on at a time."
         static let exitButton = "Exit"
     }
 
     struct PermissionAlerts {
         // MARK: - Bluetooth
         static let bluetoothDisabledTitle = "To turn on Bluetooth"
+// swiftlint:disable:next line_length
         static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n4. Tap Allow New Connections\n5. Return to this app"
         static let bluetoothAuthDisabledTitle = "Bluetooth Access is Disabled"
         static let bluetoothAuthDisabledMessage = "To sync with your device, please enable Bluetooth access."
 
         // MARK: - Location
         static let locationDisabledTitle = "To turn on Location Services"
+// swiftlint:disable:next line_length
         static let locationDisabledMessage = "1. Open your iPhone Settings\n2. Tap Privacy & Security\n3. Tap Location Settings\n4. Toggle Location Services on\n5. Return to this app"
         static let locationAuthTitle = "Weight Gurus needs location permissions."
-        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
+        static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. " +
+            "On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
         static let locationWhyTitle = "Why are we asking your location permission?"
-        static let locationWhyMessage = "iOS requires location permission to connect with nearby Bluetooth devices. We don't track or store your location—it's just an Apple requirement for device setup."
+        static let locationWhyMessage = "iOS requires location permission to connect with nearby Bluetooth devices. " +
+            "We don't track or store your location—it's just an Apple requirement for device setup."
 
         // MARK: - WiFi
         static let wifiDisabledTitle = "To turn on Wi-Fi"
@@ -606,10 +614,12 @@ struct AlertStrings {
 
         // MARK: - Camera
         static let cameraDisabledTitle = "You have not given permission to access camera!"
+// swiftlint:disable:next line_length
         static let cameraDisabledMessage = "You will not be able to pair or sync with your App sync scale. Please enable it from your app permissions."
 
         // MARK: - Notification
         static let notificationDisabledTitle = "Notifications are disabled!"
+// swiftlint:disable:next line_length
         static let notificationDisabledMessage = "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
     }
 
@@ -652,7 +662,8 @@ struct AlertStrings {
 
     struct PermissionDisabledAlert {
         static let title = "Unable to scan devices!"
-        static let message = "One or more required permissions or device services may be disabled. Visit the App Permissions screen in the Settings tab to check and enable the app’s permissions access."
+        static let message = "One or more required permissions or device services may be disabled. " +
+            "Visit the App Permissions screen in the Settings tab to check and enable the app's permissions access."
         static let dismissButton = "DISMISS"
         static let appPermissionButton = "APP PERMISSION"
     }
@@ -685,6 +696,7 @@ struct AlertStrings {
     }
     struct ReconnectDeviceAlert {
         static let header = "Scale is at Its User Limit"
+// swiftlint:disable:next line_length
         static let message = "Your connection was deactivated by another user. Reconnect now or delete the scale from your account by visiting scale settings."
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
@@ -699,6 +711,7 @@ struct AlertStrings {
     
     struct UpdatesPendingAlert {
         static let title = "Updates Pending..."
+// swiftlint:disable:next line_length
         static let message = "Scale settings can't be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
         static let okButton = "OK"
     }
@@ -729,7 +742,7 @@ struct LoaderStrings {
 }
 
 struct URLStrings {
-    static let baseUrl =  "https://greatergoods.com/"
+    static let baseUrl = "https://greatergoods.com/"
 }
 
 /// Constants for legal text used in the app
@@ -756,8 +769,6 @@ struct FirmwareUpdateStrings {
     static let updateTriggered = "Firmware update requested"
     static let date = "Date"
 }
-
-
 
 /// Constants for App Assets used in the app
 struct AppAssets {
@@ -870,6 +881,7 @@ struct AppAssets {
     // MARK: - WiFi series
     static let scale0384 = "0384"
     static let scale0385 = "0385"
+    // swiftlint:disable:next identifier_name
     static let scale0396_0397 = "0396_0397" // Wi-Fi Smart Scale (0396 & 0397 share artwork)
 
     // MARK: - Bluetooth wifi series
@@ -891,7 +903,6 @@ struct AppAssets {
     static let accuCheckTickLarge = "accuCheckTickLarge"
     static let accuCheckTickLargeDark = "accuCheckTickLargeDark"
 
-    
     // MARK: - Error Code Images
     /// Generates error code image asset names based on SKU, error code, filled state, and theme
     /// - Parameters:
@@ -997,5 +1008,5 @@ struct SetGoalCardStrings {
     static let title = "Set a Goal"
     static let description = "A great tool for tracking your journey that can always be changed in the app settings."
     static let buttonTitle = "LET'S DO IT"
+// swiftlint:disable:next file_length
 }
-

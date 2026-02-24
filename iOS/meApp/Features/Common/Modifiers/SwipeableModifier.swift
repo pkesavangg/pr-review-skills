@@ -6,7 +6,6 @@
 //
 import SwiftUI
 
-
 // MARK: - SwipeState
 /// The swipe gesture's current state
 enum SwipeState {
@@ -101,9 +100,10 @@ struct SwipeableModifier: ViewModifier {
         totalButtonWidth + 20 // Small padding for overscroll
     }
 
+// swiftlint:disable:next function_body_length
     func body(content: Content) -> some View {
         let dragGesture = DragGesture(minimumDistance: swipeMinimumDistance)
-            .updating($isDragging) { value, state, _ in
+            .updating($isDragging) { _, state, _ in
                 state = true
             }
             .onChanged(onDragChanged)
@@ -136,11 +136,13 @@ struct SwipeableModifier: ViewModifier {
                                     swipeState = .closed
                                     isSwipedOpen = false
                                 }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                Task { @MainActor in
+                                    try? await Task.sleep(nanoseconds: 100_000_000)
                                     button.action()
                                 }
                             }
                         }
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                     }) {
                         button.label()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -274,7 +276,7 @@ struct SwipeableModifier: ViewModifier {
 
         // Determine final state based on position and velocity
         let absOffset = abs(totalTranslation)
-        let _ = abs(gestureVelocity) > velocityThreshold
+        _ = abs(gestureVelocity) > velocityThreshold
         let velocityTowardsOpen = gestureVelocity < -velocityThreshold
         let velocityTowardsClose = gestureVelocity > velocityThreshold
 

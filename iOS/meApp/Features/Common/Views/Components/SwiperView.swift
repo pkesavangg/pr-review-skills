@@ -54,7 +54,6 @@ struct SwiperView<Content: View>: View {
     }
 }
 
-
 // MARK: - Swiper Testing View
 struct SwiperTestingView: View {
     @State private var selectedIndex: Int = 0
@@ -74,7 +73,6 @@ struct SwiperTestingView: View {
                     }
                 }
                 
-                
                 Button("Next") {
                     if selectedIndex < (views.count - 1) { // Assuming there are 3 pages
                         selectedIndex += 1
@@ -85,7 +83,6 @@ struct SwiperTestingView: View {
         }
     }
 }
-
 
 #Preview {
     SwiperTestingView()

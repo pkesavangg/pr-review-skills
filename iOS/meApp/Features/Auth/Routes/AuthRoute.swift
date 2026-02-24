@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-
 import SwiftUI
 
 // This file defines the authentication routes for the app.

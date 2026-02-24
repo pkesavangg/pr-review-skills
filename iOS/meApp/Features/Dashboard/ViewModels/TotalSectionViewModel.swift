@@ -5,27 +5,14 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// ViewModel specifically for the Total time period chart view
 /// Handles all total-specific chart logic, state management, and data processing
 @MainActor
-final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
-    
-    static func == (lhs: TotalSectionViewModel, rhs: TotalSectionViewModel) -> Bool {
-        // Compare essential properties that affect rendering
-        lhs.timePeriod == rhs.timePeriod &&
-        lhs.selectedDate == rhs.selectedDate &&
-        lhs.showCrosshair == rhs.showCrosshair &&
-        lhs.scrollPosition == rhs.scrollPosition &&
-        lhs.isScrolling == rhs.isScrolling &&
-        lhs.yAxisDomain == rhs.yAxisDomain &&
-        lhs.yAxisTicks == rhs.yAxisTicks &&
-        lhs.chartFrame == rhs.chartFrame &&
-        lhs.dashboardStore === rhs.dashboardStore  // Reference equality for store
-    }
+final class TotalSectionViewModel: BaseSectionViewModel {
     
     // MARK: - Constants
     
@@ -39,7 +26,6 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     override var timePeriod: TimePeriod {
         return .total
     }
-    
     
     override var hasXAxis: Bool {
         return false // Total period has no X-axis
@@ -180,8 +166,8 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
         let clampedDate = min(max(date, first), last)
 
         // Snap to the nearest real data point date
-        if let nearest = ops.min(by: { a, b in
-            abs(a.date.timeIntervalSince(clampedDate)) < abs(b.date.timeIntervalSince(clampedDate))
+        if let nearest = ops.min(by: { first, second in
+            abs(first.date.timeIntervalSince(clampedDate)) < abs(second.date.timeIntervalSince(clampedDate))
         }) {
             selectedDate = nearest.date
             showCrosshair = true
@@ -237,7 +223,6 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     func getPointSizeForTotal() -> CGFloat {
         return pointSize // Use the base point size
     }
-    
     
     // MARK: - No-op methods for total view (no scrolling)
     override func handleScrollPositionChange(_ newPosition: Date?) {

@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 
 /// Protocol defining data management operations
+@MainActor
 protocol DashboardDataManaging {
     func loadInitialData() async throws
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary]
@@ -16,8 +17,8 @@ protocol DashboardDataManaging {
     func clearCache() async throws
 }
 
-
 /// Protocol defining goal management operations
+@MainActor
 protocol DashboardGoalManaging {
     func loadGoalData() async throws
     func updateGoalProgress(currentWeight: Int) async throws
@@ -28,6 +29,7 @@ protocol DashboardGoalManaging {
 }
 
 /// Protocol defining graph management operations
+@MainActor
 protocol DashboardGraphManaging {
     func updateScrollPosition(to date: Date)
     func handleScrollPositionChange(_ newPosition: Date?)
@@ -36,7 +38,9 @@ protocol DashboardGraphManaging {
     func handleScrollPhaseChange(_ phase: ScrollPhase) async
     func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries]
     func updateSelectedPeriod(_ period: TimePeriod)
+// swiftlint:disable:next function_parameter_count
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale
+// swiftlint:disable:next function_parameter_count
     func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat)
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary]
     func ensureLatestEntriesVisible(from operations: [BathScaleWeightSummary])
@@ -48,9 +52,8 @@ protocol DashboardGraphManaging {
     func forceVisibleOperationsRecalculation()
 }
 
-
-
 /// Protocol defining metrics management operations
+@MainActor
 protocol DashboardMetricsManaging {
     func updateMetrics(with entry: Entry) async throws
     func updateMetrics(with selectedPoint: BathScaleWeightSummary) async throws
@@ -69,6 +72,7 @@ protocol DashboardMetricsManaging {
 }
 
 /// Protocol defining streak management operations
+@MainActor
 protocol DashboardStreakManaging {
     func refreshStreakData() async throws
     func updateStreakItems(with progress: Progress) async throws

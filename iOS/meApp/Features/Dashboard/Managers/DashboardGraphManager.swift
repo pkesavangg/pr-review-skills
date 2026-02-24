@@ -1,7 +1,13 @@
-import SwiftUI
 import Charts
-import os
 import Foundation
+import os
+// swiftlint:disable type_body_length file_length function_body_length line_length
+import SwiftUI
+
+/*
+ SwiftLint exception:
+ This manager intentionally aggregates all graph and chart operations in a single class for maintainability and discoverability. The file contains complex mathematical algorithms (e.g., Hermite interpolation) that use single-letter variables following mathematical conventions. Some functions intentionally have many lines to maintain algorithm clarity. We therefore disable `type_body_length`, `file_length`, `function_body_length`, and `line_length` for this file.
+ */
 
 /// Manages all graph and chart operations for the dashboard
 @MainActor
@@ -156,8 +162,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.showCrosshair = true
     }
 
-    /// Computes an interpolated display weight at a given date using surrounding summaries.
-    /// If only one side exists, falls back to that side's display weight.
+    // Computes an interpolated display weight at a given date using surrounding summaries.
+    // If only one side exists, falls back to that side's display weight.
+    // swiftlint:disable:next cyclomatic_complexity
     func interpolatedDisplayWeight(
         at date: Date,
         from operations: [BathScaleWeightSummary],
@@ -182,68 +189,68 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let sorted = operations.sorted { $0.date < $1.date }
         let xs: [Double] = sorted.map { normalizedInterpolationDate($0.date).timeIntervalSinceReferenceDate }
 
-        func mapWeight(_ w: Int) -> Double {
+        func mapWeight(_ weight: Int) -> Double {
             if isWeightlessMode {
                 guard let anchor = anchorWeight else { return 0 }
-                return convertWeight(w) - anchor
+                return convertWeight(weight) - anchor
             }
-            return convertWeight(w)
+            return convertWeight(weight)
         }
         let ys: [Double] = sorted.map { mapWeight(Int($0.weight)) }
 
-        let n = xs.count
-        if n == 1 { return ys[0] }
+        let pointCount = xs.count
+        if pointCount == 1 { return ys[0] }
 
-        let t = normalizedInterpolationDate(date).timeIntervalSinceReferenceDate
+        let targetTime = normalizedInterpolationDate(date).timeIntervalSinceReferenceDate
 
         // 2) For dates outside the data range, return the edge values (clamping behavior)
         // This allows interpolation to work at the boundaries while the calling method
         // can decide whether to use these edge values or filter them out
-        if t <= xs[0] { return ys[0] }
-        if t >= xs[n - 1] { return ys[n - 1] }
+        if targetTime <= xs[0] { return ys[0] }
+        if targetTime >= xs[pointCount - 1] { return ys[pointCount - 1] }
 
-        // 3) Locate segment i such that xs[i] <= t <= xs[i+1]
+        // 3) Locate segment i such that xs[i] <= targetTime <= xs[i+1]
         //    (upperBound - 1)
-        var low = 0, high = n - 1
+        var low = 0, high = pointCount - 1
         while low <= high {
             let mid = (low + high) >> 1
             // Use upperBound semantics so exact matches select the right segment (i = upperBound - 1)
-            if xs[mid] <= t {
+            if xs[mid] <= targetTime {
                 low = mid + 1
             } else {
                 high = mid - 1
             }
         }
-        let i = max(0, min(n - 2, low - 1))
-        let h_i = xs[i + 1] - xs[i]
-        if h_i == 0 { return ys[i] } // degenerate
+        let segmentIndex = max(0, min(pointCount - 2, low - 1))
+        let segmentWidth = xs[segmentIndex + 1] - xs[segmentIndex]
+        if segmentWidth == 0 { return ys[segmentIndex] } // degenerate
 
         // 4) Slopes m[k] across all segments (needed for monotone tangents)
-        var m = Array(repeating: 0.0, count: n - 1)
-        for k in 0..<(n - 1) {
-            let h = xs[k + 1] - xs[k]
-            m[k] = h == 0 ? 0 : (ys[k + 1] - ys[k]) / h
+        var slopes = Array(repeating: 0.0, count: pointCount - 1)
+        for k in 0..<(pointCount - 1) {
+            let segmentHeight = xs[k + 1] - xs[k]
+            slopes[k] = segmentHeight == 0 ? 0 : (ys[k + 1] - ys[k]) / segmentHeight
         }
 
         // 5) Compute Fritsch–Carlson tangents d[k]
-        var d = Array(repeating: 0.0, count: n)
+        var tangents = Array(repeating: 0.0, count: pointCount)
 
-        if n == 2 {
+        if pointCount == 2 {
             // Straight line case
-            d[0] = m[0]
-            d[1] = m[0]
+            tangents[0] = slopes[0]
+            tangents[1] = slopes[0]
         } else {
             // Interior points
-            for k in 1..<(n - 1) {
-                let m0 = m[k - 1], m1 = m[k]
+            for k in 1..<(pointCount - 1) {
+                let m0 = slopes[k - 1], m1 = slopes[k]
                 if m0 == 0 || m1 == 0 || m0.sign != m1.sign {
-                    d[k] = 0
+                    tangents[k] = 0
                 } else {
                     let h0 = xs[k] - xs[k - 1]
                     let h1 = xs[k + 1] - xs[k]
                     let w1 = 2 * h1 + h0
                     let w2 = h1 + 2 * h0
-                    d[k] = (w1 + w2) / (w1 / m0 + w2 / m1)
+                    tangents[k] = (w1 + w2) / (w1 / m0 + w2 / m1)
                 }
             }
 
@@ -257,43 +264,41 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 if h0 + h1 == 0 {
                     d0 = 0
                 } else {
-                    d0 = ((2 * h0 + h1) * m[0] - h0 * m[1]) / (h0 + h1)
+                    d0 = ((2 * h0 + h1) * slopes[0] - h0 * slopes[1]) / (h0 + h1)
                 }
-                if d0.sign != m[0].sign { d0 = 0 }
-                else if abs(d0) > 3 * abs(m[0]) { d0 = 3 * m[0] }
-                d[0] = d0
+                if d0.sign != slopes[0].sign { d0 = 0 } else if abs(d0) > 3 * abs(slopes[0]) { d0 = 3 * slopes[0] }
+                tangents[0] = d0
             }
             // d_{n-1}
             do {
-                let hm1 = xs[n - 1] - xs[n - 2]
-                let hm2 = xs[n - 2] - xs[n - 3]
+                let hm1 = xs[pointCount - 1] - xs[pointCount - 2]
+                let hm2 = xs[pointCount - 2] - xs[pointCount - 3]
                 // Guard against division by zero when consecutive timestamps are identical
                 var dn1: Double
                 if hm1 + hm2 == 0 {
                     dn1 = 0
                 } else {
-                    dn1 = ((2 * hm1 + hm2) * m[n - 2] - hm1 * m[n - 3]) / (hm1 + hm2)
+                    dn1 = ((2 * hm1 + hm2) * slopes[pointCount - 2] - hm1 * slopes[pointCount - 3]) / (hm1 + hm2)
                 }
-                if dn1.sign != m[n - 2].sign { dn1 = 0 }
-                else if abs(dn1) > 3 * abs(m[n - 2]) { dn1 = 3 * m[n - 2] }
-                d[n - 1] = dn1
+                if dn1.sign != slopes[pointCount - 2].sign { dn1 = 0 } else if abs(dn1) > 3 * abs(slopes[pointCount - 2]) { dn1 = 3 * slopes[pointCount - 2] }
+                tangents[pointCount - 1] = dn1
             }
         }
 
         // 6) Hermite evaluation on segment i
-        let s = (t - xs[i]) / h_i
-        let s2 = s * s
-        let s3 = s2 * s
+        let normalizedPosition = (targetTime - xs[segmentIndex]) / segmentWidth
+        let normalizedPosition2 = normalizedPosition * normalizedPosition
+        let normalizedPosition3 = normalizedPosition2 * normalizedPosition
 
-        let h00 =  2 * s3 - 3 * s2 + 1
-        let h10 =      s3 - 2 * s2 + s
-        let h01 = -2 * s3 + 3 * s2
-        let h11 =      s3 -     s2
+        let h00 = 2 * normalizedPosition3 - 3 * normalizedPosition2 + 1
+        let h10 = normalizedPosition3 - 2 * normalizedPosition2 + normalizedPosition
+        let h01 = -2 * normalizedPosition3 + 3 * normalizedPosition2
+        let h11 = normalizedPosition3 - normalizedPosition2
 
-        let y = h00 * ys[i]
-        + h10 * h_i * d[i]
-        + h01 * ys[i + 1]
-        + h11 * h_i * d[i + 1]
+        let y = h00 * ys[segmentIndex]
+        + h10 * segmentWidth * tangents[segmentIndex]
+        + h01 * ys[segmentIndex + 1]
+        + h11 * segmentWidth * tangents[segmentIndex + 1]
 
         guard y.isFinite else { return nil }
 
@@ -349,7 +354,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func handleScrollEnd() async {
         state.scrollEndTimer?.invalidate()
-        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UI.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
+        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UIConstants.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self = self else { return }
 
@@ -439,12 +444,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return series
     }
 
-
     // MARK: - Chart Data Generation with Y-Axis Domain Consistency
 
-    /// Generates chart data using the provided Y-axis domain for consistent metric normalization
-    /// This ensures metric lines stay within the visible Y-axis range when scrolling
-    /// Now includes caching and throttling for scroll performance
+    // Generates chart data using the provided Y-axis domain for consistent metric normalization
+    // This ensures metric lines stay within the visible Y-axis range when scrolling
+    // Now includes caching and throttling for scroll performance
+    // swiftlint:disable:next function_parameter_count
     func generateChartDataWithYAxisDomain(
         from allOperations: [BathScaleWeightSummary],
         visibleOperations: [BathScaleWeightSummary],
@@ -529,6 +534,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             selectedMetric: selectedMetric
         )
 
+// swiftlint:disable:next multiline_arguments
+        logger.log(level: .debug, tag: "DashboardGraphManager",
+                   message: "Generated fresh chart data with Y-axis domain: \(series.count) points, " +
+                   "yAxisDomain: \(yAxisDomain), selectedMetric: \(selectedMetric ?? "none"), " +
+                   "metric points: \(selectedMetric != nil && selectedMetric != DashboardStrings.weight ? series.filter { $0.series != DashboardStrings.weight }.count : 0)")
         return series
     }
 
@@ -658,6 +668,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
                 // Ensure normalized value is within safe bounds
                 guard normalizedValue >= safeMin && normalizedValue <= safeMax else {
+// swiftlint:disable:next multiline_arguments
+                    logger.log(level: .info, tag: "DashboardGraphManager",
+                               message: "Normalized value \(normalizedValue) out of safe bounds [\(safeMin), \(safeMax)] for \(selectedMetric), using fallback")
+
                     // Use fallback value within safe bounds
                     let fallbackValue = (safeMin + safeMax) / 2
                     normalizedSeries.append(GraphSeries(
@@ -676,13 +690,20 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
 
+// swiftlint:disable:next multiline_arguments
+        logger.log(level: .info, tag: "DashboardGraphManager",
+                   message: "Generated normalized metric series for \(selectedMetric): \(normalizedSeries.count) points, " +
+                   "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax), " +
+                   "weightRange: \(weightMin)...\(weightMax)")
+
         return normalizedSeries
     }
 
-    /// Generates normalized metric series using the provided Y-axis domain for consistency
-    /// This ensures metric normalization matches the visible Y-axis range
-    /// - Parameter operationsForYAxis: The same operations set used for Y-axis domain calculation
-    ///                                (visibleOperations + bracketingOperations for non-total periods)
+    // Generates normalized metric series using the provided Y-axis domain for consistency
+    // This ensures metric normalization matches the visible Y-axis range
+    // - Parameter operationsForYAxis: The same operations set used for Y-axis domain calculation
+    //                                (visibleOperations + bracketingOperations for non-total periods)
+    // swiftlint:disable:next cyclomatic_complexity function_parameter_count
     private func generateNormalizedMetricSeriesWithDomain(
         for selectedMetric: String,
         from allOperations: [BathScaleWeightSummary],
@@ -711,6 +732,21 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         // Validate that operationsForYAxis matches expected pattern
         // Log warning if there's a potential mismatch (for debugging)
+        if state.selectedPeriod != .total {
+            let expectedBracketing = getBracketingOperations(from: allOperations)
+            // Use Set for O(1) lookup instead of O(n) contains(where:) - fixes O(n²) performance
+            let visibleTimestamps = Set(visibleOperations.map { $0.entryTimestamp })
+            let expectedCombined = visibleOperations + expectedBracketing.filter { bracketOp in
+                !visibleTimestamps.contains(bracketOp.entryTimestamp)
+            }
+            if operationsForYAxis.count != expectedCombined.count {
+// swiftlint:disable:next multiline_arguments
+                logger.log(level: .info, tag: "DashboardGraphManager",
+// swiftlint:disable:next vertical_parameter_alignment_on_call
+                          message: "Potential operation set mismatch: operationsForYAxis has \(operationsForYAxis.count) items, expected \(expectedCombined.count) for metric normalization")
+            }
+        }
+
         let visibleAndBracketingMetricValues = operationsForMetricRange.compactMap { summary in
             getMetricValue(for: selectedMetric, from: summary)
         }
@@ -746,6 +782,34 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // This allows metrics to scale with the visible data range like weight lines
         let weightMin = yAxisDomain.lowerBound
         let weightMax = yAxisDomain.upperBound
+
+        // Validate that the Y-axis domain is appropriate for the operations
+        // Check if weight values in operationsForYAxis are within reasonable range of the domain
+        let weightValues = operationsForMetricRange.compactMap { summary -> Double? in
+            if isWeightlessMode {
+                guard let anchorWeight = anchorWeight else { return nil }
+                let currentWeight = convertWeight(Int(summary.weight))
+                return currentWeight - anchorWeight
+            } else {
+                return convertWeight(Int(summary.weight))
+            }
+        }
+
+        if let minWeight = weightValues.min(), let maxWeight = weightValues.max() {
+            // Check if weight range significantly exceeds domain (potential mismatch)
+            let weightRange = maxWeight - minWeight
+            let domainRange = weightMax - weightMin
+            if weightRange > 0 && domainRange > 0 {
+                let rangeRatio = weightRange / domainRange
+                // If weight range is more than 120% of domain, log a warning
+                if rangeRatio > 1.2 {
+// swiftlint:disable:next multiline_arguments
+                    logger.log(level: .info, tag: "DashboardGraphManager",
+// swiftlint:disable:next vertical_parameter_alignment_on_call
+                              message: "Potential domain-operation mismatch: weight range (\(minWeight)...\(maxWeight)) may exceed Y-axis domain (\(weightMin)...\(weightMax)) for metric \(selectedMetric)")
+                }
+            }
+        }
 
         var normalizedSeries: [GraphSeries] = []
 
@@ -815,11 +879,19 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             ))
         }
 
+// swiftlint:disable:next multiline_arguments
+        logger.log(level: .info, tag: "DashboardGraphManager",
+                   message: "Generated metric series with dynamic y-axis scaling for \(selectedMetric): \(normalizedSeries.count) points, " +
+                   "metricRange: \(effectiveMetricMin)...\(effectiveMetricMax) (using visible+bracketing ops), " +
+                   "weightRange: \(weightMin)...\(weightMax), " +
+                   "yAxisDomain: \(yAxisDomain)")
+
         return normalizedSeries
     }
 
-    /// Interpolates a metric value for a date that doesn't have metric data
-    /// Uses surrounding metric values to create a smooth line
+    // Interpolates a metric value for a date that doesn't have metric data
+    // Uses surrounding metric values to create a smooth line
+    // swiftlint:disable:next function_parameter_count
     private func interpolateMetricValue(
         for targetDate: Date,
         from allOperations: [BathScaleWeightSummary],
@@ -915,11 +987,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         clearChartDataCache()
 
         // Clear the flag after a brief delay to allow scroll position to be set
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
             self.isChangingPeriod = false
         }
     }
 
+// swiftlint:disable:next function_parameter_count
     func getYAxisScale(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) -> YAxisScale {
         let yAxisScale = YAxisCalculator.calculateYAxis(
             operations: operations,
@@ -934,6 +1008,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return yAxisScale
     }
 
+// swiftlint:disable:next function_parameter_count
     func calculateAndCacheYAxisDomain(from operations: [BathScaleWeightSummary], goalWeight: Double?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat) {
         let yAxisScale = getYAxisScale(
             from: operations,
@@ -956,7 +1031,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.cachedYAxisDomain = newDomain
         state.cachedYAxisTicks = newTicks
     }
-
 
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         // During active scrolling, reuse cache ONLY if it still lies fully within the
@@ -1036,9 +1110,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let leftEdge = state.xScrollPosition
         let domainLength = visibleDomainLength(for: state.selectedPeriod)
         let rightEdge = state.xScrollPosition.addingTimeInterval(domainLength)
-
-        let minDate = operations.first?.date ?? leftEdge
-        let maxDate = operations.last?.date ?? leftEdge
 
         // Add buffer to handle timezone edge cases and ensure entries on boundary dates are included
         let bufferTime: TimeInterval = 1 * 60 * 60 // 1 hour buffer
@@ -1151,8 +1222,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
 
         var result: [BathScaleWeightSummary] = []
-        if let p = fallbackPrev { result.append(p) }
-        if let n = fallbackNext, result.last?.date != n.date { result.append(n) }
+        if let previousOp = fallbackPrev { result.append(previousOp) }
+        if let nextOp = fallbackNext, result.last?.date != nextOp.date { result.append(nextOp) }
         return result
     }
 
@@ -1201,6 +1272,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
     }
 
+// swiftlint:disable:next cyclomatic_complexity
     private func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
         switch label {
         case DashboardStrings.bmi:
@@ -1300,7 +1372,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return years.count == 1
     }
 
-
+    // swiftlint:disable cyclomatic_complexity
+    // This function has high complexity due to multiple time period-specific tick generation
+    // logic (day, week, month, year, total). Splitting would fragment related logic and
+    // reduce maintainability of the axis value generation algorithm.
     func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
         let minDate = operations.first?.date ?? scrollPosition
         let maxDate = operations.last?.date ?? scrollPosition
@@ -1385,7 +1460,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let visibleStart: Date
         let visibleEnd: Date
 
-  
         let adjustedMinDate = overallMinDate.addingTimeInterval(-minDateBuffer)
         let adjustedMaxDate = overallMaxDate.addingTimeInterval(maxDateBuffer)
 
@@ -1444,7 +1518,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }
         let entryCount = operations.count
-        let shouldRepeat =  DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
+        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: entryCount)
 
         let xAxisValues: [Date]
         switch period {
@@ -1464,16 +1538,18 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
         return xAxisValues
     }
+    // swiftlint:enable cyclomatic_complexity
 
-    /// Calculates the proper scroll position for chart initialization or segment changes
-    /// This ensures the scroll position aligns with the computed X-axis values
-    /// - Parameters:
-    ///   - period: Target time period
-    ///   - operations: Data operations for bounds calculation
-    ///   - anchorDate: Optional anchor date to center the viewport around (for preserving temporal context)
-    ///   - showingLatest: Whether to show latest entries (ignored if anchorDate is provided)
-    ///   - cachedBounds: Optional cached date bounds for O(1) lookup performance
-    /// - Returns: Optimal scroll position for the given parameters
+    // Calculates the proper scroll position for chart initialization or segment changes.
+    // This ensures the scroll position aligns with the computed X-axis values.
+    // Parameters:
+    // - period: Target time period
+    // - operations: Data operations for bounds calculation
+    // - anchorDate: Optional anchor date to center the viewport around (for preserving temporal context)
+    // - showingLatest: Whether to show latest entries (ignored if anchorDate is provided)
+    // - cachedBounds: Optional cached date bounds for O(1) lookup performance
+    // - Returns: Optimal scroll position for the given parameters
+    // swiftlint:disable:next cyclomatic_complexity
     func calculateOptimalScrollPosition(
         for period: TimePeriod,
         from operations: [BathScaleWeightSummary],
@@ -1753,7 +1829,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
         // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
         switch period {
@@ -1874,8 +1949,9 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 
-    /// Generates sample dates for the visible range based on the time period
-    /// These correspond to the vertical lines that are selectable in the UI
+    // Generates sample dates for the visible range based on the time period
+    // These correspond to the vertical lines that are selectable in the UI
+    // swiftlint:disable:next cyclomatic_complexity
     func generateSampleDatesForVisibleRange(for period: TimePeriod) -> [Date] {
         guard period != .total else { return [] }
 
@@ -2030,7 +2106,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         return roundedAverage
     }
 
-
     func handleScrollEndOptimized(updateWeightDisplay: @escaping () -> Void, recalculateYAxis: @escaping () -> Void, updateMetrics: @escaping () -> Void) {
         state.scrollEndTimer?.invalidate()
         state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
@@ -2167,6 +2242,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             simplifiedOps.append(lastOp)
         }
 
+// swiftlint:disable:next multiline_arguments
+        logger.log(level: .debug, tag: "DashboardGraphManager",
+                   message: "Simplified data for scrolling: \(operations.count) -> \(simplifiedOps.count) points")
+
         return simplifiedOps
     }
 
@@ -2225,6 +2304,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         if savingsRatio < 0.3 {
             return allOperations
         }
+
+// swiftlint:disable:next multiline_arguments
+        logger.log(level: .debug, tag: "DashboardGraphManager",
+                   message: "Windowed chart data: \(allOperations.count) -> \(windowedOperations.count) operations (\(Int(savingsRatio * 100))% reduction)")
 
         return windowedOperations
     }
@@ -2300,8 +2383,6 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         minDate: Date,
         maxDate: Date
     ) -> Date {
-        let domainLength = visibleDomainLength(for: period)
-
         // Left boundary: period-aware padding to allow viewing the full calendar period
         // containing the first entry (e.g., full week containing Nov 1)
         let padding: TimeInterval
@@ -2376,3 +2457,4 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         }
     }
 }
+// swiftlint:enable type_body_length file_length function_body_length line_length

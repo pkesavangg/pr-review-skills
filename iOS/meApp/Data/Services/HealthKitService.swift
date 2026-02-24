@@ -1,10 +1,14 @@
+// This service intentionally aggregates all HealthKit integration logic
+// to maintain a single source of truth for health data synchronization.
+// Splitting would fragment the integration flow and reduce maintainability.
+
 import Foundation
-import HealthKit
 import ggHealthKitPackage
+import HealthKit
 import SwiftData
 
 @MainActor
-public final class HealthKitService: HealthKitServiceProtocol {
+public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:this type_body_length
     static let shared = HealthKitService()
     @Injector private var integrationService: IntegrationsService
     @Injector private var logger: LoggerService
@@ -62,7 +66,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
         }
         
         if turnOn {
-            let isAvailable = hkPackage.available();
+            let isAvailable = hkPackage.available()
             if !isAvailable {
                 logger.log(level: .error, tag: tag, message: "HealthKit integrate failed: HealthKit unavailable on device. accountId=\(accountId)")
                 return false
@@ -226,8 +230,8 @@ public final class HealthKitService: HealthKitServiceProtocol {
     
     /// Returns `true` if at least one HealthKit permission is granted.
     func checkAuthorizationStatus() -> Bool {
-        let approvedPermissionList = self.getApprovedPermissionList();
-        return approvedPermissionList.count > 0
+        let approvedPermissionList = self.getApprovedPermissionList()
+        return !approvedPermissionList.isEmpty
     }
     
     /// Lists the granted HealthKit permission identifiers.
@@ -472,7 +476,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     /// Determines which Apple Health integration modal (if any) should be presented on app launch.
     /// - Returns: A `HKIntegrationModalState` value (`.addIntegration` / `.finishAdding`) when a prompt
     ///            should be shown, or `nil` when no prompt is required.
-    public func shouldShowHKIntegrationModal() async throws -> HKIntegrationModalState? {
+    public func shouldShowHKIntegrationModal() async throws -> HKIntegrationModalState? { // swiftlint:disable:this cyclomatic_complexity function_body_length
         do {
             // ------------------------------------------------------------
             // 0️⃣  Out of Sync

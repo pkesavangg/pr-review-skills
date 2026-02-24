@@ -1,3 +1,4 @@
+import Combine
 //
 //  EditProfileScreen.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Kesavan Panchabakesan on 19/06/25.
 //
 import SwiftUI
-import Combine
 
 // MARK: - Edit Profile Screen
 /// A screen that allows users to edit basic profile details (first/last name, email, ZIP code, birthday).
@@ -16,7 +16,7 @@ struct EditProfileScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     
-    @State private var focusedField: FocusField? = nil
+    @State private var focusedField: FocusField?
     @State private var showDatePicker = false
     
     private let labels = InputFieldLabels.self
@@ -37,6 +37,7 @@ struct EditProfileScreen: View {
                         type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
+// swiftlint:disable:next line_length
                         isDisabled: (!settingsStore.editProfileForm.isDirty || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid)),
                     ) {
                         hideKeyboard()
@@ -145,7 +146,8 @@ struct EditProfileScreen: View {
                 // Otherwise ask for confirmation.
                 let confirmed = await settingsStore.confirmDiscardProfileChanges()
                 if confirmed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
                         router.navigateBack()
                         settingsStore.resetEditProfileForm()
                     }

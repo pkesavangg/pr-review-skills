@@ -28,15 +28,14 @@ enum ScaleType: String {
     }
 }
 
-
 enum ScaleSourceType: String {
-  case wifi = "wifi"
-  case espTouchWifi = "espTouchWifi"
-  case bluetooth = "bluetooth"
-  case lcbt = "lcbt"
+  case wifi
+  case espTouchWifi
+  case bluetooth
+  case lcbt
   case lcbtScale = "lcbt scale"
   case bluetoothScale = "bluetooth scale"
-  case btWifiR4 = "btWifiR4"
-  case appsync = "appsync"
+  case btWifiR4
+  case appsync
   case appsyncScale = "appsync scale"
 }

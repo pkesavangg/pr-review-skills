@@ -5,9 +5,9 @@
 //  Created by Lakshmi Priya on 16/06/25.
 //
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 // MARK: LoginStore
 /// This store is responsible for managing the Login process.
@@ -15,24 +15,24 @@ import Combine
 final class LoginStore: ObservableObject {
     @Published var showPassword: Bool = false
     @Published var isFormSubmitting: Bool = false
-    @Published var errorMessage: String? = nil
+    @Published var errorMessage: String?
     @Published var showResetPrompt: Bool = false
     @Published var resetEmail: String = ""
-    @Published var resetError: String? = nil
+    @Published var resetError: String?
     @Published var showSuccessToast: Bool = false
     @Published var successToastMessage: String = ""
     @Published var showErrorToast: Bool = false
     @Published var errorToastMessage: String = ""
     @Published var isLoading: Bool = false
-    @Published var alertData: AlertModel? = nil
-    @Published var loaderOverride: LoaderModel? = nil
+    @Published var alertData: AlertModel?
+    @Published var loaderOverride: LoaderModel?
     @Published var isPasswordResetAlertVisible: Bool = false
 
     // MARK: - In-App Browser State
     @Published var showPrivacyBrowser: Bool = false
     @Published var showTermsBrowser: Bool = false
     @Published var showHelpBrowser: Bool = false
-    @Published var browserURL: URL? = nil
+    @Published var browserURL: URL?
     
     // MARK: - Account Management State
     @Published var isFromAccountSwitching: Bool = false
@@ -64,7 +64,9 @@ final class LoginStore: ObservableObject {
 
     /// Main browser URL for the view
     var presentingBrowserURL: URL {
-        browserURL ?? URL(string: urlStrings.baseUrl)!
+        browserURL
+            ?? URL(string: urlStrings.baseUrl)
+            ?? URL(fileURLWithPath: "/")
     }
 
     // Navigation
@@ -283,7 +285,7 @@ final class LoginStore: ObservableObject {
 
     func openHelp() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView(){
+            presentedView: AnyView(HelpModalView {
                 self.notificationService.dismissModal()
             })
         ))

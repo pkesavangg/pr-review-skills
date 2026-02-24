@@ -5,8 +5,8 @@
 //  Created by Barath Chittibabu on 17/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// Reusable view that displays a single history entry with expandable metrics
 /// Supports selection, expansion, and swipe-to-delete functionality
@@ -20,7 +20,7 @@ struct HistoryEntryItem: View {
     let onTap: () -> Void
     let onDelete: () -> Void
     let onMetricTap: (Entry, BodyMetric) -> Void
-    var openItemID: Binding<UUID?>? = nil // Optional binding for swipeable open tracking
+    var openItemID: Binding<UUID?>? // Optional binding for swipeable open tracking
     
     // MARK: - Computed Properties
     
@@ -44,6 +44,7 @@ struct HistoryEntryItem: View {
                 
                 // Weight value
                 HStack(spacing: .spacingXS) {
+// swiftlint:disable:next line_length
                     Text(WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings))
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
@@ -95,15 +96,16 @@ struct HistoryEntryItem: View {
             if isExpanded, !entry.metricItems.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
-                        HistoryMetricItem(
-                            metric: BodyMetrics.config[item.metric]!,
-                            metricType: item.metric,
-                            value: item.value,
-                            index: index,
-                            size: entry.metricItems.count,
-                            onTap: { onMetricTap(entry, item.metric) }
-                        )
-                        .id("\(entry.id.uuidString)-metric-\(index)")
+                        if let metricConfig = BodyMetrics.config[item.metric] {
+                            HistoryMetricItem(
+                                metric: metricConfig,
+                                metricType: item.metric,
+                                value: item.value,
+                                index: index,
+                                size: entry.metricItems.count
+                            ) { onMetricTap(entry, item.metric) }
+                            .id("\(entry.id.uuidString)-metric-\(index)")
+                        }
                     }
                 }
                 .transition(.opacity)
@@ -117,7 +119,6 @@ struct HistoryEntryItem: View {
         }
     }
 }
-
 
 // MARK: - Preview
 
@@ -152,7 +153,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             unit: "kg"
         )
         
-        @State var openItemID: UUID? = nil
+        @State var openItemID: UUID?
         return VStack(spacing: .spacingMD) {
             HistoryEntryItem(
                 entry: entry,
@@ -179,6 +180,3 @@ struct HistoryEntryItem_Previews: PreviewProvider {
     }
 }
 #endif
-
-
-

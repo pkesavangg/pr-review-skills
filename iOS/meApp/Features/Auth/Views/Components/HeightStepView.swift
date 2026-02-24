@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-
 import SwiftUI
 
 // MARK: - HeightStepView
@@ -21,16 +20,15 @@ struct HeightStepView: View {
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
             
-            VStack(alignment: .leading, spacing: .spacingLG){
+            VStack(alignment: .leading, spacing: .spacingLG) {
                 // Height Selection Chip
                 ChipView(
                     text: signupStore.getFormattedHeight(),
                     style: .bordered,
-                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
-                    onTap: {
+                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
+                ) {
                         signupStore.showHeightPicker()
                     }
-                )
                 .padding(.top, .spacingLG)
                 
                 CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,
@@ -45,21 +43,21 @@ struct HeightStepView: View {
             options: signupStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
-            title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in
+            title: heightStepLang.pickerHeader
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { newValues in
                 signupStore.updateFormHeight(fromMetric: false, values: newValues)
             }
-        )
         .pickerSheet(
             isPresented: $signupStore.showHeightCmPicker,
             selectedValues: signupStore.selectedHeightCm,
             options: signupStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
-            title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in
+            title: heightStepLang.pickerHeader
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+        ) { newValues in
                 signupStore.updateFormHeight(fromMetric: true, values: newValues)
             }
-        )
     }
 }

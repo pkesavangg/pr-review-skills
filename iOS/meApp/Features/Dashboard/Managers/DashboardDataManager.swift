@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// Manages UI state and coordinates with EntryService for dashboard data operations
 @MainActor
@@ -59,11 +59,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Data Loading
     func loadInitialData() async throws {
+// swiftlint:disable:next line_length
+        logger.log(level: .debug, tag: "DashboardDataManager", message: "Dashboard data manager initialized - listening to EntryService published arrays")
     
         // No need to load data here - ContentView handles data loading
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
-
 
     // MARK: - Data Retrieval
 
@@ -157,6 +158,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         }
 
         guard entryServiceMonthlyCount == stateMonthlyCount else {
+// swiftlint:disable:next line_length
             throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)")
         }
 
@@ -198,6 +200,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
         )
 
+        logger.log(
+            level: .debug,
+            tag: "DashboardDataManager",
+            message: "Updated daily summaries cache: \(cachedSortedDailySummaries.count) items, " +
+                "bounds: \(cachedDailyMinDate?.description ?? "nil") to \(cachedDailyMaxDate?.description ?? "nil")"
+        )
     
     }
 
@@ -213,6 +221,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
         )
 
+        logger.log(
+            level: .debug,
+            tag: "DashboardDataManager",
+            message: "Updated monthly summaries cache: \(cachedSortedMonthlySummaries.count) items, " +
+                "bounds: \(cachedMonthlyMinDate?.description ?? "nil") to \(cachedMonthlyMaxDate?.description ?? "nil")"
+        )
     
     }
 

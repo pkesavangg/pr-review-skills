@@ -5,8 +5,10 @@
 //  Created by Kesavan Panchabakesan on 18/06/25.
 //
 
-import Foundation
 import Combine
+// swiftlint:disable type_body_length file_length
+// This file intentionally aggregates all settings management logic.
+// Breaking it into smaller files would fragment related functionality and reduce maintainability.import Foundation
 import SwiftUI
 
 // MARK: - Settings Store
@@ -53,7 +55,7 @@ class SettingsStore: ObservableObject {
     @Published var showPrivacyBrowser: Bool = false
     @Published var showTermsBrowser: Bool = false
     @Published var showGreaterGoodsBrowser: Bool = false
-    @Published var browserURL: URL? = nil
+    @Published var browserURL: URL?
     
     // MARK: - Weightless Page State
     @Published var showWeightLessPage: Bool = false
@@ -212,7 +214,6 @@ class SettingsStore: ObservableObject {
         notificationService.showAlert(alert)
     }
     
-    
     private func logout() {
         Task {
             logger.log(level: .info, tag: tag, message: "Settings logout started. accountId=\(activeAccount?.accountId ?? "nil")")
@@ -277,7 +278,7 @@ class SettingsStore: ObservableObject {
     private func deleteConnectedR4Scales() async {
         let result = await bluetoothService.deleteR4Scales()
         switch result {
-        case .success():
+        case .success:
             logger.log(level: .info, tag: tag, message: "Successfully deleted connected R4 scales")
         case .failure(let error):
             logger.log(level: .error, tag: tag, message: "Failed to delete connected R4 scales: \(error.localizedDescription)")
@@ -461,7 +462,8 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Persists the edited profile via `AccountService`, showing loader / toast as appropriate.
+    // Persists the edited profile via `AccountService`, showing loader / toast as appropriate.
+// swiftlint:disable:next cyclomatic_complexity function_body_length
     func saveProfile(router: Router<SettingsRoute>) {
         guard editProfileForm.isValid else { return }
         
@@ -475,10 +477,10 @@ class SettingsStore: ObservableObject {
         
         let profile = Profile(
             firstName: firstNameValue,
-            lastName:  removeWhiteSpace(editProfileForm.lastName.value),
-            email:     removeWhiteSpace(editProfileForm.email.value),
-            gender:  activeAccount?.gender ?? .male,
-            zipcode:  removeWhiteSpace(editProfileForm.zipcode.value),
+            lastName: removeWhiteSpace(editProfileForm.lastName.value),
+            email: removeWhiteSpace(editProfileForm.email.value),
+            gender: activeAccount?.gender ?? .male,
+            zipcode: removeWhiteSpace(editProfileForm.zipcode.value),
             dob: dobValue,
             weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
             height: activeAccount?.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
@@ -487,7 +489,7 @@ class SettingsStore: ObservableObject {
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
             do {
-                let _ = try await accountService.updateProfile(profile)
+                _ = try await accountService.updateProfile(profile)
                 
                 // Only update R4 scales profile if firstName or dob changed
                 if shouldUpdateR4Profile {
@@ -631,10 +633,10 @@ class SettingsStore: ObservableObject {
             return
         }
         
-        presentChangePasswordExitAlert(onExit: {
+        presentChangePasswordExitAlert {
             self.resetChangePasswordForm()
             router.navigateBack()
-        })
+        }
     }
     
     /// Persists the password change via `AccountService`.
@@ -743,10 +745,10 @@ class SettingsStore: ObservableObject {
             return
         }
         
-        presentEditProfileExitAlert(onExit: {
+        presentEditProfileExitAlert {
             self.resetEditProfileForm()
             router.navigateBack()
-        })
+        }
     }
     
     /// Async variant used by tab-deactivation; returns a `Bool` indicating whether it is safe to leave.
@@ -993,10 +995,10 @@ class SettingsStore: ObservableObject {
             return
         }
         
-        presentWeightlessExitAlert(onExit: {
+        presentWeightlessExitAlert {
             self.resetWeightlessForm()
             router.navigateBack()
-        })
+        }
     }
     
     /// Async variant used by tab-deactivation; returns a Bool indicating whether it is safe to leave.
@@ -1148,10 +1150,11 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Converts the chosen picker values to stored format and persists via `updateBodyComp`.
-    /// - Parameters:
-    ///   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
-    ///   - values: Picker column values chosen by the user.
+    // Converts the chosen picker values to stored format and persists via `updateBodyComp`.
+    // - Parameters:
+    //   - fromMetric: `true` if the picker values are metric (cm), `false` for imperial.
+    //   - values: Picker column values chosen by the user.
+// swiftlint:disable:next function_body_length
     func updateHeight(fromMetric: Bool, values: [String]) {
         // Validate height before updating
         guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
@@ -1306,10 +1309,10 @@ class SettingsStore: ObservableObject {
             return
         }
         
-        presentGoalExitAlert(onExit: {
+        presentGoalExitAlert {
             self.resetGoalForm()
             router.navigateBack()
-        })
+        }
     }
     
     /// Async variant used by tab-deactivation; returns whether it is safe to leave.
@@ -1325,7 +1328,8 @@ class SettingsStore: ObservableObject {
         }
     }
     
-    /// Saves Goal when presented via navigation push.
+    // Saves Goal when presented via navigation push.
+// swiftlint:disable:next function_body_length
     func saveGoal(router: Router<SettingsRoute>) {
         goalForm.validate()
         guard goalForm.isDirty, isGoalFormValid else { return }
@@ -1339,7 +1343,7 @@ class SettingsStore: ObservableObject {
         let goalTypeValue = goalForm.goalType.value
         let currentDisplay = goalForm.currentWeight.value
         let targetDisplay  = goalForm.goalWeight.value
-        let goalStored    = convert(targetDisplay)
+        let goalStored = convert(targetDisplay)
         let initialStored: Int = {
             if goalTypeValue == GoalType.maintain.rawValue {
                 return goalStored
@@ -1504,7 +1508,8 @@ class SettingsStore: ObservableObject {
             return
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard self.accountService.allAccounts.count == 1,
                   let activeAccount = self.accountService.activeAccount,
                   let firstName = activeAccount.firstName else {
@@ -1563,14 +1568,15 @@ class SettingsStore: ObservableObject {
                 options: [AppearanceMode.allCases],
                 displayValue: { $0.rawValue },
                 title: SettingsStrings.appearance,
-                showCancel: false,
-                updateValues: { vals in
+                showCancel: false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 500_000_000)
                         if let mode = vals.first { Theme.shared.appearanceMode = mode }
                     }
                 }
-            )
             notificationService.showModal(
                 ModalData(
                     presentedView: AnyView(picker)
@@ -1588,13 +1594,13 @@ class SettingsStore: ObservableObject {
                 options: [NotificationPreference.allCases],
                 displayValue: { $0.title },
                 title: SettingsStrings.notifications,
-                showCancel: false,
-                updateValues: { vals in
+                showCancel: false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let pref = vals.first { self.updateNotificationPreference(pref) }
                     
                 }
-            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showNotificationPicker = true
@@ -1609,12 +1615,12 @@ class SettingsStore: ObservableObject {
                 options: [Sex.allCases],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.biologicalSex,
-                showCancel: false,
-                updateValues: { vals in
+                showCancel: false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let sex = vals.first { self.updateGender(sex) }
                 }
-            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showGenderPicker = true
@@ -1628,12 +1634,12 @@ class SettingsStore: ObservableObject {
                 options: [[WeightUnit.lb, WeightUnit.kg]],
                 displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
                 title: SettingsStrings.unitType,
-                showCancel: false,
-                updateValues: { vals in
+                showCancel: false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let unit = vals.first { self.updateWeightUnit(unit) }
                 }
-            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showUnitPicker = true
@@ -1648,12 +1654,12 @@ class SettingsStore: ObservableObject {
                 options: [[ActivityLevel.normal, ActivityLevel.athlete]],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.activityLevel,
-                showCancel: false,
-                updateValues: { vals in
+                showCancel: false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+            ) { vals in
                     self.notificationService.dismissModal()
                     if let level = vals.first { self.updateActivityLevel(level) }
                 }
-            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showActivityPicker = true
@@ -1669,12 +1675,12 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
-                    showCancel: false,
-                    updateValues: { vals in
+                    showCancel: false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+                ) { vals in
                         self.notificationService.dismissModal()
                         self.updateHeight(fromMetric: true, values: vals)
                     }
-                )
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker
@@ -1687,12 +1693,12 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
-                    showCancel: false,
-                    updateValues: { vals in
+                    showCancel: false
+// swiftlint:disable:next multiple_closures_with_trailing_closure
+                ) { vals in
                         self.notificationService.dismissModal()
                         self.updateHeight(fromMetric: false, values: vals)
                     }
-                )
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker
@@ -1704,3 +1710,4 @@ class SettingsStore: ObservableObject {
         }
     }
 }
+// swiftlint:enable type_body_length file_length

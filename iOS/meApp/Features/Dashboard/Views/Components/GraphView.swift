@@ -13,8 +13,8 @@
 //  in week/month/year periods while maintaining correct positioning for total period.
 //
 
-import SwiftUI
 import Charts
+import SwiftUI
 
 struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
@@ -28,7 +28,7 @@ struct GraphView: View {
     @StateObject private var weekSectionViewModel = WeekSectionViewModel()
 
     // Reset chart identity on period switches to avoid stale animations/state
-    @State private var chartIdentity: UUID = UUID()
+    @State private var chartIdentity = UUID()
 
     // PERFORMANCE: Cancellable task for deferred period change configuration
     @State private var periodChangeTask: Task<Void, Never>?

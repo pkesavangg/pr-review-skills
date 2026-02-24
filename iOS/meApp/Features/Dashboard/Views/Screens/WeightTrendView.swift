@@ -14,7 +14,7 @@ struct WeightTrendView: View {
 
     var body: some View {
         ZStack {
-            VStack(alignment: .leading,spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 weightInfoSection(dashboardStore: dashboardStore)
                 GraphView(dashboardStore: dashboardStore)
                 SegmentedButtonView(

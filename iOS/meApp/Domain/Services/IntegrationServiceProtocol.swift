@@ -12,11 +12,9 @@ protocol IntegrationServiceProtocol {
     /// - Returns: The integration URL.
     func getIntegrationUrl(_ provider: IntegrationType) async throws -> String
 
-
     /// Removes a specific integration for the active account.
     /// - Parameter provider: The integration provider to remove.
     func removeIntegration(_ provider: IntegrationType) async throws
-
 
     // MARK: - Status/Utility
 

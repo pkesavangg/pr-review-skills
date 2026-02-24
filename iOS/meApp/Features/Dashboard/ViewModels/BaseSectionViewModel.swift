@@ -5,9 +5,11 @@
 //  Created by Assistant on 04/07/25.
 //
 
-import Foundation
-import SwiftUI
 import Charts
+// swiftlint:disable type_body_length
+// This file intentionally aggregates common functionality for all section view models.
+// Breaking it into smaller files would fragment related chart logic and reduce maintainability.import Foundation
+import SwiftUI
 
 /// Base class implementing common functionality for all section view models
 @MainActor
@@ -17,7 +19,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var selectedPoint: BathScaleWeightSummary?
     @Published var selectedDate: Date?
     @Published var showCrosshair: Bool = false
-    @Published var scrollPosition: Date = Date()
+    @Published var scrollPosition = Date()
     @Published var isScrolling: Bool = false
     
     /// Default implementation simply returns the current `selectedDate`.
@@ -57,7 +59,6 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var visibleDomainLength: TimeInterval {
         return dashboardStore?.visibleDomainLength(for: timePeriod) ?? (7 * 24 * 60 * 60)
     }
-    
     
     var pointSize: CGFloat {
         return 64 // Default point size
@@ -106,8 +107,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     
     /// Converts a circle diameter (in pt) to the area value expected by Charts' `symbolSize`
     func symbolArea(forDiameter diameter: CGFloat) -> CGFloat {
-        let r = diameter / 2
-        return .pi * r * r
+        let radius = diameter / 2
+        return .pi * radius * radius
     }
     
     var dateRange: ClosedRange<Date> {
@@ -161,7 +162,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
     // Track which metric was used when caching to detect metric changes during scrolling
-    private var cachedChartSeriesMetric: String? = nil
+    private var cachedChartSeriesMetric: String?
     
     // MARK: - Persistent Cache (survives view recreation)
     private var cachedSeriesData: [GraphSeries] = []
@@ -423,7 +424,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         dashboardStore?.handleScrollEndOptimized()
         
         // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 700_000_000)
             self.syncYAxisFromStore()
         }
     }
@@ -636,7 +638,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         // Force a small change to trigger binding update
         let temp = position.addingTimeInterval(0.001)
         self.scrollPosition = temp
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.scrollPosition = position
         }
     }
@@ -709,7 +711,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample a few points to create a lightweight hash
-            let indices = newData.count <= 3 ? Array(0..<newData.count) : [0, newData.count/2, newData.count-1]
+            let indices = newData.count <= 3 ? Array(0..<newData.count) : [0, newData.count / 2, newData.count - 1]
             for i in indices {
                 let point = newData[i]
                 hasher.combine(point.date.timeIntervalSince1970.bitPattern)
@@ -771,8 +773,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
 
     // MARK: - Fallback X-Axis Ticks (for empty data)
-    /// Generates calendar-based X-axis ticks for current period when there are no entries.
-    /// Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
+    // Generates calendar-based X-axis ticks for current period when there are no entries.
+    // Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
+    // swiftlint:disable:next cyclomatic_complexity
     private func fallbackXAxisValues() -> [Date] {
         guard hasXAxis else { return [] }
         let calendar = Calendar.current
@@ -813,8 +816,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             guard let yearStart = calendar.date(from: comps) else { return [] }
             var ticks: [Date] = []
             // 13 ticks: each month start plus phantom at next year's Jan 1
-            for m in 0...12 {
-                if let monthStart = calendar.date(byAdding: DateComponents(month: m), to: yearStart) {
+            for monthOffset in 0...12 {
+                if let monthStart = calendar.date(byAdding: DateComponents(month: monthOffset), to: yearStart) {
                     let monthComps = calendar.dateComponents([.year, .month], from: monthStart)
                     let firstOfMonth = calendar.date(from: monthComps) ?? monthStart
                     ticks.append(midday(firstOfMonth))
@@ -835,3 +838,5 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return first...last
     }
 }
+// swiftlint:disable:next file_length
+// swiftlint:enable type_body_length

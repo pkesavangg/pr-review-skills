@@ -13,7 +13,7 @@ struct MyAccountsScreen: View {
     @EnvironmentObject private var router: Router<SettingsRoute>
     @EnvironmentObject private var settingsStore: SettingsStore
     @StateObject private var accountsStore = AccountsStore()
-    @State private var openItemID: UUID? = nil
+    @State private var openItemID: UUID?
     
     private let strings = MyAccountsStrings.self
     var body: some View {
@@ -36,14 +36,14 @@ struct MyAccountsScreen: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .sheet(isPresented: $accountsStore.canShowLoginScreen, content: {
+        .sheet(isPresented: $accountsStore.canShowLoginScreen) {
             LoginScreen(prefilledEmail: accountsStore.emailForLogin, isFromAccountSwitching: true)
                 .interactiveDismissDisabled()
-        })
-        .sheet(isPresented: $accountsStore.canShowAccountSignupScreen, content: {
+        }
+        .sheet(isPresented: $accountsStore.canShowAccountSignupScreen) {
             SignupScreen(isFromAccountSwitching: true)
                 .interactiveDismissDisabled()
-        })
+        }
         .navigationBarBackButtonHidden(true)
     }
     

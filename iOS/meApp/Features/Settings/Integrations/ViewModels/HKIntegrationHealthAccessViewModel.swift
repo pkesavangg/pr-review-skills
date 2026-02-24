@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 26/06/25.
 //
 
-
 import SwiftUI
 
 @MainActor
@@ -15,15 +14,15 @@ class HKIntegrationHealthAccessViewModel: ObservableObject {
     
     func showHelpModal() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(HelpModalView(onClose: {
+            presentedView: AnyView(HelpModalView {
                 self.notificationService.dismissModal()
-            })),
+            }),
         ))
     }
     
     func showExitAlert(state: AppleHealthIntegrationState, dismiss: (() -> Void)?) {
         
-        if state == .integrationFailed || state == .userConflict || state == .integrationComplete  {
+        if state == .integrationFailed || state == .userConflict || state == .integrationComplete {
             dismiss?()
             return
         }

@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 struct ManualEntryStrings {
     static let title = "Manual Entry"
     static let bodyMetrics = "Body Metrics"

@@ -33,7 +33,7 @@ protocol DeviceServiceProtocol {
     /// - Parameter scale: The scale to create.
     /// - Parameter skipDuplicateCheck: Whether to skip checking for duplicates (default false).
     /// - Returns: The created Scale.
-    func createDevice(_ device: Device,  _ skipDuplicateCheck: Bool) async throws -> Device
+    func createDevice(_ device: Device, _ skipDuplicateCheck: Bool) async throws -> Device
 
     /// Edits a paired scale's properties (e.g., nickname).
     /// - Parameters:
@@ -42,12 +42,10 @@ protocol DeviceServiceProtocol {
     /// - Returns: The updated Scale.
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device
 
-
     /// Deletes a paired scale.
     /// - Parameters:
     ///   - scaleId: The ID of the scale to delete.
     ///   - showToast: Whether to show a toast/notification (optional, default true).
     func deleteDevice(_ deviceId: String, showToast: Bool) async throws
-
 
 }

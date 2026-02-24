@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
-
 import SwiftUI
 
 /// Encapsulates body-composition metrics coming from an AppSync scan.

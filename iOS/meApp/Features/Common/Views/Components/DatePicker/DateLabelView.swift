@@ -39,5 +39,5 @@ struct DateLabelView: View {
 }
 
 #Preview {
-    DateLabelView(date: Date(), onTap: {})
+    DateLabelView(date: Date()) {}
 }

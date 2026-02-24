@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 @MainActor
@@ -42,7 +42,6 @@ final class PermissionsStore: ObservableObject {
             }
             .store(in: &cancellables)
 
-            
         // Subscribe to real-time permission changes from PermissionsService
         // This ensures Bluetooth permissions are updated immediately when the user changes them
         // while already on the ScaleBluetoothScreen

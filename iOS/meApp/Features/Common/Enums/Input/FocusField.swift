@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-
 enum FocusField: Hashable {
     case firstName
     case lastName

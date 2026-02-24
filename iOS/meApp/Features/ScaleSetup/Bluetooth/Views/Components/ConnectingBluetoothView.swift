@@ -65,11 +65,10 @@ struct ConnectingBluetoothView: View {
                         text: lang.pairAgain,
                         type: .filledPrimary,
                         size: .large,
-                        isDisabled: false,
-                        action: {
+                        isDisabled: false
+                    ) {
                             pairAgain?()
                         }
-                    )
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.horizontal, .spacingSM)
                 default:
@@ -98,9 +97,8 @@ struct ConnectingBluetoothView: View {
 #Preview("Failure") {
     ConnectingBluetoothView(
         sku: "0376",
-        connectionState: .failure,
-        pairAgain: {
+        connectionState: .failure
+    ) {
             print("Pair again tapped")
         }
-    )
 }

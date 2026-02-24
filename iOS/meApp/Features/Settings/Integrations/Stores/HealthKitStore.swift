@@ -4,9 +4,9 @@
 //  Created by Kesavan Panchabakesan on 27/06/25.
 //
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 // MARK: - HealthKitStore
 /// Centralised observable store that wraps all HealthKit related workflows.
@@ -14,6 +14,7 @@ import Combine
 /// API (published properties + async helpers) so that screens only have to observe
 /// this object.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class HealthKitStore: ObservableObject {
     // MARK: - Published State
     /// Current on/off status of the Apple Health integration.
@@ -21,7 +22,7 @@ final class HealthKitStore: ObservableObject {
     
     @Published var isOutOfSync: Bool = false
     /// Current Health-access modal state. `nil` means no modal is visible.
-    @Published var activeState: AppleHealthIntegrationState? = nil
+    @Published var activeState: AppleHealthIntegrationState?
     
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
@@ -41,13 +42,13 @@ final class HealthKitStore: ObservableObject {
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
     /// the Apple Health app.
-    private var foregroundObserver: AnyCancellable? = nil
+    private var foregroundObserver: AnyCancellable?
     /// Tracks whether sync has already been performed in the current integration flow.
     /// Used to prevent showing sync prompt twice in the permission-denied flow.
     private var hasSyncedInCurrentFlow: Bool = false
     
     /// Tracks the previous activeState value to detect transitions between nil and non-nil
-    private var previousActiveState: AppleHealthIntegrationState? = nil
+    private var previousActiveState: AppleHealthIntegrationState?
     
     let alertLang = AlertStrings.self
     let tag = "HealthKitStore"
@@ -113,6 +114,7 @@ final class HealthKitStore: ObservableObject {
                     return
                 }
             } catch {
+// swiftlint:disable:next line_length
                 logger.log(level: .error, tag: tag, message: "Failed to check if HealthKit integration already exists", data: error.localizedDescription)
             }
             
@@ -218,7 +220,14 @@ final class HealthKitStore: ObservableObject {
                 // Don't refresh integration status here - wait until after sync completes
             } catch {
                 activeState = error is IntegrationError ? .userConflict : .integrationFailed
-                logger.log(level: .error, tag: tag, message: "HealthKit authorization flow error. mappedState=\(error is IntegrationError ? "userConflict" : "integrationFailed"), error=\(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: """
+                    HealthKit authorization flow error. mappedState=\(error is IntegrationError ? "userConflict" : "integrationFailed"), \
+                    error=\(error.localizedDescription)
+                    """
+                )
             }
         }
     }
@@ -253,7 +262,7 @@ final class HealthKitStore: ObservableObject {
         Task {
             dismissModal()
             
-            let hasEntries = (try? await entryService.getEntryCount() ?? 0) ?? 0 > 0
+            let hasEntries = ((try? await entryService.getEntryCount()) ?? 0) > 0
             if hasEntries {
                 logger.log(level: .info, tag: tag, message: "HealthKit integration requires history sync prompt")
                 presentSyncHistoryAlert()

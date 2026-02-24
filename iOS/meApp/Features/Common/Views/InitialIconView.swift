@@ -11,8 +11,8 @@ import SwiftUI
 struct InitialIconView: View {
     @Environment(\.appTheme) private var theme
     let character: String
-    var textColor: Color? = nil
-    var backgroundColor: Color? = nil
+    var textColor: Color?
+    var backgroundColor: Color?
     let size: CGFloat
     let style: InitialIconStyle
 

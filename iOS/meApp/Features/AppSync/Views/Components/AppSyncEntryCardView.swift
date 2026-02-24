@@ -66,7 +66,7 @@ struct AppSyncEntryCardView: View {
 
     // MARK: – Helpers
     private func metricText(label: String, value: String?) -> some View {
-        let displayValue = (value?.isEmpty == false) ? value! : "--"
+        let displayValue = (value?.isEmpty == false ? value : nil) ?? "--"
         return Text("\(label): \(displayValue)")
             .fontOpenSans(.body2)
             .foregroundColor(theme.textBody)

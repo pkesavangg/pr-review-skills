@@ -5,7 +5,7 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-//  MARK: - RoutingView
+// MARK: - RoutingView
 //  A reusable SwiftUI wrapper around NavigationStack for dynamic, stack-based routing.
 //  - `Root`: the root view.
 //  - `Routes`: destination views conforming to `Routable` (View + Hashable).

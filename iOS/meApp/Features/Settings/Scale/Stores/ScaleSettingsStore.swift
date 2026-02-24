@@ -4,11 +4,12 @@
 //
 //  Created by CursorAI on 05/08/25.
 
-import SwiftUI
-import SwiftData
 import Combine
+import SwiftData
+import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class ScaleSettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var scaleService: ScaleService
@@ -69,7 +70,7 @@ final class ScaleSettingsStore: ObservableObject {
     @Published var isDeviceConnected: Bool = false
     @Published var connectedWifiSSID: String?
     @Published var isWifiConfigured: Bool = false
-    @Published var wifiMacAddress: String? = nil
+    @Published var wifiMacAddress: String?
     @Published var isFetchingWifiMacAddress: Bool = false
     // Users list
     @Published var usersList: [DeviceUser] = []
@@ -77,8 +78,8 @@ final class ScaleSettingsStore: ObservableObject {
     private var usersListFetchTask: Task<[DeviceUser], Never>?
 
     // Additional device info
-    @Published var firmwareVersion: String? = nil
-    @Published var deviceInfo: DeviceInfo? = nil
+    @Published var firmwareVersion: String?
+    @Published var deviceInfo: DeviceInfo?
     @Published var isImpedanceSwitchedOnForSession: Bool = false
     @Published var isScaleImpedanceSwitchedOn: Bool = false
     @Published var isWeighOnlyModeEnabledByOthers: Bool = false
@@ -96,9 +97,8 @@ final class ScaleSettingsStore: ObservableObject {
 
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false
-    @Published var productURL: URL? = nil
+    @Published var productURL: URL?
     let disconnectableScaleTypes: Set<ScaleSourceType> = [.btWifiR4, .bluetooth, .bluetoothScale, .lcbt, .lcbtScale]
-
 
     // Strings
     private let loaderLang = LoaderStrings.self
@@ -283,7 +283,6 @@ final class ScaleSettingsStore: ObservableObject {
             return
         }
 
-
         // Extract to DTO before async boundary (R9) — avoid mutating @Model after await
         let broadcastId = scale.broadcastIdString ?? "unknown"
         let deviceId = scale.id
@@ -328,7 +327,7 @@ final class ScaleSettingsStore: ObservableObject {
         let result = await bluetoothService.getDeviceInfo(for: scale)
         switch result {
         case .success(let deviceInfo):
-            self.getConnectedWifiSSID();
+            self.getConnectedWifiSSID()
             // Update published properties
             self.firmwareVersion = deviceInfo.firmwareRevision
             self.deviceInfo = deviceInfo
@@ -372,7 +371,7 @@ final class ScaleSettingsStore: ObservableObject {
                 try? await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.scaleDeletionGraceTimeoutNs))
                 deletionTask.cancel()
                 // Disconnects only the scale being deleted and prevents it from reconnecting.
-                let _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
+                _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId)
             }
             try await scaleService.deleteDevice(scaleId, showToast: true)
             bluetoothService.isSetupInProgress = false
@@ -390,7 +389,7 @@ final class ScaleSettingsStore: ObservableObject {
     
     private func getConnectedWifiSSID() {
         Task {
-            if (getScaleType() == .btWifiR4 && isDeviceConnected == true && isWifiConfigured) {
+            if getScaleType() == .btWifiR4 && isDeviceConnected == true && isWifiConfigured {
                 let res = await bluetoothService.getConnectedWifiSSID(broadcastId: scale.broadcastIdString ?? "")
                 switch res {
                 case .success(let ssid):

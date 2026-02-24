@@ -16,7 +16,7 @@ struct LoginScreen: View {
     @State private var keyboardHeight: CGFloat = 0
     
     /// Optional e-mail address passed from previous screen to pre-populate the form
-    var prefilledEmail: String? = nil
+    var prefilledEmail: String?
     var isFromAccountSwitching: Bool = false
     
     let labels = InputFieldLabels.self
@@ -36,13 +36,14 @@ struct LoginScreen: View {
                     Button {
                         store.openHelp()
                     } label: {
-                        AppIconView(icon: AppAssets.helpCircle,  size: IconSize(width: 24, height: 24))
+                        AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
                             .foregroundColor(theme.statusIconPrimary)
                     }
                 },
                 onLeadingTap: {
                     store.handleExit(router: isFromAccountSwitching ? nil : router)
                 },
+// swiftlint:disable:next closure_spacing
                 onTrailingTap: {  },
                 canShowBorder: isFromAccountSwitching,
                 canShowPresentationIndicator: isFromAccountSwitching,
@@ -124,8 +125,8 @@ struct LoginScreen: View {
                                         text: commonLang.logIn,
                                         type: .filledPrimary,
                                         size: .large,
-                                        isDisabled: !store.isFormValid || store.isFormSubmitting,
-                                        action: {
+                                        isDisabled: !store.isFormValid || store.isFormSubmitting
+                                    ) {
                                             focusedField = nil
                                             store.loginForm.email.markAsDirty()
                                             store.loginForm.password.markAsDirty()
@@ -136,22 +137,19 @@ struct LoginScreen: View {
                                                 }
                                             }
                                         }
-                                    )
                                     
                                     ButtonView(
                                         text: lang.forgotPassword,
                                         type: .textPrimary,
                                         size: .small,
-                                        isDisabled: false,
-                                        action: {
+                                        isDisabled: false
+                                    ) {
                                             focusedField = nil
                                             store.showPasswordResetPrompt()
                                         }
-                                    )
                                 }
                             }
                             .padding(.top, .spacingLG)
-                            
                             
                             // Only show spacer when keyboard is not visible
                             if keyboardHeight == 0 {

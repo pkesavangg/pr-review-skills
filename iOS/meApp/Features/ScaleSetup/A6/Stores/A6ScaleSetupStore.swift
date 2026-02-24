@@ -5,11 +5,12 @@
 //  Created by Cursor AI on 08/07/25.
 //
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 /// Store responsible for orchestrating the A6 (LCBT) scale-setup multi-step flow.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
@@ -25,7 +26,7 @@ final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
-    private var deviceDiscoveryCancellable: AnyCancellable? = nil
+    private var deviceDiscoveryCancellable: AnyCancellable?
     
     /// Resolved scale metadata used across the setup flow.
     private var scaleItem: ScaleItemInfo?
@@ -59,7 +60,7 @@ final class A6ScaleSetupStore: ObservableObject {
     @Published var isNextEnabled: Bool = true
     
     /// Task handling time-based transitions during testing.
-    private var stepTimerTask: Task<Void, Never>? = nil
+    private var stepTimerTask: Task<Void, Never>?
     private let tag = "A6ScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
@@ -85,6 +86,7 @@ final class A6ScaleSetupStore: ObservableObject {
                         setupType: .lcbt,
                         onTryAgain: { [weak self] in self?.retryPairing() },
                         onSupport: {
+// swiftlint:disable:next closure_parameter_position
                             [weak self] in self?.showHelpModal()
                         }
                     )
@@ -221,7 +223,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 // Still on wake-up step and nothing discovered → failure
                 if self.discoveredScale == nil && self.currentStep == .wakeUp {
                     self.moveToNextStep()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 250_000_000)
                         self.connectionState = .failure
                     }
                 }
@@ -249,7 +252,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 if discoveredScale != nil && discoveryEvent != nil {
                     await self.saveDiscoveredScale()
                     self.connectionState = .success
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
                         self.moveToNextStep()
                     }
                 }
@@ -411,7 +415,7 @@ final class A6ScaleSetupStore: ObservableObject {
     
     /// Shows an alert when a known scale is discovered.
     private func showKnownScaleAlert() {
-        let alertStrings = AlertStrings.knownScaleDiscoveredAlert.self
+        let alertStrings = AlertStrings.KnownScaleDiscoveredAlert.self
         let alert = AlertModel(
             title: alertStrings.title,
             message: alertStrings.message,

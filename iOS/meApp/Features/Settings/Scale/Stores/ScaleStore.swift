@@ -5,9 +5,9 @@
 //  Created by Lakshmi Priya on 23/06/25.
 //
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 // MARK: - Scales Store
 /// A store to manage scale settings and actions, including details for a selected scale.
@@ -39,7 +39,6 @@ class ScaleStore: ObservableObject {
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
 
-    
     func handleDuplicateScale(sku: String, onPair: @escaping () -> Void) {
         let lang = alertLang.DeviceAlreadyPairedAlert.self
         let alert = AlertModel(
@@ -57,7 +56,7 @@ class ScaleStore: ObservableObject {
     
     func openHelp() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(ModelNumberHelpModalView(){
+            presentedView: AnyView(ModelNumberHelpModalView {
                 self.notificationService.dismissModal()
             }),
             backdropDismiss: true

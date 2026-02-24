@@ -5,8 +5,8 @@
 //  Created by Lakshmi Priya on 30/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 class WifiPasswordValidationForm: ObservableForm {
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
@@ -14,7 +14,7 @@ class WifiPasswordValidationForm: ObservableForm {
     
     var formDidChange: AnyPublisher<Void, Never> {
         Publishers.MergeMany([
-            password.$value.map { _ in () }.eraseToAnyPublisher(),
+            password.$value.map { _ in () }.eraseToAnyPublisher()
         ]).eraseToAnyPublisher()
     }
     
@@ -34,4 +34,3 @@ class WifiPasswordValidationForm: ObservableForm {
         return nil
     }
 }
-

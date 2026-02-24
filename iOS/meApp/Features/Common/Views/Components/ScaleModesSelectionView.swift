@@ -32,19 +32,18 @@ struct ScaleModesSelectionView: View {
                 segments: ScaleModes.allCases,
                 selectedSegment: $internalSelectedMode
             )
-            .onChange(of: internalSelectedMode) { oldValue, newValue in
+            .onChange(of: internalSelectedMode) { _, newValue in
                 onValueChanged(newValue, internalIsHeartRateEnabled)
             }
             
             Group {
                 if internalSelectedMode == .allBodyMetrics {
                     AllBodyMetricsContentView(
-                        isHeartRateOn: $internalIsHeartRateEnabled,
-                        onHeartRateChanged: { newValue in
+                        isHeartRateOn: $internalIsHeartRateEnabled
+                    ) { newValue in
                             internalIsHeartRateEnabled = newValue
                             onValueChanged(internalSelectedMode, newValue)
                         }
-                    )
                 } else if internalSelectedMode == .weightOnly {
                     WeightOnlyContentView()
                 }
@@ -57,11 +56,11 @@ struct ScaleModesSelectionView: View {
             internalSelectedMode = selectedMode
             internalIsHeartRateEnabled = isHeartRateEnabled
         }
-        .onChange(of: selectedMode) { oldValue, newValue in
+        .onChange(of: selectedMode) { _, newValue in
             // Update internal state when external state changes
             internalSelectedMode = newValue
         }
-        .onChange(of: isHeartRateEnabled) { oldValue, newValue in
+        .onChange(of: isHeartRateEnabled) { _, newValue in
             // Update internal state when external state changes
             internalIsHeartRateEnabled = newValue
         }

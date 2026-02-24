@@ -13,6 +13,7 @@ struct BtWifiScaleSetupStrings {
             isCustomizationSettings ? "Confirm User Name" : "A user with this name already exists on the scale."
         }
         static let subtitle: (Bool) -> String = { isCustomizationSettings in
+// swiftlint:disable:next line_length
             isCustomizationSettings ? "Change how your name appears on the scale." : "Choose a new user name to proceed. Or, if this is you, restore the existing account."
         }
         static let restoreAccountButton = "Restore account"
@@ -78,8 +79,12 @@ struct BtWifiScaleSetupStrings {
     
     struct AccuCheckInfoModalViewStrings {
         static let title = "What is AccuCheck?"
+// swiftlint:disable:next line_length
         static let description1 = "AccuCheck is Greater Goods’ proprietary algorithm, designed to provide the most accurate results possible every time you weigh in—down to .01 lb."
-        static let description2 = "Shortly after getting on the scale, you’ll see an orange light. This means that you’ve been weighed. When you get off the scale, you’ll see a green light. This means that AccuCheck has double checked its work, and your weight has been verified. Essentially, AccuCheck is a second set of eyes, every time."
+        static let description2 = "Shortly after getting on the scale, you'll see an orange light. " +
+            "This means that you've been weighed. When you get off the scale, you'll see a green light. " +
+            "This means that AccuCheck has double checked its work, and your weight has been verified. " +
+            "Essentially, AccuCheck is a second set of eyes, every time."
     }
     
     struct ScaleMetricsCustomizationViewStrings {

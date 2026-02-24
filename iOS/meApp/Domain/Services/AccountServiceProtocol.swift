@@ -3,7 +3,7 @@ import Foundation
 /// Protocol defining the service interface for managing user accounts, including authentication, state, updates, security, and sync/offline operations.
 @MainActor
 protocol AccountServiceProtocol {
-    var activeAccount : Account? { get set }
+    var activeAccount: Account? { get set }
     // MARK: - Account Lifecycle
 
     /// Registers a new user account with the given email, password, and profile.

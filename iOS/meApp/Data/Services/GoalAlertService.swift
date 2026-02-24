@@ -44,7 +44,7 @@ final class GoalAlertService: ObservableObject {
     /// Evaluates whether a goal-related alert should be presented based on the
     /// latest weight.
     /// - Parameter currentWeight: Latest weight value **in stored units** (tenths of lbs).
-    func showGoalMetMessage(currentWeight: Double) async {
+    func showGoalMetMessage(currentWeight: Double) async { // swiftlint:disable:this cyclomatic_complexity
         guard !isShowingAlert else { return }
         guard !bluetoothService.isSetupInProgress else { return }
         guard let account = accountService.activeAccount,

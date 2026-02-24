@@ -23,7 +23,11 @@ final class ScaleMigrationService {
     func isMigrationNeeded(for accountId: String) -> Bool {
         let scaleKey = MigrationKey.scaleKey(for: accountId)
         let hasScaleData = kvStorage.getValue(forKey: scaleKey) != nil
-        logger.log(level: .info, tag: tag, message: "Scale migration check for account: \(accountId), hasScaleData=\(hasScaleData)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Scale migration check for account \(accountId) with key: \(scaleKey) - Scale data exists: \(hasScaleData)"
+        )
         return hasScaleData
     }
     
@@ -47,14 +51,20 @@ final class ScaleMigrationService {
                 
                 // Save device to SwiftData
                 migratedDevices.append(device)
-                let _ = try await self.scaleService.createScaleInLocal(device)
+                _ = try await self.scaleService.createScaleInLocal(device)
+                logger.log(level: .info, tag: tag, message: "scaleRepository.createScale: \(ionicScale.id ?? "unknown") for account: \(device.sku ?? "unknown")")
+                logger.log(level: .info, tag: tag, message: "Successfully migrated scale: \(ionicScale.id ?? "unknown") for account: \(accountId)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to migrate scale \(ionicScale.id ?? "unknown"): \(error.localizedDescription)")
                 // Continue with other scales even if one fails
             }
         }
         await self.scaleService.syncAllScalesWithRemote()
-        logger.log(level: .info, tag: tag, message: "Scale migration completed successfully for account: \(accountId). Migrated \(migratedDevices.count) scales")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Scale migration completed successfully for account: \(accountId). Migrated \(migratedDevices.count) scales"
+        )
         
         return migratedDevices
     }
@@ -97,7 +107,12 @@ final class ScaleMigrationService {
     }
     
     /// Converts Ionic scale data to SwiftUI Device model
-    private func convertIonicScaleToDevice(_ ionicScale: IonicScaleData, accountId: String) throws -> Device {
+    private func convertIonicScaleToDevice( // swiftlint:disable:this function_body_length
+        _ ionicScale: IonicScaleData,
+        accountId: String
+    ) throws -> Device {
+        logger.log(level: .info, tag: tag, message: "Converting Ionic scale to Device model: \(ionicScale.id ?? "unknown")")
+        
         // Create BathScale
         let bathScale = BathScale(
             scaleType: ionicScale.type,
@@ -106,7 +121,7 @@ final class ScaleMigrationService {
         )
         
         // Create R4ScalePreference if it exists
-        var r4Preference: R4ScalePreference? = nil
+        var r4Preference: R4ScalePreference?
         if let preference = ionicScale.preference {
             r4Preference = R4ScalePreference(
                 scaleId: ionicScale.id ?? UUID().uuidString,
@@ -124,7 +139,7 @@ final class ScaleMigrationService {
         }
         
         // Create DeviceMetaData if latestVersion exists
-        var metaData: DeviceMetaData? = nil
+        var metaData: DeviceMetaData?
         if let latestVersion = ionicScale.latestVersion {
             metaData = DeviceMetaData(
                 latestVersion: latestVersion,
@@ -140,7 +155,7 @@ final class ScaleMigrationService {
             sku: ionicScale.sku,
             mac: ionicScale.mac,
             password: ionicScale.password.map { Int64($0) },
-            isSoftDeleted:  ionicScale.isDeleted, // Deletion status is preserved from Ionic data
+            isSoftDeleted: ionicScale.isDeleted, // Deletion status is preserved from Ionic data
             deviceName: ionicScale.name,
             deviceType: "scale",
             broadcastId: ionicScale.broadcastId.map { Int64($0) },

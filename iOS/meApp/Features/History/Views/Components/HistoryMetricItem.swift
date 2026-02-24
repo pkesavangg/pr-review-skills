@@ -21,7 +21,7 @@ struct HistoryMetricItem: View {
     let onTap: () -> Void
     
     // iOS 17 fix: Prevent tap spam
-    @State private var lastTapTime: Date = Date.distantPast
+    @State private var lastTapTime = Date.distantPast
    
     // MARK: - Computed Properties
     /// Returns the background color based on index and total size, matching Android implementation
@@ -47,11 +47,12 @@ struct HistoryMetricItem: View {
 
             // Value & Unit
             HStack(alignment: .firstTextBaseline, spacing: 0) {
-                if metric.preLabel != nil {
-                    Text(metric.preLabel!)
+                if let preLabel = metric.preLabel {
+                    Text(preLabel)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
+// swiftlint:disable:next line_length
               Text(BodyMetricsConvertor.convert(Double(metricType == .visceralFatLevel ? value / 10 : value), shouldCompose: metric.bodyCompositionRelated, wholeNumber: metric.isWholeNumber))
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
@@ -86,14 +87,15 @@ struct HistoryMetricItem: View {
 struct HistoryMetricItem_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 0) {
-            HistoryMetricItem(
-                metric: BodyMetrics.config[.bmi]!,
-                metricType: .bmi,
-                value: 73,
-                index: 0,
-                size: 1,
-                onTap: {}
-            )
+            if let bmiMetric = BodyMetrics.config[.bmi] {
+                HistoryMetricItem(
+                    metric: bmiMetric,
+                    metricType: .bmi,
+                    value: 73,
+                    index: 0,
+                    size: 1
+                ) {}
+            }
         }
         .themeable()
         .environmentObject(Theme.shared)

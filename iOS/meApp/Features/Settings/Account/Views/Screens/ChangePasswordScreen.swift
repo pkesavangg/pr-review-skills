@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 20/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - Change Password Screen
 /// A screen that allows users to change their account password.
@@ -18,7 +18,7 @@ struct ChangePasswordScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
 
-    @State private var focusedField: FocusField? = nil
+    @State private var focusedField: FocusField?
 
     private let labels = InputFieldLabels.self
     private let screenLang = ChangePasswordStrings.self
@@ -36,6 +36,7 @@ struct ChangePasswordScreen: View {
                         type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
+// swiftlint:disable:next line_length
                         isDisabled: (!settingsStore.changePasswordForm.isDirty || (settingsStore.changePasswordForm.isDirty && settingsStore.changePasswordForm.isInvalid))
                     ) {
                         hideKeyboard()
@@ -147,7 +148,8 @@ struct ChangePasswordScreen: View {
                 // Otherwise ask the user to confirm discarding changes.
                 let confirmed = await settingsStore.confirmDiscardPasswordChanges()
                 if confirmed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
                         router.navigateBack()
                         settingsStore.resetChangePasswordForm()
                     }

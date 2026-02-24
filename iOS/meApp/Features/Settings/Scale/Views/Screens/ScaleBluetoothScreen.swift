@@ -5,8 +5,8 @@
 //  Created by Lakshmi Priya on 26/06/25.
 //
 
-import SwiftUI
 import GGBluetoothSwiftPackage
+import SwiftUI
 
 struct ScaleBluetoothScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
@@ -61,7 +61,7 @@ struct ScaleBluetoothScreen: View {
     private func scaleIcon(for sku: String?) -> Image {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku ?? "")
-        let imagePath = SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? AppAssets.meLogoDark
+        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath ?? AppAssets.meLogoDark
         return Image(imagePath)
     }
 
@@ -85,15 +85,13 @@ struct ScaleBluetoothScreen: View {
         VStack(spacing: 0) {
             permissionRow(
                 title: lang.bluetoothAuthorized,
-                isEnabled: permissionsStore.isBluetoothAuthorized,
-                onTap: { permissionsStore.handleBluetoothAuthorizationTap() }
-            )
+                isEnabled: permissionsStore.isBluetoothAuthorized
+            ) { permissionsStore.handleBluetoothAuthorizationTap() }
             divider()
             permissionRow(
                 title: lang.bluetoothOn,
-                isEnabled: permissionsStore.isBluetoothOn,
-                onTap: { permissionsStore.handleBluetoothSwitchTap() }
-            )
+                isEnabled: permissionsStore.isBluetoothOn
+            ) { permissionsStore.handleBluetoothSwitchTap() }
         }
         .background(theme.backgroundPrimary)
         .cornerRadius(.spacingXS)

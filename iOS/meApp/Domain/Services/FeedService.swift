@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import ggInAppMessagingPackage
-import Combine
 import SwiftUI
 
 @MainActor
@@ -52,7 +52,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         ggIAMService
             .feedNotificationChanged
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] feedSettings in
+            .sink { [weak self] _ in
                 guard let self = self else { return }
                 let result = getFeedSettings()
                 self.feedSettingsChanged.send(result)
@@ -84,6 +84,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         let action = buildFeedAction(actionType: actionType, variationId: variationId)
         do {
             try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
+// swiftlint:disable:next line_length
             logger.log(level: .info, tag: tag, message: "Successfully updated feed item", data: ["feedPostId": feedItem.feedPostId, "actionType": actionType])
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
@@ -136,9 +137,9 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         }
         await MainActor.run {
             self.notificationService.showModal(ModalData(
-                presentedView: AnyView(IAMFeedModalView(feedItem: feedItem, onClose: {
+                presentedView: AnyView(IAMFeedModalView(feedItem: feedItem) {
                     self.notificationService.dismissModal()
-                })),
+                }),
                 backdropDismiss: true
             ))
         }

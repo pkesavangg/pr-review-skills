@@ -14,6 +14,7 @@ struct HelpScreen: View {
     private let lang = HelpScreenStrings.self
     private let commonLang = CommonStrings.self
     private var appVersion: String { "\(AppInfo.appVersion)" }
+    private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -47,11 +48,12 @@ struct HelpScreen: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarHidden(true)
         .inAppBrowser(
-            url: helpStore.productURL ?? URL(string: AppConstants.Product.baseURL)!,
+            url: helpStore.productURL ?? fallbackProductURL,
             isPresented: $helpStore.showProductBrowser
         )
         // Debug menu sheet uses store's flag
         .sheet(isPresented: $helpStore.showDebugMenu,
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                onDismiss: { helpStore.dismissDebugMenu() }) {
             TroubleShootingView()
                 .environmentObject(helpStore)
@@ -79,13 +81,13 @@ struct HelpScreen: View {
     private func digitalManualSection() -> some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
             Group {
-                HStack{
+                HStack {
                     Text(lang.digitalManualTitle)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                     
                     Spacer()
-                    Button(action:{
+                    Button(action: {
                         helpStore.openHelp()
                     }, label: {
                         AppIconView(icon: AppAssets.helpCircle)
@@ -98,7 +100,7 @@ struct HelpScreen: View {
             }
             .padding(.horizontal, .spacingSM)
             // Scale list with segmented filter
-            ScaleManualListView() { scale in
+            ScaleManualListView { scale in
                 helpStore.openProductManual(sku: scale.sku)
             }
             .padding(.top, .spacingSM)

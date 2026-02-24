@@ -3,24 +3,24 @@ import Foundation
 // MARK: - GoalType
 
 enum GoalType: String, Codable, Equatable {
-    case none = "none"
-    case gain = "gain"
-    case lose = "lose"
-    case maintain = "maintain"
+    case none
+    case gain
+    case lose
+    case maintain
 }
 
 // MARK: - ActivityLevel
 
 enum ActivityLevel: String, Codable, Equatable {
-    case normal = "normal"
-    case athlete = "athlete"
+    case normal
+    case athlete
 }
 
 // MARK: - Sex
 
 enum Sex: String, Codable, Equatable, CaseIterable {
-    case male = "male"
-    case female = "female"
+    case male
+    case female
     
     init?(rawInput: String?) {
         guard let input = rawInput?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
@@ -41,8 +41,8 @@ enum Sex: String, Codable, Equatable, CaseIterable {
 // MARK: - WeightUnit
 
 enum WeightUnit: String, Codable, Equatable {
-    case kg = "kg"
-    case lb = "lb"
+    case kg
+    case lb
 }
 
 // MARK: - DashboardType

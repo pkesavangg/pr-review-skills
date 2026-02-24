@@ -52,7 +52,7 @@ struct SignupScreen: View {
                     Button {
                         signupStore.showHelpModal()
                     } label: {
-                        AppIconView(icon: AppAssets.helpCircle,  size: IconSize(width: 24, height: 24))
+                        AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
                             .foregroundColor(theme.statusIconPrimary)
                     }
                 },
@@ -98,13 +98,12 @@ struct SignupScreen: View {
                        type: .textPrimary,
                        size: .small,
                        isDisabled: signupStore.currentStep == SignupStep.name,
-                       padding: true,
-                       action: {
+                       padding: true) {
                 withAnimation {
                     hideKeyboard()
                     signupStore.moveToPreviousStep()
                 }
-            })
+            }
             
             Spacer()
             
@@ -112,25 +111,24 @@ struct SignupScreen: View {
                        type: .filledPrimary,
                        size: .small,
                        isDisabled: !signupStore.isNextEnabled,
-                       customHorizontalPadding: signupStore.currentStep == SignupStep.password ? .spacingXS  : .spacingXS / 2,
-                       customVerticalPadding: .spacingXS / 4,
-                       action: {
+                       customHorizontalPadding: signupStore.currentStep == SignupStep.password ? .spacingXS : .spacingXS / 2,
+                       customVerticalPadding: .spacingXS / 4) {
                 withAnimation {
                     hideKeyboard()
                     signupStore.moveToNextStep()
                 }
-            })
+            }
         }
         .overlay {
             HStack {
                 Spacer()
                 if signupStore.currentStep == SignupStep.goal {
-                    ButtonView(text: commonLang.skip, type: .textTertiary, size: .small, isDisabled: false, action: {
+                    ButtonView(text: commonLang.skip, type: .textTertiary, size: .small, isDisabled: false) {
                         withAnimation {
                             hideKeyboard()
                             signupStore.handleSkip()
                         }
-                    })
+                    }
                 }
                 Spacer()
             }

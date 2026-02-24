@@ -1,6 +1,6 @@
-import SwiftUI
-import GGBluetoothSwiftPackage
 import Combine // Added for Combine
+import GGBluetoothSwiftPackage
+import SwiftUI
 // MARK: - PermissionsListViewModel
 /// Holds the current on/off state for each app permission. For now the values are hard-coded; real permission checks will be wired in later.
 @MainActor
@@ -19,7 +19,7 @@ class PermissionsListViewModel: ObservableObject {
     @Published var internetConnected: Bool = false
     @Published var wifiSwitchEnabled: Bool = false
     // Holds the currently connected Wi-Fi SSID (nil if not connected)
-    @Published var wifiNetworkName: String? = nil
+    @Published var wifiNetworkName: String?
     
     // Combine
     private var cancellables: Set<AnyCancellable> = []
@@ -77,7 +77,7 @@ class PermissionsListViewModel: ObservableObject {
         
         // Helper function to check if a permission state is granted
         func isGranted(_ state: GGPermissionState?) -> Bool {
-            return state ==  .ENABLED
+            return state == .ENABLED
         }
         
         bluetoothAuthorized     = isGranted(permissions[.BLUETOOTH])
@@ -86,7 +86,7 @@ class PermissionsListViewModel: ObservableObject {
         locationAuthorized      = isGranted(permissions[.LOCATION])
         cameraAuthorized        = isGranted(permissions[.CAMERA])
         notificationsEnabled    = isGranted(permissions[.NOTIFICATION])
-        wifiSwitchEnabled    = isGranted(permissions[.WIFI_SWITCH])
+        wifiSwitchEnabled = isGranted(permissions[.WIFI_SWITCH])
     }
     
     func handlePermission(_ type: PermissionType) {

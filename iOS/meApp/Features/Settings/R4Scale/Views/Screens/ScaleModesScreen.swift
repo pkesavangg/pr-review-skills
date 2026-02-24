@@ -5,8 +5,8 @@
 //  Created by Lakshmi Priya on 25/06/25.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 /// A screen that allows users to configure scale modes and settings.
 /// Supports both regular scale mode configuration and R4 scale setup workflows.
@@ -53,6 +53,7 @@ struct ScaleModesScreen: View {
                         if isR4ScaleSetup {
                             Button(action: {
                                 viewModel.openHelp()
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                             }) {
                                 Image(AppAssets.helpCircle)
                                     .accessibilityLabel("Help")
@@ -62,15 +63,14 @@ struct ScaleModesScreen: View {
                                 text: CommonStrings.save.uppercased(),
                                 type: .inlineTextPrimary,
                                 size: .small,
-                                isDisabled: !viewModel.hasModeChanges,
-                                action: {
+                                isDisabled: !viewModel.hasModeChanges
+                            ) {
                                     Task {
-                                        await viewModel.handleScaleModeSave() {
+                                        await viewModel.handleScaleModeSave {
                                             if isPresentedAsSheet { dismiss() } else { router.navigateBack() }
                                         }
                                     }
                                 }
-                            )
                             .accessibilityLabel("Save scale mode preferences")
                         }
                     }
@@ -110,7 +110,7 @@ struct ScaleModesScreen: View {
     private func weightOnlyInfo() -> some View {
         NoteBox {
             VStack(alignment: .leading, spacing: .spacingXS) {
-                HStack() {
+                HStack {
                     AppIconView(icon: AppAssets.weightOnlyMode, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                     
@@ -300,6 +300,7 @@ final class ScaleModesViewModel: ObservableObject {
         await performSaveOperation(onSuccess: onSuccess)
     }
     
+// swiftlint:disable:next function_body_length
     private func performSaveOperation(onSuccess: (() -> Void)? = nil) async {
         // Step 1: Read @Model synchronously on MainActor, extract to DTO
         refreshScale()
@@ -443,7 +444,7 @@ final class ScaleModesViewModel: ObservableObject {
     
     func openHelp() {
          notificationService.showModal(ModalData(
-            presentedView: AnyView(ModelNumberHelpModalView(){
+            presentedView: AnyView(ModelNumberHelpModalView {
                 self.notificationService.dismissModal()
             }),
             backdropDismiss: true
@@ -452,7 +453,7 @@ final class ScaleModesViewModel: ObservableObject {
     
     func openBIAModel() {
          notificationService.showModal(ModalData(
-            presentedView: AnyView(BIAInfoModalView(){
+            presentedView: AnyView(BIAInfoModalView {
                 self.notificationService.dismissModal()
             }),
             backdropDismiss: true

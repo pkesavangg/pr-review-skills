@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 23/06/25.
 //
 
-
 /// Enumeration representing the underlying connectivity/setup mechanism for a scale.
 enum ScaleSetupType: String {
     case bluetooth

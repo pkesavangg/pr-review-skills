@@ -1,3 +1,4 @@
+import Combine
 //
 //  UsersViewModel.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Kesavan Panchabakesan on 06/08/25.
 //
 import Foundation
-import Combine
 import SwiftData
 
 @MainActor
@@ -184,7 +184,7 @@ final class UsersViewModel: ObservableObject {
                 guard let freshPreference = scale.r4ScalePreference else { return }
                 let result = await bluetoothService.updateAccount(on: scale, preference: freshPreference)
                 switch result {
-                case .success(_):
+                case .success:
                     currentDeviceUser?.name = newName
                     notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userNameUpdated))
                     logger.log(level: .info, tag: tag, message: "User name updated successfully", data: ["scaleId": scale.id, "newName": newName])
@@ -228,6 +228,7 @@ final class UsersViewModel: ObservableObject {
                     let isBluetoothAuthorized = self.permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
                     let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
                     guard isBluetoothAuthorized && isBluetoothOn else {
+// swiftlint:disable:next line_length
                         self.logger.log(level: .info, tag: self.tag, message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast.")
                         self.notificationService.showToast(
                             ToastModel(
@@ -270,7 +271,7 @@ final class UsersViewModel: ObservableObject {
         let result = await bluetoothService.deleteUserByToken(broadcastId: broadcastId, token: userToken, disconnect: false)
         
         switch result {
-        case .success(_):
+        case .success:
             logger.log(level: .info, tag: tag, message: "User deleted successfully, reloading user list", data: ["userName": user.name])
             
             // Add a small delay to ensure the scale has processed the deletion

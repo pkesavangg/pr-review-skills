@@ -52,8 +52,6 @@ struct ScaleMetricsView: View {
         _selectedMetricState = State(initialValue: selectedMetric)
     }
     
-    
-
     var body: some View {
         VStack(spacing: 0) {
 
@@ -107,5 +105,3 @@ struct ScaleMetricsView: View {
         .background(theme.backgroundSecondary)
     }
 }
-
-

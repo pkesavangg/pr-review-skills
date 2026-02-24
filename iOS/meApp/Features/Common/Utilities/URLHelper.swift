@@ -8,7 +8,7 @@
 import Foundation
 
 struct URLHelper {
-    private static let baseURL =  URLStrings.baseUrl
+    private static let baseURL = URLStrings.baseUrl
 
     static func getURL(for endpoint: BrowserEndpoints, path: String = "legal") -> URL {
         let fullPath = baseURL + path + "/" + endpoint.rawValue

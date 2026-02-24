@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 /// User model for duplicate checking
@@ -13,7 +13,7 @@ class UserNameForm: ObservableForm {
     var displayName = FormControl("", validators: [.required, .noWhiteSpace, .alphanumeric, .userNameUnavailable, .maxLength(20)])
     @Published var userList: [ScaleUser] = []
     /// The current user's initial name
-    var currentUserName: String? = nil
+    var currentUserName: String?
     private let errorMessages = FormErrorMessages.self
     
     /// Publisher that merges all value changes in the form

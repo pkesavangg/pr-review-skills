@@ -40,11 +40,10 @@ struct UsersScreen: View {
                             text: CommonStrings.save.uppercased(),
                             type: .inlineTextPrimary,
                             size: .small,
-                            isDisabled: canDisableSaveButton,
-                            action: {
+                            isDisabled: canDisableSaveButton
+                        ) {
                                 saveName()
-                            }
-                        ))
+                            })
                     },
                     onLeadingTap: { router.navigateBack() },
                     canShowBorder: true
@@ -93,13 +92,12 @@ struct UsersScreen: View {
                                     .padding(.bottom, .spacingXS)
                                 
                                 DeviceUserListView(
-                                    users: viewModel.otherDeviceUsersList,
-                                    onDeleteUser: { user in
+                                    users: viewModel.otherDeviceUsersList
+                                ) { user in
                                         viewModel.showDeleteUserAlert(for: user) {
                                             // Alert dismissed, no additional action needed
                                         }
                                     }
-                                )
                             }
                         }
                     }

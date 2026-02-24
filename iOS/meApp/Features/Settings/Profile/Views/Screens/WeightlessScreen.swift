@@ -1,8 +1,8 @@
 // iOS/meApp/Features/Settings/Views/Screens/WeightlessScreen.swift
 // Screen presented as modal for configuring Weightless mode.
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct WeightlessScreen: View {
     @Environment(\.appTheme) private var theme
@@ -22,7 +22,7 @@ struct WeightlessScreen: View {
     
     var body: some View {
         // Ensure form is synced with account state before rendering (only when pristine)
-        let _ = {
+        _ = {
             // Sync form with account state - this will only populate if form is not dirty
             settingsStore.populateWeightlessFormIfNeeded()
         }()
@@ -59,6 +59,7 @@ struct WeightlessScreen: View {
                     
                     // Toggle
                     HStack {
+// swiftlint:disable:next line_length
                         CustomToggleView(isOn: $settingsStore.weightlessForm.isOn.value, text: "\(strings.modeLabel): \(settingsStore.weightlessForm.isOn.value ? commonLang.on : commonLang.off)")
                     }
                     .padding(.vertical, .spacingSM)
@@ -68,7 +69,7 @@ struct WeightlessScreen: View {
                         config: TextInputConfig(
                             label: inputLabels.weightLessLabel(weightUnit == .kg),
                             inputType: .metric,
-                            errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight,  unit: weightUnit),
+                            errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight, unit: weightUnit),
                             isDisabled: !settingsStore.weightlessForm.isOn.value,
                             focusField: .weight,
                             maxLength: 4,
@@ -105,7 +106,8 @@ struct WeightlessScreen: View {
                 // Otherwise ask for confirmation via SettingsStore.
                 let confirmed = await settingsStore.confirmDiscardWeightlessChanges()
                 if confirmed {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
                         router.navigateBack()
                         settingsStore.resetWeightlessForm()
                     }
