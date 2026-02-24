@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
@@ -52,35 +53,30 @@ constructor(
     )
 
   init {
-    viewModelScope.launch {
-      // Step 1: Check for AppSync data
-      val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
+    // Use synchronous StateFlow.value so unit is set immediately (no race when navigating fast)
+    val account = accountService.activeAccount.value
+    val weightUnit = account?.weightUnit ?: WeightUnit.LB
+    handleIntent(EntryIntent.UpdateWeightUnit(weightUnit))
 
-      // Step 2: Create initial form only if no AppSync data
+    viewModelScope.launch {
+      val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
       if (!hasAppSyncData) {
         val entryForm = EntryForm.create(
           includeR4ScaleMetrics = true,
-          weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
-          height = accountService.activeAccountFlow.first()?.height,
+          weightUnit = weightUnit,
+          height = account?.height,
           isValueChangeAllowed = { _, _ ->
             !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
           },
         )
-        handleIntent(
-          EntryIntent.UpdateForm(
-            form = MultiFormGroup.create(forms = entryForm),
-          ),
-        )
+        handleIntent(EntryIntent.UpdateForm(form = MultiFormGroup.create(forms = entryForm)))
       } else {
         handleIntent(EntryIntent.UpdateMetricFieldsExpandedStatus(true))
       }
 
-      // Step 3: Set up continuous flows
       launch {
         accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
-          if (it != null) {
-            handleIntent(EntryIntent.UpdateWeightUnit(it))
-          }
+          if (it != null) handleIntent(EntryIntent.UpdateWeightUnit(it))
         }
       }
 
@@ -114,25 +110,22 @@ constructor(
       }
 
       is EntryIntent.UpdateOnRelaunch -> {
+        val account = accountService.activeAccount.value
+        val weightUnit = account?.weightUnit ?: state.value.weightMode
+        handleIntent(EntryIntent.UpdateWeightUnit(weightUnit))
         viewModelScope.launch {
           val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
-
           if (!hasAppSyncData) {
             val entryForm = EntryForm.create(
               includeR4ScaleMetrics = true,
-              weightUnit = state.value.weightMode,
-              height = accountService.activeAccountFlow.first()?.height,
+              weightUnit = weightUnit,
+              height = account?.height,
               isValueChangeAllowed = { _, _ ->
                 !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
               },
             )
-            handleIntent(
-              EntryIntent.UpdateForm(
-                form = MultiFormGroup.create(forms = entryForm),
-              ),
-            )
+            handleIntent(EntryIntent.UpdateForm(form = MultiFormGroup.create(forms = entryForm)))
           }
-          // If AppSync data exists, leave the form alone - it's already properly set up
         }
       }
 
