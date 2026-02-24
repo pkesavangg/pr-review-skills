@@ -2,7 +2,7 @@ import Combine
 import Foundation
 import SwiftUI
 
-// swiftlint:disable file_length type_body_length cyclomatic_complexity function_body_length
+// swiftlint:disable cyclomatic_complexity function_body_length
 
 @MainActor
 extension BtWifiScaleSetupStore {
@@ -551,4 +551,4 @@ extension BtWifiScaleSetupStore {
     // MARK: - Step Change Handling
 
 }
-// swiftlint:enable file_length type_body_length cyclomatic_complexity function_body_length
+// swiftlint:enable cyclomatic_complexity function_body_length

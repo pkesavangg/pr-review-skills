@@ -2,8 +2,6 @@ import Combine
 import Foundation
 import SwiftUI
 
-// swiftlint:disable file_length type_body_length cyclomatic_complexity function_body_length
-
 @MainActor
 extension BtWifiScaleSetupStore {
     func setupScaleUsernameForm() {
@@ -383,4 +381,3 @@ extension BtWifiScaleSetupStore {
     }
     
 }
-// swiftlint:enable file_length type_body_length cyclomatic_complexity function_body_length

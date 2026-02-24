@@ -33,58 +33,69 @@ struct SetupValidationService: SetupValidationServicing {
     func evaluate(context: SetupValidationContext) -> SetupValidationResult {
         switch context.currentStep {
         case .permissions:
-            return SetupValidationResult(
-                isNextEnabled: context.bluetoothEnabled && context.bluetoothSwitchEnabled && context.networkMonitorConnected,
-                shouldRequestBluetoothPermission: !context.bluetoothEnabled,
-                shouldRequestBluetoothSwitchPermission: context.bluetoothEnabled && !context.bluetoothSwitchEnabled
-            )
+            return permissionsResult(for: context)
         case .gatheringNetwork:
-            if context.scaleSetupError == .duplicatesFound {
-                return SetupValidationResult(
-                    isNextEnabled: context.duplicateNameIsValid &&
-                        context.duplicateNameCurrent != context.duplicateNameInitial,
-                    shouldRequestBluetoothPermission: false,
-                    shouldRequestBluetoothSwitchPermission: false
-                )
-            }
-            return SetupValidationResult(
-                isNextEnabled: true,
-                shouldRequestBluetoothPermission: false,
-                shouldRequestBluetoothSwitchPermission: false
-            )
+            return gatheringNetworkResult(for: context)
         case .wifiPassword:
-            return SetupValidationResult(
-                isNextEnabled: context.isWifiPasswordValid,
-                shouldRequestBluetoothPermission: false,
-                shouldRequestBluetoothSwitchPermission: false
-            )
+            return validationResult(isNextEnabled: context.isWifiPasswordValid)
         case .viewSettings:
-            let isEnabled: Bool
-            switch context.currentCustomizeSetting {
-            case .scaleUsername:
-                isEnabled = context.duplicateNameIsValid &&
-                    context.duplicateNameCurrent != context.duplicateNameInitial
-            case .scaleMetrics:
-                isEnabled = context.hasScaleMetricsChanged
-            case .scaleMode:
-                isEnabled = context.selectedScaleMode != context.initialScaleModeSnapshot ||
-                    context.isHeartRateEnabled != (context.initialHeartRateEnabledSnapshot ?? false)
-            case .dashboardMetrics:
-                isEnabled = context.hasDashboardCustomizationChanged
-            default:
-                isEnabled = true
-            }
-            return SetupValidationResult(
-                isNextEnabled: isEnabled,
-                shouldRequestBluetoothPermission: false,
-                shouldRequestBluetoothSwitchPermission: false
-            )
+            return viewSettingsResult(for: context)
         default:
-            return SetupValidationResult(
-                isNextEnabled: true,
-                shouldRequestBluetoothPermission: false,
-                shouldRequestBluetoothSwitchPermission: false
-            )
+            return validationResult(isNextEnabled: true)
         }
+    }
+
+    private func permissionsResult(for context: SetupValidationContext) -> SetupValidationResult {
+        let isBluetoothEnabled = context.bluetoothEnabled
+        let isSwitchEnabled = context.bluetoothSwitchEnabled
+        let isNetworkConnected = context.networkMonitorConnected
+        return validationResult(
+            isNextEnabled: isBluetoothEnabled && isSwitchEnabled && isNetworkConnected,
+            shouldRequestBluetoothPermission: !isBluetoothEnabled,
+            shouldRequestBluetoothSwitchPermission: isBluetoothEnabled && !isSwitchEnabled
+        )
+    }
+
+    private func gatheringNetworkResult(for context: SetupValidationContext) -> SetupValidationResult {
+        guard context.scaleSetupError == .duplicatesFound else {
+            return validationResult(isNextEnabled: true)
+        }
+        return validationResult(
+            isNextEnabled: isDuplicateNameValidAndChanged(in: context)
+        )
+    }
+
+    private func viewSettingsResult(for context: SetupValidationContext) -> SetupValidationResult {
+        let isEnabled: Bool
+        switch context.currentCustomizeSetting {
+        case .scaleUsername:
+            isEnabled = isDuplicateNameValidAndChanged(in: context)
+        case .scaleMetrics:
+            isEnabled = context.hasScaleMetricsChanged
+        case .scaleMode:
+            isEnabled = context.selectedScaleMode != context.initialScaleModeSnapshot ||
+                context.isHeartRateEnabled != (context.initialHeartRateEnabledSnapshot ?? false)
+        case .dashboardMetrics:
+            isEnabled = context.hasDashboardCustomizationChanged
+        default:
+            isEnabled = true
+        }
+        return validationResult(isNextEnabled: isEnabled)
+    }
+
+    private func isDuplicateNameValidAndChanged(in context: SetupValidationContext) -> Bool {
+        context.duplicateNameIsValid && context.duplicateNameCurrent != context.duplicateNameInitial
+    }
+
+    private func validationResult(
+        isNextEnabled: Bool,
+        shouldRequestBluetoothPermission: Bool = false,
+        shouldRequestBluetoothSwitchPermission: Bool = false
+    ) -> SetupValidationResult {
+        SetupValidationResult(
+            isNextEnabled: isNextEnabled,
+            shouldRequestBluetoothPermission: shouldRequestBluetoothPermission,
+            shouldRequestBluetoothSwitchPermission: shouldRequestBluetoothSwitchPermission
+        )
     }
 }

@@ -2,7 +2,7 @@ import Combine
 import Foundation
 import SwiftUI
 
-// swiftlint:disable file_length type_body_length cyclomatic_complexity function_body_length
+// swiftlint:disable cyclomatic_complexity function_body_length
 
 @MainActor
 extension BtWifiScaleSetupStore {
@@ -223,8 +223,10 @@ extension BtWifiScaleSetupStore {
     /// - Parameters:
     ///   - onConfirm: called when user taps **Exit**
     ///   - onCancel:  called when user taps **Go Back**
-    func presentExitAlert(onConfirm: @escaping () -> Void,
-                                  onCancel: @escaping () -> Void = {}) {
+    func presentExitAlert(
+        onConfirm: @escaping () -> Void,
+        onCancel: @escaping () -> Void = {}
+    ) {
         let lang = AlertStrings.ExitBtWifiSetupAlert.self
         let message: String = {
             switch (isWifiSetupOnly, savedScale != nil) {
@@ -471,4 +473,4 @@ extension BtWifiScaleSetupStore {
     /// Handles the next button click based on the current step.
 
 }
-// swiftlint:enable file_length type_body_length cyclomatic_complexity function_body_length
+// swiftlint:enable cyclomatic_complexity function_body_length
