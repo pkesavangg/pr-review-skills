@@ -2,14 +2,15 @@ import Foundation
 import Security
 
 /// Keychain-backed secure storage for account tokens.
-/// Uses kSecAttrAccessibleAfterFirstUnlock so tokens are available after first unlock and when locked (e.g. background refresh).
+/// Uses kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly so tokens are available after first unlock and not synced/restored to other devices.
 /// Tokens are stored per accountId to support multiple accounts and account switching.
 final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
     static let shared = KeychainService()
 
+    @Injector private var logger: LoggerService
+
     private let serviceName: String
-    private let jsonEncoder = JSONEncoder()
-    private let jsonDecoder = JSONDecoder()
+    private let tag = "KeychainService"
 
     init(serviceName: String? = nil) {
         self.serviceName = serviceName ?? (Bundle.main.bundleIdentifier ?? "meApp") + ".tokens"
@@ -18,7 +19,7 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
     // MARK: - KeychainServiceProtocol
 
     func setTokens(_ tokens: Tokens, for accountId: String) {
-        guard let data = try? jsonEncoder.encode(tokens) else { return }
+        guard let data = try? JSONEncoder().encode(tokens) else { return }
         let key = keyForAccount(accountId)
         deleteItem(accountKey: key)
         setData(data, accountKey: key)
@@ -26,7 +27,7 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
 
     func getTokens(for accountId: String) -> Tokens? {
         guard let data = getData(accountKey: keyForAccount(accountId)) else { return nil }
-        return try? jsonDecoder.decode(Tokens.self, from: data)
+        return try? JSONDecoder().decode(Tokens.self, from: data)
     }
 
     func deleteTokens(for accountId: String) {
@@ -57,9 +58,23 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: accountKey,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
-        SecItemAdd(query as CFDictionary, nil)
+        var status = SecItemAdd(query as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            let searchQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: accountKey
+            ]
+            let updateQuery: [String: Any] = [kSecValueData as String: data]
+            status = SecItemUpdate(searchQuery as CFDictionary, updateQuery as CFDictionary)
+        }
+        if status != errSecSuccess {
+            Task { @MainActor in
+                self.logger.log(level: .error, tag: self.tag, message: "Keychain setData failed: accountKey=\(accountKey), status=\(status)")
+            }
+        }
     }
 
     private func getData(accountKey: String) -> Data? {
@@ -82,7 +97,12 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: accountKey
         ]
-        SecItemDelete(query as CFDictionary)
+        let status = SecItemDelete(query as CFDictionary)
+        if status != errSecSuccess && status != errSecItemNotFound {
+            Task { @MainActor in
+                self.logger.log(level: .error, tag: self.tag, message: "Keychain deleteItem failed: accountKey=\(accountKey), status=\(status)")
+            }
+        }
     }
 
     private func keyForAccount(_ accountId: String) -> String {

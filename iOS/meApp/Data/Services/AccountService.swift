@@ -1153,6 +1153,9 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// - Parameter forceRefresh: If true, always assign activeAccount even if accountId hasn't changed
     func updatePublishedState(forceRefresh: Bool = false) async throws {
         allAccounts = try await localRepo.fetchAllAccounts()
+        for account in allAccounts {
+            hydrateTokensInAccount(account)
+        }
         let nextActive = allAccounts.first { $0.isActiveAccount == true }
 
         

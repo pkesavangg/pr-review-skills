@@ -355,8 +355,17 @@ class PushNotificationService: NSObject {
         }
     }
 
-    /// Retrieves the stored FCM token for a specific account (from Keychain).
+    /// Retrieves the stored FCM token for a specific account (Keychain first; migrates from KvStorage if present).
     func getStoredFCMToken(for accountId: String) -> String? {
-        keychainService.getFCMToken(for: accountId)
+        if let token = keychainService.getFCMToken(for: accountId), !token.isEmpty {
+            return token
+        }
+        let legacyKey = KvStorageKeys.fcmTokenKey(for: accountId)
+        if let legacyToken = kvStorage.getValue(forKey: legacyKey) as? String, !legacyToken.isEmpty {
+            keychainService.setFCMToken(legacyToken, for: accountId)
+            kvStorage.clearValue(forKey: legacyKey)
+            return legacyToken
+        }
+        return nil
     }
 }

@@ -57,12 +57,12 @@ final class Account {
     var isExpired: Bool?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
-    /// OAuth or app-specific access token
-    var accessToken: String?
-    /// OAuth refresh token
-    var refreshToken: String?
-    /// Access token expiration time
-    var expiresAt: String?
+    /// OAuth or app-specific access token (in-memory only; source of truth is Keychain).
+    @Transient var accessToken: String?
+    /// OAuth refresh token (in-memory only; source of truth is Keychain).
+    @Transient var refreshToken: String?
+    /// Access token expiration time (in-memory only; source of truth is Keychain).
+    @Transient var expiresAt: String?
     /// Firebase Cloud Messaging token
     var fcmToken: String?
     /// Timestamp of last activity

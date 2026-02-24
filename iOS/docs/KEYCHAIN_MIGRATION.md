@@ -26,6 +26,7 @@ One-time migration moves auth tokens and FCM tokens from legacy storage into Key
 - **Keychain (Generic Password):**
   - Service: `Bundle.main.bundleIdentifier ?? "meApp"` + `".tokens"`
   - Account keys: `tokens_<accountId>`, `fcm_<accountId>`
+  - Accessibility: `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (not synced/restored to other devices)
 - **KvStorage (UserDefaults):**
   - `tokensMigratedToKeychain` — boolean, prevents re-running token migration
   - `fcmToken_<accountId>` — legacy FCM key (removed after migration)

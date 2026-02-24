@@ -1,7 +1,8 @@
 import Foundation
 
 /// Protocol defining secure storage for account tokens and credentials.
-/// Implementations use the system keychain so tokens are encrypted and cleared on uninstall.
+/// Implementations use the system keychain so tokens are stored securely and encrypted at rest.
+/// Callers are responsible for deleting tokens when no longer needed (e.g. on logout).
 /// Use this protocol for testability (e.g. inject a mock in unit tests).
 public protocol KeychainServiceProtocol: Sendable {
     /// Stores tokens for the given account.

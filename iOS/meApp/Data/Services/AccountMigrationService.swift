@@ -873,11 +873,15 @@ final class AccountMigrationService {
         // Create Account from DTO
         let account = Account(from: accountDTO)
         
-        // Store tokens in Keychain only (not in SwiftData)
-        keychainService.setTokens(
-            Tokens(accessToken: ionicData.accessToken, refreshToken: ionicData.refreshToken, expiresAt: ionicData.expiresAt),
-            for: account.accountId
-        )
+        // Store tokens in Keychain only (not in SwiftData), but only if non-empty
+        if !ionicData.accessToken.isEmpty,
+           !ionicData.refreshToken.isEmpty,
+           !ionicData.expiresAt.isEmpty {
+            keychainService.setTokens(
+                Tokens(accessToken: ionicData.accessToken, refreshToken: ionicData.refreshToken, expiresAt: ionicData.expiresAt),
+                for: account.accountId
+            )
+        }
         account.isLoggedIn = true
         account.isActiveAccount = true
         account.isExpired = false
