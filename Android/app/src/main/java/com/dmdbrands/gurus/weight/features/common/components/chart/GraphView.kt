@@ -193,8 +193,8 @@ fun GraphView(
             true
         }
       var markerIndex: Double? = null
-      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).times(2)
-      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).times(2)
+      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
+      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
       val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
       if (!outOfBoundaryCondition) {
         val targetMarkerIndex =

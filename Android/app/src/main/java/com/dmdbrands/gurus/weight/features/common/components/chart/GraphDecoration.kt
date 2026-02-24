@@ -27,7 +27,7 @@ fun rememberGoalMarker(
   goal: Goal? = null,
   isWeightlessOn: Boolean = false
 ): VerticalAxis.MarkerDecoration? {
-  if (goal == null || (goal.goalType == null &&  goal.goalWeight == 0.0))  {
+  if (goal == null || goal.goalWeight == 0.0)  {
     return null
   }
   val resources = LocalResources.current
