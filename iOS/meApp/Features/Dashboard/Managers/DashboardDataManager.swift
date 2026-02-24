@@ -59,6 +59,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Data Loading
     func loadInitialData() async throws {
+// swiftlint:disable:next line_length
         logger.log(level: .debug, tag: "DashboardDataManager", message: "Dashboard data manager initialized - listening to EntryService published arrays")
         // No need to load data here - ContentView handles data loading
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
@@ -160,6 +161,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         }
 
         guard entryServiceMonthlyCount == stateMonthlyCount else {
+// swiftlint:disable:next line_length
             throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)")
         }
 

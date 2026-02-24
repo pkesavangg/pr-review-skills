@@ -59,6 +59,7 @@ struct WeightlessScreen: View {
                     
                     // Toggle
                     HStack {
+// swiftlint:disable:next line_length
                         CustomToggleView(isOn: $settingsStore.weightlessForm.isOn.value, text: "\(strings.modeLabel): \(settingsStore.weightlessForm.isOn.value ? commonLang.on : commonLang.off)")
                     }
                     .padding(.vertical, .spacingSM)

@@ -97,7 +97,7 @@ struct LandingScreen: View {
                                                     UserListItemView(
                                                         user: item,
                                                         openItemID: $openItemID
-                                                    )                                                        { id, needsLogin in
+                                                    ) { id, needsLogin in
                                                             if needsLogin {
                                                                 // If the user is expired or logged out, allow login with the same email.
                                                                 // If the user modifies the email and the account limit has been reached, show the max accounts alert.

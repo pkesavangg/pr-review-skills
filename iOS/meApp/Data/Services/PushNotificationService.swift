@@ -217,10 +217,18 @@ class PushNotificationService: NSObject {
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else if let token = token {
-                    self.fcmToken = token
+                    Task { @MainActor [weak self] in
+                        self?.fcmToken = token
+                    }
                     continuation.resume(returning: token)
                 } else {
-                    continuation.resume(throwing: NSError(domain: "PushNotificationService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get FCM token"]))
+                    continuation.resume(
+                        throwing: NSError(
+                            domain: "PushNotificationService",
+                            code: -1,
+                            userInfo: [NSLocalizedDescriptionKey: "Failed to get FCM token"]
+                        )
+                    )
                 }
             }
         }
@@ -261,7 +269,7 @@ class PushNotificationService: NSObject {
     }
 
     private func showNewEntryToast() async {
-        await notificationService.showToast(ToastModel(
+        notificationService.showToast(ToastModel(
             title: ToastStrings.success,
             message: ToastStrings.entryAdded
         ))

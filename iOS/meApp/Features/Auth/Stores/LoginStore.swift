@@ -64,7 +64,9 @@ final class LoginStore: ObservableObject {
 
     /// Main browser URL for the view
     var presentingBrowserURL: URL {
-        browserURL ?? URL(string: urlStrings.baseUrl)!
+        browserURL
+            ?? URL(string: urlStrings.baseUrl)
+            ?? URL(fileURLWithPath: "/")
     }
 
     // Navigation

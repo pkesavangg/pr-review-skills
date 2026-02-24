@@ -34,7 +34,7 @@ enum DashboardConstants {
     }
 
     // MARK: - UI Constants
-    enum UI {
+    enum UIConstants {
         static let gridSpacing: CGFloat = 16
         static let minimumTickSpacing: CGFloat = 20
         static let chartAnimationDuration: Double = 0.3

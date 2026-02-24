@@ -116,6 +116,7 @@ struct BaseInputField: View {
                         withAnimation {
                             isSecureTextVisible.toggle()
                         }
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                     }) {
                         AppIconView(icon: isSecureTextVisible ? AppAssets.eyeClosed : AppAssets.eyeOpen)
                             .foregroundColor(theme.statusIconPrimary)

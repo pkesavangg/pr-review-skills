@@ -70,9 +70,17 @@ final class IntegrationsService: IntegrationServiceProtocol {
         let accountId = try await getAccountId()
         do {
             try await apiRepository.removeIntegration(accountId: accountId, provider: provider)
-            logger.log(level: .info, tag: "IntegrationService", message: "Successfully removed integration from API for provider \(provider.rawValue)")
+            logger.log(
+                level: .info,
+                tag: "IntegrationService",
+                message: "Successfully removed integration from API for provider \(provider.rawValue)"
+            )
         } catch {
-            logger.log(level: .error, tag: "IntegrationService", message: "Failed to remove integration from API: \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: "IntegrationService",
+                message: "Failed to remove integration from API: \(error.localizedDescription)"
+            )
             throw error
         }
         try localRepository.setIntegrationData(accountId: accountId, info: nil)
@@ -95,7 +103,11 @@ final class IntegrationsService: IntegrationServiceProtocol {
             }
         }
         
-        logger.log(level: .info, tag: "IntegrationService", message: "Successfully set integration data for provider \(info?.type.rawValue ?? "none")")
+        logger.log(
+            level: .info,
+            tag: "IntegrationService",
+            message: "Successfully set integration data for provider \(info?.type.rawValue ?? "none")"
+        )
     }
     
     func isIntegrationAlreadyUsed(type: IntegrationType) async throws -> Bool {
@@ -112,7 +124,11 @@ final class IntegrationsService: IntegrationServiceProtocol {
             try await self.setStoredIntegrationData(integrationInfo)
             try await accountService.deleteHealthIntegration(integrationType)
         } catch {
-            logger.log(level: .error, tag: "IntegrationService", message: "Failed to update account integrations after clearing status: \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: "IntegrationService",
+                message: "Failed to update account integrations after clearing status: \(error.localizedDescription)"
+            )
         }
     }
     
@@ -134,10 +150,18 @@ final class IntegrationsService: IntegrationServiceProtocol {
         case .healthKit:
             // Delegate to HealthKit service for syncing using notification (safe cross-actor)
             try await HealthKitService.shared.syncNewData(notification: notification)
-            logger.log(level: .info, tag: "IntegrationService", message: "Successfully synced new entry to HealthKit: \(entry.id)")
+            logger.log(
+                level: .info,
+                tag: "IntegrationService",
+                message: "Successfully synced new entry to HealthKit: \(entry.id)"
+            )
         default:
             // Other integrations not implemented for entry sync yet
-            logger.log(level: .debug, tag: "IntegrationService", message: "Entry sync not implemented for integration type: \(integrationInfo.type.rawValue)")
+            logger.log(
+                level: .debug,
+                tag: "IntegrationService",
+                message: "Entry sync not implemented for integration type: \(integrationInfo.type.rawValue)"
+            )
         }
     }
 
@@ -164,7 +188,11 @@ final class IntegrationsService: IntegrationServiceProtocol {
             }
         default:
             // Other integrations not implemented for entry deletion yet
-            logger.log(level: .debug, tag: "IntegrationService", message: "Entry deletion not implemented for integration type: \(integrationInfo.type.rawValue)")
+            logger.log(
+                level: .debug,
+                tag: "IntegrationService",
+                message: "Entry deletion not implemented for integration type: \(integrationInfo.type.rawValue)"
+            )
         }
     }
     
@@ -187,7 +215,11 @@ final class IntegrationsService: IntegrationServiceProtocol {
             logger.log(level: .info, tag: "IntegrationService", message: "Successfully cleared HealthKit data during account deletion")
         default:
             // Other integrations not implemented for data clearing yet
-            logger.log(level: .debug, tag: "IntegrationService", message: "Data clearing not implemented for integration type: \(integrationInfo.type.rawValue)")
+            logger.log(
+                level: .debug,
+                tag: "IntegrationService",
+                message: "Data clearing not implemented for integration type: \(integrationInfo.type.rawValue)"
+            )
         }
     }
     

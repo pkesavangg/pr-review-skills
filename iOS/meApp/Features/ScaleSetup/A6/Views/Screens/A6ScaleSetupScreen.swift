@@ -94,7 +94,7 @@ struct A6ScaleSetupScreen: View {
             ButtonView(text: commonLang.back,
                        type: .inlineTextPrimary,
                        size: .small,
-                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished)                       {
+                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished) {
                 withAnimation {
                     hideKeyboard()
                 }
@@ -106,7 +106,7 @@ struct A6ScaleSetupScreen: View {
             ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
-                       isDisabled: !setupStore.isNextEnabled)                       {
+                       isDisabled: !setupStore.isNextEnabled) {
                 withAnimation {
                     hideKeyboard()
                 }

@@ -1,6 +1,5 @@
 // DateTimeTools.swift
 
-// swiftlint:disable type_body_length
 // This utility class intentionally aggregates all date/time formatting operations
 // to provide a centralized, thread-safe API. Splitting would fragment related functionality
 // and reduce discoverability of date/time utilities.
@@ -9,7 +8,7 @@ import Foundation
 
 /// A utility class for date and time formatting, parsing, and timezone operations.
 /// All methods are static and thread-safe.
-final class DateTimeTools {
+final class DateTimeTools { // swiftlint:disable:this type_body_length
     // MARK: - Error Constants
     static let invalidString: String = "---"
     static let invalidInt: Int? = nil

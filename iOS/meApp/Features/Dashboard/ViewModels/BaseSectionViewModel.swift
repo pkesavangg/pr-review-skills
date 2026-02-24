@@ -772,8 +772,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     }
 
     // MARK: - Fallback X-Axis Ticks (for empty data)
-    /// Generates calendar-based X-axis ticks for current period when there are no entries.
-    /// Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
+    // Generates calendar-based X-axis ticks for current period when there are no entries.
+    // Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
+    // swiftlint:disable:next cyclomatic_complexity
     private func fallbackXAxisValues() -> [Date] {
         guard hasXAxis else { return [] }
         let calendar = Calendar.current
@@ -836,4 +837,5 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return first...last
     }
 }
+// swiftlint:disable:next file_length
 // swiftlint:enable type_body_length

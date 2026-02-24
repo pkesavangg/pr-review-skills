@@ -49,6 +49,7 @@ struct BtWifiSetupErrorStateView: View {
 
     /// Whether to show the error code label.
     private var showErrorCode: Bool {
+// swiftlint:disable:next force_unwrapping
         errorCode != nil && !errorCode!.isEmpty
     }
 

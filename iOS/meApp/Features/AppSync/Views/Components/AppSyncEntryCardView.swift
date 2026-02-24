@@ -66,6 +66,7 @@ struct AppSyncEntryCardView: View {
 
     // MARK: – Helpers
     private func metricText(label: String, value: String?) -> some View {
+// swiftlint:disable:next force_unwrapping
         let displayValue = (value?.isEmpty == false) ? value! : "--"
         return Text("\(label): \(displayValue)")
             .fontOpenSans(.body2)

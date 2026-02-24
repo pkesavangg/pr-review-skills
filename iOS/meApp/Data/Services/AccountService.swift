@@ -13,20 +13,20 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     @Injector var logger: LoggerService
     @Injector var bluetoothService: BluetoothService
 
-    private let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
-    private let localRepo: AccountRepositoryProtocol = AccountRepository()
+    let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
+    let localRepo: AccountRepositoryProtocol = AccountRepository()
     private let networkMonitor = NetworkMonitor.shared
     /// API repository for integration-related network calls
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
     /// Migration service for Ionic app data
-    private let migrationService = AccountMigrationService()
+    let migrationService = AccountMigrationService()
 
     @Published var activeAccount: Account?
     @Published var allAccounts: [Account] = []
 
     var alertLang = AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
-    private let tag = "AccountService"
+    let tag = "AccountService"
 
     init() {
         // Asynchronously load active account from local storage to set theme early
@@ -93,7 +93,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-            // TODO: Extract duplicated account preparation logic into private helper method
             // This logic is duplicated in signUp() and logIn() - consider refactoring into
             // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
             let account: Account
@@ -155,7 +154,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-            // TODO: Extract duplicated account preparation logic into private helper method
             // This logic is duplicated in signUp() and logIn() - consider refactoring into
             // prepareAuthenticatedAccount(from:existingAccount:) during future code quality improvements
             let account: Account
@@ -209,15 +207,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             throw AccountError.accountNotFound(id: accountId)
         }
 
-        // Helper to perform the actual logout work (API + local updates)
-        let performLogout: @Sendable () async throws -> Void = { [weak self] in
-            guard let self else { return }
-            try await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout, skipStateUpdate: false)
-        }
-
         // Notify observers **before** performing the local logout so UI can react.
         if isAutoLogout, localAccount.isActiveAccount == true {
-            Task { try? await performLogout() }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                try? await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout, skipStateUpdate: false)
+            }
             let userName = "\(localAccount.firstName ?? "")"
             let alert = AlertModel(
                 title: alertLang.title(userName),
@@ -230,7 +225,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             )
             notificationService.showAlert(alert)
         } else {
-            try await performLogout()
+            try await executeLogout(on: localAccount, isAutoLogout: isAutoLogout, skipStateUpdate: false)
         }
         logger.log(level: .info, tag: tag, message: "Logout completed for accountId=\(accountId)")
     }
@@ -263,6 +258,117 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             logger.log(level: .error, tag: tag, message: "Delete all accounts failed: \(error.localizedDescription)")
             throw error // Handle any errors that occur during deletion
+        }
+    }
+
+    /// Deletes all accounts locally, logging out each account first.
+    /// Logs out non-active accounts first, then the active account last to prevent
+    /// premature navigation to the landing screen.
+    /// Uses batch logout to prevent state updates until all accounts are logged out.
+    func logOutAllAccounts() async throws {
+        do {
+            logger.log(level: .info, tag: tag, message: "Logout all accounts requested")
+            let allAccounts = try await localRepo.fetchAllAccounts()
+            
+            let nonActiveAccounts = allAccounts.filter { $0.isActiveAccount != true }
+            let activeAccountToLogout = allAccounts.first { $0.isActiveAccount == true }
+            
+            for account in nonActiveAccounts {
+                do {
+                    guard let localAccount = try await localRepo.fetchAccount(byId: account.accountId) else {
+                        continue
+                    }
+                    try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
+                } catch {
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to logout non-active account \(account.accountId): \(error.localizedDescription)"
+                    )
+                }
+            }
+            
+            if let activeAccount = activeAccountToLogout {
+                do {
+                    guard let localAccount = try await localRepo.fetchAccount(byId: activeAccount.accountId) else {
+                        try await updatePublishedState()
+                        return
+                    }
+                    try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
+                } catch {
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to logout active account \(activeAccount.accountId): \(error.localizedDescription)"
+                    )
+                }
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Error during logout all accounts: \(error.localizedDescription)")
+        }
+        
+        try await updatePublishedState()
+        logger.log(level: .info, tag: tag, message: "Logout all accounts completed")
+    }
+
+    /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
+    /// - Parameter skipStateUpdate: If true, skips the state update to allow batch operations. Defaults to false.
+    func executeLogout(on localAccount: Account, isAutoLogout: Bool, skipStateUpdate: Bool = false) async throws {
+        do {
+            logger.log(level: .info, tag: tag, message: "Executing logout (API) for accountId=\(localAccount.accountId)")
+            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Logout API call failed for accountId=\(localAccount.accountId): \(error.localizedDescription)"
+            )
+        }
+
+        do {
+            localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
+            localAccount.isActiveAccount = false
+            localAccount.isExpired = isAutoLogout
+            try await localRepo.updateAccount(localAccount)
+            logger.log(level: .info, tag: tag, message: "Local logout flags updated for accountId=\(localAccount.accountId)")
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Local logout flag update failed for accountId=\(localAccount.accountId): \(error.localizedDescription)"
+            )
+        }
+
+        if !skipStateUpdate {
+            try await updatePublishedState()
+        }
+    }
+
+    /// Migrates account data from Ionic app if needed.
+    func migrateFromIonicAppIfNeeded() async throws {
+        guard migrationService.isMigrationNeeded() else {
+            logger.log(level: .info, tag: tag, message: "No Ionic app migration needed (already completed or no data found)")
+            return
+        }
+
+        do {
+            logger.log(level: .info, tag: tag, message: "Starting comprehensive Ionic app migration (account + scales)")
+
+            let (migratedAccount, scalesCount) = try await migrationService.migrateAccountAndScaleData()
+
+            if let migratedAccount {
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Ionic app migration completed for account: \(migratedAccount.email) with \(scalesCount) scales"
+                )
+                try await updatePublishedState()
+                logger.log(level: .info, tag: tag, message: "Ionic app migration process completed!")
+            } else {
+                logger.log(level: .info, tag: tag, message: "No account data was migrated from Ionic app")
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Ionic app migration failed: \(error.localizedDescription)")
         }
     }
 
@@ -347,7 +453,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Update account saved offline for accountId=\(updatedAccount.accountId)")
                 return updatedAccount
             }
-            logger.log(level: .error, tag: tag, message: "Update account failed for accountId=\(updatedAccount.accountId): \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Update account failed for accountId=\(updatedAccount.accountId): \(error.localizedDescription)"
+            )
             throw error
         }
     }
@@ -445,7 +555,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                let offlineWeightUnitBeforeUpdate = activeAccount?.weightSettings?.weightUnit?.rawValue ?? "nil"
                 localAccount.weightSettings?.weightUnit = bodyComp.weightUnit
                 localAccount.weightSettings?.height = String(bodyComp.height)
                 localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
@@ -565,10 +674,18 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 }
                 try? await localRepo.updateAccount(localAccount)
                 try? await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue)"
+                )
                 return localAccount
             }
-            logger.log(level: .error, tag: tag, message: "Integration update failed for accountId=\(accountId), type=\(integrationType.rawValue): \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Integration update failed for accountId=\(accountId), type=\(integrationType.rawValue): \(error.localizedDescription)"
+            )
             throw error
         }
     }
@@ -711,57 +828,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         throw AccountError.notImplemented
     }
 
-    /// Deletes all accounts locally, logging out each account first.
-    /// Logs out non-active accounts first, then the active account last to prevent
-    /// premature navigation to the landing screen.
-    /// Uses batch logout to prevent state updates until all accounts are logged out.
-    func logOutAllAccounts() async throws {
-        do {
-            logger.log(level: .info, tag: tag, message: "Logout all accounts requested")
-            let allAccounts = try await localRepo.fetchAllAccounts()
-            
-            // Separate accounts into active and non-active using isActiveAccount property
-            let nonActiveAccounts = allAccounts.filter { $0.isActiveAccount != true }
-            let activeAccountToLogout = allAccounts.first { $0.isActiveAccount == true }
-            
-            // Log out non-active accounts first (skip state updates to prevent navigation)
-            for account in nonActiveAccounts {
-                do {
-                    guard let localAccount = try await localRepo.fetchAccount(byId: account.accountId) else {
-                        continue
-                    }
-                    try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
-                } catch {
-                    logger.log(level: .error, tag: tag, message: "Failed to logout non-active account \(account.accountId): \(error.localizedDescription)")
-                    continue // Ignore errors during logout
-                }
-            }
-            
-            // Log out the active account last (skip state update to prevent navigation)
-            if let activeAccount = activeAccountToLogout {
-                do {
-                    guard let localAccount = try await localRepo.fetchAccount(byId: activeAccount.accountId) else {
-                        // If account not found, just update state
-                        try await self.updatePublishedState()
-                        return
-                    }
-                    try await executeLogout(on: localAccount, isAutoLogout: false, skipStateUpdate: true)
-                } catch {
-                    logger.log(level: .error, tag: tag, message: "Failed to logout active account \(activeAccount.accountId): \(error.localizedDescription)")
-                    // Continue even if active account logout fails
-                }
-            }
-        } catch {
-            logger.log(level: .error, tag: tag, message: "Error during logout all accounts: \(error.localizedDescription)")
-        }
-        
-        // Update state only once at the end to prevent premature navigation
-        try await self.updatePublishedState()
-        logger.log(level: .info, tag: tag, message: "Logout all accounts completed")
-    }
-
     /// Synchronizes any unsynced accounts with the server.
-    func syncUnsyncedAccounts() async throws {
+    func syncUnsyncedAccounts() async throws { // swiftlint:disable:this cyclomatic_complexity
         // Ensure we have connectivity before attempting to sync
         guard networkMonitor.isConnected else { return }
         logger.log(level: .info, tag: tag, message: "Sync unsynced account data requested")
@@ -882,7 +950,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                let weightlessTimestamp = offlineWeightlessTimestamp,
                let weightlessWeight = offlineWeightlessWeight,
                !isSynced {
-                try await updateWeightless(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: Double(weightlessWeight))
+                try await updateWeightless(
+                    isWeightlessOn: isWeightlessOn,
+                    weightlessTimestamp: weightlessTimestamp,
+                    weightlessWeight: Double(weightlessWeight)
+                )
             }
 
             // Handle Goal Settings
@@ -958,9 +1030,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 }
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Delete integration saved offline for accountId=\(accountId), type=\(type.rawValue)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Delete integration saved offline for accountId=\(accountId), type=\(type.rawValue)"
+                )
             }
-            logger.log(level: .error, tag: tag, message: "Delete integration failed for accountId=\(accountId), type=\(type.rawValue): \(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Delete integration failed for accountId=\(accountId), type=\(type.rawValue): \(error.localizedDescription)"
+            )
             throw error
         }
     }
@@ -1104,9 +1184,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     // MARK: - Token Management
     /// Refreshes the access token using the refresh token of the active account or a specific account by ID.
     func refreshTokens(accountId: String? = nil) async throws -> Tokens {
-        let account = accountId != nil ?
-        try await fetchAccount(byId: accountId!) :
-        activeAccount
+        let account = if let accountId {
+            try await fetchAccount(byId: accountId)
+        } else {
+            activeAccount
+        }
 
         guard let account = account,
               let refreshToken = account.refreshToken else {
@@ -1144,7 +1226,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             // Always update theme when active account changes (including logout)
             Theme.shared.setActiveAccount(nextActive?.accountId)
         }
-        logger.log(level: .debug, tag: tag, message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil"), forceRefresh=\(forceRefresh)")
+        logger.log(
+            level: .debug,
+            tag: tag,
+            message: "Published state updated. total=\(allAccounts.count), active=\(activeAccount?.accountId ?? "nil"), forceRefresh=\(forceRefresh)"
+        )
     }
     
     /// Forces the activeAccount publisher to notify subscribers of changes to account properties.
@@ -1204,71 +1290,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
 
-    // MARK: - Private Helpers
-    /// Performs the actual logout logic: API call (ignored if it fails) + local flag updates + state refresh.
-    /// - Parameter skipStateUpdate: If true, skips the state update to allow batch operations. Defaults to false.
-    private func executeLogout(on localAccount: Account, isAutoLogout: Bool, skipStateUpdate: Bool = false) async throws {
-        do {
-            logger.log(level: .info, tag: tag, message: "Executing logout (API) for accountId=\(localAccount.accountId)")
-            try await apiRepo.logOut(fcmToken: localAccount.fcmToken, accountId: localAccount.accountId)
-        } catch {
-            // Ignore API errors during logout
-            logger.log(level: .error, tag: tag, message: "Logout API call failed for accountId=\(localAccount.accountId): \(error.localizedDescription)")
-        }
-
-        do {
-            // Logout the account locally (happens regardless of API success/failure)
-            localAccount.isLoggedIn = (localAccount.isLoggedIn ?? false) ? isAutoLogout : false
-            localAccount.isActiveAccount = false
-            localAccount.isExpired = isAutoLogout
-            try await localRepo.updateAccount(localAccount)
-            logger.log(level: .info, tag: tag, message: "Local logout flags updated for accountId=\(localAccount.accountId)")
-        } catch {
-            // Ignore local persistence errors during logout
-            logger.log(level: .error, tag: tag, message: "Local logout flag update failed for accountId=\(localAccount.accountId): \(error.localizedDescription)")
-        }
-
-        // Attempt to refresh published state; propagate any errors to the caller
-        // Skip state update during batch operations to prevent premature navigation
-        if !skipStateUpdate {
-            try await updatePublishedState()
-        }
-    }
-
-    // MARK: - Migration
-    /// Migrates account data from Ionic app if needed
-    /// Should be called once on app startup before other operations
-    private func migrateFromIonicAppIfNeeded() async throws {
-        guard migrationService.isMigrationNeeded() else {
-            LoggerService.shared.log(level: .info, tag: tag, message: "No Ionic app migration needed (already completed or no data found)")
-            return
-        }
-
-        do {
-            LoggerService.shared.log(level: .info, tag: tag, message: "Starting comprehensive Ionic app migration (account + scales)")
-
-            let (migratedAccount, scalesCount) = try await migrationService.migrateAccountAndScaleData()
-
-            if let migratedAccount = migratedAccount {
-                LoggerService.shared.log(level: .info, tag: tag, message: "Ionic app migration completed for account: \(migratedAccount.email) with \(scalesCount) scales")
-
-                // Update published state to reflect the migrated account
-                try await updatePublishedState()
-
-                LoggerService.shared.log(level: .info, tag: tag, message: "Ionic app migration process completed!")
-            } else {
-                LoggerService.shared.log(level: .info, tag: tag, message: "No account data was migrated from Ionic app")
-            }
-
-        } catch {
-            LoggerService.shared.log(level: .error, tag: tag, message: "Ionic app migration failed: \(error.localizedDescription)")
-            // Don't throw the error - continue with normal app initialization
-        }
-    }
-
     deinit {
       cancellables.forEach { $0.cancel() }
       cancellables.removeAll()
     }
 }
+// swiftlint:disable:next file_length
 // swiftlint:enable type_body_length function_body_length

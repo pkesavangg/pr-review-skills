@@ -66,7 +66,7 @@ struct WifiMacAddressScreen: View {
                             type: .textPrimary,
                             size: .large,
                             isDisabled: false
-                        )                            {
+                        ) {
                                 viewModel.copyMacAddress()
                             }
                     }

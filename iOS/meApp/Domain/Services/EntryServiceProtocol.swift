@@ -1,6 +1,7 @@
 import Foundation
 
 /// Protocol defining the service interface for managing user entries, including CRUD, queries, and progress/statistics.
+@MainActor
 protocol EntryServiceProtocol {
 
     /// Syncs all entries with the remote backend.

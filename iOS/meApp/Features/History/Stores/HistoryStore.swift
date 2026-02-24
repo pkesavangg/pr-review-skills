@@ -114,7 +114,7 @@ final class HistoryStore: ObservableObject {
     
     func refreshAllEntries() async {
         // Refresh account data to ensure we have latest unit settings
-        try? await accountService.refreshAccount()
+        _ = try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal(canShowLoader: false)
         if let selectedMonth {

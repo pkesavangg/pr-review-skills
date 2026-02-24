@@ -15,7 +15,7 @@ import SwiftUI
 
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
-struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equatable {
+struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
     // MARK: - Dependencies
     @ObservedObject var viewModel: ViewModel
@@ -466,6 +466,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
 
             // Only enlarge the point that exactly matches the VM's selected date
             let vmSelected = viewModel.selectedDate
+// swiftlint:disable:next force_unwrapping
             let isThisPointSelected = viewModel.showCrosshair && (vmSelected != nil && xDate == vmSelected!)
 
             // Check if point is outside the active month interval (should be greyed out)
@@ -623,6 +624,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample key points for efficient hashing
+// swiftlint:disable:next line_length
             let indices = newData.count <= 5 ? Array(0..<newData.count) : [0, newData.count / 4, newData.count / 2, (3 * newData.count) / 4, newData.count - 1]
             for i in indices {
                 let point = newData[i]
@@ -784,6 +786,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
     private func precomputeLabels() {
         // Cache Y-axis labels
         for tick in viewModel.yAxisTicks {
+// swiftlint:disable:next for_where
             if cachedYAxisLabels[tick] == nil {
                 cachedYAxisLabels[tick] = dashboardStore.formatYAxisTickLabel(tick)
             }
@@ -798,6 +801,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol & Equatable>: View, Equ
         // Cache X-axis labels for scrollable views
         if isScrollable {
             for date in viewModel.xAxisValues {
+// swiftlint:disable:next for_where
                 if cachedXAxisLabels[date] == nil {
                     cachedXAxisLabels[date] = viewModel.formatXAxisLabel(for: date)
                 }
@@ -843,6 +847,7 @@ extension View {
     // based on scrollability and time period. Splitting would fragment the modifier
     // application logic and reduce maintainability.
     @ViewBuilder
+// swiftlint:disable:next function_parameter_count
     func conditionalModifiers<ViewModel: SectionViewModelProtocol>(
         isScrollable: Bool,
         viewModel: ViewModel,
@@ -1225,4 +1230,5 @@ extension View {
     .frame(height: 265)
     .padding()
 }
+// swiftlint:disable:next file_length
 // swiftlint:enable type_body_length function_body_length

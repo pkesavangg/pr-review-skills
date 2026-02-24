@@ -23,6 +23,7 @@ struct MetricDetailView: View {
     
     private let placeholder = "--"
 
+// swiftlint:disable:next force_unwrapping
     private var config: MetricData { BodyMetrics.config[metric]! }
 
     // Extract raw metric value from DTO (no SwiftData access needed)
@@ -215,7 +216,7 @@ struct MetricDetailView: View {
                                 size: .small,
                                 isDisabled: false,
                                 alignment: .leading
-                            )                                {
+                            ) {
                                   if let url = URL(string: res.link) {
                                     presentingBrowserURL = url
                                     isBrowserPresented = true
@@ -231,6 +232,7 @@ struct MetricDetailView: View {
             .padding(.horizontal, .spacingSM)
         }
         .inAppBrowser(
+// swiftlint:disable:next force_unwrapping
           url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl)!,
           isPresented: $isBrowserPresented
       )

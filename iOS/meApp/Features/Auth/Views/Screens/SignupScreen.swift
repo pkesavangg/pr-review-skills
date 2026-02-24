@@ -98,7 +98,7 @@ struct SignupScreen: View {
                        type: .textPrimary,
                        size: .small,
                        isDisabled: signupStore.currentStep == SignupStep.name,
-                       padding: true)                       {
+                       padding: true) {
                 withAnimation {
                     hideKeyboard()
                     signupStore.moveToPreviousStep()
@@ -112,7 +112,7 @@ struct SignupScreen: View {
                        size: .small,
                        isDisabled: !signupStore.isNextEnabled,
                        customHorizontalPadding: signupStore.currentStep == SignupStep.password ? .spacingXS : .spacingXS / 2,
-                       customVerticalPadding: .spacingXS / 4)                       {
+                       customVerticalPadding: .spacingXS / 4) {
                 withAnimation {
                     hideKeyboard()
                     signupStore.moveToNextStep()

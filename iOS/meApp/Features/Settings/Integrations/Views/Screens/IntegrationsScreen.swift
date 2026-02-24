@@ -33,7 +33,7 @@ struct IntegrationsScreen: View {
                     ForEach(store.integrations.filter { $0.type != .appleHealth }, id: \.id) { item in
                         IntegrationListItemView(
                             item: item
-                        )                            { store.selectIntegration(item: item) }
+                        ) { store.selectIntegration(item: item) }
                         .listRowInsets()
                     }
                 }

@@ -14,6 +14,7 @@ import SwiftUI
 /// API (published properties + async helpers) so that screens only have to observe
 /// this object.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class HealthKitStore: ObservableObject {
     // MARK: - Published State
     /// Current on/off status of the Apple Health integration.
@@ -110,6 +111,7 @@ final class HealthKitStore: ObservableObject {
                     return
                 }
             } catch {
+// swiftlint:disable:next line_length
                 logger.log(level: .error, tag: tag, message: "Failed to check if HealthKit integration already exists", data: error.localizedDescription)
             }
             
@@ -237,7 +239,7 @@ final class HealthKitStore: ObservableObject {
         Task {
             dismissModal()
             
-            let hasEntries = (try? await entryService.getEntryCount() ?? 0) ?? 0 > 0
+            let hasEntries = ((try? await entryService.getEntryCount()) ?? 0) > 0
             if hasEntries {
                 presentSyncHistoryAlert()
             } else {

@@ -33,7 +33,7 @@ struct DisplayMetricsScreen: View {
                         type: .inlineTextPrimary,
                         size: .small,
                         isDisabled: !viewModel.hasChanges
-                    )                        {
+                    ) {
                             Task {
                                 await viewModel.saveDisplayMetrics()
                                 router.navigateBack()
@@ -41,9 +41,7 @@ struct DisplayMetricsScreen: View {
                         }
                 },
                 onLeadingTap: { router.navigateBack() },
-                onTrailingTap: {
-                    // TODO: ADD Action
-                },
+                onTrailingTap: {},
                 canShowBorder: true
             )
             
@@ -179,7 +177,7 @@ struct DisplayMetricsScreen: View {
     private func heartRateBanner() -> some View {
         HeartRateBanner(
             isHeartRateOn: viewModel.isHeartRateOn
-        )            {
+        ) {
                 router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
             }
     }

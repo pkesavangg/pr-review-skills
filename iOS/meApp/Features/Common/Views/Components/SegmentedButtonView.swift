@@ -20,6 +20,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.85, blendDuration: 0)) {
                         selectedSegment = segment
                     }
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                 }) {
                     Text(segmentDisplayName(for: segment))
                         .fontOpenSans(.heading5)

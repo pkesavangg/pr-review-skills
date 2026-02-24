@@ -34,6 +34,7 @@ struct WifiPasswordView: View {
                         AppInputField(
                             config: TextInputConfig(
                                 label: labels.networkName,
+// swiftlint:disable:next multiline_arguments
                                 placeholder: store.permissionsSkipped ? "" : nil, inputType: .text,
                                 submitLabel: .next,
                                 errorMessage: store.networkForm.getError(for: store.networkForm.ssid),

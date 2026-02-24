@@ -86,12 +86,12 @@ struct ScaleBluetoothScreen: View {
             permissionRow(
                 title: lang.bluetoothAuthorized,
                 isEnabled: permissionsStore.isBluetoothAuthorized
-            )                { permissionsStore.handleBluetoothAuthorizationTap() }
+            ) { permissionsStore.handleBluetoothAuthorizationTap() }
             divider()
             permissionRow(
                 title: lang.bluetoothOn,
                 isEnabled: permissionsStore.isBluetoothOn
-            )                { permissionsStore.handleBluetoothSwitchTap() }
+            ) { permissionsStore.handleBluetoothSwitchTap() }
         }
         .background(theme.backgroundPrimary)
         .cornerRadius(.spacingXS)

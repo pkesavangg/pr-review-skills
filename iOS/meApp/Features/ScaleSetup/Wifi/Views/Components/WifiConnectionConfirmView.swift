@@ -169,7 +169,7 @@ struct WifiConnectionConfirmView: View {
             type: .inlineTextPrimary,
             size: .large,
             isDisabled: false
-        )            { onClickButton?() }
+        ) { onClickButton?() }
     }
     
     private func handleCompleteSelection() {

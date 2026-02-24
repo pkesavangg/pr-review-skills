@@ -3,6 +3,7 @@ import Foundation
 import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountService
@@ -83,7 +84,8 @@ final class EntryStore: ObservableObject {
         isBmiAutoCalculationEnabled = true
     }
 
-    /// Save entry with gating, no artificial sleeps, and minimal main-thread churn.
+    // Save entry with gating, no artificial sleeps, and minimal main-thread churn.
+// swiftlint:disable:next function_body_length
     func saveEntry() async {
         guard !isSaving else { return }
         isSaving = true

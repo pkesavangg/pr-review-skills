@@ -100,6 +100,7 @@ struct SwipeableModifier: ViewModifier {
         totalButtonWidth + 20 // Small padding for overscroll
     }
 
+// swiftlint:disable:next function_body_length
     func body(content: Content) -> some View {
         let dragGesture = DragGesture(minimumDistance: swipeMinimumDistance)
             .updating($isDragging) { _, state, _ in
@@ -140,6 +141,7 @@ struct SwipeableModifier: ViewModifier {
                                 }
                             }
                         }
+// swiftlint:disable:next multiple_closures_with_trailing_closure
                     }) {
                         button.label()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)

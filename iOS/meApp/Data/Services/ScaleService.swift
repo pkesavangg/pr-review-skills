@@ -6,7 +6,6 @@
 //
 
 import Combine
-// swiftlint:disable type_body_length function_parameter_count
 import Foundation
 import GGBluetoothSwiftPackage
 import SwiftData
@@ -44,7 +43,7 @@ import SwiftData
 ///
 /// Handles local/remote sync, per-account operations, and robust error handling.
 @MainActor
-final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol {
+final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol { // swiftlint:disable:this type_body_length
     static let shared = ScaleService()
     private let tag = "ScaleService"
     
@@ -202,7 +201,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     
     // MARK: - DeviceServiceProtocol Implementation
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {
-        guard let _ = try await localRepository.getDevice(deviceId) else {
+        guard try await localRepository.getDevice(deviceId) != nil else {
             throw ScaleError.deviceNotFound(id: deviceId)
         }
         
@@ -230,7 +229,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// Updates scale preference from a DTO. This is the async-boundary-safe variant.
     /// Callers should use this when they need to pass preference data across await points.
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {
-        guard let _ = try await localRepository.getDevice(deviceId) else {
+        guard try await localRepository.getDevice(deviceId) != nil else {
             throw ScaleError.deviceNotFound(id: deviceId)
         }
         var mutableDTO = dto
@@ -311,7 +310,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     
     /// Updates connection status for devices matching the given device info.
     /// - Note: Removed `nonisolated` - class is already @MainActor, no need for extra isolation.
-    func updateConnectedDevices(device: Any, isConnected: Bool) async {
+    func updateConnectedDevices( // swiftlint:disable:this cyclomatic_complexity function_body_length
+        device: Any,
+        isConnected: Bool
+    ) async {
         // Get current active accountId - CRITICAL: Only update devices for current account
         // Multiple accounts can have devices with same MAC/BroadcastID
         let currentAccountId: String?
@@ -356,7 +358,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 }
                 if devicesUpdated > 0 {
                     try localRepository.context.save()
-                    logger.log(level: .info, tag: tag, message: "Updated \(devicesUpdated) device(s) connection status by ID: \(deviceId), connected: \(isConnected)")
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "Updated \(devicesUpdated) device(s) connection status by ID: \(deviceId), connected: \(isConnected)"
+                    )
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to update device by ID: \(error.localizedDescription)")
@@ -379,7 +385,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
                 if !devices.isEmpty {
                     try localRepository.context.save()
-                    logger.log(level: .info, tag: tag, message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)")
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "Updated \(devices.count) device(s) connection status by broadcast ID: \(broadcastId), connected: \(isConnected)"
+                    )
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to update device by broadcast ID: \(error.localizedDescription)")
@@ -393,7 +403,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             }
         } else {
             // If we couldn't find any devices, log the error
-            logger.log(level: .error, tag: tag, message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), Broadcast ID: \(broadcastId ?? "nil"), AccountId: \(accountId)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Device not found for connection update. Device ID: \(deviceId ?? "nil"), " +
+                    "Broadcast ID: \(broadcastId ?? "nil"), AccountId: \(accountId)"
+            )
         }
     }
     
@@ -452,7 +467,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 device.isWeighOnlyModeEnabledByOthers = isWeightOnlyModeEnabledByOthers
                 device.isSynced = false
                 try localRepository.context.save()
-                logger.log(level: .debug, tag: tag, message: "Updated weight-only mode status for device \(broadcastId): \(isWeightOnlyModeEnabledByOthers)")
+                logger.log(
+                    level: .debug,
+                    tag: tag,
+                    message: "Updated weight-only mode status for device \(broadcastId): \(isWeightOnlyModeEnabledByOthers)"
+                )
             } else {
                 logger.log(level: .error, tag: tag, message: "Device not found with broadcast ID: \(broadcastId), accountId: \(accountId)")
             }
@@ -518,7 +537,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Check by ID
             if localDevice.id == device.id { return true }
             // Check by broadcastIdString
-            if let localBid = localDevice.broadcastIdString, let newBid = device.broadcastIdString, !localBid.isEmpty, localBid == newBid { return true }
+            if let localBid = localDevice.broadcastIdString,
+               let newBid = device.broadcastIdString,
+               !localBid.isEmpty,
+               localBid == newBid {
+                return true
+            }
             // Check by MAC
             if let localMac = localDevice.mac, let newMac = device.mac, !localMac.isEmpty, localMac == newMac { return true }
             return false
@@ -554,7 +578,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     ///   - isConnected: Whether scale is connected
     ///   - skipDuplicateCheck: Whether to skip duplicate checking
     /// - Returns: The created Device
-    func createR4Scale(
+    func createR4Scale( // swiftlint:disable:this function_parameter_count
         scaleId: String,
         accountId: String,
         displayName: String,
@@ -574,7 +598,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         let device = Device(
             id: scaleId,
             accountId: accountId,
-            sku: sku, mac: mac,
+            sku: sku,
+            mac: mac,
             deviceName: deviceName,
             deviceType: DeviceType.scale.rawValue,
             broadcastId: broadcastId,
@@ -801,7 +826,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Build scale info string
             let scaleInfo = activeScales.map { formatScaleInfo($0) }.joined(separator: " ")
             
-            logger.log(level: .debug, tag: tag, message: "Refreshing scales: total=\(allScales.count), active=\(activeScales.count), account=\(accountId), scales=[\(scaleInfo)]")
+            logger.log(
+                level: .debug,
+                tag: tag,
+                message: "Refreshing scales: total=\(allScales.count), active=\(activeScales.count), account=\(accountId), scales=[\(scaleInfo)]"
+            )
             self.scales = activeScales
         } catch {
             self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
@@ -818,14 +847,22 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     
     // Helper to check if a local device matches a remote device (for deduplication/conflict resolution)
     private func isDuplicateDevice(device: Device, remoteDTO: ScaleDTO) -> Bool {
-        if let deviceBroadcastId = device.broadcastIdString, let remoteBroadcastId = remoteDTO.broadcastIdString, deviceBroadcastId == remoteBroadcastId { return true }
-        if let deviceMac = device.mac, let remoteMac = remoteDTO.mac, deviceMac == remoteMac { return true }
+        if let deviceBroadcastId = device.broadcastIdString,
+           let remoteBroadcastId = remoteDTO.broadcastIdString,
+           deviceBroadcastId == remoteBroadcastId {
+            return true
+        }
+        if let deviceMac = device.mac,
+           let remoteMac = remoteDTO.mac,
+           deviceMac == remoteMac {
+            return true
+        }
         return false
     }
     
     /// Pushes all local changes (creates, edits, deletes) to the server.
     /// Follows the sync rules for proper state management.
-    public func pushLocalChangesToServer() async {
+    public func pushLocalChangesToServer() async { // swiftlint:disable:this cyclomatic_complexity function_body_length
         let accountId: String?
         do {
             accountId = try await getAccountId()
@@ -942,7 +979,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// Fetches fresh server state and replaces local storage with it.
     /// This implements the "replace-all" policy for clean state management.
     /// Preserves any unsynced local devices to avoid losing local changes.
-    private func pullServerStateAndReplace(accountId: String) async {
+    private func pullServerStateAndReplace( // swiftlint:disable:this cyclomatic_complexity function_body_length
+        accountId: String
+    ) async {
         do {
             logger.log(level: .debug, tag: tag, message: "Fetching server scales for account \(accountId)")
             let serverScales = try await remoteRepo.listScales()
@@ -1043,9 +1082,9 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 }
                 
                 // If any server device matches by id/mac/broadcastId, keep it
-                let matchesServer = serverIds.contains(dev.id) ||
-                    (dev.mac != nil && serverMacs.contains(dev.mac!)) ||
-                    (dev.broadcastIdString != nil && serverBids.contains(dev.broadcastIdString!))
+                let matchesByMac = dev.mac.map { serverMacs.contains($0) } ?? false
+                let matchesByBroadcastId = dev.broadcastIdString.map { serverBids.contains($0) } ?? false
+                let matchesServer = serverIds.contains(dev.id) || matchesByMac || matchesByBroadcastId
                 if !matchesServer {
                     // Orphan synced local device -> delete to align with server
                     try await localRepository.deleteScale(dev.id)
@@ -1173,5 +1212,5 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         
         return savedDevice
     }
+// swiftlint:disable:next file_length
 }
-// swiftlint:enable type_body_length function_parameter_count

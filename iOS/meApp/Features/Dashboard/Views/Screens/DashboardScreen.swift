@@ -205,7 +205,7 @@ store.restartWiggleAnimations()
         NoEntryView(
             title: nil,
             description: DashboardStrings.noEntriesMessage
-        )            {
+        ) {
                 tabViewModel.pendingSettingsNavigation = .addEditScales
                 tabViewModel.selectedTab = .settings
                 tabViewModel.settingsNavigationSourceTab = .dash

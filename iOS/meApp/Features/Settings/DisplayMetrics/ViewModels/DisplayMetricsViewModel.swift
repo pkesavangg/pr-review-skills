@@ -164,6 +164,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         
         // Then, add disabled metrics in their original ScaleMetrics order
         for metric in availableMetrics {
+// swiftlint:disable:next for_where
             if !displayMetricsKeys.contains(metric.key) {
                 var disabledMetric = metric
                 disabledMetric.isEnabled = false
@@ -324,6 +325,7 @@ final class DisplayMetricsViewModel: ObservableObject {
         }
     }
     
+// swiftlint:disable:next function_body_length
     func saveDisplayMetrics() async {
         // Step 1: Read @Model synchronously on MainActor, extract to DTO
         refreshScale()

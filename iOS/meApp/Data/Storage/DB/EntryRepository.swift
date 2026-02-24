@@ -1,4 +1,3 @@
-// swiftlint:disable type_body_length
 // This repository intentionally aggregates all Entry CRUD operations to maintain
 // a single source of truth for data access patterns. Splitting would fragment
 // the SwiftData context management and reduce maintainability.
@@ -11,7 +10,8 @@ import SwiftData
 ///
 /// - Note: This repository uses background contexts for all operations to avoid blocking the main thread.
 ///   Methods that need MainActor access are explicitly marked.
-final class EntryRepository: EntryRepositoryProtocol {
+@MainActor
+final class EntryRepository: EntryRepositoryProtocol { // swiftlint:disable:this type_body_length
 
     // MARK: - Properties
     private let container: ModelContainer = PersistenceController.shared.container
@@ -19,12 +19,9 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Executes work on a background ModelContext to avoid blocking the main actor.
     /// - Parameter work: Closure that performs the work using the provided background context.
     /// - Returns: The result of the work.
-    private func performBackgroundTask<T: Sendable>(_ work: @escaping @Sendable (ModelContext) throws -> T) async throws -> T {
-        let container = self.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
-            return try work(backgroundContext)
-        }.value
+    private func performBackgroundTask<T>(_ work: (ModelContext) throws -> T) async throws -> T {
+        let backgroundContext = ModelContext(container)
+        return try work(backgroundContext)
     }
 
     // MARK: - CRUD
@@ -51,7 +48,7 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     /// Saves a new entry to the local data store.
     /// - Parameter entry: The Entry object to save.
-    func saveEntry(_ entry: Entry) async throws {
+    func saveEntry(_ entry: Entry) async throws { // swiftlint:disable:this function_body_length
         // Extract all data from entry before crossing actor boundary
         let id = entry.id
         let accountId = entry.accountId
@@ -377,9 +374,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of BathScaleOperationDTO with all data extracted.
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BathScaleOperationDTO] {
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { backgroundContext in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -395,7 +390,7 @@ final class EntryRepository: EntryRepositoryProtocol {
             let entries = try backgroundContext.fetch(descriptor)
             // Extract ALL data including relationships INSIDE the background context
             return entries.map { $0.toOperationDTO() }
-        }.value
+        }
     }
 
     /// Fetches entry identifiers only for later MainActor refetch.
@@ -405,9 +400,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of PersistentIdentifier for later refetch on MainActor.
     func fetchEntryIdentifiers(forUserId userId: String, operationType: String? = nil) async throws -> [PersistentIdentifier] {
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { backgroundContext in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -422,7 +415,7 @@ final class EntryRepository: EntryRepositoryProtocol {
             }
             let entries = try backgroundContext.fetch(descriptor)
             return entries.map { $0.persistentModelID }
-        }.value
+        }
     }
 
     /// Fetches a single entry and returns its DTO with all relationship data.
@@ -430,23 +423,19 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Returns: BathScaleOperationDTO or nil if not found.
     func fetchEntryAsDTO(byId id: String) async throws -> BathScaleOperationDTO? {
         guard let uuid = UUID(uuidString: id) else { return nil }
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { backgroundContext in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             guard let entry = try backgroundContext.fetch(descriptor).first else { return nil }
             // Extract ALL data inside the background context
             return entry.toOperationDTO()
-        }.value
+        }
     }
 
     /// Fetches the latest entry as DTO for a user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: BathScaleOperationDTO or nil if none exist.
     func fetchLatestEntryAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> BathScaleOperationDTO? {
-        let container = PersistenceController.shared.container
-        return try await Task.detached(priority: .userInitiated) {
-            let backgroundContext = ModelContext(container)
+        return try await performBackgroundTask { backgroundContext in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -461,7 +450,7 @@ final class EntryRepository: EntryRepositoryProtocol {
             }
             guard let entry = try backgroundContext.fetch(descriptor).first else { return nil }
             return entry.toOperationDTO()
-        }.value
+        }
     }
 
     /// Fetches an entry by PersistentIdentifier on the MainActor context.

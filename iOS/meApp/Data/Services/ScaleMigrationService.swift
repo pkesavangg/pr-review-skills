@@ -23,7 +23,11 @@ final class ScaleMigrationService {
     func isMigrationNeeded(for accountId: String) -> Bool {
         let scaleKey = MigrationKey.scaleKey(for: accountId)
         let hasScaleData = kvStorage.getValue(forKey: scaleKey) != nil
-        logger.log(level: .info, tag: tag, message: "Scale migration check for account \(accountId) with key: \(scaleKey) - Scale data exists: \(hasScaleData)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Scale migration check for account \(accountId) with key: \(scaleKey) - Scale data exists: \(hasScaleData)"
+        )
         return hasScaleData
     }
     
@@ -56,7 +60,11 @@ final class ScaleMigrationService {
             }
         }
         await self.scaleService.syncAllScalesWithRemote()
-        logger.log(level: .info, tag: tag, message: "Scale migration completed successfully for account: \(accountId). Migrated \(migratedDevices.count) scales")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Scale migration completed successfully for account: \(accountId). Migrated \(migratedDevices.count) scales"
+        )
         
         return migratedDevices
     }
@@ -99,7 +107,10 @@ final class ScaleMigrationService {
     }
     
     /// Converts Ionic scale data to SwiftUI Device model
-    private func convertIonicScaleToDevice(_ ionicScale: IonicScaleData, accountId: String) throws -> Device {
+    private func convertIonicScaleToDevice( // swiftlint:disable:this function_body_length
+        _ ionicScale: IonicScaleData,
+        accountId: String
+    ) throws -> Device {
         logger.log(level: .info, tag: tag, message: "Converting Ionic scale to Device model: \(ionicScale.id ?? "unknown")")
         
         // Create BathScale

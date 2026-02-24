@@ -69,9 +69,9 @@ struct MetricsState {
     var gridColumns: [GridItem] {
         // Columns strictly follow dashboard type
         let columnCount: Int = (dashboardType == .dashboard4)
-            ? DashboardConstants.UI.fourMetricGridColumns
-            : DashboardConstants.UI.twelveMetricGridColumns
-        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount)
+            ? DashboardConstants.UIConstants.fourMetricGridColumns
+            : DashboardConstants.UIConstants.twelveMetricGridColumns
+        return Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columnCount)
     }
 }
 

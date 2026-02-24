@@ -1,6 +1,5 @@
 // ScaleRepository.swift
 
-// swiftlint:disable type_body_length
 // This repository intentionally aggregates all Device/Scale CRUD operations
 // to maintain a single source of truth for scale data access patterns.
 // Splitting would fragment SwiftData context management and reduce maintainability.
@@ -10,7 +9,7 @@ import SwiftData
 
 /// Repository for managing Device entities in SwiftData storage.
 @MainActor
-final class ScaleRepository: ScaleRepositoryProtocol {
+final class ScaleRepository: ScaleRepositoryProtocol { // swiftlint:disable:this type_body_length
     // MARK: - Properties
     let context: ModelContext = PersistenceController.shared.context
     let logger = LoggerService.shared
@@ -77,7 +76,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Gets all devices that haven't been synced with the API.
     /// - Returns: An array of unsynced devices.
     func getUnsyncedDevices() async throws -> [Device] {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { ($0.isSynced ?? false) == false   })
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { ($0.isSynced ?? false) == false })
         return try context.fetch(descriptor)
     }
 
@@ -206,8 +205,16 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     ///   - accountId: The account ID to filter devices by.
     ///   - serverDevices: Array of fresh Device objects from the server.
     ///   - preserveUnsynced: Array of unsynced local devices to preserve.
-    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [ScaleDTO], preserveUnsynced unsyncedDevices: [Device]) async throws {
-        logger.log(level: .debug, tag: "ScaleRepository", message: "Starting replaceAllDevicesForAccount with \(serverDevices.count) server devices, \(unsyncedDevices.count) unsynced devices")
+    func replaceAllDevicesForAccount( // swiftlint:disable:this function_body_length
+        _ accountId: String,
+        with serverDevices: [ScaleDTO],
+        preserveUnsynced unsyncedDevices: [Device]
+    ) async throws {
+        logger.log(
+            level: .debug,
+            tag: "ScaleRepository",
+            message: "Starting replaceAllDevicesForAccount with \(serverDevices.count) server devices, \(unsyncedDevices.count) unsynced devices"
+        )
         
         // Delete only synced devices for this account (preserve unsynced ones)
         let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
@@ -286,7 +293,11 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         }
         
         try context.save()
-        logger.log(level: .debug, tag: "ScaleRepository", message: "Completed replaceAllDevicesForAccount: Inserted=\(insertedCount), Updated=\(updatedCount)")
+        logger.log(
+            level: .debug,
+            tag: "ScaleRepository",
+            message: "Completed replaceAllDevicesForAccount: Inserted=\(insertedCount), Updated=\(updatedCount)"
+        )
     }
 
     /// Marks a device as deleted locally (for server sync).

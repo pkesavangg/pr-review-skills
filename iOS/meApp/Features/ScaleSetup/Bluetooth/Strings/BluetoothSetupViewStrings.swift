@@ -3,6 +3,7 @@ import Foundation
 struct BluetoothSetupViewStrings {
     struct ConnectingBluetoothViewStrings {
         static let title = "Press and hold the UNIT on the back of your scale."
+// swiftlint:disable:next line_length
         static let description = "Release the button when the animation on your scale's screen begins. It will then show brackets, and the scale will fall asleep."
         static let pairing = "Pairing"
         static let paired = "Paired!"
@@ -13,6 +14,7 @@ struct BluetoothSetupViewStrings {
     struct SetUserViewStrings {
         static let title = "Set your user number on the scale."
         static let description: (Bool, Int) -> String = { isSeL, userNumber in
+// swiftlint:disable:next line_length
             "Press the \(isSeL ? "SEL" : "SET") button on the front of the scale and then use the arrow buttons to find your user number(U\(userNumber))."
         }
         static let boldWords: [String] = ["SEL", "SET"]

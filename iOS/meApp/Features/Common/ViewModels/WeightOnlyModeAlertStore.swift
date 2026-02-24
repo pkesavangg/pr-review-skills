@@ -60,7 +60,9 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     func enableBodyMetricsForScale(onCancel: (() -> Void)? = nil) {
        let alert = AlertModel(
           title: AlertStrings.EnableBodyMetricsAlert.title,
+// swiftlint:disable:next vertical_parameter_alignment_on_call
             message: AlertStrings.EnableBodyMetricsAlert.message,
+// swiftlint:disable:next vertical_parameter_alignment_on_call
             buttons: [
                 AlertButtonModel(title: AlertStrings.EnableBodyMetricsAlert.enableButton, type: .primary) { _ in
                     self.handleEnableBodyMetrics()
@@ -111,7 +113,9 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     func dismissWeightOnlyModeAlert(onCancel: (() -> Void)? = nil) {
          let alert = AlertModel(
           title: AlertStrings.DisableWeightOnlyModeAlert.title,
+// swiftlint:disable:next vertical_parameter_alignment_on_call
             message: AlertStrings.DisableWeightOnlyModeAlert.message,
+// swiftlint:disable:next vertical_parameter_alignment_on_call
             buttons: [
                 AlertButtonModel(title: AlertStrings.DisableWeightOnlyModeAlert.dismissButton, type: .primary) { _ in
                   self.bluetoothService.handleWeightOnlyModeAlertDismissed()

@@ -131,7 +131,11 @@ final class LoggerService: LoggerServiceProtocol {
             
             // Clear logs for the account after successful upload
             try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
-            systemLogger.log(level: .info, tag: "LoggerService", message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)")
+            systemLogger.log(
+                level: .info,
+                tag: "LoggerService",
+                message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)"
+            )
         } catch {
             systemLogger.log(level: .error, tag: "LoggerService", message: "Failed to upload logs: \(error.localizedDescription)")
             throw error

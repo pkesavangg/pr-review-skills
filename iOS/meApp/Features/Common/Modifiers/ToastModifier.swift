@@ -78,6 +78,7 @@ struct ToastModifier: ViewModifier {
         }
     }
     
+// swiftlint:disable:next function_body_length
     private func toastView(for data: ToastModel) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: .spacingXS) {

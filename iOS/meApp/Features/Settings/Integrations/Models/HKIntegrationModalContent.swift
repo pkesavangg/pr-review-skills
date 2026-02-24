@@ -14,5 +14,6 @@ struct HKIntegrationModalContent {
     let secondaryButtonTitle: String? // Optional
 
     // For structured rich text rendering
+// swiftlint:disable:next large_tuple
     var attributedParts: (prefix: String, highlight: String, suffix: String)?
 }

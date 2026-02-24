@@ -41,7 +41,7 @@ struct UsersScreen: View {
                             type: .inlineTextPrimary,
                             size: .small,
                             isDisabled: canDisableSaveButton
-                        )                            {
+                        ) {
                                 saveName()
                             })
                     },
@@ -93,7 +93,7 @@ struct UsersScreen: View {
                                 
                                 DeviceUserListView(
                                     users: viewModel.otherDeviceUsersList
-                                )                                    { user in
+                                ) { user in
                                         viewModel.showDeleteUserAlert(for: user) {
                                             // Alert dismissed, no additional action needed
                                         }

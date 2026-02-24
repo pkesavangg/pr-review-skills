@@ -49,6 +49,7 @@ final class GoalProgressViewModel: ObservableObject {
     }
     
     // MARK: - Data Loading
+// swiftlint:disable:next function_body_length
     private func loadData() async {
         // Keep last-rendered UI visible after initial load to avoid flicker.
         // Only gate the UI (isLoaded = false) before the very first load.

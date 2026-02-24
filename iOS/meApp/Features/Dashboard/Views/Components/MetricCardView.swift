@@ -81,6 +81,7 @@ struct MetricCardView: View {
         return label
     }
     
+// swiftlint:disable:next cyclomatic_complexity
     private func getR4ScaleSetupLabel(for originalLabel: String) -> String {
         switch originalLabel {
         case DashboardStrings.bmi:

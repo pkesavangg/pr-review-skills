@@ -5,7 +5,7 @@
 //  Created by Lakshmi Priya on 07/08/25.
 //
 
-// swiftlint:disable type_body_length function_body_length cyclomatic_complexity
+// swiftlint:disable type_body_length function_body_length cyclomatic_complexity file_length
 // This file intentionally aggregates UIKit collection view logic for goal/streak grid.
 // Breaking it into smaller files would fragment related drag-and-drop and layout logic.
 // The handleLongPress and targetIndexPathForMoveFromItemAt functions are intentionally complex
@@ -229,7 +229,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             if isEditMode {
                 // In edit mode, show ALL streaks (including removed ones)
                 // Order them according to the saved order, then append any missing ones at the end
-                var ordered = order.compactMap { id in all.first { $0.id.uuidString == id }}
+                var ordered = order.compactMap { id in all.first { $0.id.uuidString == id } }
                 let missing = all.filter { streak in !order.contains(streak.id.uuidString) }
                 ordered.append(contentsOf: missing)
                 return ordered
@@ -238,7 +238,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 guard !order.isEmpty else {
                     return all
                 }
-                let ordered = order.compactMap { id in all.first { $0.id.uuidString == id }}
+                let ordered = order.compactMap { id in all.first { $0.id.uuidString == id } }
                 // Append missing streaks if order is incomplete
                 if ordered.count < all.count {
                     let orderedIds = Set(ordered.map { $0.id.uuidString })
@@ -366,7 +366,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
     
     // MARK: - Coordinator
     
-    // swiftlint:disable type_body_length function_body_length cyclomatic_complexity
     // This Coordinator class intentionally aggregates all collection view delegate logic.
     // Breaking it into smaller classes would fragment related drag-and-drop functionality.
     // The handleLongPress and targetIndexPathForMoveFromItemAt functions are intentionally complex
@@ -493,7 +492,8 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
 
         private func fireBoundaryHapticIfNeeded(now: Date = Date(), minInterval: TimeInterval = 0.25) {
-            guard lastBoundaryHapticTime == nil || now.timeIntervalSince(lastBoundaryHapticTime!) > minInterval else {
+            if let lastBoundaryHapticTime,
+               now.timeIntervalSince(lastBoundaryHapticTime) <= minInterval {
                 return
             }
             boundaryFeedback.prepare()
@@ -547,9 +547,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             
             switch gesture.state {
             case .began:
-                // Determine which item was long-pressed, if any
-                guard let indexPath = collectionView.indexPathForItem(at: location) else { return }
-                
                 // If not in edit mode, enter edit mode on long press of a goal card or streak item,
                 // then immediately proceed to start the drag for the same item.
                 if !store.state.ui.isEditMode {
@@ -698,14 +695,24 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
             switch widget {
             case .goalCard:
-                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "GoalCardCell", for: indexPath) as! GoalCardCell
+                guard let cell = collectionView.dequeueReusableCell(
+                    withReuseIdentifier: "GoalCardCell",
+                    for: indexPath
+                ) as? GoalCardCell else {
+                    return UICollectionViewCell()
+                }
                 cell.configure(with: store)
                 cell.isWiggling = store.state.ui.isEditMode
                 cell.rowIndex = indexPath.item
                 cell.isRemoved = store.state.ui.isGoalCardRemoved
                 return cell
             case .streak(let item):
-                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "StreakCardCell", for: indexPath) as! StreakCardCell
+                guard let cell = collectionView.dequeueReusableCell(
+                    withReuseIdentifier: "StreakCardCell",
+                    for: indexPath
+                ) as? StreakCardCell else {
+                    return UICollectionViewCell()
+                }
                 cell.parentView = parentView
                 cell.configure(
                     with: item, 
@@ -835,7 +842,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             case .goalCard:
                 // Goal card positioning logic based on streak removal state
                 let hasRemovedStreaks = !store.state.ui.removedStreaks.isEmpty
-                let allStreaksPresent = isAllStreaksPresent()
                           
                 if hasRemovedStreaks {
                     // When streaks are removed, allow flexible positioning but clamp to valid range
@@ -959,16 +965,6 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 }
             }
 
-            // Debug: Show what's at each position
-            for (index, widget) in gridModel.mileStones.enumerated() {
-                switch widget {
-                case .goalCard:
-                    break
-                case .streak(let item):
-                    break
-                }
-            }
-            
             // Get the widget being moved
             let movedWidget = gridModel.mileStones[sourceIndex]
             
@@ -1089,6 +1085,5 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         }
         
     }
-    // swiftlint:enable type_body_length function_body_length cyclomatic_complexity
 }
 // swiftlint:enable type_body_length function_body_length cyclomatic_complexity

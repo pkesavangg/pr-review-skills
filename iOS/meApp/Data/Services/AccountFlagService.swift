@@ -62,7 +62,9 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Found account flag: type=\(preferredFlag?.type ?? "nil"), trigger=\(preferredFlag?.trigger ?? "nil"), id=\(preferredFlag?.id ?? "nil")"
+                message: "Found account flag: type=\(preferredFlag?.type ?? "nil"), "
+                    + "trigger=\(preferredFlag?.trigger ?? "nil"), "
+                    + "id=\(preferredFlag?.id ?? "nil")"
             )
             
             return preferredFlag

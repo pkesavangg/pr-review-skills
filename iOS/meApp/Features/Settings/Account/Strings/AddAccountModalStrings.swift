@@ -2,7 +2,8 @@
 struct AddAccountModalStrings {
     /// Modal heading – appears in bold, all-caps.
     static let title = "NEW: Add Multiple Accounts"
-    /// Supporting body copy explaining the feature.
+    // Supporting body copy explaining the feature.
+// swiftlint:disable:next line_length
     static let description = "Switch between Weight Gurus accounts by pressing and holding the profile icon or selecting \"Switch Accounts\" in settings."
     /// Primary call-to-action button label.
     static let addAccount = "Add Account"

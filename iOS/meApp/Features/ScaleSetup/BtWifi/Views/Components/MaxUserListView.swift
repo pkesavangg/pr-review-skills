@@ -27,7 +27,7 @@ struct MaxUserListView: View {
                             
                             DeviceUserListView(
                                 users: userList
-                            )                                { user in
+                            ) { user in
                                     store.handleDeleteUser(user)
                                 }
                             .padding(.top, .spacingLG)

@@ -60,7 +60,7 @@ struct UserNumberButtonGrid: View {
     UserNumberButtonGrid(
         numbers: Array(1...8),
         selectedNumber: .constant(3)
-    )        { number in
+    ) { number in
             print("Selected U\(number)")
         }
     .environmentObject(Theme.shared)

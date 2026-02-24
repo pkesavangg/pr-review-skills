@@ -24,7 +24,7 @@ struct SafariView: UIViewControllerRepresentable {
 
 #Preview {
     // Example usage in a preview
-    SafariView(url: URL(string: "https://greatergoods.com/service")!) {
+    SafariView(url: URL(string: "https://greatergoods.com/service") ?? URL(fileURLWithPath: "/")) {
         print("Browser was dismissed")
     }
 }

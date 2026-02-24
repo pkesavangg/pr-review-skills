@@ -44,6 +44,7 @@ struct ButtonView: View {
                 lastTapTime = now
                 action()
             }
+// swiftlint:disable:next multiple_closures_with_trailing_closure
         }) {
             Text(text.uppercased())
                 .fontWeight(.bold)

@@ -331,7 +331,8 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         return !continuousOperations.isEmpty && visibleOperations.isEmpty
     }
 
-    /// Updates visible data after scroll ends (forces UI update and logs average weight)
+    // Updates visible data after scroll ends (forces UI update and logs average weight)
+    // swiftlint:disable:next function_parameter_count
     func updateVisibleDataAfterScroll(visibleOperations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void, logAverage: @escaping (Double) -> Void) {
         triggerUpdate()
         let opsToUse = visibleOperations.isEmpty ? visibleOperations : visibleOperations

@@ -40,7 +40,7 @@ struct ScaleModesSelectionView: View {
                 if internalSelectedMode == .allBodyMetrics {
                     AllBodyMetricsContentView(
                         isHeartRateOn: $internalIsHeartRateEnabled
-                    )                        { newValue in
+                    ) { newValue in
                             internalIsHeartRateEnabled = newValue
                             onValueChanged(internalSelectedMode, newValue)
                         }

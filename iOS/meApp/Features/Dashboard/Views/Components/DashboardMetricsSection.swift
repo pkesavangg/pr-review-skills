@@ -126,8 +126,8 @@ struct DashboardMetricsSection: View {
         let skeletonCount = store.effectiveDashboardType == .dashboard12 ? 12 : 4
         
         return LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount),
-            spacing: DashboardConstants.UI.gridSpacing
+            columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columnCount),
+            spacing: DashboardConstants.UIConstants.gridSpacing
         ) {
             ForEach(0..<skeletonCount, id: \.self) { _ in
                 SkeletonMetricCardView(dashboardType: store.effectiveDashboardType)
@@ -146,7 +146,7 @@ struct DashboardMetricsSection: View {
         return VStack(spacing: .spacingLG) {
             SkeletonGoalCardView()
             LazyVGrid(
-                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columns),
+                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columns),
                 spacing: .spacingLG
             ) {
                 ForEach(0..<6, id: \.self) { _ in

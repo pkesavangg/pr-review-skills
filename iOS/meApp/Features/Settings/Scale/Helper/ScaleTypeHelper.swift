@@ -10,9 +10,10 @@ import Foundation
 /// Helper class for determining scale types based on device properties
 struct ScaleTypeHelper {
     
-    /// Determines the scale type based on the scale's SKU and other properties
-    /// - Parameter scale: The device to determine the scale type for
-    /// - Returns: The determined scale type as a ScaleType enum
+    // Determines the scale type based on the scale's SKU and other properties
+    // - Parameter scale: The device to determine the scale type for
+    // - Returns: The determined scale type as a ScaleType enum
+// swiftlint:disable:next cyclomatic_complexity
     static func determineScaleType(for scale: Device) -> ScaleType {
         guard let sku = scale.sku else { return .bluetoothA6 } // Default fallback
         
@@ -64,9 +65,10 @@ struct ScaleTypeHelper {
         return .bluetoothA6 // Default fallback
     }
     
-    /// Determines the scale type as a string based on the scale's SKU and other properties
-    /// - Parameter scale: The device to determine the scale type for
-    /// - Returns: The determined scale type as a string
+    // Determines the scale type as a string based on the scale's SKU and other properties
+    // - Parameter scale: The device to determine the scale type for
+    // - Returns: The determined scale type as a string
+// swiftlint:disable:next cyclomatic_complexity
     static func determineScaleTypeString(for scale: Device) -> String {
         guard let sku = scale.sku else { return "Unknown" }
         

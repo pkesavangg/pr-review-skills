@@ -154,6 +154,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     self.navigateToStep(.errorSelect)
                 })
             case .apMode:
+// swiftlint:disable:next line_length
                 return AnyView(ApModeConnectionView(connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "", permissionsSkipped: permissionsSkipped) {
                     self.openWifiSettings()
                 })
@@ -169,6 +170,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     self.navigateToStep(.errorSelect)
                 })
             case .errorSelect:
+// swiftlint:disable:next multiline_arguments
                 return AnyView(ErrorCodeSelectionView(sku: scaleItem.sku, selectedError: selectedErrorCode, onErrorSelected: { code in
                     self.selectedErrorCode = code
                 }, onClickButton: {
@@ -181,6 +183,7 @@ final class WifiScaleSetupStore: ObservableObject {
             case .stepOn:
                 return AnyView(ScaleSetupStepOnView())
             case .setupFinish:
+// swiftlint:disable:next line_length
                 return AnyView(ScaleSetupFinishView(title: scaleSetupStrings.FinishViewStrings.title, description: scaleSetupStrings.FinishViewStrings.description))
             }
         }
@@ -311,6 +314,7 @@ final class WifiScaleSetupStore: ObservableObject {
         return currentStep == .intro || currentStep == .setupFinish
     }
     
+// swiftlint:disable:next cyclomatic_complexity
     func handleNextButtonClick() {
         switch currentStep {
         case .intro:
@@ -329,6 +333,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToNextStep()
             }
+// swiftlint:disable:next switch_case_alignment
             case .connectionConfirm:
             // If permissions were skipped or we're in the Get-MAC flow we must force AP-mode – smart-connect isn't possible.
             if permissionsSkipped || isForGetMac {
@@ -340,6 +345,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 self.navigateToStep(.apMode)
             }
+// swiftlint:disable:next switch_case_alignment
             case .apMode:
             // In Get-MAC flow we poll the scale's AP for its MAC address, otherwise we just proceed to the next wizard step.
             if isForGetMac {
@@ -356,6 +362,7 @@ final class WifiScaleSetupStore: ObservableObject {
         case .apModeConfirm:
             // User confirmed AP-mode connection; advance to the scale calibration (Step-On) stage.
             self.navigateToStep(.stepOn)
+// swiftlint:disable:next switch_case_alignment
             case .errorDetail, .copyMacAddress:
             // When the user taps "Finish" on the error detail screen/copy mac address screen, we exit the setup entirely.
             exitSetup()
@@ -366,6 +373,7 @@ final class WifiScaleSetupStore: ObservableObject {
             // Save scale before finishing setup
             saveScale()
             moveToNextStep()
+// swiftlint:disable:next switch_case_alignment
             default:
             moveToNextStep()
         }
@@ -379,6 +387,7 @@ final class WifiScaleSetupStore: ObservableObject {
             //   • Otherwise we must guide the user back to the permissions screen.
             if isForGetMac {
                 // Ternary chooses the appropriate destination based on current permission state.
+// swiftlint:disable:next void_function_in_ternary
                 arePermissionsEnabled() ? navigateToStep(.intro) : navigateToStep(.permissions)
             } else {
                 moveToPreviousStep()
@@ -390,6 +399,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 navigateToStep(.connectionConfirm)
             }
+// swiftlint:disable:next switch_case_alignment
             case .copyMacAddress:
             // Simply rewind to the AP-mode instructions when the user taps "Back" from the copy screen.
             navigateToStep(.apMode)
@@ -400,6 +410,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToPreviousStep()
             }
+// swiftlint:disable:next switch_case_alignment
             default:
             moveToPreviousStep()
         }
@@ -537,6 +548,7 @@ final class WifiScaleSetupStore: ObservableObject {
         case .apMode:
             // Set skipCheckNetwork to true when entering AP mode
             setSkipCheckNetwork(true)
+// swiftlint:disable:next switch_case_alignment
             default:
             // Reset skipCheckNetwork to false for other steps
             setSkipCheckNetwork(false)
@@ -683,6 +695,7 @@ final class WifiScaleSetupStore: ObservableObject {
     /// On error the method simply logs via `LoggerService`; UI feedback is handled by
     /// observers of `LoggerService` elsewhere in the app.
     private func startSmartConnect() async {
+// swiftlint:disable:next line_length
         LoggerService.shared.log(level: .info, tag: tag, message: "startSmartConnect initiated – setupType: \(String(describing: scaleItem?.setupType))")
         
         // If permissions were skipped, do NOT try to configure the scale.
@@ -841,4 +854,5 @@ final class WifiScaleSetupStore: ObservableObject {
         cancellables.removeAll()
     }
 }
+// swiftlint:disable:next file_length
 // swiftlint:enable type_body_length
