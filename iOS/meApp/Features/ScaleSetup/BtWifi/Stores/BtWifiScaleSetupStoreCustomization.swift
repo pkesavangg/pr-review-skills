@@ -4,6 +4,213 @@ import SwiftUI
 
 @MainActor
 extension BtWifiScaleSetupStore {
+    /// Sets the customization page and navigates to view settings
+    func setCustomizationPage(_ setting: CustomizeSettings) {
+        currentCustomizeSetting = setting
+        preloadDataForCustomizationPage(setting)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            self.navigateToStep(.viewSettings)
+        }
+    }
+
+    private func preloadDataForCustomizationPage(_ setting: CustomizeSettings) {
+        switch setting {
+        case .scaleUsername:
+            setupScaleUsernameForm()
+        case .scaleMode:
+            preloadScaleMode()
+        case .scaleMetrics:
+            preloadScaleMetrics()
+        case .dashboardMetrics:
+            Task { [weak self] in
+                guard let self else { return }
+                await self.setupDashboardMetricsCustomization()
+            }
+        default:
+            break
+        }
+    }
+
+    private func preloadScaleMode() {
+        Task { [weak self] in
+            guard let self, let savedScale = self.savedScale else { return }
+            if let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                await MainActor.run {
+                    self.selectedScaleMode = preference.shouldMeasureImpedance ? .allBodyMetrics : .weightOnly
+                    self.isHeartRateEnabled = preference.shouldMeasurePulse
+                }
+            }
+        }
+        initialScaleModeSnapshot = selectedScaleMode
+        initialHeartRateEnabledSnapshot = isHeartRateEnabled
+    }
+
+    private func preloadScaleMetrics() {
+        Task { [weak self] in
+            guard let self else { return }
+            if let savedScale = self.savedScale,
+               let preference = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
+                await MainActor.run {
+                    self.selectedScaleMetrics = Array(preference.displayMetrics)
+                    self.initialScaleMetricsSnapshot = Array(preference.displayMetrics)
+                    if self.savedScaleMetricsSnapshot == nil {
+                        self.savedScaleMetricsSnapshot = Array(preference.displayMetrics)
+                    }
+                }
+            } else {
+                await MainActor.run {
+                    self.selectedScaleMetrics = ScaleMetrics.defaultMetricsKeys
+                    self.initialScaleMetricsSnapshot = ScaleMetrics.defaultMetricsKeys
+                    if self.savedScaleMetricsSnapshot == nil {
+                        self.savedScaleMetricsSnapshot = ScaleMetrics.defaultMetricsKeys
+                    }
+                }
+            }
+        }
+    }
+
+    /// Handles scale mode and heart rate changes
+    func handleScaleModeChange(_ scaleMode: ScaleModes, heartRateEnabled: Bool) {
+        selectedScaleMode = scaleMode
+        isHeartRateEnabled = heartRateEnabled
+        updateNextEnabled()
+    }
+
+    /// Shows the showAccuCheckInfoModal.
+    func showAccuCheckInfoModal() {
+        notificationService.showModal(ModalData(
+            presentedView: AnyView(AccuCheckInfoModalView {
+                self.notificationService.dismissModal()
+            })
+        ))
+    }
+
+    /// Adds a customize settings item to the visited items set (tracks that user has opened this screen)
+    func addSelectedCustomizeItem(_ item: String) {
+        visitedCustomizeItems.insert(item)
+    }
+
+    /// Checks if a customize settings item has been visited
+    func isCustomizeItemSelected(_ item: String) -> Bool {
+        return visitedCustomizeItems.contains(item)
+    }
+
+    /// Handles the save action from the view settings screen
+    func handleViewSettingsAction() {
+        applySaveForCurrentViewSetting()
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            self.currentCustomizeSetting = .none
+        }
+        self.moveToPreviousStep()
+    }
+
+    private func applySaveForCurrentViewSetting() {
+        switch currentCustomizeSetting {
+        case .scaleUsername:
+            saveViewSettingsScaleUsername()
+        case .scaleMode:
+            saveViewSettingsScaleMode()
+        case .scaleMetrics:
+            saveViewSettingsScaleMetrics()
+        case .dashboardMetrics:
+            saveViewSettingsDashboardMetrics()
+        default:
+            break
+        }
+    }
+
+    private func saveViewSettingsScaleUsername() {
+        guard userNameForm.displayName.isValid else { return }
+        if let savedScale = savedScale {
+            Task {
+                if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    attached.displayName = userNameForm.displayName.value
+                }
+            }
+        }
+        hasCustomizeChanges = true
+        hasSavedSettings = true
+    }
+
+    private func saveViewSettingsScaleMode() {
+        if let savedScale = savedScale {
+            Task {
+                if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    attached.shouldMeasureImpedance = (selectedScaleMode == .allBodyMetrics)
+                    attached.shouldMeasurePulse = isHeartRateEnabled
+                }
+            }
+        }
+        hasCustomizeChanges = true
+        hasSavedSettings = true
+    }
+
+    private func saveViewSettingsScaleMetrics() {
+        if let savedScale = savedScale {
+            Task {
+                if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+                    attached.displayMetrics = selectedScaleMetrics
+                    await MainActor.run { self.savedScaleMetricsSnapshot = self.selectedScaleMetrics }
+                }
+            }
+        }
+        hasCustomizeChanges = true
+        hasSavedSettings = true
+        selectedCustomizeItems.insert(CustomizeSettingsItem.scaleMetrics.rawValue)
+    }
+
+    private func saveViewSettingsDashboardMetrics() {
+        hasCustomizeChanges = true
+        hasSavedSettings = true
+        selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
+        Task { @MainActor in
+            dashboardStore.syncRemovalStateFromMetricsManager()
+            dashboardStore.updateSnapshot()
+            dashboardStore.state.ui.gridLayoutId = UUID()
+            dashboardStore.objectWillChange.send()
+        }
+    }
+
+    /// Handles the back action from the view settings screen
+    func handleViewSettingsBack() {
+        dashboardMetricsUpdatedCancellable?.cancel()
+        dashboardMetricsUpdatedCancellable = nil
+        revertViewSettingsFor(currentCustomizeSetting)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            self.currentCustomizeSetting = .none
+        }
+    }
+
+    private func revertViewSettingsFor(_ setting: CustomizeSettings) {
+        switch setting {
+        case .dashboardMetrics:
+            let hasSaved = hasSavedSettings && selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue)
+            if hasSaved { dashboardStore.cancelEdit() } else { discardDashboardCustomization() }
+        case .scaleMode:
+            revertViewSettingsScaleMode()
+        case .scaleUsername:
+            if let original = initialDisplayNameSnapshot {
+                userNameForm.setDisplayName(original)
+                resetFormState()
+            }
+        case .scaleMetrics:
+            if let savedState = savedScaleMetricsSnapshot { selectedScaleMetrics = savedState }
+        default:
+            break
+        }
+    }
+
+    private func revertViewSettingsScaleMode() {
+        guard let savedScale = savedScale else { return }
+        let impedance = savedScale.r4ScalePreference?.shouldMeasureImpedance == true
+        let pulse = savedScale.r4ScalePreference?.shouldMeasurePulse ?? false
+        selectedScaleMode = initialScaleModeSnapshot ?? (impedance ? .allBodyMetrics : .weightOnly)
+        isHeartRateEnabled = initialHeartRateEnabledSnapshot ?? pulse
+    }
+
     func setupScaleUsernameForm() {
         let initialDisplayName = firstName ?? "User"
         userNameForm.setDisplayName(initialDisplayName)
@@ -39,247 +246,130 @@ extension BtWifiScaleSetupStore {
             }
         }
     }
-    
-    /// Snapshots the current dashboard state for change detection
-    func snapshotDashboardState() {
-        initialDashboardMetricLabelsSnapshot = dashboardStore.metricsManager.state.metrics.map { $0.label }
-        initialDashboardRemovedMetricsSnapshot = dashboardStore.state.ui.removedMetrics
-        initialDashboardRemovedStreaksSnapshot = dashboardStore.state.ui.removedStreaks
-        initialDashboardStreakOrderSnapshot = dashboardStore.state.ui.streakGridOrder
-        initialDashboardGoalCardRemovedSnapshot = dashboardStore.state.ui.isGoalCardRemoved
-        initialDashboardGoalCardPositionSnapshot = dashboardStore.state.ui.goalCardPosition
-    }
-    
-    /// Returns true if dashboard customization has changed compared to initial snapshot
-    func hasDashboardCustomizationChanged() -> Bool {
-        let state = dashboardStore.metricsManager.state.metrics.map { $0.label }
-        let removed = dashboardStore.state.ui.removedMetrics
-        let removedStreaks = dashboardStore.state.ui.removedStreaks
-        let order = dashboardStore.state.ui.streakGridOrder
-        let goalRemoved = dashboardStore.state.ui.isGoalCardRemoved
-        let goalPos = dashboardStore.state.ui.goalCardPosition
-        
-        return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
-               (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
-               (initialDashboardRemovedStreaksSnapshot != nil && initialDashboardRemovedStreaksSnapshot != removedStreaks) ||
-               (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
-               (initialDashboardGoalCardRemovedSnapshot != nil && initialDashboardGoalCardRemovedSnapshot != goalRemoved) ||
-               (initialDashboardGoalCardPositionSnapshot != nil && initialDashboardGoalCardPositionSnapshot != goalPos)
-    }
-    
-    /// Discards dashboard customization changes by canceling edit mode
-    func discardDashboardCustomization() {
-        dashboardStore.cancelEdit()
-        // Remove from selected items (unsaved changes), but keep in visited items (checkmark stays)
-        selectedCustomizeItems.remove(CustomizeSettingsItem.dashboardMetrics.rawValue)
-        // Only clear hasCustomizeChanges if no other settings have been changed
-        hasCustomizeChanges = !selectedCustomizeItems.isEmpty
-    }
-    
-    /// Opens the BIA model information modal.
-    func openBIAModel() {
-        notificationService.showModal(ModalData(
-            presentedView: AnyView(BIAInfoModalView {
-                self.notificationService.dismissModal()
-            }),
-            backdropDismiss: true
-        ))
-    }
-    
-    // MARK: - Dashboard Metrics Upgrade
-    
-    /// Upgrades dashboard from type 4 → 12 using default metric order.
-    /// Enables all metrics. Call only when current dashboard type is 4.
-    func upgradeDashboardTypeFrom4To12WithDefaults() async {
-        // Check if dashboard is already type 12 - if so, don't do anything
-        let isAlreadyDashboard12 = await MainActor.run {
-            dashboardStore.metricsManager.state.dashboardType == .dashboard12 && 
-            !dashboardStore.metricsManager.state.metrics.isEmpty
+
+    /// Applies the updated preference locally and navigates to stepOn on success.
+    private func applyUpdatedPreferenceLocallyAndNavigate(savedScale: Device, updatedPreference: R4ScalePreference) async {
+        do {
+            try await scaleService.updateScalePreference(savedScale.id, updatedPreference)
+            hasCustomizeChanges = false
+            hasSavedSettings = false
+            LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
+            selectedCustomizeItems.removeAll()
+            scaleSetupError = .none
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                self.navigateToStep(.stepOn)
+            }
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed locally: \(error.localizedDescription)")
+            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
         }
-        
-        if isAlreadyDashboard12 {
+    }
+
+    /// Updates the customize settings on the scale
+    func updateCustomizeSettings() async {
+        guard let savedScale = savedScale else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - no saved scale")
+            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
             return
         }
-        
+
         do {
-            let apiRepo = AccountRepositoryAPI()
-            _ = try await apiRepo.patchDashboardType(.dashboard12)
-            try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+            let currentPreference = await fetchOrCreateCurrentPreference(for: savedScale)
+            let updatedPreference = buildUpdatedPreference(
+                savedScale: savedScale,
+                currentPreference: currentPreference
+            )
+            let timeoutTask = startUpdateSettingsTimeout()
+
+            try await scaleService.updateScalePreference(savedScale.id, updatedPreference)
+            await scaleService.pushLocalChangesToServer()
+            let result = await bluetoothService.updateAccount(on: savedScale, preference: updatedPreference)
+
+            switch result {
+            case .success:
+                LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - scale preference updated successfully")
+            case .failure(let updateError):
+                LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed: \(updateError.localizedDescription)")
+            }
+
+            timeoutTask.cancel()
+
+            switch result {
+            case .success:
+                await applyUpdatedPreferenceLocallyAndNavigate(savedScale: savedScale, updatedPreference: updatedPreference)
+            case .failure:
+                LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed to update account")
+                await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
+            }
         } catch {
-// swiftlint:disable:next line_length
-            LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to update dashboard type on server: \(error.localizedDescription)")
+            LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed: \(error.localizedDescription)")
+            await MainActor.run { self.scaleSetupError = .updateSettingsFailed }
         }
-        
-        await MainActor.run {
-            dashboardStore.metricsManager.updateDashboardType(.dashboard12)
-            dashboardStore.state.metrics.dashboardType = .dashboard12
-            
-            // True 4 → 12 upgrade; preserve existing metric order
-            dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
-            dashboardStore.metricsManager.resetOrderToDefault()
-            dashboardStore.syncRemovalStateFromMetricsManager()
-            
-            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Upgraded to dashboard12 with default order. All 12 metrics enabled.")
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            self.bluetoothService.syncDevices([])
         }
-        
-        do {
-            try await dashboardStore.metricsManager.saveMetricsToAPI(removedMetrics: [])
-            LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Saved default dashboard metrics order to API")
-        } catch {
-            LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to save metrics to API: \(error.localizedDescription)")
-        }
-        
-        // Only refresh account data to ensure we have latest settings, but don't reload metrics
-        // This ensures the API has the updated dashboard type without resetting the metrics order
-        _ = try? await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
     }
-    
-    /// Checks if the current dashboard type is dashboard4
-    var isDashboardTypeFour: Bool {
-        let currentDashboardType = accountService.activeAccount?.dashboardSettings?.dashboardType
-        let result = (currentDashboardType == "dashboard_4_metrics" || 
-                currentDashboardType == "dashboard4") &&
-                dashboardStore.effectiveDashboardType == .dashboard4
-        return result
+
+    private func fetchOrCreateCurrentPreference(for savedScale: Device) async -> R4ScalePreference {
+        if let attached = await scaleService.fetchAttachedPreference(by: savedScale.id) {
+            return attached
+        }
+        let defaultDTO = R4ScalePreferenceDTO(
+            scaleId: savedScale.id,
+            displayName: firstName ?? "User",
+            displayMetrics: ScaleMetrics.defaultMetricsKeys,
+            shouldFactoryReset: false,
+            shouldMeasureImpedance: true,
+            shouldMeasurePulse: false,
+            timeFormat: "12",
+            tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+            wifiFotaScheduleTime: 0,
+            updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
+            isTemporary: true
+        )
+        return R4ScalePreference(from: defaultDTO, scaleId: savedScale.id)
     }
-    
-    // Sets up dashboard metrics customization screen with proper state management.
-    // First pairing upgrades dashboard and sets default order; subsequent pairings preserve current order
-    func setupDashboardMetricsCustomization() async {
-        let isDashboardFour = isDashboardTypeFour
-        
-        if isDashboardFour {
-            await upgradeDashboardTypeFrom4To12WithDefaults()
-            // Ensure streak data is refreshed and progress metrics are loaded for dashboard 4 upgrade
-            try? await dashboardStore.streakManager.refreshStreakData()
-            await dashboardStore.loadProgressMetricsFromAccount()
-        } else {
+
+    private func buildUpdatedPreference(savedScale: Device, currentPreference: R4ScalePreference) -> R4ScalePreference {
+        let saveScaleMetrics = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleMetrics.rawValue)
+        let saveScaleMode = selectedCustomizeItems.contains(CustomizeSettingsItem.scaleModes.rawValue)
+        let saveScaleUsername = selectedCustomizeItems.contains(CustomizeSettingsItem.userName.rawValue)
+        let displayName = saveScaleUsername
+            ? (userNameForm.displayName.value.isEmpty ? (firstName ?? "User") : userNameForm.displayName.value)
+            : currentPreference.displayName
+        let dto = R4ScalePreferenceDTO(
+            scaleId: savedScale.id,
+            displayName: displayName,
+            displayMetrics: saveScaleMetrics ? selectedScaleMetrics : currentPreference.displayMetrics,
+            shouldFactoryReset: false,
+            shouldMeasureImpedance: saveScaleMode ? (selectedScaleMode == .allBodyMetrics) : currentPreference.shouldMeasureImpedance,
+            shouldMeasurePulse: saveScaleMode ? isHeartRateEnabled : currentPreference.shouldMeasurePulse,
+            timeFormat: "12",
+            tzOffset: DateTimeTools.getTimeZoneInMinutes(),
+            wifiFotaScheduleTime: 0,
+            updatedAt: DateTimeTools.getCurrentDatetimeIsoString(),
+            isTemporary: true
+        )
+        return R4ScalePreference(from: dto, scaleId: savedScale.id)
+    }
+
+    private func startUpdateSettingsTimeout() -> Task<Void, Never> {
+        Task { [weak self] in
+            guard let timeout = self?.timeoutConstants.updateSettingsTimeout else { return }
+            try? await Task.sleep(nanoseconds: UInt64(timeout))
+            guard !Task.isCancelled else { return }
             await MainActor.run {
-                dashboardStore.syncRemovalStateFromMetricsManager()
-                
-                if dashboardStore.metricsManager.state.metrics.isEmpty {
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Dashboard metrics empty, loading from API as fallback")
-                    Task {
-                        // Only load metrics from API, don't do full reload which might reset other state
-                        do {
-                            try await dashboardStore.metricsManager.loadMetricsFromAPI()
-                            await MainActor.run {
-                                dashboardStore.syncRemovalStateFromMetricsManager()
-                            }
-                        } catch {
-// swiftlint:disable:next line_length
-                            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to load dashboard metrics from API: \(error.localizedDescription)")
-                        }
-                    }
-                } else {
-// swiftlint:disable:next line_length
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Preserving existing dashboard metrics order and removal state (account-based, independent of scale)")
+                guard let self = self else { return }
+                if self.currentStep == .updateSettings {
+                    self.scaleSetupError = .updateSettingsFailed
+                    LoggerService.shared.log(level: .error, tag: self.tag, message: "updateCustomizeSettings - timeout occurred")
                 }
             }
         }
-        
-        await MainActor.run {
-            dashboardStore.beginEdit()
-            dashboardStore.state.ui.isEditMode = true
-            snapshotDashboardState()
-        }
-        
-        setupDashboardMetricsSubscriptions()
     }
-    
-    /// Sets up subscriptions for dashboard metrics customization screen
-    func setupDashboardMetricsSubscriptions() {
-        dashboardStoreCancellable?.cancel()
-        dashboardStoreCancellable = dashboardStore.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
-                    self.updateNextEnabled()
-                }
-            }
-        setupDashboardMetricsSync()
-    }
-    
-    // MARK: - Dashboard Synchronization
-    
-    /// Sets up synchronization between customize screen and main dashboard
-    /// When dashboard metrics are updated in the main dashboard, this ensures
-    /// the customize screen reflects those changes immediately
-    func setupDashboardMetricsSync() {
-        // Cancel existing subscription if any
-        dashboardMetricsUpdatedCancellable?.cancel()
-        
-        // Subscribe to dashboard metrics updated notification
 
-        dashboardMetricsUpdatedCancellable = NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self else { return }
-                // Only reload if we're currently on the dashboard metrics customization screen
-                if self.currentStep == .viewSettings && 
-                   self.currentCustomizeSetting == .dashboardMetrics && 
-                   !self.isExiting {
-                }
-            }
-    }
-    
-    /// Persists dashboard metric customization before navigation.
-    /// Runs only when dashboard customization is selected.
-    /// Errors are logged and do not block navigation.
-
-    func persistDashboardMetricsIfNeeded() {
-        guard selectedCustomizeItems.contains(CustomizeSettingsItem.dashboardMetrics.rawValue) else {
-            return
-        }
-        
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            await self.persistDashboardMetrics()
-        }
-    }
-    
-    //// Persists dashboard metrics to the API.
-    /// Separated for testability.
-    @MainActor
-    func persistDashboardMetrics() async {
-        do {
-            // Sync removal state
-            dashboardStore.syncRemovalStateFromMetricsManager()
-            dashboardStore.syncRemovalStateFromStreakManager()
-            
-            // Persist metrics
-            try await dashboardStore.metricsManager.saveMetricsToAPI()
-            try await dashboardStore.saveProgressMetricsToAPI()
-            
-            // Refresh account (non-blocking)
-            _ = try? await accountService.refreshAccount(
-                accountId: accountService.activeAccount?.accountId
-            )
-            
-            // Update snapshot for rollback
-            dashboardStore.updateSnapshot()
-            
-            // Notify dashboard refresh
-            NotificationCenter.default.post(
-                name: .dashboardMetricsUpdated,
-                object: nil
-            )
-            
-            LoggerService.shared.log(
-                level: .info,
-                tag: tag,
-                message: "Dashboard metrics persisted with latest order"
-            )
-        } catch {
-            LoggerService.shared.log(
-                level: .error,
-                tag: tag,
-                message: "Failed to persist dashboard metrics: \(error.localizedDescription)"
-            )
-        }
-    }
-    
     // MARK: - Cleanup Methods
     
     /// Checks if "Set a Goal" modal should be shown after setup completes

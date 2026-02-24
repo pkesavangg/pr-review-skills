@@ -562,7 +562,76 @@ extension BtWifiScaleSetupStore {
         }
     }
     
-    /// Fetches WiFi networks from the scale and handles error cases
+    /// Starts pairing: scanning for devices when entering the wake-up step.
+    func pair() {
+        resetDiscoveryState()
+        Task { bluetoothService.scanForPairing() }
 
+        if deviceDiscoveryCancellable == nil {
+            deviceDiscoveryCancellable = bluetoothService.deviceDiscoveredPublisher
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] discoveryEvent in
+                    self?.handleDeviceDiscovery(discoveryEvent)
+                }
+        }
+
+        stepTimerTask = Task { [weak self] in
+            guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
+            try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                if self.discoveredScale == nil && self.currentStep == .wakeup {
+                    self.navigateToStep(.connectingBluetooth)
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        self.connectionState = .failure
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Device Discovery Handling
+    func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
+        guard currentStep == .wakeup else { return }
+        guard event.deviceInfo.setupType == .btWifiR4 else { return }
+        deviceDiscoveryCancellable?.cancel()
+        deviceDiscoveryCancellable = nil
+        stepTimerTask?.cancel()
+        self.discoveryEvent = event
+        self.discoveredScale = event.device
+
+        if !event.isNew {
+            if let broadcastId = event.device.broadcastIdString, !broadcastId.isEmpty {
+                Task {
+                    await bluetoothSetupManager.disconnectIfNeeded(
+                        broadcastId: broadcastId,
+                        bluetoothService: bluetoothService,
+                        considerForSession: false
+                    )
+                }
+            }
+            showKnownScaleAlert()
+        } else {
+            moveToNextStep()
+        }
+    }
+
+    /// Shows an alert when a known scale is discovered.
+    func showKnownScaleAlert() {
+        let alertStrings = AlertStrings.KnownScaleDiscoveredAlert.self
+        let alert = AlertModel(
+            title: alertStrings.title,
+            message: alertStrings.message,
+            buttons: [
+                AlertButtonModel(title: alertStrings.exitButton, type: .primary) { [weak self] _ in
+                    guard let self = self else { return }
+                    self.performExitCleanup()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
 }
 // swiftlint:enable cyclomatic_complexity function_body_length
