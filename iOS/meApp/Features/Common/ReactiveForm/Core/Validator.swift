@@ -1,7 +1,6 @@
 import Foundation
 import UIKit
 
-
 /// A validator that performs synchronous validation.
 ///
 /// ## Adding Custom Validators
@@ -127,7 +126,7 @@ extension Validator where Value == String {
     public static let skuMatch = Validator(type: .skuMatch) { value in
         // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
         let lookupSku = DeviceHelper.mapSkuForDisplay(value)
-        return SCALES.contains(where: { $0.sku == lookupSku })
+        return SCALES.contains { $0.sku == lookupSku }
     }
     
     /// Validator that checks for duplicate usernames in a provided user list

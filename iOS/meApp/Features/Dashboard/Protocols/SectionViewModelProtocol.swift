@@ -5,9 +5,9 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// Protocol defining common functionality for all section view models
 @MainActor

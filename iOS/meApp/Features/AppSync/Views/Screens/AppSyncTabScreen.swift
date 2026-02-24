@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
-import SwiftUI
 import AppSyncPackage
+import SwiftUI
 
 // MARK: - AppSyncTabScreen
 /// A dedicated tab screen that launches the App Sync camera scanner.
@@ -49,11 +49,11 @@ struct AppSyncTabScreen: View {
                 .id(scannerSessionId)
             }
         }
-        .onChange(of: tabViewModel.selectedTab, { oldValue, newValue in
+        .onChange(of: tabViewModel.selectedTab) { _, newValue in
             withAnimation {
                 tabViewModel.showTabBar = newValue != .appsync
             }
-        })
+        }
     }
 }
 

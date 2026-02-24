@@ -27,8 +27,8 @@ struct AppInputField: View {
     @Binding var focusedField: FocusField?
     
     // Callbacks
-    var onCommit: (() -> Void)? = nil
-    var onEditingChanged: ((Bool) -> Void)? = nil
+    var onCommit: (() -> Void)?
+    var onEditingChanged: ((Bool) -> Void)?
     
     // Internal state
     @FocusState private var fieldIsFocused: Bool
@@ -56,15 +56,14 @@ struct AppInputField: View {
                         fieldType: config.focusField,
                         value: $value,
                         focusedField: $focusedField,
-                        onCommit: onCommit,
-                        onEditingChanged: { focused in
+                        onCommit: onCommit
+                    )                        { focused in
                             fieldIsFocused = focused
                             onEditingChanged?(focused)
                             if focused {
                                 focusedField = config.focusField
                             }
                         }
-                    )
                     .focused($fieldIsFocused)
                     .padding(.leading, .spacingSM)
                 }
@@ -80,24 +79,24 @@ struct AppInputField: View {
                     trailingIconView
                 }
             )
-            .overlay(content: {
+            .overlay {
                 theme.supportOverlay.opacity(config.isDisabled ? (colorScheme == .dark ? 0.5 : 0.2) : 0)
                     .cornerRadius(.radiusSM)
-            })
+            }
             .onTapGesture {
                 if !config.isDisabled {
                     fieldIsFocused = true
                     focusedField = config.focusField
                 }
             }
-            .onChange(of: focusedField) { oldValue, newValue in
+            .onChange(of: focusedField) { _, newValue in
                 if newValue == config.focusField {
                     fieldIsFocused = true
                 } else if newValue == nil && fieldIsFocused {
                     fieldIsFocused = false
                 }
             }
-            .onChange(of: fieldIsFocused) { oldValue, newValue in
+            .onChange(of: fieldIsFocused) { _, newValue in
                 if !newValue && focusedField == config.focusField {
                     focusedField = nil
                 }
@@ -167,7 +166,7 @@ struct AppInputField: View {
 }
 
 // MARK: - APP Input Field Testing View
-struct AppInputTestingField : View {
+struct AppInputTestingField: View {
     @EnvironmentObject var themeManager: Theme
     @Environment(\.appTheme) private var theme
     @State var text: String = "Enter text here"
@@ -203,7 +202,6 @@ struct AppInputTestingField : View {
                 focusedField: $focusedField) {
                     focusedField = .password
                 }
-            
             
             AppInputField(
                 config: TextInputConfig(
@@ -248,11 +246,10 @@ struct AppInputTestingField : View {
                     label: "Model Number",
                     placeholder: "Enter model number",
                     inputType: .text,
-                    customIcon: AppAssets.helpCircle,
-                    onCustomIconTap: {
+                    customIcon: AppAssets.helpCircle
+                )                    {
                         print("Custom icon tapped")
-                    }
-                ),
+                    },
                 value: $modelNumber,
                 focusedField: $focusedField
             ) {

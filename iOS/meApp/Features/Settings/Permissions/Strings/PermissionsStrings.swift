@@ -11,7 +11,7 @@ struct PermissionsStrings {
     static let notification = "Notification"
 
     // Internet
-    static let internet       = "Internet"
+    static let internet = "Internet"
 
     // Row titles / descriptions
     static let bluetoothAccessAuthorized   = "Bluetooth access is authorized"
@@ -30,7 +30,7 @@ struct PermissionsStrings {
     static let enableNotifications         = "Enable notifications"
 
     // Wi-Fi row prompt (Location section)
-    static let wifiEnablePrompt          = "Enable Wi-Fi to continue"
+    static let wifiEnablePrompt = "Enable Wi-Fi to continue"
 
     // Row titles / descriptions for Internet
     static let internetNetworkConnected    = "Network Connected"

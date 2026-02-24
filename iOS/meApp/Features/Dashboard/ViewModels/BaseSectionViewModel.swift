@@ -5,13 +5,11 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 // swiftlint:disable type_body_length
 // This file intentionally aggregates common functionality for all section view models.
-// Breaking it into smaller files would fragment related chart logic and reduce maintainability.
-
-import Foundation
+// Breaking it into smaller files would fragment related chart logic and reduce maintainability.import Foundation
 import SwiftUI
-import Charts
 
 /// Base class implementing common functionality for all section view models
 @MainActor
@@ -21,7 +19,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var selectedPoint: BathScaleWeightSummary?
     @Published var selectedDate: Date?
     @Published var showCrosshair: Bool = false
-    @Published var scrollPosition: Date = Date()
+    @Published var scrollPosition = Date()
     @Published var isScrolling: Bool = false
     
     /// Default implementation simply returns the current `selectedDate`.
@@ -61,7 +59,6 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var visibleDomainLength: TimeInterval {
         return dashboardStore?.visibleDomainLength(for: timePeriod) ?? (7 * 24 * 60 * 60)
     }
-    
     
     var pointSize: CGFloat {
         return 64 // Default point size
@@ -165,7 +162,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     // Cache for chart series data during scrolling
     private var cachedChartSeriesData: [GraphSeries] = []
     // Track which metric was used when caching to detect metric changes during scrolling
-    private var cachedChartSeriesMetric: String? = nil
+    private var cachedChartSeriesMetric: String?
     
     // MARK: - Persistent Cache (survives view recreation)
     private var cachedSeriesData: [GraphSeries] = []
@@ -713,7 +710,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample a few points to create a lightweight hash
-            let indices = newData.count <= 3 ? Array(0..<newData.count) : [0, newData.count/2, newData.count-1]
+            let indices = newData.count <= 3 ? Array(0..<newData.count) : [0, newData.count / 2, newData.count - 1]
             for i in indices {
                 let point = newData[i]
                 hasher.combine(point.date.timeIntervalSince1970.bitPattern)

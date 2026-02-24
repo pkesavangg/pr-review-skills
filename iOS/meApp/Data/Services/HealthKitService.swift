@@ -4,8 +4,8 @@
 // Splitting would fragment the integration flow and reduce maintainability.
 
 import Foundation
-import HealthKit
 import ggHealthKitPackage
+import HealthKit
 import SwiftData
 
 @MainActor
@@ -50,7 +50,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
         }
         
         if turnOn {
-            let isAvailable = hkPackage.available();
+            let isAvailable = hkPackage.available()
             if !isAvailable {
                 return false
             }
@@ -192,7 +192,7 @@ public final class HealthKitService: HealthKitServiceProtocol {
     
     /// Returns `true` if at least one HealthKit permission is granted.
     func checkAuthorizationStatus() -> Bool {
-        let approvedPermissionList = self.getApprovedPermissionList();
+        let approvedPermissionList = self.getApprovedPermissionList()
         return !approvedPermissionList.isEmpty
     }
     
@@ -555,4 +555,3 @@ public final class HealthKitService: HealthKitServiceProtocol {
     }
 
 }
-

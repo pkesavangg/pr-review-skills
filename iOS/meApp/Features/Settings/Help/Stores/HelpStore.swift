@@ -5,10 +5,10 @@
 //  Created by Kesavan Panchabakesan on 23/06/25.
 //
 
-import Foundation
 import Combine
-import SwiftUI
+import Foundation
 import StoreKit
+import SwiftUI
 import UIKit
 
 // MARK: - Settings Store
@@ -29,7 +29,7 @@ class HelpStore: ObservableObject {
     
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false
-    @Published var productURL: URL? = nil
+    @Published var productURL: URL?
     // NEW – debug-menu state
     @Published var showDebugMenu = false
     
@@ -63,7 +63,7 @@ class HelpStore: ObservableObject {
         scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
-                self?.scales = scales.filter({$0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue})
+                self?.scales = scales.filter { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue }
             }
             .store(in: &cancellables)
     }
@@ -258,7 +258,7 @@ class HelpStore: ObservableObject {
     
     func openHelp() {
         notificationService.showModal(ModalData(
-            presentedView: AnyView(ModelNumberHelpModalView(){
+            presentedView: AnyView(ModelNumberHelpModalView {
                 self.notificationService.dismissModal()
             }),
             backdropDismiss: true
@@ -269,4 +269,3 @@ class HelpStore: ObservableObject {
         cancellables.forEach { $0.cancel() }
     }
 }
-

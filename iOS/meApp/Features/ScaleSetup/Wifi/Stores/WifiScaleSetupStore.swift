@@ -2,9 +2,9 @@
 // This file intentionally aggregates WiFi scale setup orchestration logic.
 // Breaking it into smaller files would fragment the multi-step flow management.
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 import UIKit
 
 /// Store responsible for orchestrating the WiFi scale setup multi-step flow.
@@ -38,7 +38,7 @@ final class WifiScaleSetupStore: ObservableObject {
     private var scaleToken: String?
     
     /// Active subscription to the network form changes
-    private var networkFormCancellable: AnyCancellable? = nil
+    private var networkFormCancellable: AnyCancellable?
     
     /// Indicates if the user manually cleared the SSID field (prevents auto-fill).
     private var hasUserManuallyClearedSSID: Bool = false
@@ -47,9 +47,9 @@ final class WifiScaleSetupStore: ObservableObject {
     private var previousSSID: String = ""
     
     /// Tracks the step that presented `.errorSelect` so we can navigate back correctly.
-    private var errorSelectSourceStep: WifiScaleSetupStep? = nil
+    private var errorSelectSourceStep: WifiScaleSetupStep?
     /// Tracks the step that presented `.stepOn` so we can navigate back correctly.
-    private var stepOnSourceStep: WifiScaleSetupStep? = nil
+    private var stepOnSourceStep: WifiScaleSetupStep?
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -89,11 +89,11 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Connected network identifiers captured right before switching the phone to the
     /// scale’s `gg_SmartScale_##` access point.  Required because iOS APIs stop returning
     /// the original SSID/BSSID once the phone moves to the AP.
-    @Published var connectedSsid: String? = nil
-    @Published var connectedBssid: String? = nil
+    @Published var connectedSsid: String?
+    @Published var connectedBssid: String?
     
     /// Captured MAC address once retrieved (Get-MAC flow).
-    @Published var retrievedMacAddress: String? = nil
+    @Published var retrievedMacAddress: String?
     
     /// Set to *true* when the user taps **Skip** on the permissions page.  Smart-connect
     /// is skipped completely in this case and only AP-mode UI is shown.
@@ -163,7 +163,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     userNumber: selectedUserNumber,
                     selectedOption: selectedConnectionMode,
                     mode: .apModeConfirmation
-                ) { selectedMode in
+                ) { _ in
                     self.updateNextEnabled()
                 } onClickButton: {
                     self.navigateToStep(.errorSelect)
@@ -317,7 +317,6 @@ final class WifiScaleSetupStore: ObservableObject {
             // User is following the normal wizard path – clear any previously-set "Get-MAC" flag.
             isForGetMac = false
             moveToNextStep()
-            break
         case .permissions:
             // A valid scale token is mandatory beyond this point; bail out (and show a toast) if we don't have one yet.
             if checkScaleToken() == nil {
@@ -330,7 +329,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToNextStep()
             }
-        case .connectionConfirm:
+            case .connectionConfirm:
             // If permissions were skipped or we're in the Get-MAC flow we must force AP-mode – smart-connect isn't possible.
             if permissionsSkipped || isForGetMac {
                 selectedConnectionMode = .apMode
@@ -341,8 +340,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 self.navigateToStep(.apMode)
             }
-            break
-        case .apMode:
+            case .apMode:
             // In Get-MAC flow we poll the scale's AP for its MAC address, otherwise we just proceed to the next wizard step.
             if isForGetMac {
                 Task {
@@ -355,14 +353,12 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToNextStep()
             }
-            break
         case .apModeConfirm:
             // User confirmed AP-mode connection; advance to the scale calibration (Step-On) stage.
             self.navigateToStep(.stepOn)
-        case .errorDetail, .copyMacAddress:
+            case .errorDetail, .copyMacAddress:
             // When the user taps "Finish" on the error detail screen/copy mac address screen, we exit the setup entirely.
             exitSetup()
-            break
         case .stepOn:
             // Move to next step without saving
             moveToNextStep()
@@ -370,9 +366,8 @@ final class WifiScaleSetupStore: ObservableObject {
             // Save scale before finishing setup
             saveScale()
             moveToNextStep()
-        default:
+            default:
             moveToNextStep()
-            break
         }
     }
     
@@ -388,7 +383,6 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToPreviousStep()
             }
-            break
         case .errorSelect:
             // Return to whichever screen originally presented the error selection list.
             if let origin = errorSelectSourceStep {
@@ -396,10 +390,9 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 navigateToStep(.connectionConfirm)
             }
-        case .copyMacAddress:
+            case .copyMacAddress:
             // Simply rewind to the AP-mode instructions when the user taps "Back" from the copy screen.
             navigateToStep(.apMode)
-            break
         case .stepOn:
             // Allow the user to return to the screen that led to Step-On (e.g. Connection Confirm) when possible.
             if let origin = stepOnSourceStep {
@@ -407,9 +400,8 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToPreviousStep()
             }
-        default:
+            default:
             moveToPreviousStep()
-            break
         }
     }
     
@@ -545,10 +537,9 @@ final class WifiScaleSetupStore: ObservableObject {
         case .apMode:
             // Set skipCheckNetwork to true when entering AP mode
             setSkipCheckNetwork(true)
-        default:
+            default:
             // Reset skipCheckNetwork to false for other steps
             setSkipCheckNetwork(false)
-            break
         }
     }
     
@@ -563,7 +554,6 @@ final class WifiScaleSetupStore: ObservableObject {
         httpClient.skipCheckNetwork = skip
         logger.log(level: .debug, tag: tag, message: "skipCheckNetwork set to: \(skip)")
     }
-    
     
     /// Resets skipCheckNetwork to false (called when view disappears)
     func resetSkipCheckNetwork() {
@@ -763,8 +753,8 @@ final class WifiScaleSetupStore: ObservableObject {
         // Prepare the payload (mutating SSID/BSSID when available).
         let baseInfo = getSetupInfo()
         let info = WifiSetupInfo(
-            ssid:  self.connectedSsid ?? wifiStatus?.ssid ?? baseInfo.ssid,
-            bssid: self.connectedBssid ??  wifiStatus?.bssid ?? baseInfo.bssid,
+            ssid: self.connectedSsid ?? wifiStatus?.ssid ?? baseInfo.ssid,
+            bssid: self.connectedBssid ?? wifiStatus?.bssid ?? baseInfo.bssid,
             password: baseInfo.password,
             userNumber: baseInfo.userNumber,
             token: baseInfo.token

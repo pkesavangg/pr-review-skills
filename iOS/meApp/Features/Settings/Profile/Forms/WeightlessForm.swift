@@ -2,8 +2,8 @@
 // Form object used by the Weightless settings screen
 // Follows pattern of ManualEntryForm / EditProfileForm.
 
-import Foundation
 import Combine
+import Foundation
 
 /// Form that controls the Weightless settings page.
 /// - isOn: toggle state indicating whether Weightless mode is enabled.

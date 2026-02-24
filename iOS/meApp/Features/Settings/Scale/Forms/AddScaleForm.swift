@@ -5,8 +5,8 @@
 //  Created by Lakshmi Priya on 24/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Reactive form for adding a scale via SKU entry.
 /// Uses the shared `ObservableForm` infrastructure and a custom `skuMatch` validator.

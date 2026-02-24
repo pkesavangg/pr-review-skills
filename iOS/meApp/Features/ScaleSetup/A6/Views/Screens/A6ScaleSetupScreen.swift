@@ -94,26 +94,24 @@ struct A6ScaleSetupScreen: View {
             ButtonView(text: commonLang.back,
                        type: .inlineTextPrimary,
                        size: .small,
-                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished,
-                       action: {
+                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished)                       {
                 withAnimation {
                     hideKeyboard()
                 }
                 setupStore.moveToPreviousStep()
-            })
+            }
             
             Spacer()
             
             ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
-                       isDisabled: !setupStore.isNextEnabled,
-                       action: {
+                       isDisabled: !setupStore.isNextEnabled)                       {
                 withAnimation {
                     hideKeyboard()
                 }
                 setupStore.moveToNextStep()
-            })
+            }
         }
     }
 }

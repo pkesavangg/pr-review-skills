@@ -32,9 +32,8 @@ struct IntegrationsScreen: View {
                     // Remaining integration providers
                     ForEach(store.integrations.filter { $0.type != .appleHealth }, id: \.id) { item in
                         IntegrationListItemView(
-                            item: item,
-                            onTap: { store.selectIntegration(item: item) }
-                        )
+                            item: item
+                        )                            { store.selectIntegration(item: item) }
                         .listRowInsets()
                     }
                 }

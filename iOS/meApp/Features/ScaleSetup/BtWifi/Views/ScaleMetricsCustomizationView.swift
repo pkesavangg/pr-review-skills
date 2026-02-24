@@ -150,7 +150,7 @@ struct ScaleMetricsCustomizationView: View {
 }
 
 #Preview {
-    ScaleMetricsCustomizationView { metrics,arg  in
+    ScaleMetricsCustomizationView { metrics, _  in
         print("Saved metrics:", metrics)
     }
     .environmentObject(Theme.shared)

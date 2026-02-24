@@ -12,5 +12,3 @@ enum IntegrationType: String, Codable {
     case healthConnect = "healthconnect"
     case healthKit = "healthkit"
 }
-
-

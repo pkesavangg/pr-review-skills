@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
 
-
 import Foundation
 import SwiftUI
 
@@ -16,7 +15,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
     var appModal: PassThroughWindow?
     private var appState = AppState()
-
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         if let windowScene = scene as? UIWindowScene {

@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 /// SignupStrings provides a centralized collection of string constants used throughout the signup process in the application.
 struct SignupStrings {
     struct NameStep {

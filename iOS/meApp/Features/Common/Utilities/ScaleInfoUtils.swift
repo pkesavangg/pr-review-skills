@@ -131,7 +131,7 @@ class ScaleInfoUtils {
     private func resolveImagePath(for sku: String) -> String? {
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-        return SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? nil
+        return SCALES.first { $0.sku == lookupSku }?.imgPath
     }
 }
 

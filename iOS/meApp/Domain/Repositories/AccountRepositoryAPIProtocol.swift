@@ -112,4 +112,3 @@ protocol AccountRepositoryAPIProtocol {
     ///  - Returns: Tokens (access and refresh tokens)
     func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens
 }
-

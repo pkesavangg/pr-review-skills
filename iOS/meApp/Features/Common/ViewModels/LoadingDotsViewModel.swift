@@ -5,8 +5,8 @@
 //  Created for animated three-dot loading effect ViewModel
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// ViewModel for managing the animated three-dot loading effect
 @MainActor

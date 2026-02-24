@@ -5,10 +5,10 @@
 //  Created by Kesavan Panchabakesan on 08/07/25.
 //
 
+import AppSyncPackage
+import Combine
 import Foundation
 import SwiftUI
-import Combine
-import AppSyncPackage
 
 /// Store responsible for handling AppSync scan results and presenting the
 /// confirmation card with **Save** / **Edit** actions.

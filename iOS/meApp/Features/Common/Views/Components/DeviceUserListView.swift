@@ -24,7 +24,7 @@ struct DeviceUserListView: View {
                         onDeleteUser(user)
                     }) {
                         AppIconView(icon: AppAssets.trash, size: IconSize(width: 18, height: 20))
-                            .foregroundColor(trashIconColorRed ? theme.statusError: theme.actionPrimary)
+                            .foregroundColor(trashIconColorRed ? theme.statusError : theme.actionPrimary)
                     },
                     rowHeight: 56,
                     onTap: {
@@ -54,8 +54,7 @@ struct DeviceUserListView: View {
             token: "dummy-token",
             lastActive: 1_711_112_000,
             isBodyMetricsEnabled: true
-        ), count: 3),
-        onDeleteUser: { _ in }
-    )
+        ), count: 3)
+    )        { _ in }
     .environmentObject(Theme.shared)
 } 

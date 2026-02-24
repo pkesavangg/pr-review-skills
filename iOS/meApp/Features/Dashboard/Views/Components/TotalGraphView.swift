@@ -5,8 +5,8 @@
 //  Created by Assistant on 04/07/25.
 //
 
-import SwiftUI
 import Charts
+import SwiftUI
 
 /// Dedicated view for rendering the Total time period chart
 /// Uses BaseGraphView for common chart rendering functionality

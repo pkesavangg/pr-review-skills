@@ -1,7 +1,7 @@
 // swiftlint:disable type_body_length
 import Foundation
-import SwiftData
 import ggInAppMessagingPackage
+import SwiftData
 
 /*
  SwiftLint exception:
@@ -318,7 +318,6 @@ final class AccountMigrationService {
         let ionicAppearanceKey = MigrationKey.appearanceKey(for: accountId)
         let nativeAppearanceKey = KvStorageKeys.appearanceModeKey(for: accountId)
         
-        
         // Check if Ionic appearance setting exists
         if let ionicAppearanceValue = kvStorage.getValue(forKey: ionicAppearanceKey) as? String {
             logger.log(level: .info, tag: tag, message: "Found Ionic appearance setting for account: \(accountId), value: \(ionicAppearanceValue)")
@@ -387,14 +386,14 @@ final class AccountMigrationService {
         }
         
         // Get assigned account (for conflict detection)
-        var assignedTo: String? = nil
+        var assignedTo: String?
         if let ionicAssignedValue = kvStorage.getValue(forKey: ionicAssignedToKey) as? String {
             assignedTo = ionicAssignedValue
             logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit assigned to: \(ionicAssignedValue)")
         }
         
         // Check for deintegration flag
-        var deIntegrated: String? = nil
+        var deIntegrated: String?
         if let ionicDeintegratedValue = kvStorage.getValue(forKey: ionicDeintegratedKey) as? String {
             deIntegrated = ionicDeintegratedValue.lowercased() == "true" ? accountId : nil
             logger.log(level: .info, tag: tag, message: "Found Ionic HealthKit deintegration flag for account: \(accountId), value: \(ionicDeintegratedValue)")

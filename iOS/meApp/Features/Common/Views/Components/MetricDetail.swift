@@ -138,7 +138,7 @@ struct MetricDetailView: View {
                       Text(pre)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.trailing, .spacingXS/2)
+                        .padding(.trailing, .spacingXS / 2)
                     }
                       Text(formattedValue)
                         .fontOpenSans(.heading2)
@@ -149,13 +149,13 @@ struct MetricDetailView: View {
                       Text(weightUnitLabel)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.leading, .spacingXS/2)
+                        .padding(.leading, .spacingXS / 2)
                     }
                     if !config.unit.isEmpty {
                       Text(config.unit)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.leading, .spacingXS/2)
+                        .padding(.leading, .spacingXS / 2)
                     }
                   }
                     // Measurement date/placeholder
@@ -214,14 +214,13 @@ struct MetricDetailView: View {
                                 type: .inlineTextPrimary,
                                 size: .small,
                                 isDisabled: false,
-                                alignment: .leading,
-                                action: {
+                                alignment: .leading
+                            )                                {
                                   if let url = URL(string: res.link) {
                                     presentingBrowserURL = url
                                     isBrowserPresented = true
                                   }
                                 }
-                            )
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .multilineTextAlignment(.leading)
                         }

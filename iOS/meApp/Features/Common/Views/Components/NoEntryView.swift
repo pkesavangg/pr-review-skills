@@ -68,7 +68,7 @@ struct NoEntryView: View {
 #if DEBUG
 struct NoEntryView_Previews: PreviewProvider {
     static var previews: some View {
-        NoEntryView(title: nil, description: nil, onButtonTap: {})
+        NoEntryView(title: nil, description: nil) {}
             .environmentObject(Theme.shared)
     }
 }

@@ -1,5 +1,5 @@
-import SwiftUI
 import Charts
+import SwiftUI
 
 /// A ChartScrollTargetBehavior that provides robust paging behavior with date alignment.
 /// - Pages horizontally with 1 page for normal swipes and 2 pages for bigger swipes

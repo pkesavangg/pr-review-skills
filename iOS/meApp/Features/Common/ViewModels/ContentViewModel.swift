@@ -3,8 +3,8 @@
 //
 // Created by Lakshmi Priya on 13/06/25.
 
-import Foundation
 import Combine
+import Foundation
 import UserNotifications
 
 @MainActor
@@ -16,10 +16,10 @@ final class ContentViewModel: ObservableObject {
     @Published var entries: [Entry] = []
 
     @Injector var accountService: AccountService
-    @Injector var scaleService : ScaleService
-    @Injector var feedService : FeedService
-    @Injector var entryService : EntryService
-    @Injector var logger : LoggerService
+    @Injector var scaleService: ScaleService
+    @Injector var feedService: FeedService
+    @Injector var entryService: EntryService
+    @Injector var logger: LoggerService
     @Injector var bluetoothService: BluetoothService
     @Injector var accountFlagService: AccountFlagService
 
@@ -50,7 +50,7 @@ final class ContentViewModel: ObservableObject {
             .store(in: &cancellables)
 
         entryService.entrySaved
-            .sink { [weak self] entry in
+            .sink { [weak self] _ in
                 guard let self else { return }
                 Task {
                     await self.checkAccountFlagsAfterEntry()

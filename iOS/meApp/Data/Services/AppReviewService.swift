@@ -5,9 +5,9 @@
 //  Created by AI Assistant on $(DATE).
 //
 
+import Combine
 import Foundation
 import StoreKit
-import Combine
 
 /// Service responsible for handling app review prompts using StoreKit
 @MainActor

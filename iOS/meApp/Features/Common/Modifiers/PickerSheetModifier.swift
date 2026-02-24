@@ -16,7 +16,7 @@ struct PickerSheetModifier<T: Hashable>: ViewModifier {
     let displayValue: (T) -> String
     let pickerType: PickerType
     let onUpdate: ([T]) -> Void
-    var title: String? = nil
+    var title: String?
     var showCancel: Bool = false
     var allowTapOutside: Bool = true
     

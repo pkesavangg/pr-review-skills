@@ -21,7 +21,7 @@ struct BluetoothConnectionView: View {
     let state: ConnectionState
     let setupType: ScaleSetupType
     /// Optional error code to display when `state == .failure`.
-    var errorCode: String? = nil
+    var errorCode: String?
     
     /// Called when the user taps the *Try Again* button (shown only on `.failure`).
     var onTryAgain: () -> Void = {}
@@ -115,7 +115,7 @@ struct BluetoothConnectionView: View {
                             )
                             
                             ButtonView(
-                                text:  commonStrings.support,
+                                text: commonStrings.support,
                                 type: .inlineTextPrimary,
                                 size: .large,
                                 isDisabled: false,

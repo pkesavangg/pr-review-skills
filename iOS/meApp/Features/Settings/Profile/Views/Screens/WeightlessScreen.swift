@@ -1,8 +1,8 @@
 // iOS/meApp/Features/Settings/Views/Screens/WeightlessScreen.swift
 // Screen presented as modal for configuring Weightless mode.
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct WeightlessScreen: View {
     @Environment(\.appTheme) private var theme
@@ -22,7 +22,7 @@ struct WeightlessScreen: View {
     
     var body: some View {
         // Ensure form is synced with account state before rendering (only when pristine)
-        let _ = {
+        _ = {
             // Sync form with account state - this will only populate if form is not dirty
             settingsStore.populateWeightlessFormIfNeeded()
         }()
@@ -68,7 +68,7 @@ struct WeightlessScreen: View {
                         config: TextInputConfig(
                             label: inputLabels.weightLessLabel(weightUnit == .kg),
                             inputType: .metric,
-                            errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight,  unit: weightUnit),
+                            errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight, unit: weightUnit),
                             isDisabled: !settingsStore.weightlessForm.isOn.value,
                             focusField: .weight,
                             maxLength: 4,

@@ -5,8 +5,8 @@
 //  Created by Kesavan Panchabakesan on 24/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 // MARK: - Accounts Store
@@ -33,7 +33,7 @@ class AccountsStore: ObservableObject {
 
     @Published var canShowLoginScreen = false
     /// Holds the email to prefill in `LoginScreen` when opening from account switching flow.
-    @Published var emailForLogin: String? = nil
+    @Published var emailForLogin: String?
     @Published var canShowAccountSignupScreen = false
 
     private let tag = "AccountsStore"

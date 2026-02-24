@@ -24,7 +24,7 @@ struct SkeletonMetricCardView: View {
     }
     
     var body: some View {
-        VStack(spacing: .spacingXS/2) {
+        VStack(spacing: .spacingXS / 2) {
             // Skeleton value/icon placeholder
             RoundedRectangle(cornerRadius: 4)
                 .fill(skeletonColor)

@@ -5,8 +5,8 @@
 //  Created by AI on 04/08/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Reactive form for editing a scale's display name.
 /// Provides basic `.required` and `.noWhiteSpace` validation and helper utilities

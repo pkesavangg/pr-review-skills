@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 18/06/25.
 //
 
-
 enum EntrySource: String, Codable, Equatable {
     case manual = "manual"
     case bluetooth = "bluetooth"

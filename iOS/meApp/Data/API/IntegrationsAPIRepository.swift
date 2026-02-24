@@ -96,4 +96,3 @@ final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
     }
 }
 // swiftlint:enable function_parameter_count
-

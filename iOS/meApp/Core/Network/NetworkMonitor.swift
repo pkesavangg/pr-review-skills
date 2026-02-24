@@ -5,10 +5,9 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-
-import Network
-import Foundation
 import Combine
+import Foundation
+import Network
 
 // MARK: - Network Monitor
 @MainActor

@@ -134,10 +134,7 @@ struct SoftwareUpdateSheet: View {
             }
             .padding(.horizontal, .spacingSM)
             
-            
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
     }
 }
-
-

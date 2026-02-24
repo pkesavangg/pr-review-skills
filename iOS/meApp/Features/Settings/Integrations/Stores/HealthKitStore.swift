@@ -4,9 +4,9 @@
 //  Created by Kesavan Panchabakesan on 27/06/25.
 //
 
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 // MARK: - HealthKitStore
 /// Centralised observable store that wraps all HealthKit related workflows.
@@ -21,7 +21,7 @@ final class HealthKitStore: ObservableObject {
     
     @Published var isOutOfSync: Bool = false
     /// Current Health-access modal state. `nil` means no modal is visible.
-    @Published var activeState: AppleHealthIntegrationState? = nil
+    @Published var activeState: AppleHealthIntegrationState?
     
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
@@ -41,13 +41,13 @@ final class HealthKitStore: ObservableObject {
     /// Retains the Combine subscription for app-active notifications specifically used
     /// when we need to re-check HealthKit permissions after the user is redirected to
     /// the Apple Health app.
-    private var foregroundObserver: AnyCancellable? = nil
+    private var foregroundObserver: AnyCancellable?
     /// Tracks whether sync has already been performed in the current integration flow.
     /// Used to prevent showing sync prompt twice in the permission-denied flow.
     private var hasSyncedInCurrentFlow: Bool = false
     
     /// Tracks the previous activeState value to detect transitions between nil and non-nil
-    private var previousActiveState: AppleHealthIntegrationState? = nil
+    private var previousActiveState: AppleHealthIntegrationState?
     
     let alertLang = AlertStrings.self
     let tag = "HealthKitStore"

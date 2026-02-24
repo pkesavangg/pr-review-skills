@@ -17,8 +17,8 @@ struct HistoryMonthListScreen: View {
     @State private var selectedEntry: Entry?
     @State private var selectedMetric: BodyMetric?
     @State private var showDeleteAlert = false
-    @State private var entryToDelete: Entry? = nil
-    @State private var openItemID: UUID? = nil
+    @State private var entryToDelete: Entry?
+    @State private var openItemID: UUID?
     @State private var isOnboardingComplete: Bool = false
     
     let month: HistoryMonth
@@ -63,23 +63,23 @@ struct HistoryMonthListScreen: View {
         }
         .background(theme.backgroundSecondary)
         .navigationBarBackButtonHidden(true)
-        .onAppear(perform: {
+        .onAppear {
             if !isOnboardingComplete {
                 Task {
                     await self.historyStore.loadEntries(for: month)
                     isOnboardingComplete = true
                 }
             }
-        })
+        }
         .onChange(of: historyStore.entries) { _, entries in
             if entries.isEmpty {
                 dismiss()
             }
         }
-        .onDisappear(perform: {
+        .onDisappear {
             historyStore.expandedEntries.removeAll() // Clear expanded state when leaving
             historyStore.resetSelectedMonth()
-        })
+        }
         .refreshable {
             // Only allow refresh when no swipe actions are open
             guard openItemID == nil else { return }

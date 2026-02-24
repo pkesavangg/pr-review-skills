@@ -5,8 +5,8 @@
 //  Created to safely refetch Entry objects on main actor before displaying
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 /// Wrapper view that refetches an Entry by ID on the main actor before displaying ScaleMetricsView.
 /// This ensures SwiftData properties can be safely accessed in MetricDetailView.

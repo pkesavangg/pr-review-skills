@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 //  LandingStore.swift
@@ -46,7 +46,7 @@ final class LandingStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
                 guard let self = self else { return }
-                //Only show logged-in accounts
+                // Only show logged-in accounts
                 let loggedInAccounts = all.filter { 
                     $0.isLoggedIn == true && ($0.isExpired ?? false) == false
                 }

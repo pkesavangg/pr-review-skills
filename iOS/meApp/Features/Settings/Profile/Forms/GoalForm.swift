@@ -3,8 +3,8 @@
 // Mirrors the validation logic used during signup (GoalStep) so the user can
 // adjust their goal after onboarding.
 
-import Foundation
 import Combine
+import Foundation
 
 /// Form that controls the Goal settings sheet.
 /// - goalType: "maintain" or "losegain" (wrapper around `GoalTypeSegment`).
@@ -25,7 +25,7 @@ final class GoalForm: ObservableForm {
         Publishers.MergeMany([
             goalType.$value.map { _ in () }.eraseToAnyPublisher(),
             currentWeight.$value.map { _ in () }.eraseToAnyPublisher(),
-            goalWeight.$value.map { _ in () }.eraseToAnyPublisher(),
+            goalWeight.$value.map { _ in () }.eraseToAnyPublisher()
         ])
         .eraseToAnyPublisher()
     }
@@ -127,7 +127,6 @@ final class GoalForm: ObservableForm {
             return goalWeight.isValid
         }
     }
-    
     
     // MARK: - Error Helpers
     

@@ -47,7 +47,7 @@ final class ScaleMigrationService {
                 
                 // Save device to SwiftData
                 migratedDevices.append(device)
-                let _ = try await self.scaleService.createScaleInLocal(device)
+                _ = try await self.scaleService.createScaleInLocal(device)
                 logger.log(level: .info, tag: tag, message: "scaleRepository.createScale: \(ionicScale.id ?? "unknown") for account: \(device.sku ?? "unknown")")
                 logger.log(level: .info, tag: tag, message: "Successfully migrated scale: \(ionicScale.id ?? "unknown") for account: \(accountId)")
             } catch {
@@ -110,7 +110,7 @@ final class ScaleMigrationService {
         )
         
         // Create R4ScalePreference if it exists
-        var r4Preference: R4ScalePreference? = nil
+        var r4Preference: R4ScalePreference?
         if let preference = ionicScale.preference {
             r4Preference = R4ScalePreference(
                 scaleId: ionicScale.id ?? UUID().uuidString,
@@ -128,7 +128,7 @@ final class ScaleMigrationService {
         }
         
         // Create DeviceMetaData if latestVersion exists
-        var metaData: DeviceMetaData? = nil
+        var metaData: DeviceMetaData?
         if let latestVersion = ionicScale.latestVersion {
             metaData = DeviceMetaData(
                 latestVersion: latestVersion,
@@ -144,7 +144,7 @@ final class ScaleMigrationService {
             sku: ionicScale.sku,
             mac: ionicScale.mac,
             password: ionicScale.password.map { Int64($0) },
-            isSoftDeleted:  ionicScale.isDeleted, // Deletion status is preserved from Ionic data
+            isSoftDeleted: ionicScale.isDeleted, // Deletion status is preserved from Ionic data
             deviceName: ionicScale.name,
             deviceType: "scale",
             broadcastId: ionicScale.broadcastId.map { Int64($0) },

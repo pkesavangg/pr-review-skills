@@ -5,8 +5,8 @@
 //  Created by AI Assistant on $(DATE).
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Service responsible for managing account flags and triggering appropriate actions
 @MainActor
@@ -20,7 +20,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     private let tag = "AccountFlagService"
     
     /// Currently stored flag (cached after fetching)
-    @Published private var currentFlag: AccountFlag? = nil
+    @Published private var currentFlag: AccountFlag?
     
     /// Scale review event publisher for scale review flags
     let scaleReviewSubject = PassthroughSubject<ScaleReviewEvent, Never>()

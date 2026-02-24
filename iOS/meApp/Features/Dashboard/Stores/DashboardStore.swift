@@ -3,11 +3,11 @@
 // Breaking it into smaller files would fragment related functionality and reduce maintainability.
 // The createEntryForMetricInfo function is intentionally long to handle multiple entry creation scenarios.
 
-import SwiftUI
-import SwiftData
-import Combine
 import Charts
+import Combine
 import Foundation
+import SwiftData
+import SwiftUI
 
 /// Snapshot of account settings for consolidated subscription
 /// Used to detect changes across multiple settings in a single subscription
@@ -42,7 +42,7 @@ class DashboardStore: ObservableObject {
     @Injector private var entryService: EntryService
 
     // MARK: - Centralized State
-    @Published var state: DashboardState = DashboardState()
+    @Published var state = DashboardState()
 
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
@@ -100,7 +100,7 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-    static let allowedNumericCharacters: CharacterSet = CharacterSet(charactersIn: "0123456789.-")
+    static let allowedNumericCharacters = CharacterSet(charactersIn: "0123456789.-")
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     let graphManager: DashboardGraphManager
@@ -294,7 +294,6 @@ class DashboardStore: ObservableObject {
             }
             .store(in: &cancellables)
 
-
     }
 
     private func setupSubscriptions() {
@@ -348,7 +347,7 @@ class DashboardStore: ObservableObject {
         accountService.$activeAccount
             .compactMap { $0?.dashboardSettings?.dashboardType }
             .removeDuplicates()
-            .sink { [weak self] dashboardType in
+            .sink { [weak self] _ in
                 self?.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
@@ -378,7 +377,6 @@ class DashboardStore: ObservableObject {
         )
         return result
     }
-
 
     // Expose effective dashboard type based on the active account only
     var effectiveDashboardType: DashboardType {
@@ -563,7 +561,7 @@ class DashboardStore: ObservableObject {
 
     // Cache visible operations to prevent excessive calls to graph manager during scroll
     private var cachedVisibleOperations: [BathScaleWeightSummary] = []
-    private var lastVisibleOperationsCacheTime: Date = Date.distantPast
+    private var lastVisibleOperationsCacheTime = Date.distantPast
 
     var hasAnyEntries: Bool {
         state.data.hasAnyEntries
@@ -995,7 +993,6 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Dashboard Type Management
 
-
     // MARK: - Dashboard Type Logic
 
     /// Determines dashboard type based on account dashboardType
@@ -1256,10 +1253,10 @@ class DashboardStore: ObservableObject {
                 switch apiValue {
                 case "currentStreak": return DashboardStrings.currentStreak
                 case "longestStreak": return DashboardStrings.longestStreak
-                case "weeklyChange": return allStreaks.first(where: { $0.label.contains("/week") })?.label
-                case "monthlyChange": return allStreaks.first(where: { $0.label.contains("/month") })?.label
-                case "yearlyChange": return allStreaks.first(where: { $0.label.contains("/year") })?.label
-                case "totalChange": return allStreaks.first(where: { $0.label.contains("/total") })?.label
+                case "weeklyChange": return allStreaks.first { $0.label.contains("/week") }?.label
+                case "monthlyChange": return allStreaks.first { $0.label.contains("/month") }?.label
+                case "yearlyChange": return allStreaks.first { $0.label.contains("/year") }?.label
+                case "totalChange": return allStreaks.first { $0.label.contains("/total") }?.label
                 default: return nil
                 }
             }
@@ -1346,14 +1343,12 @@ class DashboardStore: ObservableObject {
         
         // Maps for quick lookup
         let oldIdToLabel = Dictionary(
-            oldStreakItems.map { ($0.id.uuidString, $0.label) },
-            uniquingKeysWith: { first, _ in first }
-        )
+            oldStreakItems.map { ($0.id.uuidString, $0.label) }
+        )            { first, _ in first }
         
         let labelToNewId = Dictionary(
-            newItems.map { ($0.label, $0.id.uuidString) },
-            uniquingKeysWith: { first, _ in first }
-        )
+            newItems.map { ($0.label, $0.id.uuidString) }
+        )            { first, _ in first }
         
         // Restore order using labels
         var newOrder = oldOrder.compactMap {
@@ -1907,7 +1902,7 @@ class DashboardStore: ObservableObject {
         if !streakOrder.isEmpty {
             // Map IDs to actual streak items preserving order
             orderedStreaks = streakOrder.compactMap { id in
-                allStreakItems.first(where: { $0.id.uuidString == id })
+                allStreakItems.first { $0.id.uuidString == id }
             }
             // Add any streaks not in the order list (new streaks)
             let missingStreaks = allStreakItems.filter { item in
@@ -2013,7 +2008,6 @@ class DashboardStore: ObservableObject {
 
                     // Reset metrics to their original body metrics order
                     self.metricsManager.resetOrderToDefault()
-
 
                     try await self.streakManager.refreshStreakData()
                     self.syncRemovalStateFromMetricsManager()
@@ -2289,8 +2283,6 @@ class DashboardStore: ObservableObject {
         logger.log(level: .debug, tag: "DashboardStore", message: "Y-axis domain updated (force=\(force))")
     }
 
-
-
     // MARK: - Helper Methods
 
     // Extracted helper to compute selection-based label first
@@ -2323,8 +2315,6 @@ class DashboardStore: ObservableObject {
         return graphManager.fallbackTimeLabel(for: .total)
     }
 
-
-
     /// Returns the date range used for the year label display.
     /// This ensures the average computation uses the same dates as the label.
     /// Uses a calendar-aligned 12-month window to avoid 13-month labels.
@@ -2354,8 +2344,6 @@ class DashboardStore: ObservableObject {
             for: .year
         )
     }
-
-
 
     /// The active month interval for greying out points outside the visible month.
     /// Returns the DateInterval only when in month period and a full month is visible, otherwise nil.
@@ -2970,7 +2958,7 @@ class DashboardStore: ObservableObject {
         // No selection: compute visible-window averages to mirror tiles and weight label
         let ops = getVisibleOperations()
         if ops.isEmpty {
-            var storedWeightForInfo: Int? = nil
+            var storedWeightForInfo: Int?
 
             if state.data.hasAnyEntries {
                 let interpolatedAverage = graphManager.calculateInterpolatedAverageForVisibleRange(
@@ -3488,11 +3476,10 @@ class DashboardStore: ObservableObject {
         metricsManager.handleMetricLongPressWithUIState(
             for: metricLabel,
             selectedEntry: selectedEntry,
-            selectedMetric: selectedMetric,
-            updateSelectedMetric: { newValue in
+            selectedMetric: selectedMetric
+        )            { newValue in
                 self.state.ui.selectedMetricLabel = newValue
             }
-        )
     }
 
     /// Handle selected metric info change
@@ -3526,8 +3513,6 @@ class DashboardStore: ObservableObject {
     func handleMetricInfoSheetDismiss(_ newValue: MetricInfoWrapper?) {
         _ = newValue
     }
-
-
 
     // MARK: - Lifecycle Methods
 

@@ -1,14 +1,14 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 
 /// Main dashboard state container
 struct DashboardState {
-    var ui: UIState = UIState()
-    var metrics: MetricsState = MetricsState()
-    var streak: StreakState = StreakState()
-    var graph: GraphState = GraphState()
-    var goal: GoalState = GoalState()
-    var data: DataState = DataState()
+    var ui = UIState()
+    var metrics = MetricsState()
+    var streak = StreakState()
+    var graph = GraphState()
+    var goal = GoalState()
+    var data = DataState()
 }
 
 // MARK: - UI State
@@ -18,10 +18,10 @@ struct UIState {
     var hasLoadedDashboardConfig: Bool = false // Flag to track when body metrics config is loaded from API
     var hasLoadedProgressMetrics: Bool = false // Flag to track when progress metrics (goal card + streaks) are loaded
     var hasLoadedMetricValues: Bool = false // Flag to track when actual metric values are loaded (not placeholders)
-    var loaderOverride: LoaderModel? = nil
-    var alertData: AlertModel? = nil
+    var loaderOverride: LoaderModel?
+    var alertData: AlertModel?
     var isEditMode: Bool = false
-    var selectedMetricLabel: String? = nil
+    var selectedMetricLabel: String?
     var gridLayoutId = UUID()
     var isGoalCardRemoved: Bool = false
     var isResettingDashboard: Bool = false // Flag to suppress UI updates during reset
@@ -36,10 +36,10 @@ struct UIState {
     var streakGridOrder: [String] = [] // Array of MetricItem.id.uuidString to preserve order
 
     // Drag & Drop State
-    var draggingMetric: MetricItem? = nil
-    var draggingStreak: MetricItem? = nil
+    var draggingMetric: MetricItem?
+    var draggingStreak: MetricItem?
     var isGoalCardBeingDragged: Bool = false
-    var dropHoverId: String? = nil
+    var dropHoverId: String?
 
     var isAnyItemBeingDragged: Bool {
         draggingMetric != nil || draggingStreak != nil || isGoalCardBeingDragged
@@ -88,12 +88,12 @@ struct StreakState {
 
 // MARK: - Graph State
 struct GraphState {
-    var selectedEntry: BathScaleOperationDTO? = nil
+    var selectedEntry: BathScaleOperationDTO?
     var selectedPeriod: TimePeriod = .week
-    var xScrollPosition: Date = Date()
-    var selectedWeight: Double? = nil
-    var selectedPoint: BathScaleWeightSummary? = nil
-    var selectedXValue: Date? = nil
+    var xScrollPosition = Date()
+    var selectedWeight: Double?
+    var selectedPoint: BathScaleWeightSummary?
+    var selectedXValue: Date?
     var chartHeight: CGFloat = 0
     var annotationHeight: CGFloat = 0
 
@@ -103,7 +103,7 @@ struct GraphState {
     // Scroll and interaction state
     var isScrolling: Bool = false
     var showCrosshair: Bool = false
-    var scrollEndTimer: Timer? = nil
+    var scrollEndTimer: Timer?
 
     // Data change trigger for graph refresh
     var dataChangeTrigger: Int = 0

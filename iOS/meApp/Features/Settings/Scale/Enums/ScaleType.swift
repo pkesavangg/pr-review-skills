@@ -28,7 +28,6 @@ enum ScaleType: String {
     }
 }
 
-
 enum ScaleSourceType: String {
   case wifi = "wifi"
   case espTouchWifi = "espTouchWifi"

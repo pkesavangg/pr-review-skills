@@ -45,7 +45,7 @@ struct ChooseYourScaleView: View {
 }
 
 #Preview(body: {
-    ChooseYourScaleView { scale in
+    ChooseYourScaleView { _ in
         // Handle scale selection
     }
 })

@@ -5,8 +5,8 @@
 //  Wrapper to safely extract DTO from Entry before displaying ScaleMetricsView
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 /// Wrapper that safely extracts DTO from Entry before displaying ScaleMetricsView.
 /// This ensures SwiftData properties are accessed on main actor within a ModelContext.
@@ -93,4 +93,3 @@ struct MetricInfoSheetWrapper: View {
         }
     }
 }
-

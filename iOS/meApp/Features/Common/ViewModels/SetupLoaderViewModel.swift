@@ -5,8 +5,8 @@
 //  Created by Lakshmi Priya on 23/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 class SetupLoaderViewModel: ObservableObject {
     @Published var dotScales = Array(repeating: 0.5, count: 5)

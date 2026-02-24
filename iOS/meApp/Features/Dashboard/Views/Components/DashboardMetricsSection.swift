@@ -16,12 +16,12 @@ struct DashboardMetricsSection: View {
     var body: some View {
         VStack(spacing: 0) {
             if parentView == .R4ScaleSetup {
-                VStack(alignment: .leading, spacing: .spacingXS){
+                VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(DashboardStrings.customizeDashboardTitle)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
-                    VStack{
+                    VStack {
                         Text(DashboardStrings.customizeDashboardSubtitle)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textHeading)
@@ -87,12 +87,12 @@ struct DashboardMetricsSection: View {
     
     private func metricsGridSection() -> some View {
         Group {
-            MetricGridUIKitView(parentView: parentView, store: store, onMetricLongPress: { label in
+            MetricGridUIKitView(parentView: parentView, store: store) { _ in
                 // Long press on any metric should directly open edit dashboard mode
                 if !store.state.ui.isEditMode {
                     store.toggleEditMode()
                 }
-            })
+            }
             .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
             .padding(.top, .spacingSM)
             .id(store.state.ui.gridLayoutId)
@@ -163,5 +163,3 @@ struct DashboardMetricsSection: View {
 #Preview("DashboardContentSection") {
     DashboardMetricsSection(store: DashboardStore(), parentView: .dashboard, openMetricInfoWithoutSelection: .constant(nil))
 }
-
-

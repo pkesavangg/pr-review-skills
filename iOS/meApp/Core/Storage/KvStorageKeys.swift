@@ -113,4 +113,3 @@ public enum KvStorageKeys: String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
     }
 }
-

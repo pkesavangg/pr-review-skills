@@ -189,7 +189,7 @@ struct ToastModifier: ViewModifier {
     }
     
     private func removeToast(id: UUID) {
-        let toastToRemove = activeToasts.first(where: { $0.id == id })?.toast
+        let toastToRemove = activeToasts.first { $0.id == id }?.toast
         toastToRemove?.onDismiss?()
         
         withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {

@@ -13,7 +13,7 @@ struct HelpModalView: View {
     @EnvironmentObject var themeManager: Theme
     // MARK: - Product Manual Browser State
     @State var showProductBrowser: Bool = false
-    @State var productURL: URL? = nil
+    @State var productURL: URL?
     
     var skuToNavigate: String?
     let onClose: () -> Void
@@ -78,7 +78,7 @@ struct HelpModalView: View {
 
 // MARK: - Preview
 #Preview {
-    HelpModalView() {}
+    HelpModalView {}
         .environmentObject(Theme.shared)
         .padding(.horizontal)
 }

@@ -5,13 +5,11 @@
 ///  Created by Cursor AI on 18/07/25.
 ///
 
+import Combine
 // swiftlint:disable type_body_length
 // This file intentionally aggregates Bluetooth scale setup orchestration logic.
-// Breaking it into smaller files would fragment the multi-step flow management.
-
-import Foundation
+// Breaking it into smaller files would fragment the multi-step flow management.import Foundation
 import SwiftUI
-import Combine
 
 /// Store responsible for orchestrating the Bluetooth (A3) scale-setup multi-step flow.
 @MainActor
@@ -25,9 +23,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
-    private var deviceDiscoveryCancellable: AnyCancellable? = nil
-    private var stepTimerTask: Task<Void, Never>? = nil
-    private var newEntrySubscription: AnyCancellable? = nil
+    private var deviceDiscoveryCancellable: AnyCancellable?
+    private var stepTimerTask: Task<Void, Never>?
+    private var newEntrySubscription: AnyCancellable?
     
     private var scaleItem: ScaleItemInfo?
     private var discoveredScale: Device?
@@ -73,11 +71,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     /// Selected user number (1-8) captured from SelectUser step.
-    @Published var selectedUserNumber: Int? = nil {
+    @Published var selectedUserNumber: Int? {
         didSet { updateNextEnabled() }
     }
     @Published var bluetoothConnectionState: ConnectionState = .loading
-    @Published var scaleToDelete: Device? = nil
+    @Published var scaleToDelete: Device?
     
     private let tag = "BluetoothScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
@@ -98,9 +96,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
             case .selectUser:
                 // Dummy view – UI to select user number will be implemented later.
                 return AnyView(
-                    UserNumberSelectionView(selectedNumber: selectedUserNumber, onNumberSelected: { value in
+                    UserNumberSelectionView(selectedNumber: selectedUserNumber) { value in
                         self.selectedUserNumber = value
-                    })
+                    }
                 )
             case .connectingBluetooth:
                 return AnyView(
@@ -167,7 +165,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
             currentStepIndex = nextIndex
         }
     }
-    
     
     func moveToPreviousStep() {
         let candidate = currentStepIndex - 1
@@ -298,7 +295,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
                     discoveredScale?.peripheralIdentifier = deviceInfo.serialNumber
                     discoveredScale?.userNumber = "\(selectedUserNumber ?? 0)"
                     discoveredScale?.mac = deviceInfo.macAddress
-                    let scaleToDelete = scaleService.scales.first(where: { $0.peripheralIdentifier == discoveredScale?.peripheralIdentifier })
+                    let scaleToDelete = scaleService.scales.first {
+                        $0.peripheralIdentifier == discoveredScale?.peripheralIdentifier
+                    }
                     if scaleToDelete != nil {
                         self.scaleToDelete = scaleToDelete
                         handleDuplicateScale()
@@ -308,16 +307,13 @@ final class BluetoothScaleSetupStore: ObservableObject {
                         startEntrySyncing()
                     }
                     LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
-                    break
                 case .failure(let error):
                     setConnectionFailure()
                     LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
                 }
-                break
-            default:
+                default:
                 setConnectionFailure()
                 LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
-                break
             }
         case .failure(let error):
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to pair scale: \(error.localizedDescription)")
@@ -489,7 +485,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         deviceToSave.id = UUID().uuidString
         
         // Get device metadata for Bluetooth scales (matching BluetoothService.addNewDevice logic)
-        var deviceMetadata: DeviceMetaData? = nil
+        var deviceMetadata: DeviceMetaData?
         let deviceInfoResult = await bluetoothService.getDeviceInfo(for: deviceToSave, skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):

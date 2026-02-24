@@ -1,10 +1,10 @@
-import Foundation
-import FirebaseMessaging
-import Network
 import CoreBluetooth
+import FirebaseMessaging
+import Foundation
+import GGBluetoothSwiftPackage
+import Network
 import UIKit
 import UserNotifications
-import GGBluetoothSwiftPackage
 
 /// Manages FCM token operations and notifications
 @MainActor
@@ -300,4 +300,3 @@ class PushNotificationService: NSObject {
         return baseKey
     }
 }
-

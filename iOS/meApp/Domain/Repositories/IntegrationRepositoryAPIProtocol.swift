@@ -12,7 +12,6 @@ import Foundation
 protocol IntegrationRepositoryAPIProtocol {
     // MARK: - CRUD
 
-
     /// Removes a specific integration for the given account.
     /// - Parameters:
     ///   - accountId: The account/user ID.

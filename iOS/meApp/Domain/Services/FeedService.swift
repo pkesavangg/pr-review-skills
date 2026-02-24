@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import ggInAppMessagingPackage
-import Combine
 import SwiftUI
 
 @MainActor
@@ -52,7 +52,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         ggIAMService
             .feedNotificationChanged
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] feedSettings in
+            .sink { [weak self] _ in
                 guard let self = self else { return }
                 let result = getFeedSettings()
                 self.feedSettingsChanged.send(result)
@@ -136,9 +136,9 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         }
         await MainActor.run {
             self.notificationService.showModal(ModalData(
-                presentedView: AnyView(IAMFeedModalView(feedItem: feedItem, onClose: {
+                presentedView: AnyView(IAMFeedModalView(feedItem: feedItem) {
                     self.notificationService.dismissModal()
-                })),
+                }),
                 backdropDismiss: true
             ))
         }

@@ -87,26 +87,24 @@ struct WeightOnlyModeBottomSheet: View {
                 text: commonLang.enable,
                 type: .filledPrimary,
                 size: .large,
-                isDisabled: false,
-                action: {
+                isDisabled: false
+            )                {
                     // Handle primary action
                   onEnableAllBodyMetrics()
                   store.handleEnableBodyMetrics()
                 }
-            )
 
             ButtonView(
                 text: commonLang.dismiss,
                 type: .textPrimary,
                 size: .large,
-                isDisabled: false,
-                action: {
+                isDisabled: false
+            )                {
                   onDismiss()
-                  store.dismissWeightOnlyModeAlert(onCancel: {
+                  store.dismissWeightOnlyModeAlert {
                     dismiss()
-                  })
+                  }
                 }
-            )
         }
     }
 }

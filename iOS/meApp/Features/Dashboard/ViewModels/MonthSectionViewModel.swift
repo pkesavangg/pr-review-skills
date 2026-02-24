@@ -5,9 +5,9 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// ViewModel specifically for the Month time period chart view
 /// Handles all month-specific chart logic, scrolling, and day-based data processing
@@ -32,7 +32,6 @@ final class MonthSectionViewModel: BaseSectionViewModel, Equatable {
         return .month
     }
     
-
     /// Month selection rules:
     /// - Determine the current X-axis section [startTick, endTick) using Sunday month ticks.
     /// - If there are chart points within this section, select the nearest point to the touch inside the section.

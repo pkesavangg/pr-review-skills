@@ -102,7 +102,7 @@ struct ManualEntryScreen: View {
                                     .fontOpenSans(.heading4)
                                     .foregroundColor(theme.textHeading)
                                 Spacer()
-                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
+                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp : appAssets.chevronDown,
                                             size: IconSize(width: 32, height: 32))
                                 .foregroundColor(theme.actionPrimary)
                             }

@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 19/06/25.
 //
 
-
 import SwiftUI
 
 // MARK: - Settings Route
@@ -63,4 +62,3 @@ enum SettingsRoute: Routable {
         }
     }
 }
-

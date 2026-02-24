@@ -72,7 +72,7 @@ struct CustomizeSettingsView: View {
                     }
                     Spacer()
                     let icon = setupStore.isCustomizeItemSelected(item.rawValue) ? AppAssets.filledTickCircle : AppAssets.chevronRight
-                    AppIconView(icon:  icon)
+                    AppIconView(icon: icon)
                         .foregroundColor(theme.actionPrimary)
                 }
                 .padding(.horizontal, .spacingSM)

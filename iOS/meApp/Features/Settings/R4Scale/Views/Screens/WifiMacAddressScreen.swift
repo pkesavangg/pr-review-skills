@@ -53,7 +53,7 @@ struct WifiMacAddressScreen: View {
                     .foregroundColor(theme.textHeading)
 
                 VStack(alignment: .leading, spacing: .spacingXS) {
-                    NoteBox(alignCenter: true){
+                    NoteBox(alignCenter: true) {
                         Text(viewModel.macAddress)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
@@ -65,11 +65,10 @@ struct WifiMacAddressScreen: View {
                             text: lang.copyButton,
                             type: .textPrimary,
                             size: .large,
-                            isDisabled: false,
-                            action: {
+                            isDisabled: false
+                        )                            {
                                 viewModel.copyMacAddress()
                             }
-                        )
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                 }

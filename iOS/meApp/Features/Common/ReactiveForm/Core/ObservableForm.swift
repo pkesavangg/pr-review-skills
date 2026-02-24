@@ -116,14 +116,8 @@ private extension ObservableForm {
     }
 } 
 
-
-
 // MARK: Example Usage
 
-import SwiftUI
-import Combine
-
-// Add Profile Data Model
 struct ProfileData {
     let name: String
     let email: String
@@ -193,7 +187,6 @@ class BasicProfileForm: ObservableForm {
         validate()
     }
     
-    
     func getError<T>(for control: FormControl<T>) -> String? {
         guard control.isDirty else { return nil }
         
@@ -242,7 +235,6 @@ struct BasicFormControlView: View {
                 focusedField: $focusedField) {
                     focusedField = .email
                 }
-            
             
             AppInputField(
                 config: TextInputConfig(
@@ -336,4 +328,3 @@ struct BasicFormControlView: View {
 #Preview {
     BasicFormControlView()
 }
-

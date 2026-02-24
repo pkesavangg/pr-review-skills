@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// Manages UI state and coordinates with EntryService for dashboard data operations
 @MainActor
@@ -63,7 +63,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         // No need to load data here - ContentView handles data loading
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
-
 
     // MARK: - Data Retrieval
 

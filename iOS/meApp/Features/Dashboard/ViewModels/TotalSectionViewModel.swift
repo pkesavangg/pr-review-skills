@@ -5,9 +5,9 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// ViewModel specifically for the Total time period chart view
 /// Handles all total-specific chart logic, state management, and data processing
@@ -39,7 +39,6 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     override var timePeriod: TimePeriod {
         return .total
     }
-    
     
     override var hasXAxis: Bool {
         return false // Total period has no X-axis
@@ -237,7 +236,6 @@ final class TotalSectionViewModel: BaseSectionViewModel, Equatable {
     func getPointSizeForTotal() -> CGFloat {
         return pointSize // Use the base point size
     }
-    
     
     // MARK: - No-op methods for total view (no scrolling)
     override func handleScrollPositionChange(_ newPosition: Date?) {

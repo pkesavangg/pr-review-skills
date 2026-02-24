@@ -5,15 +5,12 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
+import Combine
 // swiftlint:disable type_body_length
 // This store intentionally aggregates all signup flow logic to maintain
 // a single source of truth for the multi-step signup process. Splitting would
-// fragment state management and reduce maintainability.
-
-import Foundation
+// fragment state management and reduce maintainability.import Foundation
 import SwiftUI
-import Combine
-
 
 // MARK: SignupStore
 /// This store is responsible for managing the signup process.
@@ -297,14 +294,14 @@ final class SignupStore: ObservableObject {
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            let _ = try await accountService.signUp(
+            _ = try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
             // Create the goal if it's not skipped
             if let goal = goal {
-                let _ = try await accountService.createGoal(goal)
+                _ = try await accountService.createGoal(goal)
             }
             if isFromAccountSwitching {
                 dismissAction?()

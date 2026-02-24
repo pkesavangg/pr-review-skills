@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
 
-
 import SwiftUI
 
 /// NotificationContainerView serves as a centralized container for all application-wide notifications.
@@ -29,7 +28,7 @@ struct NotificationContainerView: View {
     @StateObject var viewModel = NotificationContainerViewModel()
     @EnvironmentObject var themeManager: Theme
     var body: some View {
-        VStack{}
+        VStack {}
         .presentAlert(alertData: $viewModel.alertData)
         .presentToast(data: $viewModel.toastData)
         .presentLoader(loaderData: $viewModel.loaderData)

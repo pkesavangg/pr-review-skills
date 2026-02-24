@@ -28,5 +28,3 @@ struct WeightDisplayView: View {
         .id(unitText) // This forces a redraw when the unit changes
     }
 }
-
-

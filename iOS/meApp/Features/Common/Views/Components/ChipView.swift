@@ -11,7 +11,7 @@ struct ChipView: View {
     let text: String
     var style: ChipStyle = .normal
     var isSelected: Bool = false
-    var onTap: (() -> Void)? = nil
+    var onTap: (() -> Void)?
     
     var body: some View {
         Button(action: {

@@ -18,7 +18,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
     // MARK: - Properties
     
     @ObservedObject var store: DashboardStore
-    var onMetricLongPress: ((String) -> Void)? = nil
+    var onMetricLongPress: ((String) -> Void)?
     
     // MARK: - UIViewRepresentable
     
@@ -210,7 +210,7 @@ extension MetricGridUIKitView {
         var lastItemIds: [UUID] = []
         var lastDashboardType: DashboardType = .dashboard12
         var lastIsEditMode: Bool = false
-        var lastSelectedMetricLabel: String? = nil
+        var lastSelectedMetricLabel: String?
         var lastRemovedMetrics: Set<String> = []
         var lastActiveMetricsCount: Int = 0
         var suppressNextReload: Bool = false
@@ -271,8 +271,8 @@ extension MetricGridUIKitView {
                 store: store,
                 isBeingDragged: false,
                 parentView: parent.parentView,
-                onMetricLongPress: parent.onMetricLongPress,
-                onSelectMetric: { label in
+                onMetricLongPress: parent.onMetricLongPress
+            )                { label in
                     if label.isEmpty {
                         self.store.state.ui.selectedMetricLabel = nil
                     } else {
@@ -281,7 +281,6 @@ extension MetricGridUIKitView {
                     // Publish selection change so the grid reconfigures visible cells immediately
                     self.store.objectWillChange.send()
                 }
-            )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
             // Reflect removal status on the cell so UI can render accordingly

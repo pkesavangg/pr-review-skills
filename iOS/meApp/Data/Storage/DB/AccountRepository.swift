@@ -8,7 +8,6 @@ final class AccountRepository: AccountRepositoryProtocol {
     // MARK: - Properties
     private let context: ModelContext = PersistenceController.shared.context
 
-
     /// Fetches an account by its unique ID.
     /// - Parameter id: The ID of the account to fetch.
     /// - Returns: The Account object, or nil if not found.

@@ -79,7 +79,6 @@ struct WeightOnlyModeAlertStrings {
     static let enableAllBodyMetrics = "You can enable All Body Metrics for one session. This will temporarily disable Weight Only mode, and all body metrics will be collected."
 }
 
-
 /// Constants for toast messages used in the app
 struct ToastStrings {
     static let error = "Error"
@@ -225,7 +224,6 @@ struct HKIntegrationModalStrings {
         )
     )
 
-
     static let finishAdding = HKIntegrationModalContent(
         imageName: AppAssets.hkLogoLarge,
         title: "Finish Adding Apple Health",
@@ -242,8 +240,6 @@ struct HKIntegrationModalStrings {
         secondaryButtonTitle: nil
     )
 }
-
-
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
@@ -268,7 +264,7 @@ struct FormErrorMessages {
     static let maxWeightLb = "value should be less than 999 lbs"
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
-    static let maxValue = {(value: Int) in "value should be less than \(value)"}
+    static let maxValue = { (value: Int) in "value should be less than \(value)" }
     static let passwordResetFailed = "Failed to send password reset email."
     static let newPasswordDifferent = "New password must be different from old password"
     static let modelNumberInvalid = "model number invalid"
@@ -733,7 +729,7 @@ struct LoaderStrings {
 }
 
 struct URLStrings {
-    static let baseUrl =  "https://greatergoods.com/"
+    static let baseUrl = "https://greatergoods.com/"
 }
 
 /// Constants for legal text used in the app
@@ -760,8 +756,6 @@ struct FirmwareUpdateStrings {
     static let updateTriggered = "Firmware update requested"
     static let date = "Date"
 }
-
-
 
 /// Constants for App Assets used in the app
 struct AppAssets {
@@ -896,7 +890,6 @@ struct AppAssets {
     static let accuCheckTickLarge = "accuCheckTickLarge"
     static let accuCheckTickLargeDark = "accuCheckTickLargeDark"
 
-    
     // MARK: - Error Code Images
     /// Generates error code image asset names based on SKU, error code, filled state, and theme
     /// - Parameters:
@@ -1003,4 +996,3 @@ struct SetGoalCardStrings {
     static let description = "A great tool for tracking your journey that can always be changed in the app settings."
     static let buttonTitle = "LET'S DO IT"
 }
-

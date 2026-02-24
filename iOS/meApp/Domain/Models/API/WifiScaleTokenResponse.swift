@@ -7,10 +7,4 @@ import Foundation
 struct WifiScaleTokenResponse: Codable {
     /// The WiFi scale token string.
     let token: String
-    
-    /// Initializes a WifiScaleTokenResponse.
-    /// - Parameter token: The WiFi scale token string.
-    init(token: String) {
-        self.token = token
-    }
 } 

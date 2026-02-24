@@ -1,4 +1,3 @@
-
 //  AddMultipleAccountsModalView.swift
 //  meApp
 //
@@ -66,7 +65,7 @@ struct AddMultipleAccountsModalView: View {
     
     // MARK: - Icon Cluster
     private var iconCluster: some View {
-        ZStack() {
+        ZStack {
             VStack {
                 ZStack {
                     AppIconView(icon: AppAssets.userProfile, size: IconSize(width: 60, height: 60))

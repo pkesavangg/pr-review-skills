@@ -5,9 +5,9 @@
 //  Created by Assistant on 04/07/25.
 //
 
+import Charts
 import Foundation
 import SwiftUI
-import Charts
 
 /// ViewModel specifically for the Week time period chart view
 /// Handles all week-specific chart logic, scrolling, and day-based data processing
@@ -40,7 +40,6 @@ final class WeekSectionViewModel: BaseSectionViewModel, Equatable {
         super.handleScrollPositionChange(snapped)
     }
     
-
     /// Returns the X-axis date used to plot a single-day aggregate in Week view.
     /// We place each day's value at that day's local noon:
     /// - Visually centers the point within the day's time span on the timeline.
