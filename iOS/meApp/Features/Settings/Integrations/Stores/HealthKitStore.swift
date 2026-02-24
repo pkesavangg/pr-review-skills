@@ -220,7 +220,14 @@ final class HealthKitStore: ObservableObject {
                 // Don't refresh integration status here - wait until after sync completes
             } catch {
                 activeState = error is IntegrationError ? .userConflict : .integrationFailed
-                logger.log(level: .error, tag: tag, message: "HealthKit authorization flow error. mappedState=\(error is IntegrationError ? "userConflict" : "integrationFailed"), error=\(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: """
+                    HealthKit authorization flow error. mappedState=\(error is IntegrationError ? "userConflict" : "integrationFailed"), \
+                    error=\(error.localizedDescription)
+                    """
+                )
             }
         }
     }

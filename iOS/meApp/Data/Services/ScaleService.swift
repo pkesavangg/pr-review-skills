@@ -795,15 +795,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let previousSnapshot = self.scales.map { scaleLogDescriptor($0) }.sorted()
             let allScales = try await localRepository.listScales(forAccountId: accountId)
             let activeScales = allScales.filter { $0.isSoftDeleted != true }
-            
-            // Build scale info string
-            let scaleInfo = activeScales.map { formatScaleInfo($0) }.joined(separator: " ")
-            
-            logger.log(
-                level: .debug,
-                tag: tag,
-                message: "Refreshing scales: total=\(allScales.count), active=\(activeScales.count), account=\(accountId), scales=[\(scaleInfo)]"
-            )
             self.scales = activeScales
             let currentSnapshot = activeScales.map { scaleLogDescriptor($0) }.sorted()
             if previousSnapshot != currentSnapshot {
@@ -818,7 +809,6 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             self.logger.log(level: .error, tag: self.tag, message: "Failed to refresh scales: \(error.localizedDescription)")
         }
     }
-
     private func scaleLogDescriptor(_ device: Device) -> String {
         let preference = fetchAttachedPreferenceSync(by: device.id)
         let preferenceDisplayName = preference?.displayName ?? "nil"
@@ -831,6 +821,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         let preferenceWifiFotaScheduleTime = preference?.wifiFotaScheduleTime.map(String.init) ?? "nil"
         let preferenceUpdatedAt = preference?.updatedAt ?? "nil"
         let preferenceIsSynced = preference != nil ? String(preference?.isSynced ?? false) : "nil"
+        // swiftlint:disable:next line_length
         return "id=\(device.id), accountId=\(device.accountId), sku=\(device.sku ?? "nil"), deviceName=\(device.deviceName ?? "nil"), nickname=\(device.nickname ?? "nil"), mac=\(device.mac ?? "nil"), wifiMac=\(device.wifiMac ?? "nil"), password=\(device.password.map(String.init) ?? "nil"), token=\(device.token ?? "nil"), broadcastId=\(device.broadcastId.map(String.init) ?? "nil"), broadcastIdString=\(device.broadcastIdString ?? "nil"), peripheralIdentifier=\(device.peripheralIdentifier ?? "nil"), userNumber=\(device.userNumber ?? "nil"), protocolType=\(device.protocolType ?? "nil"), createdAt=\(device.createdAt ?? "nil"), isConnected=\(device.isConnected.map(String.init) ?? "nil"), isWifiConfigured=\(device.isWifiConfigured.map(String.init) ?? "nil"), isSynced=\(device.isSynced.map(String.init) ?? "nil"), hasServerID=\(device.hasServerID), isSoftDeleted=\(device.isSoftDeleted.map(String.init) ?? "nil"), prefDisplayName=\(preferenceDisplayName), prefDisplayMetrics=\(preferenceDisplayMetrics), prefShouldFactoryReset=\(preferenceFactoryReset), prefImpedance=\(preferenceImpedance), prefPulse=\(preferencePulse), prefTimeFormat=\(preferenceTimeFormat), prefTzOffset=\(preferenceTzOffset), prefWifiFotaScheduleTime=\(preferenceWifiFotaScheduleTime), prefUpdatedAt=\(preferenceUpdatedAt), prefIsSynced=\(preferenceIsSynced)"
     }
     
@@ -975,9 +966,23 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             // Log scale count after pushing changes
             if let accountId = accountId {
                 let scaleCount = try? await localRepository.listScales(forAccountId: accountId).filter { $0.isSoftDeleted != true }.count
-                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed: accountId=\(accountId), deleted=\(deletedCount), updated=\(updatedCount), created=\(createdCount), failures=\(failedCount), scalesCount=\(scaleCount ?? 0)")
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: """
+                    Pushed local changes to server completed: accountId=\(accountId), deleted=\(deletedCount), \
+                    updated=\(updatedCount), created=\(createdCount), failures=\(failedCount), scalesCount=\(scaleCount ?? 0)
+                    """
+                )
             } else {
-                logger.log(level: .info, tag: tag, message: "Pushed local changes to server completed: deleted=\(deletedCount), updated=\(updatedCount), created=\(createdCount), failures=\(failedCount)")
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: """
+                    Pushed local changes to server completed: deleted=\(deletedCount), updated=\(updatedCount), \
+                    created=\(createdCount), failures=\(failedCount)
+                    """
+                )
             }
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to push local changes to server: \(error.localizedDescription)")
@@ -1097,7 +1102,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Pulled server scales and replaced local state: accountId=\(accountId), serverScales=\(serverScales.count), preservedUnsynced=\(unsyncedDevices.count), corrected=\(corrected), pruned=\(pruned)"
+                message: """
+                Pulled server scales and replaced local state: accountId=\(accountId), serverScales=\(serverScales.count), \
+                preservedUnsynced=\(unsyncedDevices.count), corrected=\(corrected), pruned=\(pruned)
+                """
             )
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch server state and replace local storage: accountId=\(accountId), error=\(error.localizedDescription)")

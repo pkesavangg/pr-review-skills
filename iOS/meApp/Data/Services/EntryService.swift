@@ -635,7 +635,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await logger.log(
                 level: .info,
                 tag: tag,
-                message: "Full entry sync completed successfully: accountId=\(accountId), hadPushedCreates=\(hadPushedCreates), hadMergedNewCreates=\(hadMergedNewCreates), remoteOperationCount=\(remoteOps.operations.count)"
+                message: """
+                Full entry sync completed successfully: accountId=\(accountId), hadPushedCreates=\(hadPushedCreates), \
+                hadMergedNewCreates=\(hadMergedNewCreates), remoteOperationCount=\(remoteOps.operations.count)
+                """
             )
 
         } catch {
@@ -927,14 +930,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Aggregation Helpers
     
     /// Helper function for all metrics (excludes zero values)
-    private func avgNonZero(_ values: [Double?]) -> Double? {
+    private nonisolated func avgNonZero(_ values: [Double?]) -> Double? {
         let vals = values.compactMap { $0 }.filter { $0 > 0 }
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
     }
     
     /// Helper function for weight: average stored values (tenths of lbs) and round to whole tenths
     /// This matches the logic in buildHistoryMonth to ensure consistent rounding
-    private func avgWeight(_ values: [Int]) -> Double {
+    private nonisolated func avgWeight(_ values: [Int]) -> Double {
         guard !values.isEmpty else { return 0 }
         let filtered = values.filter { $0 > 0 }
         guard !filtered.isEmpty else { return 0 }
@@ -1043,7 +1046,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - DTO-based Aggregation (Background Thread Safe)
 
     /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access
-    private func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
+    private nonisolated func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
         let grouped = Dictionary(grouping: dtos) { dto -> String in
             guard let ts = dto.entryTimestamp else { return "" }
             return DateTimeTools.getLocalDateStringFromUTCDate(ts)
@@ -1082,7 +1085,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
 
     /// Aggregate DTOs by month on background thread - avoids SwiftData relationship access
-    private func aggregateByMonthFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
+    private nonisolated func aggregateByMonthFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
         let grouped = Dictionary(grouping: dtos) { dto -> String in
             guard let ts = dto.entryTimestamp else { return "" }
             return DateTimeTools.getLocalMonthStringFromUTCDate(ts)

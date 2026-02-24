@@ -95,7 +95,14 @@ final class IntegrationsService: IntegrationServiceProtocol {
     
     func setStoredIntegrationData(_ info: IntegrationInfo?) async throws {
         let accountId = try await getAccountId()
-        logger.log(level: .info, tag: tag, message: "Set stored integration data requested. provider=\(info?.type.rawValue ?? "none"), isIntegrated=\(info?.isIntegrated ?? false), accountId=\(accountId)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: """
+            Set stored integration data requested. provider=\(info?.type.rawValue ?? "none"), \
+            isIntegrated=\(info?.isIntegrated ?? false), accountId=\(accountId)
+            """
+        )
         try localRepository.setIntegrationData(accountId: accountId, info: info)
         if let integrationType = info?.type {
             do {
