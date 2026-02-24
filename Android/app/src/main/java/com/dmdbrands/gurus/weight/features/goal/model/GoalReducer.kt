@@ -205,11 +205,6 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
   override fun reduce(state: GoalState, intent: GoalIntent): GoalState {
     return when (intent) {
       is GoalIntent.Submit -> {
-        // If goal type is maintain, clear starting weight at submission time
-        val controls = state.form.controls
-        if (controls.goalType.value == GoalType.MAINTAIN.value) {
-          controls.startingWeight.reset("")
-        }
         state.copy(isLoading = true, error = null)
       }
 

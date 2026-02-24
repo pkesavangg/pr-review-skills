@@ -39,7 +39,7 @@ final class ScaleMigrationService {
         logger.log(level: .info, tag: tag, message: "Starting scale data migration from Ionic app for account: \(accountId)")
         
         guard let ionicScales = getStoredIonicScaleData(for: accountId) else {
-            logger.log(level: .error, tag: tag, message: "No Ionic scale data found to migrate for account: \(accountId)")
+            logger.log(level: .info, tag: tag, message: "No Ionic scale data found to migrate for account: \(accountId)")
             return []
         }
         
@@ -86,7 +86,7 @@ final class ScaleMigrationService {
         let scaleKey = MigrationKey.scaleKey(for: accountId)
         
         guard let scaleString = kvStorage.getValue(forKey: scaleKey) as? String else {
-            logger.log(level: .error, tag: tag, message: "No scale data string found for account: \(accountId) with key: \(scaleKey)")
+            logger.log(level: .info, tag: tag, message: "No scale data string found for account: \(accountId)")
             return nil
         }
         
@@ -179,8 +179,6 @@ final class ScaleMigrationService {
         bathScale.device = device
         r4Preference?.device = device
         metaData?.device = device
-        
-        logger.log(level: .info, tag: tag, message: "Successfully converted Ionic scale to Device model: \(device.id)")
         return device
     }
     

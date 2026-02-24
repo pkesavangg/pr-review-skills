@@ -439,7 +439,6 @@ final class WifiScaleSetupStore: ObservableObject {
                     // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
                     self.hasUserManuallyClearedSSID = false
                     self.previousSSID = ""
-                    logger.log(level: .info, tag: tag, message: "Permissions skipped - cleared WiFi password form SSID and marked as pristine")
                     // Continue to next step.
                     self.moveToNextStep()
                 }
@@ -511,7 +510,6 @@ final class WifiScaleSetupStore: ObservableObject {
                 // Reset the manual clear flag and sync previousSSID since this is a programmatic clear, not user-initiated
                 self.hasUserManuallyClearedSSID = false
                 self.previousSSID = ""
-                logger.log(level: .info, tag: tag, message: "Wi-Fi permissions skipped: SSID cleared and will not be populated.")
             } else {
                 // Normal flow: update WiFi status and populate SSID
                 if let ssid = status.ssid, !ssid.isEmpty {
@@ -566,7 +564,6 @@ final class WifiScaleSetupStore: ObservableObject {
     private func setSkipCheckNetwork(_ skip: Bool) {
         skipCheckNetwork = skip
         httpClient.skipCheckNetwork = skip
-        logger.log(level: .debug, tag: tag, message: "skipCheckNetwork set to: \(skip)")
     }
     
     /// Resets skipCheckNetwork to false (called when view disappears)
@@ -613,7 +610,6 @@ final class WifiScaleSetupStore: ObservableObject {
             do {
                 let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
                 self.scaleToken = scaleTokenResponse.token
-                LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token")
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             }
@@ -644,11 +640,14 @@ final class WifiScaleSetupStore: ObservableObject {
         notificationService.showLoader(LoaderModel(text: loaderLang.saving))
         
         guard let scaleItem, let userNumber = selectedUserNumber else {
+            logger.log(level: .error, tag: tag, message: "saveScale - missing scale item or selected user number")
             notificationService.dismissLoader()
             return
         }
         
         guard let accountId = self.accountService.activeAccount?.accountId else {
+            logger.log(level: .error, tag: tag, message: "saveScale - missing active account")
+            notificationService.dismissLoader()
             return
         }
         
@@ -806,7 +805,9 @@ final class WifiScaleSetupStore: ObservableObject {
         do {
             // Initial delay to allow the Wi-Fi service to stabilize.
             try await Task.sleep(nanoseconds: 3 * 1_000_000_000) // Initial delay of 3 seconds
-        } catch {}
+        } catch {
+            logger.log(level: .info, tag: tag, message: "getMacAddress initial delay interrupted: \(error.localizedDescription)")
+        }
         
         while Date().timeIntervalSince(startDate) < timeout {
             if let bssid = self.wifiStatus?.bssid, !bssid.isEmpty {
@@ -819,7 +820,6 @@ final class WifiScaleSetupStore: ObservableObject {
                     .joined(separator: ":")
                 
                 self.retrievedMacAddress = formatted
-                self.logger.log(level: .info, tag: tag, message: "MAC address retrieved: \(formatted)")
                 return true
             }
             

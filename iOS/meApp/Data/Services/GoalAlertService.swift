@@ -72,6 +72,7 @@ final class GoalAlertService: ObservableObject {
         }()
 
         guard hasMetGoal else { return }
+        logger.log(level: .info, tag: tag, message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)")
 
         // Persist flag so the alert is not re-shown in the same session until reset
         kv.setValue(true, forKey: storageKey)
@@ -90,6 +91,7 @@ final class GoalAlertService: ObservableObject {
     func resetGoalMetFlag() {
         guard let accountId = accountService.activeAccount?.accountId else { return }
         kv.setValue(false, forKey: goalAlertStorageKey(for: accountId))
+        logger.log(level: .info, tag: tag, message: "Reset goal-met flag. accountId=\(accountId)")
     }
     
     private func goalAlertStorageKey(for accountId: String) -> String {
@@ -157,6 +159,7 @@ final class GoalAlertService: ObservableObject {
             backdropDismiss: false
         )
         
+        logger.log(level: .info, tag: tag, message: "Presenting set-a-goal modal card. accountId=\(accountId)")
         notificationService.showModal(modal)
     }
 
@@ -201,6 +204,7 @@ final class GoalAlertService: ObservableObject {
 
     // MARK: - Button Handlers
     private func handleNewGoalAction() {
+        logger.log(level: .info, tag: tag, message: "Goal alert action selected: navigate to new goal")
         notificationService.dismissAlert()
         onNavigateToGoalSetting?()
         isShowingAlert = false
@@ -211,6 +215,7 @@ final class GoalAlertService: ObservableObject {
 
         guard let account = accountService.activeAccount,
               let goalWeight = account.goalSettings?.goalWeight else {
+            logger.log(level: .error, tag: tag, message: "Maintain-goal action failed: missing active account or goal weight")
             notificationService.dismissAlert()
             return
         }
@@ -225,7 +230,7 @@ final class GoalAlertService: ObservableObject {
 
         do {
             _ = try await accountService.createGoal(maintainGoal)
-            logger.log(level: .info, tag: tag, message: "Successfully created maintain goal", data: "\(maintainGoal)")
+            logger.log(level: .success, tag: tag, message: "Successfully created maintain goal", data: "\(maintainGoal)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to create maintain goal", data: error.localizedDescription)
         }

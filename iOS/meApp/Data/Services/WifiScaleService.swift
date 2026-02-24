@@ -26,7 +26,7 @@ final class WifiScaleService: WifiScaleServiceProtocol {
             logger.log(level: .info, tag: tag, message: "Successfully fetched scale token")
             return result
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to fetch scale token: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "WiFi scale token request failed: \(error.localizedDescription)")
             throw error
         }
     }
@@ -81,12 +81,12 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     func smartConnect(_ info: WifiSetupInfo) async throws {
         
         let config = makeConfig(from: info)
-        logger.log(level: .info, tag: tag, message: "smartConnect called with info: \(info)", data: config)
+        logger.log(level: .info, tag: tag, message: "SmartConfig WiFi setup started")
         do {
             try await wifiScale.connect(config: config, mode: .smartConfig, timeout: 120)
-            logger.log(level: .info, tag: tag, message: "Scale connected successfully via SmartConfig")
+            logger.log(level: .info, tag: tag, message: "SmartConfig WiFi setup succeeded")
         } catch {
-            logger.log(level: .error, tag: tag, message: "SmartConfig connection failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "SmartConfig WiFi setup failed: \(error.localizedDescription)")
             throw error
         }
     }
@@ -95,14 +95,13 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     /// - Parameters:
     ///   - info:      The parameters required for the operation (SSID, password, token, etc.).
     func espSmartConnect(_ info: WifiSetupInfo) async throws {
-
         let config = makeConfig(from: info)
-        logger.log(level: .info, tag: tag, message: "espSmartConnect called with info: \(info)", data: config)
+        logger.log(level: .info, tag: tag, message: "ESPTouch WiFi setup started")
         do {
             try await wifiScale.connect(config: config, mode: .esptouch, timeout: 60)
-            logger.log(level: .info, tag: tag, message: "Scale connected successfully via ESPTouch")
+            logger.log(level: .info, tag: tag, message: "ESPTouch WiFi setup succeeded")
         } catch {
-            logger.log(level: .error, tag: tag, message: "ESPTouch connection failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "ESPTouch WiFi setup failed: \(error.localizedDescription)")
             throw error
         }
     }
@@ -113,12 +112,12 @@ final class WifiScaleService: WifiScaleServiceProtocol {
     func apMode(_ info: WifiSetupInfo) async throws {
         
         let config = makeConfig(from: info)
-        logger.log(level: .info, tag: tag, message: "apMode called with info: \(info)", data: config)
+        logger.log(level: .info, tag: tag, message: "AP-mode WiFi setup started")
         do {
             try await wifiScale.connect(config: config, mode: .apMode, timeout: 90)
-            logger.log(level: .info, tag: tag, message: "Scale connected successfully via AP-Mode")
+            logger.log(level: .info, tag: tag, message: "AP-mode WiFi setup succeeded")
         } catch {
-            logger.log(level: .error, tag: tag, message: "AP-Mode connection failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "AP-mode WiFi setup failed: \(error.localizedDescription)")
             throw error
         }
     }
@@ -135,4 +134,4 @@ final class WifiScaleService: WifiScaleServiceProtocol {
             userNumber: info.userNumber ?? 0
         )
     }
-} 
+}

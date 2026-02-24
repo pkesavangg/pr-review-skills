@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
+import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
@@ -53,9 +54,10 @@ constructor(
   interface Factory {
     fun create(scaleInit: SetupInitData<BtScaleSetupStep>): BtScaleSetupViewModel
   }
+
   private var deviceInfo: GGDeviceDetail? = null
   private var scaleToDelete: Device? = null
-  private var existingScales =  listOf<Device>()
+  private var existingScales = listOf<Device>()
 
   init {
     AppLog.d(TAG, "BtScaleSetupViewModel initialized for SKU: ${state.value.scaleSetupState.sku}")
@@ -65,7 +67,6 @@ constructor(
         existingScales = scale
       }
     }
-
   }
 
   override fun provideInitialState(): BtScaleSetupState = BtScaleSetupState()
@@ -75,6 +76,7 @@ constructor(
     try {
       if (discoveredScale != null) {
         saveScale(deviceInfo)
+        delay(ScaleSetupConstants.DELAY_AFTER_SAVE_MS)
         AppLog.i(TAG, "Successfully saved Bluetooth scale")
       } else {
         AppLog.w(TAG, "No discovered scale to save")
@@ -149,13 +151,12 @@ constructor(
     } else if (currentState.step == BtScaleSetupStep.SELECT_USER && isPermissionGranted) {
       AppLog.d(TAG, "Moving from select user back to scale info")
       handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SCALE_INFO))
-    }
-    else {
+    } else {
       if (currentState.previousStep != null)
-        if(currentState.step == BtScaleSetupStep.PAIRING_MODE){
+        if (currentState.step == BtScaleSetupStep.PAIRING_MODE) {
           stopPairingDevices()
         }
-        handleIntent(ScaleSetupIntent.SetNewStep(currentState.previousStep!!))
+      handleIntent(ScaleSetupIntent.SetNewStep(currentState.previousStep!!))
       AppLog.d(TAG, "After Back intent - new currentStep: ${currentState.step}")
     }
   }
@@ -199,6 +200,7 @@ constructor(
           state.value.permissions,
           setupType = ScaleSetupType.Bluetooth,
         )
+
       else -> true
     }
     AppLog.d(TAG, "Button states - Back: $backEnabled, Next: $nextEnabled")
@@ -232,6 +234,7 @@ constructor(
     clearBluetoothTimeout()
 
     AppLog.d(TAG, "Connecting to Bluetooth")
+    ggDeviceService.scanForPairing()
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     try {
       startObservingDevices { data ->
@@ -256,7 +259,7 @@ constructor(
             else -> {
               AppLog.w(TAG, "Device pairing failed with response: $it")
               showRetryToast()
-              handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
+              handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage(ScaleSetupConstants.ERROR_WAKEUP_001)))
             }
           }
         }
@@ -269,47 +272,46 @@ constructor(
         if (discoveredScale == null) {
           AppLog.d(TAG, "Bluetooth scan timeout reached")
           showRetryToast()
-          handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_001")))
+          handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage(ScaleSetupConstants.ERROR_WAKEUP_001)))
         }
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during wake up process", e)
       clearBluetoothTimeout()
-      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("WAKEUP_002")))
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage(ScaleSetupConstants.ERROR_WAKEUP_002)))
     }
   }
 
-  private fun checkIsKnownScale(){
-   try {
-     // Check if scale with same peripheral identifier already exists
-     viewModelScope.launch {
-       try {
-         ggDeviceService.getDeviceInfo(discoveredScale!!.toGGBTDevice()) { deviceDetails ->
-           if (deviceDetails != null) {
-             deviceInfo = deviceDetails
-           }
+  private fun checkIsKnownScale() {
+    try {
+      // Check if scale with same peripheral identifier already exists
+      viewModelScope.launch {
+        try {
+          ggDeviceService.getDeviceInfo(discoveredScale!!.toGGBTDevice()) { deviceDetails ->
+            if (deviceDetails != null) {
+              deviceInfo = deviceDetails
+            }
 
-           scaleToDelete = existingScales.find { scale ->
-             scale.device?.macAddress == deviceInfo?.macAddress
-           }
-           if (scaleToDelete != null) {
-             AppLog.d(TAG, "Found existing scale with same peripheral identifier: ${scaleToDelete!!.id}")
-             confirmUserAndPair()
-           }
-         else {
-             AppLog.d(TAG, "No existing scale found, proceeding with new pairing")
-             successfullyPaired()
-           }
-         }} catch (e: Exception) {
-           AppLog.e(TAG, "Error checking existing scales", e)
-         }
-     }
-   }
-   catch (e: Exception){
- }
+            scaleToDelete = existingScales.find { scale ->
+              scale.device?.macAddress == deviceInfo?.macAddress
+            }
+            if (scaleToDelete != null) {
+              AppLog.d(TAG, "Found existing scale with same peripheral identifier: ${scaleToDelete!!.id}")
+              confirmUserAndPair()
+            } else {
+              AppLog.d(TAG, "No existing scale found, proceeding with new pairing")
+              successfullyPaired()
+            }
+          }
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Error checking existing scales", e)
+        }
+      }
+    } catch (e: Exception) {
+    }
   }
 
-  private fun confirmUserAndPair(){
+  private fun confirmUserAndPair() {
 // Show confirmation dialog using the base class pattern
     dialogQueueService.enqueue(
       DialogModel.Confirm(
@@ -325,25 +327,25 @@ constructor(
           viewModelScope.launch {
             AppLog.d(TAG, "User cancelled pairing ${scaleToDelete?.userNumber == discoveredScale?.userNumber}")
             if(scaleToDelete?.userNumber == discoveredScale?.userNumber){
-              dialogQueueService.showLoader(message = "Exiting...")
-              discoveredScale = discoveredScale?.copy(nickname = scaleToDelete?.nickname ?: "Smart Bluetooth Scale")
+              dialogQueueService.showLoader(message = BtScaleSetupStrings.Loader.Exiting)
+              discoveredScale = discoveredScale?.copy(nickname = scaleToDelete?.nickname ?: BtScaleSetupStrings.DefaultScaleNicknameAlternate)
               saveScale(deviceInfo)
             }
             navigationService.navigateBack()
             dialogQueueService.dismissLoader()
           }
-        }
-      )
+        },
+      ),
     )
   }
 
-  private fun successfullyPaired(){
+  private fun successfullyPaired() {
     viewModelScope.launch {
-    try {
+      try {
         AppLog.d(TAG, "Getting device info for: ${discoveredScale!!.id}")
         discoveredScale = discoveredScale!!
           .copy(connectionStatus = BLEStatus.CONNECTED,
-                nickname = discoveredScale?.nickname ?: "Bluetooth Smart Scale",
+                nickname = discoveredScale?.nickname ?: BtScaleSetupStrings.DefaultScaleNickname,
                 userNumber = _state.value.user,
                 device = deviceInfo
           )
@@ -351,29 +353,27 @@ constructor(
         AppLog.d(TAG, "Syncing devices after successful pairing $discoveredScale")
         ggDeviceService.resumeScan()
         syncNewScale(listOf(discoveredScale?.toGGBTDevice()))
-        delay(1000)
+        delay(ScaleSetupConstants.DELAY_AFTER_SAVE_MS)
         onNext()
-    }
-    catch (e: Exception){
-      AppLog.d(TAG, "Failed while scale gets paired")
-    }
+      } catch (e: Exception) {
+        AppLog.d(TAG, "Failed while scale gets paired")
+      }
     }
   }
 
-  private fun syncNewScale(scales: List<GGBTDevice?>){
+  private fun syncNewScale(scales: List<GGBTDevice?>) {
     try {
-      if(scales.isEmpty()){
+      if (scales.isEmpty()) {
         return ggDeviceService.stopScan(true)
       }
       AppLog.d(TAG, "Syncing new scale")
       ggDeviceService.syncDevices(listOf(discoveredScale!!.toGGBTDevice()))
-    }
-    catch(e: Exception){
+    } catch (e: Exception) {
       AppLog.d(TAG, "Failed while syncing a new scale")
     }
   }
 
-  private suspend fun saveScale(deviceInfo: GGDeviceDetail?){
+  private suspend fun saveScale(deviceInfo: GGDeviceDetail?) {
     try {
         if(scaleToDelete != null){
           deviceService.deleteScale(scaleToDelete?.id ?: "")
@@ -385,14 +385,13 @@ constructor(
           device = deviceInfo?.copy(
             deviceName = deviceInfo.deviceName.ifEmpty { scaleInfo?.productName ?: "" },
           ),
-          nickname = scaleInfo?.productName ?: "Bluetooth Smart Scale",
+          nickname = scaleInfo?.productName ?: BtScaleSetupStrings.DefaultScaleNickname,
           sku = scaleInit.sku,
           createdAt = currentTime,
         )
         deviceService.saveScale(discoveredScale!!)
       AppLog.d(TAG, "Scale gets saved successfully")
-    }
-    catch (e: Exception){
+    } catch (e: Exception) {
       AppLog.d(TAG, "Failed while scale gets saving")
     }
   }
@@ -407,13 +406,13 @@ constructor(
           AppLog.d(TAG, "Measurement collected: ${entries.size} entries")
           handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
           stopObservingEntries()
-          delay(1000)
+          delay(ScaleSetupConstants.DELAY_AFTER_SAVE_MS)
           onNext()
         }
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during measurement", e)
-      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("MEASUREMENT_002")))
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage(ScaleSetupConstants.ERROR_MEASUREMENT_002)))
     }
   }
 

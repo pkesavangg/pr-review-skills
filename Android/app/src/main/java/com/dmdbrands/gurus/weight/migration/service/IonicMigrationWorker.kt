@@ -1,14 +1,13 @@
 package com.dmdbrands.gurus.weight.migration.service
 
-import android.content.Context
-import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.dmdbrands.gurus.weight.migration.service.MigrationRepository
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.migration.model.MigrationResult
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import android.content.Context
 
 /**
  * Worker that handles migration from Ionic database to Room database.
@@ -35,7 +34,7 @@ class IonicMigrationWorker @AssistedInject constructor(
    */
   override suspend fun doWork(): Result {
     return try {
-      Log.i(TAG, "🚀 Starting Ionic migration worker")
+      AppLog.i(TAG, "Starting Ionic migration worker")
       val migrationRepository = MigrationRepository(appContext)
       val migrationService = MigrationService(migrationRepository)
 
@@ -44,21 +43,21 @@ class IonicMigrationWorker @AssistedInject constructor(
       when {
         migrationResult.isSuccess -> {
           val successResult = migrationResult as MigrationResult.Success
-          Log.i(
+          AppLog.i(
             TAG,
-            "✅ Migration completed successfully: ${successResult.migratedCount} entries migrated, account migrated: ${successResult.accountMigrated}",
+            "Migration completed successfully: ${successResult.migratedCount} entries migrated, account migrated: ${successResult.accountMigrated}",
           )
           Result.success()
         }
 
         else -> {
-          Log.e(TAG, "❌ Migration failed: ${migrationResult.errorMessage}")
+          AppLog.e(TAG, "Migration failed: ${migrationResult.errorMessage}")
           migrationService.performEmergencyCleanup(applicationContext)
           Result.retry()
         }
       }
     } catch (t: Throwable) {
-      Log.e(TAG, "💥 Migration worker failed with exception: ${t.message}", t)
+      AppLog.e(TAG, "Migration worker failed with exception: ${t.message}", t)
       Result.retry()
     }
   }

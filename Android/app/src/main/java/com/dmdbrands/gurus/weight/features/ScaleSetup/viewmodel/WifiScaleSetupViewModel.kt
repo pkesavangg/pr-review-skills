@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiModes
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.SetupPath
@@ -42,7 +43,9 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @HiltViewModel(
   assistedFactory = WifiScaleSetupViewModel.Factory::class,
@@ -356,7 +359,7 @@ constructor(
     // Clear setup in progress state when exiting
     deviceService.setSetupInProgress(false)
     if (isSetupFinished) {
-      navigateBack()
+      navigateBack(waitForScaleInList = true)
       return
     }
     dialogQueueService.enqueue(
@@ -426,10 +429,14 @@ constructor(
 
   /**
    * Navigates back from the setup screen.
+   * @param waitForScaleInList If true (e.g. after setup finished), waits for saved scale to appear in pairedScales before navigating so the list is not empty.
    */
-  private fun navigateBack() {
+  private fun navigateBack(waitForScaleInList: Boolean = false) {
     viewModelScope.launch {
       try {
+        if (waitForScaleInList) {
+          waitForScaleInPairedList(savedDevice = null, currentSku = state.value.sku)
+        }
         navigationService.navigateBack()
         AppLog.d(TAG, "Successfully navigated back from scale setup")
       } catch (e: Exception) {
@@ -894,45 +901,64 @@ constructor(
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
   }
 
-  private fun checkAndSaveScale() {
-    dialogQueueService.showLoader(
-      message = ScaleSetupStrings.SaveScaleLoader,
+  /**
+   * Saves the scale and waits for it to appear in pairedScales before completing.
+   * Call from a coroutine; runs sequentially so navigation after this sees the updated list.
+   */
+  private suspend fun checkAndSaveScale() {
+    val currentSku = state.value.sku
+    if (currentSku.isBlank()) {
+      AppLog.e(TAG, "SKU is blank, cannot save scale")
+      return
+    }
+    val scaleInfo = SCALES.find { it.sku == currentSku }
+    val wifiDevice = Device(
+      device = GGDeviceDetail(
+        deviceName = scaleInfo?.productName ?: "",
+        macAddress = state.value.macAddress,
+        identifier = "",
+      ),
+      sku = currentSku,
+      deviceType = ScaleSetupType.Wifi.value,
+      nickname = scaleInfo?.productName ?: ScaleSetupStrings.UnknownScale,
+      token = scaleToken,
+      userNumber = state.value.selectedUser,
     )
-    try {
-      viewModelScope.launch {
-        // TODO: Need to verify how they detect the duplicate scales unless the sku with user number
-        //  how will they find out that in the same session scale does not gets saved.
+    val savedDevice = deviceService.saveScale(wifiDevice)
+    waitForScaleInPairedList(savedDevice, currentSku)
+  }
 
-        val scaleInfo = SCALES.find { it.sku == state.value.sku }
-        val wifiDevice = Device(
-          device = GGDeviceDetail(
-            deviceName = scaleInfo?.productName ?: "",
-            macAddress = state.value.macAddress,
-            identifier = "",
-          ),
-          sku = state.value.sku,
-          deviceType = ScaleSetupType.Wifi.value,
-          nickname = scaleInfo?.productName!!,
-          token = scaleToken,
-          userNumber = state.value.selectedUser,
-        )
-        deviceService.saveScale(wifiDevice)
+  /**
+   * Waits for the saved scale to appear in [deviceService.pairedScales] (with timeout).
+   * Ensures list is updated before we dismiss loader / navigate so the scale list is not empty.
+   */
+  private suspend fun waitForScaleInPairedList(savedDevice: Device?, currentSku: String) {
+    val listWithScale = withTimeoutOrNull(ScaleSetupConstants.WAIT_FOR_SCALE_IN_LIST_MS) {
+      deviceService.pairedScales.first { list ->
+        list.any { device ->
+          if (savedDevice != null) device.id == savedDevice.id
+          else device.sku == currentSku && device.deviceType == ScaleSetupType.Wifi.value
+        }
       }
-    } finally {
-      dialogQueueService.dismissLoader()
+    }
+    if (listWithScale == null) {
+      AppLog.w(TAG, "Timeout waiting for WiFi scale in paired list; continuing anyway")
     }
   }
 
   /**
-   * Saves the scale configuration.
-   * Equivalent to TypeScript saveScale()
+   * Saves the scale configuration. Shows loader, awaits save and list update, then dismisses loader.
+   * Equivalent to TypeScript saveScale(). Run before navigating so scale list is populated.
    */
   private fun saveScale() {
     viewModelScope.launch {
+      dialogQueueService.showLoader(message = ScaleSetupStrings.SaveScaleLoader)
       try {
         checkAndSaveScale()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving scale", e)
+      } finally {
+        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -949,7 +975,8 @@ constructor(
       AppLog.e(TAG, "Error stopping WiFi service", e)
     }
     if (currentState.saved || canExit) {
-      navigateBack()
+      // Wait for scale to appear in list before navigating so "My Scales" is not empty
+      navigateBack(waitForScaleInList = true)
       return
     }
 

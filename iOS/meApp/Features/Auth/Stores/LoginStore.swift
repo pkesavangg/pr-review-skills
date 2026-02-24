@@ -143,6 +143,8 @@ final class LoginStore: ObservableObject {
         loginForm.password.markAsDirty()
 
         guard loginForm.isValid else { return }
+        let normalizedEmail = removeWhiteSpace(loginForm.email.value)
+        logger.log(level: .info, tag: logTag, message: "Login flow started. accountSwitching=\(isFromAccountSwitching)")
 
         isFormSubmitting = true
         notificationService.showLoader(LoaderModel(text: self.lang.loggingAccount))
@@ -154,10 +156,11 @@ final class LoginStore: ObservableObject {
         }
 
         do {
-            _ = try await accountService.logIn(
-                email: removeWhiteSpace(loginForm.email.value),
+            let _ = try await accountService.logIn(
+                email: normalizedEmail,
                 password: loginForm.password.value
             )
+            logger.log(level: .success, tag: logTag, message: "Login flow succeeded. accountSwitching=\(isFromAccountSwitching)")
             // If the login is from account switching, dismiss the login screen
             if isFromAccountSwitching {
                 dismissAction?()
@@ -165,7 +168,7 @@ final class LoginStore: ObservableObject {
                 onLoginSuccess?()
             }
         } catch {
-            logger.log(level: .error, tag: logTag, message: "Login Error: \(error)")
+            logger.log(level: .error, tag: logTag, message: "Login flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
@@ -228,6 +231,7 @@ final class LoginStore: ObservableObject {
         tempEmailControl.markAsDirty()
         tempEmailControl.validate()
         guard tempEmailControl.isValid else {
+            logger.log(level: .error, tag: logTag, message: "Password reset blocked by invalid email input")
             resetError = LoginForm().getError(for: tempEmailControl) ?? errorLang.email
             notificationService.showToast(
                 ToastModel(
@@ -240,9 +244,11 @@ final class LoginStore: ObservableObject {
         isFormSubmitting = true
         isLoading = true
         notificationService.showLoader(LoaderModel(text: lang.sendingEmail))
+        logger.log(level: .info, tag: logTag, message: "Password reset requested")
         do {
             try await accountService.requestPasswordReset(email: trimmedEmail)
             showResetPrompt = false
+            logger.log(level: .success, tag: logTag, message: "Password reset request succeeded")
             notificationService.showToast(
                 ToastModel(
                     title: toastLang.success,
@@ -250,7 +256,7 @@ final class LoginStore: ObservableObject {
                 )
             )
         } catch {
-            logger.log(level: .error, tag: logTag, message: "Error: \(error)")
+            logger.log(level: .error, tag: logTag, message: "Password reset request failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
             resetError = errorLang.passwordResetFailed
         }
         loaderOverride = nil
@@ -268,11 +274,13 @@ final class LoginStore: ObservableObject {
     func openPrivacy() {
         browserURL = URLHelper.getURL(for: .privacyPolicy)
         showPrivacyBrowser = true
+        logger.log(level: .info, tag: logTag, message: "Opening privacy policy browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
 
     func openTerms() {
         browserURL = URLHelper.getURL(for: .termsOfService)
         showTermsBrowser = true
+        logger.log(level: .info, tag: logTag, message: "Opening terms of service browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
 
     func openHelp() {

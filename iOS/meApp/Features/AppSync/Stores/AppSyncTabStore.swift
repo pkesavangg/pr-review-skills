@@ -21,6 +21,7 @@ final class AppSyncTabStore: ObservableObject {
     @Injector var logger: LoggerService
     private let toastLang = ToastStrings.self
     private let loaderLang = LoaderStrings.self
+    private let tag = "AppSyncTabStore"
     
     // Keep strong reference to cancellables if needed in future
     private var cancellables = Set<AnyCancellable>()
@@ -33,21 +34,28 @@ final class AppSyncTabStore: ObservableObject {
         case outOfRange = "out_of_range"
     }
     
-    private static let minWeightKg: Float = 10.0
+    private static let minWeightKg: Float = 1.0
     private static let maxWeightKg: Float = 450.0
     
     /// Converts the scanned body-composition data into the format expected by
     /// `AppSyncEntryCardView` and shows the confirmation modal.
     /// - Parameter data: The `BodyCompData` coming from `AppSyncScannerView`.
     func handleScanned(_ data: BodyCompData, tabViewModel: BottomTabBarViewModel) {
+        logger.log(level: .info, tag: tag, message: "AppSync scan received")
         // Determine preferred unit (kg / lbs) based on active account.
         let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
         
         if let reason = validateScan(data) {
             logger.log(
                 level: .error,
-                tag: "AppSyncTabStore",
+                tag: tag,
                 message: "scan_ignored reason=\(reason.rawValue) weight=\(data.weight)"
+            )
+            notificationHelperService.showToast(
+                ToastModel(
+                    title: toastLang.somethingWentWrongTitle,
+                    message: toastLang.somethingWentWrong
+                )
             )
             return
         }
@@ -82,20 +90,24 @@ final class AppSyncTabStore: ObservableObject {
 
         // Persist for Save/Edit actions
         lastScannedData = metrics
+        logger.log(level: .info, tag: tag, message: "AppSync scan parsed successfully. hasWeight=\(storedWeight > 0), hasBMI=\(storedBMI != nil), isMetric=\(isMetric)")
         // Present confirmation modal.
         showConfirmationModal(metrics: metrics, tabViewModel: tabViewModel)
     }
     
     // MARK: – Private helpers
     private func showConfirmationModal(metrics: AppSyncEntryMetrics, tabViewModel: BottomTabBarViewModel) {
+        logger.log(level: .info, tag: tag, message: "Presenting AppSync confirmation modal. isMetric=\(metrics.isMetric)")
         let modal = AppSyncEntryCardView(
             metrics: metrics,
             onSave: { [weak self] in
+                self?.logger.log(level: .info, tag: self?.tag ?? "AppSyncTabStore", message: "AppSync confirmation action selected: save")
                 tabViewModel.selectedTab = .dash
                 self?.notificationHelperService.dismissModal()
                 Task { await self?.saveScannedEntry() }
             },
             onEdit: { [weak self] in
+                self?.logger.log(level: .info, tag: self?.tag ?? "AppSyncTabStore", message: "AppSync confirmation action selected: edit")
                 // Pre-populate Manual Entry tab with scanned metrics
                 tabViewModel.pendingAppSyncEditMetrics = metrics
                 tabViewModel.selectedTab = .entry
@@ -110,8 +122,15 @@ final class AppSyncTabStore: ObservableObject {
 
     // MARK: – Save logic
     private func saveScannedEntry() async {
-        guard let data = lastScannedData else { return }
-        guard let accountId = accountService.activeAccount?.accountId else { return }
+        guard let data = lastScannedData else {
+            logger.log(level: .error, tag: tag, message: "AppSync save aborted: missing scanned data")
+            return
+        }
+        guard let accountId = accountService.activeAccount?.accountId else {
+            logger.log(level: .error, tag: tag, message: "AppSync save aborted: no active account")
+            return
+        }
+        logger.log(level: .info, tag: tag, message: "AppSync save started. accountId=\(accountId), storedWeight=\(data.storedWeight), hasBodyFat=\(data.storedBodyFat != nil), hasMuscle=\(data.storedMuscleMass != nil), hasWater=\(data.storedWaterWeight != nil)")
 
         let entryTimestamp = DateTimeTools.getCurrentDatetimeIsoString()
 
@@ -141,9 +160,10 @@ final class AppSyncTabStore: ObservableObject {
         notificationHelperService.showLoader(LoaderModel(text: loaderLang.savingEntry))
         do {
             try await entryService.saveNewEntry(entry)
+            logger.log(level: .success, tag: tag, message: "AppSync save succeeded. accountId=\(accountId), entryTimestamp=\(entryTimestamp)")
             notificationHelperService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
         } catch {
-            logger.log(level: .error, tag: "AppSyncTabStore", message: "Failed to save scanned entry", data: error.localizedDescription)
+            logger.log(level: .error, tag: tag, message: "AppSync save failed. accountId=\(accountId)", data: error.localizedDescription)
             notificationHelperService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
         }
         notificationHelperService.dismissLoader()

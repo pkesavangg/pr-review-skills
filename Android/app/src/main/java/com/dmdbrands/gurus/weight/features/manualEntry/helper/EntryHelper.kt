@@ -224,7 +224,7 @@ object EntryHelper {
     return PeriodBodyScaleSummary(
       period = period, // assuming this is already suitable
       entryTimestamp = entryTimestamp, // assuming no conversion needed
-      weight = weight.div(10.0).rounded()?: weight.div(10.0),
+      weight = weight.div(10.0).rounded() ?: weight.div(10.0),
       bodyFat = bodyFat?.div(10.0),
       muscleMass = muscleMass?.div(10.0),
       water = water?.div(10.0),
@@ -273,6 +273,13 @@ object EntryHelper {
   }
 
   fun GGScaleEntry.toScaleEntry(accountId: String, deviceId: String): ScaleEntry {
+    val weight = if (unit.lowercase() == "kg") weightInKg.toDoublePreserve() else {
+      if (this.protocolType == "A3") {
+        ConversionTools.convertKgToStoredA3(weightInKg.toDoublePreserve())
+      } else {
+        weight.toDoublePreserve()
+      }
+    }
     val entryEntity = EntryEntity(
       accountId = accountId,
       entryTimestamp = DateTimeConverter.timestampToIso(date), // you may want to format it properly
@@ -287,7 +294,7 @@ object EntryHelper {
 
     val bodyScaleEntryEntity = BodyScaleEntryEntity(
       id = 0, // Will be auto-generated in DB
-      weight = if (unit.lowercase() == "kg") weightInKg.toDoublePreserve() else weight.toDoublePreserve(),
+      weight = weight,
       bodyFat = bodyFat.toDoublePreserve(),
       muscleMass = muscleMass.toDoublePreserve(),
       water = water.toDoublePreserve(),

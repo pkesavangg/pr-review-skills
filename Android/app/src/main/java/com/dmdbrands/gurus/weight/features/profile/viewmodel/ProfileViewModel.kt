@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -22,6 +23,7 @@ import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /**
@@ -230,7 +232,10 @@ class ProfileViewModel @Inject constructor(
       AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
       result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
     }
-
-    return result.await()
+    return withTimeoutOrNull(ScaleProfileConstants.SCALE_PROFILE_UPDATE_TIMEOUT_MS) { result.await() }
+      ?: run {
+        AppLog.d(TAG, "updateR4Profile - Timeout or no callback from scale; dismissing loader")
+        GGUserActionResponseType.EXCEPTION_ENCOUNTERED
+      }
   }
 }

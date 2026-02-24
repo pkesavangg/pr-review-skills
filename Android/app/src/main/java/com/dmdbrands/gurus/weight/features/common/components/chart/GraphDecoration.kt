@@ -27,7 +27,9 @@ fun rememberGoalMarker(
   goal: Goal? = null,
   isWeightlessOn: Boolean = false
 ): VerticalAxis.MarkerDecoration? {
-  if (goal == null || goal.goalWeight == 0.0) return null
+  if (goal == null || (goal.goalType == null &&  goal.goalWeight == 0.0))  {
+    return null
+  }
   val resources = LocalResources.current
   val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
 
@@ -48,17 +50,13 @@ fun rememberGoalMarker(
 
   return remember(goal, isWeightlessOn) {
     val goalValue = goal.goalWeight.div(10).roundToInt()
-    // Format label with + or - prefix when weightless mode is on
+    // In weightless mode: negative shows as-is (e.g. -5), non-negative shows with + (e.g. +5)
     val labelText = if (isWeightlessOn) {
-      when (goal.type.lowercase()) {
-        "gain" -> "+$goalValue"
-        "lose" -> "-$goalValue"
-        else -> goalValue.toString() // maintain or unknown - no prefix
-      }
+      if (goalValue < 0) goalValue.toString() else "+$goalValue"
     } else {
       goalValue.toString()
     }
-    
+
     VerticalAxis.MarkerDecoration(
       y = { goalValue.toDouble() },
       markerComponent = labelComponent,

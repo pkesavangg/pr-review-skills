@@ -6,11 +6,11 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.core.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
+import java.time.DayOfWeek
 import java.time.Instant
-import java.time.LocalDate
-import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.temporal.TemporalAdjusters
 
 /**
  * Filters [values] to those inside [visibleXRange] with optional [paddingMillis] on each side.
@@ -51,14 +51,16 @@ internal fun rememberHorizontalAxisItemPlacer(
             val padding = GraphUtil.calculateXStep(segment)
             filterToVisibleWithPadding(all, visibleXRange, padding)
           }
+
           GraphSegment.MONTH -> {
-            val all = monthAnchorStartOfDayMillisBetween(
+            val all = sundaysBetween(
               startMillis = fullXRange.start.toLong(),
               endMillis = fullXRange.endInclusive.toLong(),
             )
             val padding = GraphUtil.calculateXStep(segment)
             filterToVisibleWithPadding(all, visibleXRange, padding)
           }
+
           else -> defaultPlacer.getLabelValues(
             context, visibleXRange, fullXRange, maxLabelWidth,
           )
@@ -77,14 +79,16 @@ internal fun rememberHorizontalAxisItemPlacer(
             val padding = GraphUtil.calculateXStep(segment)
             filterToVisibleWithPadding(all, visibleXRange, padding)
           }
+
           GraphSegment.MONTH -> {
-            val all = monthAnchorStartOfDayMillisBetween(
+            val all = sundaysBetween(
               startMillis = fullXRange.start.toLong(),
               endMillis = fullXRange.endInclusive.toLong(),
             )
             val padding = GraphUtil.calculateXStep(segment)
             filterToVisibleWithPadding(all, visibleXRange, padding)
           }
+
           else -> defaultPlacer.getLabelValues(
             context, visibleXRange, fullXRange, maxLabelWidth,
           )
@@ -120,51 +124,42 @@ fun ClosedFloatingPointRange<Double>.monthStartTimestampsMillis(): List<Double> 
   return timestamps
 }
 
-private val TARGET_DAYS = intArrayOf(1, 8, 15, 22, 29)
-
 /**
- * Returns all matching LocalDate values within [startMillis, endMillis] (inclusive),
- * for days-of-month 1, 8, 15, 22, 29 (29 only if the month supports it).
+ * @param startMillis inclusive
+ * @param endMillis   inclusive
+ * @param zone        pick the user/device zone, or ZoneId.of("Asia/Kolkata")
  */
-fun monthAnchorDatesBetween(
+fun sundaysBetween(
   startMillis: Long,
   endMillis: Long,
   zone: ZoneId = ZoneId.systemDefault()
-): List<LocalDate> {
-  if (startMillis > endMillis) return emptyList()
+): List<Double> {
+  require(endMillis >= startMillis) { "endMillis must be >= startMillis" }
 
-  val startDate = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalDate()
-  val endDate = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalDate()
+  val start = Instant.ofEpochMilli(startMillis).atZone(zone)
+  val end = Instant.ofEpochMilli(endMillis).atZone(zone)
 
-  var ym = YearMonth.from(startDate)
-  val endYm = YearMonth.from(endDate)
+  // first Sunday on/after start date
+  var cursorDate = start.toLocalDate()
+    .with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
 
-  val out = ArrayList<LocalDate>(/* rough guess */ 6 * (endYm.year - ym.year + 1))
+  val endDate = end.toLocalDate()
 
-  while (!ym.isAfter(endYm)) {
-    val maxDay = ym.lengthOfMonth()
+  val result = ArrayList<Long>()
+  while (!cursorDate.isAfter(endDate)) {
+    // Choose a stable time-of-day for the timestamp (start-of-day in that zone)
+    val sundayMillis = cursorDate
+      .atStartOfDay(zone)
+      .toInstant()
+      .toEpochMilli()
 
-    for (d in TARGET_DAYS) {
-      if (d > maxDay) continue // e.g., Feb 29 on non-leap years
-      val date = ym.atDay(d)
-      if (!date.isBefore(startDate) && !date.isAfter(endDate)) {
-        out.add(date)
-      }
+    // If you want strict timestamp-range filtering (not just date-range), keep this check:
+    if (sundayMillis in startMillis..endMillis) {
+      result.add(sundayMillis)
     }
 
-    ym = ym.plusMonths(1)
+    cursorDate = cursorDate.plusWeeks(1)
   }
 
-  return out
+  return result.map { it.toDouble() }
 }
-
-/**
- * Same as monthAnchorDatesBetween, but returns timestamps (millis) at start-of-day in [zone].
- */
-fun monthAnchorStartOfDayMillisBetween(
-  startMillis: Long,
-  endMillis: Long,
-  zone: ZoneId = ZoneId.systemDefault()
-): List<Double> =
-  monthAnchorDatesBetween(startMillis, endMillis, zone)
-    .map { it.atStartOfDay(zone).toInstant().toEpochMilli().toDouble() }
