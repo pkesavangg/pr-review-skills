@@ -17,12 +17,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -36,7 +38,11 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.gurus.weight.theme.MeTheme.typography
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.time.debounce
 
 class PickerState<T>(
     initialValue: T,
@@ -53,7 +59,7 @@ class PickerState<T>(
 @Composable
 fun <T> rememberPickerState(initialValue: T) = remember { PickerState(initialValue) }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, FlowPreview::class)
 @Composable
 fun <T> AppPicker(
     items: List<T>,
@@ -95,11 +101,11 @@ fun <T> AppPicker(
     }
 
     // When scroll stops, snap to closest and notify parent
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (!listState.isScrollInProgress) {
-            val item = items.getOrNull(currentCenteredIndex) ?: return@LaunchedEffect
-            if (item != selectedItem) onItemSelected(item)
-        }
+    LaunchedEffect(Unit) {
+      snapshotFlow{currentCenteredIndex}.debounce(200).collect {
+        val item = items.getOrNull(it) ?: return@collect
+        if (item != selectedItem) onItemSelected(item)
+      }
     }
 
     // Picker UI

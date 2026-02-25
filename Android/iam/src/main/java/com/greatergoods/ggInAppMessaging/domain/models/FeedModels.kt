@@ -131,15 +131,17 @@ data class FeaturedProduct(
 )
 
 /**
- * Feed action types
+ * Feed action types. Enum names match API string values for default serialization.
  */
 @Serializable
 enum class FeedActionType {
-  CLICK,
-  VIEW,
-  DISMISS,
-  READ,
-  TRIGGER
+  click,
+  read,
+  trigger,
+  pageView,
+  shopNowClick,
+  variationClick,
+  promoClick
 }
 
 /**
@@ -149,4 +151,3 @@ enum class FeedActionType {
 data class GGInAppMessagingConfig(
   val baseNavigationPath: String = ""
 )
-

@@ -24,6 +24,7 @@ data class DashboardState(
   val data: List<PeriodBodyScaleSummary> = emptyList(),
   val latestWeight: Double? = null,
   val progress: Progress = Progress(),
+  val isProgressUpdating: Boolean = false,
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val selectedStat: Stat? = null,
   val pagerState: Int = 0,
@@ -46,6 +47,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetVisibleKeys(val keys: List<DashboardKey>) : DashboardIntent
   data class UpdateVisibleKeys(val keys: List<DashboardKey>, val dashboardType: DashboardType) : DashboardIntent
   data class SetProgress(val progress: Progress) : DashboardIntent
+  data class SetProgressUpdating(val isUpdating: Boolean) : DashboardIntent
 
   /**
    * Switches the selected segment. When [anchorTimestamp] is non-null, it is the visible center
@@ -80,6 +82,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.UpdateIsEmpty -> state.copy(isEmpty = intent.isEmpty)
     is DashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys)
     is DashboardIntent.SetProgress -> state.copy(progress = intent.progress)
+    is DashboardIntent.SetProgressUpdating -> state.copy(isProgressUpdating = intent.isUpdating)
     is DashboardIntent.SetSelectedSegment -> if (intent.segment == state.selectedSegment) {
       state
     } else {

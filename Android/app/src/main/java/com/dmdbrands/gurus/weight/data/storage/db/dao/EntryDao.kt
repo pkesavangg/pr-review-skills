@@ -74,12 +74,23 @@ interface EntryDao {
 
   /**
    * Insert a list of entries with their related details in a single transaction.
+   * Inserts one entry at a time so each [insertEntryEntity] returns the correct generated id
+   * (SQLite multi-row INSERT returns only the last rowid, so bulk insert + returned IDs would break
+   * the body_scale_entry foreign key to entry). One transaction still gives a large speedup vs N transactions.
    * @param entries The list of Entry objects to insert
    */
   @Transaction
   suspend fun insert(entries: List<Entry>) {
-    entries.forEach {
-      insert(it)
+    if (entries.isEmpty()) return
+    for (entry in entries) {
+      val entryId = insertEntryEntity(entry.entry)
+      when (entry) {
+        is BpmEntry -> insertBpm(entry.bpmEntry.copy(id = entryId))
+        is ScaleEntry -> {
+          insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
+          entry.scale.scaleEntryMetric?.let { insertBodyScaleMetric(it.copy(id = entryId)) }
+        }
+      }
     }
   }
 
@@ -257,12 +268,13 @@ interface EntryDao {
   suspend fun insertEntryEntity(entry: EntryEntity): Long
 
   /**
-   * Insert a list of entry entities into the database.
+   * Insert a list of entry entities into the database (bulk).
+   * Use distinct name from single-arg insertEntryEntity to avoid Kotlin overload resolution issues.
    * @param entries The list of entry entities to insert
    * @return List of row IDs of the inserted entries
    */
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  suspend fun insertEntryEntity(entries: List<EntryEntity>): List<Long>
+  suspend fun insertEntries(entries: List<EntryEntity>): List<Long>
 
   /**
    * Insert a new BPM entity into the database.
@@ -273,11 +285,12 @@ interface EntryDao {
   suspend fun insertBpm(bpm: BpmEntryEntity): Long
 
   /**
-   * Insert a list of BPM entities into the database.
+   * Insert a list of BPM entities into the database (bulk).
+   * Use distinct name from single-arg insertBpm to avoid Kotlin overload resolution issues.
    * @param bpm The list of BpmEntryEntity to insert.
    */
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  suspend fun insertBpm(bpm: List<BpmEntryEntity>)
+  suspend fun insertBpmList(bpm: List<BpmEntryEntity>)
 
   /**
    * Insert a new BodyScaleEntry entity into the database.
@@ -288,11 +301,12 @@ interface EntryDao {
   suspend fun insertBodyScale(scale: BodyScaleEntryEntity): Long
 
   /**
-   * Insert a list of BodyScaleEntry entities into the database.
+   * Insert a list of BodyScaleEntry entities into the database (bulk).
+   * Use distinct name from single-arg insertBodyScale to avoid Kotlin overload resolution issues.
    * @param scales The list of BodyScaleEntryEntity to insert.
    */
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  suspend fun insertBodyScale(scales: List<BodyScaleEntryEntity>)
+  suspend fun insertBodyScales(scales: List<BodyScaleEntryEntity>)
 
   /**
    * Insert a new BodyScaleEntryMetric entity into the database.
@@ -303,11 +317,12 @@ interface EntryDao {
   suspend fun insertBodyScaleMetric(metric: BodyScaleEntryMetricEntity): Long
 
   /**
-   * Insert a list of BodyScaleEntryMetric entities into the database.
+   * Insert a list of BodyScaleEntryMetric entities into the database (bulk).
+   * Use distinct name from single-arg insertBodyScaleMetric to avoid Kotlin overload resolution issues.
    * @param metrics The list of BodyScaleEntryMetricEntity to insert.
    */
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  suspend fun insertBodyScaleMetric(metrics: List<BodyScaleEntryMetricEntity>)
+  suspend fun insertBodyScaleMetrics(metrics: List<BodyScaleEntryMetricEntity>)
 
   // Update methods for EntryEntity
   /**
@@ -794,50 +809,23 @@ ORDER BY d.day DESC
 
   /**
    * Get the longest streak count for an account.
+   * Uses window function (row_number) + GROUP BY to compute max consecutive days; faster than recursive CTE for large datasets.
    * @param accountId The account ID
    * @return The longest streak count
    */
   @Query(
     """
-        WITH RECURSIVE dates AS (
-            SELECT
-                strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS date
-            FROM entry_view
-            WHERE accountId = :accountId
-              AND (operationType IS NULL OR operationType != 'delete')
-            GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
-            ORDER BY date ASC
-        ),
-        streak_calc AS (
-            SELECT
-                date,
-                1 AS streak_length,
-                date AS streak_start
-            FROM dates
-            WHERE date = (SELECT MIN(date) FROM dates)
-
-            UNION ALL
-
-            SELECT
-                d.date,
-                CASE
-                    WHEN julianday(d.date) = julianday(sc.date) + 1 THEN sc.streak_length + 1
-                    ELSE 1
-                END AS streak_length,
-                CASE
-                    WHEN julianday(d.date) = julianday(sc.date) + 1 THEN sc.streak_start
-                    ELSE d.date
-                END AS streak_start
-            FROM dates d
-            JOIN streak_calc sc ON d.date > sc.date
-            WHERE d.date = (
-                SELECT MIN(d2.date)
-                FROM dates d2
-                WHERE d2.date > sc.date
+        SELECT COALESCE(MAX(streak_count), 0) AS longestStreak FROM (
+          SELECT COUNT(*) AS streak_count FROM (
+            SELECT day_start, row_number() OVER (ORDER BY day_start) AS row_num FROM (
+              SELECT strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME})) AS day_start
+              FROM entry_view
+              WHERE accountId = :accountId AND (operationType IS NULL OR operationType != 'delete')
+              GROUP BY strftime('%Y-%m-%d', datetime(entryTimestamp,${UTC},${LOCAL_TIME}))
             )
+          ) AS t1
+          GROUP BY strftime('%Y-%m-%d', date(day_start, '-' || (row_num - 1) || ' day'))
         )
-        SELECT COALESCE(MAX(streak_length), 0) AS longestStreak
-        FROM streak_calc
         """,
   )
   suspend fun getLongestStreakCount(accountId: String): Int
