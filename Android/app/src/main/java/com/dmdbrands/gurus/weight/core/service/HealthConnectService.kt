@@ -266,7 +266,7 @@ class HealthConnectService @Inject constructor(
       val assignedToAccountId = allAccountData.values
         .firstOrNull { it.hasAssignedTo() }
         ?.assignedTo
-      val isIntegrated: Boolean = assignedToAccountId == null || assignedToAccountId == currentAccount.id
+      val isIntegrated: Boolean = assignedToAccountId == null || assignedToAccountId.isEmpty() || assignedToAccountId == currentAccount.id
       AppLog.d(tag, "Health Connect integration check for account ${currentAccount.id}: $isIntegrated")
       isIntegrated
     } catch (e: Exception) {
@@ -385,6 +385,7 @@ class HealthConnectService @Inject constructor(
     }
 
     val finalData = mutableListOf<HealthConnectData>()
+
     for (entry in entries) {
       val timestamp = Instant.parse(entry.entryTimestamp)
 
@@ -447,6 +448,7 @@ class HealthConnectService @Inject constructor(
       }
     }
     try {
+      AppLog.d(tag, "Syncing $finalData entries")
       healthConnect.saveData(finalData)
       // Optionally, set a flag or observable for successful sync
     } catch (e: Exception) {
@@ -566,6 +568,7 @@ class HealthConnectService @Inject constructor(
       healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
       integrationRepository.updateHealthConnectIntegrationOffline(true)
       healthConnectRepository.setHcPermissions(accountId, permissionList)
+      healthConnectRepository.updateOutOfSync(accountId, false)
       // Need to check before.
       integrationRepository.updateLocalAccount()
       true
@@ -644,7 +647,6 @@ class HealthConnectService @Inject constructor(
       healthConnectRepository.updateOutOfSync(accountId, false)
       healthConnectRepository.updateModalState(accountId, false)
       healthConnectRepository.setOpen(accountId, false)
-      healthConnectRepository.removeAccount(accountId)
       deleteAllData()
       AppLog.i(tag, "Health Connect cleared successfully")
       true
@@ -682,7 +684,17 @@ class HealthConnectService @Inject constructor(
     }
   }
 
-  override suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean, isIntegrated: Boolean): Boolean {
+  /**
+   * Checks for multiple device connections.
+   * Similar to Angular's checkMultiDeviceConnection implementation.
+   * First checks if multiple device IDs exist using checkMultipleDeviceIds.
+   * If true, sets up the integration and handles out-of-sync state.
+   *
+   * @param isPermissionEnabled Whether permissions are currently enabled
+   * @param isIntegrated Whether the integration is currently active (not used in Angular, kept for compatibility)
+   * @return true if multiple device connection detected and handled, false otherwise
+   */
+  override suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean): Boolean {
     return try {
       val accountId = currentAccountId
 
@@ -690,27 +702,85 @@ class HealthConnectService @Inject constructor(
         AppLog.w(tag, "No active account found")
         return false
       }
-      val allHealthConnectData = healthConnectRepository.getAccountDataMap()
-      val integratedAccounts = allHealthConnectData.values.filter { it.integrated }
-      val isMultipleDeviceConnected = (integratedAccounts.size > 1 ||
-        (integratedAccounts.isEmpty() && integratedAccounts.none {
-          allHealthConnectData.entries.firstOrNull { entry -> entry.value == it }?.key == accountId
-        })) && isIntegrated
 
-      if (isMultipleDeviceConnected) {
-        AppLog.i(tag, "Multiple device connection detected")
+      // Check if multiple device IDs exist (similar to Angular)
+      val isMultipleDeviceIds = checkMultipleDeviceIds(IntegrationType.HEALTH_CONNECT)
+      if (isMultipleDeviceIds) {
+        AppLog.i(tag, "Multiple device IDs detected - setting up integration")
+
+        // Set Health Connect integration status to true
+        integrationRepository.updateHealthConnectIntegrationOffline(true)
         healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
+        dialogQueueService.showDialog(
+          DialogModel.Custom(
+            contentKey = DialogType.MultipleDeviceConnection,
+            onConfirm = {
+              dialogQueueService.dismissCurrent()
+              CoroutineScope(Dispatchers.IO).launch {
+                appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
+                appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
+                dialogQueueService.dismissCurrent()
+                healthConnectRepository.updateOutOfSync(accountId, false)
+                healthConnectRepository.updateModalState(accountId, true)
+              }
+            },
+            onDismiss = {
+              CoroutineScope(Dispatchers.IO).launch {
+                healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
+                healthConnectRepository.updateOutOfSync(accountId, true)
+                healthConnectRepository.updateModalState(accountId, false)
+                _outOfSyncState.value = true
+              }
+            },
+          ),
+        )
+        // Set out of sync state if permissions are not enabled
         if (!isPermissionEnabled) {
           _outOfSyncState.value = true
           healthConnectRepository.updateOutOfSync(accountId, true)
         }
+
         // Turn on integration for multi-device scenario
         turnOnIntegration(fromMultiDevice = true, isRequestNeed = true)
         return true
       }
-      return false
+
+      // Return the result (false if no multiple device IDs detected)
+      return isMultipleDeviceIds
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to check multiple device connection", e)
+      false
+    }
+  }
+
+  /**
+   * Checks if multiple device IDs exist for the given integration type.
+   * Similar to Angular's checkMultipleDeviceIds implementation.
+   * Returns true if stored integration data is null/undefined and the integration is on.
+   *
+   * @param integrations The integration type to check (HEALTH_CONNECT or HEALTH_KIT)
+   * @return true if stored integration is null and integration is on, false otherwise
+   */
+  override suspend fun checkMultipleDeviceIds(integrations: IntegrationType): Boolean {
+    return try {
+      val accountId = currentAccountId
+      if (accountId == null) {
+        AppLog.w(tag, "No active account found for checkMultipleDeviceIds")
+        return false
+      }
+
+      // Get stored integration data
+      val currentIntegration = healthConnectRepository.getStoredIntegrationData(accountId)
+      // Get integration status from server
+      val integrationsFromServer = integrationRepository.integrationsFromServer.first()
+      val isIntegrationOn =  integrationsFromServer?.isHealthConnectOn ?: false
+      AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${currentIntegration}")
+      // Return true if stored integration is null AND integration is on
+      val result = (currentIntegration?.scopes?.deviceId.isNullOrEmpty()) && isIntegrationOn
+      AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${currentIntegration}, isIntegrationOn=$isIntegrationOn, result=$result")
+      result
+    } catch (e: Exception) {
+      AppLog.e(tag, "Failed to check multiple device IDs for $integrations", )
       false
     }
   }
@@ -843,59 +913,92 @@ class HealthConnectService @Inject constructor(
    * This matches the Angular checkHealthConnectPermissionDisabled logic.
    */
   override suspend fun checkHealthConnectPermissionDisabled() {
+    AppLog.d(tag, "[checkHealthConnectPermissionDisabled] ENTRY")
     val healthConnectStatus = healthConnectStatus()
-    val accountId = currentAccountId ?: return
+    AppLog.d(tag, "[checkHealthConnectPermissionDisabled] healthConnectStatus=$healthConnectStatus")
+    val accountId = currentAccountId
+    if (accountId == null) {
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] EARLY RETURN: accountId is null")
+      return
+    }
+    AppLog.d(tag, "[checkHealthConnectPermissionDisabled] accountId=$accountId")
     val healthConnectData = healthConnectRepository.getAccountByID(accountId)
+    AppLog.d(tag, "[checkHealthConnectPermissionDisabled] healthConnectData=$healthConnectData")
     val isHealthConnectOpened = healthConnectData?.open ?: false
     val outOfSyncSession = healthConnectData?.outOfSync ?: false
     val isIntegrationCancelled = healthConnectData?.alertSeen ?: false
     val isLocallyIntegrated = healthConnectData?.integrated ?: false
-    currentIntegrations = integrationRepository.integrations.first()
+    AppLog.d(
+      tag,
+      "[checkHealthConnectPermissionDisabled] open=$isHealthConnectOpened outOfSync=$outOfSyncSession alertSeen=$isIntegrationCancelled integrated=$isLocallyIntegrated",
+    )
+    currentIntegrations = integrationRepository.integrationsFromServer.first()
+    AppLog.d(tag, "[checkHealthConnectPermissionDisabled] currentIntegrations?.isHealthConnectOn=${currentIntegrations?.isHealthConnectOn}")
     if (healthConnectStatus === HealthConnectStatus.INSTALLED || healthConnectStatus === HealthConnectStatus.UPDATE_REQUIRED) {
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] branch: INSTALLED or UPDATE_REQUIRED")
       val permissionStatus = checkPermissionStatus()
-
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] permissionStatus=$permissionStatus")
       val isAlreadyConnected = try {
         checkIfAlreadyUsed()
       } catch (e: Exception) {
+        AppLog.w(tag, "[checkHealthConnectPermissionDisabled] checkIfAlreadyUsed threw",)
         false
       }
-
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] isAlreadyConnected=$isAlreadyConnected")
       if (!isAlreadyConnected) {
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] RETURN: !isAlreadyConnected, setting _outOfSyncState=$outOfSyncSession")
         _outOfSyncState.value = outOfSyncSession
         return
       }
-      // val integrationsFromServer = isIntegrated // Placeholder for server check
-      val shouldShowPopup = true // You can add your own logic for this
+      val shouldShowPopup = true
       if (isLocallyIntegrated) {
+        //for migration
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] isLocallyIntegrated=true, calling turnOnIntegration")
         turnOnIntegration(fromMultiDevice = true, isRequestNeed = true)
       }
       // If permission is NONE and modal was opened, reset modal state
       if (permissionStatus == HealthConnectPermissionStatus.NONE && isHealthConnectOpened) {
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] NONE + opened -> updateModalState(accountId, false)")
         healthConnectRepository.updateModalState(accountId, false)
       }
       // Out of sync flow
       if (outOfSyncSession) {
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] outOfSyncSession=true, calling healthConnectOutOfSync()")
         healthConnectOutOfSync()
       }
       // If already connected, do not show popup
       // Multi-device connection check
-      if ((permissionStatus == HealthConnectPermissionStatus.NONE ||
+      val multiDeviceCondition =
+        (permissionStatus == HealthConnectPermissionStatus.NONE ||
           permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
-          permissionStatus == HealthConnectPermissionStatus.ALL) && currentIntegrations?.isHealthConnectOn == true && !isLocallyIntegrated
-      ) {
+          permissionStatus == HealthConnectPermissionStatus.ALL) &&
+        currentIntegrations?.isHealthConnectOn == true &&
+        !isLocallyIntegrated
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] multiDeviceCondition=$multiDeviceCondition (perm=$permissionStatus, hcOn=${currentIntegrations?.isHealthConnectOn}, !isLocallyIntegrated=${!isLocallyIntegrated})")
+      if (multiDeviceCondition) {
         val isConnect = permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
           permissionStatus == HealthConnectPermissionStatus.ALL
-        val isMultiDeviceConnected = checkMultiDeviceConnection(isConnect, true)
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] calling checkMultiDeviceConnection(isConnect=$isConnect)")
+        val isMultiDeviceConnected = checkMultiDeviceConnection(isConnect)
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] isMultiDeviceConnected=$isMultiDeviceConnected")
         if (isMultiDeviceConnected) {
+          AppLog.d(tag, "[checkHealthConnectPermissionDisabled] RETURN: isMultiDeviceConnected=true")
           return
         }
       }
       // Out of sync modal
-      if (permissionStatus == HealthConnectPermissionStatus.NONE && currentIntegrations?.isHealthConnectOn == true && !outOfSyncSession) {
+      val outOfSyncModalCondition =
+        permissionStatus == HealthConnectPermissionStatus.NONE &&
+          isLocallyIntegrated &&
+          !outOfSyncSession
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] outOfSyncModalCondition=$outOfSyncModalCondition (perm=NONE?=${permissionStatus == HealthConnectPermissionStatus.NONE}, hcOn=${currentIntegrations?.isHealthConnectOn}, !outOfSyncSession=${!outOfSyncSession})")
+      if (outOfSyncModalCondition) {
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] ENTER: out-of-sync modal path (updateOutOfSync/ModalState, show OutOfSyncModal)")
         healthConnectRepository.updateOutOfSync(accountId, true)
         healthConnectRepository.updateModalState(accountId, true)
         _outOfSyncState.value = true // Set observable for out of sync
         if (shouldShowPopup) {
+          AppLog.d(tag, "[checkHealthConnectPermissionDisabled] showing DialogType.OutOfSyncModal")
           dialogQueueService.showDialog(
             DialogModel.Custom(
               contentKey = DialogType.OutOfSyncModal,
@@ -903,8 +1006,9 @@ class HealthConnectService @Inject constructor(
                 mapOf(
                   "secondaryAction" to {
                     CoroutineScope(Dispatchers.IO).launch {
-                      dialogQueueService.showLoader(HealthConnectStrings.Loader.loading)
+                      dialogQueueService.showLoader(HealthConnectStrings.Loader.removing)
                       removeHealthConnectIntegration()
+                      healthConnectRepository.updateOutOfSync(accountId, true)
                       healthConnectRepository.updateModalState(accountId, true)
                       dialogQueueService.dismissCurrent()
                       dialogQueueService.dismissLoader()
@@ -934,21 +1038,35 @@ class HealthConnectService @Inject constructor(
           )
           healthConnectRepository.updateModalState(accountId, true)
         }
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] RETURN: after out-of-sync modal path")
         return
       }
       // If permissions are restored, clear out-of-sync state
-      if ((permissionStatus == HealthConnectPermissionStatus.ALL || permissionStatus == HealthConnectPermissionStatus.PARTIAL) && outOfSyncSession) {
+      val permissionsRestoredCondition =
+        (permissionStatus == HealthConnectPermissionStatus.ALL || permissionStatus == HealthConnectPermissionStatus.PARTIAL) && outOfSyncSession
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] permissionsRestoredCondition=$permissionsRestoredCondition")
+      if (permissionsRestoredCondition) {
+        AppLog.d(tag, "[checkHealthConnectPermissionDisabled] clearing out-of-sync state (permissions restored)")
         healthConnectRepository.updateOutOfSync(accountId, false)
         healthConnectRepository.updateModalState(accountId, false)
         // healthConnectRepository.updateOutOfSyncSession(accountId, false)
         _outOfSyncState.value = false
       }
       // Finish connect modal
-      if (permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
-        permissionStatus == HealthConnectPermissionStatus.ALL
-      ) {
-        if (currentIntegrations?.isHealthConnectOn == false && !isIntegrationCancelled && !isHealthConnectOpened) {
+      val hasPartialOrAllPermission =
+        permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
+          permissionStatus == HealthConnectPermissionStatus.ALL
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] hasPartialOrAllPermission=$hasPartialOrAllPermission")
+      if (hasPartialOrAllPermission) {
+        val finishConnectCondition =
+          currentIntegrations?.isHealthConnectOn == false && !isIntegrationCancelled && !isHealthConnectOpened
+        AppLog.d(
+          tag,
+          "[checkHealthConnectPermissionDisabled] FinishConnect branch: hcOn=${currentIntegrations?.isHealthConnectOn} !alertSeen=${!isIntegrationCancelled} !opened=${!isHealthConnectOpened} -> showCondition=$finishConnectCondition",
+        )
+        if (finishConnectCondition) {
           if (shouldShowPopup) {
+            AppLog.d(tag, "[checkHealthConnectPermissionDisabled] showing DialogType.FinishConnect (hcOn=false)")
             dialogQueueService.showDialog(
               DialogModel.Custom(
                 contentKey = DialogType.FinishConnect,
@@ -968,8 +1086,10 @@ class HealthConnectService @Inject constructor(
               ),
             )
           }
+          AppLog.d(tag, "[checkHealthConnectPermissionDisabled] RETURN: after FinishConnect (hcOn=false)")
           return
         } else if (isHealthConnectOpened) {
+          AppLog.d(tag, "[checkHealthConnectPermissionDisabled] branch: isHealthConnectOpened=true (from integration failed), showing FinishConnect")
           // from integration failed
           if (shouldShowPopup) {
             dialogQueueService.showDialog(
@@ -993,12 +1113,13 @@ class HealthConnectService @Inject constructor(
             )
             healthConnectRepository.updateModalState(accountId, false)
           }
+          AppLog.d(tag, "[checkHealthConnectPermissionDisabled] RETURN: after FinishConnect (opened)")
           return
         }
       }
-    }
-    // Install required modal (not implemented, but you can add it here)
-   else if (healthConnectStatus == HealthConnectStatus.INSTALL_REQUIRED && currentIntegrations?.isHealthConnectOn == true) {
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] fall-through: no return in INSTALLED/UPDATE_REQUIRED branch")
+    } else if (healthConnectStatus == HealthConnectStatus.INSTALL_REQUIRED && currentIntegrations?.isHealthConnectOn == true) {
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] branch: INSTALL_REQUIRED + hcOn=true, enqueueing NotAvailable alert")
       dialogQueueService.enqueue(
         DialogModel.Alert(
           title = HealthConnectStrings.NotAvailable.header,
@@ -1009,6 +1130,9 @@ class HealthConnectService @Inject constructor(
           },
         ),
       )
+    } else {
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] branch: status=$healthConnectStatus (no INSTALLED/UPDATE_REQUIRED/INSTALL_REQUIRED match)")
     }
+    AppLog.d(tag, "[checkHealthConnectPermissionDisabled] EXIT (normal end)")
   }
 }

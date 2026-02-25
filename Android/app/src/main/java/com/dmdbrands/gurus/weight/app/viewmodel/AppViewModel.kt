@@ -375,7 +375,6 @@ constructor(
         if (fromLoadingScreen) {
           delay(1000)
         }
-        deviceInfoService.updateDeviceInfo()
         subscribePermissions()
         subscribeDeviceCallback()
         subscribePairedScales()

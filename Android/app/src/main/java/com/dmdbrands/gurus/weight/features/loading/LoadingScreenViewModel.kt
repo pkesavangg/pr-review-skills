@@ -120,6 +120,7 @@ constructor(
     dashboardService.setAccountId(account.id)
     deviceService.setAccountId(account.id)
     deviceInfoService.updateDeviceInfo()
+    deviceInfoService.updateLocalIntegrationInfo()
     syncScales()
   }
 

@@ -18,7 +18,10 @@ interface IDeviceInfoService {
      */
     suspend fun updateDeviceInfo()
 
-    /**
+
+  suspend fun updateLocalIntegrationInfo()
+
+  /**
      * Gets the current FCM token.
      * @return The current FCM token string.
      */

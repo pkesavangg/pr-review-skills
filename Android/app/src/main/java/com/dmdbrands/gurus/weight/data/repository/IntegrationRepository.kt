@@ -32,7 +32,6 @@ class IntegrationRepository @Inject constructor(
 
   init {
     CoroutineScope(Dispatchers.IO).launch {
-      updateLocalAccount()
       accountRepository.getActiveAccount().collect { account ->
         if (account != null) {
           // Get Health Connect integration status from DataStore (similar to Angular's getHealthConnectIntegrationStatus)
@@ -68,7 +67,7 @@ class IntegrationRepository @Inject constructor(
   )
 
   private val _integrationsFromServer = MutableStateFlow(defaultIntegrations)
-  val integrationsFromServer: StateFlow<Integrations> = _integrationsFromServer.asStateFlow()
+  override val integrationsFromServer: StateFlow<Integrations> = _integrationsFromServer.asStateFlow()
 
   // StateFlow for integrations (like BehaviorSubject)
   private val _integrations = MutableStateFlow<Integrations?>(defaultIntegrations)
@@ -90,6 +89,7 @@ class IntegrationRepository @Inject constructor(
         return
       }
       val remoteAccount = accountRepository.getAccountFromAPI(localAccount.id)
+      AppLog.d("IntegrationRepository", "Updated local account: $remoteAccount")
 
       // Get Health Connect integration status from DataStore (similar to Angular's getHealthConnectIntegrationStatus)
       val healthConnectData = healthConnectRepository.getAccountByID(localAccount.id)
