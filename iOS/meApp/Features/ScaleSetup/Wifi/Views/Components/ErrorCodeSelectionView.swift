@@ -62,8 +62,6 @@ struct ErrorCodeSelectionView: View {
 #Preview {
     ErrorCodeSelectionView(
         sku: "0384"
-    ) { errorCode in
-            print("Selected error: \(String(describing: errorCode))")
-        }
+    ) { _ in }
     .environmentObject(Theme.shared)
 }

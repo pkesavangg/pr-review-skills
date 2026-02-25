@@ -11,6 +11,7 @@ import Foundation
 final class HTTPClient {
     static let shared = HTTPClient()
     @Injector var accountService: AccountService
+    @Injector var logger: LoggerService
     @Injector var notificationHelperService: NotificationHelperService
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
@@ -148,9 +149,7 @@ final class HTTPClient {
             logRawResponse(data: data)
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-#if DEBUG
-            print("🔍 HTTPClient Decoding Error: \(error)")
-#endif
+            logger.log(level: .debug, tag: "HTTPClient", message: "Decoding error", data: error)
             throw HTTPError.decodingError
         }
     }
@@ -188,13 +187,11 @@ final class HTTPClient {
     }
 
     private func logRawResponse(data: Data) {
-#if DEBUG
         if let rawString = String(data: data, encoding: .utf8) {
-            print("🔍 HTTPClient Raw Response: \(rawString)")
+            logger.log(level: .debug, tag: "HTTPClient", message: "Raw response", data: rawString)
         } else {
-            print("⚠️ HTTPClient Unable to decode data to string")
+            logger.log(level: .debug, tag: "HTTPClient", message: "Unable to decode data to string")
         }
-#endif
     }
     
     // MARK: - Account Handling

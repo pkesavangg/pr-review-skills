@@ -63,8 +63,6 @@ struct ScaleSetupIntroView: View {
 }
 
 #Preview(body: {
-    ScaleSetupIntroView(scale: SCALES[0]) {
-        print("Button clicked")
-    }
+    ScaleSetupIntroView(scale: SCALES[0]) { }
     .padding(.horizontal)
 })

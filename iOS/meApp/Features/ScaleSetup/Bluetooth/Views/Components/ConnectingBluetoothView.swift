@@ -98,7 +98,5 @@ struct ConnectingBluetoothView: View {
     ConnectingBluetoothView(
         sku: "0376",
         connectionState: .failure
-    ) {
-            print("Pair again tapped")
-        }
+    ) { }
 }

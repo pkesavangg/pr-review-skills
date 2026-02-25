@@ -88,12 +88,8 @@ struct IntegrationListItemView: View {
                     isSelected: true,
                     isOutOfSync: true
                 ),
-                onTap: {
-                    print("Row tapped")
-                },
-                onBadgeTap: {
-                    print("Badge tapped")
-                }
+                onTap: { },
+                onBadgeTap: { }
             )
             .listRowInsets()
             IntegrationListItemView(
@@ -101,9 +97,7 @@ struct IntegrationListItemView: View {
                     type: .appleHealth,
                     isSelected: true
                 ),
-                onTap: {
-                    print("Row tapped IntegrationListItemView")
-                },
+                onTap: { },
                 onBadgeTap: nil
             )
             .listRowInsets()
