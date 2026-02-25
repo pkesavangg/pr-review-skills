@@ -162,13 +162,19 @@ final class EntryStore: ObservableObject {
         entry.scaleEntryMetric = scaleMetric
 
         do {
+            logger.log(level: .info, tag: self.tag, message: "Manual entry save started. accountId=\(accountId), timestamp=\(entryTimestamp)")
             // Persist (should not be @MainActor inside service)
             try await entryService.saveNewEntry(entry)
             // Let event streams (entrySaved) trigger downstream reloads
             resetForm()
+            logger.log(level: .success, tag: self.tag, message: "Manual entry save succeeded. accountId=\(accountId), timestamp=\(entryTimestamp)")
             notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
         } catch {
-            logger.log(level: .error, tag: self.tag, message: "Failed to save manual entry", data: error)
+            logger.log(
+                level: .error,
+                tag: self.tag,
+                message: "Failed to save manual entry. accountId=\(accountId), timestamp=\(entryTimestamp), error=\(error.localizedDescription)"
+            )
             notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
         }
     }

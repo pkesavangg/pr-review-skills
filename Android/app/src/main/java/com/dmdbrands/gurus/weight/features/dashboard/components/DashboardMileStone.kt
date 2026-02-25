@@ -33,6 +33,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun DashboardMilestone(
   progress: Progress,
+  isProgressUpdating: Boolean = false,
   latestWeight: Double? = null,
   inEditMode: Boolean = false,
   isFromSetup: Boolean = false,
@@ -40,6 +41,7 @@ fun DashboardMilestone(
   visibleKeys: List<DashboardKey> = listOf(),
   onMilestonesChanged: (List<DashboardKey>) -> Unit = { },
   onNavigateToGoal: () -> Unit = {},
+  onLongClick: (Stat?, Progress?) -> Unit = { _, _ -> },
   modifier: Modifier = Modifier
 ) {
   val currentDeviceType = getDeviceType()
@@ -116,6 +118,7 @@ fun DashboardMilestone(
       inEditMode = inEditMode,
       isFromSetup = isFromSetup,
       hasVisibleMetrics = hasVisibleMetrics,
+      isProgressUpdating = isProgressUpdating,
       onMilestoneMoved = onMilestoneMoved,
       onMilestoneReordered = onMilestoneReordered,
       onNavigateToGoal = if (inEditMode) {
@@ -125,6 +128,7 @@ fun DashboardMilestone(
         // Allow navigation to goal screen when not in edit mode
         onNavigateToGoal
       },
+      onLongClick = onLongClick,
       progress = progress,
       latestWeight = latestWeight,
     )

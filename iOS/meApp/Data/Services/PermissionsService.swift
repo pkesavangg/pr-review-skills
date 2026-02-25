@@ -24,8 +24,10 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService
     @Injector private var scaleService: ScaleService
+    @Injector private var logger: LoggerService
 
     private var cancellables = Set<AnyCancellable>()
+    private let tag = "PermissionsService"
 
     // MARK: - Init
     private init() {
@@ -43,6 +45,11 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
+        let details = permissions
+            .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
+            .sorted()
+            .joined(separator: ", ")
+        logger.log(level: .info, tag: tag, message: "Permission map set. count=\(permissions.count), details=[\(details)]")
     }
 
     /// Updates a single permission entry and publishes the new dictionary.
@@ -53,6 +60,11 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         var current = self.permissions ?? [:]
         current[type] = state
         self.permissions = current
+        let details = current
+            .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
+            .sorted()
+            .joined(separator: ", ")
+        logger.log(level: .info, tag: tag, message: "Permission updated. type=\(type.rawValue), state=\(state.rawValue), details=[\(details)]")
     }
 
     // MARK: - Permission Helper
@@ -62,8 +74,11 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     /// - Returns: The resulting `GGPermissionState`.
     @discardableResult
     func permissionRequest(_ type: GGPermissionType) async -> GGPermissionState {
+        logger.log(level: .info, tag: tag, message: "Permission request started. type=\(type.rawValue)")
         let raw = await GGBluetoothSwiftPackage.shared.requestPermission(permissionType: type)
-        return raw == GGPermissionState.ENABLED.rawValue ? .ENABLED : .DISABLED
+        let result: GGPermissionState = raw == GGPermissionState.ENABLED.rawValue ? .ENABLED : .DISABLED
+        logger.log(level: .info, tag: tag, message: "Permission request completed. type=\(type.rawValue), result=\(result.rawValue)")
+        return result
     }
     
     // MARK: - Permission Dispatcher
@@ -72,22 +87,26 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     /// - Returns: The latest `GGPermissionState` for the given permission.
     @discardableResult
     func handlePermission(_ type: PermissionType) async -> GGPermissionState {
+        logger.log(level: .info, tag: tag, message: "Handle permission flow requested. type=\(type.rawValue)")
+        let result: GGPermissionState
         switch type {
         case .notification:
-            return await self.showNotificationDisabledAlert()
+            result = await self.showNotificationDisabledAlert()
         case .bluetoothSwitch:
-            return await self.showBluetoothDisabledAlert()
+            result = await self.showBluetoothDisabledAlert()
         case .bluetooth:
-            return await self.showBluetoothAuthDisabledAlert()
+            result = await self.showBluetoothAuthDisabledAlert()
         case .locationSwitch:
-            return await self.showLocationDisabledAlert()
+            result = await self.showLocationDisabledAlert()
         case .location:
-            return await self.showLocationAuthDisabledAlert()
+            result = await self.showLocationAuthDisabledAlert()
         case .camera:
-            return await self.showCameraDisabledAlert()
+            result = await self.showCameraDisabledAlert()
         case .wifiSwitch, .internet:
-            return await self.showWifiDisabledAlert()
+            result = await self.showWifiDisabledAlert()
         }
+        logger.log(level: .info, tag: tag, message: "Handle permission flow completed. type=\(type.rawValue), result=\(result.rawValue)")
+        return result
     }
     
     /// Checks the current permission state for a given type.
@@ -96,6 +115,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     }
     
     func navigateToWifiSettings() {
+        logger.log(level: .info, tag: tag, message: "Navigating to Wi-Fi settings")
         Task {
             await GGBluetoothSwiftPackage.shared.navigateToSettings(permissionType: .WIFI_SWITCH)
         }
@@ -126,6 +146,15 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
             }
         }
         requiredCategories = newRequired
+        let currentPermissionDetails = (permissions ?? [:])
+            .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
+            .sorted()
+            .joined(separator: ", ")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), details=[\(currentPermissionDetails)]"
+        )
     }
 
     /// Public accessor for the current set of required permission categories.

@@ -5,7 +5,6 @@ import SwiftData
 /// Service to migrate data from Ionic app's SQLite database to SwiftData
 final class SQLiteMigrationService {
     @Injector private var logger: LoggerService
-    private let migrationLogBatchSize = 100 // Number of entries to log in batch during migration
     private let tag = "SQLiteMigrationService"
     
     /// Initialize the service
@@ -28,11 +27,7 @@ final class SQLiteMigrationService {
     
     /// Get the actual database path for logging purposes
     private var actualDatabasePath: String {
-        let path = databasePath
-        Task { @MainActor in
-            logger.log(level: .info, tag: tag, message: "✅ Found SQLite database at: \(path)")
-        }
-        return path
+        return databasePath
     }
     
     // MARK: - Migration Interface
@@ -54,7 +49,7 @@ final class SQLiteMigrationService {
             // Check if opStack tables exist
             guard try checkTablesExist() else {
                 Task { @MainActor in
-                    logger.log(level: .error, tag: tag, message: "SQLite opStack tables not found - no data to migrate")
+                    logger.log(level: .info, tag: tag, message: "SQLite opStack tables not found - no data to migrate")
                 }
                 return [:]
             }
@@ -138,14 +133,11 @@ final class SQLiteMigrationService {
         defer { sqlite3_finalize(statement) }
         
         var tableCount = 0
-        var tableNames: [String] = []
         while sqlite3_step(statement) == SQLITE_ROW {
-            let tableName = String(cString: sqlite3_column_text(statement, 0))
-            tableNames.append(tableName)
             tableCount += 1
         }
         Task { @MainActor in
-            logger.log(level: .info, tag: tag, message: "Found \(tableCount) relevant opStack tables in SQLite database: \(tableNames)")
+            logger.log(level: .info, tag: tag, message: "Found \(tableCount) relevant opStack tables in SQLite database")
         }
         
         return tableCount >= 1 // At least 'opStack' table should exist
@@ -169,10 +161,6 @@ final class SQLiteMigrationService {
             ORDER BY o.userId, o.entryTimestamp DESC
         """
         
-        Task { @MainActor in
-            logger.log(level: .debug, tag: tag, message: "Preparing to migrate unsynced operations for all users")
-        }
-        
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
@@ -188,9 +176,6 @@ final class SQLiteMigrationService {
             throw MigrationError.queryPreparationFailed
         }
         
-        Task { @MainActor in
-            logger.log(level: .debug, tag: tag, message: "Executing migration query for all users...")
-        }
         var rowsFound = 0
         while sqlite3_step(statement) == SQLITE_ROW {
             rowsFound += 1
@@ -204,12 +189,6 @@ final class SQLiteMigrationService {
                 // Track migration count per user
                 migratedData[userId] = (migratedData[userId] ?? 0) + 1
                 
-                let totalMigrated = migratedData.values.reduce(0, +)
-                if totalMigrated % migrationLogBatchSize == 0 {
-                    Task { @MainActor in
-                        logger.log(level: .info, tag: tag, message: "Migrated \(totalMigrated) entries across \(migratedData.count) users...")
-                    }
-                }
             } catch {
                 Task { @MainActor in
                     logger.log(level: .error, tag: tag, message: "Failed to migrate entry: \(error.localizedDescription)")
@@ -225,13 +204,6 @@ final class SQLiteMigrationService {
                 tag: tag,
                 message: "Query completed. Rows found: \(rowsFound), Successfully migrated: \(totalMigrated) entries for \(migratedData.count) users"
             )
-        }
-        
-        // Log per-user migration counts
-        for (userId, count) in migratedData {
-            Task { @MainActor in
-                logger.log(level: .info, tag: tag, message: "User \(userId): \(count) entries migrated")
-            }
         }
         
         return migratedData

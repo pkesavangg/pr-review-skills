@@ -157,15 +157,6 @@ extension BtWifiScaleSetupStore {
         }
     }
 
-    // MARK: - Network
-
-    // Resets the network form to its initial state.
-    func resetNetworkForm() {
-        self.networkForm.reset()
-        self.networkForm = NetworkForm()
-        subscribeToNetworkForm()
-    }
-
     /// Check if two networks are the same by comparing SSID and MAC address
     func isSameNetwork(_ network1: WifiDetails, _ network2: WifiDetails) -> Bool {
         func cleanSSID(_ ssid: String?) -> String {

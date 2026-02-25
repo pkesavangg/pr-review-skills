@@ -70,6 +70,7 @@ class ScaleStore: ObservableObject {
     }
     
     func updateSetupInProgressStatus(_ isInProgress: Bool) {
+        logger.log(level: .info, tag: tag, message: "Scale setup in-progress status updated to \(isInProgress)")
         self.bluetoothService.isSetupInProgress = isInProgress
         if !isInProgress {
             clearScaleDiscoveredInfo()

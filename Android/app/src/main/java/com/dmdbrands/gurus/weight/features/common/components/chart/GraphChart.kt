@@ -76,7 +76,12 @@ fun rememberGraphChart(
     visibilityEasing = FastOutSlowInEasing,
   )
 
-  val (visibleStartXStep, visibleEndXStep) = GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
+  val (visibleStartXStep, visibleEndXStep) = remember(state.isEmptyGraph) {
+    if (state.isEmptyGraph)
+      GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
+    else
+      0.0 to 0.0
+  }
   val primaryChart =
     rememberCartesianChart(
       primaryLayer,

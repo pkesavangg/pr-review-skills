@@ -50,6 +50,11 @@ object ConversionTools {
     return round((kgs * 2.2046) * 10) / 10.0
   }
 
+  fun convertKgToStoredA3(kgs: Double): Double {
+    val intermediate = round(kgs * 1.10231 * 10) / 10
+    return intermediate * 2
+  }
+
   /**
    * Converts stored weight format to kilograms.
    * @param stored Weight in stored format

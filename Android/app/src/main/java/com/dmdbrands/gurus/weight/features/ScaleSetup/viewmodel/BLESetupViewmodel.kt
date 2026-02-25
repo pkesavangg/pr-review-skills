@@ -521,7 +521,11 @@ abstract class BLESetupViewmodel<Step : ScaleSetupStep, State : BaseState<Step, 
       // load paired devices
       AppLog.d(TAG, "Resuming scan and syncing devices")
       ggDeviceService.resumeScan(false)
-      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+      val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }.toMutableList()
+      val isDeviceAvailable = pairedDevices.firstOrNull { it.broadcastId == device?.device?.broadcastId } != null
+      if (!isDeviceAvailable && device != null) {
+        pairedDevices.add(device.toGGBTDevice())
+      }
       AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices")
       ggDeviceService.syncDevices(pairedDevices)
     } catch (e: Exception) {

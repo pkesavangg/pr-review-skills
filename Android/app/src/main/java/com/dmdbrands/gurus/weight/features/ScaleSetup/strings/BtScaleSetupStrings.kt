@@ -61,4 +61,10 @@ object BtScaleSetupStrings {
   object Loader {
     const val Exiting = "Exiting..."
   }
+
+  /** Default nickname for a Bluetooth scale when product name is unavailable. */
+  const val DefaultScaleNickname = "Bluetooth Smart Scale"
+
+  /** Default nickname when replacing an existing paired scale and nickname is unknown. */
+  const val DefaultScaleNicknameAlternate = "Smart Bluetooth Scale"
 }

@@ -290,6 +290,7 @@ final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_
         
         let email = removeWhiteSpace(signupForm.email.value)
         let password = signupForm.password.value
+        logger.log(level: .info, tag: tag, message: "Signup flow started. accountSwitching=\(isFromAccountSwitching)")
         
         let profile = generateProfile()
         let goal = generateGoalRequest()
@@ -301,8 +302,10 @@ final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_
             )
             // Create the goal if it's not skipped
             if let goal = goal {
-                _ = try await accountService.createGoal(goal)
+                logger.log(level: .info, tag: tag, message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
+                let _ = try await accountService.createGoal(goal)
             }
+            logger.log(level: .success, tag: tag, message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)")
             if isFromAccountSwitching {
                 dismissAction?()
             } else {
@@ -310,7 +313,7 @@ final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_
             }
             resetForm()
         } catch {
-            logger.log(level: .error, tag: tag, message: "Signup Error: \(error)")
+            logger.log(level: .error, tag: tag, message: "Signup flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
@@ -395,6 +398,7 @@ final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_
         if let message = toastMessage {
             notificationService.showToast(ToastModel(title: toastTitle, message: message))
         }
+        logger.log(level: .error, tag: tag, message: "Signup error handled. mappedToastShown=\(toastMessage != nil), errorType=\(String(describing: type(of: error)))")
     }
     
     private func setupFormObservers() { // swiftlint:disable:this function_body_length
