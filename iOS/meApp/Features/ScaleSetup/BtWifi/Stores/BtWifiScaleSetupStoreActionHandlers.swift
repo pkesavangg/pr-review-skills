@@ -12,9 +12,19 @@ extension BtWifiScaleSetupStore {
         if currentStep == .wifiPassword {
             resetNetworkForm()
         } else if currentStep == .viewSettings {
-            handleViewSettingsBack()
+            performViewSettingsBack()
         }
         moveToPreviousStep()
+    }
+
+    /// Handles the save action from the view settings screen
+    func handleViewSettingsAction() {
+        performViewSettingsSave()
+    }
+
+    /// Handles the back action from the view settings screen
+    func handleViewSettingsBack() {
+        performViewSettingsBack()
     }
 
     /// Handles the restore account action from the duplicate user screen
@@ -105,6 +115,159 @@ extension BtWifiScaleSetupStore {
         networkForm.setSSID(selectedWifiNetwork?.ssid ?? "")
         navigateToStep(.wifiPassword)
         updateNextEnabled()
+    }
+
+    // MARK: - Exit & Navigation Actions
+
+    /// Called by the ✕ button.
+    func handleExit() {
+        if currentStep == .stepOn {
+            isExitingFromStepOn = true
+            cancelStepOnTimeout()
+            cancelMeasurementSubscription()
+            if let savedScale = savedScale {
+                Task.detached(priority: .userInitiated) { [weak self] in
+                    guard let self else { return }
+                    await self.bluetoothService.stopLiveMeasurement(for: savedScale)
+                }
+            }
+            scaleSetupError = .none
+            isExiting = true
+            bluetoothService.isSetupInProgress = false
+            dismissAction?()
+            Task { @MainActor [weak self] in
+                self?.performExitCleanup()
+            }
+            return
+        }
+
+        isExiting = true
+        cancelNetworkScanTimeout()
+        fetchWifiNetworksTask?.cancel()
+        fetchWifiNetworksTask = nil
+
+        if handleSettingsWifiSetupExit() {
+            return
+        }
+
+        guard currentStep != .scaleConnected else {
+            performExitCleanup()
+            return
+        }
+        presentExitAlert(
+            onConfirm: { [weak self] in
+                self?.performExitCleanup()
+            },
+            onCancel: { [weak self] in
+                guard let self else { return }
+                self.isExiting = false
+            }
+        )
+    }
+
+    /// Presents the standard exit-alert.
+    func presentExitAlert(
+        onConfirm: @escaping () -> Void,
+        onCancel: @escaping () -> Void = {}
+    ) {
+        let lang = AlertStrings.ExitBtWifiSetupAlert.self
+        let message: String = {
+            switch (isWifiSetupOnly, savedScale != nil) {
+            case (true, _):  return lang.wifiExitMessage
+            case (false, true):  return lang.postConnectionExitMessage
+            default:  return lang.preConnectionExitMessage
+            }
+        }()
+
+        let alert = AlertModel(
+            title: lang.title,
+            message: message,
+            buttons: [
+                AlertButtonModel(title: lang.exitButton, type: .primary) { _ in onConfirm() },
+                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in onCancel() }
+            ])
+        notificationService.showAlert(alert)
+    }
+
+    /// Handles exit from Settings WiFi setup when on available WiFi list. Returns true if exit was handled.
+    func handleSettingsWifiSetupExit() -> Bool {
+        guard isSettingsWifiSetup && currentStep == .availableWifiList else {
+            return false
+        }
+
+        presentExitAlert(
+            onConfirm: { [weak self] in
+                self?.cancelWifi()
+                self?.scaleSetupError = .none
+                self?.dismissAction?()
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    self?.connectionState = .success
+                }
+            },
+            onCancel: {}
+        )
+        return true
+    }
+
+    /// Handles the next button click based on the current step.
+    func handleNextButtonClick() {
+        switch currentStep {
+        case .intro:
+            let hasPermissions = hasAllBtPermissions()
+            let hasNetwork = networkMonitor.isConnected
+            if !hasPermissions || !hasNetwork {
+                navigateToStep(.permissions)
+            } else {
+                navigateToStep(.wakeup)
+            }
+        case .gatheringNetwork:
+            if scaleSetupError == .duplicatesFound {
+                handleSaveDuplicateUser()
+            } else {
+                moveToNextStep()
+            }
+        case .availableWifiList:
+            if connectedWifiNetwork != nil {
+                cancelWifi()
+                scaleSetupError = .none
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    self.navigateToStep(.customizeSettings)
+                }
+            } else {
+                moveToNextStep()
+            }
+        case .wifiPassword:
+            handleWifiPasswordConnect()
+        case .viewSettings:
+            handleViewSettingsAction()
+        case .customizeSettings:
+            persistDashboardMetricsIfNeeded()
+            if hasSavedSettings {
+                navigateToStep(.updateSettings)
+            } else {
+                navigateToStep(.stepOn)
+            }
+        case .scaleConnected:
+            Task { @MainActor in
+                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    self.bluetoothService.isSetupInProgress = false
+                    self.dismissAction?()
+                    self.checkGoalModalAfterSetup()
+                }
+            }
+        case .permissions:
+            moveToNextStep()
+        case .wakeup:
+            moveToNextStep()
+        case .connectingBluetooth:
+            moveToNextStep()
+        default:
+            moveToNextStep()
+        }
     }
 
     /// Invoked from the *Try Again* button of `BluetoothConnectionView` and `WifiConnectionView` failure state.

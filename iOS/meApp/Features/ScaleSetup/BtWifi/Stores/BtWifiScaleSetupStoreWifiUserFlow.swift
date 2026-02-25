@@ -188,5 +188,22 @@ extension BtWifiScaleSetupStore {
                 self?.updateNextEnabled()
             }
     }
+
+    /// Resets the network form to its initial state.
+    func resetNetworkForm() {
+        networkForm.reset()
+        networkForm = NetworkForm()
+        subscribeToNetworkForm()
+    }
+
+    /// Cancels Wi-Fi to hide connecting to wifi screen on 0412 scale.
+    func cancelWifi() {
+        let scaleToCancel = discoveredScale ?? savedScale
+        if let scaleToCancel = scaleToCancel {
+            Task {
+                await bluetoothSetupManager.cancelWifi(on: scaleToCancel, bluetoothService: bluetoothService)
+            }
+        }
+    }
 }
 // swiftlint:enable cyclomatic_complexity function_body_length
