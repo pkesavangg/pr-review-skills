@@ -13,11 +13,11 @@ import SwiftUI
 /// A store that manages the state of accounts in the application.
 @MainActor
 class AccountsStore: ObservableObject {
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
-    @Injector var feedService: FeedService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var feedService: FeedServiceProtocol
 
     private let networkMonitor = NetworkMonitor.shared
 
@@ -40,14 +40,14 @@ class AccountsStore: ObservableObject {
     var cancellables: Set<AnyCancellable> = []
 
     init() {
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .sink { [weak self] account in
                 self?.activeAccount = account
             }
-            .store(in: &accountService.cancellables)
+            .store(in: &cancellables)
 
         // Watch allAccounts and update both `accounts` and `userItems`
-        accountService.$allAccounts
+        accountService.allAccountsPublisher
             .sink { [weak self] allAccounts in
                 guard let self = self else { return }
 
@@ -91,7 +91,7 @@ class AccountsStore: ObservableObject {
                     )
                 }
             }
-            .store(in: &accountService.cancellables)
+            .store(in: &cancellables)
     }
 
     /// Triggers display of `LoginScreen`. Pass the email to pre-fill if available.

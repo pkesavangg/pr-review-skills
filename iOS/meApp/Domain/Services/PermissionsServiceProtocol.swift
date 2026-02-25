@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import GGBluetoothSwiftPackage
 
@@ -10,6 +11,8 @@ protocol PermissionsServiceProtocol: AnyObject {
     // MARK: - Published Properties
     /// Latest permission status keyed by permission type. `nil` until first update from SDK.
     var permissions: [GGPermissionType: GGPermissionState]? { get }
+    var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> { get }
+    var requiredCategories: Set<PermissionCategory> { get }
 
     // MARK: - Mutation
     /// Updates the cached permission map with the latest values from the SDK.
@@ -35,4 +38,4 @@ protocol PermissionsServiceProtocol: AnyObject {
     /// - Parameter type: The permission type to query.
     /// - Returns: The cached `GGPermissionState` if available.
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState?
-} 
+}

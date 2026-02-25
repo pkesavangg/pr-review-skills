@@ -1,9 +1,13 @@
+import Combine
 import Foundation
 
 /// Protocol defining the service interface for managing user accounts, including authentication, state, updates, security, and sync/offline operations.
 @MainActor
 protocol AccountServiceProtocol {
     var activeAccount: Account? { get set }
+    var allAccounts: [Account] { get }
+    var activeAccountPublisher: Published<Account?>.Publisher { get }
+    var allAccountsPublisher: Published<[Account]>.Publisher { get }
     // MARK: - Account Lifecycle
 
     /// Registers a new user account with the given email, password, and profile.
@@ -28,6 +32,7 @@ protocol AccountServiceProtocol {
 
     /// Deletes the currently active account.
     func deleteAccount() async throws
+    func deleteAllAccounts() async throws
 
     /// Switches the active session to the specified account.
     /// - Parameter account: The account to switch to.
@@ -61,6 +66,7 @@ protocol AccountServiceProtocol {
     /// Updates the entire account object in the data store and/or backend.
     /// - Parameter updatedAccount: The updated Account object.
     func updateAccount(_ updatedAccount: Account) async throws -> Account
+    func createGoal(_ goal: Goal) async throws -> Account
 
     /// Updates the user's profile information.
     /// - Parameter profile: The updated Profile object.
@@ -168,4 +174,32 @@ protocol AccountServiceProtocol {
     /// - Parameter accountId: The ID of the account to refresh tokens for. If nil, uses the currently active account.
     /// - Returns: The refreshed Tokens object.
     func refreshTokens(accountId: String?) async throws -> Tokens
+    func deleteHealthIntegration(_ type: IntegrationType) async throws
+    func updatePublishedState(forceRefresh: Bool) async throws
+}
+
+extension AccountServiceProtocol {
+    func logOut() async throws {
+        try await logOut(accountId: nil, isAutoLogout: false)
+    }
+
+    func logOut(accountId: String?) async throws {
+        try await logOut(accountId: accountId, isAutoLogout: false)
+    }
+
+    func refreshAccount() async throws -> Account {
+        try await refreshAccount(accountId: nil)
+    }
+
+    func updateProfile(_ profile: Profile) async throws -> Account {
+        try await updateProfile(profile, canSaveOffline: false)
+    }
+
+    func updateIntegrations(integrationType: IntegrationType) async throws -> Account {
+        try await updateIntegrations(integrationType: integrationType, preferences: [:])
+    }
+
+    func updatePublishedState() async throws {
+        try await updatePublishedState(forceRefresh: false)
+    }
 }

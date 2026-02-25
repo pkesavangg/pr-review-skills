@@ -7,7 +7,7 @@ import SwiftUI
 final class FeedService: FeedServiceProtocol, ObservableObject {
     static let shared = FeedService()
     @Injector var notificationService: NotificationHelperService
-    @Injector var logger: LoggerService
+    @Injector var logger: LoggerServiceProtocol
     
     private let apiRepo: FeedRepositoryAPIProtocol = FeedRepositoryAPI()
     private let networkMonitor = NetworkMonitor.shared

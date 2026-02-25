@@ -15,14 +15,14 @@ import SwiftUI
 /// A store to manage user settings and account actions.
 @MainActor
 class SettingsStore: ObservableObject {
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
-    @Injector var feedService: FeedService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var feedService: FeedServiceProtocol
     @Injector var goalAlertService: GoalAlertService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var integrationService: IntegrationsService
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var integrationService: IntegrationServiceProtocol
     private let httpClient = HTTPClient.shared
     var theme = Theme.shared
     let kvStore = KvStorageService.shared
@@ -120,7 +120,7 @@ class SettingsStore: ObservableObject {
     @Published var showActivityPicker: Bool = false
     
     init() {
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .sink { [weak self] account in
                 self?.activeAccount = account
                 self?.populateEditFormIfNeeded()
@@ -129,11 +129,11 @@ class SettingsStore: ObservableObject {
             }
             .store(in: &cancellables)
         
-        accountService.$allAccounts
+        accountService.allAccountsPublisher
             .sink { [weak self] allAccounts in
                 self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn == true }.count > 1
             }
-            .store(in: &accountService.cancellables)
+            .store(in: &cancellables)
         
         self.populateWeightlessFormIfNeeded()
         

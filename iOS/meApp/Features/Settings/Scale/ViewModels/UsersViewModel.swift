@@ -11,10 +11,10 @@ import SwiftData
 @MainActor
 final class UsersViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var permissionsService: PermissionsService
-    @Injector var scaleService: ScaleService
-    @Injector var logger: LoggerService
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var permissionsService: PermissionsServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     @Published var userNameForm = UserNameForm()
     @Published var deviceUsers: [DeviceUser] = []
     @Published var currentDeviceUser: DeviceUser?

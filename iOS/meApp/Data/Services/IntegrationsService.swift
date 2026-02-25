@@ -13,9 +13,9 @@ import SwiftData
 final class IntegrationsService: IntegrationServiceProtocol {
     static let shared = IntegrationsService()
     
-    @Injector var accountService: AccountService
-    @Injector var logger: LoggerService
-    @Injector var entryService: EntryService
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var entryService: EntryServiceProtocol
     
     // MARK: - Combine
     /// Holds Combine cancellables for the lifetime of the service.

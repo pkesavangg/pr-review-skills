@@ -1,6 +1,6 @@
 import Foundation
 
-class KvStorageService {
+class KvStorageService: KvStorageServiceProtocol {
     static let shared = KvStorageService()
 
     init() {}

@@ -17,11 +17,32 @@ class DependencyContainer {
     func register<T>(_ dependency: T) {
         let key = String(describing: T.self)
         dependencies[key] = dependency
+
+        // Also store a reflected key to reduce type-name mismatch issues
+        // between protocol existentials and concrete registrations.
+        let reflectedKey = String(reflecting: T.self)
+        dependencies[reflectedKey] = dependency
     }
 
     func resolve<T>(_ type: T.Type) -> T? {
         let key = String(describing: T.self)
-        return dependencies[key] as? T
+        if let value = dependencies[key] as? T {
+            return value
+        }
+
+        let reflectedKey = String(reflecting: T.self)
+        if let value = dependencies[reflectedKey] as? T {
+            return value
+        }
+
+        // Swift may represent existential types with an "any " prefix.
+        let anyKey = "any \(key)"
+        if let value = dependencies[anyKey] as? T {
+            return value
+        }
+
+        // Fallback: return the first registered dependency that conforms to T.
+        return dependencies.values.first { $0 is T } as? T
     }
 }
 
@@ -39,7 +60,8 @@ struct Injector<Value> {
                 value = DependencyContainer.shared.resolve(Value.self)
             }
             guard let resolvedValue = value else {
-                fatalError("Dependency \(Value.self) is not registered in DependencyContainer")
+                let keys = DependencyContainer.shared.dependencies.keys.sorted().joined(separator: ", ")
+                fatalError("Dependency \(Value.self) is not registered in DependencyContainer. Registered keys: [\(keys)]")
             }
             return resolvedValue
         }

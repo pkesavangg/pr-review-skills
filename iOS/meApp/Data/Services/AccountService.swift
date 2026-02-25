@@ -11,31 +11,60 @@ import Combine
 final class AccountService: AccountServiceProtocol, ObservableObject {
     static let shared: AccountService = AccountService()
     @Injector var notificationService: NotificationHelperService
-    @Injector var logger: LoggerService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var keychainService: KeychainService
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var keychainService: KeychainServiceProtocol
     @Injector var kvStorage: KvStorageService
 
-    let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
-    let localRepo: AccountRepositoryProtocol = AccountRepository()
-    let networkMonitor: NetworkMonitor = NetworkMonitor.shared
+    private let apiRepo: AccountRepositoryAPIProtocol
+    private let localRepo: AccountRepositoryProtocol
+    private let networkMonitor: NetworkMonitor
     /// API repository for integration-related network calls
-    private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
+    private let integrationApiRepo: IntegrationRepositoryAPIProtocol
     /// Migration service for Ionic app data
-    let migrationService = AccountMigrationService()
+    private let migrationService: AccountMigrationService
 
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
+    var activeAccountPublisher: Published<Account?>.Publisher { $activeAccount }
+    var allAccountsPublisher: Published<[Account]>.Publisher { $allAccounts }
 
     var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
     let tag = "AccountService"
 
-    init() {
+    init(
+        apiRepo: AccountRepositoryAPIProtocol? = nil,
+        localRepo: AccountRepositoryProtocol? = nil,
+        integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
+        networkMonitor: NetworkMonitor? = nil,
+        migrationService: AccountMigrationService? = nil,
+        performInitialLoad: Bool = true
+    ) {
+        self.apiRepo = apiRepo ?? AccountRepositoryAPI()
+        self.localRepo = localRepo ?? AccountRepository()
+        self.integrationApiRepo = integrationApiRepo ?? IntegrationAPIRepository()
+        self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
+        self.migrationService = migrationService ?? AccountMigrationService()
+
+        $activeAccount
+            .dropFirst()
+            .sink(receiveValue: { data in
+                if data == nil {
+                    ServiceRegistry.shared.deregisterSessionServices()
+                } else {
+                    ServiceRegistry.shared.registerSessionServices()
+                    Theme.shared.setActiveAccount(data?.accountId)
+                }
+            })
+            .store(in: &cancellables)
+
+        guard performInitialLoad else { return }
+
         // Asynchronously load active account from local storage to set theme early
         Task {
             do {
-                if let activeAcct = try localRepo.fetchAllAccountsSync()
+                if let activeAcct = try localRepo?.fetchAllAccountsSync()
                     .first(where: { $0.isActiveAccount == true }) {
                     hydrateTokensInAccount(activeAcct)
                     self.activeAccount = activeAcct
@@ -60,16 +89,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             } catch {
                 logger.log(level: .error, tag: tag, message: "Error: \(error.localizedDescription)")
             }
-            $activeAccount
-                .sink(receiveValue: { data in
-                    if data == nil {
-                        ServiceRegistry.shared.deregisterSessionServices()
-                    } else {
-                        ServiceRegistry.shared.registerSessionServices()
-                        Theme.shared.setActiveAccount(data?.accountId)
-                    }
-                })
-                .store(in: &cancellables)
             try await updatePublishedState()
         }
     }

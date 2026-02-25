@@ -5,9 +5,9 @@ import SwiftUI
 /// Holds the current on/off state for each app permission. For now the values are hard-coded; real permission checks will be wired in later.
 @MainActor
 class PermissionsListViewModel: ObservableObject {
-    @Injector var permissionsService: PermissionsService
-    @Injector var loggerService: LoggerService
-    @Injector var wifiScaleService: WifiScaleService
+    @Injector var permissionsService: PermissionsServiceProtocol
+    @Injector var loggerService: LoggerServiceProtocol
+    @Injector var wifiScaleService: WifiScaleServiceProtocol
     
     // MARK: Published Permission Flags
     @Published var bluetoothAuthorized: Bool = false
@@ -29,7 +29,7 @@ class PermissionsListViewModel: ObservableObject {
     // MARK: - Initialiser
     init() {
         // Listen for permission updates from the central PermissionsService
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
         // Ensure we are on the main thread – PermissionsService is @MainActor but
         // we keep the explicit dispatch for safety when used from tests.
             .receive(on: DispatchQueue.main)
@@ -98,7 +98,7 @@ class PermissionsListViewModel: ObservableObject {
 
     private func refreshWifiNetworkName() {
         Task { [weak self] in
-            self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
+            self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid // Value of type 'any WifiScaleServiceProtocol' has no member 'getConnectedWifiInfo'
         }
     }
 }

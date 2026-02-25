@@ -9,9 +9,9 @@ import SwiftData
  */
 @MainActor
 final class EntryService: EntryServiceProtocol, ObservableObject {
-    @Injector var logger: LoggerService
+    @Injector var logger: LoggerServiceProtocol
     @Injector var goalAlertService: GoalAlertService
-    @Injector var integrationService: IntegrationsService
+    @Injector var integrationService: IntegrationServiceProtocol
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo = EntryRepositoryLocal()

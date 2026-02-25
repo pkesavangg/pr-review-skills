@@ -8,9 +8,9 @@
 import Foundation
 
 @MainActor
-final class HTTPClient {
+final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationHelperService: NotificationHelperService
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
