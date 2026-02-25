@@ -2,165 +2,176 @@
 
 ## Overview
 The **BtWifiScaleSetup** module orchestrates the end-to-end onboarding flow for smart Wi-Fi (R4) scales (e.g. SKU *0412*).  
-It’s implemented in pure SwiftUI + Combine and follows the same Clean-Architecture layering rules used throughout *meApp*.
+The store is split into a **main file** plus **extension files** by responsibility. All extensions extend `BtWifiScaleSetupStore`; the main file holds state, dependencies, lifecycle, and step view mapping.
 
 ## Entry Points
 The wizard can be launched from **three** distinct contexts:
 
-1. **Scale *Discovered* half-sheet** (automatic)  
-   - `BottomTabBarViewModel` listens to `BluetoothService.deviceDiscoveredPublisher`.  
-   - When `shouldShowDiscoveredScale(for:)` returns *true* it lifts the `Device` + `DeviceDiscoveryEvent` into `BottomTabBarView.discoveredScale`.  
-   - `BottomTabBarView` presents `ScaleDiscoveredSheetView` via `.sheet(item:)`. On **Connect** it calls `openScaleSetup(...)` which stores a `setupPayload` and immediately shows `BtWifiScaleSetupScreen`.
+1. **Scale *Discovered* half-sheet** → `BottomTabBarView` → `ScaleDiscoveredSheetView` → `BtWifiScaleSetupScreen`
+2. **Add Scale → enter SKU** → Settings → My Scales → Add → `BtWifiScaleSetupScreen(sku:)`
+3. **Wi-Fi re-configuration** → Settings → My Scales → Scale Settings → Wi-Fi → `BtWifiScaleSetupScreen(sku:, savedScale:, …)` with `isWifiSetupOnly = true`
 
-2. **Add Scale → enter SKU manually**  
-   - Settings → **My Scales** → *Add Scale* form.  
-   - The user enters the 4-digit model number **or** picks a scale in the list. Both paths call  
-     `handleScaleSelection(_:clearUI:)` in `MyScalesScreen` which sets `activeSheet = .setupFlow(scale)` and presents  
-     `BtWifiScaleSetupScreen(sku: scale.sku)`.
-
-3. **Wi-Fi re-configuration for an already paired scale**  
-   - Settings → **My Scales** → *Scale Settings* → *Wi-Fi*.  
-   - `SettingsRoute.wifi(scale:)` pushes  
-     `BtWifiScaleSetupScreen(sku: scale.sku, discoveredScale: nil, discoveryEvent: nil, savedScale: scale)`  
-     with `isWifiSetupOnly = true` so the flow skips pairing and jumps straight to the **Gathering Network** step.
-
-Regardless of origin the screen receives:
-```swift
-BtWifiScaleSetupScreen(
-    sku: "0412",
-    discoveredScale: Device?,       // optional – non-nil when launched from sheet
-    discoveryEvent: DeviceDiscoveryEvent? // same
-)
-```
-
-Key classes / views:
-- `BtWifiScaleSetupScreen` – top-level SwiftUI screen embedding the multi-step wizard
-- `BtWifiScaleSetupStore` – @MainActor store powering the flow (state, side-effects)
-- `DuplicateUserView`, `MaxUserListView` – error sub-screens rendered on the **Gathering Network** step
-- `UserNameForm` + `Validator.swift` – reactive validation pipeline for the duplicate-user text-field
-
-> All strings live in `BtWifiScaleSetupStrings.swift`; **never** hard-code text in views.
+Key types:
+- `BtWifiScaleSetupScreen` – top-level SwiftUI screen
+- `BtWifiScaleSetupStore` – @MainActor store (main + extensions)
+- `DuplicateUserView`, `MaxUserListView`, `UserNameForm`, `Validator` – error/validation UI
 
 ---
 
-## Architecture
+## Store File Layout
+
+```
+Stores/
+├── BtWifiScaleSetupStore.swift              # Main: state, deps, init, stepViews
+├── BtWifiScaleSetupStoreNavigationFlow.swift # configure, moveToNext/Previous, exit, footer/back
+├── BtWifiScaleSetupStorePairingFlow.swift   # handleStepChange, pair, confirmPair, saveScale, discovery
+├── BtWifiScaleSetupStoreWifiUserFlow.swift  # fetchWifiNetworks, setupWifi, network form
+├── BtWifiScaleSetupStoreUserFlow.swift      # duplicate/max-user: restore, delete, getUserList
+├── BtWifiScaleSetupStoreCustomization.swift # customize settings, view settings, dashboard, cleanup
+├── BtWifiScaleSetupStoreActionHandlers.swift# UI actions: back, exit, try again, alerts
+└── BtWifiScaleSetupStoreHelpers.swift       # permissions, timeouts, validation, navigateToStep
+```
+
+---
+
+## File Responsibilities
+
+### `BtWifiScaleSetupStore.swift` (main)
+- **Dependencies**: `@Injector` services (notification, permissions, bluetooth, account, wifiScale, scale, push, entry, goalAlert), `networkMonitor`, `bluetoothSetupManager`, `wifiSetupManager`, `setupCoordinator`, `setupValidationService`
+- **State**: `scaleItem`, `dismissAction`, `discoveredScale`, `discoveryEvent`, `scaleToken`, `firstName`, `isWifiSetupOnly`, `isReconnect`, `isDuplicated`, cancellables/tasks, all `@Published` (steps, connectionState, errors, forms, wifi, customize, etc.)
+- **Lifecycle**: `init` – subscriptions to `permissionsService.$permissions`, `networkMonitor.$isConnected`, `userNameForm.formDidChange`, `subscribeToNetworkForm()`
+- **Step views**: `stepViews` – maps `BtWifiScaleSetupStep` to SwiftUI views (intro, permissions, wakeup, connectingBluetooth, gatheringNetwork, availableWifiList, wifiPassword, connectingWifi, customizeSettings, viewSettings, updateSettings, stepOn, measurement, scaleConnected)
+
+### `BtWifiScaleSetupStoreNavigationFlow.swift`
+- **Navigation**: `nextButtonText`, `moveToNextStep()`, `moveToPreviousStep()`
+- **Configuration**: `configure(with:discoveredScale:discoveryEvent:saveScale:isReconnect:isDuplicated:isWifiSetupOnly)` – SKU resolution, starting step, reset state
+- **Exit / UI**: `performExitCleanup()`, `confirmExit()`, `showHelpModal()`, `showBluetoothTurnedOffAlert()`
+- **Footer**: `shouldShowFooter()`, `shouldDisableBackButton()`
+
+### `BtWifiScaleSetupStorePairingFlow.swift`
+- **Step-driven logic**: `handleStepChange()` – per-step behaviour (wakeup→pair, connectingBluetooth→confirmPair, gatheringNetwork→fetchWifiNetworks, connectingWifi→setupWifi, updateSettings→updateCustomizeSettings, stepOn→live measurement + timeout, measurement→newEntry subscription + timeout, etc.)
+- **Connection**: `setConnectionState(_:allowNetworkErrors:)`, `handlePermissionChange()`, `resetDiscoveryState()`
+- **Pairing**: `confirmPair()`, `saveScale()`, `fetchWifiScaleToken()`, `pair()`, `handleDeviceDiscovery(_:)`, `showKnownScaleAlert()`
+
+### `BtWifiScaleSetupStoreWifiUserFlow.swift`
+- **Wi-Fi**: `fetchWifiNetworks(for:)`, `setupWifi()`, `checkDeviceInfoAfterWifiSetup(scale:)`
+- **Form**: `subscribeToNetworkForm()`, `resetNetworkForm()`, `cancelWifi()`
+
+### `BtWifiScaleSetupStoreUserFlow.swift`
+- **Duplicate / max-user**: `getAccountNameForRestore()`, `findMatchingUserOnScale(scale:accountName:)`, `deleteMatchingUserFromScale(scale:user:)`, `resolveUsernameToPreserve(from:)`
+- **Actions**: `performRestoreAccount()`, `restartConnectionAndNavigate()`, `handleSaveDuplicateUser()`, `deleteUserFromScale(_:)`, `restartConnection()`, `getUserList()`, `checkDuplicateUserList()`, `deleteUsers()`
+
+### `BtWifiScaleSetupStoreCustomization.swift`
+- **Customize UI**: `setCustomizationPage(_)`, `preloadDataForCustomizationPage`, `handleScaleModeChange(_:heartRateEnabled:)`, `showAccuCheckInfoModal()`, `addSelectedCustomizeItem`, `isCustomizeItemSelected`
+- **View settings**: `performViewSettingsSave()`, `performViewSettingsBack()`, `setupScaleUsernameForm()`, `preloadScaleMode`, `preloadScaleMetrics`
+- **Update & cleanup**: `updateCustomizeSettings()`, `checkGoalModalAfterSetup()`, `cleanup()`, `resumeScanningAndSyncDevices()`, `disconnectDevice()`
+- **Snapshots**: `snapshotDashboardState()`, `hasDashboardCustomizationChanged()`, `discardDashboardCustomization()`
+- **Dashboard / BIA**: `openBIAModel()`, `upgradeDashboardTypeFrom4To12WithDefaults()`, `isDashboardTypeFour`, `setupDashboardMetricsCustomization()`, `setupDashboardMetricsSubscriptions()`, `setupDashboardMetricsSync()`, `persistDashboardMetricsIfNeeded()`, `persistDashboardMetrics()`
+
+### `BtWifiScaleSetupStoreActionHandlers.swift`
+- **Navigation actions**: `handleBackButtonClick()`, `handleViewSettingsAction()`, `handleViewSettingsBack()`
+- **Error flows**: `handleRestoreAccount()`, `handleDeleteUser(_:)`, `handleSkipWifiStep()`
+- **Wi-Fi**: `handleWifiPasswordConnect()`, `handleNetworkSelection(_:)`
+- **Exit**: `handleExit()`, `presentExitAlert(onConfirm:onCancel:)`, `handleSettingsWifiSetupExit()`
+- **Next / retry**: `handleNextButtonClick()`, `tryAgainButtonHandler(isFromBtConnection:)`
+
+### `BtWifiScaleSetupStoreHelpers.swift`
+- **Permissions**: `bluetoothPermissionStates()`, `requestNextMissingBluetoothPermission(isBluetoothEnabled:isBluetoothSwitchEnabled:)`, `arePermissionsEnabled()`, `hasAllBtPermissions()`
+- **Forms**: `resetFormState()`
+- **Timeouts**: `startNetworkScanTimeout()`, `cancelNetworkScanTimeout()`, `cancelMeasurementSubscription()`, `cancelStepOnTimeout()`
+- **Navigation**: `navigateToStep(_:delay:)`, `adjustedIndex(from:direction:)`
+- **Validation**: `updateNextEnabled()` (uses `SetupValidationService` + `SetupValidationContext`)
+- **Utils**: `isSameNetwork(_:_:)`
+
+---
+
+## Supporting Types (unchanged)
+
+- **Setup**: `BluetoothSetupManager`, `WifiSetupManager`, `ScaleSetupCoordinator`, `SetupValidationService` (in `Setup/`)
+- **Steps**: `BtWifiScaleSetupStep` (enum, all cases)
+- **Errors**: `BtWifiScaleSetupError`
+- **Strings**: `BtWifiScaleSetupStrings`, `ScaleSetupStrings`, `AlertStrings`, etc.
+
+---
+
+## Architecture (unchanged)
+
 ```
 ┌───────────────┐    user input    ┌──────────────────────────┐
 │ SwiftUI Views │ ───────────────▶ │  BtWifiScaleSetupStore   │
-└───────────────┘   @StateObject   │  (business logic)        │
-        ▲                         │                          │
-        │ Combine publishers      └────────┬─────────────────┘
-        │                                   │ async/await
+└───────────────┘   @StateObject   │  (main + extensions)      │
+        ▲                         └────────┬─────────────────┘
+        │ Combine publishers                │ async/await
         │                                   ▼
         │         Bluetooth events   ┌──────────────────────────┐
         └─────────────────────────── │    BluetoothService      │
                                      └──────────────────────────┘
 ```
-The store stays *unidirectional*: UI dispatches intents → store mutates `@Published` state → UI re-renders.
 
 ---
 
 ## Step-by-Step Wizard
-`BtWifiScaleSetupStep` (`enum`) defines **15** distinct pages.  The wizard can dynamically skip *Permissions* when Bluetooth + Location are already granted.
+`BtWifiScaleSetupStep` and step order are unchanged. Step behaviour is driven by `handleStepChange()` in **PairingFlow**; view mapping is in main store `stepViews`.
 
-| Index | Step | Purpose |
-|------:|------|---------|
-| 0 | `intro` | Scale marketing, model highlights |
-| 1 | `permissions` | Requests Bluetooth & Bluetooth-switch permissions (auto-triggers prompt) |
-| 2 | `wakeup` | Instructs user to tap scale; kicks off *pair* scan & 30 s timeout |
-| 3 | `connectingBluetooth` | Shows `BluetoothConnectionView` with spinner / success / failure states |
-| 4 | `gatheringNetwork` | Retrieves Wi-Fi list **or** renders **error sub-flow** (duplicate / max user) |
-| 5 | `availableWifiList` | SSID picker |
-| 6 | `wifiPassword` | Password entry |
-| 7 | `connectingWifi` | Progress bar while scale joins network |
-| 8-10 | `customizeSettings / viewSettings / updateSettings` | Surface R4 settings (units, metrics, etc.) |
-| 11 | `stepOn` | Prompt to step on scale |
-| 12 | `measurement` | Live impedance & weight graph |
-| 13 | `scaleConnected` | Success / CTA to dashboard |
+| Index | Step | Driven by (PairingFlow) |
+|------:|------|--------------------------|
+| 0 | intro | — |
+| 1 | permissions | — |
+| 2 | wakeup | `pair()` |
+| 3 | connectingBluetooth | `confirmPair()` |
+| 4 | gatheringNetwork | `fetchWifiNetworks(for:)` (WifiUserFlow) |
+| 5 | availableWifiList | — |
+| 6 | wifiPassword | — |
+| 7 | connectingWifi | `setupWifi()` (WifiUserFlow) |
+| 8–10 | customizeSettings / viewSettings / updateSettings | Customization + `updateCustomizeSettings()` |
+| 11 | stepOn | live measurement + stepOn timeout |
+| 12 | measurement | newEntry subscription + measurement timeout |
+| 13 | scaleConnected | — |
 
-Navigation helpers:
-```swift
-moveToNextStep()      // advances, honours permission-skipping
-moveToPreviousStep()  // goes back (disabled on intro & duplicate-error)
-```
+Navigation: `moveToNextStep()` / `moveToPreviousStep()` in **NavigationFlow**; permission-skip via `setupCoordinator.adjustedIndex(...)` and `arePermissionsEnabled()` from **Helpers**.
 
 ---
 
-## Error Branches (Step 4)
-During `confirmSmartPair` the SDK can return three sentinel cases:
+## Error Branches (Step 4 – gatheringNetwork)
+- `.creationCompleted` → continue
+- `.duplicateUserError` → `scaleSetupError = .duplicatesFound` → **UserFlow** (restore/save duplicate), **ActionHandlers** (alerts)
+- `.memoryFull` → `scaleSetupError = .maxUserReached` → **UserFlow** (getUserList, deleteUserFromScale), **ActionHandlers** (handleDeleteUser alert)
 
-1. `.creationCompleted` – happy path → continue wizard
-2. `.duplicateUserError` → `scaleSetupError = .duplicatesFound`
-3. `.memoryFull` → `scaleSetupError = .maxUserReached`
-
-The store reacts in `confirmPair()` and sets `currentStep = .gatheringNetwork` so the **same page** can either:
-- Show `ConnectionPromptView` *(no error)*
-- Render `DuplicateUserView` *(error = duplicatesFound)*
-- Render `MaxUserListView` *(error = maxUserReached)*
-
-### Duplicate User Flow (`DuplicateUserView`)
-- `UserNameForm` drives the *Choose a new name* text-field
-- **Restore account** button triggers `handleRestoreAccount()` ➜ confirmation alert ➜ deletes duplicate users via `deleteUsers()` then restarts pairing.
-- Footer **Save** button is enabled only when `displayName` passes **all** validators (see below).
-
-### Max-User Flow (`MaxUserListView`)
-- Lists current users (`DeviceUser[]`) in an embedded `DeviceUserListView`
-- Tapping delete opens confirmation alert → `deleteUserFromScale()` → retries pairing
-
----
-
-## Username Validation Pipeline
-`UserNameForm` extends the generic reactive-form system.
-
-Active validators on `displayName`:
-1. `.required` – cannot be empty
-2. `.noWhiteSpace` – rejects whitespace-only
-3. `.namePattern` – `^[A-Za-z0-9 _]*[A-Za-z0-9][A-Za-z0-9 _]*$`
-4. `.userNameUnavailable` – *guest* is reserved
-5. `.duplicate` – dynamic – fails if value conflicts with `userList` fetched from scale
-
-`Validator.duplicateUser { self.userList.map(\.$name) }` is re-registered every time the user list changes.
-
-Error priority is fixed – first match wins; messages live in `FormErrorMessages`.
+Duplicate user: `UserNameForm` + validators; restore via `handleRestoreAccount` → `performRestoreAccount`; Save via `handleSaveDuplicateUser`.  
+Max user: `MaxUserListView`; delete via `handleDeleteUser` → `deleteUserFromScale` then restart pairing.
 
 ---
 
 ## Exit Alert Logic
-Calling the *X* button invokes `handleExit()`:
-- If wizard already finished (`scaleConnected`) simply `dismissAction()`.
-- Otherwise shows **ExitBtWifiSetupAlert** (strings in `AlertStrings.ExitBtWifiSetupAlert`).
-  - *Exit* – disconnects unsaved scale (`disconnectDevice`) + cancels Wi-Fi (`cancelWifi`) then dismisses.
-  - *Go Back* – closes alert, wizard stays.
+**ActionHandlers**: `handleExit()` → if `scaleConnected` then `dismissAction()`; else **ExitBtWifiSetupAlert** (Exit → `performExitCleanup()` in NavigationFlow → disconnect, cancelWifi, dismiss; Go Back → close alert).
 
 ---
 
 ## Key Combine Streams
-```swift
-permissionsService.$permissions     // live permission changes
-networkMonitor.$isConnected          // network reachability
-userNameForm.formDidChange           // debounced text-field edits
-deviceDiscoveryPublisher             // BluetoothService scan events
-```
-These pipelines automatically toggle `isNextEnabled` and drive step transitions, ensuring a fully reactive UI.
+- `permissionsService.$permissions` → `updateNextEnabled`, `handlePermissionChange` (init in main)
+- `networkMonitor.$isConnected` → same (init in main)
+- `userNameForm.formDidChange` → `updateNextEnabled` (init in main)
+- `subscribeToNetworkForm()` (WifiUserFlow) → form-driven validation
+- Bluetooth discovery / newEntry / liveMeasurement – subscribed in **PairingFlow** inside `handleStepChange()` for relevant steps.
 
 ---
 
 ## Testing Checklist
-- [ ] Launch flow with **no permissions** → should auto-prompt & skip *Permissions* on second run
-- [ ] Simulate `.duplicateUserError` → duplicate screen shows, Save disabled until unique name
-- [ ] Simulate `.memoryFull` → list screen shows, deleting one user lets flow continue
-- [ ] Tap *Exit* mid-flow → scale disconnects, modal dismissed
-- [ ] Complete happy path → scale saved, Wi-Fi list fetched
+- [ ] No permissions → auto-prompt; skip Permissions when already granted
+- [ ] `.duplicateUserError` → duplicate screen; Save disabled until unique name
+- [ ] `.memoryFull` → max user list; delete one → continue
+- [ ] Exit mid-flow → disconnect + dismiss
+- [ ] Happy path → scale saved, Wi-Fi list fetched
 
 ---
 
 ## Troubleshooting
-| Symptom | Likely Cause | Fix |
-|---------|--------------|-----|
-| *Bluetooth spinner never stops* | `ConnectionState` stuck on `.loading` | Check `confirmSmartPair()` error branch |
-| *Next button disabled on Permissions* | BT switch off or no network | Toggle Bluetooth & ensure internet |
-| *Duplicate user keeps failing* | Still conflicts | Ensure `userList` refreshed; name passes `namePattern` |
+| Symptom | Likely location | Fix |
+|---------|-----------------|-----|
+| Bluetooth spinner never stops | PairingFlow `confirmPair()` | Check error branches, `setConnectionState` |
+| Next disabled on Permissions | Helpers `updateNextEnabled`, `arePermissionsEnabled` | BT switch + network |
+| Duplicate user keeps failing | UserFlow `getUserList`, `checkDuplicateUserList`; validators | Refresh userList, namePattern |
 
 ---
 
-_Last updated: {{31 July 2025}}_ 
+_Last updated: {{25 Feb 2025}}_ 
