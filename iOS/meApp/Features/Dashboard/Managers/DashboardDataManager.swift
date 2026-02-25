@@ -68,12 +68,7 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     /// Initialize the data manager (sets up bindings and prepares for data loading)
     func initializeDataManager() async throws {
-        do {
-            try await loadInitialData()
-        } catch {
-            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to initialize data manager: \(error)")
-            throw error
-        }
+        try await loadInitialData()
     }
 
     /// Loads the latest entry data and updates internal state

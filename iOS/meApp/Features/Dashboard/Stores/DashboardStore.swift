@@ -1002,12 +1002,8 @@ class DashboardStore: ObservableObject {
     func loadLatestEntryData() {
         Task {
             do {
-                let result = try await dataManager.loadLatestEntryData()
+                _ = try await dataManager.loadLatestEntryData()
 
-                // Update store state with the latest weight
-                if let weight = result.weight {
-                    state.data.latestWeightStored = weight
-                }
 
                 // Instead of always updating with latest entry, preserve current selection state
                 // and update metrics appropriately for the current view
@@ -2785,7 +2781,11 @@ class DashboardStore: ObservableObject {
     }
 
     // Delegate entry creation to MetricsCalculator
+    /// Creates an entry for metric info display based on current dashboard context
+    /// - Parameter metricLabel: Reserved for future customization of metric labels; currently unused by MetricsCalculator
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
+        // metricLabel is reserved for future use but currently unused
+        _ = metricLabel
         let context = EntryCreationContext(
             selectedPoint: state.graph.selectedPoint,
             selectedDate: state.graph.selectedXValue,
