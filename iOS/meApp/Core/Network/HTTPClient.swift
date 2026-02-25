@@ -149,7 +149,7 @@ final class HTTPClient {
             logRawResponse(data: data)
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            logger.log(level: .debug, tag: "HTTPClient", message: "Decoding error", data: error)
+            logger.log(level: .error, tag: "HTTPClient", message: "Decoding error", data: error)
             throw HTTPError.decodingError
         }
     }
@@ -187,11 +187,13 @@ final class HTTPClient {
     }
 
     private func logRawResponse(data: Data) {
+        #if DEBUG
         if let rawString = String(data: data, encoding: .utf8) {
             logger.log(level: .debug, tag: "HTTPClient", message: "Raw response", data: rawString)
         } else {
             logger.log(level: .debug, tag: "HTTPClient", message: "Unable to decode data to string")
         }
+        #endif
     }
     
     // MARK: - Account Handling

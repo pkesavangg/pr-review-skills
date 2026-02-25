@@ -111,7 +111,7 @@ To use the dependency injection system:
        @Injector private var accountService: AccountService
 
        init() {
-           // e.g. logger.log(level: .debug, tag: "LoginStore", message: "currentUserId", data: accountService.currentUserId)
+           // e.g. LoggerService.shared.log(level: .debug, tag: "LoginStore", message: "currentUserId", data: accountService.currentUserId)
        }
    }
 
