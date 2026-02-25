@@ -33,6 +33,8 @@ class SettingsStore: ObservableObject {
     @Published var changePasswordForm = ChangePasswordForm()
     // Weightless-mode form
     @Published var weightlessForm = WeightlessForm()
+    // Track initial toggle state to detect actual changes
+    private var initialWeightlessToggleState: Bool = false
     // Goal-setting form
     @Published var goalForm = GoalForm()
     
@@ -414,8 +416,27 @@ class SettingsStore: ObservableObject {
         goalForm.isValidForSave(focusedField: focusedField)
     }
     
+    /// Determines if the Weightless form is valid for saving
+    /// Save enabled only when toggle changed OR valid form changes exist
     var isWeightLessFormValid: Bool {
-        !(!weightlessForm.isDirty || (weightlessForm.isDirty && (weightlessForm.isOn.value ? weightlessForm.isInvalid : false)))
+        let hasToggleChanged = weightlessForm.isOn.value != initialWeightlessToggleState
+        
+        // If turned OFF → only toggle change matters
+        guard weightlessForm.isOn.value else {
+            return hasToggleChanged
+        }
+        
+        // If turned ON → must satisfy all form conditions
+        let weightValue = Double(weightlessForm.weight.value) ?? 0.0
+        return hasToggleChanged &&
+            weightlessForm.isValid &&
+            weightlessForm.isDirty &&
+            weightValue != 0.0
+    }
+
+    /// Checks if there are actual unsaved changes (for exit confirmation)
+    var hasWeightlessChanges: Bool {
+        (weightlessForm.isOn.value != initialWeightlessToggleState) || weightlessForm.isDirty
     }
     
     // MARK: - Handle export
@@ -984,8 +1005,8 @@ class SettingsStore: ObservableObject {
     
     /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
     func handleWeightlessExit(router: Router<SettingsRoute>) {
-        // Fast path: if form is pristine simply pop and bail.
-        guard weightlessForm.isDirty else {
+        // Fast path: if there are no actual changes, simply pop and bail
+        guard hasWeightlessChanges else {
             router.navigateBack()
             resetWeightlessForm()
             return
@@ -999,8 +1020,8 @@ class SettingsStore: ObservableObject {
     
     /// Async variant used by tab-deactivation; returns a Bool indicating whether it is safe to leave.
     func confirmDiscardWeightlessChanges() async -> Bool {
-        // Allow immediate exit when there are no unsaved changes.
-        guard weightlessForm.isDirty else { return true }
+        // Allow immediate exit when there are no actual changes
+        guard hasWeightlessChanges else { return true }
         
         return await withCheckedContinuation { continuation in
             presentWeightlessExitAlert(onExit: {
@@ -1016,7 +1037,7 @@ class SettingsStore: ObservableObject {
         // Validate form first.
         weightlessForm.validate()
         
-        guard weightlessForm.isDirty, isWeightLessFormValid else { return }
+        guard hasWeightlessChanges, isWeightLessFormValid else { return }
         if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
         
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
@@ -1053,16 +1074,32 @@ class SettingsStore: ObservableObject {
                     weightlessTimestamp: timestamp,
                     weightlessWeight: Double(storedWeight)
                 )
+                
+                // Refresh account to ensure latest state is available when user returns
+                try? await accountService.refreshAccount()
+                
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
+                
+                // Mark form as pristine after successful save
+                await MainActor.run {
+                    self.weightlessForm.isOn.markAsPristine()
+                    self.weightlessForm.weight.markAsPristine()
+                    // Update initial toggle state to match saved state
+                    self.initialWeightlessToggleState = isOn
+                }
+                
                 onSuccess()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
                 logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
+                // Reset form on error to allow retry
+                await MainActor.run {
+                    self.resetWeightlessForm()
+                }
             }
             notificationService.dismissLoader()
             httpClient.skipCheckNetwork = false
-            self.resetWeightlessForm()
         }
     }
     
@@ -1076,6 +1113,7 @@ class SettingsStore: ObservableObject {
             weightlessForm.weight.value = ""
             weightlessForm.isOn.markAsPristine()
             weightlessForm.weight.markAsPristine()
+            initialWeightlessToggleState = false
             return
         }
         
@@ -1092,6 +1130,8 @@ class SettingsStore: ObservableObject {
         
         weightlessForm.isOn.value = shouldBeOn
         weightlessForm.isOn.markAsPristine()
+        // Store initial toggle state to detect changes
+        initialWeightlessToggleState = shouldBeOn
         
         // Set weight field value
         if let storedWeight = account.weightlessSettings?.weightlessWeight, shouldBeOn {
@@ -1123,6 +1163,7 @@ class SettingsStore: ObservableObject {
     /// Resets the Weightless form to a pristine state.
     func resetWeightlessForm() {
         weightlessForm = WeightlessForm()
+        initialWeightlessToggleState = false
         populateWeightlessFormIfNeeded()
     }
     

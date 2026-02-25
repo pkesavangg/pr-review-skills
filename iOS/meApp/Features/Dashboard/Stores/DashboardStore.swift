@@ -911,12 +911,22 @@ class DashboardStore: ObservableObject {
             self.forceImmediateUIUpdate()
         }
     }
-
     // Delegate metric operations to MetricsManager
     func resetMetricsToLatestEntry() {
         Task {
             await metricsManager.resetMetricsToLatestEntry {
                 try await self.dataManager.getLatestEntry()
+            }
+        }
+    }
+    
+    /// Updates metric card values to display averages from the visible region
+    private func updateMetricsWithVisibleRegionAverage() {
+        let visibleOps = getOperationsForLabelDateRange()
+        Task {
+            await metricsManager.updateMetricsForVisibleAverage(visibleOperations: visibleOps)
+            await MainActor.run {
+                state.ui.hasLoadedMetricValues = true
             }
         }
     }
@@ -2029,10 +2039,7 @@ class DashboardStore: ObservableObject {
                     }
 
                     self.notificationService.dismissLoader()
-                    self.resetMetricsToLatestEntry()
-
-                    // Mark metric values as loaded since reset restores defaults
-                    self.state.ui.hasLoadedMetricValues = true
+                    self.updateMetricsWithVisibleRegionAverage()
 
                     // Single UI update after all state changes are complete
                     self.forceImmediateUIUpdate()
@@ -2056,9 +2063,10 @@ class DashboardStore: ObservableObject {
                         self.hasEditSnapshot = false
                     }
                     self.notificationService.dismissLoader()
-                    self.resetMetricsToLatestEntry()
-                    // Mark metric values as loaded on error recovery too
-                    self.state.ui.hasLoadedMetricValues = true
+                    
+                    // Update metrics to show visible region average instead of latest entry
+                    self.updateMetricsWithVisibleRegionAverage()
+                    
                     self.forceImmediateUIUpdate()
                 }
             }
