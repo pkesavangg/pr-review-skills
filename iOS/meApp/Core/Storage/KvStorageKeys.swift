@@ -30,7 +30,9 @@ public enum KvStorageKeys: String {
     
     // MARK: - Migration Keys
     /// Key for tracking if Ionic to native app migration has been completed
-    case ionicToNativeAppMigrationCompleted
+    case ionicToNativeAppMigrationCompleted = "ionicToNativeAppMigrationCompleted"
+    /// Key for tracking if account tokens have been migrated from SwiftData to Keychain
+    case tokensMigratedToKeychain = "tokensMigratedToKeychain"
     
     // MARK: - Account-Scoped Keys
     /// Goal met flag key suffix (per account)
@@ -44,6 +46,10 @@ public enum KvStorageKeys: String {
     /// Feed last triggered at timestamp key suffix (per account)
     case feedLastTriggeredAt
     case setAGoalCardViewed
+    
+    // MARK: - FCM Token Key
+    /// FCM token storage key (device-scoped, not account-scoped)
+    case fcmToken = "fcmToken"
     
     // MARK: - Helper Methods
     
@@ -111,5 +117,12 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for goal met flag storage
     public static func setAGoalModalFlagKey(for accountId: String) -> String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
+    }
+    
+    /// Creates an account-scoped key for FCM token storage
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for FCM token storage
+    public static func fcmTokenKey(for accountId: String) -> String {
+        return "\(Self.fcmToken.rawValue)_\(accountId)"
     }
 }

@@ -34,7 +34,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     func getAccountFlag() async throws -> AccountFlag? {
         do {
             logger.log(
-                level: .info,
+                level: .debug,
                 tag: tag,
                 message: "Fetching account flags from API"
             )
@@ -43,7 +43,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
             
             guard !flagDTOs.isEmpty else {
                 logger.log(
-                    level: .info,
+                    level: .debug,
                     tag: tag,
                     message: "No account flags found"
                 )

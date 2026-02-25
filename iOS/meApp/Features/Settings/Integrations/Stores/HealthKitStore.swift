@@ -87,6 +87,7 @@ final class HealthKitStore: ObservableObject {
                 let result = try await integrationService.getStoredIntegrationData()
                 isIntegrated = (result?.isIntegrated ?? false) && (result?.assignedTo == accountService.activeAccount?.accountId)
                 isOutOfSync = await healthKitService.isHKOutOfSync()
+                logger.log(level: .info, tag: tag, message: "Loaded HealthKit local state. isIntegrated=\(isIntegrated), isOutOfSync=\(isOutOfSync)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
             }
@@ -96,6 +97,7 @@ final class HealthKitStore: ObservableObject {
     // MARK: - Flow Helpers ------------------------------------------------
     /// Called when the Apple-Health row is tapped in the integrations list.
     func handleRowTap() {
+        logger.log(level: .info, tag: tag, message: "HealthKit row tapped. currentlyIntegrated=\(isIntegrated)")
         if isIntegrated {
             showHKRemoveAlert()
             return
@@ -107,6 +109,7 @@ final class HealthKitStore: ObservableObject {
             do {
                 let isAlreadyIntegrated = try await integrationService.isIntegrationAlreadyUsed(type: .healthKit)
                 if isAlreadyIntegrated {
+                    logger.log(level: .error, tag: tag, message: "HealthKit connection blocked due to user conflict")
                     activeState = .userConflict
                     return
                 }
@@ -121,6 +124,7 @@ final class HealthKitStore: ObservableObject {
             if !hasShownFirstTimeConnectScreen {
                 // First-time connection - show the connect screen
                 activeState = .permissionsNotAllowed
+                logger.log(level: .info, tag: tag, message: "HealthKit flow state set. state=permissionsNotAllowed")
             } else {
                 // User has attempted connection before - use existing logic
                 let wasPreviouslyIntegrated = await self.wasPreviouslyIntegrated()
@@ -134,10 +138,13 @@ final class HealthKitStore: ObservableObject {
                        switch permissionCount {
                 case Self.wgTotalPermissionsCount...:
                     activeState = .permissionsAllowed
+                    logger.log(level: .info, tag: tag, message: "HealthKit flow state set. state=permissionsAllowed, permissionCount=\(permissionCount)")
                 case 1..<Self.wgTotalPermissionsCount:
                     activeState = .integrationComplete
+                    logger.log(level: .info, tag: tag, message: "HealthKit flow state set. state=integrationComplete, permissionCount=\(permissionCount)")
                 default:
                     activeState = .integrationFailed
+                    logger.log(level: .info, tag: tag, message: "HealthKit flow state set. state=integrationFailed, permissionCount=\(permissionCount)")
                 }
                 } else {
                     // User has seen the connect screen before but no integration record exists
@@ -146,9 +153,11 @@ final class HealthKitStore: ObservableObject {
                     if permissionCount == 0 {
                         // No permissions granted - show integration failed screen
                         activeState = .integrationFailed
+                        logger.log(level: .info, tag: tag, message: "HealthKit flow state set. state=integrationFailed, no permissions")
                     } else {
                         // Some permissions exist but no record - show integration complete to finish setup
                         activeState = .integrationComplete
+                        logger.log(level: .info, tag: tag, message: "HealthKit flow state set. state=integrationComplete, permissionCount=\(permissionCount)")
                     }
                 }
             }
@@ -159,6 +168,7 @@ final class HealthKitStore: ObservableObject {
     /// Maps UI states to store actions.
     /// - Parameter state: Current `AppleHealthIntegrationState` presented.
     func handlePrimaryAction(for state: AppleHealthIntegrationState) {
+        logger.log(level: .info, tag: tag, message: "HealthKit primary action tapped. state=\(String(describing: state))")
         Task {
             switch state {
             case .permissionsNotAllowed:
@@ -183,6 +193,7 @@ final class HealthKitStore: ObservableObject {
     
     /// Dismisses the modal entirely.
     func dismissModal() {
+        logger.log(level: .info, tag: tag, message: "HealthKit modal dismissed")
         activeState = nil
     }
     
@@ -190,6 +201,7 @@ final class HealthKitStore: ObservableObject {
     
     /// Requests HealthKit authorisation via `HealthKitService`. Updates state depending on result.
     private func requestAuthorization() {
+        logger.log(level: .info, tag: tag, message: "HealthKit authorization flow started")
         Task {
             do {
                 let wasPreviouslyIntegrated = await wasPreviouslyIntegrated()
@@ -197,15 +209,25 @@ final class HealthKitStore: ObservableObject {
                 
                 if success {
                     activeState = wasPreviouslyIntegrated ? nil : .integrationComplete
+                    logger.log(level: .success, tag: tag, message: "HealthKit authorization flow succeeded. wasPreviouslyIntegrated=\(wasPreviouslyIntegrated)")
                     if wasPreviouslyIntegrated {
                         finishIntegrationFlow()
                     }
                 } else {
                     activeState = .integrationFailed
+                    logger.log(level: .error, tag: tag, message: "HealthKit authorization flow failed (service returned false)")
                 }
                 // Don't refresh integration status here - wait until after sync completes
             } catch {
                 activeState = error is IntegrationError ? .userConflict : .integrationFailed
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: """
+                    HealthKit authorization flow error. mappedState=\(error is IntegrationError ? "userConflict" : "integrationFailed"), \
+                    error=\(error.localizedDescription)
+                    """
+                )
             }
         }
     }
@@ -236,15 +258,18 @@ final class HealthKitStore: ObservableObject {
     /// Presents *Sync Weight History* alert if needed, otherwise persists integration and shows toast.
     /// - Parameter hasAlreadySynced: If true, skips showing sync prompt since sync was already performed.
     private func finishIntegrationFlow(hasAlreadySynced: Bool = false) {
+        logger.log(level: .info, tag: tag, message: "Finish HealthKit integration flow requested. hasAlreadySynced=\(hasAlreadySynced)")
         Task {
             dismissModal()
             
             let hasEntries = ((try? await entryService.getEntryCount()) ?? 0) > 0
             if hasEntries {
+                logger.log(level: .info, tag: tag, message: "HealthKit integration requires history sync prompt")
                 presentSyncHistoryAlert()
             } else {
                 // No entries to sync - persist integration and show toast immediately
                 await persistIntegrationAfterPermissionGrant()
+                logger.log(level: .success, tag: tag, message: "HealthKit integration completed without history sync")
                 notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
             }
         }
@@ -274,6 +299,7 @@ final class HealthKitStore: ObservableObject {
     
     /// Performs the actual sync and shows toast after successful sync.
     private func performFullSync() {
+        logger.log(level: .info, tag: tag, message: "HealthKit full sync from store started")
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.syncing))
             
@@ -289,9 +315,11 @@ final class HealthKitStore: ObservableObject {
                 // Persist integration and show toast simultaneously so checkmark and toast appear together
                 await persistIntegrationAfterPermissionGrant()
                 notificationService.showToast(ToastModel(message: ToastStrings.weightHistorySynced))
+                logger.log(level: .success, tag: tag, message: "HealthKit full sync from store completed")
             } catch {
                 notificationService.dismissLoader()
                 notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: ToastStrings.pleaseTryAgain))
+                logger.log(level: .error, tag: tag, message: "HealthKit full sync from store failed", data: error.localizedDescription)
             }
         }
     }
@@ -314,6 +342,7 @@ final class HealthKitStore: ObservableObject {
     /// Clears *all* HealthKit data that was previously written by the app and
     /// updates local status accordingly.
     private func clearIntegration() {
+        logger.log(level: .info, tag: tag, message: "HealthKit clear integration requested from store")
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.removingIntegration))
             defer { notificationService.dismissLoader() }
@@ -322,6 +351,7 @@ final class HealthKitStore: ObservableObject {
                 try await healthKitService.clearHealthKit()
                 getLocalStoredData()
                 notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationRemoved))
+                logger.log(level: .success, tag: tag, message: "HealthKit clear integration completed from store")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to clear HealthKit data", data: error.localizedDescription)
             }
@@ -330,6 +360,7 @@ final class HealthKitStore: ObservableObject {
     
     /// Presents an *Apple Health Out of Sync* alert.
     func showHKOutOfSyncAlert() {
+        logger.log(level: .info, tag: tag, message: "Showing HealthKit out-of-sync alert")
         let lang = alertLang.HKOutOfSyncAlert
         // Set up observer to check permissions when user returns from Apple Health
         observeForegroundForOutOfSyncPermissionChanges()
@@ -399,6 +430,9 @@ final class HealthKitStore: ObservableObject {
         // If permissions are now in sync, show a toast notification
         if permissionsGranted >= Self.wgTotalPermissionsCount && !isOutOfSync {
             notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
+            logger.log(level: .success, tag: tag, message: "HealthKit out-of-sync resolved after returning from Apple Health. permissionCount=\(permissionsGranted)")
+        } else {
+            logger.log(level: .info, tag: tag, message: "HealthKit still out-of-sync after return check. permissionCount=\(permissionsGranted), isOutOfSync=\(isOutOfSync)")
         }
     }
     
@@ -409,11 +443,13 @@ final class HealthKitStore: ObservableObject {
         
         guard permissionsGranted > 0 else {
             activeState = nil
+            logger.log(level: .error, tag: tag, message: "No HealthKit permissions granted after returning from Apple Health")
             return
         }
         
         if await checkForUserConflict() {
             activeState = .userConflict
+            logger.log(level: .error, tag: tag, message: "HealthKit conflict detected after permission grant")
             return
         }
         
@@ -457,6 +493,7 @@ final class HealthKitStore: ObservableObject {
             try await integrationService.setStoredIntegrationData(integrationInfo)
             // Refresh the local state to reflect the updated integration status
             getLocalStoredData()
+            logger.log(level: .success, tag: tag, message: "Persisted HealthKit integration after permission grant. accountId=\(accountID)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to persist integration after permission grant", data: error.localizedDescription)
         }

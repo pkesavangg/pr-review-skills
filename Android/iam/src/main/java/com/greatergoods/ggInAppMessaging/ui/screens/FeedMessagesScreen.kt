@@ -99,6 +99,7 @@ fun FeedMessagesScreen(
                         FeedItemCard(
                             feedItem = feedItem,
                             onItemClick = { item ->
+                                viewModel.handleIntent(FeedMessagesIntent.OnFeedItemClick(item.elementId))
                                 when (item.feedType) {
                                     FeedTypes.LINK -> {
                                         LinkOpener.openInCustomTab(

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 // MARK: - ManualEntryScreen
 // A view for manual entry of body metrics and other related information.
@@ -359,11 +360,12 @@ struct ManualEntryScreen: View {
                     } else {
                         entryStore.stopAutoTimeSync()
                     }
-                    // Pre-populate form if coming from AppSync **Edit** flow
-                    if let metrics = tabViewModel.pendingAppSyncEditMetrics, newValue == .entry {
-                        entryStore.populateFromAppSync(metrics: metrics)
-                        tabViewModel.pendingAppSyncEditMetrics = nil
-                    }
+                }
+                // Observe AppSync edit metrics reactively for navigation and in-tab updates
+                .onReceive(tabViewModel.$pendingAppSyncEditMetrics) { metrics in
+                    guard let metrics = metrics, tabViewModel.selectedTab == .entry else { return }
+                    entryStore.populateFromAppSync(metrics: metrics)
+                    tabViewModel.pendingAppSyncEditMetrics = nil
                 }
             }
             .scrollDismissesKeyboard(.interactively)

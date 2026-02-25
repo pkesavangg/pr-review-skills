@@ -93,9 +93,11 @@ class IntegrationStore: ObservableObject {
     /// Updates the currently selected integration ensuring only one item is selected at a time.
     /// - Parameter item: The integration item to select.
     func selectIntegration(item: IntegrationItem) {
+        logger.log(level: .info, tag: tag, message: "Integration row selected. provider=\(integrationProviderKey(item.type)), currentlySelected=\(item.isSelected), accountId=\(accountID)")
         // If the provider is already connected, ask for confirmation to remove.
         if item.isSelected {
             pendingAction = .disconnect(item.type)
+            logger.log(level: .info, tag: tag, message: "Integration disconnect confirmation requested. provider=\(integrationProviderKey(item.type))")
             showRemoveIntegrationAlert(for: item)
             return
         }
@@ -106,6 +108,7 @@ class IntegrationStore: ObservableObject {
         
         // If network unavailable, show fallback alert instead of launching browser
         guard NetworkMonitor.shared.isConnected else {
+            logger.log(level: .error, tag: tag, message: "Integration connect blocked: no internet. provider=\(integrationProviderKey(item.type))")
             showLinkOpenError(link: link)
             return
         }
@@ -113,15 +116,18 @@ class IntegrationStore: ObservableObject {
         pendingAction = .connect(item.type)
         browserURL = link
         showBrowser = true
+        logger.log(level: .info, tag: tag, message: "Presenting integration browser modal. provider=\(integrationProviderKey(item.type)), url=\(link.absoluteString)")
     }
     
     /// Refreshes the account after an OAuth flow completes and evaluates the result of the pending integration operation.
     func refreshAccounts() {
+        logger.log(level: .info, tag: tag, message: "Refreshing account after integration browser flow")
         Task {
             do {
                 let account = try await accountService.refreshAccount()
                 self.applyAccountState(account)
                 handlePostIntegrationResult(using: account)
+                logger.log(level: .success, tag: tag, message: "Integration post-browser account refresh succeeded")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to refresh accounts", data: error.localizedDescription)
             }
@@ -153,6 +159,7 @@ class IntegrationStore: ObservableObject {
     
     /// Executes the removal of an integration, displaying a loader while the operation runs.
     private func performRemoveIntegration(item: IntegrationItem) async {
+        logger.log(level: .info, tag: tag, message: "Remove integration started. provider=\(integrationProviderKey(item.type))")
         notificationService.showLoader(LoaderModel(text: LoaderStrings.removingIntegration)) 
         do {
             guard let provider = mapToIntegrationType(item.type) else { return }
@@ -160,6 +167,7 @@ class IntegrationStore: ObservableObject {
             let account = try await accountService.refreshAccount()
             self.applyAccountState(account)
             handlePostIntegrationResult(using: account)
+            logger.log(level: .success, tag: tag, message: "Remove integration succeeded. provider=\(integrationProviderKey(item.type))")
         } catch {
             switch error {
             case HTTPError.noInternet:
@@ -190,14 +198,18 @@ class IntegrationStore: ObservableObject {
         switch action {
         case .connect(let type):
             if isIntegrationEnabled(type, in: account) {
+                logger.log(level: .success, tag: tag, message: "Integration connect completed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
                 showDoneAlert()
             } else {
+                logger.log(level: .error, tag: tag, message: "Integration connect verification failed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
                 showTryAgainAlert(for: type, isConnect: true)
             }
         case .disconnect(let type):
             if !isIntegrationEnabled(type, in: account) {
+                logger.log(level: .success, tag: tag, message: "Integration disconnect completed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
                 showDoneAlert()
             } else {
+                logger.log(level: .error, tag: tag, message: "Integration disconnect verification failed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
                 showTryAgainAlert(for: type, isConnect: false)
             }
         }
@@ -288,6 +300,7 @@ class IntegrationStore: ObservableObject {
         // Add other providers when supported.
         
         guard !invalid.isEmpty else { return }
+        logger.log(level: .info, tag: tag, message: "Detected invalid integrations requiring re-auth. providers=\(invalid.map { integrationProviderKey($0) })")
         
         let names = invalid.map { $0.displayName }.joined(separator: ", ")
         let disableLabel = invalid.count > 1
@@ -322,13 +335,23 @@ class IntegrationStore: ObservableObject {
     /// Removes integration without showing remove-confirm alert/loader, returns success flag.
     private func performRemoveIntegrationSilently(type: IntegrationItemType) async -> Bool {
         guard let provider = mapToIntegrationType(type) else { return false }
+        logger.log(level: .info, tag: tag, message: "Silent remove integration started. provider=\(integrationProviderKey(type))")
         do {
             try await integrationsService.removeIntegration(provider)
             _ = try await accountService.refreshAccount()
+            logger.log(level: .success, tag: tag, message: "Silent remove integration succeeded. provider=\(integrationProviderKey(type))")
             return true
         } catch {
             logger.log(level: .error, tag: tag, message: "Silent remove failed", data: error.localizedDescription)
             return false
+        }
+    }
+
+    private func integrationProviderKey(_ type: IntegrationItemType) -> String {
+        switch type {
+        case .appleHealth: return "apple_health"
+        case .fitbit: return "fitbit"
+        case .myFitnessPal: return "my_fitness_pal"
         }
     }
 }

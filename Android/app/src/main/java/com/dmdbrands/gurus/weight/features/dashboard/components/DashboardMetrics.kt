@@ -30,6 +30,7 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import android.R.attr.onClick
 
 /**
  * Composable for the dashboard metrics section that displays health metrics in a grid layout.
@@ -51,6 +52,7 @@ fun DashboardMetrics(
   isFromSetup: Boolean = false,
   dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS,
   onMetricClick: (Stat?) -> Unit = {},
+  onLongClick: (Stat) -> Unit = { },
   onMetricsChanged: (List<DashboardKey>) -> Unit = { }
 ) {
 
@@ -146,6 +148,7 @@ fun DashboardMetrics(
     onMetricMoved = onMetricMoved,
     isFromSetup = isFromSetup,
     dashboardType = dashboardType,
+    onLongClick = onLongClick,
     onReorder = {
       val localVisibleKeys = it.map { it.key }
       onMetricsChanged(localVisibleKeys)
@@ -166,6 +169,7 @@ private fun DashboardMetricsGrid(
   onMetricClick: (Stat?) -> Unit,
   onReorder: (List<Stat>) -> Unit,
   dashboardType: DashboardType,
+  onLongClick: (Stat) -> Unit,
   onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -> Unit
 ) {
   val hapticFeedback = LocalHapticFeedback.current
@@ -224,7 +228,7 @@ private fun DashboardMetricsGrid(
               hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
             },
           ),
-
+          onLongClick = onLongClick,
           onBadgeClick = {
             onMetricMoved(true, false, metric)
           },

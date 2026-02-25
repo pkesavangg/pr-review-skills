@@ -146,7 +146,7 @@ extension BluetoothService {
             device: device,
             deviceInfo: scaleInfo,
             protocolType: protocolType,
-            isNew: isNew,
+            isNew: isNew
         )
 
         deviceDiscoveredSubject.send(discoveryEvent)

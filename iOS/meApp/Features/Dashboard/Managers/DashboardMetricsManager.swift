@@ -180,9 +180,10 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             
             if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                 let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
+                logger.log(level: .info, tag: "DashboardMetricsManager", message: "Loading metrics from API: \(metricArray.joined(separator: ", "))")
                 updateMetricsOrder(from: metricArray)
-
             } else {
+                logger.log(level: .info, tag: "DashboardMetricsManager", message: "No dashboard metrics in API, setting up initial metrics")
                 setupInitialMetrics()
             }
         } catch {

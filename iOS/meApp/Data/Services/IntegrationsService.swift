@@ -24,6 +24,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
     // MARK: - Properties
     private let apiRepository = IntegrationAPIRepository()
     private let localRepository = IntegrationRepository()
+    private let tag = "IntegrationService"
 
     // MARK: - Initializer -------------------------------------------------
     /// Subscribes to `EntryService.entrySaved` so that every newly-created entry
@@ -43,10 +44,9 @@ final class IntegrationsService: IntegrationServiceProtocol {
     // MARK: - Helper
     @Sendable
     private func getAccountId() async throws -> String {
-        guard let account = try await accountService.getActiveAccount() else {
-            return ""
+        await MainActor.run {
+            accountService.activeAccount?.accountId ?? ""
         }
-        return account.accountId
     }
     
     // MARK: - IntegrationServiceProtocol Implementation
@@ -68,6 +68,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
     
     func removeIntegration(_ provider: IntegrationType) async throws {
         let accountId = try await getAccountId()
+        logger.log(level: .info, tag: tag, message: "Remove integration requested. provider=\(provider.rawValue), accountId=\(accountId)")
         do {
             try await apiRepository.removeIntegration(accountId: accountId, provider: provider)
             logger.log(
@@ -84,7 +85,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
             throw error
         }
         try localRepository.setIntegrationData(accountId: accountId, info: nil)
-        logger.log(level: .info, tag: "IntegrationService", message: "Successfully cleared local integration data")
+        logger.log(level: .success, tag: tag, message: "Cleared local integration data. provider=\(provider.rawValue), accountId=\(accountId)")
     }
     
     func getStoredIntegrationData() async throws -> IntegrationInfo? {
@@ -94,12 +95,20 @@ final class IntegrationsService: IntegrationServiceProtocol {
     
     func setStoredIntegrationData(_ info: IntegrationInfo?) async throws {
         let accountId = try await getAccountId()
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: """
+            Set stored integration data requested. provider=\(info?.type.rawValue ?? "none"), \
+            isIntegrated=\(info?.isIntegrated ?? false), accountId=\(accountId)
+            """
+        )
         try localRepository.setIntegrationData(accountId: accountId, info: info)
         if let integrationType = info?.type {
             do {
                 try await accountService.updateIntegrations(integrationType: integrationType)
             } catch {
-                logger.log(level: .error, tag: "IntegrationService", message: "Failed to update account integrations: \(error.localizedDescription)")
+                logger.log(level: .error, tag: tag, message: "Failed to update account integrations. provider=\(integrationType.rawValue), accountId=\(accountId), error=\(error.localizedDescription)")
             }
         }
         
@@ -116,6 +125,8 @@ final class IntegrationsService: IntegrationServiceProtocol {
     }
     
     func clearIntegrationStatus(integrationType: IntegrationType) async throws {
+        let accountId = try await getAccountId()
+        logger.log(level: .info, tag: tag, message: "Clear integration status requested. provider=\(integrationType.rawValue), accountId=\(accountId)")
         let integrationInfo = IntegrationInfo(
             type: integrationType,
             isIntegrated: false
@@ -123,6 +134,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
         do {
             try await self.setStoredIntegrationData(integrationInfo)
             try await accountService.deleteHealthIntegration(integrationType)
+            logger.log(level: .success, tag: tag, message: "Clear integration status completed. provider=\(integrationType.rawValue), accountId=\(accountId)")
         } catch {
             logger.log(
                 level: .error,
@@ -182,9 +194,9 @@ final class IntegrationsService: IntegrationServiceProtocol {
             // Delegate to HealthKit service for deletion using notification (safe cross-actor)
             let success = try await HealthKitService.shared.deleteEntry(notification: notification)
             if success {
-                logger.log(level: .info, tag: "IntegrationService", message: "Successfully deleted entry from HealthKit: \(entry.id)")
+                logger.log(level: .success, tag: tag, message: "Deleted entry from HealthKit. entryId=\(entry.id)")
             } else {
-                logger.log(level: .error, tag: "IntegrationService", message: "Failed to delete entry from HealthKit: \(entry.id)")
+                logger.log(level: .error, tag: tag, message: "Failed deleting entry from HealthKit. entryId=\(entry.id)")
             }
         default:
             // Other integrations not implemented for entry deletion yet
@@ -204,15 +216,16 @@ final class IntegrationsService: IntegrationServiceProtocol {
         guard let integrationInfo = try await getStoredIntegrationData(),
               integrationInfo.isIntegrated else {
             // No integration active, nothing to clear
-            logger.log(level: .debug, tag: "IntegrationService", message: "No integration found, skipping clear operation")
+            logger.log(level: .debug, tag: tag, message: "No integration found, skipping clear operation")
             return
         }
         
+        logger.log(level: .info, tag: tag, message: "Clear integration data requested. provider=\(integrationInfo.type.rawValue)")
         switch integrationInfo.type {
         case .healthKit:
             // Delegate to HealthKit service for clearing all data
             try await HealthKitService.shared.clearHealthKit()
-            logger.log(level: .info, tag: "IntegrationService", message: "Successfully cleared HealthKit data during account deletion")
+            logger.log(level: .success, tag: tag, message: "Cleared HealthKit data during account deletion")
         default:
             // Other integrations not implemented for data clearing yet
             logger.log(
@@ -265,8 +278,9 @@ final class IntegrationsService: IntegrationServiceProtocol {
                 bmi: notification.bmi,
                 data: dataDict
             )
+            logger.log(level: .info, tag: tag, message: "Logged HealthKit integration entry to server. timestamp=\(timestamp), permissionsCount=\(approvedPermissions.count)")
         } catch {
-            logger.log(level: .error, tag: "IntegrationService", message: "Failed to log HealthKit integration", data: error.localizedDescription)
+            logger.log(level: .error, tag: tag, message: "Failed to log HealthKit integration", data: error.localizedDescription)
         }
     }
 }

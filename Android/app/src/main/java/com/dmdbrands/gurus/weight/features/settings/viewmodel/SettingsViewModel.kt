@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.INotificationService
 import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
+import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
@@ -44,6 +45,7 @@ import com.greatergoods.blewrapper.GGDeviceService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import javax.inject.Inject
 import android.util.Log
@@ -422,6 +424,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -431,6 +434,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -457,15 +461,17 @@ constructor(
       ggDeviceService.updateProfile(
         profile,
       ) { responseType ->
-        Log.d("CHECKING", "updating the profole in settingsviewmodel" + responseType.name)
         result.complete(responseType)
       }
     } catch (e: Exception) {
       AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
       result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
     }
-
-    return result.await()
+    return withTimeoutOrNull(ScaleProfileConstants.SCALE_PROFILE_UPDATE_TIMEOUT_MS) { result.await() }
+      ?: run {
+        AppLog.d(TAG, "updateR4Profile - Timeout or no callback from scale; dismissing loader")
+        GGUserActionResponseType.EXCEPTION_ENCOUNTERED
+      }
   }
 
   /**
@@ -541,6 +547,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -550,6 +557,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -644,6 +652,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -653,6 +662,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -772,6 +782,7 @@ constructor(
           }
 
           GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED, GGUserActionResponseType.CREATION_FAILED -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -781,6 +792,7 @@ constructor(
           }
 
           else -> {
+            dialogQueueService.dismissLoader()
             dialogQueueService.showToast(
               Toast(
                 ToastStrings.Success.UpdateProfileSuccess.Message,
@@ -1085,6 +1097,7 @@ constructor(
         val notificationSettings = getNotificationSettingsFromOption(notificationOption)
         val updatedAccount = notificationService.updateNotificationSettings(notificationSettings)
         if (updatedAccount != null) {
+          dialogQueueService.dismissLoader()
           dialogQueueService.showToast(Toast("Notification settings updated", "Success!"))
           AppLog.i(TAG, "Successfully updated notification settings - flow will update UI")
           // The activeAccountFlow will automatically emit the updated account and update the UI

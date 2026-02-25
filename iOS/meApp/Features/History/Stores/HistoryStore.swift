@@ -180,6 +180,7 @@ final class HistoryStore: ObservableObject {
                 self.months = result
                 self.isEmptyState = result.isEmpty
             } catch {
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to load history months: \(error.localizedDescription)")
                 self.months = []
                 self.isEmptyState = true
             }
@@ -193,7 +194,6 @@ final class HistoryStore: ObservableObject {
 
         do {
             let fetched = try await entryService.getMonthDetail(month: selectedMonth.id)
-            logger.log(level: .debug, tag: tag, message: "Fetched \(fetched.count) entries for month \(selectedMonth.id)")
 
             // UI-level deduplication:
             // Group by entryTimestamp and keep the latest operation by serverTimestamp.
@@ -210,6 +210,7 @@ final class HistoryStore: ObservableObject {
             let sorted = pairs.sorted { $0.1 > $1.1 }.map { $0.0 }
             self.entries = sorted
         } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to load month entries: monthId=\(selectedMonth.id), error=\(error.localizedDescription)")
             self.entries = []
         }
     }

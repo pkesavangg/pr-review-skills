@@ -218,85 +218,7 @@ extension BtWifiScaleSetupStore {
             self?.cleanup()
         }
     }
-    
-    /// Presents the standard exit-alert.
-    /// - Parameters:
-    ///   - onConfirm: called when user taps **Exit**
-    ///   - onCancel:  called when user taps **Go Back**
-    func presentExitAlert(
-        onConfirm: @escaping () -> Void,
-        onCancel: @escaping () -> Void = {}
-    ) {
-        let lang = AlertStrings.ExitBtWifiSetupAlert.self
-        let message: String = {
-            switch (isWifiSetupOnly, savedScale != nil) {
-            case (true, _):  return lang.wifiExitMessage
-            case (false, true):  return lang.postConnectionExitMessage
-            default:  return lang.preConnectionExitMessage
-            }
-        }()
-        
-        let alert = AlertModel(
-            title: lang.title,
-            message: message,
-            buttons: [
-                AlertButtonModel(title: lang.exitButton, type: .primary) { _ in onConfirm() },
-                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in onCancel() }
-            ])
-        notificationService.showAlert(alert)
-    }
 
-    // Called by the ✕ button.
-    func handleExit() {
-        if currentStep == .stepOn {
-            isExitingFromStepOn = true
-            cancelStepOnTimeout()
-            cancelMeasurementSubscription()
-            if let savedScale = savedScale {
-                Task.detached(priority: .userInitiated) { [weak self] in
-                    guard let self else { return }
-                    await self.bluetoothService.stopLiveMeasurement(for: savedScale)
-                }
-            }
-            scaleSetupError = .none
-            isExiting = true
-            bluetoothService.isSetupInProgress = false
-            dismissAction?()
-            Task { @MainActor [weak self] in
-                self?.performExitCleanup()
-            }
-            return
-        }
-        
-        // Set exiting flag first to prevent any navigation during exit
-        isExiting = true
-        
-        // Cancel any ongoing network operations to prevent navigation
-        cancelNetworkScanTimeout()
-        fetchWifiNetworksTask?.cancel()
-        fetchWifiNetworksTask = nil
-        
-        // Settings WiFi setup: show exit alert when back button is tapped in WiFi list
-        if handleSettingsWifiSetupExit() {
-            return
-        }
-        
-        guard currentStep != .scaleConnected else {
-            performExitCleanup()
-            return
-        }
-        presentExitAlert(
-            onConfirm: { [weak self] in
-                self?.performExitCleanup()
-            },
-            onCancel: { [weak self] in
-                guard let self else { return }
-                // Cancel exit and stay on current screen
-                self.isExiting = false
-            }
-        )
-    }
-    
     // Used by tab-switch logic.
     func confirmExit() async -> Bool {
         if currentStep == .scaleConnected {
@@ -323,31 +245,6 @@ extension BtWifiScaleSetupStore {
                 self.notificationService.dismissModal()
             })
         ))
-    }
-    
-    /// Handles exit from Settings WiFi setup when on available WiFi list
-    /// Returns true if exit was handled (caller should return early), false otherwise
-    func handleSettingsWifiSetupExit() -> Bool {
-        guard isSettingsWifiSetup && currentStep == .availableWifiList else {
-            return false
-        }
-        
-        presentExitAlert(
-            onConfirm: { [weak self] in
-                self?.cancelWifi()
-                self?.scaleSetupError = .none
-                // Dismiss sheet first, then clear states after delay
-                self?.dismissAction?()
-                Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 300_000_000)
-                    self?.connectionState = .success
-                }
-            },
-            onCancel: {
-                // User chose to go back - do nothing, stay on current screen
-            }
-        )
-        return true
     }
     
     /// Shows Bluetooth turned off alert
@@ -395,82 +292,5 @@ extension BtWifiScaleSetupStore {
         return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings || currentStep == .availableWifiList
     }
     
-    /// Handles the next button click based on the current step.
-    func handleNextButtonClick() {
-        switch currentStep {
-        case .intro:
-            // Check permissions and network connectivity before proceeding
-            let hasPermissions = hasAllBtPermissions()
-            let hasNetwork = networkMonitor.isConnected
-            
-            if !hasPermissions || !hasNetwork {
-                // Navigate to permissions screen if permissions or network are missing
-                navigateToStep(.permissions)
-            } else {
-                // All checks passed, proceed to wakeup
-                navigateToStep(.wakeup)
-            }
-
-        case .gatheringNetwork:
-            if scaleSetupError == .duplicatesFound {
-                handleSaveDuplicateUser()
-            } else {
-                moveToNextStep()
-            }
-        case .availableWifiList:
-            // If a network is already connected, proceed without asking for password
-            if connectedWifiNetwork != nil {
-                // cancel Wi‑Fi flow and clear any errors before proceeding
-                cancelWifi()
-                scaleSetupError = .none
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 100_000_000)
-                    self.navigateToStep(.customizeSettings)
-                }
-            } else {
-                moveToNextStep()
-            }
-        case .wifiPassword:
-            handleWifiPasswordConnect()
-        case .viewSettings:
-            handleViewSettingsAction()
-        case .customizeSettings:
-            persistDashboardMetricsIfNeeded()
-            
-            // Navigate to updateSettings if any settings have been saved
-            if hasSavedSettings {
-                navigateToStep(.updateSettings)
-            } else {
-                // Skip updateSettings and go directly to stepOn if no settings were saved
-                navigateToStep(.stepOn)
-            }
-        case .scaleConnected:
-            // Post notification to refresh dashboard when setup completes
-            // Add a small delay to ensure connection status updates have propagated to UI
-            // This prevents flicker where scales show as "not connected" briefly
-            Task { @MainActor in
-                NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
-                // Small delay to allow connection status updates to complete and propagate to UI
-                Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                    // Clear setup flag and dismiss the sheet
-                    self.bluetoothService.isSetupInProgress = false
-                    self.dismissAction?()
-                    self.checkGoalModalAfterSetup()
-                }
-            }
-        case .permissions:
-            moveToNextStep()
-        case .wakeup:
-            moveToNextStep()
-        case .connectingBluetooth:
-            moveToNextStep()
-        default:
-            moveToNextStep()
-        }
-    }
-    
-    /// Handles the next button click based on the current step.
-
 }
 // swiftlint:enable cyclomatic_complexity function_body_length

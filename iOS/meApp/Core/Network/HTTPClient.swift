@@ -226,10 +226,12 @@ final class HTTPClient {
         
         var allHeaders = headers ?? [:]
         if needsAuth {
-            if let account = try? await getAccount(accountId),
-               let token = account.accessToken,
-               !token.isEmpty {
-                allHeaders["Authorization"] = "Bearer \(token)"
+            if let account = try? await getAccount(accountId) {
+                // Extract primitive from @Model before crossing async boundaries
+                let token = account.accessToken
+                if let token = token, !token.isEmpty {
+                    allHeaders["Authorization"] = "Bearer \(token)"
+                }
             }
         }
         

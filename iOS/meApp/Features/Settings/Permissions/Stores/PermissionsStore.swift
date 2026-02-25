@@ -23,8 +23,10 @@ final class PermissionsStore: ObservableObject {
 
     // MARK: - Dependencies
     @Injector private var permissionsService: PermissionsService
+    @Injector private var logger: LoggerService
 
     private var cancellables: Set<AnyCancellable> = []
+    private let tag = "PermissionsStore"
 
     // MARK: - Init
     init() {
@@ -36,6 +38,7 @@ final class PermissionsStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] categories in
                 self?.requiredCategories = categories
+                self?.logger.log(level: .info, tag: self?.tag ?? "PermissionsStore", message: "Required categories updated. categories=\(categories.map { String(describing: $0) })")
             }
             .store(in: &cancellables)
 
@@ -56,16 +59,19 @@ final class PermissionsStore: ObservableObject {
     func updateBluetoothPermissions() {
         isBluetoothAuthorized = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
         isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+        logger.log(level: .info, tag: tag, message: "Bluetooth permission states refreshed. authorized=\(isBluetoothAuthorized), switchOn=\(isBluetoothOn)")
     }
     
     /// Handles Bluetooth authorization permission request
     func handleBluetoothAuthorization() async {
+        logger.log(level: .info, tag: tag, message: "Handling Bluetooth authorization permission")
         await permissionsService.handlePermission(.bluetooth)
         updateBluetoothPermissions()
     }
     
     /// Handles Bluetooth switch permission request
     func handleBluetoothSwitch() async {
+        logger.log(level: .info, tag: tag, message: "Handling Bluetooth switch permission")
         await permissionsService.handlePermission(.bluetoothSwitch)
         updateBluetoothPermissions()
     }
