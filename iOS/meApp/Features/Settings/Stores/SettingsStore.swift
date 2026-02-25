@@ -426,12 +426,11 @@ class SettingsStore: ObservableObject {
             return hasToggleChanged
         }
         
-        // If turned ON → must satisfy all form conditions
+        // If turned ON → form must be valid, and allow either toggle change OR valid form changes
         let weightValue = Double(weightlessForm.weight.value) ?? 0.0
-        return hasToggleChanged &&
-            weightlessForm.isValid &&
-            weightlessForm.isDirty &&
-            weightValue != 0.0
+        return weightlessForm.isValid &&
+            (hasToggleChanged ||
+             (weightlessForm.isDirty && weightValue != 0.0))
     }
 
     /// Checks if there are actual unsaved changes (for exit confirmation)
@@ -1093,10 +1092,6 @@ class SettingsStore: ObservableObject {
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
                 logger.log(level: .error, tag: tag, message: "Weightless update failed:", data: error.localizedDescription)
-                // Reset form on error to allow retry
-                await MainActor.run {
-                    self.resetWeightlessForm()
-                }
             }
             notificationService.dismissLoader()
             httpClient.skipCheckNetwork = false

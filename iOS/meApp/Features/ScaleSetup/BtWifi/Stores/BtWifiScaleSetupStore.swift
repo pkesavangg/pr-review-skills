@@ -1286,6 +1286,10 @@ final class BtWifiScaleSetupStore: ObservableObject {
     /// Handles scale mode and heart rate changes
     func updateScaleMode(_ mode: ScaleModes) {
         selectedScaleMode = mode
+        // Ensure heart rate is disabled when using Weight Only mode
+        if mode == .weightOnly {
+            isHeartRateEnabled = false
+        }
         // Update the next button state
         updateNextEnabled()
     }
