@@ -15,6 +15,8 @@ protocol DashboardDataManaging {
     func getContinuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary]
     func getLatestEntry() async throws -> Entry?
     func clearCache() async throws
+    func loadLatestEntryData() async throws -> (entry: Entry?, weight: Int?)
+    func initializeDataManager() async throws
 }
 
 /// Protocol defining goal management operations

@@ -107,6 +107,7 @@ class DashboardStore: ObservableObject {
     let goalManager: DashboardGoalManager
     public let streakManager: DashboardStreakManager
     public let dataManager: DashboardDataManager
+    private let metricsCalculator: DashboardMetricsCalculatorProtocol
 
     var shouldShowGoalCardOrStreaks: Bool {
         return !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
@@ -192,6 +193,7 @@ class DashboardStore: ObservableObject {
         self.graphManager = DashboardGraphManager()
         self.streakManager = DashboardStreakManager(skipInitialSetup: true)
         self.dataManager = DashboardDataManager()
+        self.metricsCalculator = DashboardMetricsCalculator()
         self.goalManager = DashboardGoalManager()
 
         // Suppress reactive updates during initialization to prevent AttributeGraph cycles
@@ -233,6 +235,7 @@ class DashboardStore: ObservableObject {
         self.graphManager = DashboardGraphManager()
         self.streakManager = DashboardStreakManager()
         self.dataManager = DashboardDataManager()
+        self.metricsCalculator = DashboardMetricsCalculator()
         self.goalManager = DashboardGoalManager()
 
         // Bind state so basic computed properties can work
@@ -613,70 +616,52 @@ class DashboardStore: ObservableObject {
     }
 
     var displayWeight: Double? {
-        // If a concrete point is selected, ALWAYS show its exact weight value
-        if let selectedPoint = state.graph.selectedPoint {
-            if isWeightlessModeEnabled {
-                guard let anchorWeight = weightlessAnchorWeight else { return nil }
-                let currentWeight = goalManager.convertWeightToDisplay(Int(selectedPoint.weight))
-                return currentWeight - anchorWeight
-            } else {
-                return goalManager.convertWeightToDisplay(Int(selectedPoint.weight))
+        let context = DisplayWeightContext(
+            selectedPoint: state.graph.selectedPoint,
+            selectedDate: state.graph.selectedXValue,
+            operations: continuousOperations,
+            visibleOperations: visibleOperations,
+            operationsForLabel: getOperationsForLabelDateRange(),
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            period: state.graph.selectedPeriod,
+            convertWeight: goalManager.convertWeightToDisplay,
+            interpolatedWeight: { date, ops, isWeightless, anchor, convert in
+                self.graphManager.interpolatedDisplayWeight(
+                    at: date,
+                    from: ops,
+                    isWeightlessMode: isWeightless,
+                    anchorWeight: anchor,
+                    convertWeight: convert
+                )
+            },
+            interpolatedAverage: { ops, period, isWeightless, anchor, convert, labelRange in
+                self.graphManager.calculateInterpolatedAverageForVisibleRange(
+                    from: ops,
+                    period: period,
+                    isWeightlessMode: isWeightless,
+                    anchorWeight: anchor,
+                    convertWeight: convert,
+                    labelRange: labelRange
+                )
+            },
+            weightlessDisplay: { ops, anchor, period, convert in
+                self.graphManager.calculateWeightlessDisplay(ops, anchorWeight: anchor, period: period, convertWeight: convert)
+            },
+            labelRangeForPeriod: { period in
+                switch period {
+                case .month:
+                    return self.getLabelDateRangeForMonth()
+                case .year:
+                    return self.getLabelDateRangeForYear()
+                case .week:
+                    return self.getLabelDateRangeForWeek()
+                case .total:
+                    return nil
+                }
             }
-        }
-
-        // Else, if a crosshair date is selected (can be on empty day), compute interpolated weight at that date
-        if let selectedDate = state.graph.selectedXValue {
-            return graphManager.interpolatedDisplayWeight(
-                at: selectedDate,
-                from: continuousOperations,
-                isWeightlessMode: isWeightlessModeEnabled,
-                anchorWeight: weightlessAnchorWeight,
-                convertWeight: goalManager.convertWeightToDisplay
-            )
-        }
-
-        // When no selection, show average of visible region if available
-        // Use operations filtered to match the date range shown in the label
-        let opsToUse = getOperationsForLabelDateRange()
-
-        // If no visible operations, but we have data and we're not in total view,
-        // calculate interpolated average for the visible range
-        if opsToUse.isEmpty && !continuousOperations.isEmpty && state.graph.selectedPeriod != .total {
-            let labelRange: DateInterval?
-            if state.graph.selectedPeriod == .month {
-                labelRange = getLabelDateRangeForMonth()
-            } else if state.graph.selectedPeriod == .year {
-                labelRange = getLabelDateRangeForYear()
-            } else if state.graph.selectedPeriod == .week {
-                labelRange = getLabelDateRangeForWeek()
-            } else {
-                labelRange = nil
-            }
-            let interpolatedAverage = graphManager.calculateInterpolatedAverageForVisibleRange(
-                from: continuousOperations,
-                period: state.graph.selectedPeriod,
-                isWeightlessMode: isWeightlessModeEnabled,
-                anchorWeight: weightlessAnchorWeight,
-                convertWeight: goalManager.convertWeightToDisplay,
-                labelRange: labelRange
-            )
-            return interpolatedAverage
-        }
-
-        // Check if weightless mode is enabled
-        if isWeightlessModeEnabled {
-// swiftlint:disable:next line_length
-            return graphManager.calculateWeightlessDisplay(opsToUse, anchorWeight: weightlessAnchorWeight, period: state.graph.selectedPeriod, convertWeight: goalManager.convertWeightToDisplay)
-        }
-
-        // Calculate average of operations in visible region (or all if no visible region)
-        let weights = opsToUse.map { goalManager.convertWeightToDisplay(Int($0.weight)) }
-        guard !weights.isEmpty else { return nil }
-        let averageWeight = weights.reduce(0, +) / Double(weights.count)
-
-        // Round to 1 decimal place using a more robust approach to handle floating-point precision
-        let roundedAverage = (averageWeight * 10).rounded(.toNearestOrAwayFromZero) / 10
-        return roundedAverage
+        )
+        return metricsCalculator.calculateDisplayWeight(context: context)
     }
 
     var weightLabel: String {
@@ -817,37 +802,14 @@ class DashboardStore: ObservableObject {
     func getCurrentAverageWeight() -> Double {
         // Use operations filtered to match the date range shown in the label
         let opsToUse = getOperationsForLabelDateRange()
-
-        // Return 0 if no operations are available
-        guard !opsToUse.isEmpty else {
-            return 0
-        }
-
-        // Calculate weight values with proper error handling
-        let weightValues = opsToUse.compactMap { summary -> Double? in
-            if isWeightlessModeEnabled {
-                guard let anchorWeight = weightlessAnchorWeight else {
-                    return nil
-                }
-                let currentWeight = goalManager.convertWeightToDisplay(Int(summary.weight))
-                return currentWeight - anchorWeight
-            } else {
-                return goalManager.convertWeightToDisplay(Int(summary.weight))
-            }
-        }
-
-        // Return 0 if no valid weight values were calculated
-        guard !weightValues.isEmpty else {
-            return 0
-        }
-
-        // Calculate average with proper rounding to 1 decimal place
-        let sum = weightValues.reduce(0, +)
-        let average = sum / Double(weightValues.count)
-
-        // Round to 1 decimal place using a more robust approach to handle floating-point precision
-        let roundedAverage = (average * 10).rounded(.toNearestOrAwayFromZero) / 10
-        return roundedAverage
+        
+        // Delegate to metrics calculator
+        return metricsCalculator.getCurrentAverageWeight(
+            from: opsToUse,
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            convertWeight: goalManager.convertWeightToDisplay
+        )
     }
 
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
@@ -1036,15 +998,14 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Data Loading Methods
 
+    /// Loads the latest entry data from the data manager and updates store state
     func loadLatestEntryData() {
         Task {
             do {
-                guard let latestEntry = try await dataManager.getLatestEntry() else { return }
+                let result = try await dataManager.loadLatestEntryData()
 
-                // R7: Extract relationship data immediately after fetch, before any further await
-                let weight = latestEntry.scaleEntry?.weight
-
-                if let weight {
+                // Update store state with the latest weight
+                if let weight = result.weight {
                     state.data.latestWeightStored = weight
                 }
 
@@ -1071,10 +1032,10 @@ class DashboardStore: ObservableObject {
         }
     }
 
-    // Initialize data manager (no actual data loading - handled by ContentView)
+    // Initialize data manager (delegates to data manager)
     private func initializeDataManager() async {
         do {
-            try await dataManager.loadInitialData()
+            try await dataManager.initializeDataManager()
         } catch {
             logger.log(level: .error, tag: "DashboardStore", message: "Failed to initialize data manager: \(error)")
         }
@@ -2823,253 +2784,43 @@ class DashboardStore: ObservableObject {
         return allowed.contains(current) ? current : (allowed.first ?? .bmi)
     }
 
-    // Delegate entry creation to MetricsManager
+    // Delegate entry creation to MetricsCalculator
     func createEntryForMetricInfo(metricLabel: String? = nil) -> Entry {
-        // Build an entry that mirrors the current dashboard context
-        // If a chart point is selected, use that point's values
-        // Otherwise, use averages of the currently visible operations
-        // Initialize with a timestamp that we'll override below based on selection/context
-        let entry = Entry(
-            id: UUID(),
-            entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(),
-            accountId: "dashboard",
-            operationType: OperationType.create.rawValue,
-            deviceType: "scale",
-            isSynced: true
-        )
-
-        if let point = state.graph.selectedPoint {
-            // Helpers to convert Double? to Int? with 0 -> nil
-            func intOrNil(_ x: Double?) -> Int? {
-                guard let x = x else { return nil }
-                let intValue = Int(x.rounded())
-                return intValue == 0 ? nil : intValue
-            }
-            func scaled10OrNil(_ x: Double?, metricLabel: String) -> Int? {
-                guard let x = x else { return nil }
-
-                if let metricItem = state.metrics.metrics.first(where: { $0.label == metricLabel }) {
-                    let tileValue = metricItem.value.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if tileValue == DashboardStrings.placeholder || tileValue == "0" || tileValue == "0.0" {
-                        return nil
-                    }
-                }
-
-                // For BMR and visceral fat: x is in stored format (scaled by 10) from BathScaleWeightSummary
-                // Divide by 10 to get display format before formatting to properly detect zero values
-                // This aligns with how MetricDetailView displays these values
-                let displayValue = x / 10.0
-                let formatted = BodyMetricsConvertor.convert(displayValue, shouldCompose: false, wholeNumber: true)
-
-                if formatted == "0" || formatted == "0.0" || formatted == "--" {
-                    return nil
-                }
-                // x is already in stored format (scaled by 10), so convert to Int directly
-                let intValue = Int(x.rounded())
-                return intValue == 0 ? nil : intValue
-            }
-
-            let storedWeight: Int? = {
-                let weightValue = Int(point.weight.rounded())
-                return weightValue == 0 ? nil : weightValue
-            }()
-
-            // Use the actual point's timestamp
-            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: point.date)
-
-            entry.scaleEntry = BathScaleEntry(
-                weight: storedWeight,
-                bodyFat: intOrNil(point.bodyFat),
-                muscleMass: intOrNil(point.muscleMass),
-                water: intOrNil(point.water),
-                bmi: intOrNil(point.bmi),
-                source: "dashboard"
-            )
-            entry.scaleEntryMetric = BathScaleMetric(
-                bmr: scaled10OrNil(point.bmr, metricLabel: DashboardStrings.bmrKcal),
-                metabolicAge: intOrNil(point.metabolicAge),
-                proteinPercent: intOrNil(point.proteinPercent),
-                pulse: intOrNil(point.pulse),
-                skeletalMusclePercent: intOrNil(point.skeletalMusclePercent),
-                subcutaneousFatPercent: intOrNil(point.subcutaneousFatPercent),
-                visceralFatLevel: scaled10OrNil(point.visceralFatLevel, metricLabel: DashboardStrings.visceralFat),
-                boneMass: intOrNil(point.boneMass),
-                impedance: nil,
-                unit: nil
-            )
-            return entry
-        }
-
-        // Interpolated selection: show interpolated weight for the selectedXValue and placeholders for body metrics
-        if let selectedDate = state.graph.selectedXValue {
-            // Compute interpolated display weight in current UI context
-            let interpolated = graphManager.interpolatedDisplayWeight(
-                at: selectedDate,
-                from: continuousOperations,
-                isWeightlessMode: isWeightlessModeEnabled,
-                anchorWeight: weightlessAnchorWeight,
-                convertWeight: goalManager.convertWeightToDisplay
-            )
-            // Map display weight to stored (handle weightless by adding anchor back)
-            let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
-            let displayAbsolute: Double? = {
-                if let interpolatedWeight = interpolated {
-                    if isWeightlessModeEnabled, let anchor = weightlessAnchorWeight {
-                        return interpolatedWeight + anchor
-                    } else {
-                        return interpolatedWeight
-                    }
-                }
-                return nil
-            }()
-            let storedWeight: Int? = {
-                guard let displayAbs = displayAbsolute else { return nil }
-                return ConversionTools.convertDisplayToStored(displayAbs, isMetric: unit == .kg)
-            }()
-
-            // Timestamp is the crosshair date selected by the user
-            entry.entryTimestamp = DateTimeTools.isoFormatter().string(from: selectedDate)
-
-            entry.scaleEntry = BathScaleEntry(
-                weight: storedWeight,
-                bodyFat: nil,
-                muscleMass: nil,
-                water: nil,
-                bmi: nil,
-                source: "dashboard"
-            )
-            entry.scaleEntryMetric = BathScaleMetric(
-                bmr: nil,
-                metabolicAge: nil,
-                proteinPercent: nil,
-                pulse: nil,
-                skeletalMusclePercent: nil,
-                subcutaneousFatPercent: nil,
-                visceralFatLevel: nil,
-                boneMass: nil,
-                impedance: nil,
-                unit: nil
-            )
-            return entry
-        }
-
-        // No selection: compute visible-window averages to mirror tiles and weight label
-        let ops = getVisibleOperations()
-        if ops.isEmpty {
-            var storedWeightForInfo: Int?
-
-            if state.data.hasAnyEntries {
-                let interpolatedAverage = graphManager.calculateInterpolatedAverageForVisibleRange(
-                    from: continuousOperations,
-                    period: state.graph.selectedPeriod,
-                    isWeightlessMode: isWeightlessModeEnabled,
-                    anchorWeight: weightlessAnchorWeight,
-                    convertWeight: goalManager.convertWeightToDisplay
+        let context = EntryCreationContext(
+            selectedPoint: state.graph.selectedPoint,
+            selectedDate: state.graph.selectedXValue,
+            operations: continuousOperations,
+            visibleOperations: getVisibleOperations(),
+            metrics: state.metrics.metrics,
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            period: state.graph.selectedPeriod,
+            weightUnit: accountService.activeAccount?.weightSettings?.weightUnit ?? .lb,
+            latestWeightStored: dataManager.state.latestWeightStored,
+            convertWeight: goalManager.convertWeightToDisplay,
+            interpolatedWeight: { date, ops, isWeightless, anchor, convert in
+                self.graphManager.interpolatedDisplayWeight(
+                    at: date,
+                    from: ops,
+                    isWeightlessMode: isWeightless,
+                    anchorWeight: anchor,
+                    convertWeight: convert
                 )
-                if let displayAvg = interpolatedAverage {
-                    let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
-                    storedWeightForInfo = ConversionTools.convertDisplayToStored(displayAvg, isMetric: unit == .kg)
-                }
+            },
+            interpolatedAverage: { ops, period, isWeightless, anchor, convert, labelRange in
+                self.graphManager.calculateInterpolatedAverageForVisibleRange(
+                    from: ops,
+                    period: period,
+                    isWeightlessMode: isWeightless,
+                    anchorWeight: anchor,
+                    convertWeight: convert,
+                    labelRange: labelRange
+                )
             }
-
-            entry.scaleEntry = BathScaleEntry(
-                weight: storedWeightForInfo,
-                bodyFat: nil,
-                muscleMass: nil,
-                water: nil,
-                bmi: nil,
-                source: "dashboard"
-            )
-            entry.scaleEntryMetric = BathScaleMetric(
-                bmr: nil,
-                metabolicAge: nil,
-                proteinPercent: nil,
-                pulse: nil,
-                skeletalMusclePercent: nil,
-                subcutaneousFatPercent: nil,
-                visceralFatLevel: nil,
-                boneMass: nil,
-                impedance: nil,
-                unit: nil
-            )
-            return entry
-        }
-
-        // Average helpers
-        func avg(_ values: [Double?]) -> Double? {
-            let xs = values.compactMap { $0 }
-            guard !xs.isEmpty else { return nil }
-            return xs.reduce(0, +) / Double(xs.count)
-        }
-
-        // Helpers for averages: Double? -> Int? with 0 -> nil
-        func intOrNil(_ x: Double?) -> Int? {
-            guard let x = x else { return nil }
-            let intValue = Int(x.rounded())
-            return intValue == 0 ? nil : intValue
-        }
-        func scaled10OrNil(_ x: Double?) -> Int? {
-            guard let x = x else { return nil }
-            let intValue = Int((x * 10.0).rounded())
-            return intValue == 0 ? nil : intValue
-        }
-
-        // Weight average in stored units
-        let avgStoredWeightOpt: Int? = {
-            // Convert each weight to display format and calculate average
-            let weightValues = ops.map { goalManager.convertWeightToDisplay(Int($0.weight)) }
-            guard !weightValues.isEmpty else {
-                return dataManager.state.latestWeightStored == 0 ? nil : dataManager.state.latestWeightStored
-            }
-            let sum = weightValues.reduce(0, +)
-            let average = sum / Double(weightValues.count)
-
-            let roundedAverage = (average * 100).rounded(.toNearestOrAwayFromZero) / 100
-
-            // Convert back to stored format
-            let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
-            let stored = ConversionTools.convertDisplayToStored(roundedAverage, isMetric: unit == .kg)
-            return stored == 0 ? nil : stored
-        }()
-
-        // Build scaleEntry from averages (convert display doubles to stored Ints where appropriate)
-        let avgBodyFat = avg(ops.map { $0.bodyFat }).map { Int($0.rounded()) }
-        let avgMuscle = avg(ops.map { $0.muscleMass }).map { Int($0.rounded()) }
-        let avgWater = avg(ops.map { $0.water }).map { Int($0.rounded()) }
-        let avgBmi = avg(ops.map { $0.bmi }).map { Int($0.rounded()) }
-        entry.scaleEntry = BathScaleEntry(
-            weight: avgStoredWeightOpt,
-            bodyFat: intOrNil(avgBodyFat.map { Double($0) }),
-            muscleMass: intOrNil(avgMuscle.map { Double($0) }),
-            water: intOrNil(avgWater.map { Double($0) }),
-            bmi: intOrNil(avgBmi.map { Double($0) }),
-            source: "dashboard"
         )
-
-        // Metric entry: visceralFat and bmr are stored scaled by 10
-        let avgBmr = intOrNil(avg(ops.map { $0.bmr }))
-        let avgMetAge = intOrNil(avg(ops.map { $0.metabolicAge }))
-        let avgProtein = intOrNil(avg(ops.map { $0.proteinPercent }))
-        let avgPulse = intOrNil(avg(ops.map { $0.pulse }))
-        let avgSkel = intOrNil(avg(ops.map { $0.skeletalMusclePercent }))
-        let avgSubFat = intOrNil(avg(ops.map { $0.subcutaneousFatPercent }))
-        let avgVisceral = intOrNil(avg(ops.map { $0.visceralFatLevel }))
-        let avgBone = intOrNil(avg(ops.map { $0.boneMass }))
-
-        entry.scaleEntryMetric = BathScaleMetric(
-            bmr: avgBmr,
-            metabolicAge: avgMetAge,
-            proteinPercent: avgProtein,
-            pulse: avgPulse,
-            skeletalMusclePercent: avgSkel,
-            subcutaneousFatPercent: avgSubFat,
-            visceralFatLevel: avgVisceral,
-            boneMass: avgBone,
-            impedance: nil,
-            unit: nil
-        )
-        return entry
+        return metricsCalculator.createEntryForMetricInfo(context: context)
     }
+
 
     func createEntryForMetricInfoAsync(metricLabel: String? = nil) async -> Entry {
         await metricsManager.createEntryForMetricInfo(metricLabel: metricLabel)
