@@ -558,10 +558,11 @@ constructor(
       }
       AppLog.v(TAG, "logout() called for accountId: $accountId")
       val isActiveAccount = getCurrentAccount()?.id == accountId
+      val wasLastAccount = getLoggedInAccounts().size == 1
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
       accountRepository.setNotificationAlertShownForAccount(accountId, false)
       AppLog.d(TAG, "Logout successful")
-      appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount))
+      appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount = isActiveAccount, wasLastAccount = wasLastAccount))
       result
     } catch (e: Exception) {
       AppLog.e(TAG, "Logout failed", e)

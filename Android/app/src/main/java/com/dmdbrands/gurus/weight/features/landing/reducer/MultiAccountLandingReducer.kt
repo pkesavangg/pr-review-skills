@@ -8,7 +8,8 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
  */
 data class MultiAccountLandingState(
     val accounts: List<Account> = emptyList(),
-    val hasReachedMaxAccounts: Boolean = false
+    val hasReachedMaxAccounts: Boolean = false,
+    val accountToRemove: Account? = null,
 ) : IReducer.State
 
 /**
@@ -22,6 +23,7 @@ sealed interface MultiAccountLandingIntent : IReducer.Intent {
     data class Login(val account: Account? = null) : MultiAccountLandingIntent
     object CreateAccount : MultiAccountLandingIntent
     object ShowMaxLimitReachedAlert : MultiAccountLandingIntent
+    data class RequestRemoveAccount(val account: Account) : MultiAccountLandingIntent
 }
 
 /**
@@ -40,5 +42,6 @@ class MultiAccountLandingReducer : IReducer<MultiAccountLandingState, MultiAccou
             is MultiAccountLandingIntent.Login -> state
             MultiAccountLandingIntent.CreateAccount -> state
             MultiAccountLandingIntent.ShowMaxLimitReachedAlert -> state
+            is MultiAccountLandingIntent.RequestRemoveAccount -> state.copy(accountToRemove = intent.account)
         }
 }
