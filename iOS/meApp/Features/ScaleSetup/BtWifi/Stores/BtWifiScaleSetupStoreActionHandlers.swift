@@ -211,7 +211,7 @@ extension BtWifiScaleSetupStore {
     }
 
     /// Handles the next button click based on the current step.
-    func handleNextButtonClick() {
+    func handleNextButtonClick() { // swiftlint:disable:this cyclomatic_complexity function_body_length
         switch currentStep {
         case .intro:
             let hasPermissions = hasAllBtPermissions()

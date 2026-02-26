@@ -143,7 +143,6 @@ final class SQLiteMigrationService {
         return tableCount >= 1 // At least 'opStack' table should exist
     }
     
-    // swiftlint:disable:next function_body_length
     private func migrateAllUsersEntries() async throws -> [String: Int] {
         let entryRepository = await MainActor.run { EntryRepository() }
         var migratedData: [String: Int] = [:]

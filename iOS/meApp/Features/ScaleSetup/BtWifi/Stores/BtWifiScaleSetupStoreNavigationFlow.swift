@@ -2,8 +2,6 @@ import Combine
 import Foundation
 import SwiftUI
 
-// swiftlint:disable cyclomatic_complexity function_body_length
-
 @MainActor
 extension BtWifiScaleSetupStore {
     var nextButtonText: String {
@@ -293,4 +291,3 @@ extension BtWifiScaleSetupStore {
     }
     
 }
-// swiftlint:enable cyclomatic_complexity function_body_length

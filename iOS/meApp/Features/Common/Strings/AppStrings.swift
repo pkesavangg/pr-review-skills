@@ -325,7 +325,6 @@ struct InputFieldLabels {
 }
 
 // Constants for Alert strings used in the app
-// swiftlint:disable:next type_body_length
 struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"

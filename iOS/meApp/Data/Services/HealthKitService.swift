@@ -8,7 +8,7 @@ import HealthKit
 import SwiftData
 
 @MainActor
-public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:this type_body_length
+final class HealthKitService: HealthKitServiceProtocol {
     static let shared = HealthKitService()
     @Injector private var integrationService: IntegrationsService
     @Injector private var logger: LoggerService
@@ -60,7 +60,7 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
                     throw IntegrationError.userConflict
                 }
             } catch {
-                logger.log(level: .error, tag: tag, message: "HealthKit integrate user conflict check failed. accountId=\(accountId), error=\(error.localizedDescription)")
+                logger.log(level: .error, tag: tag, message: "HealthKit integrate user conflict check failed. accountId=\(accountId), error=\(error.localizedDescription)") // swiftlint:disable:this line_length
                 throw IntegrationError.userConflict
             }
         }
@@ -78,7 +78,7 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
             }
             let permissions = getApprovedPermissionList()
             if permissions.isEmpty {
-                logger.log(level: .error, tag: tag, message: "HealthKit integrate failed: no permissions approved after authorization. accountId=\(accountId)")
+                logger.log(level: .error, tag: tag, message: "HealthKit integrate failed: no permissions approved after authorization. accountId=\(accountId)") // swiftlint:disable:this line_length
                 return false
             }
             let accountID = accountService.activeAccount?.accountId ?? ""
@@ -89,10 +89,10 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
             )
             do {
                 try await self.integrationService.setStoredIntegrationData(integrationInfo)
-                logger.log(level: .success, tag: tag, message: "HealthKit integrate succeeded. accountId=\(accountID), permissionsCount=\(permissions.count)")
+                logger.log(level: .success, tag: tag, message: "HealthKit integrate succeeded. accountId=\(accountID), permissionsCount=\(permissions.count)") // swiftlint:disable:this line_length
                 return true
             } catch {
-                logger.log(level: .error, tag: tag, message: "HealthKit integrate failed while persisting integration data. accountId=\(accountID), error=\(error.localizedDescription)")
+                logger.log(level: .error, tag: tag, message: "HealthKit integrate failed while persisting integration data. accountId=\(accountID), error=\(error.localizedDescription)") // swiftlint:disable:this line_length
                 return false
             }
         } else {
@@ -147,7 +147,7 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
         }.value
 
         let healthKitData = buildHealthKitData(from: exports)
-        logger.log(level: .info, tag: tag, message: "HealthKit full sync prepared payload. accountId=\(accountId), entriesCount=\(exports.count), payloadCount=\(healthKitData.count)")
+        logger.log(level: .info, tag: tag, message: "HealthKit full sync prepared payload. accountId=\(accountId), entriesCount=\(exports.count), payloadCount=\(healthKitData.count)") // swiftlint:disable:this line_length
         try await saveHealthKitData(finalData: healthKitData)
         logger.log(level: .success, tag: tag, message: "HealthKit full sync completed. accountId=\(accountId), payloadCount=\(healthKitData.count)")
     }
@@ -181,7 +181,7 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
         )
         let healthKitData = buildHealthKitData(from: export)
         try await hkPackage.saveData(healthKitData)
-        logger.log(level: .success, tag: tag, message: "HealthKit sync new entry completed. timestamp=\(notification.entryTimestamp), payloadCount=\(healthKitData.count)")
+        logger.log(level: .success, tag: tag, message: "HealthKit sync new entry completed. timestamp=\(notification.entryTimestamp), payloadCount=\(healthKitData.count)") // swiftlint:disable:this line_length
     }
 
     /// Deletes a single `Entry` previously written to Apple Health.
@@ -206,7 +206,7 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
         )
         let healthKitData = buildHealthKitData(from: export)
         try await hkPackage.deleteEntry(healthKitData)
-        logger.log(level: .success, tag: tag, message: "HealthKit delete entry completed. timestamp=\(notification.entryTimestamp), payloadCount=\(healthKitData.count)")
+        logger.log(level: .success, tag: tag, message: "HealthKit delete entry completed. timestamp=\(notification.entryTimestamp), payloadCount=\(healthKitData.count)") // swiftlint:disable:this line_length
         return true
     }
     
@@ -223,7 +223,7 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
             try await hkPackage.deleteAllData()
             logger.log(level: .success, tag: tag, message: "HealthKit clear completed. accountId=\(accountId)")
         } catch {
-            logger.log(level: .error, tag: tag, message: "HealthKit clear failed during deleteAllData. accountId=\(accountId), error=\(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "HealthKit clear failed during deleteAllData. accountId=\(accountId), error=\(error.localizedDescription)") // swiftlint:disable:this line_length
             throw error
         }
     }
@@ -591,7 +591,7 @@ public final class HealthKitService: HealthKitServiceProtocol { // swiftlint:dis
         if !approvedPermissions.isEmpty {
             // Permissions restored - clear the flag and return true
             kvStore.clearValue(forKey: scopedKey)
-            logger.log(level: .success, tag: tag, message: "HealthKit permissions restored after out-of-sync. accountId=\(accountId ?? "nil"), permissionsCount=\(approvedPermissions.count)")
+            logger.log(level: .success, tag: tag, message: "HealthKit permissions restored after out-of-sync. accountId=\(accountId ?? "nil"), permissionsCount=\(approvedPermissions.count)") // swiftlint:disable:this line_length
             return true
         }
         

@@ -103,7 +103,7 @@ extension BtWifiScaleSetupStore {
             try? await Task.sleep(nanoseconds: 200_000_000)
             self.currentCustomizeSetting = .none
         }
-        self.moveToPreviousStep()
+        moveToPreviousStep()
     }
 
     /// Performs revert for current view setting and clears selection. Called from ActionHandlers.
@@ -217,26 +217,26 @@ extension BtWifiScaleSetupStore {
         initialDisplayNameSnapshot = initialDisplayName
         userNameForm.setCurrentUserName(initialDisplayName)
         resetFormState()
-        
+
         Task { [weak self] in
             guard let self else { return }
             if self.userList.isEmpty {
                 await self.getUserList()
             }
-            
+
             var displayName = self.firstName ?? "User"
             if let savedScale = self.savedScale,
                let attached = await self.scaleService.fetchAttachedPreference(by: savedScale.id) {
                 displayName = attached.displayName
             }
-            
+
             await MainActor.run {
                 if displayName != self.userNameForm.displayName.value {
                     self.userNameForm.setDisplayName(displayName)
                     self.initialDisplayNameSnapshot = displayName
                     self.userNameForm.setCurrentUserName(displayName)
                 }
-                
+
                 let scaleUsers = self.userList.map { deviceUser in
                     ScaleUser(name: deviceUser.name, token: deviceUser.token)
                 }
@@ -289,7 +289,7 @@ extension BtWifiScaleSetupStore {
             switch result {
             case .success:
                 LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - scale preference updated successfully")
-            case .failure(let updateError):
+            case let .failure(updateError):
                 LoggerService.shared.log(level: .error, tag: tag, message: "updateCustomizeSettings - failed: \(updateError.localizedDescription)")
             }
 
@@ -371,7 +371,7 @@ extension BtWifiScaleSetupStore {
     }
 
     // MARK: - Cleanup Methods
-    
+
     /// Checks if "Set a Goal" modal should be shown after setup completes
     /// This handles the case where the 3rd entry was taken during setup
     func checkGoalModalAfterSetup() {
@@ -387,16 +387,16 @@ extension BtWifiScaleSetupStore {
             }
         }
     }
-    
+
     /// Cleans up the store and breaks any retain cycles
     func cleanup() {
         // Clear the dismiss action to break retain cycle
         dismissAction = nil
-        
+
         // Cancel all tasks
         fetchWifiNetworksTask?.cancel()
         fetchWifiNetworksTask = nil
-        
+
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
         networkFormCancellable?.cancel()
@@ -415,30 +415,30 @@ extension BtWifiScaleSetupStore {
         dashboardStoreCancellable = nil
         dashboardMetricsUpdatedCancellable?.cancel()
         dashboardMetricsUpdatedCancellable = nil
-        
+
         // Cancel all cancellables
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
 
         bluetoothService.isSetupInProgress = false
-        
+
         // Clear other references
         discoveredScale = nil
         discoveryEvent = nil
         savedScale = nil
         // Re-apply skipped devices to BLE SDK, excluding paired scales
         bluetoothService.reapplySkipDevicesExcludingPaired()
-        
+
         Task { @MainActor [weak self] in
             self?.isExiting = false
             self?.isExitingFromStepOn = false
         }
     }
-    
+
     /// Resumes scanning and syncs all paired devices after setup exits
     func resumeScanningAndSyncDevices() async {
         bluetoothService.resumeSmartScan(clearOnlyPairing: false)
-        
+
         do {
             try await scaleService.updateAllScalesStatus()
             bluetoothService.syncDevices([])
@@ -446,7 +446,7 @@ extension BtWifiScaleSetupStore {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to resume scanning and sync devices: \(error.localizedDescription)")
         }
     }
-    
+
     // Disconnects scale if it's not saved to ensure it shouldn't appears again in discovery.
     func disconnectDevice() {
         guard let broadcastId = discoveredScale?.broadcastIdString, !broadcastId.isEmpty, savedScale == nil else { return }
@@ -481,11 +481,11 @@ extension BtWifiScaleSetupStore {
         let goalPos = dashboardStore.state.ui.goalCardPosition
 
         return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
-               (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
-               (initialDashboardRemovedStreaksSnapshot != nil && initialDashboardRemovedStreaksSnapshot != removedStreaks) ||
-               (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
-               (initialDashboardGoalCardRemovedSnapshot != nil && initialDashboardGoalCardRemovedSnapshot != goalRemoved) ||
-               (initialDashboardGoalCardPositionSnapshot != nil && initialDashboardGoalCardPositionSnapshot != goalPos)
+            (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
+            (initialDashboardRemovedStreaksSnapshot != nil && initialDashboardRemovedStreaksSnapshot != removedStreaks) ||
+            (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
+            (initialDashboardGoalCardRemovedSnapshot != nil && initialDashboardGoalCardRemovedSnapshot != goalRemoved) ||
+            (initialDashboardGoalCardPositionSnapshot != nil && initialDashboardGoalCardPositionSnapshot != goalPos)
     }
 
     /// Discards dashboard customization changes by canceling edit mode
@@ -511,7 +511,7 @@ extension BtWifiScaleSetupStore {
     func upgradeDashboardTypeFrom4To12WithDefaults() async {
         let isAlreadyDashboard12 = await MainActor.run {
             dashboardStore.metricsManager.state.dashboardType == .dashboard12 &&
-            !dashboardStore.metricsManager.state.metrics.isEmpty
+                !dashboardStore.metricsManager.state.metrics.isEmpty
         }
 
         if isAlreadyDashboard12 {
@@ -523,7 +523,11 @@ extension BtWifiScaleSetupStore {
             _ = try await apiRepo.patchDashboardType(.dashboard12)
             try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
         } catch {
-            LoggerService.shared.log(level: .error, tag: tag, message: "R4 setup: Failed to update dashboard type on server: \(error.localizedDescription)")
+            LoggerService.shared.log(
+                level: .error,
+                tag: tag,
+                message: "R4 setup: Failed to update dashboard type on server: \(error.localizedDescription)"
+            )
         }
 
         await MainActor.run {
@@ -584,11 +588,19 @@ extension BtWifiScaleSetupStore {
                             dashboardStore.syncRemovalStateFromMetricsManager()
                         }
                     } catch {
-                        LoggerService.shared.log(level: .error, tag: tag, message: "Failed to load dashboard metrics from API: \(error.localizedDescription)")
+                        LoggerService.shared.log(
+                            level: .error,
+                            tag: tag,
+                            message: "Failed to load dashboard metrics from API: \(error.localizedDescription)"
+                        )
                     }
                 }
             } else {
-                LoggerService.shared.log(level: .info, tag: tag, message: "Preserving existing dashboard metrics order and removal state (account-based, independent of scale)")
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Preserving existing dashboard metrics order and removal state (account-based, independent of scale)"
+                )
             }
         }
     }
@@ -600,7 +612,7 @@ extension BtWifiScaleSetupStore {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
-                if self.currentStep == .viewSettings && self.currentCustomizeSetting == .dashboardMetrics {
+                if self.currentStep == .viewSettings, self.currentCustomizeSetting == .dashboardMetrics {
                     self.updateNextEnabled()
                 }
             }
@@ -614,10 +626,9 @@ extension BtWifiScaleSetupStore {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
-                if self.currentStep == .viewSettings &&
-                   self.currentCustomizeSetting == .dashboardMetrics &&
-                   !self.isExiting {
-                }
+                if self.currentStep == .viewSettings,
+                   self.currentCustomizeSetting == .dashboardMetrics,
+                   !self.isExiting {}
             }
     }
 
@@ -661,4 +672,4 @@ extension BtWifiScaleSetupStore {
             )
         }
     }
-}
+} // swiftlint:disable:this file_length

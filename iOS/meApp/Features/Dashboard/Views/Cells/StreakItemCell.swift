@@ -8,7 +8,6 @@ import ObjectiveC
 import SwiftUI
 import UIKit
 
-// swiftlint:disable:next type_body_length
 class StreakCardCell: UICollectionViewCell {
     private static let overlayButtonSize: CGFloat = 48
     

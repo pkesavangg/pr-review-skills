@@ -9,7 +9,7 @@ import SwiftData
 
 /// Repository for managing Device entities in SwiftData storage.
 @MainActor
-final class ScaleRepository: ScaleRepositoryProtocol { // swiftlint:disable:this type_body_length
+final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
     let context: ModelContext = PersistenceController.shared.context
     let logger = LoggerService.shared
