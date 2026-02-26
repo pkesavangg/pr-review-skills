@@ -3433,25 +3433,31 @@ class DashboardStore: ObservableObject {
                     self.state.ui.hasLoadedMetricValues = true
                 }
             }
-        } else if state.graph.selectedXValue != nil {
+            return // Exit early to prevent showing averages
+        }
+         if state.graph.selectedXValue != nil {
             // Interpolated position selected (no exact data point) - show placeholders
             // Don't mark as loaded when showing placeholders - they represent absence of actual values
             metricsManager.setPlaceholdersForAllMetrics()
-        } else {
-            // No selection: compute averages aligned to the label date range
-            let ops = self.getOperationsForLabelDateRange()
+            return
+        }
+        let ops = self.getOperationsForLabelDateRange()
+        
+        // If no visible operations, show placeholders for body metrics
+        if ops.isEmpty {
+            metricsManager.setPlaceholdersForAllMetrics()
+            // Mark as loaded so skeleton loaders can hide
+            self.state.ui.hasLoadedMetricValues = true
+            return
+        }
 
-            if ops.isEmpty && state.ui.hasLoadedMetricValues {
-                return
-            }
-
-            Task {
-                await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
-                await MainActor.run {
-                    // Mark as loaded even if there are no operations so skeleton loaders can hide
-                    // This prevents skeleton loaders from displaying indefinitely when there's no data
-                    self.state.ui.hasLoadedMetricValues = true
-                }
+        // Has visible operations - compute averages
+        Task {
+            await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
+            await MainActor.run {
+                // Mark as loaded even if there are no operations so skeleton loaders can hide
+                // This prevents skeleton loaders from displaying indefinitely when there's no data
+                self.state.ui.hasLoadedMetricValues = true
             }
         }
     }
