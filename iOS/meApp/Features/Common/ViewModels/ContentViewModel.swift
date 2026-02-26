@@ -64,7 +64,11 @@ final class ContentViewModel: ObservableObject {
         Task {
             logger.log(level: .info, tag: tag, message: "App initialization started")
             contentViewState = .initializing
-            let loggedIn = await checkLoginStatus()
+            var loggedIn = await checkLoginStatus()
+            if !loggedIn {
+                await waitForStartupMigrationIfNeeded()
+                loggedIn = await checkLoginStatus()
+            }
             if loggedIn {
                 // Refresh account data to sync weightless settings and other account data
                 do {
@@ -162,6 +166,36 @@ final class ContentViewModel: ObservableObject {
         logger.log(level: .info, tag: tag, message: "Updated content view state. isLoggedIn=\(isLoggedIn), state=\(contentViewState)")
     }
 
+    private func waitForStartupMigrationIfNeeded() async {
+        guard accountService.shouldDeferUnauthenticatedLanding() else { return }
+
+        let timeoutNanos: UInt64 = 15_000_000_000
+        let intervalNanos: UInt64 = 300_000_000
+        let start = DispatchTime.now().uptimeNanoseconds
+
+        while accountService.shouldDeferUnauthenticatedLanding() {
+            if Task.isCancelled {
+                return
+            }
+            let now = DispatchTime.now().uptimeNanoseconds
+            if now - start >= timeoutNanos {
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Migration wait timed out (\(timeoutNanos / 1_000_000_000)s); continuing."
+                )
+                break
+            }
+            do {
+                try await Task.sleep(nanoseconds: intervalNanos)
+            } catch is CancellationError {
+                return
+            } catch {
+                // Ignore unexpected sleep errors and continue timeout-controlled polling.
+            }
+        }
+    }
+    
     // MARK: - Account Flags
 
     /// Shared function to check account flags for different triggers

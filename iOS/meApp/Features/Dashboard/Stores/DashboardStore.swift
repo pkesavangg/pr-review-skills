@@ -720,9 +720,6 @@ class DashboardStore: ObservableObject {
         case .week:
             return labelForWeekGridlines()
         }
-
-        let lastScrollPosition = graphManager.state.xScrollPosition
-        return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
     }
 
     /// Reinitialize dashboard state when the active account changes

@@ -94,7 +94,7 @@ final class AppSyncTabStore: ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "AppSync scan parsed successfully. hasWeight=\(storedWeight > 0), hasBMI=\(storedBMI != nil), isMetric=\(isMetric)"
+            message: "AppSync scan parsed successfully. hasWeight=\(storedWeight > 0), hasBMI=\(storedBMI), isMetric=\(isMetric)"
         )
         // Present confirmation modal.
         showConfirmationModal(metrics: metrics, tabViewModel: tabViewModel)
