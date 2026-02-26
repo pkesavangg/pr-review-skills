@@ -2,419 +2,217 @@
 
 ## Overview
 
-The `BluetoothService` provides a comprehensive interface for managing Bluetooth-enabled smart scales. It's designed with a clean architecture that separates the app's business logic from the underlying SDK implementation.
+The `BluetoothService` is split into a main type in `Data/Services/BluetoothService.swift` and several **extensions** in the same folder. The protocol is `BluetoothServiceProtocol` in `Domain/Services/BluetoothServiceProtocol.swift`. This doc describes the implementation and each extension file.
 
-## Key Features
+## Extension File Map
 
-- ✅ Swift-native models with no SDK type leakage
-- ✅ Combine publishers for reactive UI updates
-- ✅ Async/await support for modern Swift concurrency
-- ✅ Comprehensive error handling
-- ✅ Device discovery and pairing
-- ✅ Wi-Fi configuration for smart scales
-- ✅ Firmware updates with progress tracking
-- ✅ User profile synchronization
-- ✅ Real-time live measurement streaming
+| File | Responsibility |
+|------|----------------|
+| **BluetoothService.swift** | Core type: state, publishers, subjects, init, `startBluetoothOperations`, scale/account handlers, `stopScan`, `clearDevices`, DI. |
+| **BluetoothServiceCoreOperations.swift** | Scan control, sync, CRUD (add/pair/delete), Wi‑Fi, live measurement, settings, firmware, profile, user list. |
+| **BluetoothServiceScanEventPipeline.swift** | Smart scan start, `handleSmartScaleData` (NEW_DEVICE, entries, connect/disconnect, alerts, WiFi, weight‑only), entry save, weight‑only alert. |
+| **BluetoothServiceHelpers.swift** | Mapping (`mapToGGBTDevice`, `mapToGGPreference`, `mapDeviceDetailsToDevice`), parsing (WiFi, permission), hex/int, timeout, protocol/scale type. |
+| **BluetoothServiceEventAlerts.swift** | Device event alerts: reconnect, duplicate user, `findUserToDelete`, `deleteUserByToken` / `deleteScaleByBroadcastId`. |
+| **BluetoothServiceDeviceProfileUtils.swift** | Scale type, disconnect deleted scales, age/height, `createScanData`, `getProfileInfo`, weight-by-protocol, `disconnectDevice`, `reapplySkipDevicesExcludingPaired`. |
+| **BluetoothServiceDeviceInfo.swift** | Device info, logs, live data, weight‑only setting update, `clearScaleDiscoveredInfo`, `disconnectConnectedScales`, `deleteR4Scales`. |
 
 ## Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   ViewModels    │───▶│ BluetoothService    │───▶│ GGBluetoothSDK      │
-│                 │    │ (Protocol)          │    │                     │
-└─────────────────┘    └─────────────────────┘    └─────────────────────┘
-        │                        │                          │
-        ▼                        ▼                          ▼
-┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   SwiftUI Views │    │ App Models          │    │ SDK Models          │
-│                 │    │ (BluetoothModels)   │    │                     │
-└─────────────────┘    └─────────────────────┘    └─────────────────────┘
+┌─────────────────┐    ┌─────────────────────────────────────────────────────────┐    ┌─────────────────────┐
+│   ViewModels    │───▶│ BluetoothService (BluetoothServiceProtocol)                │───▶│ GGBluetoothSDK      │
+│                 │    │ ├ BluetoothService.swift (state, init, subscriptions)     │    │                     │
+│                 │    │ ├ CoreOperations (scan/sync/CRUD/WiFi/live/settings/OTA)  │    │                     │
+│                 │    │ ├ ScanEventPipeline (scan callback → events, entries)      │    │                     │
+│                 │    │ ├ Helpers, EventAlerts, DeviceProfileUtils, DeviceInfo    │    │                     │
+└─────────────────┘    └─────────────────────────────────────────────────────────┘    └─────────────────────┘
 ```
+
+## Key Features
+
+- Swift-native models, no SDK type leakage
+- Combine publishers for reactive UI
+- Async/await for operations
+- Device discovery, pairing, Wi‑Fi, firmware, profile sync, live measurement
+- Error handling via `BluetoothServiceError` and `Result<_, BluetoothServiceError>`
+
+## API Convention
+
+All async operations return `Result<T, BluetoothServiceError>` (no `throws`). Use `switch result` or `if case .success(let value) = result` to handle.
 
 ## Basic Usage
 
 ### 1. Initialize the Service
 
 ```swift
+// Prefer DI; legacy singleton still available
 let bluetoothService = BluetoothService.shared
-
-// Initialize the service (typically in your app's startup)
 bluetoothService.initialize()
 ```
+
+*Defined in:* `BluetoothService.swift` (init, `initialize()`).
 
 ### 2. Subscribe to Device Discovery
 
 ```swift
-class ScaleSetupViewModel: ObservableObject {
-    private var cancellables = Set<AnyCancellable>()
-    
-    func setupSubscriptions() {
-        bluetoothService.deviceDiscoveredPublisher
-            .sink { event in
-                switch (event.protocolType, event.isNew) {
-                case (.A6, true):
-                    self.handleNewA6Scale(event.device)
-                case (.A6, false):
-                    self.handleKnownA6ScaleDuringSetup(event.device)
-                case (.A3, true):
-                    self.handleNewA3Scale(event.device)
-                case (.R4, true):
-                    self.handleNewSmartWifiScale(event.device)
-                case (.R4, false):
-                    self.handleKnownSmartScaleDuringSetup(event.device)
-                default:
-                    break
-                }
-            }
-            .store(in: &cancellables)
+bluetoothService.deviceDiscoveredPublisher
+    .sink { event in
+        switch (event.protocolType, event.isNew) {
+        case (.A6, true):  self.handleNewA6Scale(event.device)
+        case (.A6, false): self.handleKnownA6ScaleDuringSetup(event.device)
+        case (.A3, true):  self.handleNewA3Scale(event.device)
+        case (.R4, true):  self.handleNewSmartWifiScale(event.device)
+        case (.R4, false): self.handleKnownSmartScaleDuringSetup(event.device)
+        default: break
+        }
     }
-}
+    .store(in: &cancellables)
 ```
+
+*Implemented in:* `BluetoothServiceScanEventPipeline` — `handleNewDevice` sends to `deviceDiscoveredSubject`. Main class exposes `deviceDiscoveredPublisher`.
 
 ### 3. Handle New Entries
 
 ```swift
-func subscribeToNewEntries() {
-    bluetoothService.newEntryReceivedPublisher
-        .sink { entry in
-            // Handle new weight measurements
-            self.processNewEntry(entry)
-        }
-        .store(in: &cancellables)
-}
+bluetoothService.newEntryReceivedPublisher
+    .sink { entry in
+        self.processNewEntry(entry)
+    }
+    .store(in: &cancellables)
 ```
+
+*Implemented in:* `BluetoothServiceScanEventPipeline` — `saveEntries` / `convertGGEntry`; sends `EntryNotification` via `newEntryReceivedSubject`.
 
 ### 4. Monitor Weight-Only Mode Alerts
 
 ```swift
-func subscribeToWeightOnlyModeAlerts() {
-    bluetoothService.showWeightOnlyModeAlertPublisher
-        .sink { shouldShow in
-            if shouldShow {
-                self.showWeightOnlyModeAlert()
-            }
-        }
-        .store(in: &cancellables)
-}
+bluetoothService.showWeightOnlyModeAlertPublisher
+    .sink { shouldShow in
+        if shouldShow { self.showWeightOnlyModeAlert() }
+    }
+    .store(in: &cancellables)
 ```
+
+*Implemented in:* `BluetoothServiceScanEventPipeline` — `checkCanShowWeightOnlyModeAlert()`, `handleWeightOnlyModeAlertDismissed()`; `BluetoothServiceDeviceProfileUtils` / `DeviceInfo` for disconnect and status updates.
 
 ### 5. Live Measurement Streaming
 
 ```swift
-func streamLiveMeasurement(for device: Device) async {
-    // Start live measurement
-    _ = await bluetoothService.startLiveMeasurement(for: device)
-
-    // Fetch the latest snapshot (optional)
-    if case let .success(liveData) = await bluetoothService.getMeasurementLiveData(broadcastId: device.broadcastId) {
-        print("Weight: \(liveData.weight) kg")
-    }
-
-    // Stop live measurement when finished
-    _ = await bluetoothService.stopLiveMeasurement(for: device)
+_ = await bluetoothService.startLiveMeasurement(for: device)
+if case .success(let liveData) = await bluetoothService.getMeasurementLiveData(broadcastId: device.broadcastId ?? "") {
+    print("Weight: \(liveData.weight) kg")
 }
+_ = await bluetoothService.stopLiveMeasurement(for: device)
 ```
+
+*Implemented in:* `BluetoothServiceCoreOperations` (start/stop live measurement); `BluetoothServiceDeviceInfo` (`getMeasurementLiveData`); live events from SDK in `BluetoothServiceScanEventPipeline` (LIVE_MEASUREMENT → `liveMeasurementSubject`).
 
 ## Device Management
 
 ### Adding a New Device
 
 ```swift
-func addDevice(_ discoveredDevice: Device) async {
-    do {
-        let savedDevice = try await bluetoothService.addNewDevice(
-            discoveredDevice, 
-            metaData: nil
-        )
-        print("Device saved: \(savedDevice.deviceName ?? "Unknown")")
-    } catch {
-        print("Failed to add device: \(error.localizedDescription)")
-    }
+let result = await bluetoothService.addNewDevice(discoveredDevice, metaData: nil, false)
+switch result {
+case .success(let savedDevice):
+    print("Device saved: \(savedDevice.deviceName ?? "Unknown")")
+case .failure(let error):
+    print("Failed to add device: \(error.localizedDescription)")
 }
 ```
 
-### Pairing with a Device
+*Implemented in:* `BluetoothServiceCoreOperations.addNewDevice`.
+
+### Pairing
 
 ```swift
-func pairWithDevice(_ device: Device, token: String, displayName: String) async {
-    do {
-        let result = try await bluetoothService.confirmSmartPair(
-            device: device,
-            token: token,
-            displayName: displayName,
-            userNumber: nil
-        )
-        
-        switch result {
-        case .creationCompleted:
-            print("Pairing successful!")
-        case .memoryFull:
-            print("Device memory is full")
-        case .duplicateUserError:
-            print("User already exists on device")
-        default:
-            print("Pairing failed: \(result)")
-        }
-    } catch {
-        print("Pairing error: \(error.localizedDescription)")
+let result = await bluetoothService.confirmSmartPair(
+    device: device, token: token, displayName: displayName, userNumber: nil
+)
+switch result {
+case .success(let response):
+    switch response {
+    case .creationCompleted: print("Pairing successful!")
+    case .memoryFull: print("Device memory is full")
+    case .duplicateUserError: print("User already exists on device")
+    default: print("Pairing result: \(response)")
     }
+case .failure(let error):
+    print("Pairing error: \(error.localizedDescription)")
 }
 ```
+
+*Implemented in:* `BluetoothServiceCoreOperations.confirmSmartPair`.
 
 ### Deleting a Device
 
 ```swift
-func removeDevice(_ device: Device) async {
-    do {
-        let result = try await bluetoothService.deleteDevice(device, disconnect: true)
-        if result == .success {
-            print("Device deleted successfully")
-        }
-    } catch {
-        print("Failed to delete device: \(error.localizedDescription)")
-    }
+let result = await bluetoothService.deleteDevice(device, disconnect: true)
+switch result {
+case .success(let response):
+    if response == .success { print("Device deleted successfully") }
+case .failure(let error):
+    print("Failed to delete device: \(error.localizedDescription)")
 }
 ```
+
+*Implemented in:* `BluetoothServiceCoreOperations.deleteDevice`. Event-driven delete by token: `BluetoothServiceEventAlerts.deleteScaleByBroadcastId` / `deleteUserByToken`.
 
 ## Wi-Fi Configuration
 
-### Getting Available Networks
-
 ```swift
-func getWifiNetworks(for device: Device) async {
-    do {
-        let networks = try await bluetoothService.getWifiList(for: device)
-        self.availableNetworks = networks
-    } catch {
-        print("Failed to get Wi-Fi networks: \(error.localizedDescription)")
-    }
-}
+// Get networks: Result<[WifiDetails], BluetoothServiceError>
+let listResult = await bluetoothService.getWifiList(for: device)
+if case .success(let networks) = listResult { self.availableNetworks = networks }
+
+// Setup: Result<WifiSetupResponse, BluetoothServiceError>
+let config = WifiConfig(ssid: ssid, password: password)
+let setupResult = await bluetoothService.setupWifi(on: device, config: config)
 ```
 
-### Setting up Wi-Fi
+- `getWifiList(for:)`, `setupWifi(on:config:)` → `BluetoothServiceCoreOperations`
+- `cancelWifi(on:)`, `getConnectedWifiSSID(broadcastId:)`, `getWifiMacAddress(for:)` → `BluetoothServiceCoreOperations`
+- WiFi status updates from scan: `BluetoothServiceScanEventPipeline.handleWifiStatusUpdate`.
 
-```swift
-func setupWifi(on device: Device, ssid: String, password: String) async {
-    let wifiConfig = WifiConfig(ssid: ssid, password: password)
-    
-    do {
-        try await bluetoothService.setupWifi(on: device, config: wifiConfig)
-        print("Wi-Fi setup initiated")
-    } catch {
-        print("Wi-Fi setup failed: \(error.localizedDescription)")
-    }
-}
-```
+## Device Settings & Firmware
 
-## Device Settings
-
-### Updating Settings
-
-```swift
-func enableBodyMetrics(on device: Device) async {
-    let settings = [
-        DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))
-    ]
-    
-    do {
-        try await bluetoothService.updateSetting(on: device, settings: settings)
-        print("Body metrics enabled")
-    } catch {
-        print("Failed to update settings: \(error.localizedDescription)")
-    }
-}
-```
-
-### Firmware Updates
-
-```swift
-func updateFirmware(on device: Device) async {
-    let timestamp = UInt32(Date().timeIntervalSince1970)
-    
-    // Subscribe to progress updates
-    bluetoothService.firmwareUpdateProgressPublisher
-        .sink { status in
-            self.updateProgress = status.progress
-            if status.isComplete {
-                print("Firmware update completed!")
-            }
-        }
-        .store(in: &cancellables)
-    
-    do {
-        try await bluetoothService.updateFirmware(on: device, timestamp: timestamp)
-    } catch {
-        print("Firmware update failed: \(error.localizedDescription)")
-    }
-}
-```
+- `updateSetting(on:settings:)` → `Result<Void, BluetoothServiceError>`
+- `updateFirmware(on:timestamp:)` → `Result<Void, BluetoothServiceError>` (progress via `firmwareUpdateProgressPublisher`)
+- `clearData(on:dataType:)` → `BluetoothServiceCoreOperations`
 
 ## Scanning Control
 
-### Manual Scanning Control
+- `scan()` (fire-and-forget), `resyncAndScan()` → `Result<Void, BluetoothServiceError>` in `BluetoothServiceCoreOperations`
+- `pauseSmartScan()`, `resumeSmartScan(clearOnlyPairing:)`, `scanForPairing()` → `BluetoothServiceCoreOperations`
+- `stopScan()`, `clearDevices()` → `BluetoothService.swift`
 
-```swift
-// Pause scanning (e.g., when showing pairing UI)
-bluetoothService.pauseSmartScan()
-
-// Resume scanning
-bluetoothService.resumeSmartScan(clearOnlyPairing: false)
-
-// Scan specifically for pairing
-bluetoothService.scanForPairing()
-
-// Stop all scanning
-bluetoothService.stopScan()
-```
-
-### Resync and Scan
-
-```swift
-func refreshDevices() async {
-    do {
-        try await bluetoothService.resyncAndScan()
-        print("Devices resynced successfully")
-    } catch {
-        print("Resync failed: \(error.localizedDescription)")
-    }
-}
-```
+Scan callback and event routing: `BluetoothServiceScanEventPipeline.startSmartScan`, `handleSmartScaleData`. Discovery lifecycle: `BLEDiscoveryManager` used from main class.
 
 ## Error Handling
 
-The service uses a comprehensive `BluetoothServiceError` enum:
+All async methods return `Result<_, BluetoothServiceError>`; none throw. Use `BluetoothServiceError` in switch/case or `if case .failure(let error)`.
 
-```swift
-func handleBluetoothError(_ error: Error) {
-    if let bluetoothError = error as? BluetoothServiceError {
-        switch bluetoothError {
-        case .noActiveAccount:
-            // Prompt user to log in
-            showLoginPrompt()
-        case .invalidBroadcastId:
-            // Device ID is invalid
-            showDeviceErrorAlert()
-        case .scanFailed(let underlyingError):
-            // Scanning failed
-            print("Scan failed: \(underlyingError.localizedDescription)")
-        case .bluetoothUnavailable:
-            // Bluetooth is off
-            showBluetoothSettingsPrompt()
-        default:
-            // Handle other errors
-            showGenericErrorAlert(bluetoothError.localizedDescription)
-        }
-    }
-}
-```
+## Extension Summary Table
 
-## Best Practices
+| Extension | Main APIs / Concepts |
+|-----------|------------------------|
+| **CoreOperations** | `scan`, `resyncAndScan`, `pauseSmartScan`, `resumeSmartScan`, `scanForPairing`, `syncDevices`, `addNewDevice`, `confirmSmartPair`, `deleteDevice`, `deleteCurrentUserFromScaleIfPossible`, `getWifiList`, `setupWifi`, `cancelWifi`, `getConnectedWifiSSID`, `getWifiMacAddress`, `startLiveMeasurement`, `stopLiveMeasurement`, `updateSetting`, `updateFirmware`, `clearData`, `updateUserProfileForR4Scales`, `updateAccount`, `getScaleUserList` |
+| **ScanEventPipeline** | `startSmartScan`, `handleSmartScaleData` (NEW_DEVICE, SINGLE_ENTRY, MULTI_ENTRIES, DEVICE_CONNECTED/DISCONNECTED, DEVICE_MEMORY_FULL, DEVICE_DUPLICATE_USER, WIFI_STATUS_UPDATE, DEVICE_INFO_UPDATE, PERMISSION_STATUS, LIVE_MEASUREMENT), `handleNewDevice`, `saveEntries`, `convertGGEntry`, `checkCanShowWeightOnlyModeAlert`, `handleWeightOnlyModeAlertDismissed`, weight-only status sync on connect/disconnect |
+| **Helpers** | `mapToGGBTDevice`, `mapToGGPreference`, `parseWifiStatus`, `parsePermissionStatus`, `convertHexToInt`, `convertIntToHex`, `roundMetric`, `mapProtocolToScaleType`, `mapDeviceDetailsToDevice`, `withTimeout` |
+| **EventAlerts** | `handleDeviceEventAlert`, `findUserToDelete`, `deleteUserByToken`, `deleteScaleByBroadcastId` |
+| **DeviceProfileUtils** | `getSafeScaleType`, `disconnectDeletedScales`, `createScanData`, `getProfileInfo`, `getWeightByProtocolType`, `disconnectDevice`, `reapplySkipDevicesExcludingPaired` |
+| **DeviceInfo** | `getDeviceInfo`, `getDeviceLogs`, `getMeasurementLiveData`, `updateWeightOnlyMode(on:)`, `clearScaleDiscoveredInfo`, `disconnectConnectedScales`, `deleteR4Scales` |
 
-### 1. Memory Management
+## Best Practices & Testing
 
-```swift
-class MyViewModel: ObservableObject {
-    private var cancellables = Set<AnyCancellable>()
-    
-    deinit {
-        // Cancellables are automatically cleaned up
-        // No explicit cleanup needed
-    }
-}
-```
+- Use `BluetoothServiceProtocol` for mocks; publishers emit on main thread; call async methods from appropriate context.
+- For unit tests, mock the protocol; implementation details are spread across the main file and extensions but the public API is unchanged.
 
-### 2. UI Thread Safety
+## Implementation Notes
 
-All publishers emit on the main thread, but async methods should be called from background queues when appropriate:
-
-```swift
-func performHeavyOperation() {
-    Task {
-        // This runs on a background queue
-        do {
-            let result = try await bluetoothService.getDeviceInfo(for: device)
-            
-            // UI updates automatically happen on main thread via publishers
-            await MainActor.run {
-                self.deviceInfo = result
-            }
-        } catch {
-            // Handle error
-        }
-    }
-}
-```
-
-### 3. Error Recovery
-
-```swift
-func retryableOperation() async {
-    let maxRetries = 3
-    var retryCount = 0
-    
-    while retryCount < maxRetries {
-        do {
-            try await bluetoothService.resyncAndScan()
-            return // Success
-        } catch {
-            retryCount += 1
-            if retryCount >= maxRetries {
-                // Final failure
-                handleFinalError(error)
-                return
-            }
-            
-            // Wait before retry
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-        }
-    }
-}
-```
-
-## Testing
-
-The `BluetoothServiceProtocol` makes unit testing easy:
-
-```swift
-class MockBluetoothService: BluetoothServiceProtocol {
-    var isScanning: Bool = false
-    var canShowScaleDiscoveredModal: Bool = true
-    var isSetupInProgress: Bool = false
-    
-    // Implement other protocol requirements with test data
-    
-    func addNewDevice(_ device: Device, metaData: DeviceMetaData?) async throws -> Device {
-        // Return test device
-        return device
-    }
-    
-    // ... other mock implementations
-}
-```
-
-## Migration from TypeScript Service
-
-If you're migrating from the TypeScript service:
-
-1. Replace `BehaviorSubject` with `@Published` properties or `PassthroughSubject`
-2. Convert callback-based APIs to async/await
-3. Replace any UI alerts/toasts with publisher emissions
-4. Use Swift-native error handling instead of try/catch with generic errors
+- **Public API**: `BluetoothServiceProtocol`; call sites use the protocol.
+- **Internal**: Logic is split by concern into the extension files above; `BluetoothService.swift` holds state, subjects, and high-level flow (`startBluetoothOperations`, account/scale handling, `stopScan`, `clearDevices`).
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Device not appearing**: Check Bluetooth permissions and ensure device is in pairing mode
-2. **Connection failures**: Verify device is not already connected to another app
-3. **Wi-Fi setup issues**: Ensure device supports Wi-Fi and is in range of network
-4. **Firmware update failures**: Check device battery level and connection stability
-
-### Debug Logging
-
-Enable debug logging to troubleshoot issues:
-
-```swift
-// The logger service will show detailed Bluetooth operations
-// Check console output for detailed error information
-``` 
+**Common issues:** device not appearing (permissions, pairing mode), connection failures, Wi‑Fi setup, firmware failures. Use `LoggerService` and the `tag` used in each extension for logs (all use the same `tag` from the main class).

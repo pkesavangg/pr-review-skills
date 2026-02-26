@@ -11,7 +11,7 @@ import SwiftData
 /// - Note: This repository uses background contexts for all operations to avoid blocking the main thread.
 ///   Methods that need MainActor access are explicitly marked.
 @MainActor
-final class EntryRepository: EntryRepositoryProtocol { // swiftlint:disable:this type_body_length
+final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
     private let container: ModelContainer = PersistenceController.shared.container

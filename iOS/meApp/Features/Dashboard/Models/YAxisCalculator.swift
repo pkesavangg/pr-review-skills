@@ -24,7 +24,6 @@ private struct NiceScaleResult {
 
 // MARK: - YAxisCalculator
 
-// swiftlint:disable:next type_body_length
 struct YAxisCalculator {
     // Fallback defaults for Y-axis when no data is available
     private static let fallbackMin: Double = 0
@@ -44,8 +43,7 @@ struct YAxisCalculator {
     // - chartHeight: Chart height for optimal tick calculation
     // - lastScale: Previous YAxisScale to use as fallback when no data
     // Returns: YAxisScale with calculated domain and ticks
-// swiftlint:disable:next function_body_length
-    static func calculateYAxis(
+    static func calculateYAxis( // swiftlint:disable:this function_body_length
         operations: [BathScaleWeightSummary],
         goalWeight: Double?,
         isWeightlessMode: Bool,
@@ -300,8 +298,7 @@ struct YAxisCalculator {
     }
 
     // Enforce tick limits (min 3, max 8) by adjusting step size
-    // swiftlint:disable:next function_body_length
-    internal static func enforceTickLimits(min: Double, max: Double, initialStep: Double) -> (step: Double, ticks: [Double]) {
+    internal static func enforceTickLimits(min: Double, max: Double, initialStep: Double) -> (step: Double, ticks: [Double]) { // swiftlint:disable:this function_body_length
         // Helper to snap values to the nearest nice multiple of step
         @inline(__always) func snapDown(_ value: Double, step: Double) -> Double {
             guard step > 0 else { return value }

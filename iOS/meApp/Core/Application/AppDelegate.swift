@@ -125,11 +125,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     /// - Parameters:
     ///   - application: The application instance
     ///   - error: The error that occurred
-    func application(_ application: UIApplication,
-                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
         // Log the error for debugging - registration failures are non-critical
         // Common causes: simulator (no APNs), user denied permissions, network issues
-        print("Failed to register for remote notifications: \(error.localizedDescription)")
+        Task { @MainActor in
+            LoggerService.shared.log(level: .error, tag: "AppDelegate", message: "Failed to register for remote notifications", data: error.localizedDescription) // swiftlint:disable:this line_length
+        }
     }
     
     /// Handles background notifications

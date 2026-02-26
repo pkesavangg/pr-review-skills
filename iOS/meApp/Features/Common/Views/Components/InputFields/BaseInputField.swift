@@ -144,12 +144,8 @@ struct BaseInputTestView: View {
                 fieldType: .password,
                 value: $text,
                 focusedField: $focusedField,
-                onCommit: {
-                    print("Submitted: \(text)")
-                },
-                onEditingChanged: { isEditing in
-                    print("Editing changed: \(isEditing)")
-                })
+                onCommit: { },
+                onEditingChanged: { _ in })
         }
     }
 }

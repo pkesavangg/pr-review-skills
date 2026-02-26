@@ -301,9 +301,9 @@ struct BasicFormControlView: View {
             
             Button("Submit") {
                 if form.isValid {
-                    print("Form submitted with:")
-                    print("Name:", form.name.value)
-                    print("Email:", form.email.value)
+                    Task { @MainActor in
+                        LoggerService.shared.log(level: .debug, tag: "ObservableForm", message: "Form submitted", data: ["name": form.name.value, "email": form.email.value]) // swiftlint:disable:this line_length
+                    }
                 }
             }
             .disabled(!form.isValid)

@@ -48,7 +48,5 @@ struct ScaleManualListView: View {
 }
 
 #Preview(body: {
-    ScaleManualListView { scale in
-        print("Selected scale: \(scale)")
-    }
+    ScaleManualListView { _ in }
 })

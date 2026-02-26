@@ -1,4 +1,4 @@
-// LoadingScreenViewModel.swift
+// ContentViewModel.swift
 // meApp
 //
 // Created by Lakshmi Priya on 13/06/25.
@@ -29,14 +29,14 @@ final class ContentViewModel: ObservableObject {
 
     init() {
         accountService.$activeAccount
-        // Treat re-logins of the *same* account as a new value so that the
-        // loading flow gets a chance to run again. Comparing both the
-        // accountId *and* lastActiveTime ensures that we still suppress
-        // redundant emissions (e.g. when tokens refresh) while allowing a
-        // fresh login to pass through.
+            // Treat re-logins of the *same* account as a new value so that the
+            // loading flow gets a chance to run again. Comparing both the
+            // accountId *and* lastActiveTime ensures that we still suppress
+            // redundant emissions (e.g. when tokens refresh) while allowing a
+            // fresh login to pass through.
             .removeDuplicates { lhs, rhs in
                 lhs?.accountId == rhs?.accountId &&
-                lhs?.lastActiveTime == rhs?.lastActiveTime
+                    lhs?.lastActiveTime == rhs?.lastActiveTime
             }
             .sink { [weak self] account in
                 guard let self else { return }
@@ -75,44 +75,41 @@ final class ContentViewModel: ObservableObject {
                     try await accountService.refreshAccount()
                     logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
                 } catch {
-// swiftlint:disable:next line_length
-                    logger.log(level: .error, tag: "ContentViewModel", message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
-                    logger.log(level: .error, tag: tag, message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache.")
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache."
+                    )
                 }
-                
+
                 // Capture dependencies to use off the main actor
                 let entryService = self.entryService
                 let feedService = self.feedService
                 let bluetoothService = self.bluetoothService
 
-                // Heavy work off-main to avoid UI jank
-                let entries: [Entry] = await Task.detached(priority: .userInitiated) {
-                    // Migration runs before sync in the main initialization task above,
-                    // so opStack entries are available for the first sync
-                    await entryService.migrateFromSQLiteIfNeeded()
-                    await entryService.syncAllEntriesWithRemote()
-                    await entryService.loadDashboardData()
-                    let allEntries = (try? await entryService.getAllEntries()) ?? []
-                    await feedService.fetchFeedItems()
-                    return allEntries
-                }.value
+                // Migration runs before sync so opStack entries are available for first sync.
+                await entryService.migrateFromSQLiteIfNeeded()
+                await entryService.syncAllEntriesWithRemote()
+                await entryService.loadDashboardData()
+                await feedService.fetchFeedItems()
+                let entries = (try? await entryService.getAllEntries()) ?? []
 
                 // UI-affecting calls back on main actor
                 self.entries = entries
                 logger.log(level: .info, tag: tag, message: "Initialization loaded entries. count=\(entries.count)")
                 bluetoothService.initialize()
                 feedService.checkAndTriggerFeedModal()
-                
+
                 // Sync scales with remote server to ensure all previously saved scales are loaded
                 await scaleService.syncAllScalesWithRemote()
-                
+
                 await self.checkAccountFlagsAfterLogin()
             }
 
             let afterUpdate = await checkLoginStatus()
             await updateViewState(isLoggedIn: afterUpdate)
             logger.log(level: .info, tag: tag, message: "App initialization completed. isLoggedIn=\(afterUpdate), state=\(contentViewState)")
-            
+
             // Start Bluetooth operations after dashboard is ready
             if afterUpdate {
                 await bluetoothService.startBluetoothOperations()
@@ -122,6 +119,7 @@ final class ContentViewModel: ObservableObject {
     }
 
     // MARK: - Login Status Check
+
     private func checkLoginStatus() async -> Bool {
         do {
             try await accountService.updatePublishedState()
@@ -139,8 +137,9 @@ final class ContentViewModel: ObservableObject {
     }
 
     // MARK: - Data Loading (if logged in)
+
     private func loadData() async {
-// swiftlint:disable:next unused_optional_binding
+        // swiftlint:disable:next unused_optional_binding
         guard let _ = currentAccount else { return }
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData()
@@ -153,14 +152,15 @@ final class ContentViewModel: ObservableObject {
         }
         await feedService.fetchFeedItems()
         feedService.checkAndTriggerFeedModal()
-        
+
         // Sync scales with remote server to ensure all previously saved scales are loaded
         await scaleService.syncAllScalesWithRemote()
-        
+
         await checkAccountFlagsAfterLogin()
     }
 
     // MARK: - View State Management
+
     func updateViewState(isLoggedIn: Bool) async {
         contentViewState = isLoggedIn ? .dashboard : .landing
         logger.log(level: .info, tag: tag, message: "Updated content view state. isLoggedIn=\(isLoggedIn), state=\(contentViewState)")
@@ -182,7 +182,7 @@ final class ContentViewModel: ObservableObject {
                 logger.log(
                     level: .info,
                     tag: tag,
-                    message: "Startup migration wait timed out after \(timeoutNanos / 1_000_000_000) seconds; proceeding without further deferral of unauthenticated landing."
+                    message: "Migration wait timed out (\(timeoutNanos / 1_000_000_000)s); continuing."
                 )
                 break
             }
@@ -197,7 +197,7 @@ final class ContentViewModel: ObservableObject {
     }
     
     // MARK: - Account Flags
-    
+
     /// Shared function to check account flags for different triggers
     /// - Parameter trigger: The trigger type ("login" or "entry")
     private func checkAccountFlags(trigger: String) async {
@@ -205,7 +205,7 @@ final class ContentViewModel: ObservableObject {
             let flag = try await accountFlagService.getAccountFlag()
             if flag != nil {
                 try await Task.sleep(nanoseconds: UInt64(AppConstants.TimeoutsAndRetention.appReviewTriggerTimeout))
-                
+
                 let flagProcessed = try await accountFlagService.checkAccountFlag(trigger: trigger)
                 if flagProcessed {
                     logger.log(level: .info, tag: tag, message: "Account flag processed successfully after \(trigger)")
@@ -219,12 +219,12 @@ final class ContentViewModel: ObservableObject {
             logger.log(level: .error, tag: tag, message: "Error checking account flags after \(trigger): \(error.localizedDescription)")
         }
     }
-    
+
     /// Checks for account flags after successful login
     private func checkAccountFlagsAfterLogin() async {
         await checkAccountFlags(trigger: "login")
     }
-    
+
     /// Checks for account flags after entry creation
     private func checkAccountFlagsAfterEntry() async {
         await checkAccountFlags(trigger: "entry")
