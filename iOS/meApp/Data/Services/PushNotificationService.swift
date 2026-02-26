@@ -39,7 +39,7 @@ class PushNotificationService: NSObject {
     // MARK: - Notification Settings
 
     /// Private initializer to enforce singleton pattern
-    override private init() {
+    private override init() {
         super.init()
         loadStoredFCMToken()
         fetchDeviceDetails()
