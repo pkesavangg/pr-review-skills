@@ -162,7 +162,6 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)")
         }
 
-    
     }
 
     // MARK: - Data Analytics

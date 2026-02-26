@@ -25,31 +25,8 @@ class ServiceRegistry {
 
     /// Registers services required at app launch (before login)
     @MainActor private func registerEssentialServices() {
-        // Register incrementally so services that resolve dependencies during init
-        // can find already-registered prerequisites.
-        let logger = LoggerService.shared
-        DependencyContainer.shared.register(logger)
-        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-
-        let kv = KvStorageService.shared
-        DependencyContainer.shared.register(kv)
-        DependencyContainer.shared.register(kv as KvStorageServiceProtocol)
-
-        let keychain = KeychainService.shared
-        DependencyContainer.shared.register(keychain)
-        DependencyContainer.shared.register(keychain as KeychainServiceProtocol)
-
-        let account = AccountService.shared
-        DependencyContainer.shared.register(account)
-        DependencyContainer.shared.register(account as AccountServiceProtocol)
-
-        let entry = EntryService.shared
-        DependencyContainer.shared.register(entry)
-        DependencyContainer.shared.register(entry as EntryServiceProtocol)
-
-        let scale = ScaleService.shared
-        DependencyContainer.shared.register(scale)
-        DependencyContainer.shared.register(scale as ScaleServiceProtocol)
+        registerCoreInfrastructure()
+        registerAccountDataAndScale()
 
         let notifications = NotificationHelperService.shared
         DependencyContainer.shared.register(notifications)
@@ -97,6 +74,34 @@ class ServiceRegistry {
         let httpClient = HTTPClient.shared
         DependencyContainer.shared.register(httpClient)
         DependencyContainer.shared.register(httpClient as HTTPClientProtocol)
+    }
+
+    @MainActor private func registerCoreInfrastructure() {
+        let logger = LoggerService.shared
+        DependencyContainer.shared.register(logger)
+        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+
+        let kv = KvStorageService.shared
+        DependencyContainer.shared.register(kv)
+        DependencyContainer.shared.register(kv as KvStorageServiceProtocol)
+
+        let keychain = KeychainService.shared
+        DependencyContainer.shared.register(keychain)
+        DependencyContainer.shared.register(keychain as KeychainServiceProtocol)
+    }
+
+    @MainActor private func registerAccountDataAndScale() {
+        let account = AccountService.shared
+        DependencyContainer.shared.register(account)
+        DependencyContainer.shared.register(account as AccountServiceProtocol)
+
+        let entry = EntryService.shared
+        DependencyContainer.shared.register(entry)
+        DependencyContainer.shared.register(entry as EntryServiceProtocol)
+
+        let scale = ScaleService.shared
+        DependencyContainer.shared.register(scale)
+        DependencyContainer.shared.register(scale as ScaleServiceProtocol)
     }
 
     /// Registers services needed after login
@@ -184,7 +189,7 @@ To use the dependency injection system:
        @Injector private var accountService: AccountService
 
        init() {
-           print(accountService.currentUserId)
+           // e.g. LoggerService.shared.log(level: .debug, tag: "LoginStore", message: "currentUserId", data: accountService.currentUserId)
        }
    }
 

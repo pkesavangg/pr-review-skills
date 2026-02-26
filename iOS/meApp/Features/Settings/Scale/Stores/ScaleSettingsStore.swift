@@ -9,7 +9,6 @@ import SwiftData
 import SwiftUI
 
 @MainActor
-// swiftlint:disable:next type_body_length
 final class ScaleSettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var scaleService: ScaleServiceProtocol

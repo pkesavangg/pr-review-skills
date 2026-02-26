@@ -112,11 +112,8 @@ struct AccountListView: View {
                 UserListItemView(
                     user: account,
                     openItemID: $openItemID, // Binding to track open item and closes the other open item
-                    onTap: { _, isFromLogin in
-                        print("\(account.name) tapped", isFromLogin)
-                    },
+                    onTap: { _, _ in },
                     onDelete: { _ in
-                        print("Delete tapped for \(account.name)")
                         userToDelete = account
                         showDeleteAlert = true
                     }

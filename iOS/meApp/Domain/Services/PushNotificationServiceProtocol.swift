@@ -14,4 +14,3 @@ extension PushNotificationServiceProtocol {
         await setupPushNotifications(isFromScaleSetup: false)
     }
 }
-

@@ -15,6 +15,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     static let shared = PermissionsService()
 
     // MARK: - Published Properties
+
     /// Latest permission status keyed by permission type. `nil` until first update from SDK.
     @Published private(set) var permissions: [GGPermissionType: GGPermissionState]?
     var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> {
@@ -25,6 +26,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     @Published private(set) var requiredCategories: Set<PermissionCategory> = []
 
     // MARK: - Dependencies
+
     @Injector private var notificationService: NotificationHelperService
     @Injector private var scaleService: ScaleService
     @Injector private var logger: LoggerService
@@ -33,9 +35,10 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     private let tag = "PermissionsService"
 
     // MARK: - Init
+
     private init() {
         // Compute the initial required permissions
-        self.updateRequiredCategories(with: scaleService.scales)
+        updateRequiredCategories(with: scaleService.scales)
 
         // Observe scale changes to keep required permissions up-to-date
         scaleService.$scales
@@ -45,7 +48,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
         let details = permissions
@@ -60,9 +63,9 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     ///   - type: The permission type to update.
     ///   - state: The new state for the permission.
     func updatePermission(_ type: GGPermissionType, to state: GGPermissionState) {
-        var current = self.permissions ?? [:]
+        var current = permissions ?? [:]
         current[type] = state
-        self.permissions = current
+        permissions = current
         let details = current
             .map { "\($0.key.rawValue)=\($0.value.rawValue)" }
             .sorted()
@@ -71,6 +74,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     }
 
     // MARK: - Permission Helper
+
     /// Requests or toggles the permission represented by `type` via the GG SDK and converts the raw result to `GGPermissionState`.
     /// Call this for any permission-related operation instead of the previous specialised helpers.
     /// - Parameter type: The permission type to request or enable.
@@ -83,8 +87,9 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         logger.log(level: .info, tag: tag, message: "Permission request completed. type=\(type.rawValue), result=\(result.rawValue)")
         return result
     }
-    
+
     // MARK: - Permission Dispatcher
+
     /// Centralised permission handler that returns the resulting `GGPermissionState`.
     /// - Parameter type: The permission type that should be handled.
     /// - Returns: The latest `GGPermissionState` for the given permission.
@@ -94,29 +99,29 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         let result: GGPermissionState
         switch type {
         case .notification:
-            result = await self.showNotificationDisabledAlert()
+            result = await showNotificationDisabledAlert()
         case .bluetoothSwitch:
-            result = await self.showBluetoothDisabledAlert()
+            result = await showBluetoothDisabledAlert()
         case .bluetooth:
-            result = await self.showBluetoothAuthDisabledAlert()
+            result = await showBluetoothAuthDisabledAlert()
         case .locationSwitch:
-            result = await self.showLocationDisabledAlert()
+            result = await showLocationDisabledAlert()
         case .location:
-            result = await self.showLocationAuthDisabledAlert()
+            result = await showLocationAuthDisabledAlert()
         case .camera:
-            result = await self.showCameraDisabledAlert()
+            result = await showCameraDisabledAlert()
         case .wifiSwitch, .internet:
-            result = await self.showWifiDisabledAlert()
+            result = await showWifiDisabledAlert()
         }
         logger.log(level: .info, tag: tag, message: "Handle permission flow completed. type=\(type.rawValue), result=\(result.rawValue)")
         return result
     }
-    
+
     /// Checks the current permission state for a given type.
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState? {
         return permissions?[type]
     }
-    
+
     func navigateToWifiSettings() {
         logger.log(level: .info, tag: tag, message: "Navigating to Wi-Fi settings")
         Task {
@@ -125,6 +130,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     }
 
     // MARK: - Required Permission Helpers
+
     /// Updates `requiredCategories` based on the provided devices.
     private func updateRequiredCategories(with devices: [Device]) {
         var newRequired: Set<PermissionCategory> = []
@@ -156,7 +162,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), details=[\(currentPermissionDetails)]"
+            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), details=[\(currentPermissionDetails)]" // swiftlint:disable:this line_length
         )
     }
 
@@ -166,6 +172,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     }
 
     // MARK: - Alert Builders
+
     private func showBluetoothDisabledAlert() async -> GGPermissionState {
         await withCheckedContinuation { continuation in
             let alert = AlertModel(

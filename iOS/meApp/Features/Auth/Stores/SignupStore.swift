@@ -15,7 +15,7 @@ import SwiftUI
 // MARK: SignupStore
 /// This store is responsible for managing the signup process.
 @MainActor
-final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_length
+final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
     @Injector var accountService: AccountServiceProtocol
     @Injector var logger: LoggerServiceProtocol
@@ -302,10 +302,10 @@ final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_
             )
             // Create the goal if it's not skipped
             if let goal = goal {
-                logger.log(level: .info, tag: tag, message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
-                let _ = try await accountService.createGoal(goal)
+                logger.log(level: .info, tag: tag, message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)") // swiftlint:disable:this line_length
+                _ = try await accountService.createGoal(goal)
             }
-            logger.log(level: .success, tag: tag, message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)")
+            logger.log(level: .success, tag: tag, message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)") // swiftlint:disable:this line_length
             if isFromAccountSwitching {
                 dismissAction?()
             } else {
@@ -313,7 +313,7 @@ final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_
             }
             resetForm()
         } catch {
-            logger.log(level: .error, tag: tag, message: "Signup flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
+            logger.log(level: .error, tag: tag, message: "Signup flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))") // swiftlint:disable:this line_length
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
@@ -398,9 +398,9 @@ final class SignupStore: ObservableObject { // swiftlint:disable:this type_body_
         if let message = toastMessage {
             notificationService.showToast(ToastModel(title: toastTitle, message: message))
         }
-        logger.log(level: .error, tag: tag, message: "Signup error handled. mappedToastShown=\(toastMessage != nil), errorType=\(String(describing: type(of: error)))")
+        logger.log(level: .error, tag: tag, message: "Signup error handled. mappedToastShown=\(toastMessage != nil), errorType=\(String(describing: type(of: error)))") // swiftlint:disable:this line_length
     }
-    
+
     private func setupFormObservers() { // swiftlint:disable:this function_body_length
         signupForm.formDidChange
             .receive(on: DispatchQueue.main)

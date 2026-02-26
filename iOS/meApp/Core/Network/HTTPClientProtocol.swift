@@ -42,4 +42,3 @@ extension HTTPClientProtocol {
         try await send(endpoint, method: method, body: body, headers: headers, needsAuth: needsAuth, accountId: accountId)
     }
 }
-

@@ -10,7 +10,6 @@ import Foundation
 import SwiftUI
 /// Store responsible for orchestrating the A6 (LCBT) scale-setup multi-step flow.
 @MainActor
-// swiftlint:disable:next type_body_length
 final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperService

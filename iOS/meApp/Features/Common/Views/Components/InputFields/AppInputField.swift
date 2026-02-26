@@ -251,9 +251,7 @@ struct AppInputTestingField: View {
                     placeholder: "Enter model number",
                     inputType: .text,
                     customIcon: AppAssets.helpCircle
-                ) {
-                        print("Custom icon tapped")
-                    },
+                ) { },
                 value: $modelNumber,
                 focusedField: $focusedField
             ) {

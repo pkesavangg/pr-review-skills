@@ -19,28 +19,32 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     private init() {}
 
     // MARK: - Dependencies
+
     @Injector private var notificationService: NotificationHelperService
     @Injector private var accountService: AccountService
     @Injector private var bluetoothService: BluetoothService
     @Injector private var logger: LoggerService
 
     // MARK: - Public Callback
+
     /// Assigned by the UI layer (e.g. `BottomTabBarViewModel`) so the service can
     /// request navigation to the Goal Setting screen when the user taps **NEW GOAL** / **YES**.
     var onNavigateToGoalSetting: (() -> Void)?
-    
+
     /// Callback to check if we're currently on Dashboard tab (set by BottomTabBarViewModel)
     /// Returns true if Dashboard tab is selected, false otherwise
     var isOnDashboardTab: (() -> Bool)?
 
     // MARK: - Internal State
+
     private(set) var isShowingAlert: Bool = false
     private let kv = KvStorageService.shared
     private let tag = "GoalAlertService"
-    
+
     private let alertStrings = AlertStrings.self
 
     // MARK: - Public API
+
     /// Evaluates whether a goal-related alert should be presented based on the
     /// latest weight.
     /// - Parameter currentWeight: Latest weight value **in stored units** (tenths of lbs).
@@ -72,7 +76,11 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         }()
 
         guard hasMetGoal else { return }
-        logger.log(level: .info, tag: tag, message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)" // swiftlint:disable:this line_length
+        )
 
         // Persist flag so the alert is not re-shown in the same session until reset
         kv.setValue(true, forKey: storageKey)
@@ -88,16 +96,17 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     }
 
     // MARK: - Helpers
+
     func resetGoalMetFlag() {
         guard let accountId = accountService.activeAccount?.accountId else { return }
         kv.setValue(false, forKey: goalAlertStorageKey(for: accountId))
         logger.log(level: .info, tag: tag, message: "Reset goal-met flag. accountId=\(accountId)")
     }
-    
+
     private func goalAlertStorageKey(for accountId: String) -> String {
         return "\(accountId)-goalMetFlag"
     }
-    
+
     /// Checks if the "Set a Goal" card should be shown when user has 3+ entries but no goal set.
     /// - Parameter entryCount: The current number of entries for the user
     func checkSetGoalCard(entryCount: Int) async {
@@ -105,32 +114,32 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         guard isOnDashboardTab?() == true else { return }
         guard !bluetoothService.isSetupInProgress else { return }
         guard let account = accountService.activeAccount else { return }
-        
+
         if let goalSettings = account.goalSettings,
            let goalType = goalSettings.goalType,
            goalType != .none {
             return
         }
-        
+
         guard entryCount >= 3 else { return }
-        
+
         let storageKey = KvStorageKeys.setAGoalModalFlagKey(for: account.accountId)
         if let hasBeenShown = kv.getValue(forKey: storageKey) as? Bool, hasBeenShown {
             return
         }
-        
+
         await presentSetGoalCard(accountId: account.accountId)
     }
-    
+
     private func presentSetGoalCard(accountId: String) async {
         isShowingAlert = true
-        
+
         let storageKey = KvStorageKeys.setAGoalModalFlagKey(for: accountId)
         kv.setValue(true, forKey: storageKey)
-        
+
         let setGoalModalDelay = 3.0
         try? await Task.sleep(nanoseconds: UInt64(setGoalModalDelay * 1_000_000_000))
-        
+
         guard isOnDashboardTab?() == true else {
             isShowingAlert = false
             return
@@ -139,7 +148,7 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
             isShowingAlert = false
             return
         }
-        
+
         let cardView = SetAGoalCardView(
             onClose: { [weak self] in
                 guard let self else { return }
@@ -153,17 +162,18 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
                 self.handleNewGoalAction()
             }
         )
-        
+
         let modal = ModalData(
             presentedView: AnyView(cardView),
             backdropDismiss: false
         )
-        
+
         logger.log(level: .info, tag: tag, message: "Presenting set-a-goal modal card. accountId=\(accountId)")
         notificationService.showModal(modal)
     }
 
     // MARK: - Alert Builders
+
     private func presentGoalMetAlert() async {
         isShowingAlert = true
         let alert = AlertModel(
@@ -203,6 +213,7 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     }
 
     // MARK: - Button Handlers
+
     private func handleNewGoalAction() {
         logger.log(level: .info, tag: tag, message: "Goal alert action selected: navigate to new goal")
         notificationService.dismissAlert()
@@ -214,7 +225,8 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         defer { isShowingAlert = false }
 
         guard let account = accountService.activeAccount,
-              let goalWeight = account.goalSettings?.goalWeight else {
+              let goalWeight = account.goalSettings?.goalWeight
+        else {
             logger.log(level: .error, tag: tag, message: "Maintain-goal action failed: missing active account or goal weight")
             notificationService.dismissAlert()
             return

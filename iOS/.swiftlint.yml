@@ -41,7 +41,6 @@ opt_in_rules:
   - trailing_closure              # Prefer trailing closure syntax: map { } not map({ })
   - unneeded_parentheses_in_closure_argument  # Remove () in closure args: { x in } not { (x) in }
   - vertical_parameter_alignment_on_call      # Align parameters vertically in function calls
-  - print_usage                              # Prefer LoggerService over print()
 
 # ============================================
 # Force Operations - Set as Warnings
@@ -50,7 +49,6 @@ opt_in_rules:
 force_cast: warning        # Warn on force cast (as!) - use optional cast (as?) instead
 force_try: warning         # Warn on force try (try!) - use do/catch or try? instead
 force_unwrapping: warning  # Warn on force unwrap (!) - use guard/if let instead
-print_usage: warning       # Prefer LoggerService over print()
 
 # ============================================
 # Code Style Rules
