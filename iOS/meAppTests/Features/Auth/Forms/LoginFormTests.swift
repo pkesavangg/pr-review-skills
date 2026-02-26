@@ -160,10 +160,10 @@ struct LoginFormTests {
         form.password.markAsTouched()
 
         form.password.value = "12345"
-        #expect(form.getError(for: form.password) == FormErrorMessages.passwordMinLength)
+        #expect(form.getError(for: form.password) == LoginFormTestText.passwordMinLength)
 
         form.password.value = String(repeating: "a", count: 51)
-        #expect(form.getError(for: form.password) == FormErrorMessages.passwordMaxLength)
+        #expect(form.getError(for: form.password) == LoginFormTestText.passwordMaxLength)
     }
 
     @Test("generic min and max length messages for non-email/password controls")
@@ -173,10 +173,10 @@ struct LoginFormTests {
         control.markAsTouched()
 
         control.value = "ab"
-        #expect(form.getError(for: control) == FormErrorMessages.minLength(3))
+        #expect(form.getError(for: control) == LoginFormTestText.minLength(3))
 
         control.value = "abcdef"
-        #expect(form.getError(for: control) == FormErrorMessages.maxLength(5))
+        #expect(form.getError(for: control) == LoginFormTestText.maxLength(5))
     }
 
     @Test("getError returns nil when touched but valid")
@@ -203,4 +203,11 @@ struct LoginFormTests {
 
         #expect(emissions >= 2)
     }
+}
+
+private enum LoginFormTestText {
+    static let passwordMinLength = "password must be 6 characters long"
+    static let passwordMaxLength = "password should not exceed 50 characters"
+    static func minLength(_ length: Int) -> String { "minimum value should be \(length)" }
+    static func maxLength(_ length: Int) -> String { "maximum value should be \(length)" }
 }

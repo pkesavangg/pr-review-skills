@@ -98,16 +98,45 @@ This keeps tests deterministic and focused on business logic.
    - state transitions (local account flags/settings)
    - key side effects (API/repo/keychain call counts)
 
+### String Assertion Convention
+When validating error/toast/alert text in tests:
+- Define expected text as static constants inside the test file (e.g. `AccountServiceTestText`).
+- Assert against those test constants.
+- Do not use production string containers directly in assertions.
+
+Example:
+```swift
+private enum AccountServiceTestText {
+    static let logoutFailure = "Unable to clear local session"
+}
+
+#expect(message.contains(AccountServiceTestText.logoutFailure))
+```
+
 ## Run and Check Coverage
-Run only AccountService suite:
+Run from **repo root** (`meApp-1`).
+
+**Simulator:**
 ```bash
 xcodebuild test \
-  -project meApp.xcodeproj \
+  -project iOS/meApp.xcodeproj \
   -scheme meAppTests \
-  -configuration Dev \
+  -configuration Production \
   -destination 'platform=iOS Simulator,name=iPhone 16' \
   -only-testing:meAppTests/AccountServiceTests
 ```
+
+**Physical device (e.g. iPhone 15 Plus):**
+```bash
+export DEVICE_ID=$(xcrun xctrace list devices 2>/dev/null | grep -E "iPhone|iPad" | head -1 | sed -n 's/.*(\([^)]*\)).*/\1/p')
+xcodebuild test \
+  -project iOS/meApp.xcodeproj \
+  -scheme meAppTests \
+  -configuration Production \
+  -destination "platform=iOS,id=$DEVICE_ID" \
+  -only-testing:meAppTests/AccountServiceTests
+```
+Device must be connected, unlocked, and trusted.
 
 Coverage in Xcode:
 1. Test Report (`Cmd+9`)
@@ -119,4 +148,3 @@ Coverage in Xcode:
 - Keep AccountService coverage at least **80%**
 - For auth/sync changes, aim for **85%+**
 - Every bug fix in AccountService should add a regression test
-

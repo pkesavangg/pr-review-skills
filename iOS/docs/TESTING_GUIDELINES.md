@@ -45,6 +45,22 @@ Each test should assert:
 - Primary result (returned value / thrown error)
 - At least one side effect (repo save/update, API call count, local state change)
 
+### 7. UI/Error String Assertion Rule
+- Do not assert against production string containers directly in tests (`ToastStrings`, `FormErrorMessages`, `AlertStrings`, etc.).
+- Declare expected strings as static constants in the test file and assert against those constants.
+- This keeps tests independent from production string definitions and makes expectation intent explicit.
+
+Example pattern:
+```swift
+private enum LoginStoreTestText {
+    static let passwordResetFailed = "Failed to send password reset email."
+}
+
+#expect(store.resetError == LoginStoreTestText.passwordResetFailed)
+```
+
+For alert checks, assert both title and message using test-local constants.
+
 ## How To Run Tests
 
 ## Xcode (UI)
@@ -54,21 +70,47 @@ Each test should assert:
 4. Run tests (`Cmd+U`)
 
 ## Command Line
+Run from **repo root** (`meApp-1`).
+
+**Simulator:**
 ```bash
 xcodebuild test \
-  -project meApp.xcodeproj \
+  -project iOS/meApp.xcodeproj \
   -scheme meAppTests \
-  -configuration Dev \
+  -configuration Production \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-To run only AccountService tests:
+**Physical device (e.g. iPhone 15 Plus):**  
+Get the device ID, then run tests with it:
+```bash
+export DEVICE_ID=$(xcrun xctrace list devices 2>/dev/null | grep -E "iPhone|iPad" | head -1 | sed -n 's/.*(\([^)]*\)).*/\1/p')
+xcodebuild test \
+  -project iOS/meApp.xcodeproj \
+  -scheme meAppTests \
+  -configuration Production \
+  -destination "platform=iOS,id=$DEVICE_ID"
+```
+Device must be connected, unlocked, and trusted. Signing must be valid for the app and test target.
+
+To run only AccountService tests (simulator):
 ```bash
 xcodebuild test \
-  -project meApp.xcodeproj \
+  -project iOS/meApp.xcodeproj \
   -scheme meAppTests \
-  -configuration Dev \
+  -configuration Production \
   -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -only-testing:meAppTests/AccountServiceTests
+```
+
+To run only AccountService tests (physical device):
+```bash
+export DEVICE_ID=$(xcrun xctrace list devices 2>/dev/null | grep -E "iPhone|iPad" | head -1 | sed -n 's/.*(\([^)]*\)).*/\1/p')
+xcodebuild test \
+  -project iOS/meApp.xcodeproj \
+  -scheme meAppTests \
+  -configuration Production \
+  -destination "platform=iOS,id=$DEVICE_ID" \
   -only-testing:meAppTests/AccountServiceTests
 ```
 
@@ -91,5 +133,5 @@ xcodebuild test \
 - New/changed service logic has unit tests.
 - Existing tests updated if behavior changed.
 - No flaky assertions tied to unstable global side effects.
+- Toast/error/alert string assertions use test-local constants (not production string containers).
 - Coverage checked and meets minimum threshold (80%).
-

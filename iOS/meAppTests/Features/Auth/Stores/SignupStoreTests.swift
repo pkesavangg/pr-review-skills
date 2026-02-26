@@ -394,7 +394,22 @@ struct SignupStoreTests {
         await store.createUser()
 
         #expect(notificationService.isAlertVisible == true)
-        #expect(notificationService.alertData?.title == AlertStrings.MaxUsersAlert.title)
+        #expect(notificationService.alertData?.title == SignupStoreTestText.maxUsersAlertTitle)
+        #expect(notificationService.alertData?.message == SignupStoreTestText.maxUsersLogInAndRemoveMessage)
+    }
+
+    @Test("createUser max accounts reached from account switching shows switching message")
+    func createUserMaxAccountsReachedFromAccountSwitching() async {
+        let (store, accountService, notificationService, _) = makeSUT()
+        accountService.signUpResult = .failure(AccountError.maxAccountsReached)
+        store.isFromAccountSwitching = true
+        fillRequiredSignupFields(store)
+
+        await store.createUser()
+
+        #expect(notificationService.isAlertVisible == true)
+        #expect(notificationService.alertData?.title == SignupStoreTestText.maxUsersAlertTitle)
+        #expect(notificationService.alertData?.message == SignupStoreTestText.maxUsersSwitchingMessage)
     }
 
     @Test("createUser badRequest shows email in use toast")
@@ -405,8 +420,8 @@ struct SignupStoreTests {
 
         await store.createUser()
 
-        #expect(notificationService.toastData?.title == ToastStrings.errorCreatingAccount)
-        #expect(notificationService.toastData?.message == ToastStrings.emailInUse)
+        #expect(notificationService.toastData?.title == SignupStoreTestText.errorCreatingAccountTitle)
+        #expect(notificationService.toastData?.message == SignupStoreTestText.emailInUseMessage)
     }
 
     @Test("createUser no internet shows no toast")
@@ -423,12 +438,12 @@ struct SignupStoreTests {
     @Test("createUser api email in use shows mapped toast")
     func createUserEmailInUseAPIToast() async {
         let (store, accountService, notificationService, _) = makeSUT()
-        accountService.signUpResult = .failure(HTTPError.apiError(message: CommonStrings.emailAlreadyInUse, code: 400))
+        accountService.signUpResult = .failure(HTTPError.apiError(message: SignupStoreTestText.emailAlreadyInUse, code: 400))
         fillRequiredSignupFields(store)
 
         await store.createUser()
 
-        #expect(notificationService.toastData?.message == ToastStrings.emailInUse)
+        #expect(notificationService.toastData?.message == SignupStoreTestText.emailInUseMessage)
     }
 
     @Test("createUser server error shows server toast")
@@ -439,7 +454,7 @@ struct SignupStoreTests {
 
         await store.createUser()
 
-        #expect(notificationService.toastData?.message == ToastStrings.serverError)
+        #expect(notificationService.toastData?.message == SignupStoreTestText.serverErrorMessage)
     }
 
     @Test("createUser unknown error shows generic toast")
@@ -450,7 +465,7 @@ struct SignupStoreTests {
 
         await store.createUser()
 
-        #expect(notificationService.toastData?.message == ToastStrings.somethingWentWrong)
+        #expect(notificationService.toastData?.message == SignupStoreTestText.somethingWentWrongMessage)
     }
 
     @Test("moveToNextStep on password triggers createUser")
@@ -502,7 +517,7 @@ struct SignupStoreTests {
 
         store.signupForm.currentWeight.markAsTouched()
         store.signupForm.currentWeight.value = "451"
-        #expect(store.signupForm.getError(for: store.signupForm.currentWeight) == FormErrorMessages.maxWeightKg)
+        #expect(store.signupForm.getError(for: store.signupForm.currentWeight) == SignupStoreTestText.maxWeightKg)
     }
 }
 
@@ -556,4 +571,16 @@ private func waitUntil(
 
 private enum SignupStoreTestError: Error {
     case generic
+}
+
+private enum SignupStoreTestText {
+    static let emailAlreadyInUse = "Email already in use"
+    static let maxUsersAlertTitle = "Maximum Users Reached"
+    static let maxUsersSwitchingMessage = "Please swipe left to remove any unused accounts before attempting to add a new one."
+    static let maxUsersLogInAndRemoveMessage = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
+    static let errorCreatingAccountTitle = "Error creating account."
+    static let emailInUseMessage = "Email address is already in use"
+    static let serverErrorMessage = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
+    static let somethingWentWrongMessage = "Something went wrong. Please try again. If the problem continues, contact customer service."
+    static let maxWeightKg = "value should be less than 450 kg"
 }

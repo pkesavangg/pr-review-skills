@@ -155,7 +155,7 @@ struct LoginStoreTests {
 
         #expect(accountService.logInCalls == 1)
         #expect(notificationService.isToastVisible == true)
-        #expect(notificationService.toastData?.title == ToastStrings.loginError)
+        #expect(notificationService.toastData?.title == LoginStoreTestText.loginErrorTitle)
     }
 
     @Test("logIn network timeout: shows network toast")
@@ -169,7 +169,7 @@ struct LoginStoreTests {
         await store.logIn()
 
         #expect(notificationService.isToastVisible == true)
-        #expect(notificationService.toastData?.title == ToastStrings.networkError)
+        #expect(notificationService.toastData?.title == LoginStoreTestText.networkErrorTitle)
     }
 
     @Test("logIn unknown failure: shows generic toast")
@@ -183,7 +183,7 @@ struct LoginStoreTests {
         await store.logIn()
 
         #expect(notificationService.isToastVisible == true)
-        #expect(notificationService.toastData?.title == ToastStrings.loginError)
+        #expect(notificationService.toastData?.title == LoginStoreTestText.loginErrorTitle)
     }
 
     @Test("logIn max accounts reached: shows max users alert")
@@ -198,7 +198,8 @@ struct LoginStoreTests {
 
         #expect(accountService.logInCalls == 1)
         #expect(notificationService.isAlertVisible == true)
-        #expect(notificationService.alertData?.title == AlertStrings.MaxUsersAlert.title)
+        #expect(notificationService.alertData?.title == LoginStoreTestText.maxUsersAlertTitle)
+        #expect(notificationService.alertData?.message == LoginStoreTestText.maxUsersLoginAndRemoveMessage)
         #expect(notificationService.isLoaderVisible == false)
     }
 
@@ -213,6 +214,8 @@ struct LoginStoreTests {
         #expect(store.resetEmail == "user@example.com")
         #expect(store.isPasswordResetAlertVisible == true)
         #expect(notificationService.isAlertVisible == true)
+        #expect(notificationService.alertData?.title == LoginStoreTestText.passwordResetAlertTitle)
+        #expect(notificationService.alertData?.message == LoginStoreTestText.passwordResetAlertMessage)
         #expect(notificationService.alertData?.inputField?.value == "user@example.com")
     }
 
@@ -319,8 +322,8 @@ struct LoginStoreTests {
             accountService.requestPasswordResetCalls == 1 || store.resetError != nil
         }
 
-        #expect(accountService.requestPasswordResetCalls == 1) // Expectation failed: (accountService.requestPasswordResetCalls → 0) == 1
-        #expect(store.resetError == FormErrorMessages.passwordResetFailed) // Expectation failed: (store.resetError → nil) == (FormErrorMessages.passwordResetFailed → "Failed to send password reset email.")
+        #expect(accountService.requestPasswordResetCalls == 1)
+        #expect(store.resetError == LoginStoreTestText.passwordResetFailed)
     }
 
     @Test("openPrivacy sets URL and browser flag")
@@ -449,7 +452,7 @@ struct LoginStoreTests {
         let (store, _, _, _) = makeSUT()
         store.browserURL = nil
 
-        #expect(store.presentingBrowserURL.absoluteString == URLStrings.baseUrl)
+        #expect(store.presentingBrowserURL.absoluteString == LoginStoreTestText.baseURL)
     }
 
     @Test("callbacks can be assigned and executed")
@@ -520,4 +523,15 @@ private func waitUntil(
 
 private enum AuthStoreTestError: Error {
     case generic
+}
+
+private enum LoginStoreTestText {
+    static let loginErrorTitle = "Login Error"
+    static let networkErrorTitle = "Network Error"
+    static let passwordResetFailed = "Failed to send password reset email."
+    static let passwordResetAlertTitle = "Password Reset"
+    static let passwordResetAlertMessage = "Enter your email"
+    static let maxUsersAlertTitle = "Maximum Users Reached"
+    static let maxUsersLoginAndRemoveMessage = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
+    static let baseURL = "https://greatergoods.com/"
 }

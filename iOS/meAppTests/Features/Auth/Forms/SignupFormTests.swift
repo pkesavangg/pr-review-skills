@@ -29,7 +29,7 @@ struct SignupFormTests {
         form.validate()
 
         #expect(form.formErrors[.passwordMatch] == true)
-        #expect(form.getError(for: form.confirmPassword) == FormErrorMessages.passwordMatch)
+        #expect(form.getError(for: form.confirmPassword) == SignupFormTestText.passwordMatch)
 
         form.confirmPassword.value = "password123"
         form.validate()
@@ -45,7 +45,7 @@ struct SignupFormTests {
         form.email.value = "invalid-email"
 
         #expect(form.email.errors[.email] == true)
-        #expect(form.getError(for: form.email) == FormErrorMessages.email)
+        #expect(form.getError(for: form.email) == SignupFormTestText.email)
     }
 
     @Test("password and confirm password min and max messages")
@@ -55,16 +55,16 @@ struct SignupFormTests {
         form.confirmPassword.markAsTouched()
 
         form.password.value = "12345"
-        #expect(form.getError(for: form.password) == FormErrorMessages.signupPasswordMinLength)
+        #expect(form.getError(for: form.password) == SignupFormTestText.signupPasswordMinLength)
 
         form.confirmPassword.value = "12345"
-        #expect(form.getError(for: form.confirmPassword) == FormErrorMessages.signupPasswordMinLength)
+        #expect(form.getError(for: form.confirmPassword) == SignupFormTestText.signupPasswordMinLength)
 
         form.password.value = String(repeating: "a", count: 51)
-        #expect(form.getError(for: form.password) == FormErrorMessages.passwordMaxLength)
+        #expect(form.getError(for: form.password) == SignupFormTestText.passwordMaxLength)
 
         form.confirmPassword.value = String(repeating: "a", count: 51)
-        #expect(form.getError(for: form.confirmPassword) == FormErrorMessages.passwordMaxLength)
+        #expect(form.getError(for: form.confirmPassword) == SignupFormTestText.passwordMaxLength)
     }
 
     @Test("equal weights produce goal error in lose or gain mode")
@@ -79,7 +79,7 @@ struct SignupFormTests {
 
         #expect(form.hasEqualWeights == true)
         #expect(form.formErrors[.weightEqual] == true)
-        #expect(form.getError(for: form.goalWeight) == FormErrorMessages.valueShouldNotBeEqual)
+        #expect(form.getError(for: form.goalWeight) == SignupFormTestText.valueShouldNotBeEqual)
     }
 
     @Test("current weight error hidden in maintain mode")
@@ -125,11 +125,11 @@ struct SignupFormTests {
 
         form.useMetric.value = false
         form.currentWeight.value = "0"
-        #expect(form.getError(for: form.currentWeight) == FormErrorMessages.minWeightLb)
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.minWeightLb)
 
         form.useMetric.value = true
         form.currentWeight.value = "0"
-        #expect(form.getError(for: form.currentWeight) == FormErrorMessages.minWeightKg)
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.minWeightKg)
     }
 
     @Test("weight unit specific max error")
@@ -140,13 +140,13 @@ struct SignupFormTests {
 
         form.useMetric.value = false
         form.currentWeight.value = "1000"
-        #expect(form.getError(for: form.currentWeight) == FormErrorMessages.maxWeightLb)
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.maxWeightLb)
 
         form.currentWeight.removeValidator(ofType: .maxValue)
         form.currentWeight.addValidator(.maxValue(450.0))
         form.useMetric.value = true
         form.currentWeight.value = "451"
-        #expect(form.getError(for: form.currentWeight) == FormErrorMessages.maxWeightKg)
+        #expect(form.getError(for: form.currentWeight) == SignupFormTestText.maxWeightKg)
     }
 
     @Test("future date validation")
@@ -156,7 +156,7 @@ struct SignupFormTests {
         form.birthday.value = Date().addingTimeInterval(60 * 60 * 24)
 
         #expect(form.birthday.errors[.futureDate] == true)
-        #expect(form.getError(for: form.birthday) == FormErrorMessages.futureDate)
+        #expect(form.getError(for: form.birthday) == SignupFormTestText.futureDate)
     }
 
     @Test("name no whitespace validation")
@@ -166,7 +166,7 @@ struct SignupFormTests {
         form.firstName.value = "   "
 
         #expect(form.firstName.errors[.noWhiteSpace] == true)
-        #expect(form.getError(for: form.firstName) == FormErrorMessages.noWhiteSpace)
+        #expect(form.getError(for: form.firstName) == SignupFormTestText.noWhiteSpace)
     }
 
     @Test("required error uses leaveBlank for input controls")
@@ -177,7 +177,7 @@ struct SignupFormTests {
         form.firstName.validate()
 
         #expect(form.firstName.errors[.required] == true)
-        #expect(form.getError(for: form.firstName) == FormErrorMessages.leaveBlank)
+        #expect(form.getError(for: form.firstName) == SignupFormTestText.leaveBlank)
     }
 
     @Test("required error uses generic required for non-special control")
@@ -188,7 +188,7 @@ struct SignupFormTests {
         form.gender.validate()
 
         #expect(form.gender.errors[.required] == true)
-        #expect(form.getError(for: form.gender) == FormErrorMessages.required)
+        #expect(form.getError(for: form.gender) == SignupFormTestText.required)
     }
 
     @Test("field max length messages for email and zipcode")
@@ -198,10 +198,10 @@ struct SignupFormTests {
         form.zipcode.markAsTouched()
 
         form.email.value = String(repeating: "a", count: 90) + "@example.com"
-        #expect(form.getError(for: form.email) == FormErrorMessages.emailMaxLength)
+        #expect(form.getError(for: form.email) == SignupFormTestText.emailMaxLength)
 
         form.zipcode.value = String(repeating: "1", count: 21)
-        #expect(form.getError(for: form.zipcode) == FormErrorMessages.maxLength(20))
+        #expect(form.getError(for: form.zipcode) == SignupFormTestText.maxLength(20))
     }
 
     @Test("generic max length fallback message")
@@ -211,7 +211,7 @@ struct SignupFormTests {
         control.markAsTouched()
         control.value = "abcd"
 
-        #expect(form.getError(for: control) == FormErrorMessages.maxLength(3))
+        #expect(form.getError(for: control) == SignupFormTestText.maxLength(3))
     }
 
     @Test("goal touched state aggregate")
@@ -274,4 +274,22 @@ struct SignupFormTests {
 
         #expect(emissions >= 3)
     }
+}
+
+private enum SignupFormTestText {
+    static let required = "This field is required"
+    static let leaveBlank = "This field is required"
+    static let email = "must use a valid email"
+    static let emailMaxLength = "email should not exceed 100 characters"
+    static let passwordMaxLength = "password should not exceed 50 characters"
+    static let signupPasswordMinLength = "minimum of 6 characters needed"
+    static let noWhiteSpace = "This field is required"
+    static let futureDate = "future dates not accepted"
+    static let passwordMatch = "both passwords must match"
+    static let valueShouldNotBeEqual = "value should not be equal to starting weight"
+    static let minWeightKg = "value should be greater than 0 kg"
+    static let minWeightLb = "value should be greater than 0 lbs"
+    static let maxWeightKg = "value should be less than 450 kg"
+    static let maxWeightLb = "value should be less than 999 lbs"
+    static func maxLength(_ length: Int) -> String { "maximum value should be \(length)" }
 }
