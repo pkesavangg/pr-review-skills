@@ -1177,7 +1177,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
               let refreshToken = response.refreshToken,
               let expiresAt = response.expiresAt,
               !accessToken.isEmpty,
-              !refreshToken.isEmpty else {
+              !refreshToken.isEmpty,
+              !expiresAt.isEmpty else {
             logger.log(
                 level: .error,
                 tag: tag,
@@ -1185,7 +1186,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                     + "hasAccess=\(response.accessToken?.isEmpty == false), hasRefresh=\(response.refreshToken?.isEmpty == false), "
                     + "hasExpiresAt=\(response.expiresAt?.isEmpty == false)"
             )
-            throw HTTPError.unauthorized
+            throw HTTPError.serverError
         }
 
         // Persist tokens before Account model fields are cleared for SwiftData writes.

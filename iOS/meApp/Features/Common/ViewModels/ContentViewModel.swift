@@ -174,11 +174,25 @@ final class ContentViewModel: ObservableObject {
         let start = DispatchTime.now().uptimeNanoseconds
 
         while accountService.shouldDeferUnauthenticatedLanding() {
+            if Task.isCancelled {
+                return
+            }
             let now = DispatchTime.now().uptimeNanoseconds
             if now - start >= timeoutNanos {
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Startup migration wait timed out after \(timeoutNanos / 1_000_000_000) seconds; proceeding without further deferral of unauthenticated landing."
+                )
                 break
             }
-            try? await Task.sleep(nanoseconds: intervalNanos)
+            do {
+                try await Task.sleep(nanoseconds: intervalNanos)
+            } catch is CancellationError {
+                return
+            } catch {
+                // Ignore unexpected sleep errors and continue timeout-controlled polling.
+            }
         }
     }
     
