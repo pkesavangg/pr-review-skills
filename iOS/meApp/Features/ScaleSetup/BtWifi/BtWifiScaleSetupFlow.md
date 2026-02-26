@@ -85,7 +85,7 @@ Stores/
 
 ---
 
-## Supporting Types (unchanged)
+## Supporting Types
 
 - **Setup**: `BluetoothSetupManager`, `WifiSetupManager`, `ScaleSetupCoordinator`, `SetupValidationService` (in `Setup/`)
 - **Steps**: `BtWifiScaleSetupStep` (enum, all cases)
@@ -111,7 +111,7 @@ Stores/
 ---
 
 ## Step-by-Step Wizard
-`BtWifiScaleSetupStep` and step order are unchanged. Step behaviour is driven by `handleStepChange()` in **PairingFlow**; view mapping is in main store `stepViews`.
+Step behaviour is driven by `handleStepChange()` in **PairingFlow**; view mapping is in main store `stepViews`.
 
 | Index | Step | Driven by (PairingFlow) |
 |------:|------|--------------------------|
@@ -174,4 +174,4 @@ Max user: `MaxUserListView`; delete via `handleDeleteUser` → `deleteUserFromSc
 
 ---
 
-_Last updated: {{25 Feb 2025}}_ 
+_Last updated: 26 Feb 2026_ 
