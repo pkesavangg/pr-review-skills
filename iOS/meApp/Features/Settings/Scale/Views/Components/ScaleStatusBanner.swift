@@ -46,12 +46,8 @@ struct ScaleStatusBanner: View {
 struct SettingsBannerView_Previews: PreviewProvider {
     static var previews: some View {
         VStack(spacing: 18) {
-            ScaleStatusBanner(type: .weightOnly {
-                print("Enable Body Metrics tapped")
-            })
-            ScaleStatusBanner(type: .setupIncomplete {
-                print("Setup Wi-Fi tapped")
-            })
+            ScaleStatusBanner(type: .weightOnly { })
+            ScaleStatusBanner(type: .setupIncomplete { })
             Spacer()
         }
         .padding()

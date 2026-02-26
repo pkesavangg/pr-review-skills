@@ -3,7 +3,6 @@ import Foundation
 import SwiftUI
 
 @MainActor
-// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountServiceProtocol
@@ -85,8 +84,7 @@ final class EntryStore: ObservableObject {
     }
 
     // Save entry with gating, no artificial sleeps, and minimal main-thread churn.
-// swiftlint:disable:next function_body_length
-    func saveEntry() async {
+    func saveEntry() async { // swiftlint:disable:this function_body_length
         guard !isSaving else { return }
         isSaving = true
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))

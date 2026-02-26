@@ -98,7 +98,7 @@ class PermissionsListViewModel: ObservableObject {
 
     private func refreshWifiNetworkName() {
         Task { [weak self] in
-            self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid // Value of type 'any WifiScaleServiceProtocol' has no member 'getConnectedWifiInfo'
+            self?.wifiNetworkName = await self?.wifiScaleService.getConnectedWifiInfo().ssid
         }
     }
 }

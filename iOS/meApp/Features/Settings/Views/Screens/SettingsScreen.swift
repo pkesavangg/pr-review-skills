@@ -10,7 +10,6 @@ import SwiftUI
 // MARK: - SettingsScreen
 // Represents the settings screen of the application.
 // This screen allows users to configure various application settings.
-// swiftlint:disable:next type_body_length
 struct SettingsScreen: View {
     @Environment(\.appTheme) private var theme
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel

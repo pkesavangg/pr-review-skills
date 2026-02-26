@@ -19,4 +19,3 @@ protocol NotificationHelperServiceProtocol: AnyObject {
     func dismissModal()
     func dismissAllModals()
 }
-

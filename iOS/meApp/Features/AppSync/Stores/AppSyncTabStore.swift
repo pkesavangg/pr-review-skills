@@ -22,21 +22,21 @@ final class AppSyncTabStore: ObservableObject {
     private let toastLang = ToastStrings.self
     private let loaderLang = LoaderStrings.self
     private let tag = "AppSyncTabStore"
-    
+
     // Keep strong reference to cancellables if needed in future
     private var cancellables = Set<AnyCancellable>()
 
     // Holds last scanned raw data so Save/Edit actions have access.
     private var lastScannedData: AppSyncEntryMetrics?
-    
+
     private enum ScanIgnoreReason: String {
         case invalidWeight = "invalid_weight"
         case outOfRange = "out_of_range"
     }
-    
+
     private static let minWeightKg: Float = 1.0
     private static let maxWeightKg: Float = 450.0
-    
+
     /// Converts the scanned body-composition data into the format expected by
     /// `AppSyncEntryCardView` and shows the confirmation modal.
     /// - Parameter data: The `BodyCompData` coming from `AppSyncScannerView`.
@@ -44,7 +44,7 @@ final class AppSyncTabStore: ObservableObject {
         logger.log(level: .info, tag: tag, message: "AppSync scan received")
         // Determine preferred unit (kg / lbs) based on active account.
         let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
-        
+
         if let reason = validateScan(data) {
             logger.log(
                 level: .error,
@@ -59,24 +59,24 @@ final class AppSyncTabStore: ObservableObject {
             )
             return
         }
-        
+
         // Stored *tenths-lbs* value used across the codebase.
         let storedWeight = ConversionTools.convertAppsyncDisplayToStored(Double(data.weight))
-        
+
         // Optional body-composition metrics → stored tenths (or nil if the value is 0).
         func toTenths(_ value: Float) -> Int? {
             value > 0 ? Int(round(Double(value) * 10)) : nil
         }
-        
-        let storedBodyFat     = toTenths(data.fat)
-        let storedMuscleMass  = toTenths(data.muscle)
+
+        let storedBodyFat = toTenths(data.fat)
+        let storedMuscleMass = toTenths(data.muscle)
         let storedWaterWeight = toTenths(data.water)
-        
+
         // BMI calculation needs user height (stored in *tenths-inches*).
         let heightString = accountService.activeAccount?.weightSettings?.height ?? "0"
         let storedHeightCm = ConversionTools.convertStoredHeightToCm(Int(round(Double(heightString) ?? 0)))
         let storedBMI = ConversionTools.calculateBMI(weight: Double(data.weight), height: storedHeightCm)
-        
+
         // Build view-model consumed by the confirmation card **and** persist raw data for Save/Edit
         let metrics = AppSyncEntryMetrics(
             storedWeight: storedWeight,
@@ -90,12 +90,17 @@ final class AppSyncTabStore: ObservableObject {
 
         // Persist for Save/Edit actions
         lastScannedData = metrics
-        logger.log(level: .info, tag: tag, message: "AppSync scan parsed successfully. hasWeight=\(storedWeight > 0), hasBMI=\(storedBMI != nil), isMetric=\(isMetric)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "AppSync scan parsed successfully. hasWeight=\(storedWeight > 0), hasBMI=\(storedBMI), isMetric=\(isMetric)"
+        )
         // Present confirmation modal.
         showConfirmationModal(metrics: metrics, tabViewModel: tabViewModel)
     }
-    
+
     // MARK: – Private helpers
+
     private func showConfirmationModal(metrics: AppSyncEntryMetrics, tabViewModel: BottomTabBarViewModel) {
         logger.log(level: .info, tag: tag, message: "Presenting AppSync confirmation modal. isMetric=\(metrics.isMetric)")
         let modal = AppSyncEntryCardView(
@@ -114,13 +119,14 @@ final class AppSyncTabStore: ObservableObject {
                 self?.notificationHelperService.dismissModal()
             }
         )
-        
+
         notificationHelperService.showModal(
             ModalData(presentedView: AnyView(modal), backdropDismiss: false)
         )
     }
 
     // MARK: – Save logic
+
     private func saveScannedEntry() async {
         guard let data = lastScannedData else {
             logger.log(level: .error, tag: tag, message: "AppSync save aborted: missing scanned data")
@@ -177,16 +183,16 @@ final class AppSyncTabStore: ObservableObject {
         notificationHelperService.dismissLoader()
         notificationHelperService.dismissModal()
     }
-    
+
     private func validateScan(_ data: BodyCompData) -> ScanIgnoreReason? {
         if data.weight <= 0 || data.weight.isNaN || data.weight.isInfinite {
             return .invalidWeight
         }
-        
+
         if data.weight < Self.minWeightKg || data.weight > Self.maxWeightKg {
             return .outOfRange
         }
-        
+
         return nil
     }
 }

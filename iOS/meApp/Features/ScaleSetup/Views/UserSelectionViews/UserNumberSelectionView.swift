@@ -50,8 +50,6 @@ struct UserNumberSelectionView: View {
 }
 
 #Preview {
-    UserNumberSelectionView { value in
-        print("Selected U\(value)")
-    }
+    UserNumberSelectionView { _ in }
         .environmentObject(Theme.shared)
 }

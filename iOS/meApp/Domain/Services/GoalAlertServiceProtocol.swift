@@ -9,4 +9,3 @@ protocol GoalAlertServiceProtocol: AnyObject {
     func resetGoalMetFlag()
     func checkSetGoalCard(entryCount: Int) async
 }
-

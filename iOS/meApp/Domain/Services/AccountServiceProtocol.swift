@@ -44,6 +44,9 @@ protocol AccountServiceProtocol {
 
     // MARK: - Account State
 
+    /// Returns true if the app should defer showing the unauthenticated landing (e.g. during restore or initial load).
+    func shouldDeferUnauthenticatedLanding() -> Bool
+
     /// Retrieves the currently active account, if any.
     /// - Returns: The active Account object, or nil if none is active.
     func getActiveAccount() async throws -> Account?
