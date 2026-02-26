@@ -8,15 +8,15 @@ import UserNotifications
 
 /// Manages FCM token operations and notifications
 @MainActor
-class PushNotificationService: NSObject {
+class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     /// Shared instance for accessing the NotificationService throughout the app
     static let shared = PushNotificationService()
     static let fcmTokenDidRefresh = Notification.Name("FCMToken")
-    @Injector var entryService: EntryService
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var accountService: AccountService
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var bluetoothService: BluetoothService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector private var permissionsService: PermissionsServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var notificationService: NotificationHelperServiceProtocol
+    @Injector private var bluetoothService: BluetoothServiceProtocol
     // API repository for push-notification related network calls
     private let apiRepo: PushNotificationRepositoryAPIProtocol = PushNotificationRepositoryAPI()
 
@@ -33,7 +33,7 @@ class PushNotificationService: NSObject {
     private var isProcessingNotification: Bool = false
     private let logger = LoggerService.shared
     private let tag = "PushNotificationService"
-    @Injector private var keychainService: KeychainService
+    @Injector private var keychainService: KeychainServiceProtocol
     private let kvStorage = KvStorageService.shared
 
     // MARK: - Notification Settings

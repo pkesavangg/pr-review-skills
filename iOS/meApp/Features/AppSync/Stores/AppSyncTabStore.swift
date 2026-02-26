@@ -15,11 +15,10 @@ import SwiftUI
 @MainActor
 final class AppSyncTabStore: ObservableObject {
     // MARK: – Dependencies
-
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationHelperService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     private let toastLang = ToastStrings.self
     private let loaderLang = LoaderStrings.self
     private let tag = "AppSyncTabStore"

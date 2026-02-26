@@ -15,25 +15,25 @@ final class ContentViewModel: ObservableObject {
     @Published var contentViewState: ContentViewState = .initializing
     @Published var entries: [Entry] = []
 
-    @Injector var accountService: AccountService
-    @Injector var scaleService: ScaleService
-    @Injector var feedService: FeedService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var accountFlagService: AccountFlagService
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var feedService: FeedServiceProtocol
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var accountFlagService: AccountFlagServiceProtocol
 
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
     private let tag = "ContentViewModel"
 
     init() {
-        accountService.$activeAccount
-            // Treat re-logins of the *same* account as a new value so that the
-            // loading flow gets a chance to run again. Comparing both the
-            // accountId *and* lastActiveTime ensures that we still suppress
-            // redundant emissions (e.g. when tokens refresh) while allowing a
-            // fresh login to pass through.
+        accountService.activeAccountPublisher
+        // Treat re-logins of the *same* account as a new value so that the
+        // loading flow gets a chance to run again. Comparing both the
+        // accountId *and* lastActiveTime ensures that we still suppress
+        // redundant emissions (e.g. when tokens refresh) while allowing a
+        // fresh login to pass through.
             .removeDuplicates { lhs, rhs in
                 lhs?.accountId == rhs?.accountId &&
                     lhs?.lastActiveTime == rhs?.lastActiveTime
@@ -72,7 +72,7 @@ final class ContentViewModel: ObservableObject {
             if loggedIn {
                 // Refresh account data to sync weightless settings and other account data
                 do {
-                    try await accountService.refreshAccount()
+                    let _ = try await accountService.refreshAccount()
                     logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
                 } catch {
                     logger.log(

@@ -8,11 +8,11 @@
 import Foundation
 
 @MainActor
-final class HTTPClient {
+final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
-    @Injector var accountService: AccountService
-    @Injector var logger: LoggerService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationHelperService: NotificationHelperService
+    @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
     @Atomic private var lastToastShownTime: Date?

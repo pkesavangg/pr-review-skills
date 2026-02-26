@@ -15,10 +15,11 @@ import GGBluetoothSwiftPackage
 import SwiftUI
 
 @MainActor
-class BottomTabBarViewModel: ObservableObject { // swiftlint:disable:this type_body_length
-    @Injector var feedService: FeedService
+// swiftlint:disable:next type_body_length
+class BottomTabBarViewModel: ObservableObject {
+    @Injector var feedService: FeedServiceProtocol
     // Inject Bluetooth service to listen for new scale discovery events
-    @Injector var bluetoothService: BluetoothService
+    @Injector var bluetoothService: BluetoothServiceProtocol
     // Inject GoalAlertService to handle goal alert navigation
     @Injector var goalAlertService: GoalAlertService
     // Publisher-driven sheet presentation for newly discovered scales
@@ -46,16 +47,16 @@ class BottomTabBarViewModel: ObservableObject { // swiftlint:disable:this type_b
 
     @Injector private var healthKitService: HealthKitService
     @Injector var notificationService: NotificationHelperService
-    @Injector private var logger: LoggerService
+    @Injector private var logger: LoggerServiceProtocol
     // New dependencies for Set Goal Card logic
-    @Injector private var entryService: EntryService
-    @Injector private var accountService: AccountService
-    @Injector private var scaleService: ScaleService
+    @Injector private var entryService: EntryServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var scaleService: ScaleServiceProtocol
     // New dependency to evaluate permission status
-    @Injector private var permissionsService: PermissionsService
+    @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var pushNotificationService: PushNotificationService
-    @Injector private var integrationService: IntegrationsService
-
+    @Injector private var integrationService: IntegrationServiceProtocol
+    
     // MARK: - Permission Disabled Alert Tracking
 
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
@@ -159,7 +160,7 @@ class BottomTabBarViewModel: ObservableObject { // swiftlint:disable:this type_b
             .store(in: &cancellables)
 
         // Update the app sync tab based on the app sync scale defined in the paired scale list
-        scaleService.$scales
+        scaleService.scalesPublisher
             .map { scales in
                 scales.contains { $0.bathScale?.scaleType == ScaleSourceType.appsync.rawValue }
             }
@@ -173,7 +174,7 @@ class BottomTabBarViewModel: ObservableObject { // swiftlint:disable:this type_b
             .store(in: &cancellables)
 
         // Observe activeAccount changes to dismiss modals when user logs out
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
                 guard let self else { return }

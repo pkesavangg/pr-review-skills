@@ -15,13 +15,13 @@ import UIKit
 /// A store to manage user settings and account actions.
 @MainActor
 class HelpStore: ObservableObject {
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
-    @Injector var feedService: FeedService
-    @Injector var scaleService: ScaleService
-    @Injector var bluetoothService: BluetoothService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var feedService: FeedServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
     var kvStorage = KvStorageService.shared
     var theme = Theme.shared
     

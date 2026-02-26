@@ -7,7 +7,7 @@
 import Foundation
 
 @MainActor
-class NotificationHelperService: ObservableObject {
+class NotificationHelperService: NotificationHelperServiceProtocol, ObservableObject {
     public static let shared = NotificationHelperService()
     @Published var alertData: AlertModel?
     @Published var toastData: ToastModel?

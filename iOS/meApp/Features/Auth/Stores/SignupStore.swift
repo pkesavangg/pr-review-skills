@@ -17,8 +17,8 @@ import SwiftUI
 @MainActor
 final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
-    @Injector var accountService: AccountService
-    @Injector var logger: LoggerService
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     var commonLang = CommonStrings.self

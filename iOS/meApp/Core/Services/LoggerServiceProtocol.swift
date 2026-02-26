@@ -72,3 +72,41 @@ protocol LoggerServiceProtocol {
     ///  - Throws: Error if sending fails
     func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry], version: String) async throws
 }
+
+extension LoggerServiceProtocol {
+    func log(level: LogLevel, tag: String, message: String, function: StaticString = #function, line: UInt = #line) {
+        log(
+            level: level,
+            tag: tag,
+            message: message,
+            data: nil,
+            function: function,
+            line: line,
+            accountId: nil
+        )
+    }
+
+    func log(level: LogLevel, tag: String, message: String, data: Any?, function: StaticString = #function, line: UInt = #line) {
+        log(
+            level: level,
+            tag: tag,
+            message: message,
+            data: data,
+            function: function,
+            line: line,
+            accountId: nil
+        )
+    }
+
+    func sendLogsToServer() async throws {
+        try await sendLogsToServer(accountId: nil, version: AppInfo.appVersion)
+    }
+
+    func sendLogsToServer(accountId: String?) async throws {
+        try await sendLogsToServer(accountId: accountId, version: AppInfo.appVersion)
+    }
+
+    func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry]) async throws {
+        try await sendScaleLogsToServer(deviceLogs: deviceLogs, version: AppInfo.appVersion)
+    }
+}

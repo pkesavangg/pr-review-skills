@@ -14,7 +14,7 @@ import SwiftUI
 /// The behaviour mirrors the legacy `goalalert.service.ts` from the Ionic/Angular
 /// application but is adapted for SwiftUI + the existing notification helper layer.
 @MainActor
-final class GoalAlertService: ObservableObject {
+final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     static let shared = GoalAlertService()
     private init() {}
 
