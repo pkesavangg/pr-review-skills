@@ -132,17 +132,18 @@ class BottomTabBarViewModel: ObservableObject { // swiftlint:disable:this type_b
             .store(in: &cancellables)
 
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(promptDelay * 1_000_000_000))
-            await self?.checkAppleHealthIntegrationStatus()
-            if self?.selectedTab == .dash {
-                await self?.checkSetGoalCardPrompt()
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(self.promptDelay * 1_000_000_000))
+            await self.checkAppleHealthIntegrationStatus()
+            if self.selectedTab == .dash {
+                await self.checkSetGoalCardPrompt()
             }
-            self?.evaluateAndShowPermissionAlert()
-            let notificationsRequired = self?.permissionsService.requiredCategories.contains(.notifications) ?? false
+            self.evaluateAndShowPermissionAlert()
+            let notificationsRequired = self.permissionsService.requiredCategories.contains(.notifications)
             if notificationsRequired {
-                await self?.pushNotificationService.setupPushNotifications()
+                await self.pushNotificationService.setupPushNotifications()
             } else {
-                await self?.pushNotificationService.updateDeviceInfo()
+                await self.pushNotificationService.updateDeviceInfo()
             }
         }
 
@@ -667,8 +668,8 @@ class BottomTabBarViewModel: ObservableObject { // swiftlint:disable:this type_b
         guard accountService.activeAccount != nil else { return }
 
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(promptDelay * 1_000_000_000))
             guard let self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(self.promptDelay * 1_000_000_000))
             guard self.selectedTab == .dash else { return }
             guard self.accountService.activeAccount != nil else { return }
 

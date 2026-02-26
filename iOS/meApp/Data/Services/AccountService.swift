@@ -166,7 +166,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
 
         // Helper to perform the actual logout work (API + local updates)
-        let performLogout: @Sendable () async throws -> Void = { [weak self] in
+        let performLogout: () async throws -> Void = { [weak self] in
             guard let self else { return }
             try await self.executeLogout(on: localAccount, isAutoLogout: isAutoLogout, skipStateUpdate: false)
         }

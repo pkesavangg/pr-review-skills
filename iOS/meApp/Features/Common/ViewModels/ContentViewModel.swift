@@ -83,17 +83,12 @@ final class ContentViewModel: ObservableObject {
                 let feedService = self.feedService
                 let bluetoothService = self.bluetoothService
 
-                // Heavy work off-main to avoid UI jank
-                let entries: [Entry] = await Task.detached(priority: .userInitiated) {
-                    // Migration runs before sync in the main initialization task above,
-                    // so opStack entries are available for the first sync
-                    await entryService.migrateFromSQLiteIfNeeded()
-                    await entryService.syncAllEntriesWithRemote()
-                    await entryService.loadDashboardData()
-                    let allEntries = (try? await entryService.getAllEntries()) ?? []
-                    await feedService.fetchFeedItems()
-                    return allEntries
-                }.value
+                // Migration runs before sync so opStack entries are available for first sync.
+                await entryService.migrateFromSQLiteIfNeeded()
+                await entryService.syncAllEntriesWithRemote()
+                await entryService.loadDashboardData()
+                await feedService.fetchFeedItems()
+                let entries = (try? await entryService.getAllEntries()) ?? []
 
                 // UI-affecting calls back on main actor
                 self.entries = entries

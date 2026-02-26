@@ -63,7 +63,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
                             let accountChanged = self.lastAccountId != nil && self.lastAccountId != accountId
                             self.lastAccountId = accountId
 
-                            if accountChanged, let accountId = accountId {
+                            if accountChanged, accountId != nil {
                                 try? await self.clearLastSyncTimestamp()
                                 await self.syncAllEntriesWithRemote()
                                 await self.loadDashboardData()
@@ -77,13 +77,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
 
     // MARK: - Helper
 
-    private func getAccountId() async throws -> String {
-        try await MainActor.run {
-            guard let accountId = accountService.activeAccount?.accountId else {
-                throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
-            }
-            return accountId
+    private func getAccountId() throws -> String {
+        guard let accountId = accountService.activeAccount?.accountId else {
+            throw NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
         }
+        return accountId
     }
 
     /// Reads goal initial weight on MainActor to avoid crossing SwiftData model objects between executors.
@@ -105,9 +103,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     func clearAllData() async {
         do {
             try await localRepo.deleteAllEntries()
-            await logger.log(level: .info, tag: tag, message: "Cleared all local entry data")
+            logger.log(level: .info, tag: tag, message: "Cleared all local entry data")
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
                 message: "Failed to clear local entry data: \(error.localizedDescription)"
@@ -117,7 +115,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
 
     /// Clears the last sync timestamp for the current user.
     func clearLastSyncTimestamp() async throws {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         try await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
     }
 
@@ -129,7 +127,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
         let entrySource = entry.scaleEntry?.source ?? "manual"
         do {
             try await localRepo.saveEntry(entry)
-            await logger.log(
+            logger.log(
                 level: .info,
                 tag: tag,
                 message: "New entry saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource)",
@@ -142,7 +140,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
             await syncUnsyncedEntries()
             await checkGoalAlerts()
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
                 message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource), error=\(error.localizedDescription)" // swiftlint:disable:this line_length
@@ -152,12 +150,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     }
 
     func saveNewEntries(_ entries: [Entry]) async throws {
-        await logger.log(level: .info, tag: tag, message: "Bulk entry save requested: count=\(entries.count)")
+        logger.log(level: .info, tag: tag, message: "Bulk entry save requested: count=\(entries.count)")
         do {
             for entry in entries {
                 entry.isSynced = false
                 try await localRepo.saveEntry(entry)
-                await logger.log(
+                logger.log(
                     level: .info,
                     tag: tag,
                     message: "Bulk entry item saved locally: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)",
@@ -166,10 +164,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
                 try await handleEntryAdded(entry)
             }
 
-            await logger.log(level: .info, tag: tag, message: "Bulk entry save completed: count=\(entries.count)")
+            logger.log(level: .info, tag: tag, message: "Bulk entry save completed: count=\(entries.count)")
             await syncUnsyncedEntries()
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
                 message: "Bulk entry save failed: count=\(entries.count), error=\(error.localizedDescription)"
@@ -183,18 +181,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
         deletedEntry.operationType = OperationType.delete.rawValue
         deletedEntry.isSynced = false
 
-        await logger.log(level: .info, tag: tag, message: "Entry delete requested: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)")
+        logger.log(level: .info, tag: tag, message: "Entry delete requested: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)")
         do {
             try await localRepo.updateEntry(deletedEntry)
             try await handleEntryDeleted(deletedEntry)
             await syncUnsyncedEntries()
-            await logger.log(
+            logger.log(
                 level: .info,
                 tag: tag,
                 message: "Entry delete queued for sync: entryId=\(entry.id.uuidString), accountId=\(entry.accountId)"
             )
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
                 message: "Entry delete failed: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), error=\(error.localizedDescription)"
@@ -206,7 +204,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     // MARK: - Query
 
     func getAllEntries() async throws -> [Entry] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
     }
 
@@ -214,43 +212,43 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     /// Use this instead of getAllEntries() when you only need to read entry data
     /// to avoid blocking the main thread with toOperationDTO() calls.
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
     }
 
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.checkEntryTimestampExists(forUserId: accountId, entryTimestamp: entryTimestamp)
     }
 
     func getEntryCount() async throws -> Int {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchEntryCount(forUserId: accountId)
     }
 
     func getOldestEntry() async throws -> Entry? {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchOldestEntry(forUserId: accountId)
     }
 
     func getLatestEntry() async throws -> Entry? {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchLatestEntry(forUserId: accountId)
     }
 
     func getEntries(lastNDays: Int) async throws -> [Entry] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         return try await localRepo.fetchEntries(lastNDays: lastNDays, userId: accountId)
     }
 
     func getEntries(forMonth month: String) async throws -> [Entry] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forMonth: month, userId: accountId)
         return entries.filter { $0.operationType == OperationType.create.rawValue }
     }
 
     func getEntries(forDay day: String) async throws -> [Entry] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forDay: day, userId: accountId)
         return entries.filter { $0.operationType == OperationType.create.rawValue }
     }
@@ -258,7 +256,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     // MARK: - Month/History
 
     func getMonthsAll() async throws -> [HistoryMonth] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         // Group by YYYY-MM prefix, converting UTC timestamps to local timezone
         let grouped = Dictionary(grouping: entries) { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) }
@@ -285,7 +283,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     }
 
     func getMonthYear() async throws -> [HistoryMonth] {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         // Get entries from last 365 days (matching TypeScript: entry."entryTimestamp" >= getIntervalDatetimeIsoString(365))
         let calendar = Calendar.current
@@ -329,11 +327,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     }
 
     func getProgress() async throws -> Progress {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
 
         // Use SwiftDataWorker for thread-safe access to SwiftData relationships
         // All relationship data is extracted within the worker's isolated context
-        let worker = await SwiftDataWorker(modelContainer: PersistenceController.shared.container)
+        let worker = SwiftDataWorker(modelContainer: PersistenceController.shared.container)
         let fetchResult = try await worker.fetchProgressData(accountId: accountId)
 
         guard let latestData = fetchResult.latestEntry else {
@@ -418,7 +416,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
 
         let yearAvgWeight = Int(round(initYearWeight))
         let yearStartDTO = try makeYearDTO(
-            key: yearKey, avgWeight: yearAvgWeight, accountId: await getAccountId()
+            key: yearKey, avgWeight: yearAvgWeight, accountId: try getAccountId()
         )
 
         return (delta, yearStartDTO, yearKey)
@@ -477,7 +475,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     }
 
     func getStreak() async throws -> Streak {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
         let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
         let calendar = Calendar.current
 
@@ -559,18 +557,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     /// This method migrates data for ALL users found in the opStack tables
     func migrateFromSQLiteIfNeeded() async {
         guard migrationService.isMigrationNeeded() else {
-            await logger.log(level: .info, tag: tag, message: "No SQLite migration needed")
+            logger.log(level: .info, tag: tag, message: "No SQLite migration needed")
             return
         }
 
         do {
-            await logger.log(level: .info, tag: tag, message: "Starting SQLite migration for all users in opStack")
+            logger.log(level: .info, tag: tag, message: "Starting SQLite migration for all users in opStack")
             // Migrate data for all users found in the opStack tables
             let migratedData = try await migrationService.migrateAllUsersEntryData()
 
             // Update dashboard data after migration (only for current active user if available)
             do {
-                let accountId = try await getAccountId()
+                let accountId = try getAccountId()
                 if migratedData[accountId] != nil {
                     await loadDashboardData()
                     await updateProgressAndStreakInternal()
@@ -616,12 +614,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     private func performSync() async {
         let accountId: String
         do {
-            accountId = try await getAccountId()
+            accountId = try getAccountId()
         } catch {
             logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available")
             return
         }
-        await logger.log(level: .info, tag: tag, message: "Full entry sync started: accountId=\(accountId)")
+        logger.log(level: .info, tag: tag, message: "Full entry sync started: accountId=\(accountId)")
 
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
@@ -646,7 +644,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 await checkGoalAlerts()
             }
-            await logger.log(
+            logger.log(
                 level: .info,
                 tag: tag,
                 message: """
@@ -656,7 +654,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
             )
 
         } catch {
-            await logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
         }
     }
 
@@ -722,13 +720,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
                     }
                 }
             }
-            await logger.log(
+            logger.log(
                 level: .info,
                 tag: tag,
                 message: "Unsynced entry push completed for accountId=\(accountId): createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)" // swiftlint:disable:this line_length
             )
             if failedSyncCount > 0 {
-                await logger.log(
+                logger.log(
                     level: .error,
                     tag: tag,
                     message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), firstFailure=\(firstFailureReason ?? "unknown")" // swiftlint:disable:this line_length
@@ -752,7 +750,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
         isSyncing = true
         defer { isSyncing = false }
 
-        guard let accountId = try? await getAccountId() else {
+        guard let accountId = try? getAccountId() else {
             logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: No account ID available")
             return
         }
@@ -781,7 +779,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
             await updateProgressAndStreakInternal()
             await loadDashboardData()
         } catch {
-            await logger.log(
+            logger.log(
                 level: .error,
                 tag: tag,
                 message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription)"
@@ -874,7 +872,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
                         try? await handleEntryDeleted(localEntry)
                     } else {
                         await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
-                        var updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                        let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
                         updated.id = localEntry.id
                         try? await localRepo.updateEntry(updated)
                     }
@@ -1150,7 +1148,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     /// Update progress and streak based on current entries
     private func updateProgressAndStreakInternal() async {
         do {
-            let accountId = try await getAccountId()
+            let accountId = try getAccountId()
             // Use count instead of fetching all entries (avoids loading 3660+ Entry objects)
             let totalEntries = try await localRepo.fetchEntryCount(forUserId: accountId)
             let streakValue = try await getStreak()
@@ -1230,12 +1228,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     /// Uses DTOs and background aggregation to avoid blocking main thread
     func loadDashboardData() async {
         do {
-            let accountId = try await getAccountId()
+            let accountId = try getAccountId()
 
             let dtos = try await getAllEntriesAsDTO()
             let totalEntries = dtos.count
             if lastLoggedEntryCountByAccount[accountId] != totalEntries {
-                await logger.log(
+                logger.log(
                     level: .info,
                     tag: tag,
                     message: "Account total create type entries updated: accountId=\(accountId), totalEntries=\(totalEntries)"
@@ -1253,13 +1251,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
             dailySummaries = dailyData
             monthlySummaries = monthlyData
         } catch {
-            await logger.log(level: .error, tag: tag, message: "loadDashboardData failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "loadDashboardData failed: \(error.localizedDescription)")
         }
     }
 
     /// Handles entry addition by updating affected day and month summaries
     func handleEntryAdded(_ entry: Entry) async throws {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
 
         logger.log(level: .debug, tag: tag, message: "Handling entry addition: \(entry.id)")
 
@@ -1309,7 +1307,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
     /// Used when @Model Entry is not safely accessible after async boundary (R7).
     /// Skips integration cleanup since that happens at original user-delete time.
     private func handleEntryDeleted(entryId: UUID, entryTimestamp: String) async throws {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
 
         logger.log(level: .debug, tag: tag, message: "Handling entry deletion (sync): \(entryId)")
 
@@ -1353,7 +1351,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
 
     /// Handles entry deletion by updating affected day and month summaries
     func handleEntryDeleted(_ entry: Entry) async throws {
-        let accountId = try await getAccountId()
+        let accountId = try getAccountId()
 
         logger.log(level: .debug, tag: tag, message: "Handling entry deletion: \(entry.id)")
 

@@ -962,7 +962,7 @@ class DashboardStore: ObservableObject {
 
         // Refresh account data first to ensure we have latest dashboard settings
         // This ensures changes made during scale setup are reflected
-        try? await accountService.refreshAccount()
+        _ = try? await accountService.refreshAccount()
 
         // Determine dashboard type based on account dashboardType
         let dashboardType = determineDashboardTypeFromAccount()
