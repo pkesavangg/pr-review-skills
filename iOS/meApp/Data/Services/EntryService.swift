@@ -9,7 +9,7 @@ import SwiftData
 @MainActor
 final class EntryService: EntryServiceProtocol, ObservableObject {  // swiftlint:disable:this type_body_length file_length
     @Injector var logger: LoggerServiceProtocol
-    @Injector var goalAlertService: GoalAlertService
+    @Injector var goalAlertService: GoalAlertServiceProtocol
     @Injector var integrationService: IntegrationServiceProtocol
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()

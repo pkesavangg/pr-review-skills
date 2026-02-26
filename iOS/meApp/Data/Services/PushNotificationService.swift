@@ -15,7 +15,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     @Injector var entryService: EntryServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
     // API repository for push-notification related network calls
     private let apiRepo: PushNotificationRepositoryAPIProtocol = PushNotificationRepositoryAPI()
