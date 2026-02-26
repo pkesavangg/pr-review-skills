@@ -63,9 +63,6 @@ protocol AccountServiceProtocol {
 
     // MARK: - Account Updates
 
-    /// Updates the entire account object in the data store and/or backend.
-    /// - Parameter updatedAccount: The updated Account object.
-    func updateAccount(_ updatedAccount: Account) async throws -> Account
     func createGoal(_ goal: Goal) async throws -> Account
 
     /// Updates the user's profile information.
@@ -152,10 +149,6 @@ protocol AccountServiceProtocol {
     /// - Parameter accountId: The ID of the account to refresh. If nil, refreshes the currently active account.
     /// - Returns: The refreshed Account object.
     func refreshAccount(accountId: String?) async throws -> Account
-
-    /// Clears all offline data for the specified account.
-    /// - Parameter account: The account whose offline data should be cleared.
-    func clearOfflineData(for account: Account) async throws
 
     /// Deletes all accounts stored locally on the device.
     func logOutAllAccounts() async throws
