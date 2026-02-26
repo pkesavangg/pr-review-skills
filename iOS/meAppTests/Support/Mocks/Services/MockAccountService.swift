@@ -11,12 +11,20 @@ final class MockAccountService: AccountServiceProtocol {
     var allAccountsPublisher: Published<[Account]>.Publisher { $allAccounts }
 
     var logInResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("logIn"))
+    var signUpResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("signUp"))
+    var createGoalResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("createGoal"))
     var requestPasswordResetResult: Result<Void, Error> = .success(())
 
     private(set) var logInCalls = 0
+    private(set) var signUpCalls = 0
+    private(set) var createGoalCalls = 0
     private(set) var requestPasswordResetCalls = 0
     private(set) var lastLoginEmail: String?
     private(set) var lastLoginPassword: String?
+    private(set) var lastSignUpEmail: String?
+    private(set) var lastSignUpPassword: String?
+    private(set) var lastSignUpProfile: Profile?
+    private(set) var lastCreatedGoal: Goal?
     private(set) var lastPasswordResetEmail: String?
 
     func seedAccounts(_ accounts: [Account], active: Account? = nil) {
@@ -25,7 +33,14 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func signUp(email: String, password: String, profile: Profile) async throws -> Account {
-        throw UnexpectedCallError.methodCalled("signUp")
+        signUpCalls += 1
+        lastSignUpEmail = email
+        lastSignUpPassword = password
+        lastSignUpProfile = profile
+
+        let account = try signUpResult.get()
+        activeAccount = account
+        return account
     }
 
     func logIn(email: String, password: String) async throws -> Account {
@@ -79,7 +94,9 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func createGoal(_ goal: Goal) async throws -> Account {
-        throw UnexpectedCallError.methodCalled("createGoal")
+        createGoalCalls += 1
+        lastCreatedGoal = goal
+        return try createGoalResult.get()
     }
 
     func updateProfile(_ profile: Profile, canSaveOffline: Bool) async throws -> Account {

@@ -184,6 +184,7 @@ final class LoginStore: ObservableObject {
             )
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
+                notificationService.dismissLoader()
                 return
             }
             handleLoginError(error)
