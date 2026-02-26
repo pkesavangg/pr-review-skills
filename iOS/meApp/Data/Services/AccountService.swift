@@ -268,7 +268,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         let fromAccountId = activeAccount?.accountId ?? "nil"
         let targetAccountId = account.accountId
         // Check network connectivity before switching
-        guard networkMonitor.isConnected else {
+        guard networkMonitor.getCurrentConnectionStatus(),
+              await networkMonitor.verifyNetworkAvailability(baseURL: AppEnvironment.apiBaseURL) else {
             logger.log(level: .error, tag: tag, message: "Switch account blocked: no internet. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
             throw HTTPError.noInternet
         }

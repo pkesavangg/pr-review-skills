@@ -149,6 +149,9 @@ class AccountsStore: ObservableObject {
 
         Task {
             notificationService.showLoader(LoaderModel(text: "Switching account..."))
+            defer {
+                notificationService.dismissLoader()
+            }
             do {
                 try await accountService.switchAccount(to: account)
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountId)")
@@ -162,7 +165,6 @@ class AccountsStore: ObservableObject {
                     notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
                 }
             }
-            notificationService.dismissLoader()
         }
     }
 
