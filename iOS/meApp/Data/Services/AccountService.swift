@@ -26,6 +26,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
     @Published var activeAccount: Account? = nil
     @Published var allAccounts: [Account] = []
+    @Published private(set) var isIonicMigrationInProgress: Bool = false
 
     var alertLang =  AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
@@ -55,10 +56,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 let _ = try await refreshAllAccounts()
                 if activeAccount == nil {
                     /// migrate from ionic app if needed
+                    isIonicMigrationInProgress = true
+                    defer { isIonicMigrationInProgress = false }
                     try await migrateFromIonicAppIfNeeded()
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Error: \(error.localizedDescription)")
+                isIonicMigrationInProgress = false
             }
             $activeAccount
                 .sink(receiveValue: { data in
@@ -98,7 +102,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-    let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
+            let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
                 try await saveAccountClearingTokens(account)
@@ -136,7 +140,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 activeAccount = nil
             }
             
-   let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
+            let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
                 try await saveAccountClearingTokens(account)
@@ -1151,6 +1155,18 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
     }
 
+    /// Returns true when app startup should keep showing loading instead of landing.
+    /// This prevents a landing-screen flash while Ionic migration is still pending/running.
+    func shouldDeferUnauthenticatedLanding() -> Bool {
+        if isIonicMigrationInProgress {
+            return true
+        }
+        if activeAccount != nil {
+            return false
+        }
+        return migrationService.isMigrationNeeded()
+    }
+
     // MARK: - Private Helpers
     /// Prepares an authenticated account from API response, either updating an existing account or creating a new one.
     /// - Parameters:
@@ -1158,6 +1174,25 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     ///   - existingAccount: An optional existing account to update, or nil to create a new account
     /// - Returns: The prepared account with authentication state set
     private func prepareAuthenticatedAccount(from response: AccountResponse, existingAccount: Account?) async throws -> Account {
+        guard let accessToken = response.accessToken,
+              let refreshToken = response.refreshToken,
+              let expiresAt = response.expiresAt,
+              !accessToken.isEmpty,
+              !refreshToken.isEmpty else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Auth response missing required tokens for accountId=\(response.account.id). "
+                    + "hasAccess=\(response.accessToken?.isEmpty == false), hasRefresh=\(response.refreshToken?.isEmpty == false), "
+                    + "hasExpiresAt=\(response.expiresAt?.isEmpty == false)"
+            )
+            throw HTTPError.unauthorized
+        }
+
+        // Persist tokens before Account model fields are cleared for SwiftData writes.
+        let tokens = Tokens(accessToken: accessToken, refreshToken: refreshToken, expiresAt: expiresAt)
+        keychainService.setTokens(tokens, for: response.account.id)
+
         let account: Account
         if let existing = existingAccount {
             // Update existing account in place

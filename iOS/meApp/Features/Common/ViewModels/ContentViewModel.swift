@@ -64,7 +64,11 @@ final class ContentViewModel: ObservableObject {
         Task {
             logger.log(level: .info, tag: tag, message: "App initialization started")
             contentViewState = .initializing
-            let loggedIn = await checkLoginStatus()
+            var loggedIn = await checkLoginStatus()
+            if !loggedIn {
+                await waitForStartupMigrationIfNeeded()
+                loggedIn = await checkLoginStatus()
+            }
             if loggedIn {
                 // Refresh account data to sync weightless settings and other account data
                 do {
@@ -160,6 +164,22 @@ final class ContentViewModel: ObservableObject {
     func updateViewState(isLoggedIn: Bool) async {
         contentViewState = isLoggedIn ? .dashboard : .landing
         logger.log(level: .info, tag: tag, message: "Updated content view state. isLoggedIn=\(isLoggedIn), state=\(contentViewState)")
+    }
+
+    private func waitForStartupMigrationIfNeeded() async {
+        guard accountService.shouldDeferUnauthenticatedLanding() else { return }
+
+        let timeoutNanos: UInt64 = 15_000_000_000
+        let intervalNanos: UInt64 = 300_000_000
+        let start = DispatchTime.now().uptimeNanoseconds
+
+        while accountService.shouldDeferUnauthenticatedLanding() {
+            let now = DispatchTime.now().uptimeNanoseconds
+            if now - start >= timeoutNanos {
+                break
+            }
+            try? await Task.sleep(nanoseconds: intervalNanos)
+        }
     }
     
     // MARK: - Account Flags
