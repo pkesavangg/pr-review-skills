@@ -9,26 +9,6 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Snapshot of account settings for consolidated subscription
-/// Used to detect changes across multiple settings in a single subscription
-private struct AccountSettingsSnapshot: Equatable {
-    let weightUnit: WeightUnit?
-    let isWeightlessOn: Bool?
-    let weightlessWeight: Double?
-    let goalWeight: Double?
-    let initialWeight: Double?
-    let goalType: GoalType?
-
-    init(from account: Account?) {
-        self.weightUnit = account?.weightSettings?.weightUnit
-        self.isWeightlessOn = account?.weightlessSettings?.isWeightlessOn
-        self.weightlessWeight = account?.weightlessSettings?.weightlessWeight
-        self.goalWeight = account?.goalSettings?.goalWeight
-        self.initialWeight = account?.goalSettings?.initialWeight
-        self.goalType = account?.goalSettings?.goalType
-    }
-}
-
 /// Simplified DashboardStore focused on coordination between managers
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
@@ -40,6 +20,10 @@ class DashboardStore: ObservableObject {
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService
     @Injector private var entryService: EntryService
+    
+    // MARK: - Formatter and Cache Services
+    private let formatter: DashboardFormatterProtocol
+    private let cacheManager: DashboardCacheManagerProtocol
 
     // MARK: - Centralized State
     @Published var state = DashboardState()
@@ -100,7 +84,6 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-    static let allowedNumericCharacters = CharacterSet(charactersIn: "0123456789.-")
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     let graphManager: DashboardGraphManager
@@ -190,7 +173,14 @@ class DashboardStore: ObservableObject {
         !streakItemsToShow.isEmpty || !state.ui.isGoalCardRemoved
     }
     // MARK: - Initialization
-    init() {
+    init(
+        formatter: DashboardFormatterProtocol? = nil,
+        cacheManager: DashboardCacheManagerProtocol? = nil
+    ) {
+        // Initialize formatter and cache services
+        self.formatter = formatter ?? DashboardFormatter()
+        self.cacheManager = cacheManager ?? DashboardCacheManager()
+        
         // Initialize managers without default metrics to prevent flash of stale data
         // Defaults will be set only if API load fails
         self.metricsManager = DashboardMetricsManager(skipInitialSetup: true)
@@ -237,7 +227,15 @@ class DashboardStore: ObservableObject {
 
     /// Lightweight initializer that avoids subscriptions and heavy async initialization.
     /// Use this for ephemeral contexts (e.g., Metric Info sheet without full dashboard state).
-    init(lightweight: Bool) {
+    init(
+        lightweight: Bool,
+        formatter: DashboardFormatterProtocol? = nil,
+        cacheManager: DashboardCacheManagerProtocol? = nil
+    ) {
+        // Initialize formatter and cache services
+        self.formatter = formatter ?? DashboardFormatter()
+        self.cacheManager = cacheManager ?? DashboardCacheManager()
+        
         // Initialize managers
         self.metricsManager = DashboardMetricsManager()
         self.graphManager = DashboardGraphManager()
@@ -479,127 +477,50 @@ class DashboardStore: ObservableObject {
     }
 
     // MARK: - Cached Operations (Performance Optimization)
-    // Cache for continuousOperations to prevent repeated data manager calls
-    private var _cachedContinuousOperations: [BathScaleWeightSummary] = []
-    private var _cachedContinuousPeriod: TimePeriod?
-
-    // Cache for label date range operations to avoid repeated O(n) filters
-    private var _cachedLabelDateRangeOps: [BathScaleWeightSummary] = []
-    private var _cachedLabelDateRangePeriod: TimePeriod?
-    private var _cachedLabelDateRangeScrollPos: Date?
-
+    
     /// Cached continuous operations - only recalculates when period changes or cache is invalidated
     var continuousOperations: [BathScaleWeightSummary] {
-        // Return cache if valid for current period
-        if _cachedContinuousPeriod == state.graph.selectedPeriod && !_cachedContinuousOperations.isEmpty {
-            return _cachedContinuousOperations
+        return cacheManager.getContinuousOperations(
+            for: state.graph.selectedPeriod
+        ) {
+            dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
         }
-        // Recalculate and cache
-        _cachedContinuousOperations = dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
-        _cachedContinuousPeriod = state.graph.selectedPeriod
-        return _cachedContinuousOperations
     }
 
     /// Invalidates the continuousOperations cache - call when data changes
     func invalidateContinuousOperationsCache() {
-        _cachedContinuousOperations = []
-        _cachedContinuousPeriod = nil
-        // Also invalidate dependent caches
-        cachedVisibleOperations = []
-        cachedChartSeriesData = nil
-        // Invalidate label date range cache
-        _cachedLabelDateRangeOps = []
-        _cachedLabelDateRangePeriod = nil
-        _cachedLabelDateRangeScrollPos = nil
+        cacheManager.invalidateContinuousOperationsCache()
     }
 
     var visibleOperations: [BathScaleWeightSummary] {
-        // During scrolling, be very aggressive about using cache
-        // The slight inaccuracy is worth the CPU savings
-        if state.graph.isScrolling && !cachedVisibleOperations.isEmpty {
-            let timeSinceLastCache = Date().timeIntervalSince(lastVisibleOperationsCacheTime)
-            // Use cache for up to 250ms during scrolling to significantly reduce CPU
-            if timeSinceLastCache < 0.25 {
-                return cachedVisibleOperations
-            }
+        return cacheManager.getVisibleOperations(
+            isScrolling: state.graph.isScrolling
+        ) {
+            graphManager.getVisibleOperations(from: continuousOperations)
         }
-
-        // Get fresh result from graph manager (which uses binary search)
-        let visible = graphManager.getVisibleOperations(from: continuousOperations)
-
-        // Update cache
-        cachedVisibleOperations = visible
-        lastVisibleOperationsCacheTime = Date()
-
-        return visible
     }
 
     // Delegate chart data generation to GraphManager with scroll performance optimization
     var chartSeriesData: [GraphSeries] {
-        // Skip expensive recalculation during scroll end processing
-        guard !isProcessingScrollEnd else {
-            return cachedChartSeriesData ?? []
-        }
-        
-        // During scrolling, use cached data ONLY if the metric selection hasn't changed
-        // If metric selection changed, recalculate immediately
-        if state.graph.isScrolling, let cached = cachedChartSeriesData, !cached.isEmpty {
-            // Compare metric selection - handles both selection and deselection cases
-            let metricUnchanged = cachedChartSeriesMetric == state.ui.selectedMetricLabel
-            if metricUnchanged {
-                return cached
-            }
-            // Metric changed → clear cache
-            cachedChartSeriesData = nil
-            cachedChartSeriesMetric = nil
-        }
-
-        // Prepare values used to validate whether cached chart data is still valid
-        let ops = continuousOperations
-        let currentYAxisDomain = yAxisDomain
-
-        // Check if cached data is still valid (same period, same data count, same metric, same Y-axis domain)
-        if let cached = cachedChartSeriesData,
-           !cached.isEmpty,
-           cachedChartSeriesPeriod == state.graph.selectedPeriod,
-           cachedChartSeriesMetric == state.ui.selectedMetricLabel,
-           cachedChartSeriesCount == ops.count,
-           lastCachedYAxisDomain == currentYAxisDomain {
-            return cached
-        }
-
-        // Generate fresh data
-        let seriesData = graphManager.generateChartDataWithYAxisDomain(
-            from: ops,
-            visibleOperations: visibleOperations,
+        return cacheManager.getChartSeriesData(
+            isScrolling: state.graph.isScrolling,
+            isProcessingScrollEnd: isProcessingScrollEnd,
+            period: state.graph.selectedPeriod,
             selectedMetric: state.ui.selectedMetricLabel,
-            isWeightlessMode: isWeightlessModeEnabled,
-            anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay,
+            operationsCount: continuousOperations.count,
             yAxisDomain: yAxisDomain
-        )
-
-        // Cache the result with metadata for validation
-        cachedChartSeriesData = seriesData
-        cachedChartSeriesPeriod = state.graph.selectedPeriod
-        cachedChartSeriesMetric = state.ui.selectedMetricLabel
-        cachedChartSeriesCount = ops.count
-        lastCachedYAxisDomain = currentYAxisDomain
-
-        return seriesData
+        ) {
+            graphManager.generateChartDataWithYAxisDomain(
+                from: continuousOperations,
+                visibleOperations: visibleOperations,
+                selectedMetric: state.ui.selectedMetricLabel,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay,
+                yAxisDomain: yAxisDomain
+            )
+        }
     }
-
-    // Cache chart series data to prevent excessive recalculation
-    private var cachedChartSeriesData: [GraphSeries]?
-    private var cachedChartSeriesPeriod: TimePeriod?
-    private var cachedChartSeriesMetric: String?
-    private var cachedChartSeriesCount: Int = 0
-    // Track cached Y-axis domain to detect changes and invalidate metric series cache
-    private var lastCachedYAxisDomain: ClosedRange<Double>?
-
-    // Cache visible operations to prevent excessive calls to graph manager during scroll
-    private var cachedVisibleOperations: [BathScaleWeightSummary] = []
-    private var lastVisibleOperationsCacheTime = Date.distantPast
 
     var hasAnyEntries: Bool {
         state.data.hasAnyEntries
@@ -1151,7 +1072,7 @@ class DashboardStore: ObservableObject {
             : progressMetricsString.split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
 
         // Handle case where API defaults empty progress metrics back to all metrics
-        let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
+        let allMetricsRemovedFlag = cacheManager.getBool(forKey: Self.allProgressMetricsRemovedKey)
         let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
         let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
 
@@ -1429,7 +1350,6 @@ class DashboardStore: ObservableObject {
 
             // Clear all caches to force recalculation (including continuousOperations)
             self.invalidateContinuousOperationsCache()
-            self.lastVisibleOperationsCacheTime = Date.distantPast
 
             // Force full recomputation of visible operations, Y-axis, and weight display
             self.forceCompleteRecalculationAfterScrollPosition()
@@ -2106,8 +2026,7 @@ class DashboardStore: ObservableObject {
            let previousDomain = previousYAxisDomain,
            newYAxisDomain != previousDomain {
             // Y-axis domain changed - invalidate cached chart series to force metric recalculation
-            cachedChartSeriesData = nil
-            lastCachedYAxisDomain = nil
+            cacheManager.invalidateChartSeriesCache()
 // swiftlint:disable:next multiline_arguments
             logger.log(level: .debug, tag: "DashboardStore",
 // swiftlint:disable:next vertical_parameter_alignment_on_call
@@ -2227,23 +2146,23 @@ class DashboardStore: ObservableObject {
     /// This ensures the average calculation uses the same date range as the displayed label.
     /// Uses caching to prevent repeated O(n) filter operations during scrolling.
     private func getOperationsForLabelDateRange() -> [BathScaleWeightSummary] {
-        let result = dateRangeManager.getOperationsForLabelDateRange(
+        let result = cacheManager.getLabelDateRangeOperations(
             period: state.graph.selectedPeriod,
-            xScrollPosition: graphManager.state.xScrollPosition,
-            visibleDomainLength: { period in
-                graphManager.visibleDomainLength(for: period)
-            },
-            continuousOperations: continuousOperations,
-            dateBounds: dataManager.getDateBounds(for: .total),
-            cachedPeriod: _cachedLabelDateRangePeriod,
-            cachedScrollPos: _cachedLabelDateRangeScrollPos,
-            cachedOps: _cachedLabelDateRangeOps
-        )
-        
-        // Update cache
-        _cachedLabelDateRangeOps = result.cachedOps
-        _cachedLabelDateRangePeriod = result.cachedPeriod
-        _cachedLabelDateRangeScrollPos = result.cachedScrollPos
+            scrollPosition: graphManager.state.xScrollPosition
+        ) {
+            dateRangeManager.getOperationsForLabelDateRange(
+                period: state.graph.selectedPeriod,
+                xScrollPosition: graphManager.state.xScrollPosition,
+                visibleDomainLength: { period in
+                    graphManager.visibleDomainLength(for: period)
+                },
+                continuousOperations: continuousOperations,
+                dateBounds: dataManager.getDateBounds(for: .total),
+                cachedPeriod: nil,
+                cachedScrollPos: nil,
+                cachedOps: []
+            )
+        }
         
         return result.operations
     }
@@ -2310,131 +2229,44 @@ class DashboardStore: ObservableObject {
     }
 
     func formatYAxisTickLabel(_ weight: Double) -> String {
-        let value = roundedGoalWeight(weight)
-        // Thousand separators; keep decimals only when value has fractional part
-        let nf = NumberFormatter()
-        nf.numberStyle = .decimal
-        nf.maximumFractionDigits = value == floor(value) ? 0 : 2
-        nf.minimumFractionDigits = value == floor(value) ? 0 : 2
-        return nf.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+        return formatter.formatYAxisTickLabel(weight)
     }
 
     func formatChartDate(_ date: Date) -> String {
-        // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-        switch state.graph.selectedPeriod {
-        case .week, .month:
-            return DateTimeTools.formatter("MMM d").string(from: date)
-        case .year, .total:
-            return DateTimeTools.formatter("MMM yyyy").string(from: date)
-        }
+        return formatter.formatChartDate(date, period: state.graph.selectedPeriod)
     }
 
     func roundedGoalWeight(_ weight: Double) -> Double {
-        return weight.rounded(.toNearestOrAwayFromZero) // or your preferred rule
+        return formatter.roundedGoalWeight(weight)
     }
 
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
-        let raw = metric.value.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
-        let numericScalars = raw.unicodeScalars.filter { DashboardStore.allowedNumericCharacters.contains($0) }
-        let numericChars = String(String.UnicodeScalarView(numericScalars))
-        // Check if value is placeholder or zero
-        let isPlaceholder = raw == DashboardStrings.placeholder || (numericChars.isEmpty == false && Double(numericChars) == 0)
-
-        if isPlaceholder {
-            // If there's a preLabel (e.g., "Lv." for visceral fat), show "Lv. --" instead of just "--"
-            if let preLabel = metric.preLabel {
-                return "\(preLabel) \(DashboardStrings.placeholder)"
-            }
-            return DashboardStrings.placeholder
-        }
-        return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
+        return formatter.formattedMetricValue(for: metric)
     }
 
     // MARK: - Metric Info Date Label
 
     /// Generates date label for metric info sheet. Shows "Measurement taken [Date]" for history entries, otherwise period averages.
     func metricInfoDateLabel(for entryDTO: BathScaleOperationDTO) -> String {
-        let isHistoryEntry = !isDashboardEntry(entryDTO)
-        guard let entryDate = parseEntryDate(from: entryDTO) else {
-            return formatMetricInfoDateLabel(entryDate: nil)
+        let isHistoryEntry = !formatter.isDashboardEntry(entryDTO)
+        guard let entryDate = formatter.parseEntryDate(from: entryDTO) else {
+            return formatter.formatMetricInfoDateLabel(
+                entryDate: nil,
+                isFromHistory: false,
+                period: state.graph.selectedPeriod,
+                selectedPointDate: state.graph.selectedPoint?.date,
+                crosshairDate: state.graph.selectedXValue,
+                weightLabel: weightLabel
+            )
         }
-        return formatMetricInfoDateLabel(entryDate: entryDate, isFromHistory: isHistoryEntry)
-    }
-
-    /// Formats the date label based on entry date and context. Returns period averages if no date provided.
-    private func formatMetricInfoDateLabel(entryDate: Date? = nil, isFromHistory: Bool = false) -> String {
-        let period = state.graph.selectedPeriod
-
-        if let entryDate = entryDate {
-            let prefix = isFromHistory ? "Measurement taken" : "day average"
-            // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-            let format = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
-            let dateText = DateTimeTools.formatter(format).string(from: entryDate)
-            return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-        }
-
-        if let selectedPoint = state.graph.selectedPoint {
-            let prefix = selectionPrefix(for: period)
-            let dateText = formatMetricInfoSingleDate(selectedPoint.date, period: period)
-            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-        }
-        if let crosshairDate = state.graph.selectedXValue {
-            let prefix = selectionPrefix(for: period)
-            let dateText = formatMetricInfoSingleDate(crosshairDate, period: period)
-            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-        }
-
-        let prefix = "\(period.rawValue) average"
-        let dateText = weightLabel // already computed from visible region
-        return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-    }
-
-    // MARK: - Private Helpers
-
-    private func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool {
-        return entryDTO.source == "dashboard"
-    }
-
-    /// Parses date from entry DTO, handling multiple timestamp formats.
-    private func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? {
-        if let date = entryDTO.date {
-            return date
-        }
-
-        guard let timestamp = entryDTO.entryTimestamp else {
-            return nil
-        }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: timestamp) {
-            return date
-        }
-
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: timestamp)
-    }
-
-    private func selectionPrefix(for period: TimePeriod) -> String {
-        switch period {
-        case .week, .month: return "day average"
-        case .year, .total: return "month average"
-        }
-    }
-
-    private func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String {
-        // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-        switch period {
-        case .week, .month:
-            return DateTimeTools.formatter("MMM d, yyyy").string(from: date)
-        case .year, .total:
-            return DateTimeTools.formatter("MMM yyyy").string(from: date)
-        }
-    }
-
-    private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
-        return "\(prefix) \(dateText)".lowercased()
+        return formatter.formatMetricInfoDateLabel(
+            entryDate: entryDate,
+            isFromHistory: isHistoryEntry,
+            period: state.graph.selectedPeriod,
+            selectedPointDate: state.graph.selectedPoint?.date,
+            crosshairDate: state.graph.selectedXValue,
+            weightLabel: weightLabel
+        )
     }
 
     // MARK: - Metric Info Sheet - Allowed Metrics & Selection Validation
@@ -2801,18 +2633,7 @@ class DashboardStore: ObservableObject {
 
     /// Clears all performance caches when data changes
     private func clearAllCaches() {
-        // Clear continuousOperations cache
-        _cachedContinuousOperations = []
-        _cachedContinuousPeriod = nil
-        // Clear chart series cache
-        cachedChartSeriesData = nil
-        cachedChartSeriesPeriod = nil
-        cachedChartSeriesMetric = nil
-        lastCachedYAxisDomain = nil
-        cachedChartSeriesCount = 0
-        // Clear visible operations cache
-        cachedVisibleOperations = []
-        lastVisibleOperationsCacheTime = Date.distantPast
+        cacheManager.clearAllCaches()
         isProcessingScrollEnd = false
     }
 
