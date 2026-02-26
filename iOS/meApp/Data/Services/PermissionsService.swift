@@ -159,7 +159,8 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), details=[\(currentPermissionDetails)]" // swiftlint:disable:this line_length
+            message: "Updated required permission categories. categories=\(newRequired.map { String(describing: $0) }), "
+                + "details=[\(currentPermissionDetails)]"
         )
     }
 

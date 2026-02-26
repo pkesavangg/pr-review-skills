@@ -1505,7 +1505,8 @@ class SettingsStore: ObservableObject {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Settings forgot password request failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))" // swiftlint:disable:this line_length
+                    message: "Settings forgot password request failed. error=\(error.localizedDescription), "
+                        + "errorType=\(String(describing: type(of: error)))"
                 )
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
             }

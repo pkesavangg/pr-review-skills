@@ -79,7 +79,8 @@ final class GoalAlertService: ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)" // swiftlint:disable:this line_length
+            message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), "
+                + "currentWeight=\(currentWeight), goalWeight=\(goalWeight)"
         )
 
         // Persist flag so the alert is not re-shown in the same session until reset

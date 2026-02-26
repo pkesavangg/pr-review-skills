@@ -143,7 +143,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
             logger.log(
                 level: .error,
                 tag: tag,
-                message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), source=\(entrySource), error=\(error.localizedDescription)" // swiftlint:disable:this line_length
+                message: "Failed to save new entry: entryId=\(entry.id.uuidString), accountId=\(entry.accountId), "
+                    + "source=\(entrySource), error=\(error.localizedDescription)"
             )
             throw error
         }
@@ -723,13 +724,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Unsynced entry push completed for accountId=\(accountId): createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)" // swiftlint:disable:this line_length
+                message: "Unsynced entry push completed for accountId=\(accountId): "
+                    + "createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)"
             )
             if failedSyncCount > 0 {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), firstFailure=\(firstFailureReason ?? "unknown")" // swiftlint:disable:this line_length
+                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), "
+                        + "firstFailure=\(firstFailureReason ?? "unknown")"
                 )
             }
         }

@@ -266,7 +266,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             logger.log(
                 level: .error,
                 tag: tag,
-                message: "Switch account failed. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId), error=\(error.localizedDescription)" // swiftlint:disable:this line_length
+                message: "Switch account failed. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId), "
+                    + "error=\(error.localizedDescription)"
             )
             throw error
         }
@@ -585,7 +586,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue), offline=true, reason=network_error" // swiftlint:disable:this line_length
+                    message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue), "
+                        + "offline=true, reason=network_error"
                 )
                 return localAccount
             }
@@ -625,9 +627,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
                 logger.log(
-                    level: .error, tag: tag, // swiftlint:disable:this multiline_arguments
+                    level: .error,
+                    tag: tag,
                     message: "Update notifications saved offline for accountId=\(accountId), offline=true, reason=network_error, "
-                        + "shouldSendEntry=\(notifications.shouldSendEntryNotifications), shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)" // swiftlint:disable:this line_length
+                        + "shouldSendEntry=\(notifications.shouldSendEntryNotifications), "
+                        + "shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)"
                 )
                 return localAccount
             } else {
