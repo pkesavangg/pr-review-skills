@@ -129,7 +129,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-		 // Error handling
+        // Log the error for debugging - registration failures are non-critical
+        // Common causes: simulator (no APNs), user denied permissions, network issues
+        Task { @MainActor in
+            LoggerService.shared.log(level: .error, tag: "AppDelegate", message: "Failed to register for remote notifications", data: error.localizedDescription)
+        }
     }
     
     /// Handles background notifications

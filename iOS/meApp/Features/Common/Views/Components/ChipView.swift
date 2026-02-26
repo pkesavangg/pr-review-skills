@@ -44,17 +44,11 @@ struct ChipView: View {
     VStack(spacing: 20) {
         ChipView(text: "Normal Chip") // Uses .normal style
         
-        ChipView(text: "Bordered Chip (Always)", style: .bordered) {
-            print("Tapped!")
-        }
+        ChipView(text: "Bordered Chip (Always)", style: .bordered) { }
         
-        ChipView(text: "Selected Chip", style: .bordered, isSelected: true) {
-            print("Tapped!")
-        }
+        ChipView(text: "Selected Chip", style: .bordered, isSelected: true) { }
         
-        ChipView(text: "Unselected Chip", style: .bordered, isSelected: false) {
-            print("Tapped!")
-        }
+        ChipView(text: "Unselected Chip", style: .bordered, isSelected: false) { }
     }
     .background(.gray)
 }
