@@ -489,6 +489,7 @@ constructor(
   /**
    * Updates the network status.
    * Equivalent to TypeScript updateNetworkStatus()
+   * When location permission is revoked, preserves the last known SSID so the network field is not cleared.
    */
   private fun updateNetworkStatus() {
     viewModelScope.launch {
@@ -496,10 +497,21 @@ constructor(
         val hasLocationPermission = isAllLocationPermissionGranted()
         val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
         wifiStatus = status
-          handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
-          updateFormValuesWithSsid(status.ssid)
-        handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
+        if (status.ssid.isNotEmpty()) {
+          lastSsid = status.ssid
+        }
+        // When permission is off, status.ssid is empty; preserve last known SSID so we don't clear the field
+        val effectiveSsid = if (status.ssid.isNotEmpty()) status.ssid else (lastSsid ?: "")
+        handleIntent(WifiScaleSetupIntent.SetWifiSsid(effectiveSsid))
+        updateFormValuesWithSsid(effectiveSsid)
+        val displayStatus = if (status.ssid.isEmpty() && lastSsid != null) {
+          status.copy(ssid = lastSsid!!, bssid = state.value.wifiStatus?.bssid ?: "")
+        } else {
+          status
+        }
+        handleIntent(WifiScaleSetupIntent.SetWifiStatus(displayStatus))
       } catch (e: Exception) {
+        AppLog.e(TAG, "updateNetworkStatus - Error updating network status", e)
       }
     }
   }
@@ -703,6 +715,7 @@ constructor(
    * - If in WiFi switching context (after SWITCH_WIFI step), only fill scale network form
    * - Otherwise, fill both forms as before
    * - Always populate if permissions are currently enabled (regardless of skip history)
+   * - When user skipped permissions and field is editable: do not refill if user has cleared the field.
    */
   private fun updateFormValuesWithSsid(ssid: String) {
     val currentState = state.value
@@ -711,6 +724,12 @@ constructor(
     val arePermissionsCurrentlyEnabled = AppPermissionsHelper
       .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
     val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
+    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field
+    if (currentState.permissionsSkipped && arePermissionsCurrentlyEnabled &&
+      currentState.wifiPasswordForm.ssid.value.isEmpty() && ssid.isNotEmpty()
+    ) {
+      return
+    }
     if (shouldAutoPopulate) {
       val isEarlyStep = currentStepIndex < 3
       if (isEarlyStep) {
