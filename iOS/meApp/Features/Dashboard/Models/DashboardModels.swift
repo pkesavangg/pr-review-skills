@@ -56,6 +56,14 @@ struct StreakCardData: Identifiable, Equatable {
     
     /// Whether this streak has been removed/hidden
     let isRemoved: Bool
+    
+    /// Custom Equatable conformance - compare all fields except id
+    static func == (lhs: StreakCardData, rhs: StreakCardData) -> Bool {
+        lhs.value == rhs.value &&
+        lhs.label == rhs.label &&
+        lhs.icon == rhs.icon &&
+        lhs.isRemoved == rhs.isRemoved
+    }
 }
 
 // MARK: - Row Model
@@ -68,13 +76,16 @@ enum DashboardRow: Identifiable, Equatable {
     /// A row containing up to 2 streak cards
     case streaks([StreakCardData])
     
+    /// Stable identifier used when a streaks row has no items
+    private static let emptyStreaksId = UUID()
+    
     /// Unique identifier for the row
     var id: UUID {
         switch self {
         case .goal(let data):
             return data.id
         case .streaks(let items):
-            return items.first?.id ?? UUID()
+            return items.first?.id ?? DashboardRow.emptyStreaksId
         }
     }
 }

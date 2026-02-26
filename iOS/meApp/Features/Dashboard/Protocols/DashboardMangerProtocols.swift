@@ -174,8 +174,8 @@ protocol DashboardSyncCoordinatorProtocol {
         saveMetrics: @escaping () async throws -> Void,
         saveProgressMetrics: @escaping () async throws -> Void,
         loadProgressMetrics: @escaping () async -> Void,
-        onSuccess: @escaping () -> Void,
-        onError: @escaping (Error) -> Void
+        onSuccess: @MainActor @escaping () -> Void,
+        onError: @MainActor @escaping (Error) -> Void
     )
     
     func saveProgressMetricsToAPI(

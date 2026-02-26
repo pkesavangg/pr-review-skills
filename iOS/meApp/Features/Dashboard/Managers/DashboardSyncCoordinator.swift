@@ -28,11 +28,11 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         saveMetrics: @escaping () async throws -> Void,
         saveProgressMetrics: @escaping () async throws -> Void,
         loadProgressMetrics: @escaping () async -> Void,
-        onSuccess: @escaping () -> Void,
-        onError: @escaping (Error) -> Void
+        onSuccess: @MainActor @escaping () -> Void,
+        onError: @MainActor @escaping (Error) -> Void
     ) {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
-        Task {
+        Task { @MainActor in
             defer { notificationService.dismissLoader() }
             do {
                 // Save dashboard metrics first
@@ -168,27 +168,19 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
                 config.onMetricsLoaded()
             }
             
-            // Load progress metrics (goal card + streaks) only if not already loaded
-            // This prevents duplicate loading when called from initializeDashboard
-            let progressMetricsAlreadyLoaded = await MainActor.run {
-                // This check should be done by the caller
-                false // Placeholder - caller should check this
-            }
+            // Load progress metrics (goal card + streaks)
+            // Refresh streak data with real values from API
+            try await config.refreshStreakData()
             
-            if !progressMetricsAlreadyLoaded {
-                // Refresh streak data with real values from API
-                try await config.refreshStreakData()
-                
-                // Load progress metrics configuration from API
-                await config.loadProgressMetrics()
-                
-                // Load goal card data to ensure it's ready before showing
-                try? await config.loadGoalData()
-                
-                // Call onProgressMetricsLoaded callback
-                await MainActor.run {
-                    config.onProgressMetricsLoaded()
-                }
+            // Load progress metrics configuration from API
+            await config.loadProgressMetrics()
+            
+            // Load goal card data to ensure it's ready before showing
+            try? await config.loadGoalData()
+            
+            // Call onProgressMetricsLoaded callback
+            await MainActor.run {
+                config.onProgressMetricsLoaded()
             }
             
         } catch {
@@ -227,16 +219,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         let shouldTreatAsAllRemoved = allMetricsRemovedFlag && (progressMetrics.isEmpty || isDefaultFullList)
         
         await MainActor.run {
-            // Don't mark all as removed on initial load (empty API before user config)
-            // This check should be done by the caller
-            let isInitialLoad = false // Placeholder - caller should check this
-            
-            if progressMetrics.isEmpty && isInitialLoad {
-                setupDefaultOrder()
-                return
-            }
-            
-            if (progressMetrics.isEmpty || shouldTreatAsAllRemoved) && !isInitialLoad {
+            if progressMetrics.isEmpty || shouldTreatAsAllRemoved {
                 // All progress metrics are removed
                 let goalCardPosition = 0
                 let isGoalCardRemoved = true
