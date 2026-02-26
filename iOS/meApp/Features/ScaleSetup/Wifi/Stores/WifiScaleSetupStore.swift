@@ -339,8 +339,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToNextStep()
             }
-// swiftlint:disable:next switch_case_alignment
-            case .connectionConfirm:
+        case .connectionConfirm:
             // If permissions were skipped or we're in the Get-MAC flow we must force AP-mode – smart-connect isn't possible.
             if permissionsSkipped || isForGetMac {
                 selectedConnectionMode = .apMode
@@ -351,8 +350,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 self.navigateToStep(.apMode)
             }
-// swiftlint:disable:next switch_case_alignment
-            case .apMode:
+        case .apMode:
             // In Get-MAC flow we poll the scale's AP for its MAC address, otherwise we just proceed to the next wizard step.
             if isForGetMac {
                 Task {
@@ -368,8 +366,7 @@ final class WifiScaleSetupStore: ObservableObject {
         case .apModeConfirm:
             // User confirmed AP-mode connection; advance to the scale calibration (Step-On) stage.
             self.navigateToStep(.stepOn)
-// swiftlint:disable:next switch_case_alignment
-            case .errorDetail, .copyMacAddress:
+        case .errorDetail, .copyMacAddress:
             // When the user taps "Finish" on the error detail screen/copy mac address screen, we exit the setup entirely.
             exitSetup()
         case .stepOn:
@@ -379,8 +376,7 @@ final class WifiScaleSetupStore: ObservableObject {
             // Save scale before finishing setup
             saveScale()
             moveToNextStep()
-// swiftlint:disable:next switch_case_alignment
-            default:
+        default:
             moveToNextStep()
         }
     }
@@ -405,8 +401,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 navigateToStep(.connectionConfirm)
             }
-// swiftlint:disable:next switch_case_alignment
-            case .copyMacAddress:
+        case .copyMacAddress:
             // Simply rewind to the AP-mode instructions when the user taps "Back" from the copy screen.
             navigateToStep(.apMode)
         case .stepOn:
@@ -416,8 +411,7 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToPreviousStep()
             }
-// swiftlint:disable:next switch_case_alignment
-            default:
+        default:
             moveToPreviousStep()
         }
     }
@@ -552,8 +546,7 @@ final class WifiScaleSetupStore: ObservableObject {
         case .apMode:
             // Set skipCheckNetwork to true when entering AP mode
             setSkipCheckNetwork(true)
-// swiftlint:disable:next switch_case_alignment
-            default:
+        default:
             // Reset skipCheckNetwork to false for other steps
             setSkipCheckNetwork(false)
         }

@@ -247,8 +247,7 @@ extension BtWifiScaleSetupStore {
                 resetDiscoveryState()
                 navigateToStep(.permissions)
             }
-// swiftlint:disable:next switch_case_alignment
-            case .availableWifiList:
+        case .availableWifiList:
             if noNetwork {
                 // Navigate back to gathering network screen to show "No Networks Found" error
                 setConnectionState(.noNetworks, allowNetworkErrors: false)
@@ -270,8 +269,7 @@ extension BtWifiScaleSetupStore {
                 resetDiscoveryState()
                 navigateToStep(.permissions)
             }
-// swiftlint:disable:next switch_case_alignment
-            case .stepOn where scaleSetupError != .updateSettingsFailed:
+        case .stepOn where scaleSetupError != .updateSettingsFailed:
             // Skip network checks during stepOn screen - network access is not required for collecting measurements
             let bluetoothSwitchOff =
                 permissionsService.getPermissionState(.BLUETOOTH_SWITCH) != .ENABLED
@@ -281,8 +279,7 @@ extension BtWifiScaleSetupStore {
                 cancelStepOnTimeout()
                 showBluetoothTurnedOffAlert()
             }
-// swiftlint:disable:next switch_case_alignment
-            case .measurement:
+        case .measurement:
             let bluetoothSwitchOff =
                 permissionsService.getPermissionState(.BLUETOOTH_SWITCH) != .ENABLED
 
@@ -295,8 +292,7 @@ extension BtWifiScaleSetupStore {
                 // Keep timeout running so error screen appears
                 showBluetoothTurnedOffAlert()
             }
-// swiftlint:disable:next switch_case_alignment
-            case .updateSettings:
+        case .updateSettings:
             let bluetoothSwitchOff =
                 permissionsService.getPermissionState(.BLUETOOTH_SWITCH) != .ENABLED
 
@@ -402,11 +398,10 @@ extension BtWifiScaleSetupStore {
                 connectionState = .success
                 scaleSetupError = .none
                 Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
                     self.navigateToStep(.gatheringNetwork)
                 }
-// swiftlint:disable:next switch_case_alignment
-                case .duplicateUserError:
+            case .duplicateUserError:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Duplicate User Error \(response)")
                 // Get user list from scale and check for duplicates
                 await getUserList()
@@ -429,19 +424,16 @@ extension BtWifiScaleSetupStore {
                 // Set error state and navigate to gathering network
                 scaleSetupError = .duplicatesFound
                 navigateToStep(.gatheringNetwork)
-// swiftlint:disable:next switch_case_alignment
-                case .memoryFull:
+            case .memoryFull:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Memory Full \(response)")
                 await getUserList()
                 // Set error state and navigate to gathering network
                 scaleSetupError = .maxUserReached
                 navigateToStep(.gatheringNetwork)
-// swiftlint:disable:next switch_case_alignment
-                case .inputDataError:
+            case .inputDataError:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Input data error: \(response)")
                 connectionState = .failure
-// swiftlint:disable:next switch_case_alignment
-                default:
+            default:
                 connectionState = .failure
                 LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
             }

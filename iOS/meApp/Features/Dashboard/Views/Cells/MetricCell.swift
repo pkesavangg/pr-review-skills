@@ -541,8 +541,7 @@ class MetricCell: UICollectionViewCell {
                 selectCallback(item.label)
             }
             callback(item.label)
-// swiftlint:disable:next switch_case_alignment
-            case .ended, .cancelled:
+        case .ended, .cancelled:
             isLongPressed = false
             // Reconfigure to show overlay after long press ends
             if let item = representedItem, let store = currentStore {

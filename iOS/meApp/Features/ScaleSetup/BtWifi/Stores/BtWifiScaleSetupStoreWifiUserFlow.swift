@@ -151,8 +151,7 @@ extension BtWifiScaleSetupStore {
                         self.navigateToStep(.customizeSettings)
                     }
                 }
-// swiftlint:disable:next switch_case_alignment
-                default:
+            default:
                 LoggerService.shared.log(level: .error, tag: tag, message: "WiFi connection failed: \(response)")
                 self.connectionState = .failure
                 if let errorCode = response.errorCode {

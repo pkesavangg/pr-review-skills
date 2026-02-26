@@ -137,8 +137,7 @@ struct AdditionalSettingsSheet: View {
             .navigationTitle(lang.otherSettings)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                    Button(action: { dismiss() }) { Image(AppAssets.chevronLeft) }
+                    Button(action: { dismiss() }, label: { Image(AppAssets.chevronLeft) })
                 }
             }
             .background(theme.backgroundSecondary.ignoresSafeArea())

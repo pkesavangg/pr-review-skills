@@ -137,11 +137,10 @@ struct AppInputField: View {
             if let customIcon = config.customIcon {
                 Button(action: {
                     config.onCustomIconTap?()
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                }) {
+                }, label: {
                     AppIconView(icon: customIcon, size: IconSize(width: 35, height: 35))
                         .foregroundColor(theme.actionPrimary)
-                }
+                })
             } else {
                 if config.isDisabled && !value.isEmpty {
                     disabledIcon
@@ -163,11 +162,10 @@ struct AppInputField: View {
             withAnimation {
                 value = ""
             }
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        }) {
+        }, label: {
             AppIconView(icon: AppAssets.closeCircle)
                 .foregroundColor(config.errorMessage != nil ? theme.textError : theme.actionPrimary)
-        }
+        })
     }
 }
 

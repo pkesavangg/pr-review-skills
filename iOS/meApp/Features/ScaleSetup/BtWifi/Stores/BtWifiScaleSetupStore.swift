@@ -458,17 +458,15 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.handleScaleModeChange(scaleMode, heartRateEnabled: isPulseEnabled)
                                 }
                             )
-// swiftlint:disable:next switch_case_alignment
-            case .scaleMetrics:
-                // Scale metrics customization screen.
-                ScaleMetricsCustomizationView(initialEnabledKeys: selectedScaleMetrics) { [weak self] metrics, _ in
-                    guard let self else { return }
-                    // Only update the local state, don't persist until Save is clicked
-                    self.selectedScaleMetrics = metrics
-                    // Re-evaluate footer button enabled state
-                    self.updateNextEnabled()
-                }
-                            
+                        case .scaleMetrics:
+                            // Scale metrics customization screen.
+                            ScaleMetricsCustomizationView(initialEnabledKeys: selectedScaleMetrics) { [weak self] metrics, _ in
+                                guard let self else { return }
+                                // Only update the local state, don't persist until Save is clicked
+                                self.selectedScaleMetrics = metrics
+                                // Re-evaluate footer button enabled state
+                                self.updateNextEnabled()
+                            }
                         case .dashboardMetrics:
                             ScrollView {
                                 DashboardMetricsSection(

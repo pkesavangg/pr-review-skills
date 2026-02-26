@@ -85,26 +85,26 @@ struct SettingsScreen: View {
             selectedValues: [Theme.shared.appearanceMode],
             options: [AppearanceMode.allCases],
             displayValue: { $0.rawValue },
-            title: settingsLang.appearance
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { vals in
+            title: settingsLang.appearance,
+            onUpdate: { vals in
                 if let mode = vals.first {
                     Theme.shared.appearanceMode = mode
                 }
             }
+        )
         // Notifications picker
         .pickerSheet(
             isPresented: $settingsStore.showNotificationPicker,
             selectedValues: [settingsStore.notificationPreference],
             options: [NotificationPreference.allCases],
             displayValue: { $0.title },
-            title: settingsLang.notifications
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { vals in
+            title: settingsLang.notifications,
+            onUpdate: { vals in
                 if let pref = vals.first {
                     settingsStore.updateNotificationPreference(pref)
                 }
             }
+        )
         
         // Height picker sheets
         .pickerSheet(
@@ -113,34 +113,34 @@ struct SettingsScreen: View {
             options: settingsStore.heightInchesOptions,
             displayValue: { $0 },
             pickerType: .heightInches,
-            title: settingsLang.height
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { newValues in
+            title: settingsLang.height,
+            onUpdate: { newValues in
                 settingsStore.updateHeight(fromMetric: false, values: newValues)
             }
+        )
         .pickerSheet(
             isPresented: $settingsStore.showHeightCmPicker,
             selectedValues: settingsStore.selectedHeightCm,
             options: settingsStore.heightCmOptions,
             displayValue: { $0 },
             pickerType: .heightCm,
-            title: settingsLang.height
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { newValues in
+            title: settingsLang.height,
+            onUpdate: { newValues in
                 settingsStore.updateHeight(fromMetric: true, values: newValues)
             }
+        )
         .pickerSheet(
             isPresented: $settingsStore.showGenderPicker,
             selectedValues: [settingsStore.activeAccount?.gender ?? .male],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
-            title: settingsLang.biologicalSex
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { vals in
+            title: settingsLang.biologicalSex,
+            onUpdate: { vals in
                 if let sex = vals.first {
                     settingsStore.updateGender(sex)
                 }
             }
+        )
         // Unit picker
         .pickerSheet(
             isPresented: $settingsStore.showUnitPicker,
@@ -149,26 +149,26 @@ struct SettingsScreen: View {
             displayValue: { unit in
                 unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs
             },
-            title: settingsLang.unitType
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { vals in
+            title: settingsLang.unitType,
+            onUpdate: { vals in
                 if let unit = vals.first {
                     settingsStore.updateWeightUnit(unit)
                 }
             }
+        )
         // Activity level picker
         .pickerSheet(
             isPresented: $settingsStore.showActivityPicker,
             selectedValues: [settingsStore.activeAccount?.weightSettings?.activityLevel ?? .normal],
             options: [[ActivityLevel.normal, ActivityLevel.athlete]],
             displayValue: { $0.rawValue.capitalized },
-            title: settingsLang.activityLevel
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { vals in
+            title: settingsLang.activityLevel,
+            onUpdate: { vals in
                 if let level = vals.first {
                     settingsStore.updateActivityLevel(level)
                 }
             }
+        )
     }
     
     private func profileHeader() -> some View {
