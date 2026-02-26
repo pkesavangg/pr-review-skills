@@ -17,7 +17,7 @@ import Foundation
 /// Use this registry to ensure all services are properly managed within the app lifecycle.
 @MainActor
 class ServiceRegistry {
-    static let shared = ServiceRegistry() // Thread 1: EXC_BREAKPOINT (code=1, subcode=0x1066440d8)
+    static let shared = ServiceRegistry()
 
     init() {
         registerEssentialServices()
