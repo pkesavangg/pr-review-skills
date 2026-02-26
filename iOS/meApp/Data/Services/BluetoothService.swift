@@ -4,12 +4,14 @@
 //
 //  Created by AI Assistant
 //
-//  This file provides a production-ready BluetoothService for iOS apps, wrapping the GGBluetoothSwiftPackage SDK and translating between app models and SDK models. It uses Combine for reactive updates and async/await for async plugin calls.
+//  This file provides a production-ready BluetoothService for iOS apps, wrapping the GGBluetoothSwiftPackage SDK and translating between app models
+//  and SDK models. It uses Combine for reactive updates and async/await for async plugin calls.
 //
 
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
+
 // For mapping device metadata
 import SwiftData
 
@@ -29,6 +31,7 @@ import SwiftData
 @MainActor
 final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // MARK: - Singleton (Legacy Only)
+
     /// Legacy singleton for compatibility. Prefer dependency injection for new code.
     static let shared = BluetoothService(accountService: AccountService.shared,
                                          scaleService: ScaleService.shared,
@@ -36,6 +39,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                                          logger: LoggerService.shared)
 
     // MARK: - Published State
+
     /// Indicates if the scale discovered modal can be shown for newly discovered scales.
     @Published private(set) var canShowScaleDiscoveredModal: Bool = true
 
@@ -48,27 +52,33 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     @Published var isSetupInProgress: Bool = false
 
     // MARK: - Public Publishers
+
     /// Publisher for unified device discovery events containing device, protocol type, and isNew flag.
     var deviceDiscoveredPublisher: AnyPublisher<DeviceDiscoveryEvent, Never> {
         deviceDiscoveredSubject.eraseToAnyPublisher()
     }
+
     /// Publisher for device metadata updates.
     var deviceInfoUpdatedPublisher: AnyPublisher<DeviceInfo, Never> {
         deviceInfoUpdatedSubject.eraseToAnyPublisher()
     }
+
     /// Publisher for weight-only mode alert visibility.
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> {
         showWeightOnlyModeAlertSubject.eraseToAnyPublisher()
     }
+
     /// Publisher for new entry events.
     /// Uses EntryNotification (Sendable) to safely pass data across actor boundaries.
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> {
         newEntryReceivedSubject.eraseToAnyPublisher()
     }
+
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> {
         firmwareUpdateProgressSubject.eraseToAnyPublisher()
     }
+
     /// Publisher for live measurement data.
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> {
         liveMeasurementSubject.eraseToAnyPublisher()
@@ -80,10 +90,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     var reconnectAlertSkippedDevices: [String] = []
 
     // MARK: - Navigation Callback
+
     /// Callback to handle scale setup navigation. Set by the UI layer (e.g. BottomTabBarViewModel).
     var onOpenScaleSetup: ((Device, DeviceDiscoveryEvent?, Bool, Bool) -> Void)?
 
     // MARK: - Subjects for Scale Discovery
+
     let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
     let deviceInfoUpdatedSubject = PassthroughSubject<DeviceInfo, Never>()
@@ -93,6 +105,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
 
     // MARK: - Private Properties
+
     var cancellables = Set<AnyCancellable>()
     var activeAccount: Account?
     var isSmartScanStarted = false
@@ -102,10 +115,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     var lastProfileUpdateAccountId: String?
     var isUpdatingR4Profile = false
     var lastAccountId: String?
-    var isSyncingPreferences = false  // Guard against concurrent preference syncs
-    var weightOnlyModeAlertDebounceTask: Task<Void, Never>?  // Debounce task for weight-only mode alert check
+    var isSyncingPreferences = false // Guard against concurrent preference syncs
+    var weightOnlyModeAlertDebounceTask: Task<Void, Never>? // Debounce task for weight-only mode alert check
 
     // MARK: - Dependencies
+
     let accountService: AccountService
     let scaleService: ScaleServiceProtocol
     let entryService: EntryServiceProtocol
@@ -113,7 +127,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     let ggBleSDK = GGBluetoothSwiftPackage.shared
     let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     let tag = "BluetoothService"
-    
+
     // Generic actor to serialize SDK operations per device to prevent callback conflicts
     // The SDK only maintains one completion handler per operation type at a time
     nonisolated let sdkOperationSerializer = SDKOperationSerializer()
@@ -123,13 +137,16 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     }
 
     // MARK: - Alert Dependencies (injected via shared instances for now)
+
     var notificationService: NotificationHelperService { NotificationHelperService.shared }
     var scaleInfoUtils: ScaleInfoUtils { ScaleInfoUtils.shared }
-    
+
     // MARK: - BLE Components
+
     let discoveryManager: BLEDiscoveryManager
 
     // MARK: - Initialization
+
     /**
      Initializes the BluetoothService with all required dependencies.
      - Parameters:
@@ -148,12 +165,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         self.scaleService = scaleService
         self.entryService = entryService
         self.logger = logger
-        self.discoveryManager = BLEDiscoveryManager()
+        discoveryManager = BLEDiscoveryManager()
         setupSubscriptions()
         initialize()
     }
 
     // MARK: - Setup
+
     private func setupSubscriptions() {
         // Subscribe to scale changes
         scaleService.scalesPublisher
@@ -162,7 +180,6 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 Task { await self?.handleScalesUpdate(scales) }
             }
             .store(in: &cancellables)
-
     }
 
     /**
@@ -242,7 +259,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
         }
         bluetoothScales = filteredScales
-        logger.log(level: .info, tag: tag, message: "Bluetooth scales updated. total=\(scales.count), filtered=\(filteredScales.count), setupInProgress=\(isSetupInProgress)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Bluetooth scales updated. total=\(scales.count), filtered=\(filteredScales.count), setupInProgress=\(isSetupInProgress)"
+        )
 
         // Check if banner should be shown/hidden after scale updates
         if !isWeightOnlyModeAlertDismissed {
@@ -250,13 +271,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
 
         if !isSetupInProgress {
-            syncDevices(self.bluetoothScales)
+            syncDevices(bluetoothScales)
         }
     }
 
     private func handleAccountUpdate(_ account: Account?) async {
         if let account = account {
-            self.activeAccount = account
+            activeAccount = account
             logger.log(level: .info, tag: tag, message: "Bluetooth active account updated. accountId=\(account.accountId)")
             // Don't start scanning immediately - wait for dashboard to be ready
             // The scan will be triggered by startBluetoothOperations() when called from ContentViewModel
@@ -284,5 +305,4 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         skipDevices = []
         discoveryManager.clearDevices(using: ggBleSDK)
     }
-
 }

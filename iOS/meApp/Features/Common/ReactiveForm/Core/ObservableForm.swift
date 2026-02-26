@@ -302,7 +302,7 @@ struct BasicFormControlView: View {
             Button("Submit") {
                 if form.isValid {
                     Task { @MainActor in
-                        LoggerService.shared.log(level: .debug, tag: "ObservableForm", message: "Form submitted", data: ["name": form.name.value, "email": form.email.value])
+                        LoggerService.shared.log(level: .debug, tag: "ObservableForm", message: "Form submitted", data: ["name": form.name.value, "email": form.email.value]) // swiftlint:disable:this line_length
                     }
                 }
             }

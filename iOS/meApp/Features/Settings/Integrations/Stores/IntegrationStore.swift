@@ -8,10 +8,11 @@ import Combine
 import Foundation
 import SwiftUI
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 // MARK: - IntegrationStore
+
 /// Observable store that manages the list of integrations shown in `IntegrationsScreen`.
 /// Holds the selection state and exposes helper APIs to update it.
 @MainActor
@@ -20,45 +21,46 @@ class IntegrationStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperService
     @Injector private var accountService: AccountService
     @Injector private var integrationsService: IntegrationsService
-    
+
     var cancellables: Set<AnyCancellable> = []
     @Published var accountID = ""
-    
+
     // MARK: - In-App Browser State
+
     /// Controls whether the Safari browser is presented.
     @Published var showBrowser: Bool = false
     /// The URL to load in the in-app browser.
     @Published var browserURL: URL?
     @Published var skipInvalidIntegrationsCheck = false
-    
+
     let appConstants = AppConstants.self.Product
     let commonLang = CommonStrings.self
     let alertLang = AlertStrings.self
-    
+
     let tag = "IntegrationStore"
-    
+
     /// Convenience URL used by the view modifier – guaranteed non-optional.
     var presentingBrowserURL: URL {
         browserURL ?? AppConstants.LegalURLs.greaterGoodsWebsite
     }
-    
+
     /// List of integrations to display.
     @Published var integrations: [IntegrationItem] = [
         .init(type: .fitbit, isSelected: false),
         .init(type: .myFitnessPal, isSelected: false)
     ]
-    
+
     // Tracks the integration operation awaiting confirmation from the API.
     private var pendingAction: PendingIntegrationAction?
-    
+
     // Ensures we prompt for invalid integrations only once per screen lifecycle.
     private var hasCheckedInvalidIntegrations = false
-    
+
     private enum PendingIntegrationAction {
         case connect(IntegrationItemType)
         case disconnect(IntegrationItemType)
     }
-    
+
     /// Initializes the store and starts observing account changes so the UI always reflects the latest integration state.
     init() {
         // Initialize the integrations list with any pre-defined items.
@@ -67,7 +69,7 @@ class IntegrationStore: ObservableObject {
                 guard let self else { return }
                 self.applyAccountState(account)
                 /// Check for invalid integrations only once per screen lifecycle.
-                if !self.hasCheckedInvalidIntegrations && !self.skipInvalidIntegrationsCheck {
+                if !self.hasCheckedInvalidIntegrations, !self.skipInvalidIntegrationsCheck {
                     self.handleInvalidIntegrations(settings: account?.integrationSettings)
                     self.hasCheckedInvalidIntegrations = true
                 }
@@ -78,34 +80,43 @@ class IntegrationStore: ObservableObject {
     /// Applies the `Account` state to local observable properties that drive the UI.
     /// Updates the following observable properties:
     ///   - `accountID`: Set to `account.accountId` if `account` is not nil, otherwise set to an empty string.
-    ///   - `integrations`: Set to reflect the integration settings in `account` if present; if `account` is nil, both integrations are set to `isSelected: false`.
+    ///   - `integrations`: Set to reflect the integration settings in `account` if present; if `account` is nil, both integrations are set to
+    /// `isSelected: false`.
     /// - Parameter account: The latest account value (optional when stream emits nil).
     private func applyAccountState(_ account: Account?) {
         let fitbitOn = account?.integrationSettings?.isFitbitOn ?? false
         let mfpOn = account?.integrationSettings?.isMfpOn ?? false
         accountID = account?.accountId ?? ""
-        self.integrations = [
+        integrations = [
             .init(type: .fitbit, isSelected: fitbitOn),
             .init(type: .myFitnessPal, isSelected: mfpOn)
         ]
     }
-    
+
     /// Updates the currently selected integration ensuring only one item is selected at a time.
     /// - Parameter item: The integration item to select.
     func selectIntegration(item: IntegrationItem) {
-        logger.log(level: .info, tag: tag, message: "Integration row selected. provider=\(integrationProviderKey(item.type)), currentlySelected=\(item.isSelected), accountId=\(accountID)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Integration row selected. provider=\(integrationProviderKey(item.type)), currentlySelected=\(item.isSelected), accountId=\(accountID)" // swiftlint:disable:this line_length
+        )
         // If the provider is already connected, ask for confirmation to remove.
         if item.isSelected {
             pendingAction = .disconnect(item.type)
-            logger.log(level: .info, tag: tag, message: "Integration disconnect confirmation requested. provider=\(integrationProviderKey(item.type))")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Integration disconnect confirmation requested. provider=\(integrationProviderKey(item.type))"
+            )
             showRemoveIntegrationAlert(for: item)
             return
         }
-        
+
         // Otherwise start the OAuth flow to connect the provider.
         guard let urlString = item.type.oauthURL(accountId: accountID),
               let link = URL(string: urlString) else { return }
-        
+
         // If network unavailable, show fallback alert instead of launching browser
         guard NetworkMonitor.shared.isConnected else {
             logger.log(level: .error, tag: tag, message: "Integration connect blocked: no internet. provider=\(integrationProviderKey(item.type))")
@@ -116,9 +127,13 @@ class IntegrationStore: ObservableObject {
         pendingAction = .connect(item.type)
         browserURL = link
         showBrowser = true
-        logger.log(level: .info, tag: tag, message: "Presenting integration browser modal. provider=\(integrationProviderKey(item.type)), url=\(link.absoluteString)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Presenting integration browser modal. provider=\(integrationProviderKey(item.type)), url=\(link.absoluteString)"
+        )
     }
-    
+
     /// Refreshes the account after an OAuth flow completes and evaluates the result of the pending integration operation.
     func refreshAccounts() {
         logger.log(level: .info, tag: tag, message: "Refreshing account after integration browser flow")
@@ -133,9 +148,9 @@ class IntegrationStore: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - Removal Flow
-    
+
     /// Presents a confirmation alert before removing the selected integration.
     private func showRemoveIntegrationAlert(for item: IntegrationItem) {
         let alert = AlertModel(
@@ -156,16 +171,16 @@ class IntegrationStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     /// Executes the removal of an integration, displaying a loader while the operation runs.
     private func performRemoveIntegration(item: IntegrationItem) async {
         logger.log(level: .info, tag: tag, message: "Remove integration started. provider=\(integrationProviderKey(item.type))")
-        notificationService.showLoader(LoaderModel(text: LoaderStrings.removingIntegration)) 
+        notificationService.showLoader(LoaderModel(text: LoaderStrings.removingIntegration))
         do {
             guard let provider = mapToIntegrationType(item.type) else { return }
             try await integrationsService.removeIntegration(provider)
             let account = try await accountService.refreshAccount()
-            self.applyAccountState(account)
+            applyAccountState(account)
             handlePostIntegrationResult(using: account)
             logger.log(level: .success, tag: tag, message: "Remove integration succeeded. provider=\(integrationProviderKey(item.type))")
         } catch {
@@ -179,7 +194,7 @@ class IntegrationStore: ObservableObject {
         }
         notificationService.dismissLoader()
     }
-    
+
     /// Maps the UI-specific `IntegrationItemType` to the domain `IntegrationType` used by services.
     private func mapToIntegrationType(_ type: IntegrationItemType) -> IntegrationType? {
         switch type {
@@ -188,36 +203,52 @@ class IntegrationStore: ObservableObject {
         default: return nil
         }
     }
-    
+
     // MARK: - Result Handling
-    
+
     /// Verifies the result of the pending integration action and displays appropriate alerts.
     private func handlePostIntegrationResult(using account: Account?) {
         guard let account, let action = pendingAction else { return }
-        
+
         switch action {
-        case .connect(let type):
+        case let .connect(type):
             if isIntegrationEnabled(type, in: account) {
-                logger.log(level: .success, tag: tag, message: "Integration connect completed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
+                logger.log(
+                    level: .success,
+                    tag: tag,
+                    message: "Integration connect completed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)"
+                )
                 showDoneAlert()
             } else {
-                logger.log(level: .error, tag: tag, message: "Integration connect verification failed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Integration connect verification failed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)"
+                )
                 showTryAgainAlert(for: type, isConnect: true)
             }
-        case .disconnect(let type):
+        case let .disconnect(type):
             if !isIntegrationEnabled(type, in: account) {
-                logger.log(level: .success, tag: tag, message: "Integration disconnect completed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
+                logger.log(
+                    level: .success,
+                    tag: tag,
+                    message: "Integration disconnect completed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)"
+                )
                 showDoneAlert()
             } else {
-                logger.log(level: .error, tag: tag, message: "Integration disconnect verification failed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Integration disconnect verification failed. provider=\(integrationProviderKey(type)), accountId=\(account.accountId)"
+                )
                 showTryAgainAlert(for: type, isConnect: false)
             }
         }
-        
+
         // Clear pending action
         pendingAction = nil
     }
-    
+
     /// Returns the enabled flag for the given integration based on the provided account.
     private func isIntegrationEnabled(_ type: IntegrationItemType, in account: Account) -> Bool {
         switch type {
@@ -229,7 +260,7 @@ class IntegrationStore: ObservableObject {
             return account.integrationSettings?.isHealthKitOn ?? false
         }
     }
-    
+
     /// Presents a generic success alert when an integration operation completes successfully.
     private func showDoneAlert() {
         let alert = AlertModel(
@@ -241,7 +272,7 @@ class IntegrationStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     /// Presents an alert offering the user to retry or cancel after a failed connect/disconnect attempt.
     private func showTryAgainAlert(for type: IntegrationItemType, isConnect: Bool) {
         let alert = AlertModel(
@@ -265,9 +296,9 @@ class IntegrationStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     // MARK: - Link Error Alert
-    
+
     /// Shows an alert that allows the user to copy the link when the in-app browser cannot be opened.
     private func showLinkOpenError(link: URL) {
         let alert = AlertModel(
@@ -277,36 +308,40 @@ class IntegrationStore: ObservableObject {
                 AlertButtonModel(title: alertLang.LinkOpenErrorAlert.dismissButton.uppercased(), type: .secondary) { _ in },
                 AlertButtonModel(title: alertLang.LinkOpenErrorAlert.copyLinkButton.uppercased(), type: .primary) { _ in
                     #if canImport(UIKit)
-                    UIPasteboard.general.string = link.absoluteString
+                        UIPasteboard.general.string = link.absoluteString
                     #endif
                 }
             ]
         )
         notificationService.showAlert(alert)
     }
-    
+
     // MARK: - Invalid Integration Check
-    
+
     /// Checks for enabled but invalid integrations and shows a prompt to disable them.
     private func handleInvalidIntegrations(settings: IntegrationSettings?) {
         guard let settings else { return }
-        
+
         // Skip if network offline – user can't fix anyway.
         guard NetworkMonitor.shared.isConnected else { return }
-        
+
         var invalid: [IntegrationItemType] = []
-        if settings.isFitbitOn && !settings.isFitbitValid { invalid.append(.fitbit) }
-        if settings.isMfpOn && !settings.isMfpValid { invalid.append(.myFitnessPal) }
+        if settings.isFitbitOn, !settings.isFitbitValid { invalid.append(.fitbit) }
+        if settings.isMfpOn, !settings.isMfpValid { invalid.append(.myFitnessPal) }
         // Add other providers when supported.
-        
+
         guard !invalid.isEmpty else { return }
-        logger.log(level: .info, tag: tag, message: "Detected invalid integrations requiring re-auth. providers=\(invalid.map { integrationProviderKey($0) })")
-        
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Detected invalid integrations requiring re-auth. providers=\(invalid.map { integrationProviderKey($0) })"
+        )
+
         let names = invalid.map { $0.displayName }.joined(separator: ", ")
         let disableLabel = invalid.count > 1
             ? alertLang.ReIntegrateAlert.disableAllButton
             : alertLang.ReIntegrateAlert.disableButton(names)
-        
+
         let alert = AlertModel(
             title: "",
             message: alertLang.ReIntegrateAlert.message(names, invalid.count),
@@ -328,10 +363,10 @@ class IntegrationStore: ObservableObject {
                 AlertButtonModel(title: alertLang.ReIntegrateAlert.okButton, type: .secondary) { _ in }
             ]
         )
-        
+
         notificationService.showAlert(alert)
     }
-    
+
     /// Removes integration without showing remove-confirm alert/loader, returns success flag.
     private func performRemoveIntegrationSilently(type: IntegrationItemType) async -> Bool {
         guard let provider = mapToIntegrationType(type) else { return false }

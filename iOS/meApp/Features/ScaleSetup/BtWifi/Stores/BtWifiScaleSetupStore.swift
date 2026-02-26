@@ -6,7 +6,6 @@
 //
 
 import Combine
-// swiftlint:disable type_body_length
 // This file intentionally aggregates all BtWifi scale setup orchestration logic.
 // Breaking it into smaller files would fragment the multi-step flow management and reduce maintainability.
 // The updateNextEnabled function has high complexity due to multiple step-specific validation rules.
@@ -596,4 +595,3 @@ final class BtWifiScaleSetupStore: ObservableObject {
         subscribeToNetworkForm()
     }
 }
-// swiftlint:enable type_body_length

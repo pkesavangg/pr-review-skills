@@ -23,6 +23,6 @@ struct BluetoothSetupManager: BluetoothSetupManaging {
     }
 
     func cancelWifi(on scale: Device, bluetoothService: BluetoothService) async {
-        await bluetoothService.cancelWifi(on: scale)
+        _ = await bluetoothService.cancelWifi(on: scale)
     }
 }
