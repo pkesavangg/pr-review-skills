@@ -44,8 +44,12 @@ struct HistoryEntryItem: View {
                 
                 // Weight value
                 HStack(spacing: .spacingXS) {
-// swiftlint:disable:next line_length
-                    Text(WeightValueConvertor.formatWeight(Double(entry.scaleEntry?.weight ?? 0), showSymbol: false, weightUnit: weightUnit, weightless: weightlessSettings))
+                    Text(WeightValueConvertor.formatWeight(
+                        Double(entry.scaleEntry?.weight ?? 0),
+                        showSymbol: false,
+                        weightUnit: weightUnit,
+                        weightless: weightlessSettings
+                    ))
                         .fontOpenSans(.heading3)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
                     

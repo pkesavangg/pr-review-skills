@@ -154,8 +154,10 @@ final class WifiScaleSetupStore: ObservableObject {
                     self.navigateToStep(.errorSelect)
                 })
             case .apMode:
-// swiftlint:disable:next line_length
-                return AnyView(ApModeConnectionView(connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "", permissionsSkipped: permissionsSkipped) {
+                return AnyView(ApModeConnectionView(
+                    connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "",
+                    permissionsSkipped: permissionsSkipped
+                ) {
                     self.openWifiSettings()
                 })
             case .apModeConfirm:
@@ -183,8 +185,10 @@ final class WifiScaleSetupStore: ObservableObject {
             case .stepOn:
                 return AnyView(ScaleSetupStepOnView())
             case .setupFinish:
-// swiftlint:disable:next line_length
-                return AnyView(ScaleSetupFinishView(title: scaleSetupStrings.FinishViewStrings.title, description: scaleSetupStrings.FinishViewStrings.description))
+                return AnyView(ScaleSetupFinishView(
+                    title: scaleSetupStrings.FinishViewStrings.title,
+                    description: scaleSetupStrings.FinishViewStrings.description
+                ))
             }
         }
     }
@@ -696,8 +700,11 @@ final class WifiScaleSetupStore: ObservableObject {
     /// On error the method simply logs via `LoggerService`; UI feedback is handled by
     /// observers of `LoggerService` elsewhere in the app.
     private func startSmartConnect() async {
-// swiftlint:disable:next line_length
-        LoggerService.shared.log(level: .info, tag: tag, message: "startSmartConnect initiated – setupType: \(String(describing: scaleItem?.setupType))")
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "startSmartConnect initiated – setupType: \(String(describing: scaleItem?.setupType))"
+        )
         
         // If permissions were skipped, do NOT try to configure the scale.
         if permissionsSkipped { return }

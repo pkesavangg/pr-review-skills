@@ -287,8 +287,13 @@ class MetricCell: UICollectionViewCell {
             }
             // Reconfigure to show overlay after drag ends
             if let item = representedItem, let store = currentStore {
-// swiftlint:disable:next line_length
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: suppressOverlay,
+                    parentView: currentParentView
+                )
             }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
@@ -521,8 +526,13 @@ class MetricCell: UICollectionViewCell {
             }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
-// swiftlint:disable:next line_length
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: currentIsBeingDragged,
+                    parentView: currentParentView
+                )
             }
             guard let item = representedItem,
               let callback = onMetricLongPressCallback else { return }
@@ -536,8 +546,13 @@ class MetricCell: UICollectionViewCell {
             isLongPressed = false
             // Reconfigure to show overlay after long press ends
             if let item = representedItem, let store = currentStore {
-// swiftlint:disable:next line_length
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: currentIsBeingDragged,
+                    parentView: currentParentView
+                )
             }
         default:
             break

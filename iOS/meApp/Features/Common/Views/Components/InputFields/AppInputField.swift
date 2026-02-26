@@ -41,8 +41,11 @@ struct AppInputField: View {
                     // Floating label
                     Text(config.label)
                         .fontOpenSans((fieldIsFocused || !value.isEmpty) ? .subHeading2 : .subHeading1)
-// swiftlint:disable:next line_length
-                        .foregroundColor(config.isDisabled ? theme.textBody.opacity(0.38) : (config.errorMessage != nil ? theme.textError : theme.textSubheading))
+                        .foregroundColor(
+                            config.isDisabled
+                                ? theme.textBody.opacity(0.38)
+                                : (config.errorMessage != nil ? theme.textError : theme.textSubheading)
+                        )
                         .offset(y: (fieldIsFocused || !value.isEmpty) ? -15 : 0)
                         .offset(x: 16)
                         .animation(.easeInOut(duration: 0.1), value: !value.isEmpty)

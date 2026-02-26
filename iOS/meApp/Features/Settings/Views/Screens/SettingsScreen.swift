@@ -274,8 +274,10 @@ struct SettingsScreen: View {
                 value: settingsStore.notificationsOnText,
                 chevronType: .upDown) { settingsStore.presentNotificationPicker() })
             .listRowInsets()
-// swiftlint:disable:next line_length
-            ActionListItemView(config: ActionListItemConfig(title: settingsStore.messagesTitleText, showDot: settingsStore.canShowFeedNotificationBadge) {
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsStore.messagesTitleText,
+                showDot: settingsStore.canShowFeedNotificationBadge
+            ) {
                 router.navigate(to: .messages)
             })
             .id(settingsStore.canShowFeedNotificationBadge)

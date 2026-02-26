@@ -320,8 +320,11 @@ extension BtWifiScaleSetupStore {
 
                     do {
                         guard let refreshedScale = try await self.scaleService.getDevice(by: savedScale.id) else {
-// swiftlint:disable:next line_length
-                            LoggerService.shared.log(level: .error, tag: self.tag, message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): device not found for id \(savedScale.id)")
+                            LoggerService.shared.log(
+                                level: .error,
+                                tag: self.tag,
+                                message: "BtWifiScaleSetupStore.handlePermissionChange(.updateSettings): device not found for id \(savedScale.id)"
+                            )
                             return
                         }
                         await MainActor.run {

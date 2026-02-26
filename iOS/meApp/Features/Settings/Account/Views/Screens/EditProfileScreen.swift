@@ -37,8 +37,8 @@ struct EditProfileScreen: View {
                         type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
-// swiftlint:disable:next line_length
-                        isDisabled: (!settingsStore.editProfileForm.isDirty || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid)),
+                        isDisabled: !settingsStore.editProfileForm.isDirty
+                            || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid),
                     ) {
                         hideKeyboard()
                         settingsStore.saveProfile(router: router)

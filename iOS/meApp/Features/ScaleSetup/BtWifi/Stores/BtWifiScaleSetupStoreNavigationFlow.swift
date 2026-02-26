@@ -89,8 +89,11 @@ extension BtWifiScaleSetupStore {
         self.isDuplicated = isDuplicated
         
         // Log setup state similar to Angular version
-// swiftlint:disable:next line_length
-        LoggerService.shared.log(level: .info, tag: tag, message: "BtWifi setup started - Is Wifi setup: \(isWifiSetupOnly), Is Duplicated: \(isDuplicated), Is Reconnecting: \(isReconnect)")
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "BtWifi setup started - Is Wifi setup: \(isWifiSetupOnly), Is Duplicated: \(isDuplicated), Is Reconnecting: \(isReconnect)"
+        )
         
         // Set setup in progress flag immediately for ALL setup flows to prevent goal modals from appearing during setup
         self.bluetoothService.isSetupInProgress = true
@@ -286,8 +289,10 @@ extension BtWifiScaleSetupStore {
     
     /// Checks if the back button should be disabled based on the current step.
     func shouldDisableBackButton() -> Bool {
-// swiftlint:disable:next line_length
-        return currentStep == .intro || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound) || currentStep == .customizeSettings || currentStep == .availableWifiList
+        return currentStep == .intro
+            || (currentStep == .gatheringNetwork && scaleSetupError == .duplicatesFound)
+            || currentStep == .customizeSettings
+            || currentStep == .availableWifiList
     }
     
 }
