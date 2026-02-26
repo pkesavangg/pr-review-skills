@@ -62,7 +62,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 }
             } catch {
                 logger.log(level: .error, tag: tag, message: "Error: \(error.localizedDescription)")
-                isIonicMigrationInProgress = false
             }
             $activeAccount
                 .sink(receiveValue: { data in
