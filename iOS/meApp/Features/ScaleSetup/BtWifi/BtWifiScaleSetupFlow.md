@@ -94,7 +94,7 @@ Stores/
 
 ---
 
-## Architecture (unchanged)
+## Architecture 
 
 ```
 ┌───────────────┐    user input    ┌──────────────────────────┐
