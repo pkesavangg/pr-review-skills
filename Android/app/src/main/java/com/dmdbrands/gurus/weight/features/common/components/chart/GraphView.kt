@@ -150,7 +150,7 @@ fun GraphView(
     val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
     scrollState.animateScroll(
-      Scroll.Absolute.x(anchoredTarget.toDouble()),
+      Scroll.Absolute.xWithPadding(anchoredTarget.toDouble(), GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first),
       animationSpec = tween(
         durationMillis = 150,
         easing = LinearOutSlowInEasing,
@@ -193,8 +193,8 @@ fun GraphView(
             true
         }
       var markerIndex: Double? = null
-      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
-      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
+      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
+      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
       val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
       if (!outOfBoundaryCondition) {
         val targetMarkerIndex =
@@ -203,8 +203,8 @@ fun GraphView(
             targets,
             click,
             segment,
-            state.minTarget?.toDouble(),
-            state.maxTarget?.toDouble(),
+            paddedMinCondition,
+            paddedMaxCondition,
           )
         if (targetMarkerIndex.isNotEmpty()) {
           val targetIndex = targetMarkerIndex.first().toLong()
@@ -287,8 +287,8 @@ fun getTargetPoints(
   // Use window bounds from state to find points within current window
   if (lower == null) {
     // Input is below fullList range, find points within window bounds
-    val pointsInRange = if (minWindow != null) {
-      points.filter { it in minWindow..input }
+    val pointsInRange = if (minWindow != null && upper != null) {
+      points.filter { it in minWindow..upper }
     } else {
       points.filter { it <= input }
     }
@@ -304,7 +304,7 @@ fun getTargetPoints(
   if (upper == null) {
     // Input is above fullList range, find points within window bounds
     val pointsInRange = if (maxWindow != null) {
-      points.filter { it in input..maxWindow }
+      points.filter { it in lower..maxWindow }
     } else {
       points.filter { it >= input }
     }
