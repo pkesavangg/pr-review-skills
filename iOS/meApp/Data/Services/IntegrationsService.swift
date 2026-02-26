@@ -111,7 +111,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
         try localRepository.setIntegrationData(accountId: accountId, info: info)
         if let integrationType = info?.type {
             do {
-                try await accountService.updateIntegrations(integrationType: integrationType)
+                _ = try await accountService.updateIntegrations(integrationType: integrationType)
             } catch {
                 logger.log(
                     level: .error,

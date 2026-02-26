@@ -831,7 +831,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                     height: height,
                     activityLevel: activityLevel
                 )
-                try await updateProfile(profile)
+                _ = try await updateProfile(profile)
             }
 
             // Handle Body Composition updates

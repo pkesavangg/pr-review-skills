@@ -414,7 +414,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {  // swiftlint
             : latestWeight - initYearWeightStored
 
         let yearAvgWeight = Int(round(initYearWeight))
-        let yearStartDTO = try makeYearDTO(
+        let yearStartDTO = makeYearDTO(
             key: yearKey, avgWeight: yearAvgWeight, accountId: try getAccountId()
         )
 
