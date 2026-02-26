@@ -344,7 +344,9 @@ constructor(
         cancelText = ScaleSetupStrings.SkipWifiPermissions.Goback,
         onConfirm = {
           handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(true))
-          clearWifiPasswordForm()
+          if(state.value.wifiPasswordForm.ssid.value.isEmpty()){
+            clearWifiPasswordForm()
+          }
           handleUserConfirmSelected(SetupPath.AP_MODE)
           handleIntent(WifiScaleSetupIntent.Next)
         },
