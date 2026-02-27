@@ -170,11 +170,11 @@ class EntryRepository @Inject constructor(
       if (operation == null) {
         throw IllegalArgumentException("Operation cannot be null")
       }
-      AppLog.d("EntryRepository", "Sending operation to API: ${operation.id}")
+      AppLog.d("EntryRepository", "Sending operation to API: ${operation}")
       entryApi.sendOperation(operation)
-      AppLog.i("EntryRepository", "Operation sent successfully: ${operation.id}")
+      AppLog.i("EntryRepository", "Operation sent successfully: ${operation}")
     } catch (e: Exception) {
-      AppLog.e("EntryRepository", "Failed to send operation to API: ${operation?.id}", e)
+      AppLog.e("EntryRepository", "Failed to send operation to API: ${operation}", e)
       throw e
     }
   }
