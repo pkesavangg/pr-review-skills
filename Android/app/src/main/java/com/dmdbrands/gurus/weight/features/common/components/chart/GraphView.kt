@@ -62,6 +62,7 @@ fun GraphView(
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
   onChartConsuming: (Boolean) -> Unit = {},
+  onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
 
   val scope = rememberCoroutineScope()
@@ -144,18 +145,22 @@ fun GraphView(
       )
     }
   }
-  LaunchedEffect(scrollTarget) {
+  LaunchedEffect(segment) {
     if (scrollTarget == null || !canScrollToAnchor || state.isEmptyGraph) return@LaunchedEffect
     val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
     val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
     scrollState.animateScroll(
-      Scroll.Absolute.xWithPadding(anchoredTarget.toDouble(), GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first),
+      Scroll.Absolute.xWithPadding(
+        anchoredTarget.toDouble(),
+        GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
+      ),
       animationSpec = tween(
         durationMillis = 150,
         easing = LinearOutSlowInEasing,
       ),
     )
+    onScrollTargetConsumed(true)
   }
 
   LaunchedEffect(state.markerIndex == null) {

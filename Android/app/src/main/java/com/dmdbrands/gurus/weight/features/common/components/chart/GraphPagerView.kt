@@ -51,6 +51,7 @@ fun GraphPagerView(
   onChartConsuming: (Boolean) -> Unit = {},
   onRangeChange: (String) -> Unit = { },
   onMarkerIndexChange: (Double?) -> Unit = {},
+  onScrollTargetConsumed: (Boolean) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
@@ -149,10 +150,11 @@ fun GraphPagerView(
           modifier = Modifier.fillMaxWidth(),
           scrollTarget = state.scrollTarget,
           segment = currentSegment,
-          canScrollToAnchor = state.selectedSegment == currentSegment,
+          canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
           state = graphState,
           viewModel = viewmodel,
           onChartConsuming = onChartConsuming,
+          onScrollTargetConsumed = onScrollTargetConsumed,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
@@ -164,6 +166,7 @@ fun GraphPagerView(
       key = GraphSegment::name,
       onSelected = { segment ->
         onChartConsuming(true)
+        onScrollTargetConsumed(false)
         onSegmentChange(segment, currentVisibleCenter)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
