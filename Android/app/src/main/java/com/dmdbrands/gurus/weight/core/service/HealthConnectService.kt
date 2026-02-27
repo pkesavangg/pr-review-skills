@@ -947,7 +947,7 @@ class HealthConnectService @Inject constructor(
       val isAlreadyConnected = try {
         checkIfAlreadyUsed()
       } catch (e: Exception) {
-        AppLog.w(tag, "[checkHealthConnectPermissionDisabled] checkIfAlreadyUsed threw",)
+        AppLog.w(tag, "[checkHealthConnectPermissionDisabled] checkIfAlreadyUsed threw")
         false
       }
       AppLog.d(tag, "[checkHealthConnectPermissionDisabled] isAlreadyConnected=$isAlreadyConnected")
