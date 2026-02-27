@@ -1,9 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
@@ -12,14 +10,12 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.core.cartesian.CartesianChart
+import com.patrykandpatrick.vico.core.cartesian.FadingEdges
 import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.core.cartesian.layer.CartesianLayerPadding
 import com.patrykandpatrick.vico.core.cartesian.marker.CartesianMarker
 import java.util.Calendar
 
@@ -29,6 +25,7 @@ fun rememberGraphChart(
   defaultMarker: CartesianMarker,
   segment: GraphSegment,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  fadingEdges: FadingEdges? = null,
   onChartClick: ((List<Double>, Double?) -> Unit)? = null,
   handleIntent: (GraphIntent) -> Unit,
 ): CartesianChart {
@@ -70,13 +67,6 @@ fun rememberGraphChart(
     handleIntent = handleIntent,
   )
 
-  val fadingEdges = rememberFadingEdges(
-    useVisiblePaddingWidth = true,
-    visibilityThreshold = 24.dp,
-    visibilityEasing = FastOutSlowInEasing,
-  )
-
-  val (visibleStartXStep, visibleEndXStep) = GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
   val primaryChart =
     rememberCartesianChart(
       primaryLayer,
@@ -94,12 +84,6 @@ fun rememberGraphChart(
       fadingEdges = fadingEdges,
       visibleLabelsCount = visibleLabelsCount,
       getXStep = { GraphUtil.calculateXStep(segment) },
-      layerPadding = {
-        CartesianLayerPadding(
-          visibleStartPaddingXStep = visibleStartXStep,
-          visibleEndPaddingXStep = visibleEndXStep,
-        )
-      },
       onChartClick = onChartClick,
     )
   return primaryChart

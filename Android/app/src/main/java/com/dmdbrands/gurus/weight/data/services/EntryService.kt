@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.domain.model.common.Progress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType
-import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -29,7 +28,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -139,7 +140,6 @@ constructor(
   override val lastUpdated: StateFlow<Long?> = _lastUpdated.asStateFlow()
 
   /** Cached progress-related values; updated only when entry data is refreshed to avoid DB hits on every progress emission. */
-  private val _activeAccount = MutableStateFlow<Account?>(null)
   private val _currentStreak = MutableStateFlow(0)
   private val _longestStreak = MutableStateFlow(0)
   private val _totalCount = MutableStateFlow(0)
@@ -211,18 +211,24 @@ constructor(
         val last7Processed = inputs.last7.map { it.process(unit, weightless) }
         val last30Processed = inputs.last30.map { it.process(unit, weightless) }
         val monthYearProcessed = inputs.monthYear.map { it.process(unit, weightless) }
-        val startingWeightDisplay = processWeight(
-          initialWeight ?: _cachedStartingWeightStored.value ?: 0.0,
-          unit,
-          weightless,
-        )
+        val account = accountRepository.getActiveAccount().first()
+        val startingWeightDisplay = account?.initialWeight
+          ?.takeUnless { it == 0.0 }
+          ?.let {
+          processWeight(it, unit, weightless)
+        }
+        val firstRecordedWeightDisplay = _cachedStartingWeightStored.value?.let { oldestEntryWeightLb ->
+          val converted = convertWeight(oldestEntryWeightLb, WeightUnit.LB, unit)
+          if (weightless?.isWeightlessOn == true) converted - weightless.weightlessWeight else converted
+        }
+
         val goal = weightSettings.goal?.copy(
           goalWeight = processWeight(
             weightSettings.goal.goalWeight,
             unit,
             weightless,
           ),
-          account = _activeAccount.value,
+          account = account,
         )
         val result = calculateProgressPure(
           latestEntry = latestProcessed,
@@ -230,6 +236,7 @@ constructor(
           last30Days = last30Processed,
           months = monthYearProcessed,
           startingWeightDisplay = startingWeightDisplay,
+          firstRecordedWeightDisplay = firstRecordedWeightDisplay,
           currentStreak = _currentStreak.value,
           longestStreak = _longestStreak.value,
           totalCount = _totalCount.value,
@@ -316,18 +323,30 @@ constructor(
   /**
    * Updates cached progress-related values (streak, count, starting weight) from the database.
    * Called only when entry data is refreshed so that the progress Flow does not hit the DB on every emission.
+   * Runs four DB queries in parallel (streak dates, longest streak, total count, oldest entry).
    */
   private suspend fun updateProgressCache(accountId: String) {
     try {
-      val entryDates = entryRepository.getStreakData(accountId)
-      _currentStreak.value = EntryServiceHelper.computeCurrentStreakFromDates(entryDates)
-      _longestStreak.value = entryRepository.getLongestStreakCount(accountId)
-      _totalCount.value = entryRepository.getTotalCount(accountId)
-      if (initialWeight == null || initialWeight == 0.0) {
-        val oldest = entryRepository.getOldestEntry(accountId)
-        _cachedStartingWeightStored.value = (oldest as? ScaleEntry)?.scale?.scaleEntry?.weight?.toDouble()
-      } else {
-        _cachedStartingWeightStored.value = null
+      coroutineScope {
+        val entryDatesDeferred = async { entryRepository.getStreakData(accountId) }
+        val longestDeferred = async { entryRepository.getLongestStreakCount(accountId) }
+        val totalDeferred = async { entryRepository.getTotalCount(accountId) }
+        val oldestDeferred =
+          if (initialWeight == null || initialWeight == 0.0) {
+            async { entryRepository.getOldestEntry(accountId) }
+          } else {
+            null
+          }
+        val entryDates = entryDatesDeferred.await()
+        _currentStreak.value = EntryServiceHelper.computeCurrentStreakFromDates(entryDates)
+        _longestStreak.value = longestDeferred.await()
+        _totalCount.value = totalDeferred.await()
+        _cachedStartingWeightStored.value =
+          if (oldestDeferred != null) {
+            (oldestDeferred.await() as? ScaleEntry)?.scale?.scaleEntry?.weight?.toDouble()
+          } else {
+            null
+          }
       }
     } catch (e: Exception) {
       if (e is CancellationException) throw e
@@ -355,7 +374,6 @@ constructor(
     // Update account-related flows and cache active account for progress (avoids getActiveAccount().first() in hot path)
     try {
       val account = accountRepository.getActiveAccount().first()
-      _activeAccount.value = account
       this.initialWeight = account?.initialWeight
       _progressCacheVersion.value = _progressCacheVersion.value + 1
     } catch (e: Exception) {
@@ -428,7 +446,6 @@ constructor(
     _daywiseBodyScaleLatest.value = emptyList()
     _isUpdating.value = false
     _lastUpdated.value = null
-    _activeAccount.value = null
     _currentStreak.value = 0
     _longestStreak.value = 0
     _totalCount.value = 0
@@ -603,11 +620,7 @@ constructor(
             )
           successfulOperations.add(syncedOperation)
 
-          // Try local integration for create operations
-          if (operation.entry.operationType == OperationType.CREATE.name) {
-            tryLocalIntegration(operation)
-          }
-        } catch (e: Exception) {
+          } catch (e: Exception) {
           // If failed, increment attempts and store for retry
           val failedOperation =
             operation.updateEntry(
@@ -627,8 +640,14 @@ constructor(
           entryRepository,
           failedOperations,
           userHasOperations = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
+      }
+
+      // Try local integration for create operations
+      newEntries.forEach { operation ->
+        if (operation.entry.operationType == OperationType.CREATE.name) {
+          tryLocalIntegration(operation)
+        }
       }
 
       // 4. Handle goal alerts
@@ -645,6 +664,7 @@ constructor(
         val response = entryRepository.getOperationsFromAPI(syncTimeStamp)
         if (response == null) {
           AppLog.w("EntryService", "No operations received from API")
+          _isUpdating.value = false
           return
         }
         val scaleEntries =
@@ -661,7 +681,6 @@ constructor(
           successfulOperations,
           userHasOperations = operationCount > 0,
           arePlaceholders = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -670,17 +689,18 @@ constructor(
         EntryServiceHelper.executeOperations(
           entryRepository,
           operationsFromApi,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
-      // 7. Update last updated timestamp
-      // This will trigger the lastUpdated collector in updateAccountId() to refresh entry data
+      // 7. API sync is done: clear loader now. Then refresh caches in background.
+      // refreshEntryData() never returns (it uses Flow.collect {} which runs indefinitely),
+      // so we must clear _isUpdating here, not in a finally after refreshEntryData().
       _lastUpdated.value = System.currentTimeMillis()
-      val id = accountId!!
+
       repositoryScope.launch {
         refreshEntryData()
       }
+        _isUpdating.value = false
 
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
@@ -698,7 +718,6 @@ constructor(
       }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error in syncOperations", e)
-    } finally {
       _isUpdating.value = false
     }
   }
@@ -759,7 +778,8 @@ constructor(
     last7Days: List<Entry>,
     last30Days: List<Entry>,
     months: List<HistoryMonth>,
-    startingWeightDisplay: Double,
+    startingWeightDisplay: Double?,
+    firstRecordedWeightDisplay: Double?,
     currentStreak: Int,
     longestStreak: Int,
     totalCount: Int,
@@ -782,8 +802,15 @@ constructor(
     if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
       month = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
     }
-    if (latestEntry != null && latestEntry is ScaleEntry) {
-      total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeightDisplay
+    // For total milestone, prefer the actual first recorded history baseline.
+    // This avoids stale/mis-scaled goal starting weights producing incorrect totals.
+    val totalBaselineWeight = firstRecordedWeightDisplay ?: startingWeightDisplay
+    if (latestEntry != null && latestEntry is ScaleEntry && totalBaselineWeight != null) {
+      total = latestEntry.scale.scaleEntry.weight.toDouble() - totalBaselineWeight
+      AppLog.d(
+        "EntryService",
+        "Total milestone calc -> latest=${latestEntry.scale.scaleEntry.weight}, starting=$startingWeightDisplay, firstRecorded=$firstRecordedWeightDisplay, baseline=$totalBaselineWeight, total=$total",
+      )
     }
     val thirtyDaysAgoDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -30) }
     if (initYear != null && initYear.entryTimestamp != null) {
@@ -818,7 +845,7 @@ constructor(
       currentStreak = currentStreak,
       longestStreak = longestStreak,
       count = totalCount,
-      initWt = startingWeightDisplay,
+      initWt = totalBaselineWeight ?: 0.0,
       week = week,
       month = month,
       year = year,
@@ -986,6 +1013,31 @@ enum class OperationType {
 internal object EntryServiceHelper {
 
   /**
+   * Computes longest streak (max consecutive days with an entry) from a list of entry dates (yyyy-MM-dd).
+   * Pure in-memory single pass; no DB access. Use in place of getLongestStreakCount for large datasets.
+   */
+  fun computeLongestStreakFromDates(entryDates: List<String>): Int {
+    if (entryDates.isEmpty()) return 0
+    val sorted = entryDates.distinct().sorted()
+    var maxStreak = 1
+    var current = 1
+    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    fun toDayMillis(s: String): Long =
+      (fmt.parse(s)?.time ?: 0L) / (24 * 60 * 60 * 1000)
+    for (i in 1 until sorted.size) {
+      val prevDay = toDayMillis(sorted[i - 1])
+      val thisDay = toDayMillis(sorted[i])
+      if (thisDay == prevDay + 1) {
+        current++
+        maxStreak = maxOf(maxStreak, current)
+      } else {
+        current = 1
+      }
+    }
+    return maxStreak
+  }
+
+  /**
    * Computes current streak count from a list of entry dates (yyyy-MM-dd, newest first).
    * Pure in-memory calculation; no DB access.
    */
@@ -1034,22 +1086,15 @@ internal object EntryServiceHelper {
    * Executes a list of operations received from the server.
    * @param entryRepository The entry repository.
    * @param operations The list of operations to execute.
-   * @param tryLocalIntegration Optional suspend function to call for local integration (Health Connect).
    */
   suspend fun executeOperations(
     entryRepository: IEntryRepository,
     operations: List<Entry>,
-    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
     try {
       val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
       entryRepository.insert(sortedOperations)
-
-      // Try local integration for create operations
-      for (operation in sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }) {
-        tryLocalIntegration?.invoke(operation)
-      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error executing operations", e)
     }
@@ -1068,7 +1113,6 @@ internal object EntryServiceHelper {
     operations: List<Entry>,
     userHasOperations: Boolean = true,
     arePlaceholders: Boolean = false,
-    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
 
@@ -1098,9 +1142,6 @@ internal object EntryServiceHelper {
           // Insert new entry
           entryRepository.insert(operation)
         }
-
-        // Try local integration for create operations
-        tryLocalIntegration?.invoke(operation)
       }
 
       // Handle delete operations

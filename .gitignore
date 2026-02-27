@@ -21,3 +21,11 @@ local.properties
 *.swo
 *.bak
 *.tmp
+
+# Sensitive files - Q1 2026 audit
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets.json

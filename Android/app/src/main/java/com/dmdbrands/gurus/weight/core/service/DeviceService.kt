@@ -187,6 +187,27 @@ constructor(
   }
 
   /**
+   * Merges synced and unsynced device lists by id: for same id, copies unsynced property onto the existing item;
+   * for ids only in unsynced list, appends them. Never produces two items with the same id.
+   */
+  private fun mergeSyncedWithUnsyncedById(
+    syncedList: List<Device>,
+    unsyncedDevices: List<Device>,
+  ): List<Device> {
+    val byId = syncedList.associateBy { it.id }.toMutableMap()
+    unsyncedDevices.forEach { unsynced ->
+      val withUnsyncedFlag = unsynced.copy(isSynced = false)
+      val existing = byId[unsynced.id]
+      if (existing != null) {
+        byId[unsynced.id] = unsynced.copy(isSynced = false)
+      } else {
+        byId[unsynced.id] = withUnsyncedFlag
+      }
+    }
+    return byId.values.toList()
+  }
+
+  /**
    * Unified sync method for device operations and initial sync.
    * - If called with no arguments, performs initial sync: fetches from API, merges with local, updates StateFlow.
    * - If called with device lists, processes add/update/delete operations and updates StateFlow.
@@ -280,7 +301,8 @@ constructor(
             deviceRepository.markDeviceDeleted(device.id, true)
             deviceRepository.deleteDeviceFromDb(device.id)
           } else {
-            unsyncedDevices.add(device)
+            deviceRepository.updateDevice(device.copy(isDeleted = true, isSynced = false), accountId = currentAccountId!!)
+            unsyncedDevices.add(device.copy(isDeleted = true, isSynced = false))
           }
         }
       }
@@ -296,16 +318,15 @@ constructor(
       }
     }
 
-    // 6. Get fresh data from API and merge with unsynced
+    // 6. Get fresh data from API and merge with unsynced by id: same id = copy unsynced property onto existing item; new id = append
     val finalDevices = try {
       val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
       AppLog.i(tag, "Successfully fetched ${apiDevices.size} devices from API")
-      apiDevices.map { apiDev ->
+      val syncedList = apiDevices.map { apiDev ->
         val localMatch = deviceRepository.getDevice(apiDev.id).first()
         if (localMatch != null) {
           apiDev.copy(
             isSynced = true,
-            isDeleted = localMatch.isDeleted,
             device = apiDev.device?.copy(
               macAddress = localMatch.device?.macAddress ?: apiDev.device?.macAddress ?: "",
               isWifiConfigured = localMatch.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
@@ -314,15 +335,13 @@ constructor(
         } else {
           apiDev.copy(isSynced = true)
         }
-      } + unsyncedDevices.map { it.copy(isSynced = false) }
+      }
+      mergeSyncedWithUnsyncedById(syncedList, unsyncedDevices)
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API $e", )
       // Use syncedDevicesToStore (contains both already synced and newly synced devices) as fallback
-      // Similar to TypeScript: scales = [...unsavedScales, ...onlineScales]
-      // syncedDevicesToStore already includes onlineScales and newly synced devices
-      unsyncedDevices.map { it.copy(isSynced = false) } + syncedDevicesToStore
+      mergeSyncedWithUnsyncedById(syncedDevicesToStore, unsyncedDevices)
     }
-
     // 7. Store updated device list locally
     try {
       deviceRepository.deleteAllDevicesForAccount(accountId = currentAccountId!!)
@@ -371,28 +390,22 @@ constructor(
         val updatedPreferences = savedDevice.preferences.copy(id = savedDevice.id)
         savedDevice.copy(preferences = updatedPreferences)
       } else savedDevice
-      // Run sync in repositoryScope so it is not cancelled when the caller (e.g. setup screen) is left.
-      // Otherwise navigating back after save cancels viewModelScope and the sync (getDevicesFromApi) fails with JobCancellationException.
-      repositoryScope.launch {
         try {
           syncDevices(adjusted)
           AppLog.d(tag, "saveScale (via syncDevices): ${adjusted.id}")
         } catch (e: Exception) {
           AppLog.e(tag, "saveScale syncDevices failed", e)
         }
-      }
       adjusted
     } catch (e: Exception) {
       // Offline (or API error) -> push as temp; syncDevices() will store locally and retry later.
       AppLog.d(tag, "saveScale (via syncDevices) offline/fallback: $e")
       val unsyncedDevice = updatedDevice.copy(isSynced = false)
-      repositoryScope.launch {
         try {
           syncDevices(unsyncedDevice)
         } catch (syncEx: Exception) {
           AppLog.e(tag, "saveScale offline syncDevices failed", syncEx)
         }
-      }
       null
     }
   }

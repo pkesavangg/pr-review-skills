@@ -23,7 +23,7 @@ final class ScaleMigrationService {
     func isMigrationNeeded(for accountId: String) -> Bool {
         let scaleKey = MigrationKey.scaleKey(for: accountId)
         let hasScaleData = kvStorage.getValue(forKey: scaleKey) != nil
-        logger.log(level: .info, tag: tag, message: "Scale migration check for account \(accountId) with key: \(scaleKey) - Scale data exists: \(hasScaleData)")
+        logger.log(level: .info, tag: tag, message: "Scale migration check for account: \(accountId), hasScaleData=\(hasScaleData)")
         return hasScaleData
     }
     
@@ -35,7 +35,7 @@ final class ScaleMigrationService {
         logger.log(level: .info, tag: tag, message: "Starting scale data migration from Ionic app for account: \(accountId)")
         
         guard let ionicScales = getStoredIonicScaleData(for: accountId) else {
-            logger.log(level: .error, tag: tag, message: "No Ionic scale data found to migrate for account: \(accountId)")
+            logger.log(level: .info, tag: tag, message: "No Ionic scale data found to migrate for account: \(accountId)")
             return []
         }
         
@@ -48,8 +48,6 @@ final class ScaleMigrationService {
                 // Save device to SwiftData
                 migratedDevices.append(device)
                 let _ = try await self.scaleService.createScaleInLocal(device)
-                logger.log(level: .info, tag: tag, message: "scaleRepository.createScale: \(ionicScale.id ?? "unknown") for account: \(device.sku ?? "unknown")")
-                logger.log(level: .info, tag: tag, message: "Successfully migrated scale: \(ionicScale.id ?? "unknown") for account: \(accountId)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to migrate scale \(ionicScale.id ?? "unknown"): \(error.localizedDescription)")
                 // Continue with other scales even if one fails
@@ -78,7 +76,7 @@ final class ScaleMigrationService {
         let scaleKey = MigrationKey.scaleKey(for: accountId)
         
         guard let scaleString = kvStorage.getValue(forKey: scaleKey) as? String else {
-            logger.log(level: .error, tag: tag, message: "No scale data string found for account: \(accountId) with key: \(scaleKey)")
+            logger.log(level: .info, tag: tag, message: "No scale data string found for account: \(accountId)")
             return nil
         }
         
@@ -100,8 +98,6 @@ final class ScaleMigrationService {
     
     /// Converts Ionic scale data to SwiftUI Device model
     private func convertIonicScaleToDevice(_ ionicScale: IonicScaleData, accountId: String) throws -> Device {
-        logger.log(level: .info, tag: tag, message: "Converting Ionic scale to Device model: \(ionicScale.id ?? "unknown")")
-        
         // Create BathScale
         let bathScale = BathScale(
             scaleType: ionicScale.type,
@@ -168,8 +164,6 @@ final class ScaleMigrationService {
         bathScale.device = device
         r4Preference?.device = device
         metaData?.device = device
-        
-        logger.log(level: .info, tag: tag, message: "Successfully converted Ionic scale to Device model: \(device.id)")
         return device
     }
     

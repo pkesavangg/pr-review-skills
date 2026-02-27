@@ -27,7 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import timber.log.Timber
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.net.http.SslError
@@ -219,7 +219,7 @@ fun WebView.setupWebView() {
 
     // Block downloads
     setDownloadListener { url, _, _, _, _ ->
-        Timber.w("Download blocked: $url")
+        AppLog.w("WebViewScreen", "Download blocked: $url")
     }
 
     // Block new windows

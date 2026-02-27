@@ -185,6 +185,10 @@ constructor(
       fcmToken = fcmToken,
     )
 
+  override suspend fun updateLocalIntegrationInfo() {
+    integrationRepository.updateLocalAccount()
+  }
+
   /**
    * Updates the device info by fetching the latest FCM token (from DataStore or Firebase when empty, e.g. after migration) and sending device info to the API.
    */

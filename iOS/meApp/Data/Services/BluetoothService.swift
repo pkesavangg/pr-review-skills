@@ -114,6 +114,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     // The SDK only maintains one completion handler per operation type at a time
     private nonisolated let sdkOperationSerializer = SDKOperationSerializer()
 
+    private func logOperationFailure(_ operation: String, error: Error) {
+        logger.log(level: .error, tag: tag, message: "\(operation) failed: \(error.localizedDescription)")
+    }
+
     // MARK: - Alert Dependencies (injected via shared instances for now)
     private var notificationService: NotificationHelperService { NotificationHelperService.shared }
     private var scaleInfoUtils: ScaleInfoUtils { ScaleInfoUtils.shared }
@@ -157,6 +161,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      Initializes the Bluetooth service and subscribes to account changes.
      */
     func initialize() {
+        logger.log(level: .info, tag: tag, message: "Bluetooth service initialize called")
         accountService.$activeAccount
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
@@ -194,9 +199,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
 
         if !isSmartScanStarted {
+            logger.log(level: .info, tag: tag, message: "Starting Bluetooth operations: clearing devices, scanning, syncing")
             clearDevices()
             await scan()
             syncDevices([])
+        } else {
+            logger.log(level: .info, tag: tag, message: "Bluetooth operations already running; skipping restart")
         }
     }
 
@@ -204,6 +212,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         guard let scales = scales, !scales.isEmpty else {
             bluetoothScales = []
             syncDevices([])
+            logger.log(level: .info, tag: tag, message: "Bluetooth scales update received empty list; synced zero devices")
             return
         }
         // Filter scales by allowed types only (common across all models)
@@ -225,6 +234,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             await disconnectDeletedScales(currentScales: bluetoothScales, newScales: filteredScales)
         }
         bluetoothScales = filteredScales
+        logger.log(level: .info, tag: tag, message: "Bluetooth scales updated. total=\(scales.count), filtered=\(filteredScales.count), setupInProgress=\(isSetupInProgress)")
 
         // Check if banner should be shown/hidden after scale updates
         if !isWeightOnlyModeAlertDismissed {
@@ -239,9 +249,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     private func handleAccountUpdate(_ account: Account?) async {
         if let account = account {
             self.activeAccount = account
+            logger.log(level: .info, tag: tag, message: "Bluetooth active account updated. accountId=\(account.accountId)")
             // Don't start scanning immediately - wait for dashboard to be ready
             // The scan will be triggered by startBluetoothOperations() when called from ContentViewModel
         } else if isSmartScanStarted {
+            logger.log(level: .info, tag: tag, message: "Bluetooth account cleared; stopping active scan")
             stopScan()
         }
     }
@@ -254,6 +266,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func stopScan() {
         ggBleSDK.stop()
         isSmartScanStarted = false
+        logger.log(level: .info, tag: tag, message: "Bluetooth scan stopped")
     }
 
     /**
@@ -262,6 +275,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     func clearDevices() {
         skipDevices = []
         ggBleSDK.clearDevices()
+        logger.log(level: .info, tag: tag, message: "Bluetooth cached devices cleared")
     }
 
     // MARK: - Scanning & Pairing
@@ -270,10 +284,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      */
     func scan() async {
         guard activeAccount != nil else {
+            logger.log(level: .info, tag: tag, message: "Skipping Bluetooth scan: no active account")
             return
         }
+        logger.log(level: .info, tag: tag, message: "Starting Bluetooth smart scan")
         do {
             try await startSmartScan()
+            logger.log(level: .success, tag: tag, message: "Bluetooth smart scan started successfully")
         } catch {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.scanFailed(error).localizedDescription)
         }
@@ -292,8 +309,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             syncDevices(bluetoothScales)
             return .success(())
         } catch let error as BluetoothServiceError {
+            logOperationFailure("resyncAndScan", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("resyncAndScan", error: error)
             return .failure(.resyncFailed(error))
         }
     }
@@ -342,6 +361,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             )
         }
         ggBleSDK.syncDevices(ggDevices)
+        logger.log(level: .info, tag: tag, message: "Synced devices to Bluetooth SDK. requested=\(devices.count), effective=\(scalesToSync.count)")
     }
 
     /**
@@ -392,10 +412,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             scaleToSave.metaData = metaData
             let savedScale = try await scaleService.createDevice(scaleToSave, skipDuplicateCheck ?? false)
             try await scaleService.syncDevices(tempDevice: nil)
+            logger.log(level: .info, tag: tag, message: "addNewDevice successful for deviceId=\(savedScale.id)")
             return .success(savedScale)
         } catch let error as BluetoothServiceError {
+            logOperationFailure("addNewDevice", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("addNewDevice", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -424,10 +447,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 }
             }
             
+            logger.log(level: .info, tag: tag, message: "confirmSmartPair successful for deviceId=\(device.id)")
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
+            logOperationFailure("confirmSmartPair", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("confirmSmartPair", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -452,10 +478,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 }
             }
             
+            logger.log(level: .info, tag: tag, message: "deleteDevice successful for deviceId=\(device.id)")
             return .success(UserDeletionResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
+            logOperationFailure("deleteDevice", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("deleteDevice", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -508,8 +537,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             let result = await ggBleSDK.getWifiList(ggDevice)
             return .success(result.wifi.map { WifiDetails(macAddress: $0.macAddress, ssid: $0.ssid, rssi: $0.rssi, password: $0.password) })
         } catch let error as BluetoothServiceError {
+            logOperationFailure("getWifiList", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("getWifiList", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -528,11 +559,14 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             let ggResponse = await ggBleSDK.setupWifi(ggDevice, ggConfig)
 
             let response = WifiSetupResponse(wifiState: ggResponse.wifiState, errorCode: ggResponse.errorCode)
+            logger.log(level: .info, tag: tag, message: "setupWifi completed for deviceId=\(device.id), wifiState=\(ggResponse.wifiState)")
             return .success(response)
 
         } catch let error as BluetoothServiceError {
+            logOperationFailure("setupWifi", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("setupWifi", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -549,8 +583,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             ggBleSDK.cancelWifi(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
+            logOperationFailure("cancelWifi", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("cancelWifi", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -568,8 +604,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             return .success(ssid)
         } catch let error as BluetoothServiceError {
+            logOperationFailure("getConnectedWifiSSID", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("getConnectedWifiSSID", error: error)
             return .failure(.timeout)
         }
     }
@@ -589,8 +627,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             return .success(mac)
         } catch let error as BluetoothServiceError {
+            logOperationFailure("getWifiMacAddress", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("getWifiMacAddress", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -610,8 +650,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             ggBleSDK.startLiveMeasurement(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
+            logOperationFailure("startLiveMeasurement", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("startLiveMeasurement", error: error)
             return .failure(.startLiveMeasurementFailed(error))
         }
     }
@@ -629,8 +671,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             ggBleSDK.stopLiveMeasurement(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
+            logOperationFailure("stopLiveMeasurement", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("stopLiveMeasurement", error: error)
             return .failure(.startLiveMeasurementFailed(error))
         }
     }
@@ -654,8 +698,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             ggBleSDK.updateSetting(ggDevice, ggSettings)
             return .success(())
         } catch let error as BluetoothServiceError {
+            logOperationFailure("updateSetting", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("updateSetting", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -674,8 +720,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             firmwareUpdateProgressSubject.send(initialStatus)
             return .success(())
         } catch let error as BluetoothServiceError {
+            logOperationFailure("updateFirmware", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("updateFirmware", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -701,8 +749,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             _ = await ggBleSDK.clearData(ggDevice, sdkType)
             return .success(())
         } catch let error as BluetoothServiceError {
+            logOperationFailure("clearData", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("clearData", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -733,8 +783,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
             return .success(success)
         } catch let error as BluetoothServiceError {
+            logOperationFailure("updateUserProfileForR4Scales", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("updateUserProfileForR4Scales", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -761,10 +813,13 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                    await self.ggBleSDK.updateAccount(ggDevice)
                }
            }
+            logger.log(level: .info, tag: tag, message: "updateAccount successful for deviceId=\(device.id)")
             return .success(UserCreationResponse(sdkType: result))
         } catch let error as BluetoothServiceError {
+            logOperationFailure("updateAccount", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("updateAccount", error: error)
             return .failure(.updateProfileFailed(error))
         }
     }
@@ -805,6 +860,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             }
             return .success(deviceUsers)
         } catch let error as BluetoothServiceError {
+            logOperationFailure("getScaleUserList", error: error)
             return .failure(error)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to get user list: \(error.localizedDescription)")
@@ -841,9 +897,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             guard let deviceDetails = details else {
                 return .failure(.deviceNotConnected)
             }
+            logger.log(level: .info, tag: tag, message: "getDeviceInfo successful for deviceId=\(device.id)")
             return .success(DeviceInfo(sdk: deviceDetails))
 
         } catch let error as BluetoothServiceError {
+            logOperationFailure("getDeviceInfo", error: error)
             return .failure(error)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
@@ -866,8 +924,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
             })
             return .success(deviceLogs)
         } catch let error as BluetoothServiceError {
+            logOperationFailure("getDeviceLogs", error: error)
             return .failure(error)
         } catch {
+            logOperationFailure("getDeviceLogs", error: error)
             return .failure(.getDeviceLogsFailed(error))
         }
     }

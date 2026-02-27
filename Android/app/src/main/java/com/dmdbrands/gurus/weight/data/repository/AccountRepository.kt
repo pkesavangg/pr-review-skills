@@ -77,16 +77,32 @@ constructor(
     email: String,
     password: String,
   ): Account {
-    val loginResponse = authAPI.login(LoginRequest(email, password))
-    return addAccountFromLoginResponse(loginResponse)
+    AppLog.d(TAG, "login API call for email: $email")
+    return try {
+      val loginResponse = authAPI.login(LoginRequest(email, password))
+      val account = addAccountFromLoginResponse(loginResponse)
+      AppLog.i(TAG, "login API call succeeded, account: ${account.id}")
+      account
+    } catch (e: Exception) {
+      AppLog.e(TAG, "login API call failed", e)
+      throw e
+    }
   }
 
   /**
    * Signs up via API and returns LoginResponse.
    */
   override suspend fun signup(request: SignupRequest): Account {
-    val loginResponse = authAPI.createAccount(request)
-    return addAccountFromLoginResponse(loginResponse)
+    AppLog.d(TAG, "signup API call for email: ${request.email}")
+    return try {
+      val loginResponse = authAPI.createAccount(request)
+      val account = addAccountFromLoginResponse(loginResponse)
+      AppLog.i(TAG, "signup API call succeeded, account: ${account.id}")
+      account
+    } catch (e: Exception) {
+      AppLog.e(TAG, "signup API call failed", e)
+      throw e
+    }
   }
 
   /**
@@ -94,7 +110,17 @@ constructor(
    * @param accountId The account ID to get info for
    * @return AccountInfo for the specified account
    */
-  override suspend fun getAccountFromAPI(accountId: String): AccountInfo = authAPI.getAccountWithToken(accountId)
+  override suspend fun getAccountFromAPI(accountId: String): AccountInfo {
+    AppLog.d(TAG, "getAccountFromAPI for account: $accountId")
+    return try {
+      val result = authAPI.getAccountWithToken(accountId)
+      AppLog.i(TAG, "getAccountFromAPI succeeded for account: $accountId")
+      result
+    } catch (e: Exception) {
+      AppLog.e(TAG, "getAccountFromAPI failed for account: $accountId", e)
+      throw e
+    }
+  }
 
   /**
    * Updates password via API and returns true if successful.
@@ -104,18 +130,25 @@ constructor(
     oldPassword: String,
     newPassword: String,
   ): ChangePasswordResponse {
-    val request = ChangePasswordRequest(oldPassword, newPassword)
-    val response = userAPI.changePassword(request)
-    setTokensForAccount(
-      Token(
-        accountId = accountId,
-        isActive = true,
-        accessToken = response.accessToken,
-        refreshToken = response.refreshToken,
-        expiresAt = response.expiresAt,
-      ),
-    )
-    return response
+    AppLog.d(TAG, "updatePassword API call for account: $accountId")
+    return try {
+      val request = ChangePasswordRequest(oldPassword, newPassword)
+      val response = userAPI.changePassword(request)
+      setTokensForAccount(
+        Token(
+          accountId = accountId,
+          isActive = true,
+          accessToken = response.accessToken,
+          refreshToken = response.refreshToken,
+          expiresAt = response.expiresAt,
+        ),
+      )
+      AppLog.i(TAG, "updatePassword API call succeeded for account: $accountId")
+      response
+    } catch (e: Exception) {
+      AppLog.e(TAG, "updatePassword API call failed for account: $accountId", e)
+      throw e
+    }
   }
 
   override suspend fun updateDashboardMetrics(dashboardKeys: List<String>) {
@@ -156,8 +189,17 @@ constructor(
   /**
    * Requests password reset via API and returns true if successful.
    */
-  override suspend fun resetPassword(email: String): Response<Unit> =
-    authAPI.requestPasswordReset(PasswordResetRequest(email))
+  override suspend fun resetPassword(email: String): Response<Unit> {
+    AppLog.d(TAG, "resetPassword API call for email: $email")
+    return try {
+      val response = authAPI.requestPasswordReset(PasswordResetRequest(email))
+      AppLog.i(TAG, "resetPassword API call succeeded for email: $email")
+      response
+    } catch (e: Exception) {
+      AppLog.e(TAG, "resetPassword API call failed for email: $email", e)
+      throw e
+    }
+  }
 
   /**
    * Updates profile via API and updates the local database with the new profile data.
@@ -567,9 +609,9 @@ constructor(
       }
       // Update account flags in DB: set isLoggedIn, isExpired, isActive to false
       accountDao.logoutAccount(accountId)
+      markAccountExpired(accountId)
       // Clear tokens from DataStore and TokenManager
       userDataStore.clearAccountTokens(accountId)
-      tokenManager.clearTokens()
       AppLog.d(TAG, "Logout successful (API attempted: $apiLogoutAttempted)")
       true
     } catch (e: Exception) {

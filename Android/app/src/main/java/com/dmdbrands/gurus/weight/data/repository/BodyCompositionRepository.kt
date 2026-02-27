@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.data.api.IBodyCompAPI
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMapper
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountResponse
 import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -32,7 +33,15 @@ class BodyCompositionRepository @Inject constructor(
      * Updates body composition via API and returns AccountResponse.
      */
     override suspend fun updateBodyCompInAPI(bodyCompData: BodyCompUpdateRequest): AccountResponse {
-        return bodyCompAPI.updateBodyComp(bodyCompData)
+        AppLog.d(TAG, "Updating body composition via API")
+        return try {
+            val result = bodyCompAPI.updateBodyComp(bodyCompData)
+            AppLog.i(TAG, "Body composition updated via API successfully")
+            result
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to update body composition via API", e)
+            throw e
+        }
     }
 
     /**
@@ -47,7 +56,7 @@ class BodyCompositionRepository @Inject constructor(
         accountId: String,
         bodyComposition: WeightCompSettingsEntity
     ) {
-        // Create updated settings with all fields
+        AppLog.d(TAG, "Updating body composition in DB for account: $accountId")
         val updatedWeightCompSettings = WeightCompSettingsEntity(
             accountId = accountId,
             height = bodyComposition.height,
@@ -56,6 +65,7 @@ class BodyCompositionRepository @Inject constructor(
             isSynced = bodyComposition.isSynced
         )
         accountDao.updateWeightCompSettings(updatedWeightCompSettings)
+        AppLog.i(TAG, "Body composition updated in DB for account: $accountId")
     }
 
     /**
@@ -64,11 +74,12 @@ class BodyCompositionRepository @Inject constructor(
      * @return The active account with unsynced body comp data, or null if active account is synced
      */
     override suspend fun getUnsyncedActiveBodyCompAccountFromDB(): Account? {
-        // Get active account if either the main account is unsynced OR the weight comp settings are unsynced
         val unsyncedActiveAccount = accountDao.getUnsyncedActiveBodyCompAccount().first()
-        return unsyncedActiveAccount?.let {
+        val result = unsyncedActiveAccount?.let {
             AccountEntityMapper.toDomainFromAccountWithRelations(it)
         }
+        AppLog.d(TAG, "getUnsyncedActiveBodyCompAccountFromDB: ${if (result != null) "found unsynced account ${result.id}" else "no unsynced account"}")
+        return result
     }
 
     /**
@@ -77,8 +88,10 @@ class BodyCompositionRepository @Inject constructor(
      */
     override suspend fun getActiveAccountFromDB(): Account? {
         val activeAccountEntity = accountDao.getActiveAccount().first()
-        return activeAccountEntity?.let {
+        val result = activeAccountEntity?.let {
             AccountEntityMapper.toDomainFromAccountWithRelations(it)
         }
+        AppLog.d(TAG, "getActiveAccountFromDB: ${if (result != null) "found account ${result.id}" else "no active account"}")
+        return result
     }
 }

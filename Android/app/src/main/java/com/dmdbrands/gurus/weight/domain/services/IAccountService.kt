@@ -230,6 +230,7 @@ sealed class AuthState {
 
   data class LoggedOut(
     val isActiveAccount: Boolean,
+    val isLastAccount: Boolean = false,
     val message: String? = null,
   ) : AuthState()
 

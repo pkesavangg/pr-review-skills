@@ -107,11 +107,13 @@ data class Account(
 }
 
 fun Account?.toGoal(): Goal? {
+  if (this?.goalType == null) return null
   val activeAccount = this ?: return null
   return Goal(
     goalWeight = activeAccount.goalWeight ?: 0.0,
     initialWeight = activeAccount.initialWeight,
     type = activeAccount.goalType ?: "",
+    goalType = activeAccount.goalType ?: "",
     percent = activeAccount.goalPercent,
     metPreviousGoal = activeAccount.metPreviousGoal ?: false,
     account = activeAccount, // Include account for weightless info access

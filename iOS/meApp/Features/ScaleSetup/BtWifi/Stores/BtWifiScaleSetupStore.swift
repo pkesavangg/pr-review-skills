@@ -443,8 +443,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.openBIAModel()
                                 },
                                 onValueChanged: { [weak self] scaleMode, heartRateEnabled in
-                                    let isPulseEnabled = heartRateEnabled && scaleMode == .allBodyMetrics
-                                    self?.handleScaleModeChange(scaleMode, heartRateEnabled: isPulseEnabled)
+                                    self?.updateScaleMode(scaleMode)
+                                    self?.updateHeartRateEnabled(heartRateEnabled)
                                 }
                             )
             case .scaleMetrics:
@@ -1284,11 +1284,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     /// Handles scale mode and heart rate changes
-    func handleScaleModeChange(_ scaleMode: ScaleModes, heartRateEnabled: Bool) {
-        selectedScaleMode = scaleMode
-        isHeartRateEnabled = heartRateEnabled
-        
+    func updateScaleMode(_ mode: ScaleModes) {
+        selectedScaleMode = mode
+        // Ensure heart rate is disabled when using Weight Only mode
+        if mode == .weightOnly {
+            isHeartRateEnabled = false
+        }
         // Update the next button state
+        updateNextEnabled()
+    }
+    
+    /// Updates the heart rate enabled state
+    func updateHeartRateEnabled(_ enabled: Bool) {
+        isHeartRateEnabled = enabled
         updateNextEnabled()
     }
     
@@ -1941,7 +1949,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
         case .success(let response):
             switch response {
             case .creationCompleted:
-                LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
+                LoggerService.shared.log(level: .info, tag: tag, message: "BtWifi pairing completed")
                 await saveScale()
                 connectionState = .success
                 scaleSetupError = .none
@@ -2011,7 +2019,11 @@ final class BtWifiScaleSetupStore: ObservableObject {
             // Create unique scale ID using timestamp
             let scaleID = String(DateTimeTools.getCurrentTimestampMillis())
             let displayName = !duplicateUserName.isEmpty ? duplicateUserName : (self.firstName ?? "User")
-            let accountId = accountService.activeAccount?.accountId ?? ""
+            guard let accountId = accountService.activeAccount?.accountId else {
+                LoggerService.shared.log(level: .error, tag: tag, message: "saveScale - missing active account")
+                connectionState = .failure
+                return
+            }
             
             // Get device metadata for R4 scales
             var deviceMetadata: DeviceMetaData? = nil
@@ -2030,7 +2042,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     wifiMac: ""
                 )
                 deviceMetadata = DeviceMetaData(from: dto)
-                LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved device metadata for R4 scale")
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
             }
@@ -2041,7 +2052,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
             switch wifiMacResult {
             case .success(let macAddress):
                 wifiMacAddress = macAddress
-                LoggerService.shared.log(level: .info, tag: tag, message: "Retrieved WiFi MAC address: \(macAddress)")
             case .failure(let error):
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get WiFi MAC address: \(error.localizedDescription)")
             }
@@ -2104,7 +2114,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         do {
             let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
             self.scaleToken = scaleTokenResponse.token
-            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi scale token: \(scaleTokenResponse.token)")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
             connectionState = .failure
@@ -2217,7 +2226,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 self.navigateToStep(.availableWifiList)
             }
             
-            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi networks: \(networks.count) networks found")
+            LoggerService.shared.log(level: .info, tag: tag, message: "Successfully fetched WiFi networks: count=\(networks.count)")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi networks: \(error.localizedDescription)")
             await MainActor.run {
@@ -2248,13 +2257,13 @@ final class BtWifiScaleSetupStore: ObservableObject {
         
         let networkConfig = networkForm.getRawValue()
         
-        LoggerService.shared.log(level: .info, tag: tag, message: "WiFi setup started for SSID: \(networkConfig.ssid)")
+        LoggerService.shared.log(level: .info, tag: tag, message: "WiFi setup started")
         let wifiSetupResult = await bluetoothService.setupWifi(on: scale, config: networkConfig)
         switch wifiSetupResult {
         case .success(let response):
             switch response.wifiState {
             case "GG_WIFI_STATE_CONNECTED":
-                LoggerService.shared.log(level: .info, tag: tag, message: "WiFi connected for: \(networkConfig.ssid)")
+                LoggerService.shared.log(level: .info, tag: tag, message: "WiFi setup succeeded")
                 self.scaleSetupError = .none
                 self.connectionState = .success
                 self.errorCode = nil
@@ -2262,7 +2271,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 // Update WiFi configuration status in local database
                 if let broadcastId = scale.broadcastIdString {
                     await scaleService.updateConnectedDeviceWifiStatus(broadcastId: broadcastId, isConfigured: true)
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Updated WiFi configuration status to true for broadcast ID: \(broadcastId)")
                 }
                 
                 // Navigate back to root after success delay (immediate when Wi-Fi-only flow)
@@ -2299,7 +2307,6 @@ final class BtWifiScaleSetupStore: ObservableObject {
         switch result {
         case .success(let deviceInfo):
             isWifiConfigured = deviceInfo.isWifiConfigured ?? false// Assuming this property exists in the DeviceInfo model
-            LoggerService.shared.log(level: .info, tag: tag, message: "Device info after WiFi setup - WiFi configured: \(isWifiConfigured)")
         case .failure(let error):
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info after WiFi setup: \(error)")
         }
@@ -2406,7 +2413,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
 
         switch result {
         case .success:
-            LoggerService.shared.log(level: .info, tag: tag, message: "deleteUserFromScale - deleted user: \(user.name)")
+            LoggerService.shared.log(level: .info, tag: tag, message: "deleteUserFromScale - deleted user")
         case .failure(let error):
             LoggerService.shared.log(level: .error, tag: tag, message: "deleteUserFromScale - error deleting user: \(error.localizedDescription)")
         }
@@ -2589,7 +2596,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                     hasCustomizeChanges = false
                     hasSavedSettings = false
                     
-                    LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully: \(updatedPreference)")
+                    LoggerService.shared.log(level: .info, tag: tag, message: "updateCustomizeSettings - settings updated successfully")
                     // Clear the selected items since they're now saved
                     selectedCustomizeItems.removeAll()
                     scaleSetupError = .none

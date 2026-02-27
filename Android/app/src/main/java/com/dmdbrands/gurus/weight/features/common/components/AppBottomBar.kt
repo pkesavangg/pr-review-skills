@@ -164,9 +164,6 @@ fun BottomAppBarPreview() {
                     coroutineScope.launch {
                         if (!isLastPage) {
                             pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        } else {
-                            // Handle DONE action (e.g., navigate to home screen)
-                            println("Finished onboarding!")
                         }
                     }
                 }

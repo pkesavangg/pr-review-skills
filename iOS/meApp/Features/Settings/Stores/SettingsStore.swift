@@ -33,6 +33,8 @@ class SettingsStore: ObservableObject {
     @Published var changePasswordForm = ChangePasswordForm()
     // Weightless-mode form
     @Published var weightlessForm = WeightlessForm()
+    // Track initial toggle state to detect actual changes
+    private var initialWeightlessToggleState: Bool = false
     // Goal-setting form
     @Published var goalForm = GoalForm()
     
@@ -215,9 +217,11 @@ class SettingsStore: ObservableObject {
     
     private func logout() {
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings logout started. accountId=\(activeAccount?.accountId ?? "nil")")
             notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut ))
             do {
                 try await accountService.logOut()
+                logger.log(level: .success, tag: tag, message: "Settings logout succeeded")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Logout failed:", data: error.localizedDescription)
             }
@@ -227,9 +231,11 @@ class SettingsStore: ObservableObject {
     
     private func logoutAllAccounts() {
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings logout-all started")
             notificationService.showLoader(LoaderModel(text: loaderLang.loggingOut ))
             do {
                 try await accountService.logOutAllAccounts()
+                logger.log(level: .success, tag: tag, message: "Settings logout-all succeeded")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Logout all failed:", data: error.localizedDescription)
             }
@@ -239,6 +245,7 @@ class SettingsStore: ObservableObject {
     
     private func deleteAccount() {
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings delete-account started. accountId=\(activeAccount?.accountId ?? "nil")")
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingAccount ))
             do {
                 // Delete connected R4 scales before deleting account
@@ -257,6 +264,7 @@ class SettingsStore: ObservableObject {
                 try await integrationService.clearIntegration()
                 
                 try await accountService.deleteAccount()
+                logger.log(level: .success, tag: tag, message: "Settings delete-account succeeded")
             } catch  {
                 logger.log(level: .error, tag: tag, message: "Delete account failed:", data: error.localizedDescription)
             }
@@ -281,16 +289,19 @@ class SettingsStore: ObservableObject {
     func openPrivacy() {
         browserURL = legalURLs.privacyPolicy
         showPrivacyBrowser = true
+        logger.log(level: .info, tag: tag, message: "Opening settings privacy policy browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
     
     func openTerms() {
         browserURL = legalURLs.termsOfService
         showTermsBrowser = true
+        logger.log(level: .info, tag: tag, message: "Opening settings terms browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
     
     func openGreaterGoods() {
         browserURL = legalURLs.greaterGoodsWebsite
         showGreaterGoodsBrowser = true
+        logger.log(level: .info, tag: tag, message: "Opening Greater Goods browser modal. url=\(browserURL?.absoluteString ?? "nil")")
     }
     
     // MARK: - Computed Profile Info
@@ -405,8 +416,26 @@ class SettingsStore: ObservableObject {
         goalForm.isValidForSave(focusedField: focusedField)
     }
     
+    /// Determines if the Weightless form is valid for saving
+    /// Save enabled only when toggle changed OR valid form changes exist
     var isWeightLessFormValid: Bool {
-        !(!weightlessForm.isDirty || (weightlessForm.isDirty && (weightlessForm.isOn.value ? weightlessForm.isInvalid : false)))
+        let hasToggleChanged = weightlessForm.isOn.value != initialWeightlessToggleState
+        
+        // If turned OFF → only toggle change matters
+        guard weightlessForm.isOn.value else {
+            return hasToggleChanged
+        }
+        
+        // If turned ON → form must be valid, and allow either toggle change OR valid form changes
+        let weightValue = Double(weightlessForm.weight.value) ?? 0.0
+        return weightlessForm.isValid &&
+            (hasToggleChanged ||
+             (weightlessForm.isDirty && weightValue != 0.0))
+    }
+
+    /// Checks if there are actual unsaved changes (for exit confirmation)
+    var hasWeightlessChanges: Bool {
+        (weightlessForm.isOn.value != initialWeightlessToggleState) || weightlessForm.isDirty
     }
     
     // MARK: - Handle export
@@ -975,8 +1004,8 @@ class SettingsStore: ObservableObject {
     
     /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
     func handleWeightlessExit(router: Router<SettingsRoute>) {
-        // Fast path: if form is pristine simply pop and bail.
-        guard weightlessForm.isDirty else {
+        // Fast path: if there are no actual changes, simply pop and bail
+        guard hasWeightlessChanges else {
             router.navigateBack()
             resetWeightlessForm()
             return
@@ -990,8 +1019,8 @@ class SettingsStore: ObservableObject {
     
     /// Async variant used by tab-deactivation; returns a Bool indicating whether it is safe to leave.
     func confirmDiscardWeightlessChanges() async -> Bool {
-        // Allow immediate exit when there are no unsaved changes.
-        guard weightlessForm.isDirty else { return true }
+        // Allow immediate exit when there are no actual changes
+        guard hasWeightlessChanges else { return true }
         
         return await withCheckedContinuation { continuation in
             presentWeightlessExitAlert(onExit: {
@@ -1007,7 +1036,7 @@ class SettingsStore: ObservableObject {
         // Validate form first.
         weightlessForm.validate()
         
-        guard weightlessForm.isDirty, isWeightLessFormValid else { return }
+        guard hasWeightlessChanges, isWeightLessFormValid else { return }
         if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
         
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
@@ -1044,8 +1073,21 @@ class SettingsStore: ObservableObject {
                     weightlessTimestamp: timestamp,
                     weightlessWeight: Double(storedWeight)
                 )
+                
+                // Refresh account to ensure latest state is available when user returns
+                try? await accountService.refreshAccount()
+                
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
+                
+                // Mark form as pristine after successful save
+                await MainActor.run {
+                    self.weightlessForm.isOn.markAsPristine()
+                    self.weightlessForm.weight.markAsPristine()
+                    // Update initial toggle state to match saved state
+                    self.initialWeightlessToggleState = isOn
+                }
+                
                 onSuccess()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
@@ -1053,7 +1095,6 @@ class SettingsStore: ObservableObject {
             }
             notificationService.dismissLoader()
             httpClient.skipCheckNetwork = false
-            self.resetWeightlessForm()
         }
     }
     
@@ -1067,6 +1108,7 @@ class SettingsStore: ObservableObject {
             weightlessForm.weight.value = ""
             weightlessForm.isOn.markAsPristine()
             weightlessForm.weight.markAsPristine()
+            initialWeightlessToggleState = false
             return
         }
         
@@ -1083,6 +1125,8 @@ class SettingsStore: ObservableObject {
         
         weightlessForm.isOn.value = shouldBeOn
         weightlessForm.isOn.markAsPristine()
+        // Store initial toggle state to detect changes
+        initialWeightlessToggleState = shouldBeOn
         
         // Set weight field value
         if let storedWeight = account.weightlessSettings?.weightlessWeight, shouldBeOn {
@@ -1114,6 +1158,7 @@ class SettingsStore: ObservableObject {
     /// Resets the Weightless form to a pristine state.
     func resetWeightlessForm() {
         weightlessForm = WeightlessForm()
+        initialWeightlessToggleState = false
         populateWeightlessFormIfNeeded()
     }
     
@@ -1456,9 +1501,11 @@ class SettingsStore: ObservableObject {
         guard !trimmedEmail.isEmpty else { return }
         
         Task {
+            logger.log(level: .info, tag: tag, message: "Settings forgot password request started")
             notificationService.showLoader(LoaderModel(text: loaderLang.loading))
             do {
                 try await accountService.requestPasswordReset(email: trimmedEmail)
+                logger.log(level: .success, tag: tag, message: "Settings forgot password request succeeded")
                 notificationService.showToast(
                     ToastModel(
                         title: toastLang.success,
@@ -1466,7 +1513,7 @@ class SettingsStore: ObservableObject {
                     )
                 )
             } catch {
-                logger.log(level: .error, tag: tag, message: "Error: \(error)")
+                logger.log(level: .error, tag: tag, message: "Settings forgot password request failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
             }
             notificationService.dismissLoader()
@@ -1504,9 +1551,11 @@ class SettingsStore: ObservableObject {
             let modalView = AddMultipleAccountsModalView(
                 initial: initial,
                 onClose: {
+                    self.logger.log(level: .info, tag: self.tag, message: "Dismissed add-multiple-accounts educational modal")
                     self.notificationService.dismissModal()
                 },
                 onAddAccount: {
+                    self.logger.log(level: .info, tag: self.tag, message: "Add account selected from educational modal. Navigating to My Accounts")
                     self.notificationService.dismissModal()
                     // Use tabViewModel navigation if available (works from any tab), otherwise use router (Settings screen only)
                     if let tabViewModel = tabViewModel {
@@ -1517,6 +1566,7 @@ class SettingsStore: ObservableObject {
                 }
             )
             
+            self.logger.log(level: .info, tag: self.tag, message: "Presenting add-multiple-accounts educational modal")
             self.notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
         }
     }

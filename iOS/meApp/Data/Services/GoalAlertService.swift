@@ -39,6 +39,8 @@ final class GoalAlertService: ObservableObject {
     private let tag = "GoalAlertService"
     
     private let alertStrings = AlertStrings.self
+    /// Stores pending alert weight when triggered on landing/loading screen
+    private var pendingAlertWeight: Double?
 
     // MARK: - Public API
     /// Evaluates whether a goal-related alert should be presented based on the
@@ -72,6 +74,13 @@ final class GoalAlertService: ObservableObject {
         }()
 
         guard hasMetGoal else { return }
+        logger.log(level: .info, tag: tag, message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)")
+
+        // If we're on landing/loading screen, store pending alert to show later
+        guard isOnDashboardTab != nil else {
+            pendingAlertWeight = currentWeight
+            return
+        }
 
         // Persist flag so the alert is not re-shown in the same session until reset
         kv.setValue(true, forKey: storageKey)
@@ -85,11 +94,20 @@ final class GoalAlertService: ObservableObject {
             await presentGoalMetAlert()
         }
     }
+    
+    /// Checks for pending goal alerts and shows them if conditions are met.
+    /// Call this when user enters bottom tab bar context.
+    func checkPendingGoalAlerts() async {
+        guard let pendingWeight = pendingAlertWeight else { return }
+        pendingAlertWeight = nil
+        await showGoalMetMessage(currentWeight: pendingWeight)
+    }
 
     // MARK: - Helpers
     func resetGoalMetFlag() {
         guard let accountId = accountService.activeAccount?.accountId else { return }
         kv.setValue(false, forKey: goalAlertStorageKey(for: accountId))
+        logger.log(level: .info, tag: tag, message: "Reset goal-met flag. accountId=\(accountId)")
     }
     
     private func goalAlertStorageKey(for accountId: String) -> String {
@@ -157,6 +175,7 @@ final class GoalAlertService: ObservableObject {
             backdropDismiss: false
         )
         
+        logger.log(level: .info, tag: tag, message: "Presenting set-a-goal modal card. accountId=\(accountId)")
         notificationService.showModal(modal)
     }
 
@@ -201,6 +220,7 @@ final class GoalAlertService: ObservableObject {
 
     // MARK: - Button Handlers
     private func handleNewGoalAction() {
+        logger.log(level: .info, tag: tag, message: "Goal alert action selected: navigate to new goal")
         notificationService.dismissAlert()
         onNavigateToGoalSetting?()
         isShowingAlert = false
@@ -211,6 +231,7 @@ final class GoalAlertService: ObservableObject {
 
         guard let account = accountService.activeAccount,
               let goalWeight = account.goalSettings?.goalWeight else {
+            logger.log(level: .error, tag: tag, message: "Maintain-goal action failed: missing active account or goal weight")
             notificationService.dismissAlert()
             return
         }
@@ -225,7 +246,7 @@ final class GoalAlertService: ObservableObject {
 
         do {
             _ = try await accountService.createGoal(maintainGoal)
-            logger.log(level: .info, tag: tag, message: "Successfully created maintain goal", data: "\(maintainGoal)")
+            logger.log(level: .success, tag: tag, message: "Successfully created maintain goal", data: "\(maintainGoal)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to create maintain goal", data: error.localizedDescription)
         }

@@ -69,7 +69,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Signs up a new account with the provided email, password, and profile.
     func signUp(email: String, password: String, profile: Profile) async throws -> Account {
         do {
-            logger.log(level: .info, tag: tag, message: "Sign up requested")
+            logger.log(level: .info, tag: tag, message: "Sign up requested for email=\(maskedEmail(email))")
             // Check if maximum accounts reached
             try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.createAccount(email: email, password: password, profile: profile)
@@ -120,10 +120,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await localRepo.updateAccount(account)
             }
             try await updatePublishedState()
-            logger.log(level: .info, tag: tag, message: "Sign up successful for accountId=\(account.accountId)")
+            logger.log(level: .success, tag: tag, message: "Sign up successful for accountId=\(account.accountId), email=\(maskedEmail(email))")
             return account
         } catch {
-            logger.log(level: .error, tag: tag, message: "Sign up failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Sign up failed for email=\(maskedEmail(email)): \(error.localizedDescription)")
             throw error // No offline fallback for signup
         }
     }
@@ -131,7 +131,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     /// Logs in an existing account with the provided email and password.
     func logIn(email: String, password: String) async throws -> Account {
         do {
-            logger.log(level: .info, tag: tag, message: "Login requested")
+            logger.log(level: .info, tag: tag, message: "Login requested for email=\(maskedEmail(email))")
             // Check if maximum accounts reached
             try await checkIfMaxAccountsReached(email: email)
             let response = try await apiRepo.logIn(email: email, password: password)
@@ -183,10 +183,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             }
             try await updatePublishedState()
             try await refreshAccount()
-            logger.log(level: .info, tag: tag, message: "Login successful for accountId=\(account.accountId)")
+            logger.log(level: .success, tag: tag, message: "Login successful for accountId=\(account.accountId), email=\(maskedEmail(email))")
             return account
         } catch {
-            logger.log(level: .error, tag: tag, message: "Login failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Login failed for email=\(maskedEmail(email)): \(error.localizedDescription)")
             throw error // No offline fallback for login
         }
     }
@@ -212,6 +212,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
 
         // Notify observers **before** performing the local logout so UI can react.
         if isAutoLogout, localAccount.isActiveAccount == true {
+            logger.log(level: .info, tag: tag, message: "Auto-logout alert shown for accountId=\(accountId)")
             Task { try? await performLogout() }
             let userName = "\(localAccount.firstName ?? "")"
             let alert = AlertModel(
@@ -264,19 +265,23 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
     // MARK: - Account Switching
     /// Switches to a different account by setting it as the active account.
     func switchAccount(to account: Account) async throws {
+        let fromAccountId = activeAccount?.accountId ?? "nil"
+        let targetAccountId = account.accountId
         // Check network connectivity before switching
-        guard networkMonitor.isConnected else {
+        guard networkMonitor.getCurrentConnectionStatus(),
+              await networkMonitor.verifyNetworkAvailability(baseURL: AppEnvironment.apiBaseURL) else {
+            logger.log(level: .error, tag: tag, message: "Switch account blocked: no internet. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
             throw HTTPError.noInternet
         }
         do {
-            logger.log(level: .info, tag: tag, message: "Switch account requested to accountId=\(account.accountId)")
+            logger.log(level: .info, tag: tag, message: "Switch account requested. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
             let responseAccount = try await refreshAccount(accountId: account.accountId)
             await bluetoothService.disconnectConnectedScales()
             activeAccount = nil
             try await setActiveAccount(responseAccount)
-            logger.log(level: .info, tag: tag, message: "Switched active account to accountId=\(responseAccount.accountId)")
+            logger.log(level: .success, tag: tag, message: "Switched active account successfully. fromAccountId=\(fromAccountId), targetAccountId=\(responseAccount.accountId)")
         } catch {
-            logger.log(level: .error, tag: tag, message: "Switch account failed to accountId=\(account.accountId): \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "Switch account failed. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId), error=\(error.localizedDescription)")
             throw error
         }
     }
@@ -339,7 +344,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(updatedAccount)
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Update account saved offline for accountId=\(updatedAccount.accountId)")
+                logger.log(level: .error, tag: tag, message: "Update account saved offline for accountId=\(updatedAccount.accountId), offline=true, reason=network_error")
                 return updatedAccount
             }
             logger.log(level: .error, tag: tag, message: "Update account failed for accountId=\(updatedAccount.accountId): \(error.localizedDescription)")
@@ -370,7 +375,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Create goal saved offline for accountId=\(accountId)")
+                logger.log(level: .error, tag: tag, message: "Create goal saved offline for accountId=\(accountId), offline=true, reason=network_error, goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Create goal failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -403,7 +408,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 notifyActiveAccountChanged()
 
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Update profile saved offline for accountId=\(accountId)")
+                logger.log(level: .error, tag: tag, message: "Update profile saved offline for accountId=\(accountId), offline=true, reason=network_error")
                 return localAccount
             }
             logger.log(level: .error, tag: tag, message: "Update profile failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -440,7 +445,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         } catch {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
-                let offlineWeightUnitBeforeUpdate = activeAccount?.weightSettings?.weightUnit?.rawValue ?? "nil"
                 localAccount.weightSettings?.weightUnit = bodyComp.weightUnit
                 localAccount.weightSettings?.height = String(bodyComp.height)
                 localAccount.weightSettings?.activityLevel = bodyComp.activityLevel
@@ -454,7 +458,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 await MainActor.run {
                     NotificationCenter.default.post(name: .accountWeightUnitChanged, object: nil, userInfo: ["weightUnit": finalWeightUnit])
                 }
-                logger.log(level: .error, tag: tag, message: "Update bodyComp saved offline for accountId=\(accountId)")
+                logger.log(level: .error, tag: tag, message: "Update bodyComp saved offline for accountId=\(accountId), offline=true, reason=network_error, weightUnit=\(bodyComp.weightUnit.rawValue), height=\(bodyComp.height), activityLevel=\(bodyComp.activityLevel.rawValue)")
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Update bodyComp failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -560,7 +564,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 }
                 try? await localRepo.updateAccount(localAccount)
                 try? await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue)")
+                logger.log(level: .error, tag: tag, message: "Integration update saved offline for accountId=\(accountId), type=\(integrationType.rawValue), offline=true, reason=network_error")
                 return localAccount
             }
             logger.log(level: .error, tag: tag, message: "Integration update failed for accountId=\(accountId), type=\(integrationType.rawValue): \(error.localizedDescription)")
@@ -594,7 +598,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Update notifications saved offline for accountId=\(accountId)")
+                logger.log(level: .error, tag: tag, message: "Update notifications saved offline for accountId=\(accountId), offline=true, reason=network_error, shouldSendEntry=\(notifications.shouldSendEntryNotifications), shouldSendWeight=\(notifications.shouldSendWeightInEntryNotifications)")
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Update notifications failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -663,7 +667,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         }
 
         do {
-            logger.log(level: .info, tag: tag, message: "Refresh account requested for accountId=\(accountId)")
+            logger.log(level: .debug, tag: tag, message: "Refresh account requested for accountId=\(accountId)")
             
             // Try to fetch from API
             let dto = try await apiRepo.fetchAccount(accountId: localAccount.accountId)
@@ -674,7 +678,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             localAccount.isSynced = true
             try await localRepo.updateAccount(localAccount)
             try await updatePublishedState()
-            logger.log(level: .info, tag: tag, message: "Refresh account successful for accountId=\(accountId)")
+            logger.log(level: .debug, tag: tag, message: "Refresh account successful for accountId=\(accountId)")
             return localAccount
         } catch {
             if HTTPError.isNetworkError(error) {
@@ -940,7 +944,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 }
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Delete integration saved offline for accountId=\(accountId), type=\(type.rawValue)")
+                logger.log(level: .error, tag: tag, message: "Delete integration saved offline for accountId=\(accountId), type=\(type.rawValue), offline=true, reason=network_error")
             }
             logger.log(level: .error, tag: tag, message: "Delete integration failed for accountId=\(accountId), type=\(type.rawValue): \(error.localizedDescription)")
             throw error
@@ -995,6 +999,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             if HTTPError.isNetworkError(error) {
                 localAccount.isSynced = false
                 try? await localRepo.updateAccount(localAccount)
+                logger.log(level: .error, tag: tag, message: "Update \(type) metrics saved offline for accountId=\(accountId), offline=true, reason=network_error, metrics=\(metrics)")
             }
             logger.log(level: .error, tag: tag, message: "Failed to update \(type) metrics: \(error)")
             throw error
@@ -1036,7 +1041,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 localAccount.isSynced = false
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
-                logger.log(level: .error, tag: tag, message: "Update streak saved offline for accountId=\(accountId)")
+                logger.log(level: .error, tag: tag, message: "Update streak saved offline for accountId=\(accountId), offline=true, reason=network_error, isStreakOn=\(isStreakOn)")
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Update streak failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -1074,7 +1079,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
                 try await localRepo.updateAccount(localAccount)
                 try await updatePublishedState()
                 notifyActiveAccountChanged()
-                logger.log(level: .error, tag: tag, message: "Update weightless saved offline for accountId=\(accountId)")
+                logger.log(level: .error, tag: tag, message: "Update weightless saved offline for accountId=\(accountId), offline=true, reason=network_error, isWeightlessOn=\(isWeightlessOn), weightlessWeight=\(weightlessWeight)")
                 return localAccount
             } else {
                 logger.log(level: .error, tag: tag, message: "Update weightless failed for accountId=\(accountId): \(error.localizedDescription)")
@@ -1107,11 +1112,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         guard let account = activeAccount else {
             throw AccountError.noActiveAccount
         }
-        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(account.accountId)")
+        // Extract primitives from @Model before crossing async boundaries
+        let accountId = account.accountId
+        let accessToken = account.accessToken ?? ""
+        let refreshToken = account.refreshToken ?? ""
+        let expiresAt = account.expiresAt ?? ""
+        logger.log(level: .info, tag: tag, message: "Get active tokens requested for accountId=\(accountId)")
         return Tokens(
-            accessToken: account.accessToken ?? "",
-            refreshToken: account.refreshToken ?? "",
-            expiresAt: account.expiresAt ?? ""
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            expiresAt: expiresAt
         )
     }
 
@@ -1159,10 +1169,19 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
         if try await hasReachedMaxAccounts() {
             allAccounts = try await localRepo.fetchAllAccounts().filter { $0.isLoggedIn == true }
             if !(allAccounts.contains { $0.email == email } ) {
-                logger.log(level: .error, tag: tag, message: "Max accounts reached. Blocking new account creation")
+                logger.log(level: .error, tag: tag, message: "Max accounts reached. Blocking new account creation for email=\(maskedEmail(email))")
                 throw AccountError.maxAccountsReached
             }
         }
+    }
+
+    private func maskedEmail(_ email: String) -> String {
+        let parts = email.split(separator: "@", maxSplits: 1)
+        guard parts.count == 2 else { return "***" }
+        let local = String(parts[0])
+        let domain = String(parts[1])
+        guard let first = local.first else { return "***@\(domain)" }
+        return "\(first)***@\(domain)"
     }
 
     /// Checks if the maximum number of accounts has been reached.

@@ -33,6 +33,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun DashboardMilestone(
   progress: Progress,
+  isProgressUpdating: Boolean = false,
   latestWeight: Double? = null,
   inEditMode: Boolean = false,
   isFromSetup: Boolean = false,
@@ -117,6 +118,7 @@ fun DashboardMilestone(
       inEditMode = inEditMode,
       isFromSetup = isFromSetup,
       hasVisibleMetrics = hasVisibleMetrics,
+      isProgressUpdating = isProgressUpdating,
       onMilestoneMoved = onMilestoneMoved,
       onMilestoneReordered = onMilestoneReordered,
       onNavigateToGoal = if (inEditMode) {

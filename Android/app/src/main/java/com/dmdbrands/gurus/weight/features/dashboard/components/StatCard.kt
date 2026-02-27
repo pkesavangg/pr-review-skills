@@ -34,12 +34,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
-import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
@@ -169,6 +169,8 @@ internal fun StatCard(
             text = metricData,
             style = MeTheme.typography.heading4,
             color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textHeading,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
           )
         }
         Text(
@@ -176,8 +178,8 @@ internal fun StatCard(
           style = MeTheme.typography.subHeading2,
           textAlign = textAlignment,
           color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.textSubheading,
-          maxLines = 2,
-          minLines = 1,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
         )
       }
     }
@@ -194,7 +196,7 @@ fun AnimatedStatCard(
   isFromSetup: Boolean = true,
   modifier: Modifier = Modifier,
   onBadgeClick: () -> Unit = {},
-  canLongPress : Boolean = false,
+  canLongPress: Boolean = false,
   onLongClick: (Stat) -> Unit = {},
   onClick: () -> Unit = {},
 ) {

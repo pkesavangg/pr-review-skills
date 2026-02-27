@@ -14,6 +14,7 @@ import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.ScaleSetup.ScaleSetupConstants
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiModes
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.WifiScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.SetupPath
@@ -42,7 +43,9 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @HiltViewModel(
   assistedFactory = WifiScaleSetupViewModel.Factory::class,
@@ -119,7 +122,7 @@ constructor(
 
   override fun provideInitialState(): WifiScaleSetupState = WifiScaleSetupState()
   override fun onScanResponse(response: GGScanResponse.DeviceDetail) {
-    TODO("Not yet implemented")
+    //No need to implement them
   }
 
   override fun handleIntent(intent: WifiScaleSetupIntent) {
@@ -341,7 +344,9 @@ constructor(
         cancelText = ScaleSetupStrings.SkipWifiPermissions.Goback,
         onConfirm = {
           handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(true))
-          clearWifiPasswordForm()
+          if(state.value.wifiPasswordForm.ssid.value.isEmpty()){
+            clearWifiPasswordForm()
+          }
           handleUserConfirmSelected(SetupPath.AP_MODE)
           handleIntent(WifiScaleSetupIntent.Next)
         },
@@ -356,7 +361,7 @@ constructor(
     // Clear setup in progress state when exiting
     deviceService.setSetupInProgress(false)
     if (isSetupFinished) {
-      navigateBack()
+      navigateBack(waitForScaleInList = true)
       return
     }
     dialogQueueService.enqueue(
@@ -426,10 +431,14 @@ constructor(
 
   /**
    * Navigates back from the setup screen.
+   * @param waitForScaleInList If true (e.g. after setup finished), waits for saved scale to appear in pairedScales before navigating so the list is not empty.
    */
-  private fun navigateBack() {
+  private fun navigateBack(waitForScaleInList: Boolean = false) {
     viewModelScope.launch {
       try {
+        if (waitForScaleInList) {
+          waitForScaleInPairedList(savedDevice = null, currentSku = state.value.sku)
+        }
         navigationService.navigateBack()
         AppLog.d(TAG, "Successfully navigated back from scale setup")
       } catch (e: Exception) {
@@ -482,6 +491,7 @@ constructor(
   /**
    * Updates the network status.
    * Equivalent to TypeScript updateNetworkStatus()
+   * When any required permission is revoked, preserves the last known SSID so the network field is not cleared.
    */
   private fun updateNetworkStatus() {
     viewModelScope.launch {
@@ -489,10 +499,32 @@ constructor(
         val hasLocationPermission = isAllLocationPermissionGranted()
         val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
         wifiStatus = status
-          handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
-          updateFormValuesWithSsid(status.ssid)
-        handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
+        if (status.ssid.isNotEmpty()) {
+          lastSsid = status.ssid
+        }
+        val currentState = state.value
+        val hasAllRequiredPermissions = AppPermissionsHelper
+          .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
+        // When any required permission is off, status.ssid may be empty; preserve last known SSID so we don't clear the field
+        val effectiveSsid =
+          if (status.ssid.isNotEmpty()) {
+            status.ssid
+          } else if (!hasAllRequiredPermissions) {
+            lastSsid ?: ""
+          } else {
+            ""
+          }
+        handleIntent(WifiScaleSetupIntent.SetWifiSsid(effectiveSsid))
+        updateFormValuesWithSsid(effectiveSsid)
+        val displayStatus =
+          if (!hasAllRequiredPermissions && status.ssid.isEmpty() && lastSsid != null) {
+            status.copy(ssid = lastSsid!!, bssid = currentState.wifiStatus?.bssid ?: "")
+          } else {
+            status
+          }
+        handleIntent(WifiScaleSetupIntent.SetWifiStatus(displayStatus))
       } catch (e: Exception) {
+        AppLog.e(TAG, "updateNetworkStatus - Error updating network status", e)
       }
     }
   }
@@ -692,10 +724,10 @@ constructor(
    * Helper method to keep form values in sync with network status.
    *
    * Logic:
+   * - Fill with SSID when we have it, including when user skipped permission (so they see connected network).
+   * - When user skipped permissions and then clears the field: do not refill (respect user's clear).
    * - If on early steps (index < 3), only fill WiFi password form
    * - If in WiFi switching context (after SWITCH_WIFI step), only fill scale network form
-   * - Otherwise, fill both forms as before
-   * - Always populate if permissions are currently enabled (regardless of skip history)
    */
   private fun updateFormValuesWithSsid(ssid: String) {
     val currentState = state.value
@@ -704,6 +736,17 @@ constructor(
     val arePermissionsCurrentlyEnabled = AppPermissionsHelper
       .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
     val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
+    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field
+    // Treat as "user cleared" only when the SSID control is empty *and* has been interacted with.
+    val ssidControl = currentState.wifiPasswordForm.ssid
+    val userClearedSsid = ssidControl.value.isEmpty() && (ssidControl.dirty || ssidControl.touched)
+    if (currentState.permissionsSkipped && arePermissionsCurrentlyEnabled &&
+      userClearedSsid &&
+      currentState.wifiPasswordForm.ssid.value.isEmpty() && ssid.isNotEmpty() && currentStepIndex < 3
+    ) {
+      AppLog.d(TAG, "Skipping auto-population of WiFi form - permissions were skipped and user cleared the field")
+      return
+    }
     if (shouldAutoPopulate) {
       val isEarlyStep = currentStepIndex < 3
       if (isEarlyStep) {
@@ -755,7 +798,6 @@ constructor(
         ),
       ),
     )
-
     AppLog.d(TAG, "Cleared WiFi password form - reset all form controls to initial state")
   }
 
@@ -894,45 +936,64 @@ constructor(
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
   }
 
-  private fun checkAndSaveScale() {
-    dialogQueueService.showLoader(
-      message = ScaleSetupStrings.SaveScaleLoader,
+  /**
+   * Saves the scale and waits for it to appear in pairedScales before completing.
+   * Call from a coroutine; runs sequentially so navigation after this sees the updated list.
+   */
+  private suspend fun checkAndSaveScale() {
+    val currentSku = state.value.sku
+    if (currentSku.isBlank()) {
+      AppLog.e(TAG, "SKU is blank, cannot save scale")
+      return
+    }
+    val scaleInfo = SCALES.find { it.sku == currentSku }
+    val wifiDevice = Device(
+      device = GGDeviceDetail(
+        deviceName = scaleInfo?.productName ?: "",
+        macAddress = state.value.macAddress,
+        identifier = "",
+      ),
+      sku = currentSku,
+      deviceType = ScaleSetupType.Wifi.value,
+      nickname = scaleInfo?.productName ?: ScaleSetupStrings.UnknownScale,
+      token = scaleToken,
+      userNumber = state.value.selectedUser,
     )
-    try {
-      viewModelScope.launch {
-        // TODO: Need to verify how they detect the duplicate scales unless the sku with user number
-        //  how will they find out that in the same session scale does not gets saved.
+    val savedDevice = deviceService.saveScale(wifiDevice)
+    waitForScaleInPairedList(savedDevice, currentSku)
+  }
 
-        val scaleInfo = SCALES.find { it.sku == state.value.sku }
-        val wifiDevice = Device(
-          device = GGDeviceDetail(
-            deviceName = scaleInfo?.productName ?: "",
-            macAddress = state.value.macAddress,
-            identifier = "",
-          ),
-          sku = state.value.sku,
-          deviceType = ScaleSetupType.Wifi.value,
-          nickname = scaleInfo?.productName!!,
-          token = scaleToken,
-          userNumber = state.value.selectedUser,
-        )
-        deviceService.saveScale(wifiDevice)
+  /**
+   * Waits for the saved scale to appear in [deviceService.pairedScales] (with timeout).
+   * Ensures list is updated before we dismiss loader / navigate so the scale list is not empty.
+   */
+  private suspend fun waitForScaleInPairedList(savedDevice: Device?, currentSku: String) {
+    val listWithScale = withTimeoutOrNull(ScaleSetupConstants.WAIT_FOR_SCALE_IN_LIST_MS) {
+      deviceService.pairedScales.first { list ->
+        list.any { device ->
+          if (savedDevice != null) device.id == savedDevice.id
+          else device.sku == currentSku && device.deviceType == ScaleSetupType.Wifi.value
+        }
       }
-    } finally {
-      dialogQueueService.dismissLoader()
+    }
+    if (listWithScale == null) {
+      AppLog.w(TAG, "Timeout waiting for WiFi scale in paired list; continuing anyway")
     }
   }
 
   /**
-   * Saves the scale configuration.
-   * Equivalent to TypeScript saveScale()
+   * Saves the scale configuration. Shows loader, awaits save and list update, then dismisses loader.
+   * Equivalent to TypeScript saveScale(). Run before navigating so scale list is populated.
    */
   private fun saveScale() {
     viewModelScope.launch {
+      dialogQueueService.showLoader(message = ScaleSetupStrings.SaveScaleLoader)
       try {
         checkAndSaveScale()
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving scale", e)
+      } finally {
+        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -949,7 +1010,8 @@ constructor(
       AppLog.e(TAG, "Error stopping WiFi service", e)
     }
     if (currentState.saved || canExit) {
-      navigateBack()
+      // Wait for scale to appear in list before navigating so "My Scales" is not empty
+      navigateBack(waitForScaleInList = true)
       return
     }
 

@@ -120,15 +120,7 @@ constructor(
     dashboardService.setAccountId(account.id)
     deviceService.setAccountId(account.id)
     deviceInfoService.updateDeviceInfo()
-    syncScales()
-  }
-
-  private fun syncScales() {
-    viewModelScope.launch {
-      deviceService.getGGBTDevices().collect { devices ->
-        ggDeviceService.syncDevices(devices)
-      }
-    }
+    deviceInfoService.updateLocalIntegrationInfo()
   }
 
   /**

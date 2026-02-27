@@ -6,6 +6,9 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
  * Strings for Scale Setup screens.
  */
 object ScaleSetupStrings {
+  /** Default display name when scale product info is unknown. */
+  const val UnknownScale = "Unknown Scale"
+
   fun Header(sku: String) = "Scale Setup - $sku"
 
   const val backButton = "back"

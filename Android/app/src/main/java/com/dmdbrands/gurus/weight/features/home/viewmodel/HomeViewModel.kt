@@ -79,6 +79,10 @@ constructor(
         checkAccountFlags("login")
       }
     }
+    viewModelScope.launch {
+      delay(IAM_FEED_MODAL_RETRY_DELAY_MS)
+      feedService.checkAndTriggerFeedModal()
+    }
   }
 
   /**
@@ -99,6 +103,7 @@ constructor(
 
   companion object {
     private const val HEALTH_CONNECT_CHECK_DELAY_MS = 1000L
+    private const val IAM_FEED_MODAL_RETRY_DELAY_MS = 1500L
   }
 
   override fun handleIntent(intent: HomeIntent) {

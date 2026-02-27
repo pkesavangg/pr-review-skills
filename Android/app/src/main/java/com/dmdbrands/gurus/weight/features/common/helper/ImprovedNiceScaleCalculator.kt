@@ -1,9 +1,10 @@
-package com.greatergoods.meapp.features.common.helper
+package com.dmdbrands.gurus.weight.features.common.helper
 
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
+import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.round
 
@@ -61,7 +62,7 @@ object ImprovedNiceScaleCalculator {
    * Used for step sizing in niceTicks and enforceTickLimits.
    */
   private fun nextNice(value: Double): Double {
-    val safe = kotlin.math.max(value, DOUBLE_EQUALITY_EPSILON)
+    val safe = max(value, DOUBLE_EQUALITY_EPSILON)
     val magnitude = 10.0.pow(floor(log10(safe)))
     val normalized = value / magnitude
     val nice = classicNiceNumbers.firstOrNull { it >= normalized } ?: 10.0
@@ -73,7 +74,7 @@ object ImprovedNiceScaleCalculator {
    * Used when reducing step count in enforceTickLimits.
    */
   private fun prevNice(value: Double): Double {
-    val safe = kotlin.math.max(value, DOUBLE_EQUALITY_EPSILON)
+    val safe = max(value, DOUBLE_EQUALITY_EPSILON)
     val magnitude = 10.0.pow(floor(log10(safe)))
     val normalized = value / magnitude
     val candidate = classicNiceNumbers.sortedDescending().firstOrNull { it <= normalized }
@@ -295,7 +296,7 @@ object ImprovedNiceScaleCalculator {
    */
   internal fun calculateOptimalStep(range: Double, targetTickCount: Int): Double {
     if (targetTickCount <= 1) return range
-    val rough = kotlin.math.max(range / (targetTickCount - 1).coerceAtLeast(1), DOUBLE_EQUALITY_EPSILON)
+    val rough = max(range / (targetTickCount - 1).coerceAtLeast(1), DOUBLE_EQUALITY_EPSILON)
     return nextNice(rough)
   }
 }
