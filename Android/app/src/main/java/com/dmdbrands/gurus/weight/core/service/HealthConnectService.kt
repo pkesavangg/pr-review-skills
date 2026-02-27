@@ -691,7 +691,6 @@ class HealthConnectService @Inject constructor(
    * If true, sets up the integration and handles out-of-sync state.
    *
    * @param isPermissionEnabled Whether permissions are currently enabled
-   * @param isIntegrated Whether the integration is currently active (not used in Angular, kept for compatibility)
    * @return true if multiple device connection detected and handled, false otherwise
    */
   override suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean): Boolean {
