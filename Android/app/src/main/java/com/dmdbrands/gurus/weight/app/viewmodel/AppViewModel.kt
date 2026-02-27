@@ -249,7 +249,7 @@ constructor(
 
           is AuthState.LoggedOut -> {
             stopScan()
-            if (authState.isActiveAccount || authState.wasLastAccount) {
+            if (authState.isActiveAccount || authState.isLastAccount) {
               resetScaleDiscoveredState()
               routeToLandingOrApp()
               dialogQueueService.clear()

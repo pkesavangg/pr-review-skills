@@ -562,7 +562,7 @@ constructor(
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
       accountRepository.setNotificationAlertShownForAccount(accountId, false)
       AppLog.d(TAG, "Logout successful")
-      appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount = isActiveAccount, wasLastAccount = wasLastAccount))
+      appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount = isActiveAccount, isLastAccount = wasLastAccount))
       result
     } catch (e: Exception) {
       AppLog.e(TAG, "Logout failed", e)
