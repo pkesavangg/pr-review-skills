@@ -9,16 +9,36 @@ final class DashboardFormatter: DashboardFormatterProtocol {
     
     private static let allowedNumericCharacters = CharacterSet(charactersIn: "0123456789.-")
     
+    // Cached NumberFormatter for Y-axis tick labels to avoid recreating on every call
+    private static let yAxisNumberFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter
+    }()
+    
+    // Cached ISO8601DateFormatter instances for parsing entry dates
+    private static let iso8601FormatterWithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    
+    private static let iso8601FormatterWithoutFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+    
     // MARK: - Weight Formatting
     
     func formatYAxisTickLabel(_ weight: Double) -> String {
         let value = roundedGoalWeight(weight)
         // Thousand separators; keep decimals only when value has fractional part
-        let nf = NumberFormatter()
-        nf.numberStyle = .decimal
-        nf.maximumFractionDigits = value == floor(value) ? 0 : 2
-        nf.minimumFractionDigits = value == floor(value) ? 0 : 2
-        return nf.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+        let formatter = Self.yAxisNumberFormatter
+        let hasFractionalPart = value != floor(value)
+        formatter.maximumFractionDigits = hasFractionalPart ? 2 : 0
+        formatter.minimumFractionDigits = hasFractionalPart ? 2 : 0
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
     }
     
     func roundedGoalWeight(_ weight: Double) -> Double {
@@ -89,14 +109,13 @@ final class DashboardFormatter: DashboardFormatterProtocol {
             return nil
         }
         
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: timestamp) {
+        // Try with fractional seconds first
+        if let date = Self.iso8601FormatterWithFractionalSeconds.date(from: timestamp) {
             return date
         }
         
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: timestamp)
+        // Fallback to without fractional seconds
+        return Self.iso8601FormatterWithoutFractionalSeconds.date(from: timestamp)
     }
     
     func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool {

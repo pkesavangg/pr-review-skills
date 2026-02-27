@@ -143,6 +143,20 @@ final class DashboardCacheManager: DashboardCacheManagerProtocol {
         scrollPosition: Date?,
         getOperations: () -> DateRangeOperationsResult
     ) -> DateRangeOperationsResult {
+        // Check if cache is valid (same period and scrollPosition)
+        if _cachedLabelDateRangePeriod == period,
+           _cachedLabelDateRangeScrollPos == scrollPosition,
+           !_cachedLabelDateRangeOps.isEmpty {
+            // Return cached result
+            return DateRangeOperationsResult(
+                operations: _cachedLabelDateRangeOps,
+                cachedPeriod: _cachedLabelDateRangePeriod!,
+                cachedScrollPos: _cachedLabelDateRangeScrollPos!,
+                cachedOps: _cachedLabelDateRangeOps
+            )
+        }
+        
+        // Cache miss - recalculate
         let result = getOperations()
         
         // Update cache
@@ -178,5 +192,9 @@ final class DashboardCacheManager: DashboardCacheManagerProtocol {
         // Clear visible operations cache
         cachedVisibleOperations = []
         lastVisibleOperationsCacheTime = Date.distantPast
+        // Clear label date range cache
+        _cachedLabelDateRangeOps = []
+        _cachedLabelDateRangePeriod = nil
+        _cachedLabelDateRangeScrollPos = nil
     }
 }
