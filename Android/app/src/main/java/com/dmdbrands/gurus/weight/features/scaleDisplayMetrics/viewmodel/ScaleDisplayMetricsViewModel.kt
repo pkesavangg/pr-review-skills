@@ -143,6 +143,7 @@ constructor(
           retryCount = 0
           dialogQueueService.dismissLoader()
           deviceService.syncDevices()
+          delay(1000)
           showToast(ScaleDisplayMetricsStrings.Toast.Success)
           navigateBack()
         } else {
