@@ -309,6 +309,7 @@ constructor(
           is AuthState.NavigateBackFromMyAccounts -> {
             // Start scan when navigating back from MyAccounts screen
             startScan()
+            syncScales()
             AppLog.d(TAG, "Started scan due to navigation back from MyAccounts screen")
           }
 
@@ -378,6 +379,7 @@ constructor(
         subscribePermissions()
         subscribeDeviceCallback()
         subscribePairedScales()
+        syncScales()
         entryService.initializeGoalCardMonitoring(account.id)
         feedService.fetchFeedItems()
         initialiseIAMDialogListener()
@@ -480,6 +482,17 @@ constructor(
     }
   }
 
+  private fun syncScales() {
+    syncScaleJob?.cancel()
+    syncScaleJob = viewModelScope.launch {
+      deviceService.getGGBTDevices().collect { devices ->
+        AppLog.d(TAG, "syncScales called")
+        ggDeviceService.syncDevices(devices)
+      }
+    }
+  }
+
+
   private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
     when (entryResponse.type) {
       GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
@@ -501,6 +514,8 @@ constructor(
           scale.device?.broadcastId == broadcastId
         } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
       } == true
+      AppLog.d(TAG, "device response ${deviceResponse.type}")
+
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
@@ -570,6 +585,7 @@ constructor(
         }
 
         GGScanResponseType.DEVICE_CONNECTED -> {
+          AppLog.d(TAG, "Device connected ${data.broadcastId}")
           onDeviceUpdate(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
