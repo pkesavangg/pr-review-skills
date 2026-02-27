@@ -68,4 +68,25 @@ final class NetworkMonitor: ObservableObject {
     func getCurrentConnectionStatus() -> Bool {
         return monitor.currentPath.status == .satisfied
     }
+    
+    /// Checks real internet availability by pinging the base URL.
+    /// - Returns: `true` if reachable, otherwise `false`       
+    func verifyNetworkAvailability(baseURL: String) async -> Bool {
+        guard getCurrentConnectionStatus(),
+              let url = URL(string: baseURL) else {
+            return false
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 5
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return (response as? HTTPURLResponse) != nil
+        } catch {
+            return false
+        }
+    }
 }

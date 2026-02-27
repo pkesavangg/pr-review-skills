@@ -39,6 +39,8 @@ final class GoalAlertService: ObservableObject {
     private let tag = "GoalAlertService"
     
     private let alertStrings = AlertStrings.self
+    /// Stores pending alert weight when triggered on landing/loading screen
+    private var pendingAlertWeight: Double?
 
     // MARK: - Public API
     /// Evaluates whether a goal-related alert should be presented based on the
@@ -74,6 +76,12 @@ final class GoalAlertService: ObservableObject {
         guard hasMetGoal else { return }
         logger.log(level: .info, tag: tag, message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)")
 
+        // If we're on landing/loading screen, store pending alert to show later
+        guard isOnDashboardTab != nil else {
+            pendingAlertWeight = currentWeight
+            return
+        }
+
         // Persist flag so the alert is not re-shown in the same session until reset
         kv.setValue(true, forKey: storageKey)
 
@@ -85,6 +93,14 @@ final class GoalAlertService: ObservableObject {
         case .gain, .lose:
             await presentGoalMetAlert()
         }
+    }
+    
+    /// Checks for pending goal alerts and shows them if conditions are met.
+    /// Call this when user enters bottom tab bar context.
+    func checkPendingGoalAlerts() async {
+        guard let pendingWeight = pendingAlertWeight else { return }
+        pendingAlertWeight = nil
+        await showGoalMetMessage(currentWeight: pendingWeight)
     }
 
     // MARK: - Helpers

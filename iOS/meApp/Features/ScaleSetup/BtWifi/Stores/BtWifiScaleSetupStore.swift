@@ -443,8 +443,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.openBIAModel()
                                 },
                                 onValueChanged: { [weak self] scaleMode, heartRateEnabled in
-                                    let isPulseEnabled = heartRateEnabled && scaleMode == .allBodyMetrics
-                                    self?.handleScaleModeChange(scaleMode, heartRateEnabled: isPulseEnabled)
+                                    self?.updateScaleMode(scaleMode)
+                                    self?.updateHeartRateEnabled(heartRateEnabled)
                                 }
                             )
             case .scaleMetrics:
@@ -1284,11 +1284,19 @@ final class BtWifiScaleSetupStore: ObservableObject {
     }
     
     /// Handles scale mode and heart rate changes
-    func handleScaleModeChange(_ scaleMode: ScaleModes, heartRateEnabled: Bool) {
-        selectedScaleMode = scaleMode
-        isHeartRateEnabled = heartRateEnabled
-        
+    func updateScaleMode(_ mode: ScaleModes) {
+        selectedScaleMode = mode
+        // Ensure heart rate is disabled when using Weight Only mode
+        if mode == .weightOnly {
+            isHeartRateEnabled = false
+        }
         // Update the next button state
+        updateNextEnabled()
+    }
+    
+    /// Updates the heart rate enabled state
+    func updateHeartRateEnabled(_ enabled: Bool) {
+        isHeartRateEnabled = enabled
         updateNextEnabled()
     }
     

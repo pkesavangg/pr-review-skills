@@ -123,7 +123,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Persist the raw selected X position so UI can render crosshair even if there's no data point
         state.selectedXValue = selectedDate
 
-        guard !operations.isEmpty else { return }
+        // If no operations available, show placeholders and return
+        guard !operations.isEmpty else {
+            updateSelectedPoint(nil)
+            setMetricPlaceholders()
+            return
+        }
 
         // Determine if there's an exact data point for the selected date based on the current period granularity
         let calendar = Calendar.current
