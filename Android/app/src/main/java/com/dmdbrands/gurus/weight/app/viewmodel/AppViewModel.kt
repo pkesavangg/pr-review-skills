@@ -382,6 +382,7 @@ constructor(
         entryService.initializeGoalCardMonitoring(account.id)
         feedService.fetchFeedItems()
         initialiseIAMDialogListener()
+        feedService.checkAndTriggerFeedModal()
         updateUnRead()
       } catch (e: Exception) {
         AppLog.e(TAG, "startObserversOnly failed", e)
