@@ -132,6 +132,7 @@ class MultiAccountLandingViewModel @Inject constructor(
         state.value.accountToRemove?.let { account ->
             viewModelScope.launch {
                 try {
+                  AppLog.d("MultiAccountLandingViewModel", "Removing account: ${account.id}")
                     accountService.logout(account.id, account.fcmToken)
                 } catch (e: Exception) {
                     AppLog.e("MultiAccountLandingViewModel", "Failed to remove account", e)
