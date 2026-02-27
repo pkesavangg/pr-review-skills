@@ -108,10 +108,6 @@ data class GoalFormControls(
         ),
       )
 
-      startingWeightControl.addValidator(
-        FormValidations.weightMatchValidator(goalWeightControl, goalTypeControl),
-      )
-
       // Set up cross-field validation: when starting weight changes, re-validate goal weight
       startingWeightControl.onValueChangeListener { _, _ ->
         goalWeightControl.validate()

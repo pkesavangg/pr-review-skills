@@ -775,18 +775,18 @@ class HealthConnectService @Inject constructor(
         return false
       }
 
-      // Get stored integration data
+      // Get stored integration data (local: no deviceId = this device hasn't registered yet)
       val currentIntegration = healthConnectRepository.getStoredIntegrationData(accountId)
       // Get integration status from server
       val integrationsFromServer = integrationRepository.integrationsFromServer.first()
       val isIntegrationOn =  integrationsFromServer?.isHealthConnectOn ?: false
       AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${currentIntegration}")
       // Return true if stored integration is null AND integration is on
-      val result = (currentIntegration?.scopes?.deviceId.isNullOrEmpty()) && isIntegrationOn
+      val result = ( currentIntegration?.scopes?.deviceId.isNullOrEmpty()) && isIntegrationOn
       AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${currentIntegration}, isIntegrationOn=$isIntegrationOn, result=$result")
       result
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check multiple device IDs for $integrations $e")
+      AppLog.e(tag, "Failed to check multiple device IDs for $integrations", e)
       false
     }
   }
@@ -1012,6 +1012,7 @@ class HealthConnectService @Inject constructor(
                     CoroutineScope(Dispatchers.IO).launch {
                       dialogQueueService.showLoader(HealthConnectStrings.Loader.removing)
                       removeHealthConnectIntegration()
+                      healthConnectRepository.updateOutOfSync(accountId, true)
                       healthConnectRepository.updateModalState(accountId, true)
                       dialogQueueService.dismissCurrent()
                       dialogQueueService.dismissLoader()
