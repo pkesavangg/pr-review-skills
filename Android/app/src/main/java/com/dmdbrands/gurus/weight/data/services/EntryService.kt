@@ -212,11 +212,15 @@ constructor(
         val last30Processed = inputs.last30.map { it.process(unit, weightless) }
         val monthYearProcessed = inputs.monthYear.map { it.process(unit, weightless) }
         val account = accountRepository.getActiveAccount().first()
-        val startingWeightDisplay = processWeight(
-          account?.initialWeight ?: _cachedStartingWeightStored.value ?: 0.0,
-          unit,
-          weightless,
-        )
+        val startingWeightDisplay = account?.initialWeight
+          ?.takeUnless { it == 0.0 }
+          ?.let {
+          processWeight(it, unit, weightless)
+        }
+        val firstRecordedWeightDisplay = _cachedStartingWeightStored.value?.let { oldestEntryWeightLb ->
+          val converted = convertWeight(oldestEntryWeightLb, WeightUnit.LB, unit)
+          if (weightless?.isWeightlessOn == true) converted - weightless.weightlessWeight else converted
+        }
 
         val goal = weightSettings.goal?.copy(
           goalWeight = processWeight(
@@ -232,6 +236,7 @@ constructor(
           last30Days = last30Processed,
           months = monthYearProcessed,
           startingWeightDisplay = startingWeightDisplay,
+          firstRecordedWeightDisplay = firstRecordedWeightDisplay,
           currentStreak = _currentStreak.value,
           longestStreak = _longestStreak.value,
           totalCount = _totalCount.value,
@@ -773,7 +778,8 @@ constructor(
     last7Days: List<Entry>,
     last30Days: List<Entry>,
     months: List<HistoryMonth>,
-    startingWeightDisplay: Double,
+    startingWeightDisplay: Double?,
+    firstRecordedWeightDisplay: Double?,
     currentStreak: Int,
     longestStreak: Int,
     totalCount: Int,
@@ -796,8 +802,15 @@ constructor(
     if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
       month = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
     }
-    if (latestEntry != null && latestEntry is ScaleEntry) {
-      total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeightDisplay
+    // For total milestone, prefer the actual first recorded history baseline.
+    // This avoids stale/mis-scaled goal starting weights producing incorrect totals.
+    val totalBaselineWeight = firstRecordedWeightDisplay ?: startingWeightDisplay
+    if (latestEntry != null && latestEntry is ScaleEntry && totalBaselineWeight != null) {
+      total = latestEntry.scale.scaleEntry.weight.toDouble() - totalBaselineWeight
+      AppLog.d(
+        "EntryService",
+        "Total milestone calc -> latest=${latestEntry.scale.scaleEntry.weight}, starting=$startingWeightDisplay, firstRecorded=$firstRecordedWeightDisplay, baseline=$totalBaselineWeight, total=$total",
+      )
     }
     val thirtyDaysAgoDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -30) }
     if (initYear != null && initYear.entryTimestamp != null) {
@@ -832,7 +845,7 @@ constructor(
       currentStreak = currentStreak,
       longestStreak = longestStreak,
       count = totalCount,
-      initWt = startingWeightDisplay,
+      initWt = totalBaselineWeight ?: 0.0,
       week = week,
       month = month,
       year = year,
