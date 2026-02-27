@@ -72,7 +72,7 @@ final class ContentViewModel: ObservableObject {
             if loggedIn {
                 // Refresh account data to sync weightless settings and other account data
                 do {
-                    let _ = try await accountService.refreshAccount()
+                    _ = try await accountService.refreshAccount()
                     logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
                 } catch {
                     logger.log(

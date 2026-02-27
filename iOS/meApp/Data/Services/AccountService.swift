@@ -17,7 +17,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
 
     private let apiRepo: AccountRepositoryAPIProtocol
     private let localRepo: AccountRepositoryProtocol
-    private let networkMonitor: NetworkMonitor
+    private let networkMonitor: NetworkMonitoring
     /// API repository for integration-related network calls
     private let integrationApiRepo: IntegrationRepositoryAPIProtocol
     /// Migration service for Ionic app data
@@ -36,7 +36,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         apiRepo: AccountRepositoryAPIProtocol? = nil,
         localRepo: AccountRepositoryProtocol? = nil,
         integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
-        networkMonitor: NetworkMonitor? = nil,
+        networkMonitor: NetworkMonitoring? = nil,
         migrationService: AccountMigrationService? = nil,
         performInitialLoad: Bool = true
     ) {
@@ -45,7 +45,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         self.integrationApiRepo = integrationApiRepo ?? IntegrationAPIRepository()
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         self.migrationService = migrationService ?? AccountMigrationService()
-
+        
         $activeAccount
             .dropFirst()
             .sink { data in
@@ -333,45 +333,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             hydrateTokensInAccount(account)
         }
         return accounts
-    }
-
-    // MARK: - Account Updates
-
-    /// Updates the active account with the provided updated account data.
-    func updateAccount(_ updatedAccount: Account) async throws -> Account {
-        guard let localAccount = try await localRepo.fetchAccount(byId: updatedAccount.accountId) else {
-            throw AccountError.accountNotFound(id: updatedAccount.accountId)
-        }
-
-        do {
-            logger.log(level: .info, tag: tag, message: "Update account requested for accountId=\(updatedAccount.accountId)")
-            let response = try await apiRepo.editAccount(updatedAccount)
-            localAccount.update(from: response)
-            localAccount.isSynced = true
-            try await updateAccountClearingTokens(localAccount)
-            try await updatePublishedState()
-            logger.log(level: .info, tag: tag, message: "Update account successful for accountId=\(updatedAccount.accountId)")
-            return localAccount
-        } catch {
-            if HTTPError.isNetworkError(error) {
-                localAccount.update(from: updatedAccount.toAccountDTO())
-                localAccount.isSynced = false
-                try await updateAccountClearingTokens(updatedAccount)
-                try await updatePublishedState()
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Update account saved offline for accountId=\(updatedAccount.accountId), offline=true, reason=network_error"
-                )
-                return updatedAccount
-            }
-            logger.log(
-                level: .error,
-                tag: tag,
-                message: "Update account failed for accountId=\(updatedAccount.accountId): \(error.localizedDescription)"
-            )
-            throw error
-        }
     }
 
     @discardableResult
@@ -741,10 +702,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
     }
 
-    func clearOfflineData(for _: Account) async throws {
-        throw AccountError.notImplemented
-    }
-
     /// Deletes all accounts locally, logging out each account first.
     /// Logs out non-active accounts first, then the active account last to prevent
     /// premature navigation to the landing screen.
@@ -873,7 +830,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                     height: height,
                     activityLevel: activityLevel
                 )
-                try await updateProfile(profile)
+                _ = try await updateProfile(profile)
             }
 
             // Handle Body Composition updates
