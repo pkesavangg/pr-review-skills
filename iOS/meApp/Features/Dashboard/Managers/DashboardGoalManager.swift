@@ -188,7 +188,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             effectiveGoalWeight = convertStoredWeightToDisplay(Int(storedGoal))
         }
 
-        guard hasGoal, let goalWeight = effectiveGoalWeight else { return nil } // Initializer for conditional binding must have Optional type, not 'Double'
+        guard hasGoal, let goalWeight = effectiveGoalWeight else { return nil }
 
         if isWeightlessMode {
             guard let anchorWeight = anchorWeight else { return goalWeight }
