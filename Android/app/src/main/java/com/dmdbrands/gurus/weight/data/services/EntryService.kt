@@ -615,11 +615,7 @@ constructor(
             )
           successfulOperations.add(syncedOperation)
 
-          // Try local integration for create operations
-          if (operation.entry.operationType == OperationType.CREATE.name) {
-            tryLocalIntegration(operation)
-          }
-        } catch (e: Exception) {
+          } catch (e: Exception) {
           // If failed, increment attempts and store for retry
           val failedOperation =
             operation.updateEntry(
@@ -639,8 +635,14 @@ constructor(
           entryRepository,
           failedOperations,
           userHasOperations = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
+      }
+
+      // Try local integration for create operations
+      newEntries.forEach { operation ->
+        if (operation.entry.operationType == OperationType.CREATE.name) {
+          tryLocalIntegration(operation)
+        }
       }
 
       // 4. Handle goal alerts
@@ -674,7 +676,6 @@ constructor(
           successfulOperations,
           userHasOperations = operationCount > 0,
           arePlaceholders = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -683,7 +684,6 @@ constructor(
         EntryServiceHelper.executeOperations(
           entryRepository,
           operationsFromApi,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -1073,22 +1073,15 @@ internal object EntryServiceHelper {
    * Executes a list of operations received from the server.
    * @param entryRepository The entry repository.
    * @param operations The list of operations to execute.
-   * @param tryLocalIntegration Optional suspend function to call for local integration (Health Connect).
    */
   suspend fun executeOperations(
     entryRepository: IEntryRepository,
     operations: List<Entry>,
-    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
     try {
       val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
       entryRepository.insert(sortedOperations)
-
-      // Try local integration for create operations
-      for (operation in sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }) {
-        tryLocalIntegration?.invoke(operation)
-      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error executing operations", e)
     }
@@ -1107,7 +1100,6 @@ internal object EntryServiceHelper {
     operations: List<Entry>,
     userHasOperations: Boolean = true,
     arePlaceholders: Boolean = false,
-    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
 
@@ -1137,9 +1129,6 @@ internal object EntryServiceHelper {
           // Insert new entry
           entryRepository.insert(operation)
         }
-
-        // Try local integration for create operations
-        tryLocalIntegration?.invoke(operation)
       }
 
       // Handle delete operations
