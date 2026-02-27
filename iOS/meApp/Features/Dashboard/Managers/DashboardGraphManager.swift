@@ -1862,14 +1862,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let anchorWeight = anchorWeight else { return nil }
         let allOps = operations
         switch period {
-        case .week, .month:
-            guard let latestWeight = allOps.last.map({ convertWeight(Int($0.weight)) }) else {
-                return nil
-            }
-            let weightlessValue = latestWeight - anchorWeight
-            // Apply same rounding logic as other weight calculations
-            return (weightlessValue * 100).rounded(.toNearestOrAwayFromZero) / 100
-        case .year, .total:
+        case .week, .month, .year, .total:
+            // Use visible-window average for all periods to keep display behavior consistent.
             let weights = allOps.map { convertWeight(Int($0.weight)) }
             guard !weights.isEmpty else { return nil }
             let averageWeight = weights.reduce(0, +) / Double(weights.count)

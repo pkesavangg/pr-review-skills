@@ -37,10 +37,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             let initialWeightStored = Int(goalSettings.initialWeight ?? 0)
             let goalWeightStored = Int(goalSettings.goalWeight ?? 0)
 
-            // Get current weight from latest entry
-            let latestEntry = try await entryService.getLatestEntry()
-            let currentWeightStored = latestEntry?.scaleEntry?.weight ?? 0
-
             // Update goal state with extracted settings
             state.goalType = goalType
             state.goalUnit = goalUnit
@@ -48,11 +44,16 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
             let initialWeightDisplay = convertStoredWeightToDisplay(initialWeightStored)
             let goalWeightDisplay = convertStoredWeightToDisplay(goalWeightStored)
-            let currentWeightDisplay = convertStoredWeightToDisplay(currentWeightStored)
 
             // Set basic goal data
             state.goalStartWeight = initialWeightDisplay
             state.goalWeight = goalWeightDisplay
+
+            // Get current weight from latest entry if available.
+            // Do not fail goal loading if there are no entries yet.
+            let latestEntry = try? await entryService.getLatestEntry()
+            let currentWeightStored = latestEntry?.scaleEntry?.weight ?? 0
+            let currentWeightDisplay = convertStoredWeightToDisplay(currentWeightStored)
             state.goalDelta = goalWeightDisplay - currentWeightDisplay
 
             // Calculate progress
@@ -176,14 +177,24 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
     // MARK: - Goal Display Methods
     func getGoalWeightForDisplay(isWeightlessMode: Bool, anchorWeight: Double?) -> Double? {
-        // Return nil if no goal is set (API returned null)
-        guard state.hasGoalSet else { return nil }
-        
+        // Primary source: manager state
+        var hasGoal = state.hasGoalSet
+        var effectiveGoalWeight: Double? = hasGoal ? state.goalWeight : nil
+
+        // Fallback to live account goal if state has not refreshed yet
+        if !hasGoal,
+           let storedGoal = accountService.activeAccount?.goalSettings?.goalWeight {
+            hasGoal = true
+            effectiveGoalWeight = convertStoredWeightToDisplay(Int(storedGoal))
+        }
+
+        guard hasGoal, let goalWeight = effectiveGoalWeight else { return nil } // Initializer for conditional binding must have Optional type, not 'Double'
+
         if isWeightlessMode {
-            guard let anchorWeight = anchorWeight else { return state.goalWeight }
-            return state.goalWeight - anchorWeight
+            guard let anchorWeight = anchorWeight else { return goalWeight }
+            return goalWeight - anchorWeight
         } else {
-            return state.goalWeight
+            return goalWeight
         }
     }
 
