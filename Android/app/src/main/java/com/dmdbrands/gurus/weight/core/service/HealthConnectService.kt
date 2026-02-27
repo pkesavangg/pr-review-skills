@@ -1012,7 +1012,6 @@ class HealthConnectService @Inject constructor(
                     CoroutineScope(Dispatchers.IO).launch {
                       dialogQueueService.showLoader(HealthConnectStrings.Loader.removing)
                       removeHealthConnectIntegration()
-                      healthConnectRepository.updateOutOfSync(accountId, true)
                       healthConnectRepository.updateModalState(accountId, true)
                       dialogQueueService.dismissCurrent()
                       dialogQueueService.dismissLoader()
