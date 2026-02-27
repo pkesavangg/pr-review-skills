@@ -22,6 +22,7 @@ final class ContentViewModel: ObservableObject {
     @Injector var logger : LoggerService
     @Injector var bluetoothService: BluetoothService
     @Injector var accountFlagService: AccountFlagService
+    @Injector var notificationService: NotificationHelperService
 
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
@@ -62,6 +63,9 @@ final class ContentViewModel: ObservableObject {
 
     func performAppInitialization() {
         Task {
+            // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
+            notificationService.dismissLoader()
+            
             logger.log(level: .info, tag: tag, message: "App initialization started")
             contentViewState = .initializing
             let loggedIn = await checkLoginStatus()
@@ -106,6 +110,9 @@ final class ContentViewModel: ObservableObject {
             let afterUpdate = await checkLoginStatus()
             await updateViewState(isLoggedIn: afterUpdate)
             logger.log(level: .info, tag: tag, message: "App initialization completed. isLoggedIn=\(afterUpdate), state=\(contentViewState)")
+            
+            // Ensure loader is dismissed after initialization completes (safety mechanism)
+            notificationService.dismissLoader()
             
             // Start Bluetooth operations after dashboard is ready
             if afterUpdate {
