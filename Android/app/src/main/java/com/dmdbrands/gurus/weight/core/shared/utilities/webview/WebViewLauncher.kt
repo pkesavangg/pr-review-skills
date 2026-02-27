@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.core.shared.utilities.webview
 
 import androidx.core.net.toUri
-import timber.log.Timber
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import android.content.Context
 import android.content.Intent
 
@@ -24,7 +24,7 @@ object WebViewLauncher {
     ): Boolean {
         return try {
             if (!isValidUrl(url)) {
-                Timber.Forest.e("Invalid URL: $url")
+                AppLog.e("WebViewLauncher", "Invalid URL: $url")
                 return false
             }
 
@@ -36,7 +36,7 @@ object WebViewLauncher {
             context.startActivity(intent)
             true
         } catch (e: Exception) {
-            Timber.Forest.e(e, "Failed to launch WebView")
+            AppLog.e("WebViewLauncher", "Failed to launch WebView", e)
             false
         }
     }

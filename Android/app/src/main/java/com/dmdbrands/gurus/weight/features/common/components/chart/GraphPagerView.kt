@@ -27,7 +27,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import android.util.Log
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 /**
  * Composable for displaying a horizontal pager with 4 graph views for different segments.
@@ -125,7 +125,7 @@ fun GraphPagerView(
             graphState.minTarget!! to graphState.maxTarget!!
           }
           val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
-          Log.i(
+          AppLog.i(
             "GraphView",
             "segment : ${currentSegment} minTarget : ${minTarget} maxTarget : ${maxTarget} formattedRange : ${formattedRange}",
           )

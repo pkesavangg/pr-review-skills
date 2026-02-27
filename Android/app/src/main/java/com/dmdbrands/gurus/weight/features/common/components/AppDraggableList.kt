@@ -31,6 +31,7 @@ import sh.calvin.reorderable.Scroller
 import sh.calvin.reorderable.mainAxisViewportSize
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import sh.calvin.reorderable.rememberScroller
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 // --- Scope Interface and Implementation ---
 interface DraggableListItemScope {
@@ -132,7 +133,7 @@ fun <T> AppDraggableList(
         scope.initialized = true
 
         if (!scope.hasContent()) {
-          android.util.Log.w("AppDraggableList", "⚠️ No DraggableItem or StaticItem scope defined for item")
+          AppLog.w("AppDraggableList", "⚠️ No DraggableItem or StaticItem scope defined for item")
         }
       }
 

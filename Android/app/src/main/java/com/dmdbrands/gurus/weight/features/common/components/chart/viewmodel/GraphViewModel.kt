@@ -23,6 +23,7 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +37,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.icu.util.Calendar
-import android.util.Log
 
 /**
  * ViewModel for the graph component, managing chart state and business logic.
@@ -55,6 +55,10 @@ class GraphViewModel @AssistedInject constructor(
 ) : BaseIntentViewModel<GraphState, GraphIntent>(
   reducer = GraphReducer(),
 ) {
+
+  companion object {
+    private const val TAG = "GraphViewModel"
+  }
 
   override fun handleIntent(intent: GraphIntent) {
     super.handleIntent(intent)
@@ -110,8 +114,7 @@ class GraphViewModel @AssistedInject constructor(
       super.handleIntent(GraphIntent.SetSecondaryKey(immediateSecondaryKey))
       initializeGraph(immediateData, immediateGoal, immediateSecondaryKey)
     } catch (e: Exception) {
-      // Log error but don't crash - fallback to async initialization
-      Log.w("GraphViewModel", "Failed to initialize immediate data, falling back to async", e)
+      AppLog.w(TAG, "Failed to initialize immediate data, falling back to async")
     }
   }
 
@@ -138,8 +141,7 @@ class GraphViewModel @AssistedInject constructor(
         handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
       }
     } catch (e: Exception) {
-      // Log error but don't crash - fallback to default KG
-      Log.w("GraphViewModel", "Failed to initialize weight unit, using default KG", e)
+      AppLog.w(TAG, "Failed to initialize weight unit, using default KG")
     }
   }
 
@@ -247,8 +249,7 @@ class GraphViewModel @AssistedInject constructor(
           }
         }
       } catch (e: Exception) {
-        // Log error but don't crash the UI
-        Log.e("GraphViewModel", "Error setting up empty chart model producer", e)
+        AppLog.e(TAG, "Error setting up empty chart model producer", e)
       }
     }
   }
@@ -392,8 +393,7 @@ class GraphViewModel @AssistedInject constructor(
           super.handleIntent(GraphIntent.UpdateIsLoading(false))
         }
       } catch (e: Exception) {
-        // Log error but don't crash the UI
-        Log.e("GraphViewModel", "Error setting up chart model producer", e)
+        AppLog.e(TAG, "Error setting up chart model producer", e)
       }
     }
     this.isInitialized = true
@@ -536,7 +536,7 @@ class GraphViewModel @AssistedInject constructor(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e("GraphViewModel", "Error handling scroll", e)
+        AppLog.e(TAG, "Error handling scroll", e)
       }
     }
   }
@@ -659,7 +659,7 @@ class GraphViewModel @AssistedInject constructor(
           }
         }
       } catch (e: Exception) {
-        Log.e("GraphViewModel", "Error renormalizing on Y-axis change", e)
+        AppLog.e(TAG, "Error renormalizing on Y-axis change", e)
       }
     }
   }
