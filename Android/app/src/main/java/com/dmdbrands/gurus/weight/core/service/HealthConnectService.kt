@@ -716,21 +716,10 @@ class HealthConnectService @Inject constructor(
             contentKey = DialogType.MultipleDeviceConnection,
             onConfirm = {
               dialogQueueService.dismissCurrent()
-              CoroutineScope(Dispatchers.IO).launch {
-                appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
-                appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
-                dialogQueueService.dismissCurrent()
-                healthConnectRepository.updateOutOfSync(accountId, false)
-                healthConnectRepository.updateModalState(accountId, true)
-              }
+              onConfirmMultiDevice(accountId)
             },
             onDismiss = {
-              CoroutineScope(Dispatchers.IO).launch {
-                healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
-                healthConnectRepository.updateOutOfSync(accountId, true)
-                healthConnectRepository.updateModalState(accountId, false)
-                _outOfSyncState.value = true
-              }
+              onCancelMultiDevice(accountId)
             },
           ),
         )
@@ -750,6 +739,24 @@ class HealthConnectService @Inject constructor(
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to check multiple device connection", e)
       false
+    }
+  }
+
+  private fun onConfirmMultiDevice(accountId: String){
+    repositoryScope.launch {
+      appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
+      appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
+      healthConnectRepository.updateOutOfSync(accountId, false)
+      healthConnectRepository.updateModalState(accountId, true)
+    }
+  }
+
+  private fun onCancelMultiDevice(accountId: String){
+    repositoryScope.launch {
+      healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
+      healthConnectRepository.updateOutOfSync(accountId, true)
+      healthConnectRepository.updateModalState(accountId, false)
+      _outOfSyncState.value = true
     }
   }
 
