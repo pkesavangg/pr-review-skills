@@ -38,7 +38,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
         networkMonitor: NetworkMonitoring? = nil,
         migrationService: AccountMigrationService? = nil,
-        bindActiveAccountToServiceRegistry: Bool = true,
         performInitialLoad: Bool = true
     ) {
         self.apiRepo = apiRepo ?? AccountRepositoryAPI()

@@ -1387,7 +1387,6 @@ struct AccountServiceTests {
             localRepo: local,
             integrationApiRepo: integration,
             networkMonitor: networkMonitor,
-            bindActiveAccountToServiceRegistry: false,
             performInitialLoad: false
         )
         DependencyContainer.shared.register(sut as AccountServiceProtocol)

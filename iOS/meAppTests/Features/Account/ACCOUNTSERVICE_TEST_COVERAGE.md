@@ -83,7 +83,6 @@ This document explains how `AccountService` is tested, what flows are covered, a
 
 It also:
 - resets DI container per test
-- disables service-registry binding in tests (`bindActiveAccountToServiceRegistry: false`)
 - disables startup background loading (`performInitialLoad: false`)
 
 This keeps tests deterministic and focused on business logic.

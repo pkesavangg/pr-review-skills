@@ -69,7 +69,7 @@ For alert checks, assert both title and message using test-local constants.
 3. Ensure configuration: `Dev`
 4. Run tests (`Cmd+U`)
 
-## Command Line
+### Command Line
 Run from **repo root** (`meApp-1`).
 
 **Simulator:**
