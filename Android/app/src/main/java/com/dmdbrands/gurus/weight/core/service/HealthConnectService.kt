@@ -787,7 +787,7 @@ class HealthConnectService @Inject constructor(
       AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${currentIntegration}, isIntegrationOn=$isIntegrationOn, result=$result")
       result
     } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check multiple device IDs for $integrations", )
+      AppLog.e(tag, "Failed to check multiple device IDs for $integrations $e")
       false
     }
   }
@@ -940,7 +940,6 @@ class HealthConnectService @Inject constructor(
       "[checkHealthConnectPermissionDisabled] open=$isHealthConnectOpened outOfSync=$outOfSyncSession alertSeen=$isIntegrationCancelled integrated=$isLocallyIntegrated",
     )
     currentIntegrations = integrationRepository.integrationsFromServer.first()
-    AppLog.d(tag, "[checkHealthConnectPermissionDisabled] currentIntegrations?.isHealthConnectOn=${currentIntegrations?.isHealthConnectOn}")
     if (healthConnectStatus === HealthConnectStatus.INSTALLED || healthConnectStatus === HealthConnectStatus.UPDATE_REQUIRED) {
       AppLog.d(tag, "[checkHealthConnectPermissionDisabled] branch: INSTALLED or UPDATE_REQUIRED")
       val permissionStatus = checkPermissionStatus()
@@ -998,7 +997,6 @@ class HealthConnectService @Inject constructor(
         permissionStatus == HealthConnectPermissionStatus.NONE &&
           isLocallyIntegrated &&
           !outOfSyncSession
-      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] outOfSyncModalCondition=$outOfSyncModalCondition (perm=NONE?=${permissionStatus == HealthConnectPermissionStatus.NONE}, hcOn=${currentIntegrations?.isHealthConnectOn}, !outOfSyncSession=${!outOfSyncSession})")
       if (outOfSyncModalCondition) {
         AppLog.d(tag, "[checkHealthConnectPermissionDisabled] ENTER: out-of-sync modal path (updateOutOfSync/ModalState, show OutOfSyncModal)")
         healthConnectRepository.updateOutOfSync(accountId, true)
