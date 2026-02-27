@@ -50,8 +50,18 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             state.goalWeight = goalWeightDisplay
 
             // Get current weight from latest entry if available.
-            // Do not fail goal loading if there are no entries yet.
-            let latestEntry = try? await entryService.getLatestEntry()
+            // Keep goal loading resilient when latest entry retrieval fails.
+            let latestEntry: Entry?
+            do {
+                latestEntry = try await entryService.getLatestEntry()
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: "DashboardGoalManager",
+                    message: "Failed to fetch latest entry while loading goal data: \(error.localizedDescription)"
+                )
+                latestEntry = nil
+            }
             let currentWeightStored = latestEntry?.scaleEntry?.weight ?? 0
             let currentWeightDisplay = convertStoredWeightToDisplay(currentWeightStored)
             state.goalDelta = goalWeightDisplay - currentWeightDisplay
