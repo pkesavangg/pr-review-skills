@@ -314,12 +314,9 @@ struct BluetoothServiceTests {
         isConnected: Bool? = true,
         bathScale: BathScale? = nil
     ) -> Device {
-        Device(
+        BluetoothTestFixtures.makeDevice(
             id: id,
-            accountId: "101",
-            deviceName: "Scale",
             broadcastIdString: broadcastIdString,
-            protocolType: "A6",
             isConnected: isConnected,
             bathScale: bathScale
         )
