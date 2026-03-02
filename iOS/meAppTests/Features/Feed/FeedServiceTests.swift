@@ -118,6 +118,20 @@ struct FeedServiceTests {
         #expect(repo.lastUpdatedFeedAction?.osType == "iOS")
         #expect(repo.lastUpdatedFeedAction?.meta?.variationId == 7)
     }
+
+    @Test("updateFeedItem failure: logs error and does not throw")
+    func updateFeedItemFailure() async throws {
+        let repo = MockFeedRepositoryAPI()
+        let logger = MockLoggerService()
+        repo.updateFeedItemResult = .failure(FeedTestError.networkFailure)
+        let sut = makeSUT(repo: repo, logger: logger)
+        let feedItem = try FeedTestFixtures.makeFeedItem(id: "post-error")
+
+        await sut.updateFeedItem(feedItem, actionType: .read, variationId: nil)
+
+        #expect(repo.updateFeedItemCalls == 1)
+        #expect(logger.messages.contains(where: { $0.contains("Failed to update feed item") }))
+    }
     
     @Test("getFeedSettings returns mapped setting from IAM")
     func getFeedSettingsReturnsMappedSetting() {
@@ -180,6 +194,93 @@ struct FeedServiceTests {
         sut.checkAndTriggerFeedModal()
         
         #expect(notifications.showModalCalls == 0)
+    }
+
+    @Test("feedsUpdated publisher event: triggers updateFeedItem API call")
+    func feedsUpdatedPublisherTriggersUpdate() async throws {
+        let iam = MockGGInAppMessagingService()
+        let repo = MockFeedRepositoryAPI()
+        let feedItem = try FeedTestFixtures.makeFeedItem(id: "event-post")
+        let sut = makeSUT(repo: repo, iam: iam)
+        _ = sut
+
+        iam.feedsUpdated.send(FeedUpdateInfo(feedItem: feedItem, actionType: .click, variationId: nil))
+        for _ in 0..<20 where repo.updateFeedItemCalls == 0 {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        #expect(repo.updateFeedItemCalls == 1)
+        #expect(repo.lastUpdatedFeedPostId == "event-post")
+    }
+
+    @Test("feedsChanged publisher event: republishes feeds and updates badge")
+    func feedsChangedPublisherRepublishesAndUpdatesBadge() async throws {
+        let iam = MockGGInAppMessagingService()
+        iam.unreadFeedCount = 2
+        iam.feedSetting = GGFeedSetting(showPopupMessage: true, showNotificationBadge: true)
+        let sut = makeSUT(iam: iam)
+        var observed: [[FeedItem]] = []
+        let c = sut.feedsChanged.sink { observed.append($0) }
+        let eventFeed = try FeedTestFixtures.makeFeedItem(id: "changed-1")
+
+        iam.feedsChanged.send([eventFeed])
+        for _ in 0..<20 where observed.isEmpty {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        #expect(observed.last?.count == 1)
+        #expect(sut.notificationBadgeUpdated.value == true)
+        c.cancel()
+    }
+
+    @Test("feedNotificationChanged publisher event: emits settings and refreshes badge")
+    func feedNotificationChangedPublisherEmitsSettings() async {
+        let iam = MockGGInAppMessagingService()
+        iam.unreadFeedCount = 1
+        iam.feedSetting = GGFeedSetting(showPopupMessage: false, showNotificationBadge: false)
+        let sut = makeSUT(iam: iam)
+        var settingsEvents: [GGFeedSetting?] = []
+        let c = sut.feedSettingsChanged.sink { settingsEvents.append($0) }
+
+        iam.feedNotificationChanged.send(())
+        for _ in 0..<20 where settingsEvents.isEmpty {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        #expect(settingsEvents.last??.showNotificationBadge == false)
+        #expect(sut.notificationBadgeUpdated.value == false)
+        c.cancel()
+    }
+
+    @Test("checkAndTriggerFeedModal preload failure logs error and still shows modal")
+    func checkAndTriggerFeedModalPreloadFailure() async throws {
+        let iam = MockGGInAppMessagingService()
+        let notifications = MockNotificationHelperService()
+        let logger = MockLoggerService()
+        iam.feedModalTriggerResult = try FeedTestFixtures.makeFeedItem(
+            id: "modal-preload-fail",
+            titleImage: "https://example.com/fail.png"
+        )
+
+        let sut = makeSUT(
+            iam: iam,
+            logger: logger,
+            notifications: notifications,
+            modalTimeout: 0,
+            imagePreloader: { _ in false }
+        )
+
+        sut.checkAndTriggerFeedModal()
+        for _ in 0..<20 where notifications.showModalCalls == 0 {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        #expect(notifications.showModalCalls == 1)
+        #expect(logger.messages.contains(where: { $0.contains("Failed to preload feed modal image") }))
     }
     
     private func makeSUT(

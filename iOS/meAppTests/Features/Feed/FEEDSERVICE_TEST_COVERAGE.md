@@ -29,3 +29,6 @@ Tests follow the Account suite pattern:
 
 ## Coverage Target
 This suite is designed to keep `FeedService` behavior validated above the requested 85% threshold for service logic paths.
+
+## Current Coverage
+- `FeedService.swift`: **95.14%** (`176/185`) from latest `FeedServiceTests` run (`.xcresult` on March 2, 2026).
