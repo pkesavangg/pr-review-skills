@@ -61,6 +61,10 @@ Package.resolved
 # User Interface State files
 *.xcuserstate
 
+# Generated coverage reports
+meAppTests/Reports/
+meAppUITests/Reports/
+
 # IDEWorkspaceChecks
 .idea/
 .idea/*

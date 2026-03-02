@@ -143,6 +143,37 @@ Coverage in Xcode:
 3. Coverage tab
 4. Inspect `AccountService.swift`
 
+Shareable coverage export (Markdown + CSV + HTML):
+From repo root (`meApp-1/`):
+```bash
+CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
+```
+Or run directly without prompts:
+```bash
+SCHEME="meAppTests 1" DEVICE_ID=<device-id> CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
+```
+Full reporting details: `iOS/docs/COVERAGE_REPORTING.md`.
+
+This generates:
+- For unit-test schemes (`meAppTests...`):
+  - `iOS/meAppTests/Reports/coverage-report.md`
+  - `iOS/meAppTests/Reports/coverage-report.csv`
+  - `iOS/meAppTests/Reports/coverage-report.html`
+  - Absolute:
+    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.md`
+    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.csv`
+    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.html`
+- For UI-test schemes (`meAppUITests...`):
+  - `iOS/meAppUITests/Reports/coverage-report.md`
+  - `iOS/meAppUITests/Reports/coverage-report.csv`
+  - `iOS/meAppUITests/Reports/coverage-report.html`
+
+The script auto-detects:
+- Lists test schemes and prompts you to pick one
+- Lists connected physical iOS devices and prompts you to pick one
+
+If both schemes appear, prefer `meAppTests 1` when `meAppTests` fails in your local setup.
+
 ## Team Expectation
 - Keep AccountService coverage at least **80%**
 - For auth/sync changes, aim for **85%+**
