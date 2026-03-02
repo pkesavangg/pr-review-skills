@@ -9,10 +9,10 @@ struct PermissionsServiceTests {
     @Test("setPermissions and getPermissionState: stores and returns cached states")
     func setPermissionsStoresState() {
         let sut = makeSUT()
-        let map: [GGPermissionType: GGPermissionState] = [
-            .BLUETOOTH: .ENABLED,
-            .LOCATION: .DISABLED
-        ]
+        let map = PermissionsTestFixtures.permissionMap(
+            bluetooth: .ENABLED,
+            location: .DISABLED
+        )
 
         sut.setPermissions(map)
 
@@ -56,10 +56,10 @@ struct PermissionsServiceTests {
     func requiredCategoriesDerivedFromScaleTypes() {
         let scale = MockScaleService()
         scale.scales = [
-            makeDevice(id: "bt", scaleType: .bluetoothScale),
-            makeDevice(id: "wifi", scaleType: .wifi),
-            makeDevice(id: "appsync", scaleType: .appsync),
-            makeDevice(id: "r4", scaleType: .btWifiR4)
+            PermissionsTestFixtures.makeDevice(id: "bt", scaleType: .bluetoothScale),
+            PermissionsTestFixtures.makeDevice(id: "wifi", scaleType: .wifi),
+            PermissionsTestFixtures.makeDevice(id: "appsync", scaleType: .appsync),
+            PermissionsTestFixtures.makeDevice(id: "r4", scaleType: .btWifiR4)
         ]
         let sut = makeSUT(scale: scale)
 
@@ -73,7 +73,7 @@ struct PermissionsServiceTests {
     @Test("required categories are cleared when scales become empty")
     func requiredCategoriesClearWhenNoScales() async {
         let scale = MockScaleService()
-        scale.scales = [makeDevice(id: "wifi", scaleType: .wifi)]
+        scale.scales = [PermissionsTestFixtures.makeDevice(id: "wifi", scaleType: .wifi)]
         let sut = makeSUT(scale: scale)
         #expect(sut.getRequiredPermissionList().contains(.notifications))
 
@@ -124,7 +124,7 @@ struct PermissionsServiceTests {
     func handleBluetoothSwitchReturnsCachedState() async {
         let notification = MockNotificationHelperService()
         let sut = makeSUT(notification: notification)
-        sut.setPermissions([.BLUETOOTH_SWITCH: .ENABLED])
+        sut.setPermissions(PermissionsTestFixtures.permissionMap(bluetoothSwitch: .ENABLED))
 
         let task = Task { await sut.handlePermission(.bluetoothSwitch) }
         await Task.yield()
@@ -158,7 +158,7 @@ struct PermissionsServiceTests {
     func handleNotificationIgnoreReturnsCachedState() async {
         let notification = MockNotificationHelperService()
         let sut = makeSUT(notification: notification)
-        sut.setPermissions([.NOTIFICATION: .DISABLED])
+        sut.setPermissions(PermissionsTestFixtures.permissionMap(notification: .DISABLED))
 
         let task = Task { await sut.handlePermission(.notification) }
         await Task.yield()
@@ -174,7 +174,7 @@ struct PermissionsServiceTests {
     func handleLocationSwitchWhyFlow() async {
         let notification = MockNotificationHelperService()
         let sut = makeSUT(notification: notification)
-        sut.setPermissions([.LOCATION_SWITCH: .DISABLED])
+        sut.setPermissions(PermissionsTestFixtures.permissionMap(locationSwitch: .DISABLED))
 
         let task = Task { await sut.handlePermission(.locationSwitch) }
         await Task.yield()
@@ -228,7 +228,7 @@ struct PermissionsServiceTests {
     func handleWifiAndInternetShareFlow() async {
         let notification = MockNotificationHelperService()
         let sut = makeSUT(notification: notification)
-        sut.setPermissions([.WIFI_SWITCH: .DISABLED])
+        sut.setPermissions(PermissionsTestFixtures.permissionMap(wifiSwitch: .DISABLED))
 
         let wifiTask = Task { await sut.handlePermission(.wifiSwitch) }
         await Task.yield()
@@ -261,14 +261,4 @@ struct PermissionsServiceTests {
         )
     }
 
-    private func makeDevice(id: String, scaleType: ScaleSourceType) -> Device {
-        Device(
-            id: id,
-            accountId: "101",
-            deviceName: "Scale \(id)",
-            broadcastIdString: "BID-\(id)",
-            bathScale: BathScale(scaleType: scaleType.rawValue, bodyComp: true)
-        )
-    }
 }
-

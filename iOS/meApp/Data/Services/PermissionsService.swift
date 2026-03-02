@@ -9,10 +9,21 @@ import Combine
 import Foundation
 import GGBluetoothSwiftPackage
 
+protocol PermissionSDKClient {
+    func requestPermission(permissionType: GGPermissionType) async -> String
+    func navigateToSettings(permissionType: GGPermissionType) async -> String
+}
+
+extension GGBluetoothSwiftPackage: PermissionSDKClient {}
+
 @MainActor
 final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     // Shared singleton instance for global access. Prefer DI for new code when possible.
-    static let shared = PermissionsService()
+    static let shared = PermissionsService(
+        notificationService: NotificationHelperService.shared,
+        scaleService: ScaleService.shared,
+        logger: LoggerService.shared
+    )
 
     // MARK: - Published Properties
 
@@ -27,21 +38,31 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
     // MARK: - Dependencies
 
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var scaleService: ScaleService
-    @Injector private var logger: LoggerService
+    private let notificationService: NotificationHelperServiceProtocol
+    private let scaleService: ScaleServiceProtocol
+    private let logger: LoggerServiceProtocol
+    var permissionClient: PermissionSDKClient
 
     private var cancellables = Set<AnyCancellable>()
     private let tag = "PermissionsService"
 
     // MARK: - Init
 
-    private init() {
+    init(
+        notificationService: NotificationHelperServiceProtocol,
+        scaleService: ScaleServiceProtocol,
+        logger: LoggerServiceProtocol,
+        permissionClient: PermissionSDKClient = GGBluetoothSwiftPackage.shared
+    ) {
+        self.notificationService = notificationService
+        self.scaleService = scaleService
+        self.logger = logger
+        self.permissionClient = permissionClient
         // Compute the initial required permissions
         updateRequiredCategories(with: scaleService.scales)
 
         // Observe scale changes to keep required permissions up-to-date
-        scaleService.$scales
+        scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
                 self?.updateRequiredCategories(with: scales)
@@ -82,7 +103,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     @discardableResult
     func permissionRequest(_ type: GGPermissionType) async -> GGPermissionState {
         logger.log(level: .info, tag: tag, message: "Permission request started. type=\(type.rawValue)")
-        let raw = await GGBluetoothSwiftPackage.shared.requestPermission(permissionType: type)
+        let raw = await permissionClient.requestPermission(permissionType: type)
         let result: GGPermissionState = raw == GGPermissionState.ENABLED.rawValue ? .ENABLED : .DISABLED
         logger.log(level: .info, tag: tag, message: "Permission request completed. type=\(type.rawValue), result=\(result.rawValue)")
         return result
@@ -125,7 +146,7 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
     func navigateToWifiSettings() {
         logger.log(level: .info, tag: tag, message: "Navigating to Wi-Fi settings")
         Task {
-            await GGBluetoothSwiftPackage.shared.navigateToSettings(permissionType: .WIFI_SWITCH)
+            _ = await permissionClient.navigateToSettings(permissionType: .WIFI_SWITCH)
         }
     }
 
