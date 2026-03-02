@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Testing
 @testable import meApp
@@ -41,6 +42,20 @@ struct BluetoothServiceTests {
         #expect(discovery.clearDevicesCalls == 0)
     }
 
+    @Test("startBluetoothOperations when already started: does not restart discovery")
+    func startBluetoothOperationsAlreadyStarted() async {
+        let discovery = MockBLEDiscoveryManager()
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
+        let sut = makeSUT(account: account, discovery: discovery)
+        sut.isSmartScanStarted = true
+
+        await sut.startBluetoothOperations()
+
+        #expect(discovery.clearDevicesCalls == 0)
+        #expect(sut.isSmartScanStarted == true)
+    }
+
     @Test("account cleared while scan started: service stops scan")
     func accountClearedStopsScan() async {
         let discovery = MockBLEDiscoveryManager()
@@ -54,6 +69,53 @@ struct BluetoothServiceTests {
 
         #expect(sut.isSmartScanStarted == false)
         #expect(discovery.stopScanCalls >= 1)
+    }
+
+    @Test("initialize account subscription updates active account on service")
+    func initializeAccountSubscriptionUpdatesActiveAccount() async {
+        let account = MockAccountService()
+        let sut = makeSUT(account: account)
+        let expectedAccount = AccountTestFixtures.makeAccountModel(id: "222", email: "user2@example.com", isLoggedIn: true, isActive: true)
+
+        account.activeAccount = expectedAccount
+        try? await Task.sleep(nanoseconds: 120_000_000)
+
+        #expect(sut.activeAccount?.accountId == "222")
+    }
+
+    @Test("scale subscription filters to bluetooth scale source types")
+    func scalesSubscriptionFiltersBluetoothTypes() async {
+        let scale = MockScaleService()
+        let sut = makeSUT(scale: scale)
+
+        let bluetoothScale = makeDevice(
+            id: "keep-1",
+            broadcastIdString: "AA11",
+            bathScale: BathScale(scaleType: ScaleSourceType.bluetoothScale.rawValue, bodyComp: true)
+        )
+        let wifiScale = makeDevice(
+            id: "drop-1",
+            broadcastIdString: "BB22",
+            bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: true)
+        )
+
+        scale.scales = [bluetoothScale, wifiScale]
+        try? await Task.sleep(nanoseconds: 150_000_000)
+
+        #expect(sut.bluetoothScales.count == 1)
+        #expect(sut.bluetoothScales.first?.id == "keep-1")
+    }
+
+    @Test("scale subscription with empty list clears bluetooth scales")
+    func scalesSubscriptionEmptyListClearsBluetoothScales() async {
+        let scale = MockScaleService()
+        let sut = makeSUT(scale: scale)
+
+        sut.bluetoothScales = [makeDevice(id: "existing-1", broadcastIdString: "C1")]
+        scale.scales = []
+        try? await Task.sleep(nanoseconds: 120_000_000)
+
+        #expect(sut.bluetoothScales.isEmpty)
     }
 
     @Test("confirmSmartPair invalid broadcast id: returns invalidBroadcastId")
@@ -72,6 +134,98 @@ struct BluetoothServiceTests {
                 return
             }
         }
+    }
+
+    @Test("publisher getters emit from underlying subjects")
+    func publisherGettersEmitFromSubjects() async {
+        let sut = makeSUT()
+        var cancellables = Set<AnyCancellable>()
+
+        let discoveryEvent = DeviceDiscoveryEvent(
+            device: makeDevice(id: "publisher-device-1", broadcastIdString: "P1"),
+            deviceInfo: ScaleItemInfo(productName: "Test Scale", sku: "SKU-1", imgPath: "image", setupType: .bluetooth, bodyComp: true),
+            protocolType: .A6,
+            isNew: true
+        )
+        let info = DeviceInfo(deviceName: "Scale", broadcastIdString: "P1", macAddress: "AA:BB")
+        let entry = EntryNotification(from: BathScaleOperationDTO(
+            accountId: "101",
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: "2026-02-01T00:00:00.000Z",
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: "CREATE",
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: nil,
+            skeletalMusclePercent: nil,
+            source: EntrySource.bluetooth.rawValue,
+            subcutaneousFatPercent: nil,
+            unit: "kg",
+            visceralFatLevel: nil,
+            water: nil,
+            weight: 72.5
+        ))
+        let firmware = FirmwareUpdateStatus(progress: 0.42, isComplete: false, error: nil)
+
+        var discovered: [DeviceDiscoveryEvent] = []
+        var infos: [DeviceInfo] = []
+        var weightOnlyAlerts: [Bool] = []
+        var entries: [EntryNotification] = []
+        var firmwareStates: [FirmwareUpdateStatus] = []
+
+        sut.deviceDiscoveredPublisher
+            .sink { discovered.append($0) }
+            .store(in: &cancellables)
+        sut.deviceInfoUpdatedPublisher
+            .sink { infos.append($0) }
+            .store(in: &cancellables)
+        sut.showWeightOnlyModeAlertPublisher
+            .sink { weightOnlyAlerts.append($0) }
+            .store(in: &cancellables)
+        sut.newEntryReceivedPublisher
+            .sink { entries.append($0) }
+            .store(in: &cancellables)
+        sut.firmwareUpdateProgressPublisher
+            .sink { firmwareStates.append($0) }
+            .store(in: &cancellables)
+        _ = sut.liveMeasurementPublisher
+
+        #expect(cancellables.count == 5)
+        await Task.yield()
+
+        sut.deviceDiscoveredSubject.send(discoveryEvent)
+        sut.deviceInfoUpdatedSubject.send(info)
+        sut.showWeightOnlyModeAlertSubject.send(true)
+        sut.newEntryReceivedSubject.send(entry)
+        sut.firmwareUpdateProgressSubject.send(firmware)
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        #expect(discovered.count == 1)
+        #expect(discovered.first == discoveryEvent)
+        #expect(infos.count == 1)
+        #expect(infos.first == info)
+        #expect(weightOnlyAlerts == [true])
+        #expect(entries.count == 1)
+        #expect(entries.first == entry)
+        #expect(firmwareStates == [firmware])
+        #expect(cancellables.count == 5)
+    }
+
+    @Test("clearScaleDiscoveredInfo clears both skip and reconnect skipped lists")
+    func clearScaleDiscoveredInfoClearsLists() {
+        let sut = makeSUT()
+        sut.skipDevices = ["S1", "S2"]
+        sut.reconnectAlertSkippedDevices = ["R1"]
+
+        sut.clearScaleDiscoveredInfo()
+
+        #expect(sut.skipDevices.isEmpty)
+        #expect(sut.reconnectAlertSkippedDevices.isEmpty)
     }
 
     @Test("disconnectDevice success: adds to skip list and blocks broadcast id")
@@ -157,7 +311,8 @@ struct BluetoothServiceTests {
     private func makeDevice(
         id: String = "device-1",
         broadcastIdString: String? = "ABC123",
-        isConnected: Bool? = true
+        isConnected: Bool? = true,
+        bathScale: BathScale? = nil
     ) -> Device {
         Device(
             id: id,
@@ -165,7 +320,8 @@ struct BluetoothServiceTests {
             deviceName: "Scale",
             broadcastIdString: broadcastIdString,
             protocolType: "A6",
-            isConnected: isConnected
+            isConnected: isConnected,
+            bathScale: bathScale
         )
     }
 }
