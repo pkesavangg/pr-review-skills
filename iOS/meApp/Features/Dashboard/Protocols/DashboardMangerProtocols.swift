@@ -36,6 +36,7 @@ protocol DashboardGraphManaging {
     func updateScrollPosition(to date: Date)
     func handleScrollPositionChange(_ newPosition: Date?)
     func handleChartSelection(at selectedDate: Date?) async
+    func updateSelectedPoint(_ point: BathScaleWeightSummary)
     @available(iOS 18.0, *)
     func handleScrollPhaseChange(_ phase: ScrollPhase) async
     func generateChartData(from operations: [BathScaleWeightSummary], selectedMetric: String?, isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> [GraphSeries]
