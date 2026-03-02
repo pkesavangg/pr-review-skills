@@ -273,6 +273,8 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             logger.log(level: .error, tag: tag, message: "Switch account blocked: no internet. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
             throw HTTPError.noInternet
         }
+        // Save current active account to restore if switching fails mid-process,
+        let previousActiveAccount = activeAccount
         do {
             logger.log(level: .info, tag: tag, message: "Switch account requested. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
             let responseAccount = try await refreshAccount(accountId: account.accountId)
@@ -282,6 +284,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject {
             logger.log(level: .success, tag: tag, message: "Switched active account successfully. fromAccountId=\(fromAccountId), targetAccountId=\(responseAccount.accountId)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Switch account failed. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId), error=\(error.localizedDescription)")
+            // Restore previous active account to keep session and UI state intact on failure.
+            if activeAccount == nil {
+                activeAccount = previousActiveAccount
+            }
             throw error
         }
     }

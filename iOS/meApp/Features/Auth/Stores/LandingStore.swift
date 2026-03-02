@@ -135,7 +135,7 @@ final class LandingStore: ObservableObject {
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch account", data: error.localizedDescription)
                 switch error {
-                case HTTPError.noInternet:
+                case HTTPError.noInternet, HTTPError.timeout:
                     notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
                 default:
                     notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
