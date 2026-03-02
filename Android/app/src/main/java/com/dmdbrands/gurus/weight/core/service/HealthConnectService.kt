@@ -112,7 +112,9 @@ class HealthConnectService @Inject constructor(
   )
 
   init {
+
     repositoryScope.launch {
+      AppLog.d(tag, "Health connect service gets initialised")
       accountRepository.getActiveAccount().collect { it ->
         currentAccountId = it?.id
       }
@@ -568,7 +570,6 @@ class HealthConnectService @Inject constructor(
       healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
       integrationRepository.updateHealthConnectIntegrationOffline(true)
       healthConnectRepository.setHcPermissions(accountId, permissionList)
-      healthConnectRepository.updateOutOfSync(accountId, false)
       // Need to check before.
       integrationRepository.updateLocalAccount()
       true
@@ -742,7 +743,7 @@ class HealthConnectService @Inject constructor(
   }
 
   private fun onConfirmMultiDevice(accountId: String){
-    repositoryScope.launch {
+    CoroutineScope(SupervisorJob() + Dispatchers.Main).launch  {
       appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
       appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
       healthConnectRepository.updateOutOfSync(accountId, false)
@@ -751,10 +752,10 @@ class HealthConnectService @Inject constructor(
   }
 
   private fun onCancelMultiDevice(accountId: String){
-    repositoryScope.launch {
+    CoroutineScope(SupervisorJob() + Dispatchers.Main).launch  {
       healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
       healthConnectRepository.updateOutOfSync(accountId, true)
-      healthConnectRepository.updateModalState(accountId, false)
+      healthConnectRepository.updateModalState(accountId, true)
       _outOfSyncState.value = true
     }
   }
@@ -776,14 +777,14 @@ class HealthConnectService @Inject constructor(
       }
 
       // Get stored integration data (local: no deviceId = this device hasn't registered yet)
-      val currentIntegration = healthConnectRepository.getStoredIntegrationData(accountId)
+      val localIntegration = healthConnectRepository.getStoredIntegrationData(accountId)
       // Get integration status from server
       val integrationsFromServer = integrationRepository.integrationsFromServer.first()
       val isIntegrationOn =  integrationsFromServer?.isHealthConnectOn ?: false
-      AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${currentIntegration}")
+      AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${localIntegration}")
       // Return true if stored integration is null AND integration is on
-      val result = ( currentIntegration?.scopes?.deviceId.isNullOrEmpty()) && isIntegrationOn
-      AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${currentIntegration}, isIntegrationOn=$isIntegrationOn, result=$result")
+      val result = ( localIntegration == null || localIntegration.scopes.deviceId.isEmpty()) && isIntegrationOn
+      AppLog.d(tag, "checkMultipleDeviceIds for $integrations: storedIntegration=${localIntegration}, isIntegrationOn=$isIntegrationOn, result=$result")
       result
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to check multiple device IDs for $integrations", e)
@@ -938,7 +939,7 @@ class HealthConnectService @Inject constructor(
       tag,
       "[checkHealthConnectPermissionDisabled] open=$isHealthConnectOpened outOfSync=$outOfSyncSession alertSeen=$isIntegrationCancelled integrated=$isLocallyIntegrated",
     )
-    currentIntegrations = integrationRepository.integrationsFromServer.first()
+    val integrationFromServer = integrationRepository.integrationsFromServer.first()
     if (healthConnectStatus === HealthConnectStatus.INSTALLED || healthConnectStatus === HealthConnectStatus.UPDATE_REQUIRED) {
       AppLog.d(tag, "[checkHealthConnectPermissionDisabled] branch: INSTALLED or UPDATE_REQUIRED")
       val permissionStatus = checkPermissionStatus()
@@ -977,9 +978,9 @@ class HealthConnectService @Inject constructor(
         (permissionStatus == HealthConnectPermissionStatus.NONE ||
           permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
           permissionStatus == HealthConnectPermissionStatus.ALL) &&
-        currentIntegrations?.isHealthConnectOn == true &&
+          integrationFromServer?.isHealthConnectOn == true &&
         !isLocallyIntegrated
-      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] multiDeviceCondition=$multiDeviceCondition (perm=$permissionStatus, hcOn=${currentIntegrations?.isHealthConnectOn}, !isLocallyIntegrated=${!isLocallyIntegrated})")
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] multiDeviceCondition=$multiDeviceCondition (perm=$permissionStatus, hcOn=${integrationFromServer?.isHealthConnectOn}, !isLocallyIntegrated=${!isLocallyIntegrated})")
       if (multiDeviceCondition) {
         val isConnect = permissionStatus == HealthConnectPermissionStatus.PARTIAL ||
           permissionStatus == HealthConnectPermissionStatus.ALL
@@ -996,6 +997,7 @@ class HealthConnectService @Inject constructor(
         permissionStatus == HealthConnectPermissionStatus.NONE &&
           isLocallyIntegrated &&
           !outOfSyncSession
+      AppLog.d(tag, "[checkHealthConnectPermissionDisabled] outOfSyncModalCondition - $outOfSyncModalCondition")
       if (outOfSyncModalCondition) {
         AppLog.d(tag, "[checkHealthConnectPermissionDisabled] ENTER: out-of-sync modal path (updateOutOfSync/ModalState, show OutOfSyncModal)")
         healthConnectRepository.updateOutOfSync(accountId, true)
@@ -1034,7 +1036,7 @@ class HealthConnectService @Inject constructor(
                 CoroutineScope(Dispatchers.IO).launch {
                   healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
                   healthConnectRepository.updateOutOfSync(accountId, true)
-                  healthConnectRepository.updateModalState(accountId, false)
+                  healthConnectRepository.updateModalState(accountId, true)
                   _outOfSyncState.value = true
                 }
               },
