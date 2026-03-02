@@ -2,7 +2,16 @@ import Foundation
 import GGBluetoothSwiftPackage
 
 @MainActor
-final class BLEDiscoveryManager {
+protocol BLEDiscoveryManaging {
+    func stopScan(using sdk: GGBluetoothSwiftPackage)
+    func clearDevices(using sdk: GGBluetoothSwiftPackage)
+    func pauseScan(using sdk: GGBluetoothSwiftPackage)
+    func resumeScan(using sdk: GGBluetoothSwiftPackage, clearOnlyPairing: Bool)
+    func scanForPairing(using sdk: GGBluetoothSwiftPackage)
+}
+
+@MainActor
+final class BLEDiscoveryManager: BLEDiscoveryManaging {
     func stopScan(using sdk: GGBluetoothSwiftPackage) {
         sdk.stop()
     }
