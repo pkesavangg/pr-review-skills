@@ -80,9 +80,6 @@ xcodebuild test \
 xcrun xccov view --report <PATH_TO_XCRESULT> | rg 'GoalAlertService.swift'
 ```
 
-## Current Verified Result
-- Test run: `GoalAlertServiceTests` (10 tests) passed on connected iPhone.
-- `GoalAlertService.swift` coverage: **90.13% (210/233)**.
 
 ## Team Expectation
 - Keep `GoalAlertService.swift` coverage at **85%+**.
