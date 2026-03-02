@@ -116,19 +116,15 @@ final class HTTPClient {
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            if let urlError = error as? URLError,
-               urlError.code == .notConnectedToInternet ||
-               urlError.code == .networkConnectionLost ||
-               urlError.code == .cannotConnectToHost ||
-               urlError.code == .timedOut {
-                do {
-                    try await checkConnectivity()
-                } catch {
-                    // If connectivity check fails, throw network error
-                    throw error
-                }
+        } catch let urlError as URLError {
+            // Convert URLErrors to HTTPErrors so callers can detect network errors reliably.
+            switch urlError.code {
+            case .timedOut:
+                throw HTTPError.timeout
+            default:
+                throw HTTPError.noInternet
             }
+        } catch {
             throw error
         }
         
