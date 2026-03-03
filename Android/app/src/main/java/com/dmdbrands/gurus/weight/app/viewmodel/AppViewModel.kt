@@ -364,7 +364,7 @@ constructor(
    * Starts long-lived observers only (no account setup or navigation).
    * Called when [AuthState.LoggedInFromLoading] is received; LoadingScreenViewModel already did loadData + autoLogin.
    */
-  private fun startObserversOnly(account: Account) {
+  private fun startObserversOnly(account: Account, fromLoadingScreen: Boolean = false) {
     viewModelScope.launch {
       try {
         permissionSubscribeJob?.cancel()
