@@ -56,5 +56,5 @@ xcrun xccov view --report <PATH_TO_XCRESULT> | rg 'EntryStore.swift'
 - Any change to validation, save flow, date/time behavior, or conversion logic must include test updates.
 
 ## Current Coverage
-- `EntryStore.swift`: **97.70%** (468/479)
+- `EntryStore.swift`: **98.1%** 
 - Source: `Test-meAppTests 1-2026.03.03_12-39-20-+0530.xcresult` (March 3, 2026)
