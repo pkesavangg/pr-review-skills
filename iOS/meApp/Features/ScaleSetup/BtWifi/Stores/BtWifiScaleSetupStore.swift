@@ -454,8 +454,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.openBIAModel()
                                 },
                                 onValueChanged: { [weak self] scaleMode, heartRateEnabled in
-                                    let isPulseEnabled = heartRateEnabled && scaleMode == .allBodyMetrics
-                                    self?.handleScaleModeChange(scaleMode, heartRateEnabled: isPulseEnabled)
+                                    self?.updateScaleMode(scaleMode)
+                                    self?.updateHeartRateEnabled(heartRateEnabled)
                                 }
                             )
 // swiftlint:disable:next switch_case_alignment

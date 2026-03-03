@@ -66,4 +66,7 @@ object EntryScreenStrings {
 
   const val EntryAdded = "Entry added."
   const val EntryAddedTitle = "Success!"
+
+  const val EntryErrorTitle = "Error saving new entry!"
+  const val EntryErrorMessage = "Please try again."
 }

@@ -196,7 +196,12 @@ class BottomTabBarViewModel: ObservableObject {
         goalAlertService.isOnDashboardTab = { [weak self] in
             return self?.selectedTab == .dash
         }
-
+        
+        // Check for pending goal alerts when entering bottom tab bar context
+        Task { [weak self] in
+            await self?.goalAlertService.checkPendingGoalAlerts()
+        }
+        
         // Connect BluetoothService scale setup navigation callback
         bluetoothService.onOpenScaleSetup = { [weak self] scale, event, isReconnect, isDuplicated in
             self?.openScaleSetup(scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)

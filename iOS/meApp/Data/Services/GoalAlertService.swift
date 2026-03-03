@@ -42,6 +42,8 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     private let tag = "GoalAlertService"
 
     private let alertStrings = AlertStrings.self
+    /// Stores pending alert weight when triggered on landing/loading screen
+    private var pendingAlertWeight: Double?
 
     // MARK: - Public API
 
@@ -82,6 +84,12 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
             message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)" // swiftlint:disable:this line_length
         )
 
+        // If we're on landing/loading screen, store pending alert to show later
+        guard isOnDashboardTab != nil else {
+            pendingAlertWeight = currentWeight
+            return
+        }
+
         // Persist flag so the alert is not re-shown in the same session until reset
         kv.setValue(true, forKey: storageKey)
 
@@ -93,6 +101,14 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         case .gain, .lose:
             await presentGoalMetAlert()
         }
+    }
+    
+    /// Checks for pending goal alerts and shows them if conditions are met.
+    /// Call this when user enters bottom tab bar context.
+    func checkPendingGoalAlerts() async {
+        guard let pendingWeight = pendingAlertWeight else { return }
+        pendingAlertWeight = nil
+        await showGoalMetMessage(currentWeight: pendingWeight)
     }
 
     // MARK: - Helpers

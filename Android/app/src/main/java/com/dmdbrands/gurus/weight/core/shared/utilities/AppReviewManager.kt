@@ -2,12 +2,11 @@ package com.dmdbrands.gurus.weight.core.shared.utilities
 
 import com.google.android.play.core.review.ReviewManagerFactory
 import dagger.hilt.android.qualifiers.ApplicationContext
-import timber.log.Timber
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.app.Activity
 import android.content.Context
-import android.util.Log
 
 /**
  * Interface defining the contract for app review functionality.
@@ -42,8 +41,7 @@ class AppReviewManager
         val reviewInfo = request.result
         reviewManager.launchReviewFlow(context, reviewInfo)
       } else {
-        Timber.e(request.exception?.localizedMessage)
-        Log.d(TAG, "${request.exception?.localizedMessage}")
+        AppLog.e(TAG, "Review flow failed: ${request.exception?.localizedMessage}")
       }
     }
   } }

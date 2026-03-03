@@ -97,8 +97,8 @@ struct WeightlessScreen: View {
             settingsStore.populateWeightlessFormIfNeeded()
 
             registerDeactivation {
-                // If the form has no unsaved changes, allow immediate tab switch.
-                if !settingsStore.weightlessForm.isDirty {
+                // If there are no actual changes, allow immediate tab switch.
+                if !settingsStore.hasWeightlessChanges {
                     router.navigateBack()
                     return true
                 }

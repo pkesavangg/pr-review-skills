@@ -27,7 +27,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import android.util.Log
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 /**
  * Composable for displaying a horizontal pager with 4 graph views for different segments.
@@ -51,6 +51,7 @@ fun GraphPagerView(
   onChartConsuming: (Boolean) -> Unit = {},
   onRangeChange: (String) -> Unit = { },
   onMarkerIndexChange: (Double?) -> Unit = {},
+  onScrollTargetConsumed: (Boolean) -> Unit = {},
   entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
   val pagerState = rememberPagerState(
@@ -125,7 +126,7 @@ fun GraphPagerView(
             graphState.minTarget!! to graphState.maxTarget!!
           }
           val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
-          Log.i(
+          AppLog.i(
             "GraphView",
             "segment : ${currentSegment} minTarget : ${minTarget} maxTarget : ${maxTarget} formattedRange : ${formattedRange}",
           )
@@ -149,10 +150,11 @@ fun GraphPagerView(
           modifier = Modifier.fillMaxWidth(),
           scrollTarget = state.scrollTarget,
           segment = currentSegment,
-          canScrollToAnchor = state.selectedSegment == currentSegment,
+          canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
           state = graphState,
           viewModel = viewmodel,
           onChartConsuming = onChartConsuming,
+          onScrollTargetConsumed = onScrollTargetConsumed,
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
@@ -164,6 +166,7 @@ fun GraphPagerView(
       key = GraphSegment::name,
       onSelected = { segment ->
         onChartConsuming(true)
+        onScrollTargetConsumed(false)
         onSegmentChange(segment, currentVisibleCenter)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
