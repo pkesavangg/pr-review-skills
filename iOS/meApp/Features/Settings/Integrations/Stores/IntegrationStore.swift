@@ -17,13 +17,14 @@ import SwiftUI
 /// Holds the selection state and exposes helper APIs to update it.
 @MainActor
 class IntegrationStore: ObservableObject {
-    @Injector private var logger: LoggerService
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var accountService: AccountService
-    @Injector private var integrationsService: IntegrationsService
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var notificationService: NotificationHelperServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var integrationsService: IntegrationServiceProtocol
 
     var cancellables: Set<AnyCancellable> = []
     @Published var accountID = ""
+    private let networkMonitor: NetworkMonitoring
 
     // MARK: - In-App Browser State
 
@@ -62,9 +63,10 @@ class IntegrationStore: ObservableObject {
     }
 
     /// Initializes the store and starts observing account changes so the UI always reflects the latest integration state.
-    init() {
+    init(networkMonitor: NetworkMonitoring? = nil) {
+        self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         // Initialize the integrations list with any pre-defined items.
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .sink { [weak self] account in
                 guard let self else { return }
                 self.applyAccountState(account)
@@ -118,7 +120,7 @@ class IntegrationStore: ObservableObject {
               let link = URL(string: urlString) else { return }
 
         // If network unavailable, show fallback alert instead of launching browser
-        guard NetworkMonitor.shared.isConnected else {
+        guard networkMonitor.isConnected else {
             logger.log(level: .error, tag: tag, message: "Integration connect blocked: no internet. provider=\(integrationProviderKey(item.type))")
             showLinkOpenError(link: link)
             return
@@ -323,7 +325,7 @@ class IntegrationStore: ObservableObject {
         guard let settings else { return }
 
         // Skip if network offline – user can't fix anyway.
-        guard NetworkMonitor.shared.isConnected else { return }
+        guard networkMonitor.isConnected else { return }
 
         var invalid: [IntegrationItemType] = []
         if settings.isFitbitOn, !settings.isFitbitValid { invalid.append(.fitbit) }
