@@ -86,4 +86,4 @@ xcrun xccov view --report <PATH_TO_XCRESULT> | rg 'GoalAlertService.swift'
 - Any goal-alert behavior change should include a regression test update in `GoalAlertServiceTests`.
 
 ## Current Coverage
-- `GoalAlertService.swift`: **4.72%** (`11/233`) from latest available test result bundle (`Test-meAppTests 1-2026.03.03_10-36-34-+0530.xcresult`, March 3, 2026).
+- `GoalAlertService.swift`: **90.1%** from latest available test result bundle (`Test-meAppTests 1-2026.03.03_10-36-34-+0530.xcresult`, March 3, 2026).
