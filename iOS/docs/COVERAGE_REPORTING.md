@@ -90,9 +90,16 @@ Behavior:
 - Reports are overwritten on every run.
 - Folder is ignored by git (`.gitignore`).
 
+## Coverage Scope
+- Official metric for this workflow is App-only coverage (`meApp/**/*.swift`) only.
+- Reason:
+  - Keeps coverage focused on app code quality.
+  - Avoids skew from third-party packages/framework targets included in `.xcresult`.
+  - Gives stable, team-actionable numbers for PRs and sprint tracking.
+
 ## Output Formats
 ### Markdown (`.md`)
-- Summary section (timestamp, source bundle, total covered/executable lines, total %).
+- Summary section (timestamp, source bundle, app-only covered/executable lines, app-only %).
 - Per-file table for `meApp/**/*.swift`.
 
 ### CSV (`.csv`)
@@ -101,7 +108,7 @@ Behavior:
 
 ### HTML (`.html`)
 - Readable visual report for sharing.
-- Summary metrics at top.
+- Summary metrics at top for app-only coverage.
 - Full per-file table with aligned numeric columns.
 
 ## Troubleshooting

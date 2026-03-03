@@ -168,6 +168,11 @@ This generates:
   - `iOS/meAppUITests/Reports/coverage-report.csv`
   - `iOS/meAppUITests/Reports/coverage-report.html`
 
+Report summary includes App-only coverage (`meApp/**/*.swift`) only.
+Reason:
+- Keeps coverage focused on app code quality.
+- Excludes third-party package/framework targets that can skew totals.
+
 The script auto-detects:
 - Lists test schemes and prompts you to pick one
 - Lists connected physical iOS devices and prompts you to pick one

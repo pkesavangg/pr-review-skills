@@ -165,7 +165,11 @@ python3 --version
 
 Reports include:
 - Per-file coverage for each Swift source file under `meApp/`
-- Total project coverage (weighted by executable lines)
+- App-only coverage (`meApp/**/*.swift`, weighted by executable lines)
+
+Coverage scope note:
+- Official coverage metric is App-only coverage.
+- Reason: it excludes external package/framework targets and keeps the number tied to app code quality.
 
 ### Command 1 (interactive)
 From repo root (`meApp-1/`):
@@ -201,6 +205,47 @@ SCHEME="meAppTests" DEVICE_ID=<device-id> CONFIGURATION=Production ./iOS/scripts
 - Cover guard/early-return paths (`noActiveAccount`, `accountNotFound`, connectivity checks).
 - Cover network-offline fallback paths separately from generic failures.
 - Include regression tests for past bugs.
+
+## How Coverage Numbers Work
+- `Executable Lines`: source lines that can actually run.
+- `Covered Lines`: executable lines hit by tests.
+- `Coverage %`: `Covered Lines / Executable Lines * 100`.
+
+Example report row:
+- `meApp/Theme/Enums/CustomTextStyle.swift | 30.00 | 30 | 100.00%`
+- Interpretation: 30 out of 30 executable lines were exercised by tests.
+
+Example:
+```swift
+// Calculator.swift
+struct Calculator {
+    func add(_ a: Int, _ b: Int) -> Int { a + b }
+    func divide(_ a: Int, _ b: Int) -> Int? {
+        guard b != 0 else { return nil }
+        return a / b
+    }
+}
+```
+
+```swift
+// CalculatorTests.swift
+import XCTest
+@testable import YourApp
+
+final class CalculatorTests: XCTestCase {
+    func testAdd() {
+        let sut = Calculator()
+        XCTAssertEqual(sut.add(2, 3), 5)
+    }
+
+    func testDivideByZero() {
+        let sut = Calculator()
+        XCTAssertNil(sut.divide(4, 0))
+    }
+}
+```
+
+With only these two tests, the non-zero divide path is not hit, so coverage is less than 100%. Adding a test for `divide(4, 2)` covers that remaining executable path.
 
 ## PR Checklist (Testing)
 - New/changed service logic has unit tests.
