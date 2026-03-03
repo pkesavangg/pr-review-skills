@@ -40,5 +40,5 @@ Tests follow the service coverage pattern used in other suites:
 This suite is designed to keep `KeychainService` behavior validated above the requested 85% threshold for secure storage logic paths.
 
 ## Current Coverage
-- `KeychainService.swift`: **98%** from the latest `KeychainServiceTests` coverage run.
+- `KeychainService.swift`: **98%** from latest `KeychainServiceTests` run (14/14 tests passing on March 3, 2026).
 - The new `KeychainServiceTests` suite is in place, but local simulator verification is currently blocked by unrelated binary package dependencies that do not ship iOS Simulator slices.
