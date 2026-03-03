@@ -187,6 +187,91 @@ struct ContentViewModelTests {
         #expect(accountFlag.checkAccountFlagCalls == 0)
     }
 
+    @Test("entry saved publisher processes account flag with entry trigger when flag exists")
+    func entrySavedProcessesAccountFlagWithEntryTrigger() async {
+        let (viewModel, _, _, entry, _, _, _, accountFlag) = makeSUT()
+        _ = viewModel
+        accountFlag.getAccountFlagResult = .success(ContentViewModelTestFixtures.makeAccountFlag(trigger: "entry"))
+        accountFlag.checkAccountFlagResult = .success(true)
+
+        entry.entrySaved.send(ContentViewModelTestFixtures.makeEntryNotification())
+        let processed = await waitUntil(timeoutNanoseconds: 3_000_000_000) { accountFlag.checkAccountFlagCalls == 1 }
+
+        #expect(processed == true)
+        #expect(accountFlag.getAccountFlagCalls == 1)
+        #expect(accountFlag.checkAccountFlagCalls == 1)
+        #expect(accountFlag.lastCheckTrigger == "entry")
+    }
+
+    @Test("checkAccountFlagsAfterLogin processes account flag with login trigger when flag exists")
+    func checkAccountFlagsAfterLoginProcessesFlag() async {
+        let (viewModel, account, _, entry, _, _, _, accountFlag) = makeSUT()
+        account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-1")
+        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-1"))
+        entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-flag-1", count: 1))
+        accountFlag.getAccountFlagResult = .success(ContentViewModelTestFixtures.makeAccountFlag(trigger: "login"))
+        accountFlag.checkAccountFlagResult = .success(true)
+
+        viewModel.performAppInitialization()
+        let processed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
+            accountFlag.checkAccountFlagCalls == 1 && viewModel.contentViewState == .dashboard
+        }
+
+        #expect(processed == true)
+        #expect(accountFlag.getAccountFlagCalls == 1)
+        #expect(accountFlag.checkAccountFlagCalls == 1)
+        #expect(accountFlag.lastCheckTrigger == "login")
+    }
+
+    @Test("checkAccountFlags handles getAccountFlag error gracefully")
+    func checkAccountFlagsHandlesGetAccountFlagError() async {
+        let (viewModel, account, _, entry, _, _, _, accountFlag) = makeSUT()
+        account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-1")
+        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-1"))
+        entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-flag-error-1", count: 1))
+        accountFlag.getAccountFlagResult = .failure(ContentViewModelTestError.accountFlagFailed)
+
+        viewModel.performAppInitialization()
+        let completed = await waitUntil { viewModel.contentViewState == .dashboard }
+
+        #expect(completed == true)
+        #expect(accountFlag.getAccountFlagCalls == 1)
+        #expect(accountFlag.checkAccountFlagCalls == 0)
+    }
+
+    @Test("checkAccountFlags handles checkAccountFlag error gracefully")
+    func checkAccountFlagsHandlesCheckAccountFlagError() async {
+        let (viewModel, account, _, entry, _, _, _, accountFlag) = makeSUT()
+        account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-2")
+        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-2"))
+        entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-flag-error-2", count: 1))
+        accountFlag.getAccountFlagResult = .success(ContentViewModelTestFixtures.makeAccountFlag(trigger: "login"))
+        accountFlag.checkAccountFlagResult = .failure(ContentViewModelTestError.accountFlagFailed)
+
+        viewModel.performAppInitialization()
+        let completed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
+            accountFlag.checkAccountFlagCalls == 1 && viewModel.contentViewState == .dashboard
+        }
+
+        #expect(completed == true)
+        #expect(accountFlag.getAccountFlagCalls == 1)
+        #expect(accountFlag.checkAccountFlagCalls == 1)
+        #expect(accountFlag.lastCheckTrigger == "login")
+    }
+
+    @Test("waitForStartupMigrationIfNeeded times out after 15 seconds")
+    func waitForStartupMigrationTimesOut() async {
+        let (viewModel, account, _, _, _, _, _, _) = makeSUT()
+        account.activeAccount = nil
+        account.shouldDeferUnauthenticatedLandingResult = true
+
+        viewModel.performAppInitialization()
+        let timedOut = await waitUntil(timeoutNanoseconds: 16_000_000_000) { viewModel.contentViewState == .landing }
+
+        #expect(timedOut == true)
+        #expect(account.updatePublishedStateCalls >= 1)
+    }
+
     @Test("updateViewState maps login status to final screen state")
     func updateViewStateMapsStates() async {
         let (viewModel, _, _, _, _, _, _, _) = makeSUT()

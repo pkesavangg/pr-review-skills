@@ -70,5 +70,5 @@ xcrun xccov view --report <PATH_TO_XCRESULT> | rg 'ContentViewModel.swift'
 - Any app startup/login initialization change must include regression tests for initialization transitions, startup loading side effects, publisher-driven re-init behavior, and error handling branches.
 
 ## Current Coverage
-- `ContentViewModel.swift`: **92.00%** (207/225)
-- Source: `/tmp/ContentViewModelTests-device-9.xcresult` (March 3, 2026)
+- `ContentViewModel.swift`: **97.33%** (219/225)
+- Source: `/tmp/ContentViewModelTests-device-10.xcresult` (March 3, 2026)
