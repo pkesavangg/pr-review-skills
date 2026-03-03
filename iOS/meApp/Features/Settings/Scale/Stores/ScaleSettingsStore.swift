@@ -10,7 +10,7 @@ import SwiftUI
 
 @MainActor
 final class ScaleSettingsStore: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol
