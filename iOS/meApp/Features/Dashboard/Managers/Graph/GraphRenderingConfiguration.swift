@@ -351,24 +351,34 @@ struct GraphRenderingConfiguration {
         useFixedDomain: Bool
     ) -> (Date, Date) {
         var minBuffer: TimeInterval = 0
+        var maxBuffer: TimeInterval = 0
         switch period {
         case .week:
             if calendar.component(.weekday, from: minDate) == calendar.firstWeekday {
                 minBuffer = DashboardConstants.TimeInterval.week
             }
+            let maxWeekday = calendar.component(.weekday, from: maxDate)
+            let maxDaysFromStart = (maxWeekday - calendar.firstWeekday + 7) % 7
+            maxBuffer = TimeInterval(6 - maxDaysFromStart) * DashboardConstants.TimeInterval.day
         case .month:
             if calendar.component(.day, from: minDate) == 1 {
                 minBuffer = DashboardConstants.TimeInterval.month
+            }
+            if let range = calendar.range(of: .day, in: .month, for: maxDate) {
+                let maxDay = calendar.component(.day, from: maxDate)
+                maxBuffer = TimeInterval(range.count - maxDay) * DashboardConstants.TimeInterval.day
             }
         case .year:
             if calendar.component(.month, from: minDate) == 1 {
                 minBuffer = DashboardConstants.TimeInterval.year
             }
+            let maxMonth = calendar.component(.month, from: maxDate)
+            maxBuffer = TimeInterval(12 - maxMonth) * DashboardConstants.TimeInterval.month
         case .total: break
         }
 
         let adjMin = minDate.addingTimeInterval(-minBuffer)
-        let adjMax = maxDate
+        let adjMax = maxDate.addingTimeInterval(maxBuffer)
 
         if useFixedDomain {
             return (adjMin, max(adjMax, currentPeriodEnd(for: period)))
@@ -436,15 +446,14 @@ struct GraphRenderingConfiguration {
     private func latestScrollPosition(for period: TimePeriod, latestDate: Date, domainLength: TimeInterval) -> Date {
         switch period {
         case .week:
-            // Scroll to the Sunday that starts the week containing the latest entry.
-            // A Gregorian week-of-year always starts on Sunday, so the chart shows
-            // the full Mon–Sun week with the last real data point visible inside it.
-            var gregorian = Calendar(identifier: .gregorian)
-            gregorian.timeZone = calendar.timeZone
-            let weekStart = gregorian.dateInterval(of: .weekOfYear, for: latestDate)?.start ?? latestDate
-            var comps = gregorian.dateComponents([.year, .month, .day], from: weekStart)
-            comps.hour = 12; comps.minute = 0; comps.second = 0
-            return gregorian.date(from: comps) ?? weekStart
+            let rightEdgeWithBuffer = latestDate.addingTimeInterval(2 * DashboardConstants.TimeInterval.day)
+            return rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+        case .month:
+            let rightEdgeWithBuffer = latestDate.addingTimeInterval(DashboardConstants.TimeInterval.week)
+            return rightEdgeWithBuffer.addingTimeInterval(-domainLength)
+        case .year:
+            let rightEdgeWithBuffer = latestDate.addingTimeInterval(DashboardConstants.TimeInterval.month)
+            return rightEdgeWithBuffer.addingTimeInterval(-domainLength)
         default:
             return latestDate.addingTimeInterval(periodPadding(for: period) - domainLength)
         }
