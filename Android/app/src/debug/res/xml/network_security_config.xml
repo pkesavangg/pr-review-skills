@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only network security config.
+  Used when building debug variants (replaces main/res/xml/network_security_config.xml).
+  - Same secure defaults as release: cleartext disabled by default, trust system + user CAs.
+  - Allows cleartext only for local development hosts (emulator, local server, optional Wi‑Fi scale IP).
+-->
+<network-security-config>
+    <!-- Same as main: no cleartext by default, trust system and user CAs. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!--
+      Debug-only: allow cleartext to local development hosts.
+      Use for: local API server, emulator (10.0.2.2), or a Wi‑Fi scale on the local network.
+      To allow a specific scale IP (e.g. 192.168.1.100), add a <domain> element with that IP.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Emulator host (development machine from emulator). -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Localhost / loopback. -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">::1</domain>
+    </domain-config>
+</network-security-config>
