@@ -148,9 +148,9 @@ def write_markdown(
         file_handle.write(f"- Generated: {generated_at}\n")
         file_handle.write(f"- Source: `{xcresult_path}`\n")
         file_handle.write(f"- Swift files included: {len(rows)} (`meApp/**/*.swift`)\n")
-        file_handle.write(f"- Total covered lines: {format_number(total_covered)}\n")
-        file_handle.write(f"- Total executable lines: {total_executable}\n")
-        file_handle.write(f"- Total project coverage: **{format_percent(total_percent)}**\n\n")
+        file_handle.write(f"- App-only covered lines (`meApp/**/*.swift`): {format_number(total_covered)}\n")
+        file_handle.write(f"- App-only executable lines (`meApp/**/*.swift`): {total_executable}\n")
+        file_handle.write(f"- App-only coverage: **{format_percent(total_percent)}**\n\n")
 
         file_handle.write("## Per-File Coverage\n\n")
         file_handle.write("| File | Covered Lines | Executable Lines | Coverage |\n")
@@ -264,9 +264,9 @@ def write_html(
       <p class="muted">Generated: {generated_at}</p>
       <p class="muted">Source: {html.escape(str(xcresult_path))}</p>
       <p class="muted">Swift files included: {len(rows)} (meApp/**/*.swift)</p>
-      <p class="muted">Total covered lines: {format_number(total_covered)}</p>
-      <p class="muted">Total executable lines: {total_executable}</p>
-      <p class="metric">Total project coverage: {format_percent(total_percent)}</p>
+      <p class="muted">App-only covered lines (meApp/**/*.swift): {format_number(total_covered)}</p>
+      <p class="muted">App-only executable lines (meApp/**/*.swift): {total_executable}</p>
+      <p class="metric">App-only coverage: {format_percent(total_percent)}</p>
     </div>
     <div class="card">
       <table>
@@ -349,13 +349,27 @@ def main() -> int:
     html_path = output_dir / f"{args.output_prefix}.html"
 
     write_csv(rows, csv_path)
-    write_markdown(rows, md_path, xcresult_path, total_covered, total_executable, total_percent)
-    write_html(rows, html_path, xcresult_path, total_covered, total_executable, total_percent)
+    write_markdown(
+        rows,
+        md_path,
+        xcresult_path,
+        total_covered,
+        total_executable,
+        total_percent,
+    )
+    write_html(
+        rows,
+        html_path,
+        xcresult_path,
+        total_covered,
+        total_executable,
+        total_percent,
+    )
 
     print(f"Coverage CSV: {csv_path}")
     print(f"Coverage Markdown: {md_path}")
     print(f"Coverage HTML: {html_path}")
-    print(f"Total project coverage: {format_percent(total_percent)}")
+    print(f"App-only coverage (meApp/**/*.swift): {format_percent(total_percent)}")
 
     return 0
 
