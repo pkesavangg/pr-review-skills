@@ -65,6 +65,12 @@ class IntegrationStore: ObservableObject {
     /// Initializes the store and starts observing account changes so the UI always reflects the latest integration state.
     init(networkMonitor: NetworkMonitoring? = nil) {
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
+        // Eagerly resolve injected dependencies so this store remains stable even if
+        // the shared DI container is reset later (for example, by other tests).
+        _ = logger
+        _ = notificationService
+        _ = accountService
+        _ = integrationsService
         // Initialize the integrations list with any pre-defined items.
         accountService.activeAccountPublisher
             .sink { [weak self] account in
