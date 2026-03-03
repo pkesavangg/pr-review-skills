@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.toAccountInfo
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
@@ -42,6 +43,7 @@ class AccountService
 @Inject
 constructor(
   private val accountRepository: IAccountRepository,
+  private val offlineHandlerService: IOfflineHandlerService,
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
@@ -352,6 +354,8 @@ constructor(
         AppLog.d(TAG, "No active account found in checkLoginStatusForActiveAccount(). Returning false.")
         return false
       }
+      // Sync any unsynced changes for the active account before checking login status
+      offlineHandlerService.handleOfflineSync()
       AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
       val accountInfo = accountRepository.getAccountFromAPI(activeAccount.id)
       accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)

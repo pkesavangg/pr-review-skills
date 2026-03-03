@@ -98,9 +98,11 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       storageClearService: StorageClearService,
+      offlineHandlerService: IOfflineHandlerService
     ): IAccountService =
       AccountService(
         accountRepository,
+        offlineHandlerService,
         connectivityObserver,
         dialogQueueService,
         appNavigationService,
