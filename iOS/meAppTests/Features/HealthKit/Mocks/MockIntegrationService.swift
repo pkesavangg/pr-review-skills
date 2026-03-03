@@ -9,11 +9,15 @@ final class MockIntegrationService: IntegrationServiceProtocol {
     var isIntegrationAlreadyUsedResult = false
     var isIntegrationAlreadyUsedError: Error?
     var clearIntegrationStatusError: Error?
+    var syncNewEntryError: Error?
+    var deleteEntryError: Error?
 
     private(set) var getStoredIntegrationDataCalls = 0
     private(set) var setStoredIntegrationDataCalls = 0
     private(set) var isIntegrationAlreadyUsedCalls = 0
     private(set) var clearIntegrationStatusCalls = 0
+    private(set) var syncNewEntryCalls = 0
+    private(set) var deleteEntryCalls = 0
     private(set) var lastSetStoredIntegrationDataInfo: IntegrationInfo?
 
     func getIntegrationUrl(_ provider: IntegrationType) async throws -> String {
@@ -45,8 +49,15 @@ final class MockIntegrationService: IntegrationServiceProtocol {
         if let error = clearIntegrationStatusError { throw error }
     }
 
-    func syncNewEntry(_ entry: Entry) async throws {}
-    func deleteEntry(_ entry: Entry) async throws {}
+    func syncNewEntry(_ entry: Entry) async throws {
+        syncNewEntryCalls += 1
+        if let syncNewEntryError { throw syncNewEntryError }
+    }
+
+    func deleteEntry(_ entry: Entry) async throws {
+        deleteEntryCalls += 1
+        if let deleteEntryError { throw deleteEntryError }
+    }
     func clearIntegration() async throws {}
     func logHealthEntry(notification: EntryNotification) async {}
 }

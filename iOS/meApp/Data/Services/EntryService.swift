@@ -4,18 +4,18 @@ import SwiftData
 
 /*
  SwiftLint exception:
- This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations. We therefore disable `type_body_length` and `file_length` for this file.
+ This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations.
  */
 @MainActor
-final class EntryService: EntryServiceProtocol, ObservableObject {  // swiftlint:disable:this type_body_length file_length
+final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:disable:this type_body_length file_length
     @Injector var logger: LoggerServiceProtocol
     @Injector var goalAlertService: GoalAlertServiceProtocol
     @Injector var integrationService: IntegrationServiceProtocol
     private let accountService: AccountServiceProtocol
-    private let localRepo: EntryRepositoryProtocol = EntryRepository()
-    private let localKVRepo = EntryRepositoryLocal()
-    private let remoteRepo: EntryRepositoryAPIProtocol = EntryRepositoryAPI()
-    private let migrationService = SQLiteMigrationService()
+    private let localRepo: EntryRepositoryProtocol
+    private let localKVRepo: EntrySyncStoreProtocol
+    private let remoteRepo: EntryRepositoryAPIProtocol
+    private let migrationService: SQLiteMigrationService
     @MainActor static let shared = EntryService(accountService: AccountService.shared)
 
     // MARK: - Publishers ------------------------------------------------
@@ -46,8 +46,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {  // swiftlint
     private var activeSyncTask: Task<Void, Never>?
 
     @MainActor
-    init(accountService: AccountServiceProtocol) {
+    init(
+        accountService: AccountServiceProtocol,
+        localRepo: EntryRepositoryProtocol? = nil,
+        localKVRepo: EntrySyncStoreProtocol? = nil,
+        remoteRepo: EntryRepositoryAPIProtocol? = nil,
+        migrationService: SQLiteMigrationService? = nil
+    ) {
         self.accountService = accountService
+        self.localRepo = localRepo ?? EntryRepository()
+        self.localKVRepo = localKVRepo ?? EntryRepositoryLocal()
+        self.remoteRepo = remoteRepo ?? EntryRepositoryAPI()
+        self.migrationService = migrationService ?? SQLiteMigrationService()
 
         Task { @MainActor in
             if let concreteAccountService = accountService as? AccountService {
