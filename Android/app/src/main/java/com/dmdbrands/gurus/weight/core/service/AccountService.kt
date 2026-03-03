@@ -781,6 +781,10 @@ constructor(
     }
   }
 
+  override suspend fun clearSyncTimestampForResync() {
+    accountRepository.updateSyncTimeStamp("")
+  }
+
   /**
    * Gets whether the notification alert has been shown for the specified account.
    * @param accountId The account ID to check.

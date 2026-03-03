@@ -185,6 +185,12 @@ interface IAccountService {
   suspend fun setCurrentThemeMode(themeMode: ThemeMode)
 
   /**
+   * Clears the last sync timestamp for the active account so the next sync performs a full resync.
+   * Used by debug resync and similar flows.
+   */
+  suspend fun clearSyncTimestampForResync()
+
+  /**
    * Deletes the current user account from the server and local storage.
    */
   suspend fun deleteAccount(accountID: String, isActiveAccount: Boolean)
