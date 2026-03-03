@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
@@ -23,7 +24,6 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -436,8 +436,8 @@ class GraphViewModel @AssistedInject constructor(
       isWeightLessMode = isWeightlessMode,
       targetTickCount = 4,
     ) else generateNiceScale(
-      minValue = goalWeight - 10,
-      maxValue = goalWeight + 10,
+      minValue = goalWeight.div(10) - 10,
+      maxValue = goalWeight.div(10) + 10,
       goalWeight = goalWeight,
       isWeightLessMode = isWeightlessMode,
       targetTickCount = 3,
