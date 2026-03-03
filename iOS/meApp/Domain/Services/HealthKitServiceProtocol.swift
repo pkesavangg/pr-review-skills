@@ -27,6 +27,9 @@ protocol HealthKitServiceProtocol {
     /// - Returns: `true` if authorization has been granted for at least one required permission, `false` otherwise.
     func checkAuthorizationStatus() -> Bool
 
+    /// Returns whether stored HealthKit integration is currently out of sync with granted permissions.
+    func isHKOutOfSync() async -> Bool
+
     /// Retrieves the list of approved HealthKit permission identifiers.
     /// - Returns: An array of permission identifiers that have been granted.
     func getApprovedPermissionList() -> [String]
