@@ -6,7 +6,7 @@ import SwiftUI
 final class EntryStore: ObservableObject {
     // Dependencies
     @Injector var accountService: AccountServiceProtocol
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol

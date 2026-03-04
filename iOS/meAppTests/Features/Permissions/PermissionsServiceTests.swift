@@ -4,6 +4,7 @@ import GGBluetoothSwiftPackage
 import Testing
 @testable import meApp
 
+@Suite(.serialized)
 @MainActor
 struct PermissionsServiceTests {
     @Test("setPermissions and getPermissionState: stores and returns cached states")

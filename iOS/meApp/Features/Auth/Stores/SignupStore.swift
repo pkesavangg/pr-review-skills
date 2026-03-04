@@ -16,7 +16,7 @@ import SwiftUI
 /// This store is responsible for managing the signup process.
 @MainActor
 final class SignupStore: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     var alertLang = AlertStrings.self

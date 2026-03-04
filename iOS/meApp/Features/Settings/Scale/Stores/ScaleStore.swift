@@ -15,7 +15,7 @@ import SwiftUI
 class ScaleStore: ObservableObject {
     
     // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var scaleService: ScaleService
     @Injector private var bluetoothService: BluetoothService
     @Injector private var logger: LoggerService

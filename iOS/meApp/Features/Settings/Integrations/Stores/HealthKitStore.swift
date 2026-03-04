@@ -27,13 +27,13 @@ final class HealthKitStore: ObservableObject {
 
     // MARK: - Dependencies
 
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var entryService: EntryService
-    @Injector private var accountService: AccountService
-    @Injector private var integrationService: IntegrationsService
-    @Injector private var healthKitService: HealthKitService
-    @Injector private var logger: LoggerService
-    private let kvStorage = KvStorageService.shared
+    @Injector private var notificationService: NotificationHelperServiceProtocol
+    @Injector private var entryService: EntryServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var integrationService: IntegrationServiceProtocol
+    @Injector private var healthKitService: HealthKitServiceProtocol
+    @Injector private var logger: LoggerServiceProtocol
+    private let kvStorage: KvStorageServiceProtocol
 
     var cancellables: Set<AnyCancellable> = []
     static let wgTotalPermissionsCount = 5
@@ -57,7 +57,35 @@ final class HealthKitStore: ObservableObject {
 
     // MARK: - Init
 
-    init() {
+    init(
+        kvStorage: KvStorageServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil,
+        entryService: EntryServiceProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        integrationService: IntegrationServiceProtocol? = nil,
+        healthKitService: HealthKitServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil
+    ) {
+        self.kvStorage = kvStorage ?? KvStorageService.shared
+
+        if let notificationService {
+            self.notificationService = notificationService
+        }
+        if let entryService {
+            self.entryService = entryService
+        }
+        if let accountService {
+            self.accountService = accountService
+        }
+        if let integrationService {
+            self.integrationService = integrationService
+        }
+        if let healthKitService {
+            self.healthKitService = healthKitService
+        }
+        if let logger {
+            self.logger = logger
+        }
         loadStatus()
         // Observe activeState changes to post notifications when sheet is presented/dismissed
         // Only post notifications when transitioning between nil and non-nil states

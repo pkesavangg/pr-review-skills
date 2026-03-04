@@ -175,7 +175,7 @@ class NotificationHelperService: NotificationHelperServiceProtocol, ObservableOb
 /// Usage Example:
 /// ```swift
 /// class SomeViewModel {
-///     @Injector var notificationService: NotificationHelperService
+///     @Injector var notificationService: NotificationHelperServiceProtocol
 ///
 ///     func showSampleAlert() {
 ///         let alert = AlertModel(

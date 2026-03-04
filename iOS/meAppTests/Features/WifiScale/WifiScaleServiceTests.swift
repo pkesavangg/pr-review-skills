@@ -3,6 +3,7 @@ import Network
 import Testing
 @testable import meApp
 
+@Suite(.serialized)
 @MainActor
 struct WifiScaleServiceTests {
     @Test("getScaleToken success: returns token and forwards request")

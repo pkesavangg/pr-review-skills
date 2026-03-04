@@ -117,6 +117,10 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
     @Published var permissions: [GGPermissionType: GGPermissionState]?
     var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> { $permissions.eraseToAnyPublisher() }
     var requiredCategories: Set<PermissionCategory> = [.notifications]
+    private let requiredCategoriesSubject = CurrentValueSubject<Set<PermissionCategory>, Never>([.notifications])
+    var requiredCategoriesPublisher: AnyPublisher<Set<PermissionCategory>, Never> {
+        requiredCategoriesSubject.eraseToAnyPublisher()
+    }
 
     var currentState: GGPermissionState = .DISABLED
     var forcedGetPermissionState: GGPermissionState?
@@ -126,6 +130,11 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
 
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
+    }
+
+    func setRequiredCategories(_ categories: Set<PermissionCategory>) {
+        requiredCategories = categories
+        requiredCategoriesSubject.send(categories)
     }
 
     func permissionRequest(_ type: GGPermissionType) async -> GGPermissionState {

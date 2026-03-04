@@ -35,6 +35,9 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
     /// Permission categories that are required based on the user’s connected devices.
     @Published private(set) var requiredCategories: Set<PermissionCategory> = []
+    var requiredCategoriesPublisher: AnyPublisher<Set<PermissionCategory>, Never> {
+        $requiredCategories.eraseToAnyPublisher()
+    }
 
     // MARK: - Dependencies
 
