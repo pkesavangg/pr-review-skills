@@ -192,10 +192,12 @@ struct MyScalesScreen: View {
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
-                .sheet(item: $activeSheet, onDismiss: {
-                    scaleStore.updateSetupInProgressStatus(false)
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                }) { sheet in
+                .sheet(
+                    item: $activeSheet,
+                    onDismiss: {
+                        scaleStore.updateSetupInProgressStatus(false)
+                    },
+                    content: { sheet in
                     switch sheet {
                     case .scaleList:
                         ChooseYourScaleView { scale in
@@ -224,7 +226,8 @@ struct MyScalesScreen: View {
                                 .interactiveDismissDisabled(true)
                         }
                     }
-                }
+                    }
+                )
                 .onChange(of: activeSheet) { _, newSheet in
                     // Observe changes to the activeSheet state.
                     // This is used to track whether a setup flow is being shown,

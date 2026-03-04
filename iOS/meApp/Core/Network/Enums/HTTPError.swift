@@ -57,11 +57,16 @@ enum HTTPError: Error, LocalizedError {
     static func isNetworkError(_ error: Error) -> Bool {
         if let networkError = error as? HTTPError {
             switch networkError {
-            case .noInternet, .statusCode(0):
+            // Treat .timeout as a network error to avoid falsely marking accounts expired.
+            case .noInternet, .timeout, .statusCode(0):
                 return true
             default:
                 return false
             }
+        }
+        // Fallback: treat any raw URLError as a network failure, not account expiry.
+        if error is URLError {
+            return true
         }
         return false
     }

@@ -142,11 +142,10 @@ struct SwipeableModifier: ViewModifier {
                                 }
                             }
                         }
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                    }) {
+                    }, label: {
                         button.label()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    })
                     .frame(width: buttonWidth)
                     .background(button.tint)
                     .contentShape(Rectangle())

@@ -52,8 +52,11 @@ struct HistoryMetricItem: View {
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
                 }
-// swiftlint:disable:next line_length
-              Text(BodyMetricsConvertor.convert(Double(metricType == .visceralFatLevel ? value / 10 : value), shouldCompose: metric.bodyCompositionRelated, wholeNumber: metric.isWholeNumber))
+              Text(BodyMetricsConvertor.convert(
+                Double(metricType == .visceralFatLevel ? value / 10 : value),
+                shouldCompose: metric.bodyCompositionRelated,
+                wholeNumber: metric.isWholeNumber
+              ))
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
 

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
@@ -10,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
@@ -20,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
+import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
 import com.patrykandpatrick.vico.core.cartesian.InterpolationType
@@ -28,6 +31,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import android.util.Log
 
 private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
@@ -58,6 +62,7 @@ fun GraphView(
   placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
   onChartConsuming: (Boolean) -> Unit = {},
+  onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
 
   val scope = rememberCoroutineScope()
@@ -73,7 +78,22 @@ fun GraphView(
   val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
-  val initialScroll = remember { Scroll.Absolute.x(initialStartX) }
+
+  val (startPaddingXStep, _) = remember(state.isEmptyGraph, segment) {
+    if (!state.isEmptyGraph || segment != GraphSegment.TOTAL)
+      GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
+    else
+      0.0 to 0.0
+  }
+  val fadingEdges = rememberFadingEdges(
+    startWidth = 0.dp,
+    endWidth = 0.dp,
+    startPaddingXStep = startPaddingXStep.takeIf { it > 0.0 },
+    visibilityEasing = LinearEasing,
+  )
+  val initialScroll = remember(initialStartX, startPaddingXStep) {
+    Scroll.Absolute.xWithPadding(initialStartX, startPaddingXStep)
+  }
 
   val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
     { scrolledX, isDrag, isForward ->
@@ -94,6 +114,7 @@ fun GraphView(
         snapDurationMillis = 500,
       ),
     ),
+    scrollStartPaddingXStep = startPaddingXStep,
     key = segment,
   )
   val horizontalItemPlacer =
@@ -124,18 +145,22 @@ fun GraphView(
       )
     }
   }
-  LaunchedEffect(scrollTarget) {
+  LaunchedEffect(segment) {
     if (scrollTarget == null || !canScrollToAnchor || state.isEmptyGraph) return@LaunchedEffect
     val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
     val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
     scrollState.animateScroll(
-      Scroll.Absolute.x(anchoredTarget.toDouble()),
+      Scroll.Absolute.xWithPadding(
+        anchoredTarget.toDouble(),
+        GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
+      ),
       animationSpec = tween(
         durationMillis = 150,
         easing = LinearOutSlowInEasing,
       ),
     )
+    onScrollTargetConsumed(true)
   }
 
   LaunchedEffect(state.markerIndex == null) {
@@ -158,6 +183,7 @@ fun GraphView(
     defaultMarker = defaultMarker,
     segment = segment,
     horizontalItemPlacer = horizontalItemPlacer,
+    fadingEdges = fadingEdges,
     handleIntent = viewModel::handleIntent,
     onChartClick = { targets, click ->
       if (click == null || state.isEmptyGraph) {
@@ -172,8 +198,8 @@ fun GraphView(
             true
         }
       var markerIndex: Double? = null
-      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment).div(2)
-      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment).div(2)
+      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
+      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
       val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
       if (!outOfBoundaryCondition) {
         val targetMarkerIndex =
@@ -182,8 +208,8 @@ fun GraphView(
             targets,
             click,
             segment,
-            state.minTarget?.toDouble(),
-            state.maxTarget?.toDouble(),
+            paddedMinCondition,
+            paddedMaxCondition,
           )
         if (targetMarkerIndex.isNotEmpty()) {
           val targetIndex = targetMarkerIndex.first().toLong()
@@ -214,6 +240,12 @@ fun GraphView(
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
+        Log.d(
+          "GraphView",
+          "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(
+            max,
+          ),
+        )
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
@@ -260,8 +292,8 @@ fun getTargetPoints(
   // Use window bounds from state to find points within current window
   if (lower == null) {
     // Input is below fullList range, find points within window bounds
-    val pointsInRange = if (minWindow != null) {
-      points.filter { it in minWindow..input }
+    val pointsInRange = if (minWindow != null && upper != null) {
+      points.filter { it in minWindow..upper }
     } else {
       points.filter { it <= input }
     }
@@ -277,7 +309,7 @@ fun getTargetPoints(
   if (upper == null) {
     // Input is above fullList range, find points within window bounds
     val pointsInRange = if (maxWindow != null) {
-      points.filter { it in input..maxWindow }
+      points.filter { it in lower..maxWindow }
     } else {
       points.filter { it >= input }
     }

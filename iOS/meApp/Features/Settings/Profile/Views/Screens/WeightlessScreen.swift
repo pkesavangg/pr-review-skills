@@ -59,8 +59,10 @@ struct WeightlessScreen: View {
                     
                     // Toggle
                     HStack {
-// swiftlint:disable:next line_length
-                        CustomToggleView(isOn: $settingsStore.weightlessForm.isOn.value, text: "\(strings.modeLabel): \(settingsStore.weightlessForm.isOn.value ? commonLang.on : commonLang.off)")
+                        CustomToggleView(
+                            isOn: $settingsStore.weightlessForm.isOn.value,
+                            text: "\(strings.modeLabel): \(settingsStore.weightlessForm.isOn.value ? commonLang.on : commonLang.off)"
+                        )
                     }
                     .padding(.vertical, .spacingSM)
                     
@@ -97,8 +99,8 @@ struct WeightlessScreen: View {
             settingsStore.populateWeightlessFormIfNeeded()
 
             registerDeactivation {
-                // If the form has no unsaved changes, allow immediate tab switch.
-                if !settingsStore.weightlessForm.isDirty {
+                // If there are no actual changes, allow immediate tab switch.
+                if !settingsStore.hasWeightlessChanges {
                     router.navigateBack()
                     return true
                 }

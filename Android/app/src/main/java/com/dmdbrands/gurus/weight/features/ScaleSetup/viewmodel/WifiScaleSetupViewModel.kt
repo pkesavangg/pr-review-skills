@@ -122,7 +122,7 @@ constructor(
 
   override fun provideInitialState(): WifiScaleSetupState = WifiScaleSetupState()
   override fun onScanResponse(response: GGScanResponse.DeviceDetail) {
-    TODO("Not yet implemented")
+    //No need to implement them
   }
 
   override fun handleIntent(intent: WifiScaleSetupIntent) {
@@ -344,7 +344,9 @@ constructor(
         cancelText = ScaleSetupStrings.SkipWifiPermissions.Goback,
         onConfirm = {
           handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(true))
-          clearWifiPasswordForm()
+          if(state.value.wifiPasswordForm.ssid.value.isEmpty()){
+            clearWifiPasswordForm()
+          }
           handleUserConfirmSelected(SetupPath.AP_MODE)
           handleIntent(WifiScaleSetupIntent.Next)
         },
@@ -489,6 +491,7 @@ constructor(
   /**
    * Updates the network status.
    * Equivalent to TypeScript updateNetworkStatus()
+   * When any required permission is revoked, preserves the last known SSID so the network field is not cleared.
    */
   private fun updateNetworkStatus() {
     viewModelScope.launch {
@@ -496,10 +499,32 @@ constructor(
         val hasLocationPermission = isAllLocationPermissionGranted()
         val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
         wifiStatus = status
-          handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
-          updateFormValuesWithSsid(status.ssid)
-        handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
+        if (status.ssid.isNotEmpty()) {
+          lastSsid = status.ssid
+        }
+        val currentState = state.value
+        val hasAllRequiredPermissions = AppPermissionsHelper
+          .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
+        // When any required permission is off, status.ssid may be empty; preserve last known SSID so we don't clear the field
+        val effectiveSsid =
+          if (status.ssid.isNotEmpty()) {
+            status.ssid
+          } else if (!hasAllRequiredPermissions) {
+            lastSsid ?: ""
+          } else {
+            ""
+          }
+        handleIntent(WifiScaleSetupIntent.SetWifiSsid(effectiveSsid))
+        updateFormValuesWithSsid(effectiveSsid)
+        val displayStatus =
+          if (!hasAllRequiredPermissions && status.ssid.isEmpty() && lastSsid != null) {
+            status.copy(ssid = lastSsid!!, bssid = currentState.wifiStatus?.bssid ?: "")
+          } else {
+            status
+          }
+        handleIntent(WifiScaleSetupIntent.SetWifiStatus(displayStatus))
       } catch (e: Exception) {
+        AppLog.e(TAG, "updateNetworkStatus - Error updating network status", e)
       }
     }
   }
@@ -699,10 +724,10 @@ constructor(
    * Helper method to keep form values in sync with network status.
    *
    * Logic:
+   * - Fill with SSID when we have it, including when user skipped permission (so they see connected network).
+   * - When user skipped permissions and then clears the field: do not refill (respect user's clear).
    * - If on early steps (index < 3), only fill WiFi password form
    * - If in WiFi switching context (after SWITCH_WIFI step), only fill scale network form
-   * - Otherwise, fill both forms as before
-   * - Always populate if permissions are currently enabled (regardless of skip history)
    */
   private fun updateFormValuesWithSsid(ssid: String) {
     val currentState = state.value
@@ -711,6 +736,17 @@ constructor(
     val arePermissionsCurrentlyEnabled = AppPermissionsHelper
       .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
     val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
+    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field
+    // Treat as "user cleared" only when the SSID control is empty *and* has been interacted with.
+    val ssidControl = currentState.wifiPasswordForm.ssid
+    val userClearedSsid = ssidControl.value.isEmpty() && (ssidControl.dirty || ssidControl.touched)
+    if (currentState.permissionsSkipped && arePermissionsCurrentlyEnabled &&
+      userClearedSsid &&
+      currentState.wifiPasswordForm.ssid.value.isEmpty() && ssid.isNotEmpty() && currentStepIndex < 3
+    ) {
+      AppLog.d(TAG, "Skipping auto-population of WiFi form - permissions were skipped and user cleared the field")
+      return
+    }
     if (shouldAutoPopulate) {
       val isEarlyStep = currentStepIndex < 3
       if (isEarlyStep) {
@@ -762,7 +798,6 @@ constructor(
         ),
       ),
     )
-
     AppLog.d(TAG, "Cleared WiFi password form - reset all form controls to initial state")
   }
 

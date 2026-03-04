@@ -37,6 +37,8 @@ class SettingsStore: ObservableObject {
     @Published var changePasswordForm = ChangePasswordForm()
     // Weightless-mode form
     @Published var weightlessForm = WeightlessForm()
+    // Track initial toggle state to detect actual changes
+    private var initialWeightlessToggleState: Bool = false
     // Goal-setting form
     @Published var goalForm = GoalForm()
 
@@ -427,9 +429,27 @@ class SettingsStore: ObservableObject {
     func isGoalFormValid(focusedField: FocusField?) -> Bool {
         goalForm.isValidForSave(focusedField: focusedField)
     }
-
+    
+    /// Determines if the Weightless form is valid for saving
+    /// Save enabled only when toggle changed OR valid form changes exist
     var isWeightLessFormValid: Bool {
-        !(!weightlessForm.isDirty || (weightlessForm.isDirty && (weightlessForm.isOn.value ? weightlessForm.isInvalid : false)))
+        let hasToggleChanged = weightlessForm.isOn.value != initialWeightlessToggleState
+        
+        // If turned OFF → only toggle change matters
+        guard weightlessForm.isOn.value else {
+            return hasToggleChanged
+        }
+        
+        // If turned ON → form must be valid, and allow either toggle change OR valid form changes
+        let weightValue = Double(weightlessForm.weight.value) ?? 0.0
+        return weightlessForm.isValid &&
+            (hasToggleChanged ||
+             (weightlessForm.isDirty && weightValue != 0.0))
+    }
+
+    /// Checks if there are actual unsaved changes (for exit confirmation)
+    var hasWeightlessChanges: Bool {
+        (weightlessForm.isOn.value != initialWeightlessToggleState) || weightlessForm.isDirty
     }
 
     // MARK: - Handle export
@@ -1005,8 +1025,8 @@ class SettingsStore: ObservableObject {
 
     /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
     func handleWeightlessExit(router: Router<SettingsRoute>) {
-        // Fast path: if form is pristine simply pop and bail.
-        guard weightlessForm.isDirty else {
+        // Fast path: if there are no actual changes, simply pop and bail
+        guard hasWeightlessChanges else {
             router.navigateBack()
             resetWeightlessForm()
             return
@@ -1020,9 +1040,9 @@ class SettingsStore: ObservableObject {
 
     /// Async variant used by tab-deactivation; returns a Bool indicating whether it is safe to leave.
     func confirmDiscardWeightlessChanges() async -> Bool {
-        // Allow immediate exit when there are no unsaved changes.
-        guard weightlessForm.isDirty else { return true }
-
+        // Allow immediate exit when there are no actual changes
+        guard hasWeightlessChanges else { return true }
+        
         return await withCheckedContinuation { continuation in
             presentWeightlessExitAlert(onExit: {
                 continuation.resume(returning: true)
@@ -1036,10 +1056,10 @@ class SettingsStore: ObservableObject {
     func saveWeightless(router: Router<SettingsRoute>) {
         // Validate form first.
         weightlessForm.validate()
-
-        guard weightlessForm.isDirty, isWeightLessFormValid else { return }
-        if weightlessForm.isOn.value, weightlessForm.weight.isInvalid { return }
-
+        
+        guard hasWeightlessChanges, isWeightLessFormValid else { return }
+        if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
+        
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let storedWeight: Int = {
             if let val = Double(weightlessForm.weight.value) {
@@ -1074,8 +1094,21 @@ class SettingsStore: ObservableObject {
                     weightlessTimestamp: timestamp,
                     weightlessWeight: Double(storedWeight)
                 )
+                
+                // Refresh account to ensure latest state is available when user returns
+                try? await accountService.refreshAccount()
+                
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
+                
+                // Mark form as pristine after successful save
+                await MainActor.run {
+                    self.weightlessForm.isOn.markAsPristine()
+                    self.weightlessForm.weight.markAsPristine()
+                    // Update initial toggle state to match saved state
+                    self.initialWeightlessToggleState = isOn
+                }
+                
                 onSuccess()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
@@ -1083,7 +1116,6 @@ class SettingsStore: ObservableObject {
             }
             notificationService.dismissLoader()
             httpClient.skipCheckNetwork = false
-            self.resetWeightlessForm()
         }
     }
 
@@ -1097,6 +1129,7 @@ class SettingsStore: ObservableObject {
             weightlessForm.weight.value = ""
             weightlessForm.isOn.markAsPristine()
             weightlessForm.weight.markAsPristine()
+            initialWeightlessToggleState = false
             return
         }
 
@@ -1113,7 +1146,9 @@ class SettingsStore: ObservableObject {
 
         weightlessForm.isOn.value = shouldBeOn
         weightlessForm.isOn.markAsPristine()
-
+        // Store initial toggle state to detect changes
+        initialWeightlessToggleState = shouldBeOn
+        
         // Set weight field value
         if let storedWeight = account.weightlessSettings?.weightlessWeight, shouldBeOn {
             // Convert stored tenths-of-lbs value to display unit.
@@ -1144,6 +1179,7 @@ class SettingsStore: ObservableObject {
     /// Resets the Weightless form to a pristine state.
     func resetWeightlessForm() {
         weightlessForm = WeightlessForm()
+        initialWeightlessToggleState = false
         populateWeightlessFormIfNeeded()
     }
 
@@ -1505,7 +1541,8 @@ class SettingsStore: ObservableObject {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Settings forgot password request failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))" // swiftlint:disable:this line_length
+                    message: "Settings forgot password request failed. error=\(error.localizedDescription), "
+                        + "errorType=\(String(describing: type(of: error)))"
                 )
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.pleaseTryAgain))
             }
@@ -1596,15 +1633,15 @@ class SettingsStore: ObservableObject {
                 options: [AppearanceMode.allCases],
                 displayValue: { $0.rawValue },
                 title: SettingsStrings.appearance,
-                showCancel: false
-                // swiftlint:disable:next multiple_closures_with_trailing_closure
-            ) { vals in
-                self.notificationService.dismissModal()
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                    if let mode = vals.first { Theme.shared.appearanceMode = mode }
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        if let mode = vals.first { Theme.shared.appearanceMode = mode }
+                    }
                 }
-            }
+            )
             notificationService.showModal(
                 ModalData(
                     presentedView: AnyView(picker)
@@ -1623,12 +1660,12 @@ class SettingsStore: ObservableObject {
                 options: [NotificationPreference.allCases],
                 displayValue: { $0.title },
                 title: SettingsStrings.notifications,
-                showCancel: false
-                // swiftlint:disable:next multiple_closures_with_trailing_closure
-            ) { vals in
-                self.notificationService.dismissModal()
-                if let pref = vals.first { self.updateNotificationPreference(pref) }
-            }
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let pref = vals.first { self.updateNotificationPreference(pref) }
+                }
+            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showNotificationPicker = true
@@ -1643,12 +1680,12 @@ class SettingsStore: ObservableObject {
                 options: [Sex.allCases],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.biologicalSex,
-                showCancel: false
-                // swiftlint:disable:next multiple_closures_with_trailing_closure
-            ) { vals in
-                self.notificationService.dismissModal()
-                if let sex = vals.first { self.updateGender(sex) }
-            }
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let sex = vals.first { self.updateGender(sex) }
+                }
+            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showGenderPicker = true
@@ -1663,12 +1700,12 @@ class SettingsStore: ObservableObject {
                 options: [[WeightUnit.lb, WeightUnit.kg]],
                 displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
                 title: SettingsStrings.unitType,
-                showCancel: false
-                // swiftlint:disable:next multiple_closures_with_trailing_closure
-            ) { vals in
-                self.notificationService.dismissModal()
-                if let unit = vals.first { self.updateWeightUnit(unit) }
-            }
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let unit = vals.first { self.updateWeightUnit(unit) }
+                }
+            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showUnitPicker = true
@@ -1683,12 +1720,12 @@ class SettingsStore: ObservableObject {
                 options: [[ActivityLevel.normal, ActivityLevel.athlete]],
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.activityLevel,
-                showCancel: false
-                // swiftlint:disable:next multiple_closures_with_trailing_closure
-            ) { vals in
-                self.notificationService.dismissModal()
-                if let level = vals.first { self.updateActivityLevel(level) }
-            }
+                showCancel: false,
+                updateValues: { vals in
+                    self.notificationService.dismissModal()
+                    if let level = vals.first { self.updateActivityLevel(level) }
+                }
+            )
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showActivityPicker = true
@@ -1705,12 +1742,12 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
-                    showCancel: false
-                    // swiftlint:disable:next multiple_closures_with_trailing_closure
-                ) { vals in
-                    self.notificationService.dismissModal()
-                    self.updateHeight(fromMetric: true, values: vals)
-                }
+                    showCancel: false,
+                    updateValues: { vals in
+                        self.notificationService.dismissModal()
+                        self.updateHeight(fromMetric: true, values: vals)
+                    }
+                )
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker
@@ -1723,12 +1760,12 @@ class SettingsStore: ObservableObject {
                     displayValue: { $0 },
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
-                    showCancel: false
-                    // swiftlint:disable:next multiple_closures_with_trailing_closure
-                ) { vals in
-                    self.notificationService.dismissModal()
-                    self.updateHeight(fromMetric: false, values: vals)
-                }
+                    showCancel: false,
+                    updateValues: { vals in
+                        self.notificationService.dismissModal()
+                        self.updateHeight(fromMetric: false, values: vals)
+                    }
+                )
                 notificationService.showModal(
                     ModalData(presentedView: AnyView(
                         picker

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -102,7 +103,11 @@ fun AppUserList(
 
                 else -> RectangleShape
               }
-            Column {
+            Column(
+              modifier = Modifier
+                .clip(shape)
+                .background(MeTheme.colorScheme.primaryBackground, shape),
+            ) {
               AppUser(
                 account = item,
                 modifier = Modifier.clip(shape),

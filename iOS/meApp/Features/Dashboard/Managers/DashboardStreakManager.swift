@@ -19,8 +19,13 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         let streakLabels = getStreakLabels()
         return [
             MetricItem(value: DashboardStrings.placeholder, label: DashboardStrings.currentStreak, unit: nil, preLabel: nil, icon: AppAssets.streak),
-// swiftlint:disable:next line_length
-            MetricItem(value: DashboardStrings.placeholder, label: DashboardStrings.longestStreak, unit: nil, preLabel: nil, icon: AppAssets.longestStreak),
+            MetricItem(
+                value: DashboardStrings.placeholder,
+                label: DashboardStrings.longestStreak,
+                unit: nil,
+                preLabel: nil,
+                icon: AppAssets.longestStreak
+            ),
             MetricItem(value: DashboardStrings.placeholder, label: streakLabels.week, unit: nil, preLabel: nil, icon: nil),
             MetricItem(value: DashboardStrings.placeholder, label: streakLabels.month, unit: nil, preLabel: nil, icon: nil),
             MetricItem(value: DashboardStrings.placeholder, label: streakLabels.year, unit: nil, preLabel: nil, icon: nil),

@@ -252,17 +252,17 @@ struct PickerTestView: View {
             selectedValues: selectedHeightInches,
             options: heightInchesOptions,
             displayValue: { $0 },
-            pickerType: .heightInches
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { selectedHeightInches = $0 }
+            pickerType: .heightInches,
+            onUpdate: { selectedHeightInches = $0 }
+        )
         .pickerSheet(
             isPresented: $showHeightCmPicker,
             selectedValues: selectedHeightCm,
             options: heightCmOptions,
             displayValue: { $0 },
-            pickerType: .heightCm
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        ) { selectedHeightCm = $0 }
+            pickerType: .heightCm,
+            onUpdate: { selectedHeightCm = $0 }
+        )
     }
 }
 

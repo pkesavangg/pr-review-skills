@@ -29,10 +29,11 @@ data class DashboardState(
   val selectedStat: Stat? = null,
   val pagerState: Int = 0,
   val scrollTarget: Double? = null,
+  val isScrollTargetConsumed: Boolean = false,
   val isEmpty: Boolean = false,
   val isRefreshing: Boolean = false,
   val weightless: Weightless? = null,
-  val isConsuming : Boolean = false,
+  val isConsuming: Boolean = false,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
 ) : IReducer.State
 
@@ -71,6 +72,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   object OnConnectScale : DashboardIntent
   data class SetLatestWeight(val latestWeight: Double?) : DashboardIntent
   data class UpdateWeightLess(val weightless: Weightless?) : DashboardIntent
+  data class SetIsScrollTargetConsumed(val isScrollTargetConsumed: Boolean) : DashboardIntent
 }
 
 /**
@@ -91,6 +93,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
         scrollTarget = intent.anchorTimestamp?.toDouble(),
       )
     }
+
     is DashboardIntent.SetIsChartConsuming -> state.copy(isConsuming = intent.isConsuming)
     is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
     is DashboardIntent.SetData -> state.copy(data = intent.data)
@@ -99,6 +102,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
     is DashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
     is DashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
     is DashboardIntent.UpdateWeightLess -> state.copy(weightless = intent.weightless)
+    is DashboardIntent.SetIsScrollTargetConsumed -> state.copy(isScrollTargetConsumed = intent.isScrollTargetConsumed)
     else -> state
   }
 }

@@ -107,6 +107,7 @@ data class Account(
 }
 
 fun Account?.toGoal(): Goal? {
+  if (this?.goalType == null) return null
   val activeAccount = this ?: return null
   return Goal(
     goalWeight = activeAccount.goalWeight ?: 0.0,

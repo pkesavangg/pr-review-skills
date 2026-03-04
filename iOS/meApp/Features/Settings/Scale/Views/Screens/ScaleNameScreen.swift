@@ -35,8 +35,9 @@ struct ScaleNameScreen: View {
                         text: commonLang.save.uppercased(),
                         type: .inlineTextPrimary,
                         size: .small,
-// swiftlint:disable:next line_length
-                        isDisabled: !scaleNameForm.isValid || editedName.trimmingCharacters(in: .whitespacesAndNewlines) == (scale.nickname ?? scale.deviceName ?? "")
+                        isDisabled: !scaleNameForm.isValid
+                            || editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                == (scale.nickname ?? scale.deviceName ?? "")
                     ) {
                             Task {
                                 let trimmedName = editedName.trimmingCharacters(in: .whitespacesAndNewlines)

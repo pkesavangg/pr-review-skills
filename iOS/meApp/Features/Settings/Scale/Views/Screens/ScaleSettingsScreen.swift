@@ -145,15 +145,21 @@ struct ScaleSettingsScreen: View {
                         title: lang.mode,
                         value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only"
                     ) {
-// swiftlint:disable:next line_length
-                            router.navigate(to: .scaleModes(scale: scale, isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers))
+                            router.navigate(to: .scaleModes(
+                                scale: scale,
+                                isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
+                            ))
                         }
                 )
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.displayMetrics
-// swiftlint:disable:next line_length
-                    ) { router.navigate(to: .displayMetrics(scale: scale, isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers)) }
+                    ) {
+                        router.navigate(to: .displayMetrics(
+                            scale: scale,
+                            isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
+                        ))
+                    }
                 )
                 ActionListItemView(
                     config: ActionListItemConfig(

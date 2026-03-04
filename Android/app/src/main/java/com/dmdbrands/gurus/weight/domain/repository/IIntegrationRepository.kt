@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.features.integration.model.Integrations
 import kotlinx.coroutines.flow.Flow
 
 interface IIntegrationRepository {
+  val integrationsFromServer: Flow<Integrations?>
   val integrations: Flow<Integrations?>
   suspend fun getAccount(accountId: String): AccountInfo
   suspend fun removeIntegration(provider: String, suggestion: Map<String, String>)

@@ -22,11 +22,10 @@ struct DeviceUserListView: View {
                     subtitle: "last active on \(formatLastActive(user.lastActive))",
                     trailing: Button(action: {
                         onDeleteUser(user)
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                    }) {
+                    }, label: {
                         AppIconView(icon: AppAssets.trash, size: IconSize(width: 18, height: 20))
                             .foregroundColor(trashIconColorRed ? theme.statusError : theme.actionPrimary)
-                    },
+                    }),
                     rowHeight: 56,
                     onTap: {
                         onDeleteUser(user)

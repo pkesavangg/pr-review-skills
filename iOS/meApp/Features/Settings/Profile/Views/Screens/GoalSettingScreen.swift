@@ -76,8 +76,10 @@ struct GoalSettingScreen: View {
                                     label: labels.startingWeightLabel(weightUnit == .kg),
                                     placeholder: "0.0",
                                     inputType: .metric,
-// swiftlint:disable:next line_length
-                                    errorMessage: settingsStore.goalForm.getError(for: settingsStore.goalForm.currentWeight, isMetric: weightUnit == .kg),
+                                    errorMessage: settingsStore.goalForm.getError(
+                                        for: settingsStore.goalForm.currentWeight,
+                                        isMetric: weightUnit == .kg
+                                    ),
                                     focusField: .currentWeight,
                                     maxLength: 4,
                                     maxValue: 999.9

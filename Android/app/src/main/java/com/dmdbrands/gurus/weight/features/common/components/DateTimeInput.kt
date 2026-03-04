@@ -35,6 +35,9 @@ import java.util.Calendar
 import java.util.Locale
 import android.text.format.DateUtils
 
+/** Display format for selected date: e.g. "June 10, 2024". */
+private const val DATE_DISPLAY_PATTERN = "MMMM d, yyyy"
+
 /**
  * Represents the value for DateTimeInput.
  * This sealed class allows for type-safe handling of date, time, and combined date-time values.
@@ -74,7 +77,7 @@ sealed class DateTimeValue() {
    */
   fun getString(): String =
     when (this) {
-      is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
+      is Date -> SimpleDateFormat(DATE_DISPLAY_PATTERN, Locale.getDefault()).format(java.util.Date(this.millis))
       is Time ->
         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
           Calendar
@@ -86,7 +89,7 @@ sealed class DateTimeValue() {
         )
 
       is DateTime -> {
-        val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
+        val date = SimpleDateFormat(DATE_DISPLAY_PATTERN, Locale.getDefault()).format(java.util.Date(this.millis))
         val time =
           SimpleDateFormat("hh:mm a", Locale.getDefault()).format(
             Calendar
@@ -101,12 +104,12 @@ sealed class DateTimeValue() {
     }
 
   /**
-   * Returns a formatted date string for the value, if applicable.
+   * Returns a formatted date string for the value (e.g. "June 10, 2024").
    */
   fun getDateString(): String =
     when (this) {
-      is Date -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
-      is DateTime -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(java.util.Date(this.millis))
+      is Date -> SimpleDateFormat(DATE_DISPLAY_PATTERN, Locale.getDefault()).format(java.util.Date(this.millis))
+      is DateTime -> SimpleDateFormat(DATE_DISPLAY_PATTERN, Locale.getDefault()).format(java.util.Date(this.millis))
       else -> ""
     }
 
