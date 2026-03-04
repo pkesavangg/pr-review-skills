@@ -207,6 +207,7 @@ private func makeSUT(
         kv: kv,
         setGoalModalDelay: setGoalModalDelay
     )
+    sut.isOnDashboardTab = { true }
 
     return (sut, notification, accountService, bluetoothService, kv, account)
 }
