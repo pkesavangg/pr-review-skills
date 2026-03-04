@@ -235,7 +235,7 @@ final class CalculatorTests: XCTestCase {
 With only these two tests, the non-zero divide path is not hit, so coverage is less than 100%. Adding a test for `divide(4, 2)` covers that remaining executable path.
 
 ## Coverage Practices
-- Official coverage metric is app-only (`meApp/**/*.swift`). Third-party package/framework targets are excluded.
+- Official coverage metric is app-only non-UI scope: `meApp/**/*.swift` excluding UI layer files (`Views/`, `ViewModifiers/`, `Modifiers/`, `Previews/`, `*View.swift`, `*Modifier.swift`, `*Screen.swift`, `*UIKitView.swift`, `*Cell.swift`). Third-party package/framework targets are excluded.
 - Add tests for success and failure branches.
 - Prioritize branch-heavy methods.
 - Cover guard/early-return paths.

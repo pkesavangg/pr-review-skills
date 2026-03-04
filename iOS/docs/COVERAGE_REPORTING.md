@@ -83,16 +83,21 @@ Behavior:
 - Folder is ignored by git (`.gitignore`).
 
 ## Coverage Scope
-- Official metric for this workflow is App-only coverage (`meApp/**/*.swift`) only.
+- Official metric for this workflow is App-only non-UI coverage:
+  - Include: `meApp/**/*.swift`
+  - Exclude UI layer files not targeted by unit tests:
+    - Any file under `Views/`, `ViewModifiers/`, `Modifiers/`, `Previews/`
+    - Any file ending with `View.swift`, `Modifier.swift`, `Screen.swift`, `UIKitView.swift`, or `Cell.swift`
 - Reason:
   - Keeps coverage focused on app code quality.
+  - Prevents SwiftUI view rendering files from reducing unit-test coverage metrics.
   - Avoids skew from third-party packages/framework targets included in `.xcresult`.
   - Gives stable, team-actionable numbers for PRs and sprint tracking.
 
 ## Output Formats
 ### Markdown (`.md`)
 - Summary section (timestamp, source bundle, app-only covered/executable lines, app-only %).
-- Per-file table for `meApp/**/*.swift`.
+- Per-file table for filtered non-UI app scope.
 
 ### CSV (`.csv`)
 - One row per Swift file.
