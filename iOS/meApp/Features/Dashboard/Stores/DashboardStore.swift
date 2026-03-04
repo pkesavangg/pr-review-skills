@@ -9,26 +9,6 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-/// Snapshot of account settings for consolidated subscription
-/// Used to detect changes across multiple settings in a single subscription
-private struct AccountSettingsSnapshot: Equatable {
-    let weightUnit: WeightUnit?
-    let isWeightlessOn: Bool?
-    let weightlessWeight: Double?
-    let goalWeight: Double?
-    let initialWeight: Double?
-    let goalType: GoalType?
-
-    init(from account: Account?) {
-        self.weightUnit = account?.weightSettings?.weightUnit
-        self.isWeightlessOn = account?.weightlessSettings?.isWeightlessOn
-        self.weightlessWeight = account?.weightlessSettings?.weightlessWeight
-        self.goalWeight = account?.goalSettings?.goalWeight
-        self.initialWeight = account?.goalSettings?.initialWeight
-        self.goalType = account?.goalSettings?.goalType
-    }
-}
-
 /// Simplified DashboardStore focused on coordination between managers
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
@@ -40,6 +20,10 @@ class DashboardStore: ObservableObject {
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService
     @Injector private var entryService: EntryService
+    
+    // MARK: - Formatter and Cache Services
+    private let formatter: DashboardFormatterProtocol
+    private let cacheManager: DashboardCacheManagerProtocol
 
     // MARK: - Centralized State
     @Published var state = DashboardState()
@@ -100,7 +84,6 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Constants
     let lang = LoaderStrings.self
-    static let allowedNumericCharacters = CharacterSet(charactersIn: "0123456789.-")
     // MARK: - Managers (Business Logic)
     public let metricsManager: DashboardMetricsManager
     let graphManager: DashboardGraphManager
@@ -108,6 +91,10 @@ class DashboardStore: ObservableObject {
     public let streakManager: DashboardStreakManager
     public let dataManager: DashboardDataManager
     private let metricsCalculator: DashboardMetricsCalculatorProtocol
+    
+    // MARK: - Services
+    private let dateRangeManager: DashboardDateRangeManagerProtocol
+    private let syncCoordinator: DashboardSyncCoordinatorProtocol
 
     var shouldShowGoalCardOrStreaks: Bool {
         return !state.ui.isGoalCardRemoved || !streakItemsToShow.isEmpty
@@ -186,7 +173,14 @@ class DashboardStore: ObservableObject {
         !streakItemsToShow.isEmpty || !state.ui.isGoalCardRemoved
     }
     // MARK: - Initialization
-    init() {
+    init(
+        formatter: DashboardFormatterProtocol? = nil,
+        cacheManager: DashboardCacheManagerProtocol? = nil
+    ) {
+        // Initialize formatter and cache services
+        self.formatter = formatter ?? DashboardFormatter()
+        self.cacheManager = cacheManager ?? DashboardCacheManager()
+        
         // Initialize managers without default metrics to prevent flash of stale data
         // Defaults will be set only if API load fails
         self.metricsManager = DashboardMetricsManager(skipInitialSetup: true)
@@ -195,6 +189,10 @@ class DashboardStore: ObservableObject {
         self.dataManager = DashboardDataManager()
         self.metricsCalculator = DashboardMetricsCalculator()
         self.goalManager = DashboardGoalManager()
+        
+        // Initialize services
+        self.dateRangeManager = DashboardDateRangeManager()
+        self.syncCoordinator = DashboardSyncCoordinator()
 
         // Suppress reactive updates during initialization to prevent AttributeGraph cycles
         state.ui.isResettingDashboard = true
@@ -229,7 +227,15 @@ class DashboardStore: ObservableObject {
 
     /// Lightweight initializer that avoids subscriptions and heavy async initialization.
     /// Use this for ephemeral contexts (e.g., Metric Info sheet without full dashboard state).
-    init(lightweight: Bool) {
+    init(
+        lightweight: Bool,
+        formatter: DashboardFormatterProtocol? = nil,
+        cacheManager: DashboardCacheManagerProtocol? = nil
+    ) {
+        // Initialize formatter and cache services
+        self.formatter = formatter ?? DashboardFormatter()
+        self.cacheManager = cacheManager ?? DashboardCacheManager()
+        
         // Initialize managers
         self.metricsManager = DashboardMetricsManager()
         self.graphManager = DashboardGraphManager()
@@ -237,6 +243,10 @@ class DashboardStore: ObservableObject {
         self.dataManager = DashboardDataManager()
         self.metricsCalculator = DashboardMetricsCalculator()
         self.goalManager = DashboardGoalManager()
+        
+        // Initialize services
+        self.dateRangeManager = DashboardDateRangeManager()
+        self.syncCoordinator = DashboardSyncCoordinator()
 
         // Bind state so basic computed properties can work
         setupBindings()
@@ -249,7 +259,7 @@ class DashboardStore: ObservableObject {
     }
 
     func syncEntries() async {
-        await entryService.syncAllEntriesWithRemote()
+        await syncCoordinator.syncEntries()
     }
 
     // MARK: - Reactive Bindings
@@ -467,127 +477,50 @@ class DashboardStore: ObservableObject {
     }
 
     // MARK: - Cached Operations (Performance Optimization)
-    // Cache for continuousOperations to prevent repeated data manager calls
-    private var _cachedContinuousOperations: [BathScaleWeightSummary] = []
-    private var _cachedContinuousPeriod: TimePeriod?
-
-    // Cache for label date range operations to avoid repeated O(n) filters
-    private var _cachedLabelDateRangeOps: [BathScaleWeightSummary] = []
-    private var _cachedLabelDateRangePeriod: TimePeriod?
-    private var _cachedLabelDateRangeScrollPos: Date?
-
+    
     /// Cached continuous operations - only recalculates when period changes or cache is invalidated
     var continuousOperations: [BathScaleWeightSummary] {
-        // Return cache if valid for current period
-        if _cachedContinuousPeriod == state.graph.selectedPeriod && !_cachedContinuousOperations.isEmpty {
-            return _cachedContinuousOperations
+        return cacheManager.getContinuousOperations(
+            for: state.graph.selectedPeriod
+        ) {
+            dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
         }
-        // Recalculate and cache
-        _cachedContinuousOperations = dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
-        _cachedContinuousPeriod = state.graph.selectedPeriod
-        return _cachedContinuousOperations
     }
 
     /// Invalidates the continuousOperations cache - call when data changes
     func invalidateContinuousOperationsCache() {
-        _cachedContinuousOperations = []
-        _cachedContinuousPeriod = nil
-        // Also invalidate dependent caches
-        cachedVisibleOperations = []
-        cachedChartSeriesData = nil
-        // Invalidate label date range cache
-        _cachedLabelDateRangeOps = []
-        _cachedLabelDateRangePeriod = nil
-        _cachedLabelDateRangeScrollPos = nil
+        cacheManager.invalidateContinuousOperationsCache()
     }
 
     var visibleOperations: [BathScaleWeightSummary] {
-        // During scrolling, be very aggressive about using cache
-        // The slight inaccuracy is worth the CPU savings
-        if state.graph.isScrolling && !cachedVisibleOperations.isEmpty {
-            let timeSinceLastCache = Date().timeIntervalSince(lastVisibleOperationsCacheTime)
-            // Use cache for up to 250ms during scrolling to significantly reduce CPU
-            if timeSinceLastCache < 0.25 {
-                return cachedVisibleOperations
-            }
+        return cacheManager.getVisibleOperations(
+            isScrolling: state.graph.isScrolling
+        ) {
+            graphManager.getVisibleOperations(from: continuousOperations)
         }
-
-        // Get fresh result from graph manager (which uses binary search)
-        let visible = graphManager.getVisibleOperations(from: continuousOperations)
-
-        // Update cache
-        cachedVisibleOperations = visible
-        lastVisibleOperationsCacheTime = Date()
-
-        return visible
     }
 
     // Delegate chart data generation to GraphManager with scroll performance optimization
     var chartSeriesData: [GraphSeries] {
-        // Skip expensive recalculation during scroll end processing
-        guard !isProcessingScrollEnd else {
-            return cachedChartSeriesData ?? []
-        }
-        
-        // During scrolling, use cached data ONLY if the metric selection hasn't changed
-        // If metric selection changed, recalculate immediately
-        if state.graph.isScrolling, let cached = cachedChartSeriesData, !cached.isEmpty {
-            // Compare metric selection - handles both selection and deselection cases
-            let metricUnchanged = cachedChartSeriesMetric == state.ui.selectedMetricLabel
-            if metricUnchanged {
-                return cached
-            }
-            // Metric changed → clear cache
-            cachedChartSeriesData = nil
-            cachedChartSeriesMetric = nil
-        }
-
-        // Prepare values used to validate whether cached chart data is still valid
-        let ops = continuousOperations
-        let currentYAxisDomain = yAxisDomain
-
-        // Check if cached data is still valid (same period, same data count, same metric, same Y-axis domain)
-        if let cached = cachedChartSeriesData,
-           !cached.isEmpty,
-           cachedChartSeriesPeriod == state.graph.selectedPeriod,
-           cachedChartSeriesMetric == state.ui.selectedMetricLabel,
-           cachedChartSeriesCount == ops.count,
-           lastCachedYAxisDomain == currentYAxisDomain {
-            return cached
-        }
-
-        // Generate fresh data
-        let seriesData = graphManager.generateChartDataWithYAxisDomain(
-            from: ops,
-            visibleOperations: visibleOperations,
+        return cacheManager.getChartSeriesData(
+            isScrolling: state.graph.isScrolling,
+            isProcessingScrollEnd: isProcessingScrollEnd,
+            period: state.graph.selectedPeriod,
             selectedMetric: state.ui.selectedMetricLabel,
-            isWeightlessMode: isWeightlessModeEnabled,
-            anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay,
+            operationsCount: continuousOperations.count,
             yAxisDomain: yAxisDomain
-        )
-
-        // Cache the result with metadata for validation
-        cachedChartSeriesData = seriesData
-        cachedChartSeriesPeriod = state.graph.selectedPeriod
-        cachedChartSeriesMetric = state.ui.selectedMetricLabel
-        cachedChartSeriesCount = ops.count
-        lastCachedYAxisDomain = currentYAxisDomain
-
-        return seriesData
+        ) {
+            graphManager.generateChartDataWithYAxisDomain(
+                from: continuousOperations,
+                visibleOperations: visibleOperations,
+                selectedMetric: state.ui.selectedMetricLabel,
+                isWeightlessMode: isWeightlessModeEnabled,
+                anchorWeight: weightlessAnchorWeight,
+                convertWeight: goalManager.convertWeightToDisplay,
+                yAxisDomain: yAxisDomain
+            )
+        }
     }
-
-    // Cache chart series data to prevent excessive recalculation
-    private var cachedChartSeriesData: [GraphSeries]?
-    private var cachedChartSeriesPeriod: TimePeriod?
-    private var cachedChartSeriesMetric: String?
-    private var cachedChartSeriesCount: Int = 0
-    // Track cached Y-axis domain to detect changes and invalidate metric series cache
-    private var lastCachedYAxisDomain: ClosedRange<Double>?
-
-    // Cache visible operations to prevent excessive calls to graph manager during scroll
-    private var cachedVisibleOperations: [BathScaleWeightSummary] = []
-    private var lastVisibleOperationsCacheTime = Date.distantPast
 
     var hasAnyEntries: Bool {
         state.data.hasAnyEntries
@@ -718,36 +651,7 @@ class DashboardStore: ObservableObject {
 
     // MARK: - Empty-state period labels
     private func emptyStatePeriodLabel(for period: TimePeriod, today: Date = Date()) -> String {
-        let cal = Calendar.current
-        switch period {
-        case .week:
-            // Find the most recent Sunday (start of week), then end at Saturday
-            let startOfDay = cal.startOfDay(for: today)
-            let sundayStart = cal.nextDate(after: startOfDay,
-                                           matching: DateComponents(weekday: 1),
-                                           matchingPolicy: .nextTime,
-                                           direction: .backward) ?? startOfDay
-            guard let weekEnd = cal.date(byAdding: .day, value: 6, to: sundayStart) else {
-                return DateTimeTools.formatter("MMM d, yyyy").string(from: today)
-            }
-            let sameYear = cal.isDate(sundayStart, equalTo: weekEnd, toGranularity: .year)
-            if sameYear {
-                let startString = DateTimeTools.formatter("MMM d").string(from: sundayStart)
-                let endString = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
-                return "\(startString) - \(endString)"
-            } else {
-                let startString = DateTimeTools.formatter("MMM d, yyyy").string(from: sundayStart)
-                let endString = DateTimeTools.formatter("MMM d, yyyy").string(from: weekEnd)
-                return "\(startString) - \(endString)"
-            }
-        case .month:
-            return DateTimeTools.formatter("MMM, yyyy").string(from: today)
-        case .year:
-            return DateTimeTools.formatter("yyyy").string(from: today)
-        case .total:
-            // Show current year for total in empty-state per spec
-            return DateTimeTools.formatter("yyyy").string(from: today)
-        }
+        return dateRangeManager.emptyStatePeriodLabel(for: period, today: today)
     }
 
     // Delegate metric operations to MetricsManager
@@ -1040,42 +944,26 @@ class DashboardStore: ObservableObject {
     // Load metrics from local account immediately (synchronous, fast)
     // This allows body metrics to show immediately while API loads in background
     private func loadMetricsFromLocalAccount() async {
-        await MainActor.run {
-            // Try to load from local account if available
-            if let account = accountService.activeAccount {
-                let dashboardTypeString = account.dashboardSettings?.dashboardType
-                let dashboardType: DashboardType
-                switch dashboardTypeString {
-                case "dashboard4":
-                    dashboardType = .dashboard4
-                case "dashboard12":
-                    dashboardType = .dashboard12
-                default:
-                    dashboardType = .dashboard12
-                }
+        await syncCoordinator.loadMetricsFromLocalAccount(
+            activeAccount: accountService.activeAccount,
+            updateDashboardType: { dashboardType in
                 metricsManager.updateDashboardType(dashboardType)
                 state.metrics.dashboardType = dashboardType
-
-                // Load metrics order from local account if available
-                if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
-                    let metricArray = dashboardMetrics.split(separator: ",").map(String.init)
-                    metricsManager.updateMetricsOrder(from: metricArray)
-                    syncRemovalStateFromMetricsManager()
-                } else {
-                    if metricsManager.state.metrics.isEmpty {
-                        metricsManager.setupInitialMetrics()
-                    }
-                }
-            } else {
-                // Set up default metrics if no account
+            },
+            updateMetricsOrder: { metricArray in
+                metricsManager.updateMetricsOrder(from: metricArray)
+                syncRemovalStateFromMetricsManager()
+            },
+            setupInitialMetrics: {
                 if metricsManager.state.metrics.isEmpty {
                     metricsManager.setupInitialMetrics()
                 }
+            },
+            onMetricsLoaded: {
+                // DO NOT set hasLoadedDashboardConfig here - wait for API to load
+                // This ensures API metrics are shown, not just local ones
             }
-            
-            // DO NOT set hasLoadedDashboardConfig here - wait for API to load
-            // This ensures API metrics are shown, not just local ones
-        }
+        )
     }
 
     // Delegate configuration loading to respective managers
@@ -1184,8 +1072,7 @@ class DashboardStore: ObservableObject {
             : progressMetricsString.split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
 
         // Handle case where API defaults empty progress metrics back to all metrics
-        let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
-// swiftlint:disable:next line_length
+        let allMetricsRemovedFlag = cacheManager.getBool(forKey: Self.allProgressMetricsRemovedKey)
         let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
         let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
 
@@ -1226,18 +1113,6 @@ class DashboardStore: ObservableObject {
                 return
             }
 
-            func mapAPIValueToStreakLabel(_ apiValue: String) -> String? {
-                switch apiValue {
-                case "currentStreak": return DashboardStrings.currentStreak
-                case "longestStreak": return DashboardStrings.longestStreak
-                case "weeklyChange": return allStreaks.first { $0.label.contains("/week") }?.label
-                case "monthlyChange": return allStreaks.first { $0.label.contains("/month") }?.label
-                case "yearlyChange": return allStreaks.first { $0.label.contains("/year") }?.label
-                case "totalChange": return allStreaks.first { $0.label.contains("/total") }?.label
-                default: return nil
-                }
-            }
-
             var goalCardPosition: Int?
             var orderedStreakIds: [String] = []
             var foundStreakLabels: Set<String> = []
@@ -1245,7 +1120,7 @@ class DashboardStore: ObservableObject {
             for (index, apiValue) in progressMetrics.enumerated() {
                 if apiValue == "goal" {
                     goalCardPosition = index
-                } else if let streakLabel = mapAPIValueToStreakLabel(apiValue),
+                } else if let streakLabel = syncCoordinator.mapAPIValueToStreakLabel(apiValue, allStreaks: allStreaks),
                           let streakItem = allStreaks.first(where: { $0.label == streakLabel }) {
                     orderedStreakIds.append(streakItem.id.uuidString)
                     foundStreakLabels.insert(streakLabel)
@@ -1339,21 +1214,33 @@ class DashboardStore: ObservableObject {
 
     // MARK: - View Helpers moved from DashboardScreen
     func reloadDashboardConfiguration(fullRefresh: Bool = false, updateMetrics: Bool = false) async {
-        await loadDashboardConfigurationFromAPI()
-        if updateMetrics {
-            self.updateMetricsForCurrentView()
-        }
-        await MainActor.run {
-            self.scheduleUIUpdate()
-            if fullRefresh {
-                self.refreshDashboardState()
+        await syncCoordinator.reloadDashboardConfiguration(
+            fullRefresh: fullRefresh,
+            updateMetrics: updateMetrics,
+            loadConfiguration: {
+                await loadDashboardConfigurationFromAPI()
+            },
+            updateMetricsForView: {
+                updateMetricsForCurrentView()
+            },
+            scheduleUIUpdate: {
+                scheduleUIUpdate()
+            },
+            refreshDashboardState: {
+                refreshDashboardState()
             }
-        }
+        )
     }
 
     func refreshAll() async {
-        await syncEntries()
-        onAppearActions()
+        await syncCoordinator.refreshAll(
+            syncEntries: {
+                await syncEntries()
+            },
+            onAppearActions: {
+                onAppearActions()
+            }
+        )
     }
 
     /// Syncs the removal state from the metrics manager to the UI state
@@ -1463,7 +1350,6 @@ class DashboardStore: ObservableObject {
 
             // Clear all caches to force recalculation (including continuousOperations)
             self.invalidateContinuousOperationsCache()
-            self.lastVisibleOperationsCacheTime = Date.distantPast
 
             // Force full recomputation of visible operations, Y-axis, and weight display
             self.forceCompleteRecalculationAfterScrollPosition()
@@ -1800,125 +1686,38 @@ class DashboardStore: ObservableObject {
         state.ui.selectedMetricLabel = nil
         state.ui.resetDragState()
 
-        notificationService.showLoader(LoaderModel(text: lang.saving))
-        Task {
-            defer { notificationService.dismissLoader() }
-            do {
-                // Save dashboard metrics first
-                try await metricsManager.saveMetricsToAPI()
-
-                // Save progress metrics (goal card and streak items)
-                // Note: AccountService.updateProgressMetrics() already updates activeAccount via updatePublishedState()
-                try await saveProgressMetricsToAPI()
-
-                // Reload progress metrics from already-updated account to sync UI state.
-                // This ensures that streaks added back in edit mode are properly reflected when exiting edit mode.
-                await loadProgressMetricsFromAccount()
-
-                commonPostSaveUIReset()
-                logger.log(level: .success, tag: "DashboardStore", message: "Dashboard changes saved successfully")
-            } catch {
-                logger.log(level: .error, tag: "DashboardStore", message: "Failed to save dashboard changes: \(error)")
-                commonPostSaveUIReset()
+        syncCoordinator.saveChanges(
+            saveMetrics: {
+                try await self.metricsManager.saveMetricsToAPI()
+            },
+            saveProgressMetrics: {
+                try await self.saveProgressMetricsToAPI()
+            },
+            loadProgressMetrics: {
+                await self.loadProgressMetricsFromAccount()
+            },
+            onSuccess: {
+                self.commonPostSaveUIReset()
+            },
+            onError: { _ in
+                self.commonPostSaveUIReset()
             }
-        }
+        )
     }
 
     /// Saves progress metrics (goal card and streak items) to the API.
     /// Maps UI labels to API values and preserves the order from the current state.
     func saveProgressMetricsToAPI() async throws {
-        guard accountService.activeAccount != nil else {
-            throw DashboardError.noActiveAccount
-        }
-
-        // Get all streak items
-        let allStreakItems = streakManager.state.streakItems
-        let streakOrder = state.ui.streakGridOrder
-        let goalCardPosition = state.ui.goalCardPosition
-        let isGoalCardRemoved = state.ui.isGoalCardRemoved
-        let removedStreaks = state.ui.removedStreaks
-
-        // Helper to map streak label to API value
-        func mapStreakLabelToAPI(_ label: String) -> String? {
-            if label == DashboardStrings.currentStreak {
-                return "currentStreak"
-            } else if label == DashboardStrings.longestStreak {
-                return "longestStreak"
-            } else if label.contains("/week") {
-                return "weeklyChange"
-            } else if label.contains("/month") {
-                return "monthlyChange"
-            } else if label.contains("/year") {
-                return "yearlyChange"
-            } else if label.contains("/total") {
-                return "totalChange"
+        try await syncCoordinator.saveProgressMetricsToAPI(
+            streakItems: streakManager.state.streakItems,
+            streakOrder: state.ui.streakGridOrder,
+            goalCardPosition: state.ui.goalCardPosition,
+            isGoalCardRemoved: state.ui.isGoalCardRemoved,
+            removedStreaks: state.ui.removedStreaks,
+            updateProgressMetrics: { metrics in
+                _ = try await accountService.updateProgressMetrics(metrics: metrics)
             }
-            return nil
-        }
-
-        // Reconstruct ordered streaks from saved order
-        var orderedStreaks: [MetricItem] = []
-        if !streakOrder.isEmpty {
-            // Map IDs to actual streak items preserving order
-            orderedStreaks = streakOrder.compactMap { id in
-                allStreakItems.first { $0.id.uuidString == id }
-            }
-            // Add any streaks not in the order list (new streaks)
-            let missingStreaks = allStreakItems.filter { item in
-                !streakOrder.contains(item.id.uuidString)
-            }
-            orderedStreaks.append(contentsOf: missingStreaks)
-        } else {
-            // No saved order, use default order
-            orderedStreaks = allStreakItems
-        }
-
-        // Filter out removed streaks
-        let activeStreaks = orderedStreaks.filter { !removedStreaks.contains($0.label) }
-
-        // Build combined order: goal card + streaks
-        // The goalCardPosition is the index in the combined grid (goal + all streaks)
-        var progressMetrics: [String] = []
-
-        if !isGoalCardRemoved {
-            // Build combined array: insert goal at goalCardPosition
-            var combinedItems: [String] = []
-
-            // Add streaks first
-            for streak in activeStreaks {
-                if let apiValue = mapStreakLabelToAPI(streak.label) {
-                    combinedItems.append(apiValue)
-                }
-            }
-
-            // Insert goal at goalCardPosition (clamped to valid range)
-            let clampedPosition = min(goalCardPosition, combinedItems.count)
-            combinedItems.insert("goal", at: clampedPosition)
-
-            progressMetrics = combinedItems
-        } else {
-            // Goal is removed, just add all active streaks
-            for streak in activeStreaks {
-                if let apiValue = mapStreakLabelToAPI(streak.label) {
-                    progressMetrics.append(apiValue)
-                }
-            }
-        }
-
-        // Validate: only allow allowed values
-        let allowedValues: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
-        progressMetrics = progressMetrics.filter { allowedValues.contains($0) }
-
-        // Preserve saved streak order in edit mode; otherwise use default order
-        let allMetricsRemoved = progressMetrics.isEmpty
-        UserDefaults.standard.set(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
-
-        // Log the order being saved for debugging
-// swiftlint:disable:next line_length
-        logger.log(level: .info, tag: "DashboardStore", message: "Saving progress metrics to API with order: \(progressMetrics), allRemoved: \(allMetricsRemoved)")
-
-        // Save to API
-        _ = try await accountService.updateProgressMetrics(metrics: progressMetrics)
+        )
     }
 
     private func commonPostSaveUIReset() {
@@ -2227,8 +2026,7 @@ class DashboardStore: ObservableObject {
            let previousDomain = previousYAxisDomain,
            newYAxisDomain != previousDomain {
             // Y-axis domain changed - invalidate cached chart series to force metric recalculation
-            cachedChartSeriesData = nil
-            lastCachedYAxisDomain = nil
+            cacheManager.invalidateChartSeriesCache()
 // swiftlint:disable:next multiline_arguments
             logger.log(level: .debug, tag: "DashboardStore",
 // swiftlint:disable:next vertical_parameter_alignment_on_call
@@ -2265,40 +2063,33 @@ class DashboardStore: ObservableObject {
     }
 
     private func labelForTotalPeriod() -> String {
-        // Use cached date bounds from data manager to avoid O(n) min/max scans
-        if let bounds = dataManager.getDateBounds(for: .total) {
-            return graphManager.formatDateRange(minDate: bounds.min, maxDate: bounds.max, for: .total)
-        }
-        return graphManager.fallbackTimeLabel(for: .total)
+        return dateRangeManager.labelForTotalPeriod(
+            dateBounds: dataManager.getDateBounds(for: .total),
+            formatDateRange: { min, max, period in
+                graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
+            },
+            fallbackLabel: {
+                graphManager.fallbackTimeLabel(for: .total)
+            }
+        )
     }
 
     /// Returns the date range used for the year label display.
     /// This ensures the average computation uses the same dates as the label.
     /// Uses a calendar-aligned 12-month window to avoid 13-month labels.
     private func getYearLabelDateRange() -> (start: Date, end: Date)? {
-        let calendar = Calendar.current
-        let leftEdge = graphManager.state.xScrollPosition
-
-        // Align to the start of the month containing the left edge
-        let start = calendar.dateInterval(of: .month, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
-        guard let endExclusive = calendar.date(byAdding: .month, value: 12, to: start) else {
-            return nil
-        }
-        let endInclusive = inclusiveEnd(fromExclusive: endExclusive)
-        
-        // Keep label aligned to the visible 12-month window, even if trailing months
-        // have no entries. This matches the rendered year grid/ticks behavior.
-        return (start: start, end: endInclusive)
+        return dateRangeManager.getYearLabelDateRange(xScrollPosition: graphManager.state.xScrollPosition)
     }
 
     private func labelForYearGridlines() -> String {
-        guard let dateRange = getYearLabelDateRange() else {
-            return graphManager.fallbackTimeLabel(for: .year)
-        }
-        return graphManager.formatDateRange(
-            minDate: dateRange.start,
-            maxDate: dateRange.end,
-            for: .year
+        return dateRangeManager.labelForYearGridlines(
+            xScrollPosition: graphManager.state.xScrollPosition,
+            formatDateRange: { min, max, period in
+                graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
+            },
+            fallbackLabel: {
+                graphManager.fallbackTimeLabel(for: .year)
+            }
         )
     }
 
@@ -2313,83 +2104,21 @@ class DashboardStore: ObservableObject {
     ///
     /// Checks both the month containing leftEdge AND the next month to handle edge cases.
     private func getFullyContainedMonthInterval() -> DateInterval? {
-        let calendar = Calendar.current
-        let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
-
-        let leftDay = calendar.startOfDay(for: leftEdge)
-        let rightDay = calendar.startOfDay(for: rightEdge)
-
-        // Helper to check if a month interval is fully contained
-        func isFullyContained(_ monthInterval: DateInterval) -> Bool {
-            let startDay = calendar.startOfDay(for: monthInterval.start)
-            let endDay = calendar.startOfDay(for: monthInterval.end)
-            return leftDay <= startDay && rightDay >= endDay
-        }
-
-        // Find the month containing leftEdge
-        guard let leftMonthInterval = calendar.dateInterval(of: .month, for: leftEdge) else {
-            return nil
-        }
-
-        // First check: Is the month containing leftEdge fully contained?
-        // (This handles cases where leftEdge is at the start of a month, e.g., Nov 1 to Dec 1)
-        if isFullyContained(leftMonthInterval) {
-            return leftMonthInterval
-        }
-
-        // Second check: Is the next month fully contained?
-        // (This handles cases where leftEdge is at end of previous month, e.g., Oct 31 to Dec 1)
-        let nextMonthStart = leftMonthInterval.end
-        if let nextMonthInterval = calendar.dateInterval(of: .month, for: nextMonthStart),
-           isFullyContained(nextMonthInterval) {
-            return nextMonthInterval
-        }
-
-        return nil
+        return dateRangeManager.getFullyContainedMonthInterval(
+            xScrollPosition: graphManager.state.xScrollPosition,
+            visibleDomainLength: graphManager.visibleDomainLength(for: .month)
+        )
     }
 
     /// Returns the date range used by the month label for the current scroll position.
     /// If a full calendar month is contained, returns that month interval.
     /// Otherwise returns the visible window range.
     private func getLabelDateRangeForMonth() -> DateInterval {
-        let calendar = Calendar.current
-        let today = Date()
-        let hasAnyOps = !continuousOperations.isEmpty
-        let lastEntryDate = continuousOperations.last?.date
-
-        if let monthInterval = getFullyContainedMonthInterval() {
-            // A full month is visible; always label the full calendar month.
-            let fullMonth = DateInterval(start: monthInterval.start, end: inclusiveEnd(fromExclusive: monthInterval.end))
-            return fullMonth
-        }
-
-        let leftEdge = graphManager.state.xScrollPosition
-        let rightEdge = leftEdge.addingTimeInterval(graphManager.visibleDomainLength(for: .month))
-        let visibleWindow = DateInterval(start: leftEdge, end: inclusiveEnd(fromExclusive: rightEdge))
-
-        // If the visible window crosses into a *future* month that has no entries,
-        // clamp the label to the end of the current month. This prevents labels like
-        // "Feb 13 – Mar 17, 2026" when the chart does not render March grid lines/ticks.
-        //
-        // We only clamp when:
-        // - The label would extend beyond the end of the current calendar month (today's month), AND
-        // - The latest entry is not beyond that month (i.e., no data in the future month).
-        if hasAnyOps,
-           let currentMonth = calendar.dateInterval(of: .month, for: today) {
-            let endOfCurrentMonthInclusive = inclusiveEnd(fromExclusive: currentMonth.end)
-            let crossesIntoFutureMonth = visibleWindow.end > endOfCurrentMonthInclusive
-            let noEntriesBeyondCurrentMonth = (lastEntryDate ?? .distantPast) <= endOfCurrentMonthInclusive
-
-            if crossesIntoFutureMonth && noEntriesBeyondCurrentMonth {
-                // Ensure a valid interval even if the user scrolls entirely beyond the current month.
-                // In that case, clamp start to the same day as the clamped end (label becomes the current month).
-                let clampedStart = min(visibleWindow.start, endOfCurrentMonthInclusive)
-                return DateInterval(start: clampedStart, end: endOfCurrentMonthInclusive)
-            }
-        }
-
-        return visibleWindow
+        return dateRangeManager.getLabelDateRangeForMonth(
+            xScrollPosition: graphManager.state.xScrollPosition,
+            visibleDomainLength: graphManager.visibleDomainLength(for: .month),
+            continuousOperations: continuousOperations
+        )
     }
 
     /// Returns the date range used by the year label for the current scroll position.
@@ -2397,235 +2126,100 @@ class DashboardStore: ObservableObject {
     /// Otherwise returns a 12-month range starting at the beginning of the month
     /// containing the current scroll position.
     private func getLabelDateRangeForYear() -> DateInterval {
-        if let dateRange = getYearLabelDateRange() {
-            return DateInterval(start: dateRange.start, end: dateRange.end)
-        }
-
-        let calendar = Calendar.current
-        let leftEdge = graphManager.state.xScrollPosition
-        let windowStart = calendar.dateInterval(of: .month, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
-        let endExclusive = calendar.date(byAdding: .month, value: 12, to: windowStart)
-            ?? windowStart.addingTimeInterval(graphManager.visibleDomainLength(for: .year))
-        return DateInterval(start: windowStart, end: inclusiveEnd(fromExclusive: endExclusive))
+        return dateRangeManager.getLabelDateRangeForYear(
+            xScrollPosition: graphManager.state.xScrollPosition,
+            visibleDomainLength: graphManager.visibleDomainLength(for: .year)
+        )
     }
 
     /// Returns the date range used by the week label for the current scroll position.
     /// Mirrors labelForWeekGridlines so averages match the label.
     private func getLabelDateRangeForWeek() -> DateInterval {
-        let calendar = Calendar.current
-        let leftEdge = graphManager.state.xScrollPosition
-        let windowStart = calendar.startOfDay(for: leftEdge)
-        let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
-            ?? windowStart.addingTimeInterval(DashboardConstants.TimeInterval.calendarWeek)
-        let windowEndInclusive = windowEndExclusive.addingTimeInterval(-1)
-        return DateInterval(start: windowStart, end: windowEndInclusive)
+        return dateRangeManager.getLabelDateRangeForWeek(xScrollPosition: graphManager.state.xScrollPosition)
     }
 
     private func inclusiveEnd(fromExclusive end: Date) -> Date {
-        end.addingTimeInterval(-1)
+        return dateRangeManager.inclusiveEnd(fromExclusive: end)
     }
 
     /// Returns operations filtered to match the date range shown in the current period's label.
     /// This ensures the average calculation uses the same date range as the displayed label.
     /// Uses caching to prevent repeated O(n) filter operations during scrolling.
     private func getOperationsForLabelDateRange() -> [BathScaleWeightSummary] {
-        let currentPeriod = state.graph.selectedPeriod
-        let currentScrollPos = graphManager.state.xScrollPosition
-
-        // Return cache if valid (same period and scroll position within threshold)
-        if _cachedLabelDateRangePeriod == currentPeriod,
-           let cachedScrollPos = _cachedLabelDateRangeScrollPos,
-           !_cachedLabelDateRangeOps.isEmpty {
-            // Use cache if scroll position hasn't changed significantly (within 1 hour for year, 1 day for month)
-            let threshold: TimeInterval = currentPeriod == .year ? 3600 : 86400
-            if abs(currentScrollPos.timeIntervalSince(cachedScrollPos)) < threshold {
-                return _cachedLabelDateRangeOps
-            }
+        let result = cacheManager.getLabelDateRangeOperations(
+            period: state.graph.selectedPeriod,
+            scrollPosition: graphManager.state.xScrollPosition
+        ) {
+            dateRangeManager.getOperationsForLabelDateRange(
+                period: state.graph.selectedPeriod,
+                xScrollPosition: graphManager.state.xScrollPosition,
+                visibleDomainLength: { period in
+                    graphManager.visibleDomainLength(for: period)
+                },
+                continuousOperations: continuousOperations,
+                dateBounds: dataManager.getDateBounds(for: .total),
+                cachedPeriod: nil,
+                cachedScrollPos: nil,
+                cachedOps: []
+            )
         }
-
-        var result: [BathScaleWeightSummary]
-
-        switch currentPeriod {
-        case .month:
-            let labelRange = getLabelDateRangeForMonth()
-            result = filterOperationsInDateRange(start: labelRange.start, end: labelRange.end)
-
-        case .year:
-            let labelRange = getLabelDateRangeForYear()
-            result = filterOperationsInDateRange(start: labelRange.start, end: labelRange.end)
-
-        case .week:
-            let labelRange = getLabelDateRangeForWeek()
-            result = filterOperationsInDateRangeByDay(start: labelRange.start, end: labelRange.end)
-
-        case .total:
-            // Total view shows full timeline (e.g. feb 2022 - feb 2026); use ALL ops in that range.
-            // visibleOperations uses a 1-year window and would undercount.
-            if let bounds = dataManager.getDateBounds(for: .total) {
-                result = filterOperationsInDateRange(start: bounds.min, end: bounds.max)
-            } else {
-                result = continuousOperations
-            }
-
-        }
-
-        // Cache the result
-        _cachedLabelDateRangeOps = result
-        _cachedLabelDateRangePeriod = currentPeriod
-        _cachedLabelDateRangeScrollPos = currentScrollPos
-
-        return result
+        
+        return result.operations
     }
 
     /// Binary search-based filtering for sorted operations array.
     /// Much faster than filter() for large datasets (O(log n) + O(k) vs O(n)).
     private func filterOperationsInDateRange(start: Date, end: Date) -> [BathScaleWeightSummary] {
-        let ops = continuousOperations
-        guard !ops.isEmpty else { return [] }
-
-        // Binary search for start index
-        var lo = 0
-        var hi = ops.count
-        while lo < hi {
-            let mid = (lo + hi) / 2
-            if ops[mid].date < start {
-                lo = mid + 1
-            } else {
-                hi = mid
-            }
-        }
-        let startIndex = lo
-
-        // Binary search for end index
-        lo = startIndex
-        hi = ops.count
-        while lo < hi {
-            let mid = (lo + hi) / 2
-            if ops[mid].date <= end {
-                lo = mid + 1
-            } else {
-                hi = mid
-            }
-        }
-        let endIndex = lo
-
-        guard startIndex < endIndex else { return [] }
-        return Array(ops[startIndex..<endIndex])
+        return dateRangeManager.filterOperationsInDateRange(
+            operations: continuousOperations,
+            start: start,
+            end: end
+        )
     }
 
     /// Day-granular filtering (inclusive of both start/end days in the user's calendar).
     /// This avoids timezone-boundary leaks (e.g., Nov 2 UTC appearing in a Nov 1 local label).
     private func filterOperationsInDateRangeByDay(start: Date, end: Date) -> [BathScaleWeightSummary] {
-        let ops = continuousOperations
-        guard !ops.isEmpty else { return [] }
-
-        let calendar = Calendar.current
-        let startDay = calendar.startOfDay(for: start)
-        let endDay = calendar.startOfDay(for: end)
-
-        func firstIndexAtOrAfterDay(_ day: Date) -> Int? {
-            var lo = 0
-            var hi = ops.count
-            while lo < hi {
-                let mid = (lo + hi) / 2
-                let midDay = calendar.startOfDay(for: ops[mid].date)
-                if midDay < day {
-                    lo = mid + 1
-                } else {
-                    hi = mid
-                }
-            }
-            return lo < ops.count ? lo : nil
-        }
-
-        func lastIndexAtOrBeforeDay(_ day: Date) -> Int? {
-            var lo = 0
-            var hi = ops.count
-            while lo < hi {
-                let mid = (lo + hi) / 2
-                let midDay = calendar.startOfDay(for: ops[mid].date)
-                if midDay <= day {
-                    lo = mid + 1
-                } else {
-                    hi = mid
-                }
-            }
-            let idx = lo - 1
-            return idx >= 0 ? idx : nil
-        }
-
-        guard let startIndex = firstIndexAtOrAfterDay(startDay),
-              let endIndex = lastIndexAtOrBeforeDay(endDay),
-              startIndex <= endIndex else {
-            return []
-        }
-
-        return Array(ops[startIndex...endIndex])
+        return dateRangeManager.filterOperationsInDateRangeByDay(
+            operations: continuousOperations,
+            start: start,
+            end: end
+        )
     }
 
     private func labelForMonthGridlines() -> String {
-        let period: TimePeriod = .month
-        let labelRange = getLabelDateRangeForMonth()
-        return graphManager.formatDateRange(
-            minDate: labelRange.start,
-            maxDate: labelRange.end,
-            for: period
+        return dateRangeManager.labelForMonthGridlines(
+            xScrollPosition: graphManager.state.xScrollPosition,
+            visibleDomainLength: graphManager.visibleDomainLength(for: .month),
+            continuousOperations: continuousOperations,
+            formatDateRange: { min, max, period in
+                graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
+            }
         )
     }
 
     private func labelForWeekGridlines() -> String {
-        let period: TimePeriod = .week
-        let calendar = Calendar.current
-        let leftEdge = graphManager.state.xScrollPosition
-        let windowStart = calendar.startOfDay(for: leftEdge)
-        let windowEndExclusive = calendar.date(byAdding: .day, value: 7, to: windowStart)
-            ?? windowStart.addingTimeInterval(DashboardConstants.TimeInterval.calendarWeek)
-
-        return graphManager.formatDateRange(
-            minDate: windowStart,
-            maxDate: windowEndExclusive,
-            for: period
+        return dateRangeManager.labelForWeekGridlines(
+            xScrollPosition: graphManager.state.xScrollPosition,
+            formatDateRange: { min, max, period in
+                graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
+            }
         )
     }
 
     private func defaultRangeLabel(for period: TimePeriod, lastScrollPosition: Date) -> String {
-        let minDate = lastScrollPosition
-        let maxDate = lastScrollPosition.addingTimeInterval(graphManager.visibleDomainLength(for: period))
-        switch period {
-        case .week:
-            // Use shared range formatter (it applies inclusive end-day handling to match Android)
-            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
-        default:
-            // For other periods, use existing methods
-            return graphManager.formatDateRange(minDate: minDate, maxDate: maxDate, for: period)
-        }
+        return dateRangeManager.defaultRangeLabel(
+            for: period,
+            lastScrollPosition: lastScrollPosition,
+            visibleDomainLength: graphManager.visibleDomainLength(for: period),
+            formatDateRange: { min, max, period in
+                graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
+            }
+        )
     }
 
     private func formatWeekRangeLabel(from start: Date, to end: Date) -> String {
-        let calendar = Calendar.current
-        let startYear = calendar.component(.year, from: start)
-        let endYear = calendar.component(.year, from: end)
-        let startMonth = calendar.component(.month, from: start)
-        let endMonth = calendar.component(.month, from: end)
-        let endDay = calendar.component(.day, from: end)
-
-        // Match Android WEEK formatting logic
-        // Cross-year: "MMM d, yyyy – MMM d, yyyy"
-        if startYear != endYear {
-            let fmt = DateTimeTools.formatter("MMM d, yyyy")
-            return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
-        }
-
-        // Cross-month: "MMM d – MMM d, yyyy"
-        if startMonth != endMonth {
-            let startFmt = DateTimeTools.formatter("MMM d")
-            let endFmt = DateTimeTools.formatter("MMM d, yyyy")
-            return "\(startFmt.string(from: start)) – \(endFmt.string(from: end))"
-        }
-
-        // Same month: "MMM d – d, yyyy"
-        let startFmt = DateTimeTools.formatter("MMM d")
-        return "\(startFmt.string(from: start)) – \(endDay), \(startYear)"
+        return dateRangeManager.formatWeekRangeLabel(from: start, to: end)
     }
 
     // Delegate weight formatting to GoalManager
@@ -2635,131 +2229,44 @@ class DashboardStore: ObservableObject {
     }
 
     func formatYAxisTickLabel(_ weight: Double) -> String {
-        let value = roundedGoalWeight(weight)
-        // Thousand separators; keep decimals only when value has fractional part
-        let nf = NumberFormatter()
-        nf.numberStyle = .decimal
-        nf.maximumFractionDigits = value == floor(value) ? 0 : 2
-        nf.minimumFractionDigits = value == floor(value) ? 0 : 2
-        return nf.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+        return formatter.formatYAxisTickLabel(weight)
     }
 
     func formatChartDate(_ date: Date) -> String {
-        // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-        switch state.graph.selectedPeriod {
-        case .week, .month:
-            return DateTimeTools.formatter("MMM d").string(from: date)
-        case .year, .total:
-            return DateTimeTools.formatter("MMM yyyy").string(from: date)
-        }
+        return formatter.formatChartDate(date, period: state.graph.selectedPeriod)
     }
 
     func roundedGoalWeight(_ weight: Double) -> Double {
-        return weight.rounded(.toNearestOrAwayFromZero) // or your preferred rule
+        return formatter.roundedGoalWeight(weight)
     }
 
     func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
-        let raw = metric.value.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Extract numeric portion to check for zero (handles "0", "0.0", etc.)
-        let numericScalars = raw.unicodeScalars.filter { DashboardStore.allowedNumericCharacters.contains($0) }
-        let numericChars = String(String.UnicodeScalarView(numericScalars))
-        // Check if value is placeholder or zero
-        let isPlaceholder = raw == DashboardStrings.placeholder || (numericChars.isEmpty == false && Double(numericChars) == 0)
-
-        if isPlaceholder {
-            // If there's a preLabel (e.g., "Lv." for visceral fat), show "Lv. --" instead of just "--"
-            if let preLabel = metric.preLabel {
-                return "\(preLabel) \(DashboardStrings.placeholder)"
-            }
-            return DashboardStrings.placeholder
-        }
-        return metric.preLabel.map { "\($0) \(metric.value)" } ?? metric.value
+        return formatter.formattedMetricValue(for: metric)
     }
 
     // MARK: - Metric Info Date Label
 
     /// Generates date label for metric info sheet. Shows "Measurement taken [Date]" for history entries, otherwise period averages.
     func metricInfoDateLabel(for entryDTO: BathScaleOperationDTO) -> String {
-        let isHistoryEntry = !isDashboardEntry(entryDTO)
-        guard let entryDate = parseEntryDate(from: entryDTO) else {
-            return formatMetricInfoDateLabel(entryDate: nil)
+        let isHistoryEntry = !formatter.isDashboardEntry(entryDTO)
+        guard let entryDate = formatter.parseEntryDate(from: entryDTO) else {
+            return formatter.formatMetricInfoDateLabel(
+                entryDate: nil,
+                isFromHistory: false,
+                period: state.graph.selectedPeriod,
+                selectedPointDate: state.graph.selectedPoint?.date,
+                crosshairDate: state.graph.selectedXValue,
+                weightLabel: weightLabel
+            )
         }
-        return formatMetricInfoDateLabel(entryDate: entryDate, isFromHistory: isHistoryEntry)
-    }
-
-    /// Formats the date label based on entry date and context. Returns period averages if no date provided.
-    private func formatMetricInfoDateLabel(entryDate: Date? = nil, isFromHistory: Bool = false) -> String {
-        let period = state.graph.selectedPeriod
-
-        if let entryDate = entryDate {
-            let prefix = isFromHistory ? "Measurement taken" : "day average"
-            // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-            let format = isFromHistory ? "MMMM d, yyyy" : "MMM d, yyyy"
-            let dateText = DateTimeTools.formatter(format).string(from: entryDate)
-            return isFromHistory ? "\(prefix) \(dateText)" : composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-        }
-
-        if let selectedPoint = state.graph.selectedPoint {
-            let prefix = selectionPrefix(for: period)
-            let dateText = formatMetricInfoSingleDate(selectedPoint.date, period: period)
-            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-        }
-        if let crosshairDate = state.graph.selectedXValue {
-            let prefix = selectionPrefix(for: period)
-            let dateText = formatMetricInfoSingleDate(crosshairDate, period: period)
-            return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-        }
-
-        let prefix = "\(period.rawValue) average"
-        let dateText = weightLabel // already computed from visible region
-        return composeMetricInfoLabel(prefix: prefix, dateText: dateText)
-    }
-
-    // MARK: - Private Helpers
-
-    private func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool {
-        return entryDTO.source == "dashboard"
-    }
-
-    /// Parses date from entry DTO, handling multiple timestamp formats.
-    private func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? {
-        if let date = entryDTO.date {
-            return date
-        }
-
-        guard let timestamp = entryDTO.entryTimestamp else {
-            return nil
-        }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: timestamp) {
-            return date
-        }
-
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: timestamp)
-    }
-
-    private func selectionPrefix(for period: TimePeriod) -> String {
-        switch period {
-        case .week, .month: return "day average"
-        case .year, .total: return "month average"
-        }
-    }
-
-    private func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String {
-        // Use cached formatter from DateTimeTools instead of creating new DateFormatter each call
-        switch period {
-        case .week, .month:
-            return DateTimeTools.formatter("MMM d, yyyy").string(from: date)
-        case .year, .total:
-            return DateTimeTools.formatter("MMM yyyy").string(from: date)
-        }
-    }
-
-    private func composeMetricInfoLabel(prefix: String, dateText: String) -> String {
-        return "\(prefix) \(dateText)".lowercased()
+        return formatter.formatMetricInfoDateLabel(
+            entryDate: entryDate,
+            isFromHistory: isHistoryEntry,
+            period: state.graph.selectedPeriod,
+            selectedPointDate: state.graph.selectedPoint?.date,
+            crosshairDate: state.graph.selectedXValue,
+            weightLabel: weightLabel
+        )
     }
 
     // MARK: - Metric Info Sheet - Allowed Metrics & Selection Validation
@@ -3126,18 +2633,7 @@ class DashboardStore: ObservableObject {
 
     /// Clears all performance caches when data changes
     private func clearAllCaches() {
-        // Clear continuousOperations cache
-        _cachedContinuousOperations = []
-        _cachedContinuousPeriod = nil
-        // Clear chart series cache
-        cachedChartSeriesData = nil
-        cachedChartSeriesPeriod = nil
-        cachedChartSeriesMetric = nil
-        lastCachedYAxisDomain = nil
-        cachedChartSeriesCount = 0
-        // Clear visible operations cache
-        cachedVisibleOperations = []
-        lastVisibleOperationsCacheTime = Date.distantPast
+        cacheManager.clearAllCaches()
         isProcessingScrollEnd = false
     }
 
