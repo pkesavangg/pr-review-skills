@@ -10,14 +10,14 @@ import SwiftData
 @MainActor
 final class HealthKitService: HealthKitServiceProtocol {
     static let shared = HealthKitService()
-    @Injector private var integrationService: IntegrationsService
-    @Injector private var logger: LoggerService
-    @Injector private var accountService: AccountService
-    @Injector private var entryService: EntryService
-    private let hkPackage = ggHealthKitPackage.AppleHealthHandler.shared
+    private let integrationService: IntegrationServiceProtocol
+    private let logger: LoggerServiceProtocol
+    private let accountService: AccountServiceProtocol
+    private let entryService: EntryServiceProtocol
+    private let kvStore: KvStorageServiceProtocol
+    private let hkPackage: HealthKitHandlerProtocol
     private let tag = "HealthKitService"
     private let context: ModelContext
-    private let kvStore = KvStorageService.shared
     private let addHKModalFlagKeyBase = KvStorageKeys.addAppleHealthModalBase
     /// Local storage flag indicating the *Finish Adding Apple Health* prompt has already been shown on this device.
     private let finishHKModalFlagKeyBase = KvStorageKeys.finishAppleHealthModalBase
@@ -25,11 +25,23 @@ final class HealthKitService: HealthKitServiceProtocol {
     private let outOfSyncHKModalFlagKeyBase = KvStorageKeys.outOfSyncAppleHealthModalBase
     /// Local storage flag indicating we're waiting for permissions to be restored after out-of-sync.
     private let waitingForHKPermissionsRestoredBase = KvStorageKeys.waitingForHKPermissionsRestoredBase
-    
+
     // MARK: - Initialization
-    
-    init() {
-        hkPackage.setAppType(appType: .WEIGHT_GURUS)
+
+    init(
+        integrationService: IntegrationServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        entryService: EntryServiceProtocol? = nil,
+        kvStore: KvStorageServiceProtocol? = nil,
+        healthKitHandler: HealthKitHandlerProtocol? = nil
+    ) {
+        self.integrationService = integrationService ?? IntegrationsService.shared
+        self.logger = logger ?? LoggerService.shared
+        self.accountService = accountService ?? AccountService.shared
+        self.entryService = entryService ?? EntryService.shared
+        self.kvStore = kvStore ?? KvStorageService.shared
+        self.hkPackage = healthKitHandler ?? AppleHealthHandlerAdapter()
         self.context = PersistenceController.shared.context
     }
     

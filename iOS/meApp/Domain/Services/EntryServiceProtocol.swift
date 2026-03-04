@@ -1,11 +1,16 @@
+import Combine
 import Foundation
 
 /// Protocol defining the service interface for managing user entries, including CRUD, queries, and progress/statistics.
 @MainActor
 protocol EntryServiceProtocol {
+    var entrySaved: PassthroughSubject<EntryNotification, Never> { get }
+    var entryDeleted: PassthroughSubject<EntryNotification, Never> { get }
 
     /// Syncs all entries with the remote backend.
     func syncAllEntriesWithRemote() async
+    func migrateFromSQLiteIfNeeded() async
+    func loadDashboardData() async
 
     /// Clears all entry-related data from the service (memory/cache/state).
     func clearAllData() async
@@ -32,6 +37,7 @@ protocol EntryServiceProtocol {
     /// Retrieves all entries for the current user.
     /// - Returns: An array of all entries.
     func getAllEntries() async throws -> [Entry]
+    func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO]
 
     /// Checks if an entry with the given timestamp exists for the current user.
     /// - Parameter entryTimestamp: The timestamp to check for.

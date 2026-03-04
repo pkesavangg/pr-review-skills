@@ -18,6 +18,9 @@ final class PermissionsService: PermissionsServiceProtocol, ObservableObject {
 
     /// Latest permission status keyed by permission type. `nil` until first update from SDK.
     @Published private(set) var permissions: [GGPermissionType: GGPermissionState]?
+    var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> {
+        $permissions.eraseToAnyPublisher()
+    }
 
     /// Permission categories that are required based on the user’s connected devices.
     @Published private(set) var requiredCategories: Set<PermissionCategory> = []

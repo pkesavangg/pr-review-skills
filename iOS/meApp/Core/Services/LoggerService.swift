@@ -12,7 +12,7 @@ import SwiftData
 final class LoggerService: LoggerServiceProtocol {
     public static let shared = LoggerService()
     
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     
     private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
     private let loggerApiRepository: LoggerApiRepositoryProtocol = LoggerApiRepository()

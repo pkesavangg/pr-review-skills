@@ -8,11 +8,11 @@
 import Foundation
 
 @MainActor
-final class HTTPClient {
+final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
-    @Injector var accountService: AccountService
-    @Injector var logger: LoggerService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationHelperService: NotificationHelperService
+    @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
     @Atomic private var lastToastShownTime: Date?
@@ -114,7 +114,20 @@ final class HTTPClient {
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response) = try await fetchData(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let urlError as URLError {
+            // Convert URLErrors to HTTPErrors so callers can detect network errors reliably.
+            switch urlError.code {
+            case .timedOut:
+                throw HTTPError.timeout
+            default:
+                throw HTTPError.noInternet
+            }
+        } catch {
+            throw error
+        }
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.invalidResponse

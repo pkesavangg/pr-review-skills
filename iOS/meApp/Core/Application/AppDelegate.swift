@@ -22,19 +22,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     /// - Returns: true if initialization was successful
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         AppDelegate.shared = self
-        
-        // Initialize services first
-        Task { @MainActor in
-            // Initialize ServiceRegistry to register all services
-            _ = ServiceRegistry.shared
-            
-            // Initialize Firebase and notifications
-            FirebaseApp.configure()
-            Messaging.messaging().delegate = self
-            UNUserNotificationCenter.current().delegate = self
-            
-            application.registerForRemoteNotifications()
-        }
+
+        // Initialize ServiceRegistry synchronously to avoid DI race at startup.
+        _ = ServiceRegistry.shared
+
+        FirebaseApp.configure()
+        Messaging.messaging().delegate = self
+        UNUserNotificationCenter.current().delegate = self
+        application.registerForRemoteNotifications()
         
         return true
     }

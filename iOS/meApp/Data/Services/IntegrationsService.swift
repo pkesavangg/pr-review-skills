@@ -12,11 +12,11 @@ import SwiftData
 @MainActor
 final class IntegrationsService: IntegrationServiceProtocol {
     static let shared = IntegrationsService()
-
-    @Injector var accountService: AccountService
-    @Injector var logger: LoggerService
-    @Injector var entryService: EntryService
-
+    
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var entryService: EntryServiceProtocol
+    
     // MARK: - Combine
 
     /// Holds Combine cancellables for the lifetime of the service.
@@ -24,8 +24,9 @@ final class IntegrationsService: IntegrationServiceProtocol {
 
     // MARK: - Properties
 
-    private let apiRepository = IntegrationAPIRepository()
-    private let localRepository = IntegrationRepository()
+    private let apiRepository: IntegrationRepositoryAPIProtocol
+    private let localRepository: IntegrationRepositoryProtocol
+    private let healthKitService: HealthKitServiceProtocol?
     private let tag = "IntegrationService"
 
     // MARK: - Initializer -------------------------------------------------
@@ -33,10 +34,33 @@ final class IntegrationsService: IntegrationServiceProtocol {
     /// Subscribes to `EntryService.entrySaved` so that every newly-created entry
     /// is automatically forwarded to the HealthKit log endpoint (if the account
     /// is integrated) without `EntryService` needing to know about integrations.
-    init() {
+    init(
+        apiRepository: IntegrationRepositoryAPIProtocol? = nil,
+        localRepository: IntegrationRepositoryProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        entryService: EntryServiceProtocol? = nil,
+        healthKitService: HealthKitServiceProtocol? = nil,
+        observeEntrySaved: Bool = true
+    ) {
+        self.apiRepository = apiRepository ?? IntegrationAPIRepository()
+        self.localRepository = localRepository ?? IntegrationRepository()
+        self.healthKitService = healthKitService
+        if let accountService {
+            self.accountService = accountService
+        }
+        if let logger {
+            self.logger = logger
+        }
+        if let entryService {
+            self.entryService = entryService
+        }
+
+        guard observeEntrySaved else { return }
+
         // Listen to new entries and forward to HealthKit when required.
         // Uses EntryNotification (Sendable) to safely receive data across actor boundaries.
-        entryService.entrySaved
+        self.entryService.entrySaved
             .sink { [weak self] notification in
                 // Fire-and-forget so the publisher chain is never blocked.
                 Task { await self?.logHealthEntry(notification: notification) }
@@ -57,6 +81,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
 
     func getIntegrationUrl(_ provider: IntegrationType) async throws -> String {
         let accountId = try await getAccountId()
+        guard !accountId.isEmpty else { throw AccountError.noActiveAccount }
         let pathMap: [IntegrationType: String] = [
             .fitbit: "fitbit",
             .google: "google-fit",
@@ -73,6 +98,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
 
     func removeIntegration(_ provider: IntegrationType) async throws {
         let accountId = try await getAccountId()
+        guard !accountId.isEmpty else { throw AccountError.noActiveAccount }
         logger.log(level: .info, tag: tag, message: "Remove integration requested. provider=\(provider.rawValue), accountId=\(accountId)")
         do {
             try await apiRepository.removeIntegration(accountId: accountId, provider: provider)
@@ -89,17 +115,19 @@ final class IntegrationsService: IntegrationServiceProtocol {
             )
             throw error
         }
-        try localRepository.setIntegrationData(accountId: accountId, info: nil)
+        try await localRepository.setIntegrationData(accountId: accountId, info: nil)
         logger.log(level: .success, tag: tag, message: "Cleared local integration data. provider=\(provider.rawValue), accountId=\(accountId)")
     }
 
     func getStoredIntegrationData() async throws -> IntegrationInfo? {
         let accountId = try await getAccountId()
-        return try localRepository.getIntegrationData(accountId: accountId)
+        guard !accountId.isEmpty else { throw AccountError.noActiveAccount }
+        return try await localRepository.getIntegrationData(accountId: accountId)
     }
 
     func setStoredIntegrationData(_ info: IntegrationInfo?) async throws {
         let accountId = try await getAccountId()
+        guard !accountId.isEmpty else { throw AccountError.noActiveAccount }
         logger.log(
             level: .info,
             tag: tag,
@@ -108,10 +136,10 @@ final class IntegrationsService: IntegrationServiceProtocol {
             isIntegrated=\(info?.isIntegrated ?? false), accountId=\(accountId)
             """
         )
-        try localRepository.setIntegrationData(accountId: accountId, info: info)
+        try await localRepository.setIntegrationData(accountId: accountId, info: info)
         if let integrationType = info?.type {
             do {
-                try await accountService.updateIntegrations(integrationType: integrationType)
+                _ = try await accountService.updateIntegrations(integrationType: integrationType)
             } catch {
                 logger.log(
                     level: .error,
@@ -131,11 +159,13 @@ final class IntegrationsService: IntegrationServiceProtocol {
 
     func isIntegrationAlreadyUsed(type: IntegrationType) async throws -> Bool {
         let accountId = try await getAccountId()
-        return try localRepository.isIntegrationAlreadyUsed(accountId: accountId, type: type)
+        guard !accountId.isEmpty else { throw AccountError.noActiveAccount }
+        return try await localRepository.isIntegrationAlreadyUsed(accountId: accountId, type: type)
     }
 
     func clearIntegrationStatus(integrationType: IntegrationType) async throws {
         let accountId = try await getAccountId()
+        guard !accountId.isEmpty else { throw AccountError.noActiveAccount }
         logger.log(
             level: .info,
             tag: tag,
@@ -180,7 +210,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
         switch integrationInfo.type {
         case .healthKit:
             // Delegate to HealthKit service for syncing using notification (safe cross-actor)
-            try await HealthKitService.shared.syncNewData(notification: notification)
+            try await (healthKitService ?? HealthKitService.shared).syncNewData(notification: notification)
             logger.log(
                 level: .info,
                 tag: "IntegrationService",
@@ -212,7 +242,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
         switch integrationInfo.type {
         case .healthKit:
             // Delegate to HealthKit service for deletion using notification (safe cross-actor)
-            let success = try await HealthKitService.shared.deleteEntry(notification: notification)
+            let success = try await (healthKitService ?? HealthKitService.shared).deleteEntry(notification: notification)
             if success {
                 logger.log(level: .success, tag: tag, message: "Deleted entry from HealthKit. entryId=\(entry.id)")
             } else {
@@ -245,7 +275,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
         switch integrationInfo.type {
         case .healthKit:
             // Delegate to HealthKit service for clearing all data
-            try await HealthKitService.shared.clearHealthKit()
+            try await (healthKitService ?? HealthKitService.shared).clearHealthKit()
             logger.log(level: .success, tag: tag, message: "Cleared HealthKit data during account deletion")
         default:
             // Other integrations not implemented for data clearing yet
@@ -276,7 +306,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
             }
 
             // Ensure at least one HealthKit permission is currently approved
-            let approvedPermissions = HealthKitService.shared.getApprovedPermissionList()
+            let approvedPermissions = (healthKitService ?? HealthKitService.shared).getApprovedPermissionList()
             guard !approvedPermissions.isEmpty else { return }
 
             // Build payload using extracted notification data (safe across actor boundaries)

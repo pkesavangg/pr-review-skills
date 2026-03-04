@@ -1,17 +1,16 @@
 import Combine
-
 import Foundation
 import SwiftData
 
 /*
  SwiftLint exception:
- This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations. We therefore disable `type_body_length` for this file.
+ This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations. We therefore disable `type_body_length` and `file_length` for this file.
  */
 @MainActor
-final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:disable:this type_body_length
-    @Injector var logger: LoggerService
-    @Injector var goalAlertService: GoalAlertService
-    @Injector var integrationService: IntegrationsService
+final class EntryService: EntryServiceProtocol, ObservableObject {  // swiftlint:disable:this type_body_length file_length
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var goalAlertService: GoalAlertServiceProtocol
+    @Injector var integrationService: IntegrationServiceProtocol
     private let accountService: AccountServiceProtocol
     private let localRepo: EntryRepositoryProtocol = EntryRepository()
     private let localKVRepo = EntryRepositoryLocal()
@@ -416,7 +415,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
             : latestWeight - initYearWeightStored
 
         let yearAvgWeight = Int(round(initYearWeight))
-        let yearStartDTO = try makeYearDTO(
+        let yearStartDTO = makeYearDTO(
             key: yearKey, avgWeight: yearAvgWeight, accountId: try getAccountId()
         )
 
@@ -1433,4 +1432,4 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }
-} // swiftlint:disable:this file_length
+} // swiftlint:disable:this type_body_length file_length

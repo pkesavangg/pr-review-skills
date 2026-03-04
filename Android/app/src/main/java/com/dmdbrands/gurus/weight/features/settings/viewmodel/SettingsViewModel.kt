@@ -48,8 +48,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import javax.inject.Inject
-import android.util.Log
-
 /**
  * ViewModel for the settings feature, managing state and handling settings intents.
  *

@@ -86,7 +86,10 @@ data class GoalFormControls(
       )
 
       val startingWeightValidators = if (goalType != GoalType.MAINTAIN) {
-       listOf(FormValidations.required(), FormValidations.weightValidator(weightUnit))
+       listOf(
+         FormValidations.required(),
+         FormValidations.weightValidator(weightUnit),
+       )
       } else {
         listOf(FormValidations.weightValidator(weightUnit))
       }
@@ -110,8 +113,14 @@ data class GoalFormControls(
         goalWeightControl.validate()
       }
 
-      // Set up cross-field validation: when goal type changes, re-validate goal weight
+      // Set up cross-field validation: when goal weight changes, re-validate starting weight
+      goalWeightControl.onValueChangeListener { _, _ ->
+        startingWeightControl.validate()
+      }
+
+      // Set up cross-field validation: when goal type changes, re-validate both weights
       goalTypeControl.onValueChangeListener { _, _ ->
+        startingWeightControl.validate()
         goalWeightControl.validate()
       }
 

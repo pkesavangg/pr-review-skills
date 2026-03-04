@@ -58,6 +58,7 @@ constructor(
         val account = accountService.getCurrentAccount()
         AppLog.d(TAG, "Startup flow complete, account: ${account?.id}")
         if (account == null) {
+          AppLog.d(TAG, "Navigating to landing screen due to account id not available")
           routeToLandingOrApp()
           return@launch
         }
@@ -70,6 +71,7 @@ constructor(
           appNavigationService.autoLogin()
           appNavigationService.emitAuthEvent(AuthState.LoggedInFromLoading(account))
         } else {
+          AppLog.d(TAG, "Navigating to landing screen due to not logged in")
           routeToLandingOrApp()
         }
       } catch (e: Exception) {
@@ -84,6 +86,7 @@ constructor(
             return@launch
           }
         }
+        AppLog.d(TAG, "Navigating to landing screen due to account info not available in offline")
         routeToLandingOrApp()
       }
     }
@@ -120,15 +123,7 @@ constructor(
     dashboardService.setAccountId(account.id)
     deviceService.setAccountId(account.id)
     deviceInfoService.updateDeviceInfo()
-    syncScales()
-  }
-
-  private fun syncScales() {
-    viewModelScope.launch {
-      deviceService.getGGBTDevices().collect { devices ->
-        ggDeviceService.syncDevices(devices)
-      }
-    }
+    deviceInfoService.updateLocalIntegrationInfo()
   }
 
   /**

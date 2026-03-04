@@ -6,6 +6,7 @@ import Foundation
 /// This protocol defines high-level operations for paired scales, including listing, creating,
 /// editing, deleting, updating scale meta and preferences, connection management, and pairing logic.
 protocol ScaleServiceProtocol: DeviceServiceProtocol {
+    func clearAllData() async
 
     /// The scales managed by the service.
     ///
@@ -15,6 +16,7 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     ///
     /// The subject is updated on the main thread.
     var scalesPublisher: AnyPublisher<[Device], Never> { get }
+    var scales: [Device] { get }
 
     /// Updates scale meta data.
     /// - Parameters:
@@ -33,6 +35,9 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// - Parameters:
     ///   - scales: The scales to update.
     func updateAllScalesStatus(_ scales: [Device]?) async throws
+    func syncAllScalesWithRemote() async
+    func pushLocalChangesToServer() async
+    func getDevice(by deviceId: String) async throws -> Device?
 
     /// Updates connected device information including connection status and WiFi configuration.
     /// - Parameters:

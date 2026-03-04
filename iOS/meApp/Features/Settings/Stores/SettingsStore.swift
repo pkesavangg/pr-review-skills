@@ -17,14 +17,14 @@ import SwiftUI
 /// A store to manage user settings and account actions.
 @MainActor
 class SettingsStore: ObservableObject {
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
-    @Injector var feedService: FeedService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var feedService: FeedServiceProtocol
     @Injector var goalAlertService: GoalAlertService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var integrationService: IntegrationsService
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var integrationService: IntegrationServiceProtocol
     private let httpClient = HTTPClient.shared
     var theme = Theme.shared
     let kvStore = KvStorageService.shared
@@ -37,6 +37,8 @@ class SettingsStore: ObservableObject {
     @Published var changePasswordForm = ChangePasswordForm()
     // Weightless-mode form
     @Published var weightlessForm = WeightlessForm()
+    // Track initial toggle state to detect actual changes
+    private var initialWeightlessToggleState: Bool = false
     // Goal-setting form
     @Published var goalForm = GoalForm()
 
@@ -131,7 +133,7 @@ class SettingsStore: ObservableObject {
     @Published var showActivityPicker: Bool = false
 
     init() {
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .sink { [weak self] account in
                 self?.activeAccount = account
                 self?.populateEditFormIfNeeded()
@@ -139,15 +141,15 @@ class SettingsStore: ObservableObject {
                 self?.syncHeightPickers()
             }
             .store(in: &cancellables)
-
-        accountService.$allAccounts
+        
+        accountService.allAccountsPublisher
             .sink { [weak self] allAccounts in
                 self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn == true }.count > 1
             }
-            .store(in: &accountService.cancellables)
-
-        populateWeightlessFormIfNeeded()
-
+            .store(in: &cancellables)
+        
+        self.populateWeightlessFormIfNeeded()
+        
         // Listen to theme appearance changes so SettingsScreen refreshes immediately
         Theme.shared.$appearanceMode
             .receive(on: RunLoop.main)
@@ -427,9 +429,27 @@ class SettingsStore: ObservableObject {
     func isGoalFormValid(focusedField: FocusField?) -> Bool {
         goalForm.isValidForSave(focusedField: focusedField)
     }
-
+    
+    /// Determines if the Weightless form is valid for saving
+    /// Save enabled only when toggle changed OR valid form changes exist
     var isWeightLessFormValid: Bool {
-        !(!weightlessForm.isDirty || (weightlessForm.isDirty && (weightlessForm.isOn.value ? weightlessForm.isInvalid : false)))
+        let hasToggleChanged = weightlessForm.isOn.value != initialWeightlessToggleState
+        
+        // If turned OFF → only toggle change matters
+        guard weightlessForm.isOn.value else {
+            return hasToggleChanged
+        }
+        
+        // If turned ON → form must be valid, and allow either toggle change OR valid form changes
+        let weightValue = Double(weightlessForm.weight.value) ?? 0.0
+        return weightlessForm.isValid &&
+            (hasToggleChanged ||
+             (weightlessForm.isDirty && weightValue != 0.0))
+    }
+
+    /// Checks if there are actual unsaved changes (for exit confirmation)
+    var hasWeightlessChanges: Bool {
+        (weightlessForm.isOn.value != initialWeightlessToggleState) || weightlessForm.isDirty
     }
 
     // MARK: - Handle export
@@ -1005,8 +1025,8 @@ class SettingsStore: ObservableObject {
 
     /// Variant of `handleWeightlessExit` that works with `Router` based navigation (push page instead of sheet).
     func handleWeightlessExit(router: Router<SettingsRoute>) {
-        // Fast path: if form is pristine simply pop and bail.
-        guard weightlessForm.isDirty else {
+        // Fast path: if there are no actual changes, simply pop and bail
+        guard hasWeightlessChanges else {
             router.navigateBack()
             resetWeightlessForm()
             return
@@ -1020,9 +1040,9 @@ class SettingsStore: ObservableObject {
 
     /// Async variant used by tab-deactivation; returns a Bool indicating whether it is safe to leave.
     func confirmDiscardWeightlessChanges() async -> Bool {
-        // Allow immediate exit when there are no unsaved changes.
-        guard weightlessForm.isDirty else { return true }
-
+        // Allow immediate exit when there are no actual changes
+        guard hasWeightlessChanges else { return true }
+        
         return await withCheckedContinuation { continuation in
             presentWeightlessExitAlert(onExit: {
                 continuation.resume(returning: true)
@@ -1036,10 +1056,10 @@ class SettingsStore: ObservableObject {
     func saveWeightless(router: Router<SettingsRoute>) {
         // Validate form first.
         weightlessForm.validate()
-
-        guard weightlessForm.isDirty, isWeightLessFormValid else { return }
-        if weightlessForm.isOn.value, weightlessForm.weight.isInvalid { return }
-
+        
+        guard hasWeightlessChanges, isWeightLessFormValid else { return }
+        if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
+        
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let storedWeight: Int = {
             if let val = Double(weightlessForm.weight.value) {
@@ -1074,8 +1094,21 @@ class SettingsStore: ObservableObject {
                     weightlessTimestamp: timestamp,
                     weightlessWeight: Double(storedWeight)
                 )
+                
+                // Refresh account to ensure latest state is available when user returns
+                try? await accountService.refreshAccount()
+                
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
+                
+                // Mark form as pristine after successful save
+                await MainActor.run {
+                    self.weightlessForm.isOn.markAsPristine()
+                    self.weightlessForm.weight.markAsPristine()
+                    // Update initial toggle state to match saved state
+                    self.initialWeightlessToggleState = isOn
+                }
+                
                 onSuccess()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
@@ -1083,7 +1116,6 @@ class SettingsStore: ObservableObject {
             }
             notificationService.dismissLoader()
             httpClient.skipCheckNetwork = false
-            self.resetWeightlessForm()
         }
     }
 
@@ -1097,6 +1129,7 @@ class SettingsStore: ObservableObject {
             weightlessForm.weight.value = ""
             weightlessForm.isOn.markAsPristine()
             weightlessForm.weight.markAsPristine()
+            initialWeightlessToggleState = false
             return
         }
 
@@ -1113,7 +1146,9 @@ class SettingsStore: ObservableObject {
 
         weightlessForm.isOn.value = shouldBeOn
         weightlessForm.isOn.markAsPristine()
-
+        // Store initial toggle state to detect changes
+        initialWeightlessToggleState = shouldBeOn
+        
         // Set weight field value
         if let storedWeight = account.weightlessSettings?.weightlessWeight, shouldBeOn {
             // Convert stored tenths-of-lbs value to display unit.
@@ -1144,6 +1179,7 @@ class SettingsStore: ObservableObject {
     /// Resets the Weightless form to a pristine state.
     func resetWeightlessForm() {
         weightlessForm = WeightlessForm()
+        initialWeightlessToggleState = false
         populateWeightlessFormIfNeeded()
     }
 

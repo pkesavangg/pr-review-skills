@@ -11,11 +11,11 @@ import SwiftUI
 @MainActor
 final class ScaleSettingsStore: ObservableObject {
     @Injector var notificationService: NotificationHelperService
-    @Injector var scaleService: ScaleService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var logger: LoggerService
-    @Injector var accountService: AccountService
-    @Injector var permissionsService: PermissionsService
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var permissionsService: PermissionsServiceProtocol
     private var cancellables = Set<AnyCancellable>()
 
     // Store the device ID for safe refetching from MainActor context

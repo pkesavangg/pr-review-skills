@@ -935,12 +935,22 @@ class DashboardStore: ObservableObject {
             self.forceImmediateUIUpdate()
         }
     }
-
     // Delegate metric operations to MetricsManager
     func resetMetricsToLatestEntry() {
         Task {
             await metricsManager.resetMetricsToLatestEntry {
                 try await self.dataManager.getLatestEntry()
+            }
+        }
+    }
+    
+    /// Updates metric card values to display averages from the visible region
+    private func updateMetricsWithVisibleRegionAverage() {
+        let visibleOps = getOperationsForLabelDateRange()
+        Task {
+            await metricsManager.updateMetricsForVisibleAverage(visibleOperations: visibleOps)
+            await MainActor.run {
+                state.ui.hasLoadedMetricValues = true
             }
         }
     }
@@ -2055,18 +2065,54 @@ class DashboardStore: ObservableObject {
                 self.state.metrics = self.metricsManager.state
                 self.state.streak = self.streakManager.state
 
-                // Now batch all UI state changes together to prevent flickering
-                // Clear the reset flag as part of the batched update
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    self.state.ui.isLoading = false
-                    self.state.ui.loaderOverride = nil
-                    self.state.ui.isGoalCardRemoved = false
-                    self.state.ui.selectedMetricLabel = nil
-                    self.state.graph.clearSelection()
-                    self.state.ui.isEditMode = false
-                    self.state.ui.resetDragState()
-                    self.state.ui.isResettingDashboard = false
-                    self.hasEditSnapshot = false
+                    // Now manually sync manager states to UI state since we suppressed updates
+                    self.state.metrics = self.metricsManager.state
+                    self.state.streak = self.streakManager.state
+
+                    // Now batch all UI state changes together to prevent flickering
+                    // Clear the reset flag as part of the batched update
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.state.ui.isLoading = false
+                        self.state.ui.loaderOverride = nil
+                        self.state.ui.isGoalCardRemoved = false
+                        self.state.ui.selectedMetricLabel = nil
+                        self.state.graph.clearSelection()
+                        self.state.ui.isEditMode = false
+                        self.state.ui.resetDragState()
+                        self.state.ui.isResettingDashboard = false
+                        self.hasEditSnapshot = false
+                    }
+
+                    self.notificationService.dismissLoader()
+                    self.updateMetricsWithVisibleRegionAverage()
+
+                    // Single UI update after all state changes are complete
+                    self.forceImmediateUIUpdate()
+                } catch {
+                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
+
+                    // Manually sync manager states even on error
+                    self.state.metrics = self.metricsManager.state
+                    self.state.streak = self.streakManager.state
+
+                    // Clear the reset flag as part of the batched update
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        self.state.ui.isLoading = false
+                        self.state.ui.loaderOverride = nil
+                        self.state.ui.isGoalCardRemoved = false
+                        self.state.ui.selectedMetricLabel = nil
+                        self.state.graph.clearSelection()
+                        self.state.ui.isEditMode = false
+                        self.state.ui.resetDragState()
+                        self.state.ui.isResettingDashboard = false
+                        self.hasEditSnapshot = false
+                    }
+                    self.notificationService.dismissLoader()
+                    
+                    // Update metrics to show visible region average instead of latest entry
+                    self.updateMetricsWithVisibleRegionAverage()
+                    
+                    self.forceImmediateUIUpdate()
                 }
 
                 self.notificationService.dismissLoader()
@@ -3497,25 +3543,32 @@ class DashboardStore: ObservableObject {
                     self.state.ui.hasLoadedMetricValues = true
                 }
             }
-        } else if state.graph.selectedXValue != nil {
+            return // Exit early to prevent showing averages
+        }
+         if state.graph.selectedXValue != nil {
             // Interpolated position selected (no exact data point) - show placeholders
-            // Don't mark as loaded when showing placeholders - they represent absence of actual values
+            // Mark as loaded so skeleton loaders can hide even when showing placeholders
             metricsManager.setPlaceholdersForAllMetrics()
-        } else {
-            // No selection: compute averages aligned to the label date range
-            let ops = getOperationsForLabelDateRange()
+            self.state.ui.hasLoadedMetricValues = true
+            return
+        }
+        let ops = self.getOperationsForLabelDateRange()
+        
+        // If no visible operations, show placeholders for body metrics
+        if ops.isEmpty {
+            metricsManager.setPlaceholdersForAllMetrics()
+            // Mark as loaded so skeleton loaders can hide
+            self.state.ui.hasLoadedMetricValues = true
+            return
+        }
 
-            if ops.isEmpty, state.ui.hasLoadedMetricValues {
-                return
-            }
-
-            Task {
-                await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
-                await MainActor.run {
-                    // Mark as loaded even if there are no operations so skeleton loaders can hide
-                    // This prevents skeleton loaders from displaying indefinitely when there's no data
-                    self.state.ui.hasLoadedMetricValues = true
-                }
+        // Has visible operations - compute averages
+        Task {
+            await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
+            await MainActor.run {
+                // Mark metrics as loaded after updating visible averages so skeleton loaders can hide
+                // This ensures skeleton loaders are dismissed once data for the visible range is available
+                self.state.ui.hasLoadedMetricValues = true
             }
         }
     }

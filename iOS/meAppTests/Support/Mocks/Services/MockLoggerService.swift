@@ -1,0 +1,31 @@
+import Foundation
+@testable import meApp
+
+@MainActor
+final class MockLoggerService: LoggerServiceProtocol {
+    private(set) var messages: [String] = []
+
+    func getAllLogs() async throws -> [LogEntry] { [] }
+    func getCurrentSessionLogs() async throws -> [LogEntry] { [] }
+    func getLogsForAccount(_ accountId: String) async throws -> [LogEntry] { [] }
+    func getLogs(from: Date, to: Date) async throws -> [LogEntry] { [] }
+
+    func log(
+        level: LogLevel,
+        tag: String,
+        message: String,
+        data: Any?,
+        function: StaticString,
+        line: UInt,
+        accountId: String?
+    ) {
+        messages.append("[\(tag)] \(message)")
+    }
+
+    func getCurrentSessionId() -> String { "test-session" }
+    func deleteLogsForAccount(_ accountId: String) async throws {}
+    func deleteAllLogs() async throws {}
+    func deleteOldLogs(_ olderThanDays: Int) async throws {}
+    func sendLogsToServer(accountId: String?, version: String) async throws {}
+    func sendScaleLogsToServer(deviceLogs: [DeviceLogEntry], version: String) async throws {}
+}

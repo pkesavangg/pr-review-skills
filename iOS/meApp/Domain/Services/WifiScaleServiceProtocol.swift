@@ -10,4 +10,7 @@ protocol WifiScaleServiceProtocol {
     /// - Parameter request: Optional parameter for the scale token request.
     /// - Returns: A WifiScaleTokenResponse containing the scale token.
     func getScaleToken(request: String?) async throws -> WifiScaleTokenResponse
+
+    /// Returns information about currently connected Wi-Fi network and permission state.
+    func getConnectedWifiInfo() async -> WifiStatus
 } 

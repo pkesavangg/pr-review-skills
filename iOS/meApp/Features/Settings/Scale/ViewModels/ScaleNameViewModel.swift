@@ -11,8 +11,8 @@ import SwiftUI
 @MainActor
 final class ScaleNameViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperService
-    @Injector var scaleService: ScaleService
-    @Injector var logger: LoggerService
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
 
     // R6: Store PersistentIdentifier instead of @Model directly
     private let scaleId: PersistentIdentifier

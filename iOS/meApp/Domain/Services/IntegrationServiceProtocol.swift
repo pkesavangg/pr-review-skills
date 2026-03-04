@@ -48,4 +48,5 @@ protocol IntegrationServiceProtocol {
     
     /// Clears all integration data if integration is active (used during account deletion).
     func clearIntegration() async throws
+    func logHealthEntry(notification: EntryNotification) async
 }

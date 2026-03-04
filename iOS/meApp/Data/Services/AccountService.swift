@@ -10,32 +10,60 @@ import Foundation
 final class AccountService: AccountServiceProtocol, ObservableObject { // swiftlint:disable:this type_body_length
     static let shared = AccountService()
     @Injector var notificationService: NotificationHelperService
-    @Injector var logger: LoggerService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var keychainService: KeychainService
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var keychainService: KeychainServiceProtocol
     @Injector var kvStorage: KvStorageService
 
-    let apiRepo: AccountRepositoryAPIProtocol = AccountRepositoryAPI()
-    let localRepo: AccountRepositoryProtocol = AccountRepository()
-    let networkMonitor = NetworkMonitor.shared
+    private let apiRepo: AccountRepositoryAPIProtocol
+    private let localRepo: AccountRepositoryProtocol
+    private let networkMonitor: NetworkMonitoring
     /// API repository for integration-related network calls
-    private let integrationApiRepo: IntegrationRepositoryAPIProtocol = IntegrationAPIRepository()
+    private let integrationApiRepo: IntegrationRepositoryAPIProtocol
     /// Migration service for Ionic app data
-    let migrationService = AccountMigrationService()
-
+    private let migrationService: AccountMigrationService
+    @Published private(set) var isIonicMigrationInProgress: Bool = false
     @Published var activeAccount: Account?
     @Published var allAccounts: [Account] = []
-    @Published private(set) var isIonicMigrationInProgress: Bool = false
+    var activeAccountPublisher: Published<Account?>.Publisher { $activeAccount }
+    var allAccountsPublisher: Published<[Account]>.Publisher { $allAccounts }
 
     var alertLang = AlertStrings.self.ExpiredUserLogOutAlert
     var cancellables = Set<AnyCancellable>()
     let tag = "AccountService"
 
-    init() {
+    init(
+        apiRepo: AccountRepositoryAPIProtocol? = nil,
+        localRepo: AccountRepositoryProtocol? = nil,
+        integrationApiRepo: IntegrationRepositoryAPIProtocol? = nil,
+        networkMonitor: NetworkMonitoring? = nil,
+        migrationService: AccountMigrationService? = nil,
+        performInitialLoad: Bool = true
+    ) {
+        self.apiRepo = apiRepo ?? AccountRepositoryAPI()
+        self.localRepo = localRepo ?? AccountRepository()
+        self.integrationApiRepo = integrationApiRepo ?? IntegrationAPIRepository()
+        self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
+        self.migrationService = migrationService ?? AccountMigrationService()
+        
+        $activeAccount
+            .dropFirst()
+            .sink { data in
+                if data == nil {
+                    ServiceRegistry.shared.deregisterSessionServices()
+                } else {
+                    ServiceRegistry.shared.registerSessionServices()
+                    Theme.shared.setActiveAccount(data?.accountId)
+                }
+            }
+            .store(in: &cancellables)
+
+        guard performInitialLoad else { return }
+
         // Asynchronously load active account from local storage to set theme early
         Task {
             do {
-                if let activeAcct = try localRepo.fetchAllAccountsSync()
+                if let activeAcct = try localRepo?.fetchAllAccountsSync()
                     .first(where: { $0.isActiveAccount == true }) {
                     hydrateTokensInAccount(activeAcct)
                     self.activeAccount = activeAcct
@@ -62,16 +90,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             } catch {
                 logger.log(level: .error, tag: tag, message: "Error: \(error.localizedDescription)")
             }
-            $activeAccount
-                .sink { data in
-                    if data == nil {
-                        ServiceRegistry.shared.deregisterSessionServices()
-                    } else {
-                        ServiceRegistry.shared.registerSessionServices()
-                        Theme.shared.setActiveAccount(data?.accountId)
-                    }
-                }
-                .store(in: &cancellables)
             try await updatePublishedState()
         }
     }
@@ -239,14 +257,13 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         let fromAccountId = activeAccount?.accountId ?? "nil"
         let targetAccountId = account.accountId
         // Check network connectivity before switching
-        guard networkMonitor.isConnected else {
-            logger.log(
-                level: .error,
-                tag: tag,
-                message: "Switch account blocked: no internet. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)"
-            )
+        guard networkMonitor.getCurrentConnectionStatus(),
+              await networkMonitor.verifyNetworkAvailability(baseURL: AppEnvironment.apiBaseURL) else {
+            logger.log(level: .error, tag: tag, message: "Switch account blocked: no internet. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
             throw HTTPError.noInternet
         }
+        // Save current active account to restore if switching fails mid-process,
+        let previousActiveAccount = activeAccount
         do {
             logger.log(
                 level: .info,
@@ -316,45 +333,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             hydrateTokensInAccount(account)
         }
         return accounts
-    }
-
-    // MARK: - Account Updates
-
-    /// Updates the active account with the provided updated account data.
-    func updateAccount(_ updatedAccount: Account) async throws -> Account {
-        guard let localAccount = try await localRepo.fetchAccount(byId: updatedAccount.accountId) else {
-            throw AccountError.accountNotFound(id: updatedAccount.accountId)
-        }
-
-        do {
-            logger.log(level: .info, tag: tag, message: "Update account requested for accountId=\(updatedAccount.accountId)")
-            let response = try await apiRepo.editAccount(updatedAccount)
-            localAccount.update(from: response)
-            localAccount.isSynced = true
-            try await updateAccountClearingTokens(localAccount)
-            try await updatePublishedState()
-            logger.log(level: .info, tag: tag, message: "Update account successful for accountId=\(updatedAccount.accountId)")
-            return localAccount
-        } catch {
-            if HTTPError.isNetworkError(error) {
-                localAccount.update(from: updatedAccount.toAccountDTO())
-                localAccount.isSynced = false
-                try await updateAccountClearingTokens(updatedAccount)
-                try await updatePublishedState()
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Update account saved offline for accountId=\(updatedAccount.accountId), offline=true, reason=network_error"
-                )
-                return updatedAccount
-            }
-            logger.log(
-                level: .error,
-                tag: tag,
-                message: "Update account failed for accountId=\(updatedAccount.accountId): \(error.localizedDescription)"
-            )
-            throw error
-        }
     }
 
     @discardableResult
@@ -727,10 +705,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
     }
 
-    func clearOfflineData(for _: Account) async throws {
-        throw AccountError.notImplemented
-    }
-
     /// Deletes all accounts locally, logging out each account first.
     /// Logs out non-active accounts first, then the active account last to prevent
     /// premature navigation to the landing screen.
@@ -859,7 +833,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                     height: height,
                     activityLevel: activityLevel
                 )
-                try await updateProfile(profile)
+                _ = try await updateProfile(profile)
             }
 
             // Handle Body Composition updates
