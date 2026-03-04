@@ -30,6 +30,11 @@ Within a method group, keep this order:
 - Track call counts and captured inputs for assertions.
 - Keep reusable mocks in `meAppTests/Support/Mocks/`.
 
+## Isolation Rules
+- Keep tests deterministic and independent.
+- Prefer mock dependencies over real singletons for unit tests.
+- Reset shared DI state between tests.
+
 ## DI and Isolation Pattern
 When tests depend on global DI (`DependencyContainer`):
 - Reset container per test setup.
@@ -60,6 +65,11 @@ Rules:
 - Mark UI/store test suites `@MainActor`.
 - For async state transitions, wait deterministically (`waitUntil`) rather than sleeping.
 - If tests use shared global mutable state + async callbacks, prefer `@Suite(.serialized)`.
+
+## Assertions Rule
+Each test should assert:
+- Primary result (returned value / thrown error)
+- At least one side effect (repo save/update, API call count, local state change)
 
 ## String Assertion Rule
 For toast/error/alert assertions:
@@ -140,12 +150,97 @@ xcodebuild test \
 4. Inspect changed files
 5. Confirm per-layer minimum coverage is met
 
+## Automated Coverage Export (Share-Friendly)
+Use `iOS/scripts/run_tests_with_coverage.sh` to run tests and generate shareable coverage reports.
+Full flow and troubleshooting: `docs/COVERAGE_REPORTING.md`.
+
+### Prerequisites
+Check Python 3 is available:
+```bash
+python3 --version
+```
+
+If missing:
+```bash
+brew install python
+```
+
+### Command 1 (interactive)
+From repo root (`meApp-1/`):
+```bash
+CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
+```
+
+Prompts for scheme and connected device, then runs tests and exports `.md`, `.csv`, and `.html` reports.
+
+### Command 2 (direct, no prompts)
+```bash
+SCHEME="meAppTests 1" DEVICE_ID=<device-udid> CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
+```
+
+Use `meAppTests 1` if `meAppTests` fails with module dependency errors.
+
+### Configuration Default
+- Use `Dev` for all regular coverage runs (faster, stable for iteration).
+- Override with `Production` only when release-like verification is needed:
+```bash
+SCHEME="meAppTests" DEVICE_ID=<device-udid> CONFIGURATION=Production ./iOS/scripts/run_tests_with_coverage.sh
+```
+
+### Outputs
+- Unit-test schemes (`meAppTests...`): `iOS/meAppTests/Reports/coverage-report.{md,csv,html}`
+- UI-test schemes (`meAppUITests...`): `iOS/meAppUITests/Reports/coverage-report.{md,csv,html}`
+
+Reports are overwritten on every run.
+
+## How Coverage Numbers Work
+- `Executable Lines`: source lines that can actually run.
+- `Covered Lines`: executable lines hit by tests.
+- `Coverage %`: `Covered Lines / Executable Lines * 100`.
+
+Example report row:
+- `meApp/Theme/Enums/CustomTextStyle.swift | 30.00 | 30 | 100.00%`
+- Interpretation: 30 out of 30 executable lines were exercised by tests.
+
+Example:
+```swift
+// Calculator.swift
+struct Calculator {
+    func add(_ a: Int, _ b: Int) -> Int { a + b }
+    func divide(_ a: Int, _ b: Int) -> Int? {
+        guard b != 0 else { return nil }
+        return a / b
+    }
+}
+```
+
+```swift
+// CalculatorTests.swift
+import XCTest
+@testable import YourApp
+
+final class CalculatorTests: XCTestCase {
+    func testAdd() {
+        let sut = Calculator()
+        XCTAssertEqual(sut.add(2, 3), 5)
+    }
+
+    func testDivideByZero() {
+        let sut = Calculator()
+        XCTAssertNil(sut.divide(4, 0))
+    }
+}
+```
+
+With only these two tests, the non-zero divide path is not hit, so coverage is less than 100%. Adding a test for `divide(4, 2)` covers that remaining executable path.
+
 ## Coverage Practices
+- Official coverage metric is app-only (`meApp/**/*.swift`). Third-party package/framework targets are excluded.
 - Add tests for success and failure branches.
 - Prioritize branch-heavy methods.
 - Cover guard/early-return paths.
-- Cover offline/network fallback paths separately.
-- Add regression tests for fixed bugs.
+- Cover offline/network fallback paths separately from generic failures.
+- Add regression tests for past bugs.
 
 ## PR Testing Checklist
 - [ ] Added/updated tests for changed logic
