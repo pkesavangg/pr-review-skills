@@ -69,6 +69,34 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
 
+    /// Initialize the data manager (sets up bindings and prepares for data loading)
+    func initializeDataManager() async throws {
+        try await loadInitialData()
+    }
+
+    /// Loads the latest entry data and updates internal state
+    /// - Returns: The latest entry if available, along with its weight
+    func loadLatestEntryData() async throws -> (entry: Entry?, weight: Int?) {
+        do {
+            guard let latestEntry = try await getLatestEntry() else {
+                return (nil, nil)
+            }
+
+            // Extract relationship data immediately after fetch, before any further await
+            let weight = latestEntry.scaleEntry?.weight
+
+            // Update latest weight stored if available
+            if let weight = weight {
+                state.latestWeightStored = weight
+            }
+
+            return (latestEntry, weight)
+        } catch {
+            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to load latest entry data: \(error)")
+            throw error
+        }
+    }
+
     // MARK: - Data Retrieval
 
     /// Returns pre-sorted operations for the given time period.
