@@ -12,7 +12,7 @@ import SwiftUI
 // MARK: - DisplayMetricsViewModel
 @MainActor
 final class DisplayMetricsViewModel: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var logger: LoggerServiceProtocol

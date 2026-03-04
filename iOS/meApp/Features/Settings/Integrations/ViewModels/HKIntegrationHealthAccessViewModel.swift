@@ -9,7 +9,7 @@ import SwiftUI
 
 @MainActor
 class HKIntegrationHealthAccessViewModel: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     let alertLang = AlertStrings.HKExitAlert.self
     
     func showHelpModal() {

@@ -22,14 +22,48 @@ final class ContentViewModel: ObservableObject {
     @Injector var logger: LoggerServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var accountFlagService: AccountFlagServiceProtocol
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
     private let tag = "ContentViewModel"
 
-    init() {
-        accountService.activeAccountPublisher
+    init(
+        accountService: AccountServiceProtocol? = nil,
+        scaleService: ScaleServiceProtocol? = nil,
+        feedService: FeedServiceProtocol? = nil,
+        entryService: EntryServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        bluetoothService: BluetoothServiceProtocol? = nil,
+        accountFlagService: AccountFlagServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil
+    ) {
+        if let accountService {
+            self.accountService = accountService
+        }
+        if let scaleService {
+            self.scaleService = scaleService
+        }
+        if let feedService {
+            self.feedService = feedService
+        }
+        if let entryService {
+            self.entryService = entryService
+        }
+        if let logger {
+            self.logger = logger
+        }
+        if let bluetoothService {
+            self.bluetoothService = bluetoothService
+        }
+        if let accountFlagService {
+            self.accountFlagService = accountFlagService
+        }
+        if let notificationService {
+            self.notificationService = notificationService
+        }
+
+        self.accountService.activeAccountPublisher
         // Treat re-logins of the *same* account as a new value so that the
         // loading flow gets a chance to run again. Comparing both the
         // accountId *and* lastActiveTime ensures that we still suppress
@@ -51,7 +85,7 @@ final class ContentViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        entryService.entrySaved
+        self.entryService.entrySaved
             .sink { [weak self] _ in
                 guard let self else { return }
                 Task {
@@ -85,29 +119,7 @@ final class ContentViewModel: ObservableObject {
                         message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache."
                     )
                 }
-
-                // Capture dependencies to use off the main actor
-                let entryService = self.entryService
-                let feedService = self.feedService
-                let bluetoothService = self.bluetoothService
-
-                // Migration runs before sync so opStack entries are available for first sync.
-                await entryService.migrateFromSQLiteIfNeeded()
-                await entryService.syncAllEntriesWithRemote()
-                await entryService.loadDashboardData()
-                await feedService.fetchFeedItems()
-                let entries = (try? await entryService.getAllEntries()) ?? []
-
-                // UI-affecting calls back on main actor
-                self.entries = entries
-                logger.log(level: .info, tag: tag, message: "Initialization loaded entries. count=\(entries.count)")
-                bluetoothService.initialize()
-                feedService.checkAndTriggerFeedModal()
-
-                // Sync scales with remote server to ensure all previously saved scales are loaded
-                await scaleService.syncAllScalesWithRemote()
-
-                await self.checkAccountFlagsAfterLogin()
+                await loadData()
             }
 
             let afterUpdate = await checkLoginStatus()
@@ -148,6 +160,8 @@ final class ContentViewModel: ObservableObject {
     private func loadData() async {
         // swiftlint:disable:next unused_optional_binding
         guard let _ = currentAccount else { return }
+        // Migration runs before sync so opStack entries are available for first sync.
+        await entryService.migrateFromSQLiteIfNeeded()
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData()
         bluetoothService.initialize()
@@ -163,6 +177,7 @@ final class ContentViewModel: ObservableObject {
         // Sync scales with remote server to ensure all previously saved scales are loaded
         await scaleService.syncAllScalesWithRemote()
 
+        logger.log(level: .info, tag: tag, message: "Initialization loaded entries. count=\(entries.count)")
         await checkAccountFlagsAfterLogin()
     }
 

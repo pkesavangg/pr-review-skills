@@ -13,6 +13,7 @@ protocol PermissionsServiceProtocol: AnyObject {
     var permissions: [GGPermissionType: GGPermissionState]? { get }
     var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> { get }
     var requiredCategories: Set<PermissionCategory> { get }
+    var requiredCategoriesPublisher: AnyPublisher<Set<PermissionCategory>, Never> { get }
 
     // MARK: - Mutation
     /// Updates the cached permission map with the latest values from the SDK.

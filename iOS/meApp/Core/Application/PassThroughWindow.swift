@@ -12,7 +12,7 @@ import SwiftUI
 /// A custom UIWindow that conditionally allows touch events to pass through
 /// based on whether a modal is currently being presented.
 class PassThroughWindow: UIWindow {
-    @Injector var notificationHelperService: NotificationHelperService
+    @Injector var notificationHelperService: NotificationHelperServiceProtocol
     
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         // Get view from superclass

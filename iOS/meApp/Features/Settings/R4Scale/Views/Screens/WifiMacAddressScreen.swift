@@ -12,7 +12,7 @@ import UIKit
 @MainActor
 final class WifiMacAddressViewModel: ObservableObject {
     @Published var macAddress: String
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     
     init(macAddress: String) {
         self.macAddress = macAddress
