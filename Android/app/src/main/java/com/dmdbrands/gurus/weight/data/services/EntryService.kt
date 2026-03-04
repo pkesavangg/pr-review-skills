@@ -212,11 +212,15 @@ constructor(
         val last30Processed = inputs.last30.map { it.process(unit, weightless) }
         val monthYearProcessed = inputs.monthYear.map { it.process(unit, weightless) }
         val account = accountRepository.getActiveAccount().first()
-        val startingWeightDisplay = processWeight(
-          account?.initialWeight ?: _cachedStartingWeightStored.value ?: 0.0,
-          unit,
-          weightless,
-        )
+        val startingWeightDisplay = account?.initialWeight
+          ?.takeUnless { it == 0.0 }
+          ?.let {
+          processWeight(it, unit, weightless)
+        }
+        val firstRecordedWeightDisplay = _cachedStartingWeightStored.value?.let { oldestEntryWeightLb ->
+          val converted = convertWeight(oldestEntryWeightLb, WeightUnit.LB, unit)
+          if (weightless?.isWeightlessOn == true) converted - weightless.weightlessWeight else converted
+        }
 
         val goal = weightSettings.goal?.copy(
           goalWeight = processWeight(
@@ -232,6 +236,7 @@ constructor(
           last30Days = last30Processed,
           months = monthYearProcessed,
           startingWeightDisplay = startingWeightDisplay,
+          firstRecordedWeightDisplay = firstRecordedWeightDisplay,
           currentStreak = _currentStreak.value,
           longestStreak = _longestStreak.value,
           totalCount = _totalCount.value,
@@ -615,11 +620,7 @@ constructor(
             )
           successfulOperations.add(syncedOperation)
 
-          // Try local integration for create operations
-          if (operation.entry.operationType == OperationType.CREATE.name) {
-            tryLocalIntegration(operation)
-          }
-        } catch (e: Exception) {
+          } catch (e: Exception) {
           // If failed, increment attempts and store for retry
           val failedOperation =
             operation.updateEntry(
@@ -639,8 +640,14 @@ constructor(
           entryRepository,
           failedOperations,
           userHasOperations = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
+      }
+
+      // Try local integration for create operations
+      newEntries.forEach { operation ->
+        if (operation.entry.operationType == OperationType.CREATE.name) {
+          tryLocalIntegration(operation)
+        }
       }
 
       // 4. Handle goal alerts
@@ -674,7 +681,6 @@ constructor(
           successfulOperations,
           userHasOperations = operationCount > 0,
           arePlaceholders = true,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
@@ -683,20 +689,18 @@ constructor(
         EntryServiceHelper.executeOperations(
           entryRepository,
           operationsFromApi,
-          tryLocalIntegration = { operation -> tryLocalIntegration(operation) },
         )
       }
 
-      // 7. Update last updated timestamp and kick off refresh; clear isUpdating when refresh (which includes updateProgressCache) finishes
+      // 7. API sync is done: clear loader now. Then refresh caches in background.
+      // refreshEntryData() never returns (it uses Flow.collect {} which runs indefinitely),
+      // so we must clear _isUpdating here, not in a finally after refreshEntryData().
       _lastUpdated.value = System.currentTimeMillis()
-      val id = accountId!!
+
       repositoryScope.launch {
-        try {
-          refreshEntryData()
-        } finally {
-          _isUpdating.value = false
-        }
+        refreshEntryData()
       }
+        _isUpdating.value = false
 
       // 8. Handle goal alerts (similar to TypeScript operation.service.ts)
       // Use lastValidOperation directly to avoid race condition with _latestEntry StateFlow
@@ -716,7 +720,6 @@ constructor(
       AppLog.e("EntryService", "Error in syncOperations", e)
       _isUpdating.value = false
     }
-    // Normal path: _isUpdating is cleared in the launch above when updateProgressCache + refreshEntryData finish
   }
 
   private suspend fun updateLatestEntry(accountId: String) {
@@ -775,7 +778,8 @@ constructor(
     last7Days: List<Entry>,
     last30Days: List<Entry>,
     months: List<HistoryMonth>,
-    startingWeightDisplay: Double,
+    startingWeightDisplay: Double?,
+    firstRecordedWeightDisplay: Double?,
     currentStreak: Int,
     longestStreak: Int,
     totalCount: Int,
@@ -798,8 +802,15 @@ constructor(
     if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
       month = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
     }
-    if (latestEntry != null && latestEntry is ScaleEntry) {
-      total = latestEntry.scale.scaleEntry.weight.toDouble() - startingWeightDisplay
+    // For total milestone, prefer the actual first recorded history baseline.
+    // This avoids stale/mis-scaled goal starting weights producing incorrect totals.
+    val totalBaselineWeight = firstRecordedWeightDisplay ?: startingWeightDisplay
+    if (latestEntry != null && latestEntry is ScaleEntry && totalBaselineWeight != null) {
+      total = latestEntry.scale.scaleEntry.weight.toDouble() - totalBaselineWeight
+      AppLog.d(
+        "EntryService",
+        "Total milestone calc -> latest=${latestEntry.scale.scaleEntry.weight}, starting=$startingWeightDisplay, firstRecorded=$firstRecordedWeightDisplay, baseline=$totalBaselineWeight, total=$total",
+      )
     }
     val thirtyDaysAgoDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -30) }
     if (initYear != null && initYear.entryTimestamp != null) {
@@ -834,7 +845,7 @@ constructor(
       currentStreak = currentStreak,
       longestStreak = longestStreak,
       count = totalCount,
-      initWt = startingWeightDisplay,
+      initWt = totalBaselineWeight ?: 0.0,
       week = week,
       month = month,
       year = year,
@@ -1075,22 +1086,15 @@ internal object EntryServiceHelper {
    * Executes a list of operations received from the server.
    * @param entryRepository The entry repository.
    * @param operations The list of operations to execute.
-   * @param tryLocalIntegration Optional suspend function to call for local integration (Health Connect).
    */
   suspend fun executeOperations(
     entryRepository: IEntryRepository,
     operations: List<Entry>,
-    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
     try {
       val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
       entryRepository.insert(sortedOperations)
-
-      // Try local integration for create operations
-      for (operation in sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }) {
-        tryLocalIntegration?.invoke(operation)
-      }
     } catch (e: Exception) {
       AppLog.e("EntryService", "Error executing operations", e)
     }
@@ -1109,7 +1113,6 @@ internal object EntryServiceHelper {
     operations: List<Entry>,
     userHasOperations: Boolean = true,
     arePlaceholders: Boolean = false,
-    tryLocalIntegration: (suspend (Entry) -> Unit)? = null,
   ) {
     if (operations.isEmpty()) return
 
@@ -1139,9 +1142,6 @@ internal object EntryServiceHelper {
           // Insert new entry
           entryRepository.insert(operation)
         }
-
-        // Try local integration for create operations
-        tryLocalIntegration?.invoke(operation)
       }
 
       // Handle delete operations

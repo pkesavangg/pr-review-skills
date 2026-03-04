@@ -149,6 +149,9 @@ class AccountsStore: ObservableObject {
 
         Task {
             notificationService.showLoader(LoaderModel(text: "Switching account..."))
+            defer {
+                notificationService.dismissLoader()
+            }
             do {
                 try await accountService.switchAccount(to: account)
                 logger.log(level: .info, tag: tag, message: "Switched active account to \(accountId)")
@@ -156,13 +159,12 @@ class AccountsStore: ObservableObject {
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to switch active account", data: error.localizedDescription)
                 switch error {
-                case HTTPError.noInternet:
+                case HTTPError.noInternet, HTTPError.timeout:
                     notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
                 default:
                     notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
                 }
             }
-            notificationService.dismissLoader()
         }
     }
 

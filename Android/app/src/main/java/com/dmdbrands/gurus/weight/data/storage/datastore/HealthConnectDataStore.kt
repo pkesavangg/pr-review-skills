@@ -44,16 +44,6 @@ class HealthConnectDataStore(context: Context) : BaseProtoDataStore<HealthConnec
     }
 
     /**
-     * Removes a HealthConnectData entry for the given accountId.
-     */
-    suspend fun removeHealthConnectData(accountId: String) {
-      //TODO: NO NEED THIS WE DON'T REMOVE THE LOCALLY SAVED DATA
-        updateData { current ->
-            current.toBuilder().removeData(accountId).build()
-        }
-    }
-
-    /**
      * Gets a HealthConnectData entry by its accountId.
      */
     suspend fun getHealthConnectData(accountId: String): HealthConnectData? = getData().dataMap[accountId]

@@ -228,8 +228,11 @@ final class UsersViewModel: ObservableObject {
                     let isBluetoothAuthorized = self.permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
                     let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
                     guard isBluetoothAuthorized && isBluetoothOn else {
-// swiftlint:disable:next line_length
-                        self.logger.log(level: .info, tag: self.tag, message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast.")
+                        self.logger.log(
+                            level: .info,
+                            tag: self.tag,
+                            message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast."
+                        )
                         self.notificationService.showToast(
                             ToastModel(
                                 title: ToastStrings.bluetoothRequiredTitle,

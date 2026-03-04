@@ -16,9 +16,6 @@ interface IHealthConnectRepository {
   /** Sets or updates an account data entry for the given accountId. */
   suspend fun addAccount(accountId: String, data: HealthConnectData)
 
-  /** Removes an account data entry for the given accountId. */
-  suspend fun removeAccount(accountId: String)
-
   /** Clears all account data entries. */
   suspend fun clearData()
 
@@ -54,13 +51,6 @@ interface IHealthConnectRepository {
 
   /** Clears the assignedTo field for an account. */
   suspend fun clearAssignedTo(accountId: String)
-
-  /**
-   * Checks if Health Connect is already assigned to another account.
-   * @return true if Health Connect can be used by current account
-   * @throws Exception if Health Connect is assigned to a different account
-   */
-  suspend fun checkIfHealthConnectIsAlreadyAssigned(): Boolean
 
   /** Updates the modal state for an account. */
   suspend fun updateModalState(accountId: String, state: Boolean)

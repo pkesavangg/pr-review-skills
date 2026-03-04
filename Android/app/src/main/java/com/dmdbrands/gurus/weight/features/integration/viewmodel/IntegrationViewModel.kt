@@ -23,7 +23,6 @@ import com.dmdbrands.gurus.weight.features.integration.strings.HealthConnectStri
 import com.dmdbrands.gurus.weight.features.integration.strings.IntegrationStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -276,7 +275,7 @@ class IntegrationViewModel @Inject constructor(
     viewModelScope.launch {
       try {
         handleIntent(IntegrationIntent.InitializeIntegrations)
-        integrationService.getIntegrationsWithStatus().collectLatest { integrations ->
+        integrationService.getIntegrationsWithStatus().collect { integrations ->
           val updatedIntegrations = integrations.map { integration ->
             if (integration.provider == IntegrationProvider.HealthConnect) {
               val currentAccount = currentAccount
@@ -285,6 +284,7 @@ class IntegrationViewModel @Inject constructor(
               }
               val isHealthConnectOn = healthConnectData?.integrated ?: false
               val isOutOfSync = healthConnectData?.outOfSync ?: false
+              AppLog.d("IntegrationViewModel", "isHealthConnectOn: $isHealthConnectOn, isOutOfSync: $isOutOfSync")
               integration.copy(
                 isConnected = isHealthConnectOn,
                 iconRes = if (isHealthConnectOn && isOutOfSync) AppIcons.Integrations.Health_Connect_Off else AppIcons.Integrations.Health_Connect_Logo,

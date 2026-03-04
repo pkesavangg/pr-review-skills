@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerFormatter
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SelectableDates
@@ -16,8 +17,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 import java.util.TimeZone
+
+private val datePickerFormatter = object : DatePickerFormatter {
+  override fun formatDate(dateMillis: Long?, locale: Locale, forContentDescription: Boolean): String? =
+    dateMillis?.let { SimpleDateFormat("EEE, MMM d", locale).format(java.util.Date(utcDateMillisToLocalMillis(it))) }
+  override fun formatMonthYear(monthMillis: Long?, locale: Locale): String? =
+    monthMillis?.let { SimpleDateFormat("MMMM yyyy", locale).format(java.util.Date(utcDateMillisToLocalMillis(it))) }
+}
 
 /**
  * Calculates the year range for the date picker based on min and max values.
@@ -166,7 +176,11 @@ fun DatePickerDialogContent(
     )
   ) {
     val pickerColor = DateTimeInputDefaults.getDatePickerColor()
-    DatePicker(state = datePickerState, colors = pickerColor)
+    DatePicker(
+      state = datePickerState,
+      colors = pickerColor,
+      dateFormatter = datePickerFormatter,
+    )
   }
 }
 

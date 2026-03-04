@@ -17,8 +17,13 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     @Injector private var accountService: AccountServiceProtocol
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var bluetoothService: BluetoothServiceProtocol
+    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var keychainService: KeychainServiceProtocol
     // API repository for push-notification related network calls
-    private let apiRepo: PushNotificationRepositoryAPIProtocol = PushNotificationRepositoryAPI()
+    private let apiRepo: PushNotificationRepositoryAPIProtocol
+    private let tokenProvider: PushTokenProviderProtocol
+    private let pushRegistrar: PushRemoteNotificationRegistrarProtocol
+    private let userNotificationCenter: PushUserNotificationCenterProtocol
 
     // MARK: - Properties
 
@@ -31,20 +36,62 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     private var isFetchingEntries: Bool = false
     private var processedMessageIds: [String] = []
     private var isProcessingNotification: Bool = false
-    private let logger = LoggerService.shared
+    private let logger: LoggerServiceProtocol
     private let tag = "PushNotificationService"
-    @Injector private var keychainService: KeychainServiceProtocol
-    private let kvStorage = KvStorageService.shared
+    private let kvStorage: KvStorageServiceProtocol
 
     // MARK: - Notification Settings
 
-    /// Private initializer to enforce singleton pattern
-    private override init() {
+    init(
+        apiRepo: PushNotificationRepositoryAPIProtocol? = nil,
+        entryService: EntryServiceProtocol? = nil,
+        permissionsService: PermissionsServiceProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil,
+        bluetoothService: BluetoothServiceProtocol? = nil,
+        scaleService: ScaleServiceProtocol? = nil,
+        keychainService: KeychainServiceProtocol? = nil,
+        kvStorage: KvStorageServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        tokenProvider: PushTokenProviderProtocol? = nil,
+        pushRegistrar: PushRemoteNotificationRegistrarProtocol? = nil,
+        userNotificationCenter: PushUserNotificationCenterProtocol? = nil,
+        setupNetworkMonitoring: Bool = true
+    ) {
+        self.apiRepo = apiRepo ?? PushNotificationRepositoryAPI()
+        self.tokenProvider = tokenProvider ?? FirebasePushTokenProvider()
+        self.pushRegistrar = pushRegistrar ?? UIApplicationPushRegistrar()
+        self.userNotificationCenter = userNotificationCenter ?? SystemPushUserNotificationCenter()
+        self.logger = logger ?? LoggerService.shared
+        self.kvStorage = kvStorage ?? KvStorageService.shared
         super.init()
+        if let entryService {
+            self.entryService = entryService
+        }
+        if let permissionsService {
+            self.permissionsService = permissionsService
+        }
+        if let accountService {
+            self.accountService = accountService
+        }
+        if let notificationService {
+            self.notificationService = notificationService
+        }
+        if let bluetoothService {
+            self.bluetoothService = bluetoothService
+        }
+        if let scaleService {
+            self.scaleService = scaleService
+        }
+        if let keychainService {
+            self.keychainService = keychainService
+        }
         loadStoredFCMToken()
         fetchDeviceDetails()
         setupTokenRefresh()
-        setupNetworkMonitoring()
+        if setupNetworkMonitoring {
+            self.setupNetworkMonitoring()
+        }
     }
 
     // MARK: - Notification Handling
@@ -96,7 +143,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
                         content: content,
                         trigger: nil
                     )
-                    try await UNUserNotificationCenter.current().add(request)
+                    try await userNotificationCenter.add(request)
                     logger.log(level: .info, tag: tag, message: "Displayed local notification banner from data-only push")
                 }
             } catch {
@@ -162,11 +209,11 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
         if permissionResult != .ENABLED {
             let accountId = accountService.activeAccount?.accountId ?? ""
             let viewedKey = KvStorageKeys.notificationOnlyAlertShownKey(for: accountId)
-            let hasViewedAlert = (KvStorageService.shared.getValue(forKey: viewedKey) as? Bool) ?? false
+            let hasViewedAlert = (kvStorage.getValue(forKey: viewedKey) as? Bool) ?? false
             if !hasViewedAlert || isFromScaleSetup {
                 logger.log(level: .info, tag: tag, message: "Requesting notification permission during push setup")
                 permissionResult = await permissionsService.handlePermission(.notification)
-                KvStorageService.shared.setValue(true, forKey: viewedKey)
+                kvStorage.setValue(true, forKey: viewedKey)
             }
         }
 
@@ -177,7 +224,8 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
             logger.log(
                 level: .error,
                 tag: tag,
-                message: "Push setup not registering for remote notifications. permissionResult=\(permissionResult.rawValue), authorized=\(isNotificationAuthorized())" // swiftlint:disable:this line_length
+                message: "Push setup not registering for remote notifications. "
+                    + "permissionResult=\(permissionResult.rawValue), authorized=\(isNotificationAuthorized())"
             )
         }
     }
@@ -241,31 +289,14 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     /// - Returns: The current FCM token as a string
     /// - Throws: Error if token retrieval fails
     private func getFCMToken() async throws -> String {
-        return try await withCheckedThrowingContinuation { continuation in
-            Messaging.messaging().token { token, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let token = token {
-                    Task { @MainActor [weak self] in
-                        self?.fcmToken = token
-                    }
-                    continuation.resume(returning: token)
-                } else {
-                    continuation.resume(
-                        throwing: NSError(
-                            domain: "PushNotificationService",
-                            code: -1,
-                            userInfo: [NSLocalizedDescriptionKey: "Failed to get FCM token"]
-                        )
-                    )
-                }
-            }
-        }
+        let token = try await tokenProvider.fetchFCMToken()
+        fcmToken = token
+        return token
     }
 
     private func registerForPushNotifications() async {
         logger.log(level: .info, tag: tag, message: "Registering for remote push notifications")
-        UIApplication.shared.registerForRemoteNotifications()
+        pushRegistrar.registerForRemoteNotifications()
         do {
             let token = try await getFCMToken()
             fcmToken = token
@@ -321,7 +352,7 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
 
     private func syncDevices() async {
         logger.log(level: .info, tag: tag, message: "Scale sync from push flow started")
-        await ScaleService.shared.syncAllScalesWithRemote()
+        await scaleService.syncAllScalesWithRemote()
         logger.log(level: .info, tag: tag, message: "Scale sync from push flow completed")
     }
 

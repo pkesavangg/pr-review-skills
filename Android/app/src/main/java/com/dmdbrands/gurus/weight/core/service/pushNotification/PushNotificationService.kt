@@ -18,8 +18,6 @@ import javax.inject.Inject
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.util.Log
-
 /**
  * Service for handling Firebase push notifications and forwarding them to the app UI.
  */
@@ -79,7 +77,7 @@ class PushNotificationService : FirebaseMessagingService() {
    * @param message The received remote message.
    */
   override fun onMessageReceived(message: RemoteMessage) {
-    Log.d(TAG, "Received message: $message")
+    AppLog.d(TAG, "Received message: ${message.messageId}")
     val intent =
       Intent(context, MainActivity::class.java).apply {
         setPackage(context.packageName)
