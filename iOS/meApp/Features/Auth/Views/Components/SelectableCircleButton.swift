@@ -31,7 +31,5 @@ struct SelectableCircleButton: View {
 }
 
 #Preview {
-    SelectableCircleButton(label: "Male", isSelected: true) {
-        print("Male button pressed")
-    }
+    SelectableCircleButton(label: "Male", isSelected: true) { }
 }

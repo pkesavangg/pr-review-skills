@@ -58,7 +58,9 @@ constructor(
 
   private fun loadHistory() {
     viewModelScope.launch {
+      AppLog.d(TAG, "Loading history data")
       entryService.monthlyAverage.collect { items ->
+        AppLog.d(TAG, "History data updated: ${items.size} month(s)")
         handleIntent(
           HistoryIntent.SetHistoryItems(
             items = items,
@@ -70,7 +72,13 @@ constructor(
 
   private fun resync() {
     viewModelScope.launch {
-      entryService.syncOperations()
+      try {
+        AppLog.d(TAG, "History resync started")
+        entryService.syncOperations()
+        AppLog.i(TAG, "History resync completed")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "History resync failed", e)
+      }
     }
   }
 

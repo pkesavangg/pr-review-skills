@@ -167,6 +167,15 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
             throw error
         }
     }
+
+    func triggerAppReview(isFromDebug: Bool) async {
+        await appReviewService.triggerAppReview(isFromDebug: isFromDebug)
+    }
+
+    func emitScaleReview(screen: String, sku: String, flagId: String) {
+        let event = ScaleReviewEvent(screen: screen, sku: sku, flagId: flagId)
+        scaleReviewSubject.send(event)
+    }
     
     // MARK: - Private Methods
     
@@ -185,7 +194,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
         }
         
         // Trigger the app review
-        await appReviewService.triggerAppReview(isFromDebug: false)
+        await triggerAppReview(isFromDebug: false)
         
         logger.log(
             level: .info,
@@ -214,13 +223,7 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
         let sku = flag.scaleSku ?? ""
         
         // Emit the scale review event
-        let event = ScaleReviewEvent(
-            screen: "scaleReview",
-            sku: sku,
-            flagId: flag.id
-        )
-        
-        scaleReviewSubject.send(event)
+        emitScaleReview(screen: "scaleReview", sku: sku, flagId: flag.id)
         
         logger.log(
             level: .info,

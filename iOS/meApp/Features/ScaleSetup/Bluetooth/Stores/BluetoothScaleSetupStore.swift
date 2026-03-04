@@ -6,9 +6,9 @@
 ///
 
 import Combine
-// swiftlint:disable type_body_length
 // This file intentionally aggregates Bluetooth scale setup orchestration logic.
-// Breaking it into smaller files would fragment the multi-step flow management.import Foundation
+// Breaking it into smaller files would fragment the multi-step flow management.
+import Foundation
 import SwiftUI
 
 /// Store responsible for orchestrating the Bluetooth (A3) scale-setup multi-step flow.
@@ -263,8 +263,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
     }
     
-// swiftlint:disable:next function_body_length
-    private func confirmPair() async {
+    private func confirmPair() async { // swiftlint:disable:this function_body_length
         guard let scale = discoveredScale, discoveryEvent != nil else {
             LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing discovery event or scale")
             setConnectionFailure()
@@ -309,13 +308,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
                         startEntrySyncing()
                     }
                     LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
-                    break
                 case .failure(let error):
                     setConnectionFailure()
                     LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
                 }
-// swiftlint:disable:next switch_case_alignment
-                default:
+            default:
                 setConnectionFailure()
                 LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
             }
@@ -456,8 +453,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
     }
     
-// swiftlint:disable:next function_body_length
-    private func saveDiscoveredScaleWithLoader(isExiting: Bool) async {
+    private func saveDiscoveredScaleWithLoader(isExiting: Bool) async { // swiftlint:disable:this function_body_length
         // Prevent duplicate saves
         if isScaleSaved {
             return
@@ -669,5 +665,4 @@ final class BluetoothScaleSetupStore: ObservableObject {
         // Reset saved flag
         isScaleSaved = false
     }
-}
-// swiftlint:enable type_body_length
+} // swiftlint:disable:this file_length

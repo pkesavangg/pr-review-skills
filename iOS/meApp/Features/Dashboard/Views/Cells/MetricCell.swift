@@ -14,7 +14,6 @@ import UIKit
 // Custom UICollectionViewCell that represents a metric item with drag-and-drop support
 // Features include wiggle animation and iOS home screen-like behavior
 // Uses MetricCardView SwiftUI component for UI with EditModeOverlay
-// swiftlint:disable:next type_body_length
 class MetricCell: UICollectionViewCell {
     private static let overlayButtonSize: CGFloat = 48
     
@@ -122,8 +121,7 @@ class MetricCell: UICollectionViewCell {
     //   - store: The dashboard store for formatting
     //   - isBeingDragged: Whether this cell is currently being dragged
     //   - parentView: The context in which this cell is displayed (dashboard vs R4ScaleSetup)
-// swiftlint:disable:next function_body_length
-    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, parentView: DashboardMetricsParentView, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
+    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, parentView: DashboardMetricsParentView, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) { // swiftlint:disable:this function_body_length
         representedItem = item
         currentStore = store
         currentDashboardType = dashboardType
@@ -289,8 +287,13 @@ class MetricCell: UICollectionViewCell {
             }
             // Reconfigure to show overlay after drag ends
             if let item = representedItem, let store = currentStore {
-// swiftlint:disable:next line_length
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: suppressOverlay,
+                    parentView: currentParentView
+                )
             }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
@@ -523,8 +526,13 @@ class MetricCell: UICollectionViewCell {
             }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
-// swiftlint:disable:next line_length
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: currentIsBeingDragged,
+                    parentView: currentParentView
+                )
             }
             guard let item = representedItem,
               let callback = onMetricLongPressCallback else { return }
@@ -533,13 +541,17 @@ class MetricCell: UICollectionViewCell {
                 selectCallback(item.label)
             }
             callback(item.label)
-// swiftlint:disable:next switch_case_alignment
-            case .ended, .cancelled:
+        case .ended, .cancelled:
             isLongPressed = false
             // Reconfigure to show overlay after long press ends
             if let item = representedItem, let store = currentStore {
-// swiftlint:disable:next line_length
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: currentIsBeingDragged,
+                    parentView: currentParentView
+                )
             }
         default:
             break

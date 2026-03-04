@@ -16,6 +16,10 @@ protocol HealthKitServiceProtocol {
     /// - Parameter entry: The entry to sync.
     func syncNewData(entry: Entry) async throws
 
+    /// Syncs new HealthKit data using a notification payload.
+    /// - Parameter notification: The entry notification to sync.
+    func syncNewData(notification: EntryNotification) async throws
+
     /// Opens the Apple Health application. Useful for directing the user to Health app settings.
     func openAppleHealth()
 
@@ -31,6 +35,11 @@ protocol HealthKitServiceProtocol {
     /// - Parameter entry: The entry to delete.
     /// - Returns: True if deletion was successful, false otherwise.
     func deleteEntry(entry: Entry) async throws -> Bool
+
+    /// Deletes a specific notification payload from HealthKit.
+    /// - Parameter notification: The entry notification to delete.
+    /// - Returns: True if deletion was successful, false otherwise.
+    func deleteEntry(notification: EntryNotification) async throws -> Bool
 
     /// Clears all HealthKit data for the current user (if integrated).
     func clearHealthKit() async throws

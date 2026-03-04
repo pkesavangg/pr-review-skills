@@ -5,13 +5,12 @@
 //  Created by Kesavan Panchabakesan on 16/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - ManualEntryScreen
 // A view for manual entry of body metrics and other related information.
 // This screen allows users to input various body metrics such as weight, BMI, body fat, and more.
-// swiftlint:disable:next type_body_length
 struct ManualEntryScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var entryStore = EntryStore()

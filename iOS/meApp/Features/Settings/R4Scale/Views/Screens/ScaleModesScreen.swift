@@ -53,11 +53,10 @@ struct ScaleModesScreen: View {
                         if isR4ScaleSetup {
                             Button(action: {
                                 viewModel.openHelp()
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                            }) {
+                            }, label: {
                                 Image(AppAssets.helpCircle)
                                     .accessibilityLabel("Help")
-                            }
+                            })
                         } else {
                             ButtonView(
                                 text: CommonStrings.save.uppercased(),
@@ -177,10 +176,10 @@ struct ScaleModesScreen: View {
 @MainActor
 final class ScaleModesViewModel: ObservableObject {
     @Injector var notificationService: NotificationHelperService
-    @Injector var scaleService: ScaleService
-    @Injector var bluetoothService: BluetoothService
-    @Injector var logger: LoggerService
-    @Injector var accountService: AccountService
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var accountService: AccountServiceProtocol
 
     // Store the device ID for safe refetching from MainActor context
     private let scaleId: PersistentIdentifier

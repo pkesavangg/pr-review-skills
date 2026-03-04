@@ -30,27 +30,24 @@ struct IntegrationListItemView: View {
                         } else {
                             onTap()
                         }
-                        
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                    }) {
+                    }, label: {
                         Image(item.type.iconAsset)
                             .resizable()
                             .frame(width: 42, height: 44)
-                    }
+                    })
                     .buttonStyle(.plain)
                     
                     // Badge tap: triggers onBadgeTap()
                     if item.isOutOfSync {
                         Button(action: {
                             onBadgeTap?()
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                        }) {
+                        }, label: {
                             AppIconView(
                                 icon: AppAssets.exclamationMark,
                                 size: IconSize(width: 20, height: 20)
                             )
                             .foregroundColor(theme.statusError)
-                        }
+                        })
                         .buttonStyle(.plain)
                         .offset(x: 12, y: -10)
                     }
@@ -88,12 +85,8 @@ struct IntegrationListItemView: View {
                     isSelected: true,
                     isOutOfSync: true
                 ),
-                onTap: {
-                    print("Row tapped")
-                },
-                onBadgeTap: {
-                    print("Badge tapped")
-                }
+                onTap: { },
+                onBadgeTap: { }
             )
             .listRowInsets()
             IntegrationListItemView(
@@ -101,9 +94,7 @@ struct IntegrationListItemView: View {
                     type: .appleHealth,
                     isSelected: true
                 ),
-                onTap: {
-                    print("Row tapped IntegrationListItemView")
-                },
+                onTap: { },
                 onBadgeTap: nil
             )
             .listRowInsets()

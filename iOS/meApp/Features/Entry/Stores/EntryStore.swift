@@ -3,14 +3,13 @@ import Foundation
 import SwiftUI
 
 @MainActor
-// swiftlint:disable:next type_body_length
 final class EntryStore: ObservableObject {
     // Dependencies
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
-    @Injector var scaleService: ScaleService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
 
     // Strings
     private let toastLang = ToastStrings.self
@@ -56,7 +55,7 @@ final class EntryStore: ObservableObject {
 
     // MARK: - Init
     init() {
-        scaleService.$scales
+        scaleService.scalesPublisher
             .map { $0.contains { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue } }
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowOtherBodyMetrics, on: self)
@@ -85,8 +84,7 @@ final class EntryStore: ObservableObject {
     }
 
     // Save entry with gating, no artificial sleeps, and minimal main-thread churn.
-// swiftlint:disable:next function_body_length
-    func saveEntry() async {
+    func saveEntry() async { // swiftlint:disable:this function_body_length
         guard !isSaving else { return }
         isSaving = true
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
@@ -278,7 +276,7 @@ final class EntryStore: ObservableObject {
 
     private func initializeObservers() {
         // Observe account changes directly to catch all updates
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
                 guard let self = self else { return }

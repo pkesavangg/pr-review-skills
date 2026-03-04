@@ -95,8 +95,13 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 newMetrics.append(existing)
             } else if let original = originalMetrics.first(where: { $0.label == label }) {
                 // Fallback to original placeholder item if not present
-// swiftlint:disable:next line_length
-                newMetrics.append(MetricItem(value: original.value, label: original.label, unit: original.unit, preLabel: original.preLabel, icon: original.icon))
+                newMetrics.append(MetricItem(
+                    value: original.value,
+                    label: original.label,
+                    unit: original.unit,
+                    preLabel: original.preLabel,
+                    icon: original.icon
+                ))
             }
         }
 
@@ -169,8 +174,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                     
                     // If API metrics differ from local, update from API (changes were saved)
                     if localApiMetrics != apiMetricArray {
-// swiftlint:disable:next line_length
-                        logger.log(level: .info, tag: "DashboardMetricsManager", message: "API metrics differ from local, updating from API after save")
+                        logger.log(
+                            level: .info,
+                            tag: "DashboardMetricsManager",
+                            message: "API metrics differ from local, updating from API after save"
+                        )
                         updateMetricsOrder(from: apiMetricArray)
                         return
                     }
@@ -317,8 +325,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
                 )
             }
         }
-// swiftlint:disable:next line_length
-        logger.log(level: .debug, tag: "DashboardMetricsManager", message: "Set placeholders for body metrics (excluding weight) due to non-exact point selection")
+        logger.log(
+            level: .debug,
+            tag: "DashboardMetricsManager",
+            message: "Set placeholders for body metrics (excluding weight) due to non-exact point selection"
+        )
     }
 // swiftlint:disable:next cyclomatic_complexity
     func getMetricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {

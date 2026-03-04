@@ -42,8 +42,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     func handleScrollStart() {
         state.scrollEndTimer?.invalidate()
         guard !state.isScrolling else { return }
-            state.isScrolling = true
-            state.clearSelection()
+        state.isScrolling = true
+        state.clearSelection()
     }
 
     @available(iOS 18.0, *)

@@ -7,7 +7,7 @@
 import Foundation
 
 class IAMScreenViewModel: ObservableObject {
-    @Injector var feedService: FeedService
+    @Injector var feedService: FeedServiceProtocol
     
     func refreshFeed() {
         Task {

@@ -16,7 +16,7 @@ struct AppRatingHelper {
 
         if #available(iOS 18.0, *) {
             AppStore.requestReview(in: scene)
-        } else if #available(iOS 14.0, *) {
+        } else {
             SKStoreReviewController.requestReview(in: scene)
         }
     }

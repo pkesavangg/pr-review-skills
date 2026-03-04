@@ -13,8 +13,8 @@ import SwiftUI
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
 class DashboardStore: ObservableObject {
-
     // MARK: - Dependencies
+
     @Injector private var notificationService: NotificationHelperService
     @Injector private var accountService: AccountService
     @Injector private var logger: LoggerService
@@ -26,9 +26,11 @@ class DashboardStore: ObservableObject {
     private let cacheManager: DashboardCacheManagerProtocol
 
     // MARK: - Centralized State
+
     @Published var state = DashboardState()
 
     // MARK: - Private Properties
+
     private var cancellables = Set<AnyCancellable>()
     private var lastUserScrollTime: Date?
     /// Previous account settings snapshot for diffing; used to avoid redundant streak refresh when only unit changes.
@@ -36,15 +38,18 @@ class DashboardStore: ObservableObject {
     private static let allProgressMetricsRemovedKey = "dashboard.allProgressMetricsRemoved"
 
     // MARK: - UI Update Batching (Performance Optimization)
+
     /// Prevents cascading UI updates by batching multiple state changes
     private var pendingUIUpdate = false
     private var uiUpdateDebounceTask: Task<Void, Never>?
-    
+
     // MARK: - Debounced Sync
+
     /// Debounce task to prevent excessive sync calls during drag operations or rapid metric toggles
     private var syncDebounceTask: Task<Void, Never>?
-    
+
     // MARK: - Initialization Tracking
+
     /// Tracks whether dashboard initialization has completed to prevent race conditions
     private var initializationTask: Task<Void, Never>?
     @Published private(set) var isInitialized: Bool = false
@@ -70,7 +75,9 @@ class DashboardStore: ObservableObject {
         pendingUIUpdate = false
         objectWillChange.send()
     }
+
     // MARK: - Edit Session Snapshot
+
     private var snapshotMetrics: [MetricItem] = []
     private var snapshotActiveMetricsCount: Int = 0
     private var snapshotStreakItems: [MetricItem] = []
@@ -83,9 +90,13 @@ class DashboardStore: ObservableObject {
     private var hasEditSnapshot: Bool = false
 
     // MARK: - Constants
+
     let lang = LoaderStrings.self
+    static let allowedNumericCharacters = CharacterSet(charactersIn: "0123456789.-")
+
     // MARK: - Managers (Business Logic)
-    public let metricsManager: DashboardMetricsManager
+
+    let metricsManager: DashboardMetricsManager
     let graphManager: DashboardGraphManager
     let goalManager: DashboardGoalManager
     public let streakManager: DashboardStreakManager
@@ -112,7 +123,8 @@ class DashboardStore: ObservableObject {
         if !state.ui.hasLoadedDashboardConfig {
             // Before loading, check if account has body metrics configured
             guard let dashboardMetrics = accountService.activeAccount?.dashboardSettings?.dashboardMetrics,
-                  !dashboardMetrics.isEmpty else {
+                  !dashboardMetrics.isEmpty
+            else {
                 return false
             }
             let metrics = dashboardMetrics.split(separator: ",").map(String.init)
@@ -125,9 +137,9 @@ class DashboardStore: ObservableObject {
 
     /// Whether body metrics skeleton should be shown
     var shouldShowBodyMetricsSkeleton: Bool {
-    shouldShowBodyMetrics &&
-    (!state.ui.hasLoadedDashboardConfig || !state.ui.hasLoadedMetricValues)
-}
+        shouldShowBodyMetrics &&
+            (!state.ui.hasLoadedDashboardConfig || !state.ui.hasLoadedMetricValues)
+    }
 
     /// Whether progress metrics skeleton should be shown
     var shouldShowProgressMetricsSkeleton: Bool {
@@ -172,6 +184,7 @@ class DashboardStore: ObservableObject {
     private var hasGoalOrStreaks: Bool {
         !streakItemsToShow.isEmpty || !state.ui.isGoalCardRemoved
     }
+
     // MARK: - Initialization
     init(
         formatter: DashboardFormatterProtocol? = nil,
@@ -200,7 +213,7 @@ class DashboardStore: ObservableObject {
         // Set up reactive bindings
         setupBindings()
         setupSubscriptions()
-        
+
         // Preemptively set flag to prevent empty state during initialization
         if !streakManager.state.streakItems.isEmpty {
             state.ui.hasLoadedProgressMetrics = true
@@ -215,7 +228,7 @@ class DashboardStore: ObservableObject {
                 state.ui.removedStreaks = []
             }
         }
-        
+
         // Initialize dashboard - track task to prevent concurrent initialization
         initializationTask = Task {
             await initializeDashboard()
@@ -263,6 +276,7 @@ class DashboardStore: ObservableObject {
     }
 
     // MARK: - Reactive Bindings
+
     private func setupBindings() {
         // Sync metrics manager state to centralized state
         metricsManager.$state
@@ -333,7 +347,6 @@ class DashboardStore: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-
     }
 
     private func setupSubscriptions() {
@@ -350,6 +363,7 @@ class DashboardStore: ObservableObject {
             .store(in: &cancellables)
 
         // MARK: - Consolidated Settings Subscription (Performance Optimization)
+
         // Single subscription replaces 4 separate ones to prevent cascading updates
         // Combines: weight unit, weightless mode, weightless weight, goal settings
         // Uses debounce to batch rapid changes into single update
@@ -429,14 +443,14 @@ class DashboardStore: ObservableObject {
 
     var streakItemsToShow: [MetricItem] {
         let allStreaks = streakManager.state.streakItems
-        
+
         guard !allStreaks.isEmpty else { return [] }
-        
+
         // Show all streaks before API loads to prevent empty state
-        if !state.ui.isEditMode && !state.ui.hasLoadedProgressMetrics {
+        if !state.ui.isEditMode, !state.ui.hasLoadedProgressMetrics {
             return allStreaks
         }
-        
+
         let nonRemoved = allStreaks.filter { !state.ui.removedStreaks.contains($0.label) }
         let removed = allStreaks.filter { state.ui.removedStreaks.contains($0.label) }
 
@@ -457,10 +471,10 @@ class DashboardStore: ObservableObject {
             streakManager.state.streakItems.allSatisfy { state.ui.removedStreaks.contains($0.label) }
 
         return metricsToShow.isEmpty &&
-               (!state.ui.isEditMode && state.ui.isGoalCardRemoved) &&
-               (!streakManager.shouldShowStreakGrid()) &&
-               allMetricsRemoved &&
-               allStreaksRemoved
+            (!state.ui.isEditMode && state.ui.isGoalCardRemoved) &&
+            (!streakManager.shouldShowStreakGrid()) &&
+            allMetricsRemoved &&
+            allStreaksRemoved
     }
 
     /// Checks if a goal is set for the active account (as resolved by the goal manager)
@@ -534,7 +548,8 @@ class DashboardStore: ObservableObject {
     var weightlessAnchorWeight: Double? {
         guard let weightlessSettings = accountService.activeAccount?.weightlessSettings,
               weightlessSettings.isWeightlessOn,
-              let weightlessWeight = weightlessSettings.weightlessWeight else {
+              let weightlessWeight = weightlessSettings.weightlessWeight
+        else {
             return nil
         }
         return goalManager.convertWeightToDisplay(Int(weightlessWeight))
@@ -618,9 +633,6 @@ class DashboardStore: ObservableObject {
         case .week:
             return labelForWeekGridlines()
         }
-
-        let lastScrollPosition = graphManager.state.xScrollPosition
-        return defaultRangeLabel(for: period, lastScrollPosition: lastScrollPosition)
     }
 
     /// Reinitialize dashboard state when the active account changes
@@ -650,6 +662,7 @@ class DashboardStore: ObservableObject {
     }
 
     // MARK: - Empty-state period labels
+
     private func emptyStatePeriodLabel(for period: TimePeriod, today: Date = Date()) -> String {
         return dateRangeManager.emptyStatePeriodLabel(for: period, today: today)
     }
@@ -760,11 +773,12 @@ class DashboardStore: ObservableObject {
             }
         }
         if let averageWeight = weightValues.isEmpty ? nil : weightValues.reduce(0, +) / Double(weightValues.count) {
-// swiftlint:disable:next line_length
-            logger.log(level: .debug, tag: "DashboardStore", message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)")
+            logger.log(
+                level: .debug,
+                tag: "DashboardStore",
+                message: "updateVisibleDataAfterScroll - Average weight of visible operations: \(averageWeight)"
+            )
         }
-    
-
     }
 
     // Delegate X-axis operations to GraphManager
@@ -782,12 +796,22 @@ class DashboardStore: ObservableObject {
             self.forceImmediateUIUpdate()
         }
     }
-
     // Delegate metric operations to MetricsManager
     func resetMetricsToLatestEntry() {
         Task {
             await metricsManager.resetMetricsToLatestEntry {
                 try await self.dataManager.getLatestEntry()
+            }
+        }
+    }
+    
+    /// Updates metric card values to display averages from the visible region
+    private func updateMetricsWithVisibleRegionAverage() {
+        let visibleOps = getOperationsForLabelDateRange()
+        Task {
+            await metricsManager.updateMetricsForVisibleAverage(visibleOperations: visibleOps)
+            await MainActor.run {
+                state.ui.hasLoadedMetricValues = true
             }
         }
     }
@@ -806,8 +830,8 @@ class DashboardStore: ObservableObject {
 
         // Refresh account data first to ensure we have latest dashboard settings
         // This ensures changes made during scale setup are reflected
-        try? await accountService.refreshAccount()
-        
+        _ = try? await accountService.refreshAccount()
+
         // Determine dashboard type based on account dashboardType
         let dashboardType = determineDashboardTypeFromAccount()
         state.metrics.dashboardType = dashboardType
@@ -886,7 +910,8 @@ class DashboardStore: ObservableObject {
     /// Determines dashboard type based on account dashboardType
     private func determineDashboardTypeFromAccount() -> DashboardType {
         guard let account = accountService.activeAccount,
-              let dashboardTypeString = account.dashboardSettings?.dashboardType else {
+              let dashboardTypeString = account.dashboardSettings?.dashboardType
+        else {
             return .dashboard12
         }
 
@@ -1084,13 +1109,13 @@ class DashboardStore: ObservableObject {
 
             // Don't mark all as removed on initial load (empty API before user config)
             let isInitialLoad = state.ui.streakGridOrder.isEmpty && state.ui.removedStreaks.isEmpty
-            
-            if progressMetrics.isEmpty && isInitialLoad {
+
+            if progressMetrics.isEmpty, isInitialLoad {
                 setupDefaultProgressMetricsOrder()
                 return
             }
-            
-            if (progressMetrics.isEmpty || shouldTreatAsAllRemoved) && !isInitialLoad {
+
+            if progressMetrics.isEmpty || shouldTreatAsAllRemoved, !isInitialLoad {
                 // All progress metrics are removed
                 state.ui.goalCardPosition = 0
                 state.ui.isGoalCardRemoved = true
@@ -1176,6 +1201,7 @@ class DashboardStore: ObservableObject {
         state.ui.streakGridOrder = defaultOrder
         state.ui.removedStreaks = []
     }
+
     /// Rebuild streak order after refresh by matching labels (IDs change each refresh)
     private func regenerateStreakGridOrderAfterRefresh(
         oldStreakItems: [MetricItem],
@@ -1186,33 +1212,33 @@ class DashboardStore: ObservableObject {
             setupDefaultProgressMetricsOrder()
             return
         }
-        
+
         // Maps for quick lookup
         let oldIdToLabel = Dictionary(
             oldStreakItems.map { ($0.id.uuidString, $0.label) }
         ) { first, _ in first }
-        
+
         let labelToNewId = Dictionary(
             newItems.map { ($0.label, $0.id.uuidString) }
         ) { first, _ in first }
-        
+
         // Restore order using labels
         var newOrder = oldOrder.compactMap {
             oldIdToLabel[$0].flatMap { labelToNewId[$0] }
         }
-        
+
         // Append any new items not already included
         let existingIds = Set(newOrder)
         newOrder.append(contentsOf:
             newItems
                 .map { $0.id.uuidString }
-                .filter { !existingIds.contains($0) }
-        )
-        
+                .filter { !existingIds.contains($0) })
+
         state.ui.streakGridOrder = newOrder
     }
 
     // MARK: - View Helpers moved from DashboardScreen
+
     func reloadDashboardConfiguration(fullRefresh: Bool = false, updateMetrics: Bool = false) async {
         await syncCoordinator.reloadDashboardConfiguration(
             fullRefresh: fullRefresh,
@@ -1256,21 +1282,21 @@ class DashboardStore: ObservableObject {
         let safeActiveCount = min(activeCount, currentMetrics.count)
 
         // Mark metrics beyond the active count as removed
-        for i in safeActiveCount..<currentMetrics.count {
+        for i in safeActiveCount ..< currentMetrics.count {
             state.ui.removedMetrics.insert(currentMetrics[i].label)
         }
     }
-    
+
     /// Debounces sync calls to prevent excessive UI updates during drag operations or rapid metric toggles
     func debouncedSyncRemovalState() {
         // Cancel any existing debounce task
         syncDebounceTask?.cancel()
-        
+
         // Create new debounced task
         syncDebounceTask = Task { @MainActor [weak self] in
             // Wait for 150ms to debounce rapid changes
             try? await Task.sleep(nanoseconds: 150_000_000)
-            
+
             // Only sync if task wasn't cancelled
             if !Task.isCancelled {
                 self?.syncRemovalStateFromMetricsManager()
@@ -1301,36 +1327,37 @@ class DashboardStore: ObservableObject {
         guard safeActiveCount < currentStreakItems.count else {
             return
         }
-        for i in safeActiveCount..<currentStreakItems.count {
+        for i in safeActiveCount ..< currentStreakItems.count {
             state.ui.removedStreaks.insert(currentStreakItems[i].label)
         }
     }
 
     // Delegate entry lifecycle to DataManager
     // MARK: - Entry Lifecycle Management
-    internal func onEntryAdded(_ notification: EntryNotification) {
+
+    func onEntryAdded(_: EntryNotification) {
         handleEntryLifecycleChange()
     }
 
-    internal func onEntryUpdated(_ notification: EntryNotification) {
+    func onEntryUpdated(_: EntryNotification) {
         handleEntryLifecycleChange()
     }
 
-    internal func onEntryDeleted(_ notification: EntryNotification) {
+    func onEntryDeleted(_: EntryNotification) {
         handleEntryLifecycleChange()
     }
 
     private func handleEntryLifecycleChange() {
         // EntryService handles incremental summaries; update dashboard state/UI consistently
-        self.loadLatestEntryData()
-        self.loadGoalCardData()
-        
+        loadLatestEntryData()
+        loadGoalCardData()
+
         Task {
             do {
                 // Save the old streak items to preserve order by label
                 let oldStreakItems = self.streakManager.state.streakItems
                 let oldOrder = self.state.ui.streakGridOrder
-                
+
                 try await self.streakManager.refreshStreakData()
 
                 await MainActor.run {
@@ -1338,7 +1365,7 @@ class DashboardStore: ObservableObject {
                         oldStreakItems: oldStreakItems,
                         oldOrder: oldOrder
                     )
-                    
+
                     // Set flags only after successful refresh to ensure UI state matches actual data
                     self.state.ui.hasLoadedProgressMetrics = true
                     self.state.ui.hasLoadedDashboardConfig = true
@@ -1351,36 +1378,36 @@ class DashboardStore: ObservableObject {
             // Clear all caches to force recalculation (including continuousOperations)
             self.invalidateContinuousOperationsCache()
 
-            // Force full recomputation of visible operations, Y-axis, and weight display
-            self.forceCompleteRecalculationAfterScrollPosition()
+        // Force full recomputation of visible operations, Y-axis, and weight display
+        forceCompleteRecalculationAfterScrollPosition()
 
-            // Check if selected point still exists after deletion
-            // If the selected point was deleted, clear selection and update metrics
-            // If it still exists, refresh it with the updated summary data
-            Task { @MainActor in
-                if let selectedPoint = self.state.graph.selectedPoint {
-                    let calendar = Calendar.current
-                    let updatedPoint: BathScaleWeightSummary? = {
-                        switch self.state.graph.selectedPeriod {
-                        case .week, .month:
-                            return self.continuousOperations.first { calendar.isDate($0.date, inSameDayAs: selectedPoint.date) }
-                        case .year, .total:
-                            return self.continuousOperations.first { calendar.isDate($0.date, equalTo: selectedPoint.date, toGranularity: .month) }
-                        }
-                    }()
-
-                    if let updatedPoint = updatedPoint {
-                        // Selected point still exists but may have updated values - refresh it
-                        self.graphManager.updateSelectedPoint(updatedPoint)
-                    } else {
-                        // Selected point was deleted - clear selection
-                        await self.graphManager.handleChartSelection(at: nil)
+        // Check if selected point still exists after deletion
+        // If the selected point was deleted, clear selection and update metrics
+        // If it still exists, refresh it with the updated summary data
+        Task { @MainActor in
+            if let selectedPoint = self.state.graph.selectedPoint {
+                let calendar = Calendar.current
+                let updatedPoint: BathScaleWeightSummary? = {
+                    switch self.state.graph.selectedPeriod {
+                    case .week, .month:
+                        return self.continuousOperations.first { calendar.isDate($0.date, inSameDayAs: selectedPoint.date) }
+                    case .year, .total:
+                        return self.continuousOperations.first { calendar.isDate($0.date, equalTo: selectedPoint.date, toGranularity: .month) }
                     }
-                }
+                }()
 
-                // Update metrics for current view (either selected point or averages)
-                self.updateMetricsForCurrentView()
+                if let updatedPoint = updatedPoint {
+                    // Selected point still exists but may have updated values - refresh it
+                    self.graphManager.updateSelectedPoint(updatedPoint)
+                } else {
+                    // Selected point was deleted - clear selection
+                    await self.graphManager.handleChartSelection(at: nil)
+                }
             }
+
+            // Update metrics for current view (either selected point or averages)
+            self.updateMetricsForCurrentView()
+        }
 
         // Also schedule a follow-up domain recalc after brief propagation
         Task { @MainActor in
@@ -1583,7 +1610,6 @@ class DashboardStore: ObservableObject {
         UIView.clearWiggleIntervalCache()
 
         resetGridLayout()
-    
     }
 
     func selectMetric(_ label: String) {
@@ -1616,7 +1642,6 @@ class DashboardStore: ObservableObject {
         }
 
         graphManager.ensureLatestEntriesVisible(from: continuousOperations)
-
     }
 
     /// - Parameter shouldRefreshStreak: When false, skips streak refresh (e.g. when only unit changed; handleUnitChange handles that).
@@ -1655,8 +1680,6 @@ class DashboardStore: ObservableObject {
 
         // Force UI update to reflect the new metric type
         scheduleUIUpdate()
-
-    
     }
 
     /// Handles unit changes by refreshing streak data and goal data
@@ -1760,75 +1783,76 @@ class DashboardStore: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             do {
-                    try await self.metricsManager.resetMetricsToDefaults()
-                    try await self.streakManager.resetStreakData()
+                try await self.metricsManager.resetMetricsToDefaults()
+                try await self.streakManager.resetStreakData()
 
-                    // Reset metrics to their original body metrics order
-                    self.metricsManager.resetOrderToDefault()
+                // Reset metrics to their original body metrics order
+                self.metricsManager.resetOrderToDefault()
 
-                    try await self.streakManager.refreshStreakData()
-                    self.syncRemovalStateFromMetricsManager()
-                    self.syncRemovalStateFromStreakManager()
+                try await self.streakManager.refreshStreakData()
+                self.syncRemovalStateFromMetricsManager()
+                self.syncRemovalStateFromStreakManager()
 
-                    // Reset progress metrics to default order: goal, currentStreak, longestStreak, weeklyChange, monthlyChange, yearlyChange, totalChange
-                    // Must be called AFTER refreshStreakData() to ensure streak items are available
-                    await self.resetProgressMetricsToDefaults()
+                // Reset progress metrics to default order: goal, currentStreak, longestStreak, weeklyChange, monthlyChange, yearlyChange, totalChange
+                // Must be called AFTER refreshStreakData() to ensure streak items are available
+                await self.resetProgressMetricsToDefaults()
 
-                    // Save the reset configuration to API
-                    // Save dashboard metrics first, then progress metrics
-                    try await self.metricsManager.saveMetricsToAPI()
-                    try await self.saveProgressMetricsToAPI()
+                // Save the reset configuration to API
+                // Save dashboard metrics first, then progress metrics
+                try await self.metricsManager.saveMetricsToAPI()
+                try await self.saveProgressMetricsToAPI()
 
-                    // Now manually sync manager states to UI state since we suppressed updates
-                    self.state.metrics = self.metricsManager.state
-                    self.state.streak = self.streakManager.state
+                // Now manually sync manager states to UI state since we suppressed updates
+                self.state.metrics = self.metricsManager.state
+                self.state.streak = self.streakManager.state
 
-                    // Now batch all UI state changes together to prevent flickering
-                    // Clear the reset flag as part of the batched update
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        self.state.ui.isLoading = false
-                        self.state.ui.loaderOverride = nil
-                        self.state.ui.isGoalCardRemoved = false
-                        self.state.ui.selectedMetricLabel = nil
-                        self.state.graph.clearSelection()
-                        self.state.ui.isEditMode = false
-                        self.state.ui.resetDragState()
-                        self.state.ui.isResettingDashboard = false
-                        self.hasEditSnapshot = false
-                    }
+                // Batch UI state changes together to prevent flickering
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.state.ui.isLoading = false
+                    self.state.ui.loaderOverride = nil
+                    self.state.ui.isGoalCardRemoved = false
+                    self.state.ui.selectedMetricLabel = nil
+                    self.state.graph.clearSelection()
+                    self.state.ui.isEditMode = false
+                    self.state.ui.resetDragState()
+                    self.state.ui.isResettingDashboard = false
+                    self.hasEditSnapshot = false
+                }
 
-                    self.notificationService.dismissLoader()
-                    self.resetMetricsToLatestEntry()
+                self.notificationService.dismissLoader()
+                self.updateMetricsWithVisibleRegionAverage()
+                self.resetMetricsToLatestEntry()
 
-                    // Mark metric values as loaded since reset restores defaults
-                    self.state.ui.hasLoadedMetricValues = true
+                // Mark metric values as loaded since reset restores defaults
+                self.state.ui.hasLoadedMetricValues = true
 
-                    // Single UI update after all state changes are complete
-                    self.forceImmediateUIUpdate()
+                // Single UI update after all state changes are complete
+                self.forceImmediateUIUpdate()
             } catch {
-                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
+                self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
 
-                    // Manually sync manager states even on error
-                    self.state.metrics = self.metricsManager.state
-                    self.state.streak = self.streakManager.state
+                // Manually sync manager states even on error
+                self.state.metrics = self.metricsManager.state
+                self.state.streak = self.streakManager.state
 
-                    // Clear the reset flag as part of the batched update
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        self.state.ui.isLoading = false
-                        self.state.ui.loaderOverride = nil
-                        self.state.ui.isGoalCardRemoved = false
-                        self.state.ui.selectedMetricLabel = nil
-                        self.state.graph.clearSelection()
-                        self.state.ui.isEditMode = false
-                        self.state.ui.resetDragState()
-                        self.state.ui.isResettingDashboard = false
-                        self.hasEditSnapshot = false
-                    }
-                    self.notificationService.dismissLoader()
-                    self.resetMetricsToLatestEntry()
-                    // Mark metric values as loaded on error recovery too
-                    self.state.ui.hasLoadedMetricValues = true
-                    self.forceImmediateUIUpdate()
+                // Clear the reset flag as part of the batched update
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.state.ui.isLoading = false
+                    self.state.ui.loaderOverride = nil
+                    self.state.ui.isGoalCardRemoved = false
+                    self.state.ui.selectedMetricLabel = nil
+                    self.state.graph.clearSelection()
+                    self.state.ui.isEditMode = false
+                    self.state.ui.resetDragState()
+                    self.state.ui.isResettingDashboard = false
+                    self.hasEditSnapshot = false
+                }
+                self.notificationService.dismissLoader()
+                self.updateMetricsWithVisibleRegionAverage()
+                self.resetMetricsToLatestEntry()
+                // Mark metric values as loaded on error recovery too
+                self.state.ui.hasLoadedMetricValues = true
+                self.forceImmediateUIUpdate()
             }
         }
     }
@@ -1893,7 +1917,7 @@ class DashboardStore: ObservableObject {
         // Delegate period update to graph manager (this will clear chart data cache)
         graphManager.updateSelectedPeriod(period)
 
-        self.forceCompleteRecalculationAfterScrollPosition()
+        forceCompleteRecalculationAfterScrollPosition()
 
         state.ui.hasInitializedChart = true
 
@@ -1959,7 +1983,7 @@ class DashboardStore: ObservableObject {
         }
 
         // Fallback domain if no cache available (should rarely happen)
-        return 0.0...100.0
+        return 0.0 ... 100.0
     }
 
     // Computed property for Y-axis ticks that only reads cached value
@@ -1977,7 +2001,7 @@ class DashboardStore: ObservableObject {
     @MainActor
     func updateYAxisCache(force: Bool = false) {
         // Avoid domain updates during active scrolling unless explicitly forced
-        if state.graph.isScrolling && !force {
+        if state.graph.isScrolling, !force {
             return
         }
 
@@ -2035,7 +2059,6 @@ class DashboardStore: ObservableObject {
 
         // Force a UI refresh so Charts read the updated cached domain/ticks immediately
         scheduleUIUpdate()
-
     }
 
     // MARK: - Helper Methods
@@ -2099,6 +2122,7 @@ class DashboardStore: ObservableObject {
         guard state.graph.selectedPeriod == .month else { return nil }
         return getFullyContainedMonthInterval()
     }
+
     /// Checks if the visible window for month period contains an entire month.
     /// Returns the DateInterval of the fully contained month, or nil if no month is fully visible.
     ///
@@ -2270,14 +2294,28 @@ class DashboardStore: ObservableObject {
     }
 
     // MARK: - Metric Info Sheet - Allowed Metrics & Selection Validation
+
     /// Returns the allowed metrics for the Metric Info sheet based on dashboard type.
     func allowedMetricsForMetricInfo() -> [BodyMetric] {
         switch state.metrics.dashboardType {
         case .dashboard4:
             return [.weight, .bmi, .bodyFat, .muscleMass, .water]
         case .dashboard12:
-// swiftlint:disable:next line_length
-            return [.weight, .bmi, .bodyFat, .muscleMass, .water, .pulse, .boneMass, .visceralFatLevel, .subcutaneousFatPercent, .proteinPercent, .skeletalMusclePercent, .bmr, .metabolicAge]
+            return [
+                .weight,
+                .bmi,
+                .bodyFat,
+                .muscleMass,
+                .water,
+                .pulse,
+                .boneMass,
+                .visceralFatLevel,
+                .subcutaneousFatPercent,
+                .proteinPercent,
+                .skeletalMusclePercent,
+                .bmr,
+                .metabolicAge
+            ]
         }
     }
 
@@ -2343,7 +2381,7 @@ class DashboardStore: ObservableObject {
     var metricsBinding: Binding<[MetricItem]> {
         Binding(
             get: {
-                return self.metricsManager.state.metrics
+                self.metricsManager.state.metrics
             },
             set: { newValue in
                 self.metricsManager.state.metrics = newValue
@@ -2355,7 +2393,7 @@ class DashboardStore: ObservableObject {
     var streakItemsBinding: Binding<[MetricItem]> {
         Binding(
             get: {
-                return self.streakManager.state.streakItems
+                self.streakManager.state.streakItems
             },
             set: { newValue in
                 self.streakManager.state.streakItems = newValue
@@ -2367,7 +2405,7 @@ class DashboardStore: ObservableObject {
     var draggingMetricBinding: Binding<MetricItem?> {
         Binding(
             get: {
-                return self.state.ui.draggingMetric
+                self.state.ui.draggingMetric
             },
             set: { newValue in
                 self.state.ui.draggingMetric = newValue
@@ -2379,7 +2417,7 @@ class DashboardStore: ObservableObject {
     var draggingStreakBinding: Binding<MetricItem?> {
         Binding(
             get: {
-                return self.state.ui.draggingStreak
+                self.state.ui.draggingStreak
             },
             set: { newValue in
                 self.state.ui.draggingStreak = newValue
@@ -2391,7 +2429,7 @@ class DashboardStore: ObservableObject {
     var dropHoverIdBinding: Binding<String?> {
         Binding(
             get: {
-                return self.state.ui.dropHoverId
+                self.state.ui.dropHoverId
             },
             set: { newValue in
                 self.state.ui.dropHoverId = newValue
@@ -2466,11 +2504,16 @@ class DashboardStore: ObservableObject {
         let activeMetricsCount = metricsToShow.count - state.ui.removedMetrics.count
 
         guard sourceIndex != destinationIndex,
-              sourceIndex >= 0 && sourceIndex < activeMetricsCount,
-              destinationIndex >= 0 && destinationIndex < activeMetricsCount,
+              sourceIndex >= 0, sourceIndex < activeMetricsCount,
+              destinationIndex >= 0, destinationIndex < activeMetricsCount,
               sourceIndex < metricsToShow.count,
-              destinationIndex < metricsToShow.count else {
-            logger.log(level: .error, tag: "DashboardStore", message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex). Active metrics count: \(activeMetricsCount)")
+              destinationIndex < metricsToShow.count
+        else {
+            logger.log(
+                level: .error,
+                tag: "DashboardStore",
+                message: "Invalid move indices: from \(sourceIndex) to \(destinationIndex). Active metrics count: \(activeMetricsCount)"
+            )
             return
         }
 
@@ -2481,8 +2524,13 @@ class DashboardStore: ObservableObject {
 
         // Find the actual indices in the full metrics array
         guard let sourceActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == sourceMetric.id }),
-              let destinationActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == destinationMetric.id }) else {
-            logger.log(level: .error, tag: "DashboardStore", message: "Failed to map visible metrics to actual indices during move. sourceMetricId=\(sourceMetric.id), destinationMetricId=\(destinationMetric.id)")
+              let destinationActualIndex = metricsManager.state.metrics.firstIndex(where: { $0.id == destinationMetric.id })
+        else {
+            logger.log(
+                level: .error,
+                tag: "DashboardStore",
+                message: "Failed to map visible metrics to actual indices during move. sourceMetricId=\(sourceMetric.id), destinationMetricId=\(destinationMetric.id)"
+            )
             return
         }
 
@@ -2497,8 +2545,11 @@ class DashboardStore: ObservableObject {
         // Provide haptic feedback for successful move
         HapticFeedbackService.light()
 
-// swiftlint:disable:next line_length
-        logger.log(level: .info, tag: "DashboardStore", message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)")
+        logger.log(
+            level: .info,
+            tag: "DashboardStore",
+            message: "Moved metric '\(sourceMetric.label)' from \(sourceActualIndex) to \(destinationActualIndex)"
+        )
     }
 
     // MARK: - Graph State Management
@@ -2520,11 +2571,11 @@ class DashboardStore: ObservableObject {
     @MainActor
     func initializeChart() {
         // Don't initialize if already done or currently scrolling
-        guard !state.ui.hasInitializedChart && !state.graph.isScrolling else {
+        guard !state.ui.hasInitializedChart, !state.graph.isScrolling else {
             updateWeightDisplayForCurrentView()
             // Only mark ready on early return if chart was previously initialized (e.g., tab switch back)
             // Don't set ready if we're just scrolling during initial load
-            if state.ui.hasInitializedChart && !graphManager.state.isGraphReady {
+            if state.ui.hasInitializedChart, !graphManager.state.isGraphReady {
                 graphManager.state.isGraphReady = true
             }
             return
@@ -2549,9 +2600,9 @@ class DashboardStore: ObservableObject {
             ? graphManager.snapScrollPosition(optimalScrollPosition, for: period)
             : optimalScrollPosition
 
-        self.graphManager.updateScrollPosition(to: alignedScrollPosition)
+        graphManager.updateScrollPosition(to: alignedScrollPosition)
 
-        self.forceCompleteRecalculationAfterScrollPosition()
+        forceCompleteRecalculationAfterScrollPosition()
 
         state.ui.hasInitializedChart = true
 
@@ -2618,8 +2669,11 @@ class DashboardStore: ObservableObject {
 
             // Summary log at end of scroll
             let count = self.visibleOperations.count
-// swiftlint:disable:next line_length
-            self.logger.log(level: .debug, tag: "DashboardStore", message: "Scroll end summary - period=\(self.state.graph.selectedPeriod), visibleOps=\(count)")
+            logger.log(
+                level: .debug,
+                tag: "DashboardStore",
+                message: "Scroll end summary - period=\(self.state.graph.selectedPeriod), visibleOps=\(count)"
+            )
 
             // Mark scroll end processing as complete
             self.isProcessingScrollEnd = false
@@ -2669,7 +2723,7 @@ class DashboardStore: ObservableObject {
     /// This should only be called on scroll end or segment load
     @MainActor
     private func recalculateYAxisForVisibleData() {
-        self.updateYAxisCache()
+        updateYAxisCache()
     }
 
     /// Update metrics to show values for current view (visible region or selected point)
@@ -2677,7 +2731,7 @@ class DashboardStore: ObservableObject {
     func updateMetricsForCurrentView() {
         // Don't update metrics during initialization or if config hasn't loaded yet
         // This prevents flickering and showing stale/placeholder values
-        guard !state.ui.isResettingDashboard && state.ui.hasLoadedDashboardConfig else {
+        guard !state.ui.isResettingDashboard, state.ui.hasLoadedDashboardConfig else {
             return
         }
 
@@ -2689,25 +2743,32 @@ class DashboardStore: ObservableObject {
                     self.state.ui.hasLoadedMetricValues = true
                 }
             }
-        } else if state.graph.selectedXValue != nil {
+            return // Exit early to prevent showing averages
+        }
+         if state.graph.selectedXValue != nil {
             // Interpolated position selected (no exact data point) - show placeholders
-            // Don't mark as loaded when showing placeholders - they represent absence of actual values
+            // Mark as loaded so skeleton loaders can hide even when showing placeholders
             metricsManager.setPlaceholdersForAllMetrics()
-        } else {
-            // No selection: compute averages aligned to the label date range
-            let ops = self.getOperationsForLabelDateRange()
+            self.state.ui.hasLoadedMetricValues = true
+            return
+        }
+        let ops = self.getOperationsForLabelDateRange()
+        
+        // If no visible operations, show placeholders for body metrics
+        if ops.isEmpty {
+            metricsManager.setPlaceholdersForAllMetrics()
+            // Mark as loaded so skeleton loaders can hide
+            self.state.ui.hasLoadedMetricValues = true
+            return
+        }
 
-            if ops.isEmpty && state.ui.hasLoadedMetricValues {
-                return
-            }
-
-            Task {
-                await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
-                await MainActor.run {
-                    // Mark as loaded even if there are no operations so skeleton loaders can hide
-                    // This prevents skeleton loaders from displaying indefinitely when there's no data
-                    self.state.ui.hasLoadedMetricValues = true
-                }
+        // Has visible operations - compute averages
+        Task {
+            await self.metricsManager.updateMetricsForVisibleAverage(visibleOperations: ops)
+            await MainActor.run {
+                // Mark metrics as loaded after updating visible averages so skeleton loaders can hide
+                // This ensures skeleton loaders are dismissed once data for the visible range is available
+                self.state.ui.hasLoadedMetricValues = true
             }
         }
     }
@@ -2722,8 +2783,8 @@ class DashboardStore: ObservableObject {
             selectedEntry: selectedEntry,
             selectedMetric: selectedMetric
         ) { newValue in
-                self.state.ui.selectedMetricLabel = newValue
-            }
+            self.state.ui.selectedMetricLabel = newValue
+        }
     }
 
     /// Handle selected metric info change
@@ -2748,7 +2809,6 @@ class DashboardStore: ObservableObject {
     /// Handle selected entry change
     /// Clears metric selection when entry is cleared
     func handleSelectedEntryChange(_ newValue: Entry?) {
-
         _ = newValue
     }
 
@@ -2775,7 +2835,6 @@ class DashboardStore: ObservableObject {
 
         // Force UI update
         scheduleUIUpdate()
-
     }
 
     /// Perform actions when dashboard appears
@@ -2814,7 +2873,6 @@ class DashboardStore: ObservableObject {
             self.updateYAxisCache()
             self.scheduleUIUpdate()
         }
-
     }
 
     /// Force a complete refresh of the dashboard state
@@ -2830,7 +2888,6 @@ class DashboardStore: ObservableObject {
 
         // Reset grid layout to ensure proper display
         resetGridLayout()
-
     }
 
     /// Begins an edit session by snapshotting the current state for synchronous revert.
@@ -2846,9 +2903,8 @@ class DashboardStore: ObservableObject {
         snapshotRemovedMetrics = state.ui.removedMetrics
         snapshotRemovedStreaks = state.ui.removedStreaks
         hasEditSnapshot = true
-
     }
-    
+
     /// Updates the snapshot to the current state (used after saving changes)
     /// This ensures that when the user clicks back, it reverts to the last saved state
     func updateSnapshot() {
@@ -2868,16 +2924,16 @@ class DashboardStore: ObservableObject {
     func hasUnsavedChanges() -> Bool {
         guard hasEditSnapshot else { return false }
         return metricsManager.state.metrics.map { $0.label } != snapshotMetrics.map { $0.label } ||
-               metricsManager.state.activeMetricsCount != snapshotActiveMetricsCount ||
-               streakManager.state.streakItems.map { $0.label } != snapshotStreakItems.map { $0.label } ||
-               streakManager.state.activeStreakItemsCount != snapshotActiveStreakItemsCount ||
-               state.ui.isGoalCardRemoved != snapshotGoalCardRemoved ||
-               state.ui.goalCardPosition != snapshotGoalCardPosition ||
-               state.ui.streakGridOrder != snapshotStreakGridOrder ||
-               state.ui.removedMetrics != snapshotRemovedMetrics ||
-               state.ui.removedStreaks != snapshotRemovedStreaks
+            metricsManager.state.activeMetricsCount != snapshotActiveMetricsCount ||
+            streakManager.state.streakItems.map { $0.label } != snapshotStreakItems.map { $0.label } ||
+            streakManager.state.activeStreakItemsCount != snapshotActiveStreakItemsCount ||
+            state.ui.isGoalCardRemoved != snapshotGoalCardRemoved ||
+            state.ui.goalCardPosition != snapshotGoalCardPosition ||
+            state.ui.streakGridOrder != snapshotStreakGridOrder ||
+            state.ui.removedMetrics != snapshotRemovedMetrics ||
+            state.ui.removedStreaks != snapshotRemovedStreaks
     }
-    
+
     /// Cancels the current edit session and discards unsaved changes by restoring the snapshot synchronously.
     func cancelEdit() {
         // Restore synchronous snapshots first to immediately revert UI/state

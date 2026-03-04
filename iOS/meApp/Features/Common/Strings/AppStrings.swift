@@ -76,8 +76,8 @@ struct ScaleDiscoveredSheetStrings {
 
 struct WeightOnlyModeAlertStrings {
     static let title = "A User has Weight Only Mode on"
-// swiftlint:disable:next line_length
-    static let enableAllBodyMetrics = "You can enable All Body Metrics for one session. This will temporarily disable Weight Only mode, and all body metrics will be collected."
+    static let enableAllBodyMetrics = "You can enable All Body Metrics for one session. "
+        + "This will temporarily disable Weight Only mode, and all body metrics will be collected."
 }
 
 /// Constants for toast messages used in the app
@@ -87,8 +87,8 @@ struct ToastStrings {
     static let networkError = "Network Error"
     static let unableToConnect = "Unable to find a network connection at this time. Please try again later."
     static let somethingWentWrong = "Something went wrong. Please try again. If the problem continues, contact customer service."
-// swiftlint:disable:next line_length
-    static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
+    static let serverError = "Unable to reach the Greater Goods servers. The issue is probably on our end. "
+        + "Try again later, but if the problem continues, contact customer service."
     static let emailInUse = "Email address is already in use"
     static let errorCreatingAccount = "Error creating account."
     static let invalidEmailTitle = "Invalid Email ID!"
@@ -174,16 +174,16 @@ struct HKIntegrationHealthAccessStrings {
     static let notConnected = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integrate Apple Health",
-// swiftlint:disable:next line_length
-        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. "
+            + "Your privacy and data security are top priorities.",
         buttonTitle: "CONNECT"
     )
 
     static let permissionsAllowed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsAllowedSS,
         title: "Integrate Apple Health",
-// swiftlint:disable:next line_length
-        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. Your privacy and data security are top priorities.",
+        description: "Personalize your experience and control which information is shared between Weight Gurus and Apple Health. "
+            + "Your privacy and data security are top priorities.",
         buttonTitle: "CONNECT"
     )
 
@@ -201,16 +201,16 @@ struct HKIntegrationHealthAccessStrings {
     static let integrationFailed = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsNotAllowedSS,
         title: "Integration Failed",
-// swiftlint:disable:next line_length
-        description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. Then, come back to Weight Gurus and finish connecting.",
+        description: "To troubleshoot, open Apple Health and turn on Weight Gurus permissions. "
+            + "Then, come back to Weight Gurus and finish connecting.",
         buttonTitle: "OPEN APPLE HEALTH"
     )
 
     static let userConflict = HKIntegrationHealthAccessContent(
         imageName: AppAssets.hkPermissionsAllowedSS,
         title: "User Conflict",
-// swiftlint:disable:next line_length
-        description: "Another user has already connected to Apple Health on this device. Please ask them to log in to their account and disconnect the integration.",
+        description: "Another user has already connected to Apple Health on this device. "
+            + "Please ask them to log in to their account and disconnect the integration.",
         buttonTitle: "EXIT"
     )
 }
@@ -325,7 +325,6 @@ struct InputFieldLabels {
 }
 
 // Constants for Alert strings used in the app
-// swiftlint:disable:next type_body_length
 struct AlertStrings {
     struct SignupExitAlert {
         static let title = "Confirm"
@@ -592,15 +591,15 @@ struct AlertStrings {
     struct PermissionAlerts {
         // MARK: - Bluetooth
         static let bluetoothDisabledTitle = "To turn on Bluetooth"
-// swiftlint:disable:next line_length
-        static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n4. Tap Allow New Connections\n5. Return to this app"
+        static let bluetoothDisabledMessage = "1. Open Settings on your phone\n2. Tap Bluetooth\n3. Toggle Bluetooth on\n"
+            + "4. Tap Allow New Connections\n5. Return to this app"
         static let bluetoothAuthDisabledTitle = "Bluetooth Access is Disabled"
         static let bluetoothAuthDisabledMessage = "To sync with your device, please enable Bluetooth access."
 
         // MARK: - Location
         static let locationDisabledTitle = "To turn on Location Services"
-// swiftlint:disable:next line_length
-        static let locationDisabledMessage = "1. Open your iPhone Settings\n2. Tap Privacy & Security\n3. Tap Location Settings\n4. Toggle Location Services on\n5. Return to this app"
+        static let locationDisabledMessage = "1. Open your iPhone Settings\n2. Tap Privacy & Security\n3. Tap Location Settings\n"
+            + "4. Toggle Location Services on\n5. Return to this app"
         static let locationAuthTitle = "Weight Gurus needs location permissions."
         static let locationAuthMessage = "Apple requires this for Wi-Fi connections. Weight Gurus doesn't store this data. " +
             "On the next screen, select 'Allow while using app.' Choosing 'Allow once' will block future connections with the scale."
@@ -614,13 +613,13 @@ struct AlertStrings {
 
         // MARK: - Camera
         static let cameraDisabledTitle = "You have not given permission to access camera!"
-// swiftlint:disable:next line_length
-        static let cameraDisabledMessage = "You will not be able to pair or sync with your App sync scale. Please enable it from your app permissions."
+        static let cameraDisabledMessage = "You will not be able to pair or sync with your App sync scale. "
+            + "Please enable it from your app permissions."
 
         // MARK: - Notification
         static let notificationDisabledTitle = "Notifications are disabled!"
-// swiftlint:disable:next line_length
-        static let notificationDisabledMessage = "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
+        static let notificationDisabledMessage = "Notification permissions have been turned off. "
+            + "Enable notifications to receive updates from your Wi-Fi scale."
     }
 
     struct ConfirmRestoreAlert {
@@ -696,8 +695,8 @@ struct AlertStrings {
     }
     struct ReconnectDeviceAlert {
         static let header = "Scale is at Its User Limit"
-// swiftlint:disable:next line_length
-        static let message = "Your connection was deactivated by another user. Reconnect now or delete the scale from your account by visiting scale settings."
+        static let message = "Your connection was deactivated by another user. "
+            + "Reconnect now or delete the scale from your account by visiting scale settings."
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
@@ -711,8 +710,8 @@ struct AlertStrings {
     
     struct UpdatesPendingAlert {
         static let title = "Updates Pending..."
-// swiftlint:disable:next line_length
-        static let message = "Scale settings can't be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+        static let message = "Scale settings can't be updated at this time. "
+            + "Weight Gurus will save changes and update the scale next time it connects."
         static let okButton = "OK"
     }
 }
@@ -844,9 +843,9 @@ struct AppAssets {
     static let hkLogoSmall = "hkLogoSmall"
     static let myFitnessLogoSmall = "myFitnessLogoSmall"
     static let myFitnessLogoLarge = "myFitnessLogoLarge"
-    static let ggLogoSmall = "ggLogoSmall"
-    static let ggLogoLarge = "ggLogoLarge"
-    static let ggLogoLight = "ggLogoLight"
+    static let ggLogoSmall = "gGLogoSmall"
+    static let ggLogoLarge = "gGLogoLarge"
+    static let ggLogoLight = "gGLogoLight"
     static let checkMarkLarge = "checkMarkLarge"
     static let appSyncTab = "appSyncTab"
     static let close = "close"

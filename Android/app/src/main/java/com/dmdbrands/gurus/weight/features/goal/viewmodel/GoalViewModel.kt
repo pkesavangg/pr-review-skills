@@ -31,8 +31,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.round
 import javax.inject.Inject
+import kotlin.math.round
 
 /**
  * ViewModel for the Goal screen. Handles form state, validation, goal logic, and navigation.

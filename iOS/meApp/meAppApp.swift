@@ -18,6 +18,10 @@ struct MeApp: App {
     /// The shared app state, injected as an environment object to enable global service access.
     @StateObject private var appState = AppState()
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    init() {
+        _ = ServiceRegistry.shared
+    }
     
     var body: some Scene {
         WindowGroup {

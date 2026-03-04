@@ -8,10 +8,11 @@
 import Foundation
 
 @MainActor
-final class HTTPClient {
+final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationHelperService: NotificationHelperService
+    @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared
     @Atomic private var lastToastShownTime: Date?
@@ -113,7 +114,20 @@ final class HTTPClient {
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response) = try await fetchData(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let urlError as URLError {
+            // Convert URLErrors to HTTPErrors so callers can detect network errors reliably.
+            switch urlError.code {
+            case .timedOut:
+                throw HTTPError.timeout
+            default:
+                throw HTTPError.noInternet
+            }
+        } catch {
+            throw error
+        }
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.invalidResponse
@@ -148,9 +162,7 @@ final class HTTPClient {
             logRawResponse(data: data)
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-#if DEBUG
-            print("🔍 HTTPClient Decoding Error: \(error)")
-#endif
+            logger.log(level: .error, tag: "HTTPClient", message: "Decoding error", data: error)
             throw HTTPError.decodingError
         }
     }
@@ -188,13 +200,13 @@ final class HTTPClient {
     }
 
     private func logRawResponse(data: Data) {
-#if DEBUG
+        #if DEBUG
         if let rawString = String(data: data, encoding: .utf8) {
-            print("🔍 HTTPClient Raw Response: \(rawString)")
+            logger.log(level: .debug, tag: "HTTPClient", message: "Raw response", data: rawString)
         } else {
-            print("⚠️ HTTPClient Unable to decode data to string")
+            logger.log(level: .debug, tag: "HTTPClient", message: "Unable to decode data to string")
         }
-#endif
+        #endif
     }
     
     // MARK: - Account Handling

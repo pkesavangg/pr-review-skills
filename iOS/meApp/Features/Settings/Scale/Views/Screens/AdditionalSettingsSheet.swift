@@ -95,18 +95,38 @@ struct AdditionalSettingsSheet: View {
                 .listRowSeparatorTint(theme.statusUtilityPrimary)
                 
                 Section(header: SectionHeader(title: "Scale Details")) {
-// swiftlint:disable:next line_length
-                    ActionListItemView(config: ActionListItemConfig(title: "Manufacturer", value: viewModel.deviceInfo?.manufacturerName, chevronType: .none))
-// swiftlint:disable:next line_length
-                    ActionListItemView(config: ActionListItemConfig(title: "Model Number", value: viewModel.deviceInfo?.modelNumber, chevronType: .none))
-// swiftlint:disable:next line_length
-                    ActionListItemView(config: ActionListItemConfig(title: "Serial Number", value: viewModel.deviceInfo?.serialNumber, chevronType: .none))
-// swiftlint:disable:next line_length
-                    ActionListItemView(config: ActionListItemConfig(title: "Hardware Revision", value: viewModel.deviceInfo?.hardwareRevision, chevronType: .none))
-// swiftlint:disable:next line_length
-                    ActionListItemView(config: ActionListItemConfig(title: "Firmware Revision", value: viewModel.deviceInfo?.firmwareRevision, chevronType: .none))
-// swiftlint:disable:next line_length
-                    if let battery = viewModel.deviceInfo?.batteryLevel { ActionListItemView(config: ActionListItemConfig(title: "Battery Level", value: "\(battery)%", chevronType: .none)) }
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: "Manufacturer",
+                        value: viewModel.deviceInfo?.manufacturerName,
+                        chevronType: .none
+                    ))
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: "Model Number",
+                        value: viewModel.deviceInfo?.modelNumber,
+                        chevronType: .none
+                    ))
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: "Serial Number",
+                        value: viewModel.deviceInfo?.serialNumber,
+                        chevronType: .none
+                    ))
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: "Hardware Revision",
+                        value: viewModel.deviceInfo?.hardwareRevision,
+                        chevronType: .none
+                    ))
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: "Firmware Revision",
+                        value: viewModel.deviceInfo?.firmwareRevision,
+                        chevronType: .none
+                    ))
+                    if let battery = viewModel.deviceInfo?.batteryLevel {
+                        ActionListItemView(config: ActionListItemConfig(
+                            title: "Battery Level",
+                            value: "\(battery)%",
+                            chevronType: .none
+                        ))
+                    }
                 }
                 .listRowInsets()
                 .listRowBackground(theme.backgroundPrimary)
@@ -117,8 +137,7 @@ struct AdditionalSettingsSheet: View {
             .navigationTitle(lang.otherSettings)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                    Button(action: { dismiss() }) { Image(AppAssets.chevronLeft) }
+                    Button(action: { dismiss() }, label: { Image(AppAssets.chevronLeft) })
                 }
             }
             .background(theme.backgroundSecondary.ignoresSafeArea())

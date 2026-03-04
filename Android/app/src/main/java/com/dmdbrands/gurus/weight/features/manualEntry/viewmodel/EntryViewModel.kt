@@ -268,7 +268,8 @@ constructor(
         AppLog.e(TAG, "Error saving entry: ${e.message}", e)
         dialogQueueService.showToast(
           Toast(
-            message = "Failed to save entry: ${e.message}",
+            title = EntryScreenStrings.EntryErrorTitle,
+            message = EntryScreenStrings.EntryErrorMessage,
           ),
         )
       } finally {

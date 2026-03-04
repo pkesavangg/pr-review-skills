@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.migration.helper
 
 import android.content.Context
-import android.util.Log
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 /**
  * Helper class for reading and managing Capacitor Preferences storage.
@@ -20,17 +20,17 @@ object CapacitorStorageHelper {
    * Locates and reads account data from Capacitor Preferences storage.
    */
   fun locateAndReadAccountFromCapacitorStorage(context: Context): String? {
-    Log.d(TAG, "🔍 Searching for Capacitor Preferences storage...")
+    AppLog.d(TAG, "Searching for Capacitor Preferences storage")
 
     try {
       val sharedPrefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
       val accountData = sharedPrefs.getString(ACTIVE_ACCOUNT_KEY, null)
       if (!accountData.isNullOrEmpty()) {
-        Log.i(TAG, "✅ Found account in CapacitorStorage SharedPreferences")
+        AppLog.i(TAG, "Found account in CapacitorStorage SharedPreferences")
         return accountData
       }
     } catch (e: Exception) {
-      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      AppLog.w(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
     }
     return null
   }
@@ -46,10 +46,10 @@ object CapacitorStorageHelper {
           }
         }
         .toMap()
-      Log.d(TAG, "Found ${result.size} paired scales entries")
+      AppLog.d(TAG, "Found ${result.size} integration entries for key: $integrationKey")
       result
     } catch (e: Exception) {
-      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      AppLog.w(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
       emptyMap()
     }
   }
@@ -65,10 +65,10 @@ object CapacitorStorageHelper {
           }
         }
         .toMap()
-      Log.d(TAG, "Found ${pairedScales.size} paired scales entries")
+      AppLog.d(TAG, "Found ${pairedScales.size} paired scales entries")
       pairedScales
     } catch (e: Exception) {
-      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      AppLog.w(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
       emptyMap()
     }
   }
@@ -89,10 +89,10 @@ object CapacitorStorageHelper {
           }
         }
         .toMap()
-      Log.d(TAG, "Found ${result.size} timestampkey entries")
+      AppLog.d(TAG, "Found ${result.size} timestampkey entries")
       result
     } catch (e: Exception) {
-      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      AppLog.w(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
       emptyMap()
     }
   }
@@ -108,7 +108,7 @@ object CapacitorStorageHelper {
       val key = "timestampkey-$accountId"
       sharedPrefs.getString(key, null)?.takeIf { it.isNotBlank() }
     } catch (e: Exception) {
-      Log.d(TAG, "Could not read timestampkey for $accountId: ${e.message}")
+      AppLog.w(TAG, "Could not read timestampkey for $accountId: ${e.message}")
       null
     }
   }
@@ -118,7 +118,7 @@ object CapacitorStorageHelper {
    */
   fun locateAndReadThemeModeFromCapacitorStorage(context: Context): Map<String, String> {
     return try {
-      Log.d(TAG, "🔍 Searching for theme mode in Capacitor Preferences storage...")
+      AppLog.d(TAG, "Searching for theme mode in Capacitor Preferences storage")
       val sharedPrefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
       val ionicThemeModeKeys = sharedPrefs.all.filter { it.key.contains("colorMode") }
       val themeModeKeys: Map<String, String> = ionicThemeModeKeys.keys
@@ -129,10 +129,10 @@ object CapacitorStorageHelper {
         }
         .toMap()
 
-      Log.d(TAG, "Found ${themeModeKeys.size} theme mode entries")
+      AppLog.d(TAG, "Found ${themeModeKeys.size} theme mode entries")
       themeModeKeys
     } catch (e: Exception) {
-      Log.d(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
+      AppLog.w(TAG, "CapacitorStorage SharedPreferences not found: ${e.message}")
       emptyMap()
     }
   }

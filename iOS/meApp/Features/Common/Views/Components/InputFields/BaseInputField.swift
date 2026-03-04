@@ -116,11 +116,10 @@ struct BaseInputField: View {
                         withAnimation {
                             isSecureTextVisible.toggle()
                         }
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                    }) {
+                    }, label: {
                         AppIconView(icon: isSecureTextVisible ? AppAssets.eyeClosed : AppAssets.eyeOpen)
                             .foregroundColor(theme.statusIconPrimary)
-                    }
+                    })
                     .padding(.trailing, .spacingXS)
                 }
             }
@@ -144,12 +143,8 @@ struct BaseInputTestView: View {
                 fieldType: .password,
                 value: $text,
                 focusedField: $focusedField,
-                onCommit: {
-                    print("Submitted: \(text)")
-                },
-                onEditingChanged: { isEditing in
-                    print("Editing changed: \(isEditing)")
-                })
+                onCommit: { },
+                onEditingChanged: { _ in })
         }
     }
 }

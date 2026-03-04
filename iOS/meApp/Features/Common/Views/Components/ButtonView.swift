@@ -44,8 +44,7 @@ struct ButtonView: View {
                 lastTapTime = now
                 action()
             }
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-        }) {
+        }, label: {
             Text(text.uppercased())
                 .fontWeight(.bold)
                 .fontOpenSans(size == .large ? .button1 : .button2)
@@ -53,7 +52,7 @@ struct ButtonView: View {
                     view.frame(minWidth: size == .small ? 75 : 96, minHeight: size == .small ? 30 : 40, alignment: alignment)
                 }
                 .multilineTextAlignment(.leading)
-        }
+        })
         .buttonStyle(AppPressableButtonStyle(
             type: type,
             size: size,

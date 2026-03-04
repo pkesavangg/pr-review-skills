@@ -9,9 +9,9 @@ import SwiftUI
 
 @MainActor
 final class SoftwareUpdateViewModel: ObservableObject {
-    @Injector var bluetoothService: BluetoothService
+    @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var notificationService: NotificationHelperService
-    @Injector var logger: LoggerService
+    @Injector var logger: LoggerServiceProtocol
 
     @Published var selectedDate = Date()
     @Published var selectedTime = Date()

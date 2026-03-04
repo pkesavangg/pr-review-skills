@@ -24,9 +24,7 @@ struct SafariView: UIViewControllerRepresentable {
 
 #Preview {
     // Example usage in a preview
-    SafariView(url: URL(string: "https://greatergoods.com/service") ?? URL(fileURLWithPath: "/")) {
-        print("Browser was dismissed")
-    }
+    SafariView(url: URL(string: "https://greatergoods.com/service") ?? URL(fileURLWithPath: "/")) { }
 }
 
 // MARK: - Usage Example
@@ -43,9 +41,7 @@ struct ContentView: View {
         .inAppBrowser(
             url: URL(string: "https://example.com")!,
             isPresented: $showBrowser
-        ) {
-            print("Browser was dismissed")
-        }
+        ) { }
     }
 }
 */

@@ -11,6 +11,7 @@ import SwiftData
 @MainActor
 final class LoggerRepository: LoggerRepositoryProtocol {
     private let modelContext: ModelContext = PersistenceController.shared.context
+    private let appLogger = AppLogger(tag: "LoggerRepository")
 
     /// Executes work on a background `ModelContext` to avoid blocking the main actor.
     /// Mirrors the approach used in `EntryRepository`.
@@ -53,7 +54,7 @@ final class LoggerRepository: LoggerRepositoryProtocol {
                 try ctx.save()
             }
         } catch {
-            print("LoggerRepository save failed: \(error.localizedDescription)")
+            appLogger.log(level: .error, tag: "LoggerRepository", message: "Save failed", data: error.localizedDescription)
         }
     }
 
