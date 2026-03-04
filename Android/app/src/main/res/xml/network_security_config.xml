@@ -1,23 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Network security configuration for the app.
-  - Disables cleartext (HTTP) traffic; all production and dev/staging APIs use HTTPS.
-  - Trusts system and user-installed CAs for TLS verification.
-  - For debug-only cleartext (e.g. local dev server), see debug/res/xml/network_security_config.xml.
+  Network security config for release (and default).
+  Cleartext (HTTP) is disabled; all traffic must use HTTPS.
 -->
 <network-security-config>
-    <!--
-      base-config: Applies to all connections not matched by a more specific domain-config.
-      - cleartextTrafficPermitted="false": Blocks unencrypted HTTP; only HTTPS is allowed.
-      - trust-anchors: Use system CAs and user-added CAs so TLS works with standard and
-        enterprise certificates (e.g. corporate proxies, custom CAs).
-    -->
-    <base-config cleartextTrafficPermitted="false">
-        <trust-anchors>
-            <!-- System CA store (public CAs and device OEM certs). -->
-            <certificates src="system" />
-            <!-- User-installed CAs (e.g. Charles, Fiddler, corporate CAs). -->
-            <certificates src="user" />
-        </trust-anchors>
-    </base-config>
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
 </network-security-config>
