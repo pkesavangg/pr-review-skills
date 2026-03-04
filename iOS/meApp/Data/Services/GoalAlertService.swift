@@ -16,14 +16,28 @@ import SwiftUI
 @MainActor
 final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     static let shared = GoalAlertService()
-    private init() {}
+    init(
+        notificationService: NotificationHelperServiceProtocol = NotificationHelperService.shared,
+        accountService: AccountServiceProtocol = AccountService.shared,
+        bluetoothService: BluetoothServiceProtocol = BluetoothService.shared,
+        logger: LoggerServiceProtocol = LoggerService.shared,
+        kv: KvStorageServiceProtocol = KvStorageService.shared,
+        setGoalModalDelay: TimeInterval = 3.0
+    ) {
+        self.notificationService = notificationService
+        self.accountService = accountService
+        self.bluetoothService = bluetoothService
+        self.logger = logger
+        self.kv = kv
+        self.setGoalModalDelay = setGoalModalDelay
+    }
 
     // MARK: - Dependencies
 
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var accountService: AccountService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var logger: LoggerService
+    private let notificationService: NotificationHelperServiceProtocol
+    private let accountService: AccountServiceProtocol
+    private let bluetoothService: BluetoothServiceProtocol
+    private let logger: LoggerServiceProtocol
 
     // MARK: - Public Callback
 
@@ -38,7 +52,8 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     // MARK: - Internal State
 
     private(set) var isShowingAlert: Bool = false
-    private let kv = KvStorageService.shared
+    private let kv: KvStorageServiceProtocol
+    private let setGoalModalDelay: TimeInterval
     private let tag = "GoalAlertService"
 
     private let alertStrings = AlertStrings.self
@@ -154,7 +169,6 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         let storageKey = KvStorageKeys.setAGoalModalFlagKey(for: accountId)
         kv.setValue(true, forKey: storageKey)
 
-        let setGoalModalDelay = 3.0
         try? await Task.sleep(nanoseconds: UInt64(setGoalModalDelay * 1_000_000_000))
 
         guard isOnDashboardTab?() == true else {
