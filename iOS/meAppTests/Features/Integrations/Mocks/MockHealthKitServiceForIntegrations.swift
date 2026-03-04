@@ -42,6 +42,10 @@ final class MockHealthKitServiceForIntegrations: HealthKitServiceProtocol {
         !permissions.isEmpty
     }
 
+    func isHKOutOfSync() async -> Bool {
+        false
+    }
+
     func getApprovedPermissionList() -> [String] {
         getApprovedPermissionListCalls += 1
         return permissions
