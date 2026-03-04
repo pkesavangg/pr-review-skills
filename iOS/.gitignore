@@ -17,6 +17,10 @@ xcuserdata/
 # SwiftPM
 .build/
 
+# Python cache
+*.pyc
+scripts/__pycache__/
+
 # CocoaPods
 Pods/
 
