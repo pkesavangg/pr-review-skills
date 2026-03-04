@@ -28,6 +28,7 @@ class SettingsStore: ObservableObject {
     private let httpClient = HTTPClient.shared
     var theme = Theme.shared
     let kvStore = KvStorageService.shared
+    var useModalPicker = DeviceUtils.useModalPicker
 
     @Published var activeAccount: Account?
 
@@ -1627,7 +1628,7 @@ class SettingsStore: ObservableObject {
 
     /// Presents the appearance picker (modal on iPad < iOS18, sheet otherwise).
     func presentAppearancePicker() {
-        if DeviceUtils.useModalPicker {
+        if useModalPicker {
             let picker = PickerView(
                 selectedValues: [theme.appearanceMode],
                 options: [AppearanceMode.allCases],
@@ -1654,7 +1655,7 @@ class SettingsStore: ObservableObject {
 
     /// Presents the notification preference picker (modal on iPad < iOS18, sheet otherwise).
     func presentNotificationPicker() {
-        if DeviceUtils.useModalPicker {
+        if useModalPicker {
             let picker = PickerView(
                 selectedValues: [notificationPreference],
                 options: [NotificationPreference.allCases],
@@ -1674,7 +1675,7 @@ class SettingsStore: ObservableObject {
 
     /// Presents the gender picker (modal on iPad < iOS18, sheet otherwise).
     func presentGenderPicker() {
-        if DeviceUtils.useModalPicker {
+        if useModalPicker {
             let picker = PickerView(
                 selectedValues: [activeAccount?.gender ?? .male],
                 options: [Sex.allCases],
@@ -1694,7 +1695,7 @@ class SettingsStore: ObservableObject {
 
     /// Presents the unit picker (modal on iPad < iOS18, sheet otherwise).
     func presentUnitPicker() {
-        if DeviceUtils.useModalPicker {
+        if useModalPicker {
             let picker = PickerView(
                 selectedValues: [activeAccount?.weightSettings?.weightUnit ?? .lb],
                 options: [[WeightUnit.lb, WeightUnit.kg]],
@@ -1714,7 +1715,7 @@ class SettingsStore: ObservableObject {
 
     /// Presents the activity level picker (modal on iPad < iOS18, sheet otherwise).
     func presentActivityPicker() {
-        if DeviceUtils.useModalPicker {
+        if useModalPicker {
             let picker = PickerView(
                 selectedValues: [activeAccount?.weightSettings?.activityLevel ?? .normal],
                 options: [[ActivityLevel.normal, ActivityLevel.athlete]],
@@ -1734,7 +1735,7 @@ class SettingsStore: ObservableObject {
 
     /// Presents the height picker (modal on iPad < iOS18, sheet otherwise).
     func presentHeightPicker() {
-        if DeviceUtils.useModalPicker {
+        if useModalPicker {
             if activeAccount?.weightSettings?.weightUnit == .kg {
                 let picker = PickerView(
                     selectedValues: selectedHeightCm,

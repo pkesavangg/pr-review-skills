@@ -18,6 +18,8 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var getWifiMacAddressResult: Result<String, BluetoothServiceError> = .failure(.notImplemented)
     var getScaleUserListResult: Result<[DeviceUser], BluetoothServiceError> = .failure(.notImplemented)
     var updateWeightOnlyModeResult: Result<Void, BluetoothServiceError> = .failure(.notImplemented)
+    var updateUserProfileForR4ScalesResult: Result<[String], BluetoothServiceError> = .failure(.notImplemented)
+    var deleteR4ScalesResult: Result<Void, BluetoothServiceError> = .failure(.notImplemented)
 
     private(set) var disconnectConnectedScalesCalls = 0
     private(set) var resyncAndScanCalls = 0
@@ -30,6 +32,8 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var getWifiMacAddressCalls = 0
     private(set) var getScaleUserListCalls = 0
     private(set) var updateWeightOnlyModeCalls = 0
+    private(set) var updateUserProfileForR4ScalesCalls = 0
+    private(set) var deleteR4ScalesCalls = 0
     private(set) var lastConnectedWifiSSIDBroadcastId: String?
     private(set) var lastUpdateSettingDevice: Device?
     private(set) var lastUpdateSettings: [DeviceSetting] = []
@@ -90,7 +94,10 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     }
     func updateFirmware(on device: Device, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func clearData(on device: Device, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
-    func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> { .failure(.notImplemented) }
+    func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> {
+        updateUserProfileForR4ScalesCalls += 1
+        return updateUserProfileForR4ScalesResult
+    }
     func updateAccount(on device: Device, preference: R4ScalePreference) async -> Result<UserCreationResponse, BluetoothServiceError> {
         updateAccountCalls += 1
         lastUpdateAccountDevice = device
@@ -121,6 +128,9 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         lastWeightOnlyModeDevice = device
         return updateWeightOnlyModeResult
     }
-    func deleteR4Scales() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func deleteR4Scales() async -> Result<Void, BluetoothServiceError> {
+        deleteR4ScalesCalls += 1
+        return deleteR4ScalesResult
+    }
     func convertHexToInt(_ hex: String) -> Int64 { 0 }
 }
