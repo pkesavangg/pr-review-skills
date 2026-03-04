@@ -7,13 +7,21 @@ import Security
 final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
     static let shared = KeychainService()
 
-    @Injector private var logger: LoggerService
+    @Injector private var injectedLogger: LoggerServiceProtocol
 
     private let serviceName: String
+    private let keychainAccess: any KeychainAccessing
+    private let loggerOverride: LoggerServiceProtocol?
     private let tag = "KeychainService"
 
-    init(serviceName: String? = nil) {
+    init(
+        serviceName: String? = nil,
+        keychainAccess: any KeychainAccessing = SystemKeychainAccess(),
+        logger: LoggerServiceProtocol? = nil
+    ) {
         self.serviceName = serviceName ?? (Bundle.main.bundleIdentifier ?? "meApp") + ".tokens"
+        self.keychainAccess = keychainAccess
+        self.loggerOverride = logger
     }
 
     // MARK: - KeychainServiceProtocol
@@ -60,19 +68,19 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
-        var status = SecItemAdd(query as CFDictionary, nil)
+        let searchQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: accountKey
+        ]
+        var status = keychainAccess.add(query)
         if status == errSecDuplicateItem {
-            let searchQuery: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: serviceName,
-                kSecAttrAccount as String: accountKey
-            ]
             let updateQuery: [String: Any] = [kSecValueData as String: data]
-            status = SecItemUpdate(searchQuery as CFDictionary, updateQuery as CFDictionary)
+            status = keychainAccess.update(searchQuery: searchQuery, attributes: updateQuery)
         }
         if status != errSecSuccess {
             Task { @MainActor in
-                self.logger.log(level: .error, tag: self.tag, message: "Keychain setData failed: accountKey=\(accountKey), status=\(status)")
+                self.resolvedLogger.log(level: .error, tag: self.tag, message: "Keychain setData failed: accountKey=\(accountKey), status=\(status)")
             }
         }
     }
@@ -86,7 +94,7 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
         var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        let status = keychainAccess.copyMatching(query, result: &result)
         guard status == errSecSuccess, let data = result as? Data else { return nil }
         return data
     }
@@ -97,12 +105,16 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: accountKey
         ]
-        let status = SecItemDelete(query as CFDictionary)
+        let status = keychainAccess.delete(query)
         if status != errSecSuccess && status != errSecItemNotFound {
             Task { @MainActor in
-                self.logger.log(level: .error, tag: self.tag, message: "Keychain deleteItem failed: accountKey=\(accountKey), status=\(status)")
+                self.resolvedLogger.log(level: .error, tag: self.tag, message: "Keychain deleteItem failed: accountKey=\(accountKey), status=\(status)")
             }
         }
+    }
+
+    private var resolvedLogger: LoggerServiceProtocol {
+        loggerOverride ?? injectedLogger
     }
 
     private func keyForAccount(_ accountId: String) -> String {

@@ -735,6 +735,33 @@ struct ScaleServiceTests {
         #expect(repo.devices.first?.r4ScalePreference?.isSynced == true)
     }
 
+    @Test("pushLocalChangesToServer promotes local-only scale to remote-backed record")
+    func pushLocalChangesPromotesLocalOnlyScaleToRemote() async {
+        let repo = MockScaleRepository()
+        let remote = MockScaleRepositoryAPI()
+        let localOnly = ScaleTestFixtures.makeDevice(
+            id: "local-only-scale",
+            accountId: "acct-1",
+            isSynced: false,
+            hasServerID: false
+        )
+        repo.devices = [localOnly]
+        remote.createScaleResult = ScaleTestFixtures.makeScaleDTO(
+            id: "server-promoted-scale",
+            accountId: "acct-1",
+            displayName: "Promoted Scale"
+        )
+        let sut = makeSUT(repo: repo, remote: remote)
+
+        await sut.pushLocalChangesToServer()
+
+        #expect(remote.createScaleCalls == 1)
+        #expect(repo.devices.count == 1)
+        #expect(repo.devices.first?.id == "server-promoted-scale")
+        #expect(repo.devices.first?.hasServerID == true)
+        #expect(repo.devices.first?.isSynced == true)
+    }
+
     @Test("pushLocalChangesToServer updates existing server-backed device and syncs metadata and preference")
     func pushLocalChangesUpdatesServerBackedDevice() async {
         let repo = MockScaleRepository()
@@ -771,6 +798,24 @@ struct ScaleServiceTests {
         #expect(remote.deleteScaleCalls == 1)
         #expect(repo.permanentlyRemoveDeviceCalls == 1)
         #expect(repo.devices.isEmpty)
+    }
+
+    @Test("pushLocalChangesToServer delete failure keeps soft-deleted device for retry")
+    func pushLocalChangesDeleteFailureKeepsDeviceForRetry() async {
+        let repo = MockScaleRepository()
+        let remote = MockScaleRepositoryAPI()
+        remote.deleteScaleError = ScaleTestError.remoteFailure
+        let deleted = ScaleTestFixtures.makeDevice(id: "deleted-scale", isSynced: true, hasServerID: true, isSoftDeleted: true)
+        repo.devices = [deleted]
+        let sut = makeSUT(repo: repo, remote: remote)
+
+        await sut.pushLocalChangesToServer()
+
+        #expect(remote.deleteScaleCalls == 1)
+        #expect(repo.permanentlyRemoveDeviceCalls == 0)
+        #expect(repo.devices.count == 1)
+        #expect(repo.devices.first?.id == "deleted-scale")
+        #expect(repo.devices.first?.isSoftDeleted == true)
     }
 
     @Test("pushLocalChangesToServer update failure leaves device unsynced")
@@ -881,6 +926,24 @@ struct ScaleServiceTests {
         #expect(repo.lastReplacedAccountId == "acct-1")
         #expect(sut.scales.count == 1)
         #expect(sut.scales.first?.id == "server-scale")
+    }
+
+    @Test("syncAllScalesWithRemote adds remote-only scale to local state")
+    func syncAllScalesWithRemoteAddsRemoteOnlyScaleLocally() async {
+        let repo = MockScaleRepository()
+        let remote = MockScaleRepositoryAPI()
+        repo.devices = []
+        remote.listScalesResult = [
+            ScaleTestFixtures.makeScaleDTO(id: "remote-only-scale", displayName: "Remote Only Scale")
+        ]
+        let sut = makeSUT(repo: repo, remote: remote)
+
+        await sut.syncAllScalesWithRemote()
+
+        #expect(repo.replaceAllDevicesForAccountCalls == 1)
+        #expect(sut.scales.map(\.id) == ["remote-only-scale"])
+        #expect(sut.scales.first?.hasServerID == true)
+        #expect(sut.scales.first?.r4ScalePreference?.displayName == "Remote Only Scale")
     }
 
     @Test("syncAllScalesWithRemote skips reconciliation when server id already exists for the active account")
@@ -1022,6 +1085,34 @@ struct ScaleServiceTests {
 
         #expect(repo.replaceAllDevicesForAccountCalls == 1)
         #expect(sut.scales.isEmpty)
+    }
+
+    @Test("syncAllScalesWithRemote preserves unsynced local scale when server returns empty state")
+    func syncAllScalesWithRemotePreservesUnsyncedLocalScale() async {
+        let repo = MockScaleRepository()
+        let remote = MockScaleRepositoryAPI()
+        let unsynced = ScaleTestFixtures.makeDevice(
+            id: "pending-local-scale",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111,
+            isSynced: false,
+            hasServerID: false
+        )
+        repo.devices = [unsynced]
+        remote.listScalesResult = []
+        remote.createScaleError = ScaleTestError.remoteFailure
+        let sut = makeSUT(repo: repo, remote: remote)
+
+        await sut.syncAllScalesWithRemote()
+
+        #expect(remote.createScaleCalls == 1)
+        #expect(repo.replaceAllDevicesForAccountCalls == 1)
+        #expect(repo.lastPreservedUnsyncedDevices.count == 1)
+        #expect(sut.scales.map(\.id) == ["pending-local-scale"])
+        #expect(sut.scales.first?.isSynced == false)
+        #expect(sut.scales.first?.hasServerID == false)
     }
 
     @Test("syncAllScalesWithRemote keeps synced local scale when server matches by id")
