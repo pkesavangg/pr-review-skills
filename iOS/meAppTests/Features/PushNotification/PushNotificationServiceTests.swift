@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import meApp
 
+@Suite(.serialized)
 @MainActor
 struct PushNotificationServiceTests {
     @Test("handleNotification data-only: syncs entries/scales and shows local banner")

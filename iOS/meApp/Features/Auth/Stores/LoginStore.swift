@@ -87,7 +87,7 @@ final class LoginStore: ObservableObject {
     // Services (inject as needed)
     @Injector var accountService: AccountServiceProtocol
     @Injector var logger: LoggerServiceProtocol
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
 
     // MARK: - Login Form
 

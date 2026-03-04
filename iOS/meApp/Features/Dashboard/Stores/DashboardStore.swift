@@ -15,7 +15,7 @@ import SwiftUI
 class DashboardStore: ObservableObject {
     // MARK: - Dependencies
 
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var accountService: AccountService
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService

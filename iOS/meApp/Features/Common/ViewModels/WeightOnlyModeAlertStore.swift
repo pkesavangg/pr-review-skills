@@ -14,7 +14,7 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var scaleService: ScaleService
     @Injector private var bluetoothService: BluetoothService
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
 
     // MARK: - Published Properties
     @Published var isLoading = false

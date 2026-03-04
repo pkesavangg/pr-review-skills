@@ -109,18 +109,46 @@ final class ScaleSettingsStore: ObservableObject {
 
     /// Creates a fresh store scoped to a single `Device` (scale) instance.
     /// - Parameter scale: The scale that this settings store should manage.
-    init(scale: Device) {
+    convenience init(scale: Device) {
+        self.init(
+            scale: scale,
+            notificationService: nil,
+            scaleService: nil,
+            bluetoothService: nil,
+            logger: nil,
+            accountService: nil,
+            permissionsService: nil
+        )
+    }
+
+    init(
+        scale: Device,
+        notificationService: NotificationHelperServiceProtocol?,
+        scaleService: ScaleServiceProtocol?,
+        bluetoothService: BluetoothServiceProtocol?,
+        logger: LoggerServiceProtocol?,
+        accountService: AccountServiceProtocol?,
+        permissionsService: PermissionsServiceProtocol?
+    ) {
         // Store both PersistentIdentifier and string ID for safe refetching
         self.scaleId = scale.persistentModelID
         self.scaleIdString = scale.id
         self.cachedScale = scale  // Cache the initial scale
-        logger.log(level: .debug, tag: tag, message: "ScaleSettingsStore initialized for scale: \(scale.id)")
+
+        if let notificationService { self.notificationService = notificationService }
+        if let scaleService { self.scaleService = scaleService }
+        if let bluetoothService { self.bluetoothService = bluetoothService }
+        if let logger { self.logger = logger }
+        if let accountService { self.accountService = accountService }
+        if let permissionsService { self.permissionsService = permissionsService }
+
+        logger?.log(level: .debug, tag: tag, message: "ScaleSettingsStore initialized for scale: \(scale.id)")
 
         // Initialize cached values from the scale
         refreshCachedValues()
 
         // Keep the local state in-sync with updates coming from `ScaleService`.
-        scaleService.scalesPublisher
+        self.scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 guard let self = self else { return }

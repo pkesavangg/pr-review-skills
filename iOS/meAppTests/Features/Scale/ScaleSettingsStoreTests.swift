@@ -437,14 +437,21 @@ struct ScaleSettingsStoreTests {
             permissions.setPermissions([.BLUETOOTH_SWITCH: .ENABLED])
         }
 
-        DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
-        DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
-        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-        DependencyContainer.shared.register(account as AccountServiceProtocol)
-        DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
-
-        return (ScaleSettingsStore(scale: scale), notification, scaleService, bluetooth, permissions)
+        return (
+            ScaleSettingsStore(
+                scale: scale,
+                notificationService: notification,
+                scaleService: scaleService,
+                bluetoothService: bluetooth,
+                logger: logger,
+                accountService: account,
+                permissionsService: permissions
+            ),
+            notification,
+            scaleService,
+            bluetooth,
+            permissions
+        )
     }
 
     private func makeR4Scale(preferenceSynced: Bool = true) -> Device {

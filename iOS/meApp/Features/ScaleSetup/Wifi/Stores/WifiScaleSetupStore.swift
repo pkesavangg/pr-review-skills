@@ -11,7 +11,7 @@ import UIKit
 @MainActor
 final class WifiScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var permissionsService: PermissionsService
     @Injector private var wifiScaleService: WifiScaleService
     @Injector private var accountService: AccountService

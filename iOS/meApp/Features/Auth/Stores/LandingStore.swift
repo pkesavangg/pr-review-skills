@@ -13,7 +13,7 @@ import SwiftUI
 final class LandingStore: ObservableObject {
     // MARK: Dependencies
     @Injector private var accountService: AccountService
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var logger: LoggerService
     
     private let networkMonitor = NetworkMonitor.shared

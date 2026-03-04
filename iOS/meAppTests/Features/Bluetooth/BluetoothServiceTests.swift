@@ -3,6 +3,7 @@ import Foundation
 import Testing
 @testable import meApp
 
+@Suite(.serialized)
 @MainActor
 struct BluetoothServiceTests {
 
@@ -78,9 +79,9 @@ struct BluetoothServiceTests {
         let expectedAccount = AccountTestFixtures.makeAccountModel(id: "222", email: "user2@example.com", isLoggedIn: true, isActive: true)
 
         account.activeAccount = expectedAccount
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        let updated = await waitUntil { sut.activeAccount?.accountId == "222" }
 
-        #expect(sut.activeAccount?.accountId == "222")
+        #expect(updated == true)
     }
 
     @Test("scale subscription filters to bluetooth scale source types")
@@ -100,9 +101,9 @@ struct BluetoothServiceTests {
         )
 
         scale.scales = [bluetoothScale, wifiScale]
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        let updated = await waitUntil { sut.bluetoothScales.count == 1 }
 
-        #expect(sut.bluetoothScales.count == 1)
+        #expect(updated == true)
         #expect(sut.bluetoothScales.first?.id == "keep-1")
     }
 
@@ -113,9 +114,9 @@ struct BluetoothServiceTests {
 
         sut.bluetoothScales = [makeDevice(id: "existing-1", broadcastIdString: "C1")]
         scale.scales = []
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        let updated = await waitUntil { sut.bluetoothScales.isEmpty }
 
-        #expect(sut.bluetoothScales.isEmpty)
+        #expect(updated == true)
     }
 
     @Test("confirmSmartPair invalid broadcast id: returns invalidBroadcastId")
@@ -320,5 +321,17 @@ struct BluetoothServiceTests {
             isConnected: isConnected,
             bathScale: bathScale
         )
+    }
+
+    private func waitUntil(
+        timeoutNanoseconds: UInt64 = 2_000_000_000,
+        pollNanoseconds: UInt64 = 20_000_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+        while !condition() && ContinuousClock.now < deadline {
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+        return condition()
     }
 }

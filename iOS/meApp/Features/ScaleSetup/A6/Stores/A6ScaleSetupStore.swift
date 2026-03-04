@@ -12,7 +12,7 @@ import SwiftUI
 @MainActor
 final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     /// Centralised permission handling service.
     @Injector private var permissionsService: PermissionsService
     /// Bluetooth service for device discovery
