@@ -18,6 +18,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,6 +49,10 @@ constructor(
 ) : BaseIntentViewModel<DashboardState, DashboardIntent>(
   reducer = DashboardReducer(),
 ), DefaultLifecycleObserver {
+
+  companion object {
+    private const val TAG = "DashboardViewModel"
+  }
 
 
   init {
@@ -117,11 +122,13 @@ constructor(
 
   private fun refresh() {
     viewModelScope.launch {
+      AppLog.d(TAG, "Dashboard refresh started")
       handleIntent(DashboardIntent.UpdateIsRefreshing(true))
       entryService.syncOperations()
       dashboardService.refreshDashboard()
       accountService.refreshAccount()
       handleIntent(DashboardIntent.UpdateIsRefreshing(false))
+      AppLog.i(TAG, "Dashboard refresh completed")
     }
   }
 
@@ -208,11 +215,12 @@ constructor(
           message = DashboardString.Loader.Save,
         )
         val currentDashboardType = state.value.dashboardType
+        AppLog.d(TAG, "Resetting dashboard for type: $currentDashboardType")
         dashboardService.resetVisibleKeys(dashboardType = currentDashboardType)
-        // Clear secondary metric selection when resetting dashboard (matching iOS behavior)
-        // Clear both UI state (selectedStat) and service state (selectedKey)
         handleIntent(DashboardIntent.SetSelectedStat(null))
+        AppLog.i(TAG, "Dashboard reset successfully")
       } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to reset dashboard", e)
       } finally {
         delay(300)
         dialogQueueService.dismissLoader()
@@ -226,11 +234,12 @@ constructor(
         dialogQueueService.showLoader(
           message = DashboardString.Loader.Save,
         )
+        AppLog.d(TAG, "Updating visible keys for dashboardType: $dashboardType, count: ${keys.size}")
         dashboardService.updateVisibleKeys(keys = keys, dashboardType = dashboardType)
-        // Clear secondary metric selection when saving changes (matching iOS behavior)
-        // Clear both UI state (selectedStat) and service state (selectedKey)
         handleIntent(DashboardIntent.SetSelectedStat(null))
+        AppLog.i(TAG, "Visible keys updated successfully")
       } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to update visible keys", e)
       } finally {
         delay(300)
         dialogQueueService.dismissLoader()

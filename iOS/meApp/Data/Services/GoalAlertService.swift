@@ -16,14 +16,28 @@ import SwiftUI
 @MainActor
 final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     static let shared = GoalAlertService()
-    private init() {}
+    init(
+        notificationService: NotificationHelperServiceProtocol = NotificationHelperService.shared,
+        accountService: AccountServiceProtocol = AccountService.shared,
+        bluetoothService: BluetoothServiceProtocol = BluetoothService.shared,
+        logger: LoggerServiceProtocol = LoggerService.shared,
+        kv: KvStorageServiceProtocol = KvStorageService.shared,
+        setGoalModalDelay: TimeInterval = 3.0
+    ) {
+        self.notificationService = notificationService
+        self.accountService = accountService
+        self.bluetoothService = bluetoothService
+        self.logger = logger
+        self.kv = kv
+        self.setGoalModalDelay = setGoalModalDelay
+    }
 
     // MARK: - Dependencies
 
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var accountService: AccountService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var logger: LoggerService
+    private let notificationService: NotificationHelperServiceProtocol
+    private let accountService: AccountServiceProtocol
+    private let bluetoothService: BluetoothServiceProtocol
+    private let logger: LoggerServiceProtocol
 
     // MARK: - Public Callback
 
@@ -38,10 +52,13 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     // MARK: - Internal State
 
     private(set) var isShowingAlert: Bool = false
-    private let kv = KvStorageService.shared
+    private let kv: KvStorageServiceProtocol
+    private let setGoalModalDelay: TimeInterval
     private let tag = "GoalAlertService"
 
     private let alertStrings = AlertStrings.self
+    /// Stores pending alert weight when triggered on landing/loading screen
+    private var pendingAlertWeight: Double?
 
     // MARK: - Public API
 
@@ -79,8 +96,15 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)" // swiftlint:disable:this line_length
+            message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), "
+                + "currentWeight=\(currentWeight), goalWeight=\(goalWeight)"
         )
+
+        // If we're on landing/loading screen, store pending alert to show later
+        guard isOnDashboardTab != nil else {
+            pendingAlertWeight = currentWeight
+            return
+        }
 
         // Persist flag so the alert is not re-shown in the same session until reset
         kv.setValue(true, forKey: storageKey)
@@ -93,6 +117,14 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         case .gain, .lose:
             await presentGoalMetAlert()
         }
+    }
+    
+    /// Checks for pending goal alerts and shows them if conditions are met.
+    /// Call this when user enters bottom tab bar context.
+    func checkPendingGoalAlerts() async {
+        guard let pendingWeight = pendingAlertWeight else { return }
+        pendingAlertWeight = nil
+        await showGoalMetMessage(currentWeight: pendingWeight)
     }
 
     // MARK: - Helpers
@@ -137,7 +169,6 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         let storageKey = KvStorageKeys.setAGoalModalFlagKey(for: accountId)
         kv.setValue(true, forKey: storageKey)
 
-        let setGoalModalDelay = 3.0
         try? await Task.sleep(nanoseconds: UInt64(setGoalModalDelay * 1_000_000_000))
 
         guard isOnDashboardTab?() == true else {

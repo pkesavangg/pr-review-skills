@@ -9,8 +9,8 @@ import Foundation
 
 struct ScaleBluetoothStrings {
     static let bluetooth = "Bluetooth"
-// swiftlint:disable:next line_length
-    static let info = "To communicate with the scale, Weight Gurus needs to connect via Bluetooth. If not connected, ensure the scale and all permissions are on."
+    static let info = "To communicate with the scale, Weight Gurus needs to connect via Bluetooth. "
+        + "If not connected, ensure the scale and all permissions are on."
     static let unknownScale = "Unknown Scale"
     static let permissionsTitle = "Bluetooth Permissions"
     static let bluetoothAuthorized = "Bluetooth authorized"

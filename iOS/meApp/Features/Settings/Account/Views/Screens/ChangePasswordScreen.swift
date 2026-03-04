@@ -36,8 +36,8 @@ struct ChangePasswordScreen: View {
                         type: .inlineTextPrimary,
                         size: .small,
                         // Disable when no changes or invalid.
-// swiftlint:disable:next line_length
-                        isDisabled: (!settingsStore.changePasswordForm.isDirty || (settingsStore.changePasswordForm.isDirty && settingsStore.changePasswordForm.isInvalid))
+                        isDisabled: !settingsStore.changePasswordForm.isDirty
+                            || (settingsStore.changePasswordForm.isDirty && settingsStore.changePasswordForm.isInvalid)
                     ) {
                         hideKeyboard()
                         settingsStore.savePassword(router: router)

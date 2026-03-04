@@ -34,12 +34,11 @@ struct WifiNetworksListView: View {
                     if isInteractive {
                         Button(action: {
                             onNetworkSelected(network)
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                        }) {
+                        }, label: {
                             networkListItem(network: network, showChevron: showChevron) {
                                 onNetworkSelected(network)
                             }
-                        }
+                        })
                     } else {
                         networkListItem(network: network, showChevron: showChevron) {
                             // Non-interactive row – no action

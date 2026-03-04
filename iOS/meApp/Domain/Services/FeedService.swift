@@ -6,13 +6,13 @@ import SwiftUI
 @MainActor
 final class FeedService: FeedServiceProtocol, ObservableObject {
     static let shared = FeedService()
-    @Injector var notificationService: NotificationHelperService
-    @Injector var logger: LoggerServiceProtocol
     
-    private let apiRepo: FeedRepositoryAPIProtocol = FeedRepositoryAPI()
-    private let networkMonitor = NetworkMonitor.shared
-    private let accountService = AccountService.shared
-    private let ggIAMService = GGInAppMessagingService.shared
+    private let apiRepo: FeedRepositoryAPIProtocol
+    private let accountService: AccountServiceProtocol
+    private let ggIAMService: GGInAppMessagingServiceProtocol
+    private let notificationService: NotificationHelperServiceProtocol
+    private let logger: LoggerServiceProtocol
+    private let imagePreloader: (URL) async -> Bool
     
     /// Emits whenever `feedItems` changes. Consumers can subscribe without needing GG IAM package.
     let feedsChanged = PassthroughSubject<[FeedItem], Never>()
@@ -23,24 +23,42 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     private let tag = "FeedService"
     
     /// Delay in seconds before displaying the feed modal to improve UX
-    private let feedModalTimeout = 3.0
+    private let feedModalTimeout: TimeInterval
     private var cancellables = Set<AnyCancellable>()
-    init() {
+    
+    init(
+        apiRepo: FeedRepositoryAPIProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        ggIAMService: GGInAppMessagingServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        feedModalTimeout: TimeInterval = 3.0,
+        imagePreloader: @escaping (URL) async -> Bool = { url in
+            await ImagePreloader.preloadImage(from: url)
+        }
+    ) {
+        self.apiRepo = apiRepo ?? FeedRepositoryAPI()
+        self.accountService = accountService ?? AccountService.shared
+        self.ggIAMService = ggIAMService ?? GGInAppMessagingService.shared
+        self.notificationService = notificationService ?? NotificationHelperService.shared
+        self.logger = logger ?? LoggerService.shared
+        self.feedModalTimeout = feedModalTimeout
+        self.imagePreloader = imagePreloader
+        
         let initialFeedSettings = getFeedSettings()
         feedSettingsChanged.send(initialFeedSettings)
-        ggIAMService
-            .feedsUpdated
+        self.ggIAMService
+            .feedsUpdatedPublisher
             .sink { [weak self] feedInfo in
                 Task {
-                    let feedActionType: GGFeedActionType = GGFeedActionType(rawValue: feedInfo.actionType.rawValue) ?? .read
-                    await self?.updateFeedItem(feedInfo.feedItem, actionType: feedActionType, variationId: feedInfo.variationId)
+                    await self?.updateFeedItem(feedInfo.feedItem, actionType: feedInfo.actionType, variationId: feedInfo.variationId)
                 }
             }
             .store(in: &cancellables)
         
         // Listen for full-feed changes from the GG IAM service and propagate them internally
-        ggIAMService
-            .feedsChanged
+        self.ggIAMService
+            .feedsChangedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newFeeds in
                 guard let self = self else { return }
@@ -49,8 +67,8 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
             }
             .store(in: &cancellables)
         
-        ggIAMService
-            .feedNotificationChanged
+        self.ggIAMService
+            .feedNotificationChangedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
@@ -84,10 +102,19 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         let action = buildFeedAction(actionType: actionType, variationId: variationId)
         do {
             try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
-// swiftlint:disable:next line_length
-            logger.log(level: .info, tag: tag, message: "Successfully updated feed item", data: ["feedPostId": feedItem.feedPostId, "actionType": actionType])
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Successfully updated feed item",
+                data: ["feedPostId": feedItem.feedPostId, "actionType": actionType]
+            )
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to update feed item",
+                data: ["feedPostId": feedItem.feedPostId, "error": error]
+            )
         }
     }
     
@@ -98,13 +125,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
     // MARK: - Feed Settings Management
     @discardableResult
     func getFeedSettings() -> GGFeedSetting? {
-        if let result = ggIAMService.getStoredFeedNotificationSetting() {
-            return GGFeedSetting(
-                showPopupMessage: result.showPopupMessage,
-                showNotificationBadge: result.showNotificationBadge
-            )
-        }
-        return nil
+        ggIAMService.getFeedNotificationSetting()
     }
     
     // MARK: - Feed Modal Management
@@ -125,7 +146,7 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         let imageURL = URL(string: feedItem.titleImage)
         var imageLoaded = false
         if let validURL = imageURL {
-            imageLoaded = await ImagePreloader.preloadImage(from: validURL)
+            imageLoaded = await imagePreloader(validURL)
         } else {
             logger.log(level: .error, tag: tag, message: "Invalid image URL for feed modal", data: ["imageURL": feedItem.titleImage])
         }

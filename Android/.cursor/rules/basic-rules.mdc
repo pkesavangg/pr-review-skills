@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: false
 ---
 # MeApp Android - Cursor Rules & Best Practices
@@ -33,7 +33,7 @@ This file contains comprehensive coding standards and best practices for the MeA
 
 ### 2. Package Structure
 ```
-com.greatergoods.meapp/
+com.dmdbrands.gurus/
 ├── app/                    # Application layer
 ├── core/                   # Core utilities, DI, navigation
 ├── data/                   # Data layer (API, storage, repositories)

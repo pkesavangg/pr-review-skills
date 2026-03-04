@@ -120,10 +120,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     // MARK: - Dependencies
 
-    let accountService: AccountService
+    let accountService: AccountServiceProtocol
     let scaleService: ScaleServiceProtocol
     let entryService: EntryServiceProtocol
-    let logger: LoggerService
+    let logger: LoggerServiceProtocol
     let ggBleSDK = GGBluetoothSwiftPackage.shared
     let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     let tag = "BluetoothService"
@@ -143,7 +143,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     // MARK: - BLE Components
 
-    let discoveryManager: BLEDiscoveryManager
+    let discoveryManager: BLEDiscoveryManaging
 
     // MARK: - Initialization
 
@@ -156,16 +156,17 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      - logger: The logger service dependency.
      */
     init(
-        accountService: AccountService,
+        accountService: AccountServiceProtocol,
         scaleService: ScaleServiceProtocol,
         entryService: EntryServiceProtocol,
-        logger: LoggerService
+        logger: LoggerServiceProtocol,
+        discoveryManager: BLEDiscoveryManaging? = nil
     ) {
         self.accountService = accountService
         self.scaleService = scaleService
         self.entryService = entryService
         self.logger = logger
-        discoveryManager = BLEDiscoveryManager()
+        self.discoveryManager = discoveryManager ?? BLEDiscoveryManager()
         setupSubscriptions()
         initialize()
     }
@@ -187,7 +188,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
      */
     func initialize() {
         logger.log(level: .info, tag: tag, message: "Bluetooth service initialize called")
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
                 Task {

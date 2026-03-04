@@ -112,19 +112,20 @@ class MyAccountsViewModel @Inject constructor(
 
     private fun showRemoveAccountDialog(account: Account) {
         dialogQueueService.enqueue(
-            DialogModel.Confirm(
+          DialogModel.Confirm(
                 title = String.format(AppPopupStrings.RemoveAccountDialog.Title, account.firstName),
                 message = String.format(AppPopupStrings.RemoveAccountDialog.Message, account.firstName),
                 confirmText = AppPopupStrings.RemoveAccountDialog.ConfirmButton,
                 cancelText = AppPopupStrings.RemoveAccountDialog.CancelButton,
-                onConfirm = {
+                primaryActionType = com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText,
+          onConfirm = {
                     onRemoveAccount()
                     dialogQueueService.dismissCurrent()
                 },
-                onCancel = {
+          onCancel = {
                     dialogQueueService.dismissCurrent()
                 },
-                onDismiss = {
+          onDismiss = {
                     dialogQueueService.dismissCurrent()
                 },
             ),

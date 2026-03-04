@@ -441,8 +441,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_SCALE),
+                                      clientRecordId = time.epochSecond.toString()
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.BloodPressure ->
@@ -460,8 +461,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_UNKNOWN),
+                                    clientRecordId = time.epochSecond.toString()
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.RestingHeartRate ->
@@ -474,8 +476,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_UNKNOWN),
+                                    clientRecordId = time.epochSecond.toString(),
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.BodyFat ->
@@ -489,8 +492,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_SCALE),
+                                    clientRecordId = time.epochSecond.toString(),
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.BodyWaterMass ->
@@ -505,8 +509,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_SCALE),
+                                    clientRecordId = time.epochSecond.toString(),
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.BoneMass ->
@@ -521,8 +526,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_SCALE),
+                                    clientRecordId = time.epochSecond.toString(),
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.Height ->
@@ -537,8 +543,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_SCALE),
+                                    clientRecordId = time.epochSecond.toString(),
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.LeanBodyMass ->
@@ -553,8 +560,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_SCALE),
+                                    clientRecordId = time.epochSecond.toString(),
                                 ),
-                        )
+                        ) as Record
                     }
 
                 DataType.Weight ->
@@ -569,8 +577,9 @@ class HealthConnect(
                             metadata =
                                 Metadata.Companion.autoRecorded(
                                     device = Device(type = Device.Companion.TYPE_SCALE),
+                                    clientRecordId = time.epochSecond.toString(),
                                 ),
-                        )
+                        ) as Record
                     }
             }
         } catch (e: Exception) {

@@ -41,11 +41,10 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                 if let leadingContent = leadingContent {
                     Button(action: {
                         onLeadingTap?()
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                    }) {
+                    }, label: {
                         leadingContent()
                             .foregroundColor(theme.actionPrimary)
-                    }
+                    })
                 }
 
                 Spacer()

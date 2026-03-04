@@ -97,8 +97,6 @@ fun PagerWithBottomNavigationPreview() {
           coroutineScope.launch {
             if (!isLastPage) {
               pagerState.animateScrollToPage(currentPage + 1)
-            } else {
-              println("Completed onboarding!")
             }
           }
         }
