@@ -25,8 +25,8 @@
   - Save failure shows error toast and dismisses loader/modal.
 
 ## Estimated Coverage
-- Current coverage (as of 2026-03-04): **~88%**
-- Estimated line coverage for `AppSyncTabStore.swift`: **~88%**
+- Current coverage (as of 2026-03-04): **~96%**
+- Estimated line coverage for `AppSyncTabStore.swift`: **~96%**
 - Uncovered/partially-covered areas:
   - UI rendering internals inside `AppSyncEntryCardView` itself.
   - Log-message text details (behavior is covered; string contents are not asserted).
