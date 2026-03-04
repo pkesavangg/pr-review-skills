@@ -141,9 +141,9 @@ class TokenAuthenticator @Inject constructor(
      */
     private fun isTokenExpired(expiresAt: String): Boolean {
         return try {
-            val tokenExpires = dateFormat.parse(expiresAt)
+            val tokenExpires = dateFormat.parse(expiresAt) ?: return true
             val currentTime = Date()
-            val timeUntilExpiry = tokenExpires!!.time - currentTime.time
+            val timeUntilExpiry = tokenExpires.time - currentTime.time
             AppLog.v(TAG, "Token expires at: $expiresAt ($timeUntilExpiry ms until expiry)")
 
             val isExpired = timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_MS

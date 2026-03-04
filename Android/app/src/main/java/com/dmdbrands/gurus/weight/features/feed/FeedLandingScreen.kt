@@ -53,9 +53,12 @@ fun FeedLandingScreen() {
         }
 
         state.feedItem != null -> {
-          IamFeedLandingScreen(
-            feedItem = state.feedItem!!,
-          )
+          val feedItem = state.feedItem
+          if (feedItem != null) {
+            IamFeedLandingScreen(
+              feedItem = feedItem,
+            )
+          }
         }
 
         else -> {

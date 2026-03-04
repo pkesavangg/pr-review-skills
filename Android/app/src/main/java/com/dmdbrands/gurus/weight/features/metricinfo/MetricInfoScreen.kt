@@ -112,18 +112,15 @@ fun MetricInfoScreen(
     },
   )
   val state by viewModel.state.collectAsState()
-  if (state.stat == null) {
-    return
-  } else {
-    MetricInfoScreenContent(
-      stat = state.stat!!,
-      info = info,
-      source = source,
-      selectedIndex = state.selectedMetricIndex,
-      handleIntent = viewModel::handleIntent,
-      metricInfoState = state,
-    )
-  }
+  val stat = state.stat ?: return
+  MetricInfoScreenContent(
+    stat = stat,
+    info = info,
+    source = source,
+    selectedIndex = state.selectedMetricIndex,
+    handleIntent = viewModel::handleIntent,
+    metricInfoState = state,
+  )
 }
 
 /**

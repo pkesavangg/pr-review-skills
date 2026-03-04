@@ -251,7 +251,8 @@ constructor(
         AppLog.w(TAG, "No active account found for changePassword(). Returning false.")
         return false
       }
-      accountRepository.updatePassword(activeAccountFlow.first()!!.id, currentPassword, newPassword)
+      val accountId = activeAccountFlow.first()?.id ?: return false
+      accountRepository.updatePassword(accountId, currentPassword, newPassword)
       AppLog.d(TAG, "Password changed successfully")
       dialogQueueService.showToast(Toast(ToastStrings.Success.ChangePasswordSuccess.Message))
       true
@@ -327,7 +328,7 @@ constructor(
   override suspend fun updateDashboardType(type: DashboardType) {
     AppLog.d(TAG, "Update Dashboard Type")
     try {
-      val accountId = activeAccountFlow.first()!!.id
+      val accountId = activeAccountFlow.first()?.id ?: return
       accountRepository.updateDashboardType(type.value)
       accountRepository.updateLocalDashboardType(accountId, dashboardType = type)
     } catch (e: Exception) {

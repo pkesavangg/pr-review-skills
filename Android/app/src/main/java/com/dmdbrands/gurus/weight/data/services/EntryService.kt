@@ -585,16 +585,16 @@ constructor(
     newEntries: List<Entry>,
     deleteOps: List<Entry>,
   ) {
-    if (accountId == null) return
+    val currentAccountId = accountId ?: return
 
     try {
       _isUpdating.value = true
       // 1. Get existing unsynced entries
-      val unSyncedEntries = entryRepository.getUnSynced(accountId!!).toMutableList()
+      val unSyncedEntries = entryRepository.getUnSynced(currentAccountId).toMutableList()
 
       // 2. Add new operations to unsynced list
       newEntries.forEach { entry ->
-        unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = accountId!!)))
+        unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = currentAccountId)))
       }
       deleteOps.forEach { entry ->
         unSyncedEntries.add(0, entry)
@@ -657,7 +657,7 @@ constructor(
           .maxByOrNull { it.entry.entryTimestamp }
 
       // 5. Get operations from API
-      val operationCount = entryRepository.getOperationCount(accountId!!)
+      val operationCount = entryRepository.getOperationCount(currentAccountId)
       val operationsFromApi = mutableListOf<ScaleEntry>()
       try {
         val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
@@ -668,7 +668,7 @@ constructor(
           return
         }
         val scaleEntries =
-          response.operations.map { fromScaleApiEntry(it, accountId = accountId!!) }
+          response.operations.map { fromScaleApiEntry(it, accountId = currentAccountId) }
         operationsFromApi.addAll(scaleEntries)
         accountRepository.updateSyncTimeStamp(response.timestamp)
       } catch (e: Exception) {
@@ -828,14 +828,16 @@ constructor(
             year = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
           }
         } else {
-          if (latestEntry != null && initYear.avgWeight != null && latestEntry is ScaleEntry) {
-            year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
+          val avgWeight = initYear.avgWeight
+          if (latestEntry != null && avgWeight != null && latestEntry is ScaleEntry) {
+            year = latestEntry.scale.scaleEntry.weight.toDouble() - avgWeight
           }
         }
       } catch (e: Exception) {
         AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e)
-        if (latestEntry != null && initYear.avgWeight != null && latestEntry is ScaleEntry) {
-          year = latestEntry.scale.scaleEntry.weight.toDouble() - initYear.avgWeight!!
+        val avgWeight = initYear.avgWeight
+        if (latestEntry != null && avgWeight != null && latestEntry is ScaleEntry) {
+          year = latestEntry.scale.scaleEntry.weight.toDouble() - avgWeight
         }
       }
     }
@@ -945,10 +947,10 @@ constructor(
    * @return The current streak count
    */
   private suspend fun getCurrentStreak(): Int {
-    if (accountId == null) return 0
+    val streakAccountId = accountId ?: return 0
 
     try {
-      val entryDates = entryRepository.getStreakData(accountId!!)
+      val entryDates = entryRepository.getStreakData(streakAccountId)
       if (entryDates.isEmpty()) return 0
 
       var score = 0

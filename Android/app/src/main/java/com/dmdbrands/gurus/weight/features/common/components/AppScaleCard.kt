@@ -125,9 +125,9 @@ fun AppScaleCard(
             AppText(
               text =
                 when {
-                  !scale.isConnected!! && isBluetoothSetup -> AppListStrings.NotConnected
+                  scale.isConnected == false && isBluetoothSetup -> AppListStrings.NotConnected
                   showExclamation -> AppListStrings.SetupIncomplete
-                  scale.isConnected && isBluetoothSetup -> AppListStrings.Connected
+                  scale.isConnected == true && isBluetoothSetup -> AppListStrings.Connected
                   else -> ""
                 },
               textType = TextType.Body,
