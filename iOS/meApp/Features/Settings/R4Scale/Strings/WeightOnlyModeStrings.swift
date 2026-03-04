@@ -22,8 +22,8 @@ struct WeightOnlyModeStrings {
 
     // Information messages
     static let noteTitle = "NOTE:"
-// swiftlint:disable:next line_length
-    static let temporaryEnableNote = "You can temporarily enable body metrics for this session. The scale will return to Weight Only Mode after this measurement."
+    static let temporaryEnableNote = "You can temporarily enable body metrics for this session. "
+        + "The scale will return to Weight Only Mode after this measurement."
     static let bodyMetricsEnabledMessage = "Body metrics enabled for this session"
     static let noScalesFoundMessage = "No scales found with Weight Only Mode enabled"
 

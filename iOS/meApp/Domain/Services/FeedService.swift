@@ -84,10 +84,19 @@ final class FeedService: FeedServiceProtocol, ObservableObject {
         let action = buildFeedAction(actionType: actionType, variationId: variationId)
         do {
             try await apiRepo.updateFeedItem(feedPostId: feedItem.feedPostId, feedAction: action)
-// swiftlint:disable:next line_length
-            logger.log(level: .info, tag: tag, message: "Successfully updated feed item", data: ["feedPostId": feedItem.feedPostId, "actionType": actionType])
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Successfully updated feed item",
+                data: ["feedPostId": feedItem.feedPostId, "actionType": actionType]
+            )
         } catch {
-            logger.log(level: .error, tag: tag, message: "Failed to update feed item", data: ["feedPostId": feedItem.feedPostId, "error": error])
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to update feed item",
+                data: ["feedPostId": feedItem.feedPostId, "error": error]
+            )
         }
     }
     

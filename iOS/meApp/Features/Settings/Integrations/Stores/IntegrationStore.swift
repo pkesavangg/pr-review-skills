@@ -99,7 +99,8 @@ class IntegrationStore: ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Integration row selected. provider=\(integrationProviderKey(item.type)), currentlySelected=\(item.isSelected), accountId=\(accountID)" // swiftlint:disable:this line_length
+            message: "Integration row selected. provider=\(integrationProviderKey(item.type)), "
+                + "currentlySelected=\(item.isSelected), accountId=\(accountID)"
         )
         // If the provider is already connected, ask for confirmation to remove.
         if item.isSelected {

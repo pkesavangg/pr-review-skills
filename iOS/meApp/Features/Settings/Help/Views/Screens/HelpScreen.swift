@@ -53,11 +53,11 @@ struct HelpScreen: View {
         )
         // Debug menu sheet uses store's flag
         .sheet(isPresented: $helpStore.showDebugMenu,
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-               onDismiss: { helpStore.dismissDebugMenu() }) {
+               onDismiss: { helpStore.dismissDebugMenu() },
+               content: {
             TroubleShootingView()
                 .environmentObject(helpStore)
-        }
+        })
     }
     
     // MARK: Sections

@@ -144,7 +144,8 @@ final class IntegrationsService: IntegrationServiceProtocol {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Failed to update account integrations. provider=\(integrationType.rawValue), accountId=\(accountId), error=\(error.localizedDescription)" // swiftlint:disable:this line_length
+                    message: "Failed to update account integrations. provider=\(integrationType.rawValue), "
+                        + "accountId=\(accountId), error=\(error.localizedDescription)"
                 )
             }
         }

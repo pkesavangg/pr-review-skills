@@ -205,8 +205,8 @@ extension Validator where Value == Date {
 // MARK: - Validation Rules
 private struct Rule {
     // A regular expression that matches valid e-mail addresses.
-    // swiftlint:disable:next line_length
-    static let emailPattern = #"(?i)^\s*(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})\s*$"#
+    static let emailPattern = #"(?i)^\s*(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))"#
+        + #"@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})\s*$"#
 
     /// A regular expression that matches valid URLs.
     static let urlPattern = ##"^(https?://)?(www\\.)?[a-zA-Z0-9@:%._\\+~#?&//=]{2,256}\\.[a-z]{2,6}\\b(?:[-a-zA-Z0-9@:%._\\+~#?&//=]*)$"##

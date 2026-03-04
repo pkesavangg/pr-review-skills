@@ -20,8 +20,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.85, blendDuration: 0)) {
                         selectedSegment = segment
                     }
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                }) {
+                }, label: {
                     Text(segmentDisplayName(for: segment))
                         .fontOpenSans(.heading5)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionSecondary)
@@ -38,7 +37,7 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                                     }
                             }
                         )
-                }
+                })
                 .zIndex(1)
                 .id(segment)
             }

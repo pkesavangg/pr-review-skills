@@ -312,8 +312,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
                     setConnectionFailure()
                     LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
                 }
-// swiftlint:disable:next switch_case_alignment
-                default:
+            default:
                 setConnectionFailure()
                 LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
             }

@@ -81,7 +81,8 @@ final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
         logger.log(
             level: .info,
             tag: tag,
-            message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), currentWeight=\(currentWeight), goalWeight=\(goalWeight)" // swiftlint:disable:this line_length
+            message: "Goal alert condition met. accountId=\(account.accountId), goalType=\(goalType.rawValue), "
+                + "currentWeight=\(currentWeight), goalWeight=\(goalWeight)"
         )
 
         // If we're on landing/loading screen, store pending alert to show later
