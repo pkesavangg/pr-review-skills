@@ -7,16 +7,12 @@ set -euo pipefail
 # 2) Direct non-interactive run
 #    SCHEME="meAppTests 1" DEVICE_ID=<device-udid> CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
 
-PROJECT_PATH="iOS/meApp.xcodeproj"
-CONFIGURATION="${CONFIGURATION:-Production}"
+CONFIGURATION="${CONFIGURATION:-Dev}"
 SCHEME="${SCHEME:-}"
 DESTINATION="${DESTINATION:-}"
 DEVICE_ID="${DEVICE_ID:-}"
 DEVICE_NAME="${DEVICE_NAME:-}"
 OUTPUT_PREFIX="coverage-report"
-RESULT_DIR="iOS/build/coverage"
-REPORT_DIR="iOS/meAppTests/Reports"
-EXPORT_SCRIPT="iOS/scripts/export_coverage_reports.py"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IOS_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -149,7 +145,7 @@ for e in entries:
     iphone_rank = 0 if "iphone" in name.lower() else 1
     rows.append((rank, iphone_rank, -1 * (version_key(os_version) or (0,))[0], name.lower(), platform, name, os_version, dest_id, kind))
 
-rows = sorted(rows, key=lambda r: (r[0], r[1], r[3]))
+rows = sorted(rows, key=lambda r: (r[0], r[1], r[2], r[3]))
 for _, _, _, _, platform, name, os_version, dest_id, kind in rows:
     safe_os = os_version if os_version else "-"
     print(f"{platform}|{name}|{safe_os}|{dest_id}|{kind}")

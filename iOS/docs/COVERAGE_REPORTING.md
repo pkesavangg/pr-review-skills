@@ -73,18 +73,10 @@ This runs directly with the provided scheme and device ID.
   - `iOS/meAppTests/Reports/coverage-report.md`
   - `iOS/meAppTests/Reports/coverage-report.csv`
   - `iOS/meAppTests/Reports/coverage-report.html`
-  - Absolute:
-    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.md`
-    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.csv`
-    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.html`
 - UI-test schemes (`meAppUITests...`):
   - `iOS/meAppUITests/Reports/coverage-report.md`
   - `iOS/meAppUITests/Reports/coverage-report.csv`
   - `iOS/meAppUITests/Reports/coverage-report.html`
-  - Absolute:
-    - `/Users/kesavan/meApp-1/iOS/meAppUITests/Reports/coverage-report.md`
-    - `/Users/kesavan/meApp-1/iOS/meAppUITests/Reports/coverage-report.csv`
-    - `/Users/kesavan/meApp-1/iOS/meAppUITests/Reports/coverage-report.html`
 
 Behavior:
 - Reports are overwritten on every run.

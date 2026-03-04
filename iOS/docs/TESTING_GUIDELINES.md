@@ -150,18 +150,10 @@ python3 --version
   - `iOS/meAppTests/Reports/coverage-report.md`
   - `iOS/meAppTests/Reports/coverage-report.csv`
   - `iOS/meAppTests/Reports/coverage-report.html`
-  - Absolute:
-    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.md`
-    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.csv`
-    - `/Users/kesavan/meApp-1/iOS/meAppTests/Reports/coverage-report.html`
 - If selected scheme is UI-test (`meAppUITests...`):
   - `iOS/meAppUITests/Reports/coverage-report.md`
   - `iOS/meAppUITests/Reports/coverage-report.csv`
   - `iOS/meAppUITests/Reports/coverage-report.html`
-  - Absolute:
-    - `/Users/kesavan/meApp-1/iOS/meAppUITests/Reports/coverage-report.md`
-    - `/Users/kesavan/meApp-1/iOS/meAppUITests/Reports/coverage-report.csv`
-    - `/Users/kesavan/meApp-1/iOS/meAppUITests/Reports/coverage-report.html`
 
 Reports include:
 - Per-file coverage for each Swift source file under `meApp/`
