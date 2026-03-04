@@ -15,7 +15,7 @@ final class AppReviewService: AppReviewHandlerProtocol, ObservableObject {
     static let shared = AppReviewService()
     
     @Injector private var logger: LoggerService
-    @Injector private var notificationHelper: NotificationHelperService
+    @Injector private var notificationHelper: NotificationHelperServiceProtocol
     
     private let tag = "AppReviewService"
     

@@ -23,6 +23,10 @@ final class MockWifiPermissionsService: PermissionsServiceProtocol {
     @Published var permissions: [GGPermissionType: GGPermissionState]?
     var permissionsPublisher: AnyPublisher<[GGPermissionType: GGPermissionState]?, Never> { $permissions.eraseToAnyPublisher() }
     var requiredCategories: Set<PermissionCategory> = []
+    private let requiredCategoriesSubject = CurrentValueSubject<Set<PermissionCategory>, Never>([])
+    var requiredCategoriesPublisher: AnyPublisher<Set<PermissionCategory>, Never> {
+        requiredCategoriesSubject.eraseToAnyPublisher()
+    }
 
     var permissionStates: [GGPermissionType: GGPermissionState] = [:]
 
@@ -31,6 +35,11 @@ final class MockWifiPermissionsService: PermissionsServiceProtocol {
         for (key, value) in permissions {
             permissionStates[key] = value
         }
+    }
+
+    func setRequiredCategories(_ categories: Set<PermissionCategory>) {
+        requiredCategories = categories
+        requiredCategoriesSubject.send(categories)
     }
 
     func permissionRequest(_ type: GGPermissionType) async -> GGPermissionState {

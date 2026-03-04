@@ -14,7 +14,7 @@ final class HistoryStore: ObservableObject {
     
     // MARK: - Dependencies
     @Injector private var entryService: EntryService
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var logger: LoggerService
     @Injector private var accountService: AccountService
     

@@ -474,14 +474,14 @@ struct LoginStoreTests {
 }
 
 @MainActor
-private func makeSUT() -> (LoginStore, MockAccountService, MockLoggerService, NotificationHelperService) {
+private func makeSUT() -> (LoginStore, MockAccountService, MockLoggerService, MockNotificationHelperService) {
     TestDependencyContainer.reset()
 
     let accountService = MockAccountService()
     let logger = MockLoggerService()
     let keychain = MockKeychainService()
     let bluetooth = MockBluetoothService()
-    let notificationService = NotificationHelperService()
+    let notificationService = MockNotificationHelperService()
 
     TestDependencyContainer.registerBase(
         logger: logger,
@@ -489,7 +489,6 @@ private func makeSUT() -> (LoginStore, MockAccountService, MockLoggerService, No
         bluetooth: bluetooth
     )
     DependencyContainer.shared.register(accountService as AccountServiceProtocol)
-    DependencyContainer.shared.register(notificationService)
     DependencyContainer.shared.register(notificationService as NotificationHelperServiceProtocol)
 
     notificationService.dismissAllNotifications()

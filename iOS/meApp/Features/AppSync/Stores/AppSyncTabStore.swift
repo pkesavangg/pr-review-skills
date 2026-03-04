@@ -16,7 +16,7 @@ import SwiftUI
 final class AppSyncTabStore: ObservableObject {
     // MARK: – Dependencies
     @Injector var accountService: AccountServiceProtocol
-    @Injector var notificationHelperService: NotificationHelperService
+    @Injector var notificationHelperService: NotificationHelperServiceProtocol
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     private let toastLang = ToastStrings.self

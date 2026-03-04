@@ -10,7 +10,7 @@ import SwiftData
 
 @MainActor
 final class UsersViewModel: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var permissionsService: PermissionsServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol

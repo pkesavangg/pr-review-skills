@@ -9,7 +9,7 @@ import Foundation
 @MainActor
 final class AccountService: AccountServiceProtocol, ObservableObject { // swiftlint:disable:this type_body_length
     static let shared = AccountService()
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var keychainService: KeychainServiceProtocol

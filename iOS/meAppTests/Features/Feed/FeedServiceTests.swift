@@ -3,6 +3,7 @@ import Foundation
 import Testing
 @testable import meApp
 
+@Suite(.serialized)
 @MainActor
 struct FeedServiceTests {
     @Test("fetchFeedItems success: sets account, loads feeds, publishes and updates badge")

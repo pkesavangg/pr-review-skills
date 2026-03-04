@@ -3,6 +3,7 @@ import Foundation
 import Testing
 @testable import meApp
 
+@Suite(.serialized)
 @MainActor
 struct EntryServiceTests {
     @Test("saveNewEntry success: saves locally, syncs API, updates summaries and notifications")
@@ -266,31 +267,37 @@ struct EntryServiceTests {
     }
 
     private func makeSUT(
-        repo: MockEntryRepository? = nil,
-        remote: MockEntryRepositoryAPI? = nil,
-        syncStore: MockEntrySyncStore? = nil,
-        integration: MockIntegrationService? = nil,
-        goalAlert: MockGoalAlertService? = nil,
-        logger: MockLoggerService? = nil,
-        activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
-    ) -> EntryService {
-        let account = MockAccountService()
-        account.activeAccount = activeAccount
+            repo: MockEntryRepository? = nil,
+            remote: MockEntryRepositoryAPI? = nil,
+            syncStore: MockEntrySyncStore? = nil,
+            integration: MockIntegrationService? = nil,
+            goalAlert: MockGoalAlertService? = nil,
+            logger: MockLoggerService? = nil,
+            activeAccount: Account? = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "entry@example.com", isActive: true)
+        ) -> EntryService {
+            let account = MockAccountService()
+            account.activeAccount = activeAccount
 
-        let logger = logger ?? MockLoggerService()
-        let goalAlert = goalAlert ?? MockGoalAlertService()
-        let integration = integration ?? MockIntegrationService()
+            let logger = logger ?? MockLoggerService()
+            let goalAlert = goalAlert ?? MockGoalAlertService()
+            let integration = integration ?? MockIntegrationService()
+            let keychain = MockKeychainService()
+            let bluetooth = MockBluetoothService()
 
-        TestDependencyContainer.reset()
-        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-        DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
-        DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
+            TestDependencyContainer.reset()
+            TestDependencyContainer.registerBase(
+                logger: logger,
+                keychain: keychain,
+                bluetooth: bluetooth
+            )
+            DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
+            DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
-        return EntryService(
-            accountService: account,
-            localRepo: repo ?? MockEntryRepository(),
-            localKVRepo: syncStore ?? MockEntrySyncStore(),
-            remoteRepo: remote ?? MockEntryRepositoryAPI()
-        )
-    }
+            return EntryService(
+                accountService: account,
+                localRepo: repo ?? MockEntryRepository(),
+                localKVRepo: syncStore ?? MockEntrySyncStore(),
+                remoteRepo: remote ?? MockEntryRepositoryAPI()
+            )
+        }
 }
