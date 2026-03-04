@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import android.content.Context
@@ -314,17 +315,25 @@ class FeedService @Inject constructor(
           // Handle navigation based on feed type
           when (feedItem.feedType) {
             FeedTypes.LINK -> {
-              // Open external link
+              // Track click (shop now / link tap) before opening link
+              try {
+                updateFeedItem(feedItem, FeedActionType.shopNowClick, null)
+                AppLog.d(TAG, "Feed modal link click tracked for: ${feedItem.titleText}")
+              } catch (e: Exception) {
+                AppLog.e(TAG, "Failed to track feed modal link click", e.toString())
+              }
+              // Open external link on main thread so Custom Tabs / intent fires
               AppLog.d(TAG, "Opening external link for: ${feedItem.titleText}")
               feedItem.linkTarget?.let { link ->
                 try {
-                  // Use LinkOpener to open external link
-                  val linkOpener = com.greatergoods.ggInAppMessaging.util.LinkOpener
-                  linkOpener.openInCustomTab(
-                    context = context,
-                    url = link,
-                    showTitle = true
-                  )
+                  withContext(Dispatchers.Main) {
+                    val linkOpener = com.greatergoods.ggInAppMessaging.util.LinkOpener
+                    linkOpener.openInCustomTab(
+                      context = context,
+                      url = link,
+                      showTitle = true
+                    )
+                  }
                   AppLog.d(TAG, "Successfully opened external link: $link")
                 } catch (e: Exception) {
                   AppLog.e(TAG, "Failed to open external link: $link", e.toString())

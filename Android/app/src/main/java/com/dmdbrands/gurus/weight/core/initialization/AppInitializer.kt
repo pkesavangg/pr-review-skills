@@ -8,7 +8,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import android.util.Log
 import timber.log.Timber
 import com.dmdbrands.gurus.weight.BuildConfig
 
@@ -41,7 +40,6 @@ class AppInitializer
                 // Initialize Timber with DebugTree for logcat logging
                 if (BuildConfig.DEBUG) {
                     Timber.plant(Timber.DebugTree())
-                    Log.d("AppInitializer", "Timber DebugTree planted for debug builds")
                 }
 
                 // Initialize AppLog
@@ -52,7 +50,7 @@ class AppInitializer
 
                 AppLog.d("AppInitializer", "Logging system initialized successfully")
             } catch (e: Exception) {
-                Log.e("AppInitializer", "Failed to initialize logging system", e)
+                AppLog.e("AppInitializer", "Failed to initialize logging system", e)
                 throw e
             }
         }

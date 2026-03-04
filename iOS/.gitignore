@@ -17,6 +17,10 @@ xcuserdata/
 # SwiftPM
 .build/
 
+# Python cache
+*.pyc
+scripts/__pycache__/
+
 # CocoaPods
 Pods/
 
@@ -60,6 +64,10 @@ Package.resolved
 
 # User Interface State files
 *.xcuserstate
+
+# Generated coverage reports
+meAppTests/Reports/
+meAppUITests/Reports/
 
 # IDEWorkspaceChecks
 .idea/

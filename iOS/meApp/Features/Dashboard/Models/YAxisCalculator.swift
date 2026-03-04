@@ -354,8 +354,10 @@ struct YAxisCalculator {
             if nonUniform {
                 // Force rebuild using the computed mean as step, snapped to a nice step
                 let rng = (ticks.last ?? snappedMax) - (ticks.first ?? snappedMin)
-// swiftlint:disable:next line_length
-                let snappedStep = ImprovedNiceScaleCalculator.calculateOptimalStep(range: rng, targetTickCount: Swift.max(3, Swift.min(6, ticks.count)))
+                let snappedStep = ImprovedNiceScaleCalculator.calculateOptimalStep(
+                    range: rng,
+                    targetTickCount: Swift.max(3, Swift.min(6, ticks.count))
+                )
                 // Ensure minimum step of 1.0 to avoid decimal ticks
                 step = Swift.max(snappedStep, 1.0)
                 let sMin = floor(min / step) * step

@@ -117,7 +117,7 @@ interface IHealthConnectService {
     /**
      * Checks for multiple device connections.
      */
-    suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean = false, isIntegrated: Boolean = false): Boolean
+    suspend fun checkMultiDeviceConnection(isPermissionEnabled: Boolean = false): Boolean
 
     /**
      * Handles Health Connect out of sync scenarios.
@@ -133,5 +133,13 @@ interface IHealthConnectService {
    * @return true if deletion was successful, false otherwise
    */
   suspend fun deleteEntry(entry: Entry): Boolean
+
+  /**
+   * Checks if multiple device IDs exist for the given integration type.
+   * Returns true if stored integration data is null/undefined and the integration is on.
+   * @param integrations The integration type to check (HEALTH_CONNECT or HEALTH_KIT)
+   * @return true if multiple device IDs detected, false otherwise
+   */
+  suspend fun checkMultipleDeviceIds(integrations: com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationType): Boolean
 
 }

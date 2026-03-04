@@ -145,11 +145,11 @@ object GraphUtil {
    * @return Visible labels count as Double.
    */
   fun GraphSegment.visibleLabelsCount(): Double = when (this) {
-    GraphSegment.WEEK -> 28 / 4.0
-    GraphSegment.MONTH -> (31 / 7.0).coerceAtLeast(1.0)
+    GraphSegment.WEEK -> 7.0
+    GraphSegment.MONTH -> (32 / 7.0).coerceAtLeast(1.0)
     GraphSegment.YEAR -> (366.0 / 31.0) // 12 month labels J F M A M J J A S O N D; placer uses visibleXRange month starts
     GraphSegment.TOTAL -> (365.0 / 31.0).coerceAtLeast(1.0)
-  }
+  } + GraphSnapHelper.getVisiblePaddingXStepForSegment(this).first
   // endregion
 
   // region Formatting

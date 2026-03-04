@@ -93,15 +93,20 @@ constructor(
     val password = state.value.form.controls.password.value
     viewModelScope.launch {
       try {
+        AppLog.d(TAG, "Login attempt for email: $email")
         val account = accountService.login(email, password)
         if (account != null) {
+          AppLog.i(TAG, "Login successful for account: ${account.id}")
           handleIntent(LoginIntent.Success)
         } else {
+          AppLog.w(TAG, "Login returned null account for email: $email")
           handleIntent(LoginIntent.Error("Login failed"))
         }
       } catch (e: MaxAccountsReachedException) {
+        AppLog.w(TAG, "Login failed: max accounts reached")
         handleIntent(LoginIntent.ShowMaxAccountAlert)
       } catch (e: Exception) {
+        AppLog.e(TAG, "Login failed", e)
         handleIntent(LoginIntent.Error(e.toString()))
       } finally {
         dialogQueueService.dismissLoader()

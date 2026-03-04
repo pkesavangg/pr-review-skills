@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `BluetoothService` is split into a main type in `Data/Services/BluetoothService.swift` and several **extensions** in the same folder. The protocol is `BluetoothServiceProtocol` in `Domain/Services/BluetoothServiceProtocol.swift`. This doc describes the implementation and each extension file.
+The `BluetoothService` is split into a main type in `Data/Services/BluetoothService/BluetoothService.swift` and several **extensions** in the same folder. The protocol is `BluetoothServiceProtocol` in `Domain/Services/BluetoothServiceProtocol.swift`. This doc describes the implementation and each extension file.
 
 ## Extension File Map
 

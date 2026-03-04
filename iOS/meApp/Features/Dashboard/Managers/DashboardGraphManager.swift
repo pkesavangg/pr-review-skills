@@ -129,7 +129,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         // Persist the raw selected X position so UI can render crosshair even if there's no data point
         state.selectedXValue = selectedDate
 
-        guard !operations.isEmpty else { return }
+        // If no operations available, show placeholders and return
+        guard !operations.isEmpty else {
+            updateSelectedPoint(nil)
+            setMetricPlaceholders()
+            return
+        }
 
         // Determine if there's an exact data point for the selected date based on the current period granularity
         let calendar = Calendar.current
@@ -1932,14 +1937,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         guard let anchorWeight = anchorWeight else { return nil }
         let allOps = operations
         switch period {
-        case .week, .month:
-            guard let latestWeight = allOps.last.map({ convertWeight(Int($0.weight)) }) else {
-                return nil
-            }
-            let weightlessValue = latestWeight - anchorWeight
-            // Apply same rounding logic as other weight calculations
-            return (weightlessValue * 100).rounded(.toNearestOrAwayFromZero) / 100
-        case .year, .total:
+        case .week, .month, .year, .total:
+            // Use visible-window average for all periods to keep display behavior consistent.
             let weights = allOps.map { convertWeight(Int($0.weight)) }
             guard !weights.isEmpty else { return nil }
             let averageWeight = weights.reduce(0, +) / Double(weights.count)

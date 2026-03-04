@@ -135,8 +135,11 @@ extension BtWifiScaleSetupStore {
 
                 if let broadcastId = scale.broadcastIdString {
                     await scaleService.updateConnectedDeviceWifiStatus(broadcastId: broadcastId, isConfigured: true)
-// swiftlint:disable:next line_length
-                    LoggerService.shared.log(level: .info, tag: tag, message: "Updated WiFi configuration status to true for broadcast ID: \(broadcastId)")
+                    LoggerService.shared.log(
+                        level: .info,
+                        tag: tag,
+                        message: "Updated WiFi configuration status to true for broadcast ID: \(broadcastId)"
+                    )
                 }
 
                 let delay: TimeInterval = 2.0
@@ -148,8 +151,7 @@ extension BtWifiScaleSetupStore {
                         self.navigateToStep(.customizeSettings)
                     }
                 }
-// swiftlint:disable:next switch_case_alignment
-                default:
+            default:
                 LoggerService.shared.log(level: .error, tag: tag, message: "WiFi connection failed: \(response)")
                 self.connectionState = .failure
                 if let errorCode = response.errorCode {

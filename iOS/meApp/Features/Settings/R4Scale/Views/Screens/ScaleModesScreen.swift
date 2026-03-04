@@ -53,11 +53,10 @@ struct ScaleModesScreen: View {
                         if isR4ScaleSetup {
                             Button(action: {
                                 viewModel.openHelp()
-// swiftlint:disable:next multiple_closures_with_trailing_closure
-                            }) {
+                            }, label: {
                                 Image(AppAssets.helpCircle)
                                     .accessibilityLabel("Help")
-                            }
+                            })
                         } else {
                             ButtonView(
                                 text: CommonStrings.save.uppercased(),
