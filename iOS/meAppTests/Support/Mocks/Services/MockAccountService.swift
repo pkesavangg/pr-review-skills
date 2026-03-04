@@ -14,11 +14,15 @@ final class MockAccountService: AccountServiceProtocol {
     var signUpResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("signUp"))
     var createGoalResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("createGoal"))
     var requestPasswordResetResult: Result<Void, Error> = .success(())
+    var updateIntegrationsResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("updateIntegrations"))
+    var deleteHealthIntegrationResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("deleteHealthIntegration"))
 
     private(set) var logInCalls = 0
     private(set) var signUpCalls = 0
     private(set) var createGoalCalls = 0
     private(set) var requestPasswordResetCalls = 0
+    private(set) var updateIntegrationsCalls = 0
+    private(set) var deleteHealthIntegrationCalls = 0
     private(set) var lastLoginEmail: String?
     private(set) var lastLoginPassword: String?
     private(set) var lastSignUpEmail: String?
@@ -26,6 +30,9 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var lastSignUpProfile: Profile?
     private(set) var lastCreatedGoal: Goal?
     private(set) var lastPasswordResetEmail: String?
+    private(set) var lastIntegrationType: IntegrationType?
+    private(set) var lastIntegrationPreferences: [String: AnyCodable]?
+    private(set) var lastDeletedHealthIntegrationType: IntegrationType?
 
     func seedAccounts(_ accounts: [Account], active: Account? = nil) {
         allAccounts = accounts
@@ -116,7 +123,10 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func updateIntegrations(integrationType: IntegrationType, preferences: [String: AnyCodable]) async throws -> Account {
-        throw UnexpectedCallError.methodCalled("updateIntegrations")
+        updateIntegrationsCalls += 1
+        lastIntegrationType = integrationType
+        lastIntegrationPreferences = preferences
+        return try updateIntegrationsResult.get()
     }
 
     func updateNotifications(notifications: Notifications) async throws -> Account {
@@ -174,7 +184,9 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func deleteHealthIntegration(_ type: IntegrationType) async throws {
-        throw UnexpectedCallError.methodCalled("deleteHealthIntegration")
+        deleteHealthIntegrationCalls += 1
+        lastDeletedHealthIntegrationType = type
+        _ = try deleteHealthIntegrationResult.get()
     }
 
     func updatePublishedState(forceRefresh: Bool) async throws {
