@@ -85,29 +85,7 @@ final class ContentViewModel: ObservableObject {
                         message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache."
                     )
                 }
-
-                // Capture dependencies to use off the main actor
-                let entryService = self.entryService
-                let feedService = self.feedService
-                let bluetoothService = self.bluetoothService
-
-                // Migration runs before sync so opStack entries are available for first sync.
-                await entryService.migrateFromSQLiteIfNeeded()
-                await entryService.syncAllEntriesWithRemote()
-                await entryService.loadDashboardData()
-                await feedService.fetchFeedItems()
-                let entries = (try? await entryService.getAllEntries()) ?? []
-
-                // UI-affecting calls back on main actor
-                self.entries = entries
-                logger.log(level: .info, tag: tag, message: "Initialization loaded entries. count=\(entries.count)")
-                bluetoothService.initialize()
-                feedService.checkAndTriggerFeedModal()
-
-                // Sync scales with remote server to ensure all previously saved scales are loaded
-                await scaleService.syncAllScalesWithRemote()
-
-                await self.checkAccountFlagsAfterLogin()
+                await loadData()
             }
 
             let afterUpdate = await checkLoginStatus()
@@ -148,6 +126,8 @@ final class ContentViewModel: ObservableObject {
     private func loadData() async {
         // swiftlint:disable:next unused_optional_binding
         guard let _ = currentAccount else { return }
+        // Migration runs before sync so opStack entries are available for first sync.
+        await entryService.migrateFromSQLiteIfNeeded()
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData()
         bluetoothService.initialize()
@@ -163,6 +143,7 @@ final class ContentViewModel: ObservableObject {
         // Sync scales with remote server to ensure all previously saved scales are loaded
         await scaleService.syncAllScalesWithRemote()
 
+        logger.log(level: .info, tag: tag, message: "Initialization loaded entries. count=\(entries.count)")
         await checkAccountFlagsAfterLogin()
     }
 

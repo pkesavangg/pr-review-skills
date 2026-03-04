@@ -16,6 +16,9 @@ final class MockAccountService: AccountServiceProtocol {
     var requestPasswordResetResult: Result<Void, Error> = .success(())
     var updateIntegrationsResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("updateIntegrations"))
     var deleteHealthIntegrationResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("deleteHealthIntegration"))
+    var refreshAccountResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("refreshAccount"))
+    var updatePublishedStateError: Error?
+    var shouldDeferUnauthenticatedLandingResult = false
 
     private(set) var logInCalls = 0
     private(set) var signUpCalls = 0
@@ -23,6 +26,8 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var requestPasswordResetCalls = 0
     private(set) var updateIntegrationsCalls = 0
     private(set) var deleteHealthIntegrationCalls = 0
+    private(set) var refreshAccountCalls = 0
+    private(set) var updatePublishedStateCalls = 0
     private(set) var lastLoginEmail: String?
     private(set) var lastLoginPassword: String?
     private(set) var lastSignUpEmail: String?
@@ -33,6 +38,7 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var lastIntegrationType: IntegrationType?
     private(set) var lastIntegrationPreferences: [String: AnyCodable]?
     private(set) var lastDeletedHealthIntegrationType: IntegrationType?
+    private(set) var lastRefreshAccountId: String?
 
     func seedAccounts(_ accounts: [Account], active: Account? = nil) {
         allAccounts = accounts
@@ -81,7 +87,7 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func shouldDeferUnauthenticatedLanding() -> Bool {
-        false
+        shouldDeferUnauthenticatedLandingResult
     }
 
     func getActiveAccount() async throws -> Account? {
@@ -164,7 +170,11 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func refreshAccount(accountId: String?) async throws -> Account {
-        throw UnexpectedCallError.methodCalled("refreshAccount")
+        refreshAccountCalls += 1
+        lastRefreshAccountId = accountId
+        let account = try refreshAccountResult.get()
+        activeAccount = account
+        return account
     }
 
     func logOutAllAccounts() async throws {
@@ -190,6 +200,7 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func updatePublishedState(forceRefresh: Bool) async throws {
-        throw UnexpectedCallError.methodCalled("updatePublishedState")
+        updatePublishedStateCalls += 1
+        if let updatePublishedStateError { throw updatePublishedStateError }
     }
 }
