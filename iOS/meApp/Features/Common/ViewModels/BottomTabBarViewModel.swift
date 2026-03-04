@@ -46,7 +46,7 @@ class BottomTabBarViewModel: ObservableObject {
     // MARK: - Dependencies
 
     @Injector private var healthKitService: HealthKitService
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector private var logger: LoggerServiceProtocol
     // New dependencies for Set Goal Card logic
     @Injector private var entryService: EntryServiceProtocol

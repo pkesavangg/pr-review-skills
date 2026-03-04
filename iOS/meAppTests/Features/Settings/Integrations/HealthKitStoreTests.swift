@@ -631,29 +631,23 @@ private func makeSUT(
     notificationService: MockNotificationHelperService,
     kvStorage: MockKvStorageService
 ) {
-    TestDependencyContainer.reset()
-
-    let logger = loggerService ?? MockLoggerService()
-    let keychain = MockKeychainService()
-    let bluetooth = MockBluetoothService()
-    TestDependencyContainer.registerBase(logger: logger, keychain: keychain, bluetooth: bluetooth)
-
     let account = accountService ?? MockAccountService()
     let integration = integrationService ?? MockHealthKitStoreIntegrationService()
     let healthKit = healthKitService ?? MockHealthKitStoreHealthKitService()
     let entry = entryService ?? MockHealthKitStoreEntryService()
     let notification = notificationService ?? MockNotificationHelperService()
+    let logger = loggerService ?? MockLoggerService()
     let kv = kvStorage ?? MockKvStorageService()
 
-    DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-    DependencyContainer.shared.register(account as AccountServiceProtocol)
-    DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
-    DependencyContainer.shared.register(healthKit as HealthKitServiceProtocol)
-    DependencyContainer.shared.register(entry as EntryServiceProtocol)
-    DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
-    DependencyContainer.shared.register(kv as KvStorageServiceProtocol)
-
-    let store = HealthKitStore(kvStorage: kv)
+    let store = HealthKitStore(
+        kvStorage: kv,
+        notificationService: notification,
+        entryService: entry,
+        accountService: account,
+        integrationService: integration,
+        healthKitService: healthKit,
+        logger: logger
+    )
     return (store, account, integration, healthKit, entry, notification, kv)
 }
 

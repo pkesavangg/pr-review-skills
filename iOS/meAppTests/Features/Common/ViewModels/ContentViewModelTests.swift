@@ -303,8 +303,6 @@ private func makeSUT(
     bluetoothService: MockContentViewModelBluetoothService,
     accountFlagService: MockContentViewModelAccountFlagService
 ) {
-    TestDependencyContainer.reset()
-
     let account = accountService ?? MockAccountService()
     let logger = loggerService ?? MockLoggerService()
     let entry = entryService ?? MockContentViewModelEntryService()
@@ -312,19 +310,18 @@ private func makeSUT(
     let scale = scaleService ?? MockContentViewModelScaleService()
     let bluetooth = bluetoothService ?? MockContentViewModelBluetoothService()
     let accountFlag = accountFlagService ?? MockContentViewModelAccountFlagService()
-    let keychain = MockKeychainService()
+    let notification = MockNotificationHelperService()
 
-    TestDependencyContainer.registerBase(logger: logger, keychain: keychain, bluetooth: bluetooth)
-
-    DependencyContainer.shared.register(account as AccountServiceProtocol)
-    DependencyContainer.shared.register(entry as EntryServiceProtocol)
-    DependencyContainer.shared.register(feed as FeedServiceProtocol)
-    DependencyContainer.shared.register(scale as ScaleServiceProtocol)
-    DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
-    DependencyContainer.shared.register(accountFlag as AccountFlagServiceProtocol)
-    DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-
-    let viewModel = ContentViewModel()
+    let viewModel = ContentViewModel(
+        accountService: account,
+        scaleService: scale,
+        feedService: feed,
+        entryService: entry,
+        logger: logger,
+        bluetoothService: bluetooth,
+        accountFlagService: accountFlag,
+        notificationService: notification
+    )
     return (viewModel, account, logger, entry, feed, scale, bluetooth, accountFlag)
 }
 

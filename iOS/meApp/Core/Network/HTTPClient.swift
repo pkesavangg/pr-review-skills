@@ -11,7 +11,7 @@ import Foundation
 final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
     @Injector var accountService: AccountServiceProtocol
-    @Injector var notificationHelperService: NotificationHelperService
+    @Injector var notificationHelperService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager = TokenManager.shared

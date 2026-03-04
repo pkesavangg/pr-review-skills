@@ -3,7 +3,7 @@ import Testing
 @testable import meApp
 
 @Suite(.serialized)
-@MainActor
+@MainActor     
 struct EntryStoreTests {
     @Test("saveEntry invalid form: does not persist")
     func saveEntryInvalidForm() async {

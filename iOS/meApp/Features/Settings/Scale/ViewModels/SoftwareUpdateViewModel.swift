@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 final class SoftwareUpdateViewModel: ObservableObject {
     @Injector var bluetoothService: BluetoothServiceProtocol
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
 
     @Published var selectedDate = Date()

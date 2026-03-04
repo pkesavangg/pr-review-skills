@@ -10,7 +10,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
     @Injector private var entryService: EntryService
     @Injector private var logger: LoggerService
     @Injector private var accountService: AccountService
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     
     // MARK: - Constants
     

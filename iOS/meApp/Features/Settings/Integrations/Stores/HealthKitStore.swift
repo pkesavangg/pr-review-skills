@@ -57,8 +57,35 @@ final class HealthKitStore: ObservableObject {
 
     // MARK: - Init
 
-    init(kvStorage: KvStorageServiceProtocol? = nil) {
+    init(
+        kvStorage: KvStorageServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil,
+        entryService: EntryServiceProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        integrationService: IntegrationServiceProtocol? = nil,
+        healthKitService: HealthKitServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil
+    ) {
         self.kvStorage = kvStorage ?? KvStorageService.shared
+
+        if let notificationService {
+            self.notificationService = notificationService
+        }
+        if let entryService {
+            self.entryService = entryService
+        }
+        if let accountService {
+            self.accountService = accountService
+        }
+        if let integrationService {
+            self.integrationService = integrationService
+        }
+        if let healthKitService {
+            self.healthKitService = healthKitService
+        }
+        if let logger {
+            self.logger = logger
+        }
         loadStatus()
         // Observe activeState changes to post notifications when sheet is presented/dismissed
         // Only post notifications when transitioning between nil and non-nil states

@@ -16,7 +16,7 @@ import SwiftUI
 @MainActor
 final class BtWifiScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     /// Centralised permission handling service.
     @Injector var permissionsService: PermissionsService
     /// Bluetooth service for device discovery

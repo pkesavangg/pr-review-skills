@@ -22,14 +22,48 @@ final class ContentViewModel: ObservableObject {
     @Injector var logger: LoggerServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var accountFlagService: AccountFlagServiceProtocol
-    @Injector var notificationService: NotificationHelperService
+    @Injector var notificationService: NotificationHelperServiceProtocol
     
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
     private let tag = "ContentViewModel"
 
-    init() {
-        accountService.activeAccountPublisher
+    init(
+        accountService: AccountServiceProtocol? = nil,
+        scaleService: ScaleServiceProtocol? = nil,
+        feedService: FeedServiceProtocol? = nil,
+        entryService: EntryServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        bluetoothService: BluetoothServiceProtocol? = nil,
+        accountFlagService: AccountFlagServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil
+    ) {
+        if let accountService {
+            self.accountService = accountService
+        }
+        if let scaleService {
+            self.scaleService = scaleService
+        }
+        if let feedService {
+            self.feedService = feedService
+        }
+        if let entryService {
+            self.entryService = entryService
+        }
+        if let logger {
+            self.logger = logger
+        }
+        if let bluetoothService {
+            self.bluetoothService = bluetoothService
+        }
+        if let accountFlagService {
+            self.accountFlagService = accountFlagService
+        }
+        if let notificationService {
+            self.notificationService = notificationService
+        }
+
+        self.accountService.activeAccountPublisher
         // Treat re-logins of the *same* account as a new value so that the
         // loading flow gets a chance to run again. Comparing both the
         // accountId *and* lastActiveTime ensures that we still suppress
@@ -51,7 +85,7 @@ final class ContentViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        entryService.entrySaved
+        self.entryService.entrySaved
             .sink { [weak self] _ in
                 guard let self else { return }
                 Task {
