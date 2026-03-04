@@ -833,8 +833,27 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         let preferenceWifiFotaScheduleTime = preference?.wifiFotaScheduleTime.map(String.init) ?? "nil"
         let preferenceUpdatedAt = preference?.updatedAt ?? "nil"
         let preferenceIsSynced = preference != nil ? String(preference?.isSynced ?? false) : "nil"
-        // swiftlint:disable:next line_length
-        return "id=\(device.id), accountId=\(device.accountId), sku=\(device.sku ?? "nil"), deviceName=\(device.deviceName ?? "nil"), nickname=\(device.nickname ?? "nil"), mac=\(device.mac ?? "nil"), wifiMac=\(device.wifiMac ?? "nil"), password=\(device.password.map(String.init) ?? "nil"), token=\(device.token ?? "nil"), broadcastId=\(device.broadcastId.map(String.init) ?? "nil"), broadcastIdString=\(device.broadcastIdString ?? "nil"), peripheralIdentifier=\(device.peripheralIdentifier ?? "nil"), userNumber=\(device.userNumber ?? "nil"), protocolType=\(device.protocolType ?? "nil"), createdAt=\(device.createdAt ?? "nil"), isConnected=\(device.isConnected.map(String.init) ?? "nil"), isWifiConfigured=\(device.isWifiConfigured.map(String.init) ?? "nil"), isSynced=\(device.isSynced.map(String.init) ?? "nil"), hasServerID=\(device.hasServerID), isSoftDeleted=\(device.isSoftDeleted.map(String.init) ?? "nil"), prefDisplayName=\(preferenceDisplayName), prefDisplayMetrics=\(preferenceDisplayMetrics), prefShouldFactoryReset=\(preferenceFactoryReset), prefImpedance=\(preferenceImpedance), prefPulse=\(preferencePulse), prefTimeFormat=\(preferenceTimeFormat), prefTzOffset=\(preferenceTzOffset), prefWifiFotaScheduleTime=\(preferenceWifiFotaScheduleTime), prefUpdatedAt=\(preferenceUpdatedAt), prefIsSynced=\(preferenceIsSynced)"
+        let parts = [
+            "id=\(device.id)", "accountId=\(device.accountId)", "sku=\(device.sku ?? "nil")",
+            "deviceName=\(device.deviceName ?? "nil")", "nickname=\(device.nickname ?? "nil")",
+            "mac=\(device.mac ?? "nil")", "wifiMac=\(device.wifiMac ?? "nil")",
+            "password=\(device.password.map(String.init) ?? "nil")", "token=\(device.token ?? "nil")",
+            "broadcastId=\(device.broadcastId.map(String.init) ?? "nil")",
+            "broadcastIdString=\(device.broadcastIdString ?? "nil")",
+            "peripheralIdentifier=\(device.peripheralIdentifier ?? "nil")",
+            "userNumber=\(device.userNumber ?? "nil")", "protocolType=\(device.protocolType ?? "nil")",
+            "createdAt=\(device.createdAt ?? "nil")",
+            "isConnected=\(device.isConnected.map(String.init) ?? "nil")",
+            "isWifiConfigured=\(device.isWifiConfigured.map(String.init) ?? "nil")",
+            "isSynced=\(device.isSynced.map(String.init) ?? "nil")", "hasServerID=\(device.hasServerID)",
+            "isSoftDeleted=\(device.isSoftDeleted.map(String.init) ?? "nil")",
+            "prefDisplayName=\(preferenceDisplayName)", "prefDisplayMetrics=\(preferenceDisplayMetrics)",
+            "prefShouldFactoryReset=\(preferenceFactoryReset)", "prefImpedance=\(preferenceImpedance)",
+            "prefPulse=\(preferencePulse)", "prefTimeFormat=\(preferenceTimeFormat)",
+            "prefTzOffset=\(preferenceTzOffset)", "prefWifiFotaScheduleTime=\(preferenceWifiFotaScheduleTime)",
+            "prefUpdatedAt=\(preferenceUpdatedAt)", "prefIsSynced=\(preferenceIsSynced)"
+        ]
+        return parts.joined(separator: ", ")
     }
 
     @Sendable

@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.device.toDomainModels
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDomainModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -28,8 +29,12 @@ constructor(
   private val deviceApi: IDeviceAPI,
   private val deviceDao: DeviceDao,
 ) : IDeviceRepository {
+
+  companion object {
+    private const val TAG = "DeviceRepository"
+  }
+
   // DB operations
-// DB operations
   override fun getDevices(accountId: String, filterDeleted: Boolean): Flow<List<Device>> =
     deviceDao.getDevices(accountId)
       .map { deviceDetailsList ->
@@ -130,11 +135,14 @@ constructor(
 
   // API operations
   override suspend fun getDevicesFromApi(accountId: String): List<Device> {
+    AppLog.d(TAG, "Fetching devices from API for account: $accountId")
     val response = deviceApi.getPairedScales()
     if (response.isSuccessful) {
       val apiModels = response.body() ?: emptyList<DeviceApiModel>()
+      AppLog.i(TAG, "Fetched ${apiModels.size} device(s) from API")
       return apiModels.toDomainModels()
     } else {
+      AppLog.e(TAG, "getDevicesFromApi failed with code: ${response.code()}")
       throw Exception("API call failed with code: ${response.code()}")
     }
   }
@@ -143,8 +151,10 @@ constructor(
     device: Device,
     accountId: String,
   ): Device {
+    AppLog.d(TAG, "Saving device to API: ${device.id}")
     val response = deviceApi.saveScale(device.toApiModel())
     if (response.isSuccessful) {
+      AppLog.i(TAG, "Device saved to API successfully: ${device.id}")
       val apiModel = response.body()
       return apiModel?.toDomainModel(
         device.connectionStatus,
@@ -152,16 +162,20 @@ constructor(
         device.device?.isWifiConfigured ?: false,
       ) ?: device
     } else {
+      AppLog.e(TAG, "saveDeviceToApi failed with code: ${response.code()}")
       throw Exception("Failed to save device to API: ${response.code()}")
     }
   }
 
   override suspend fun deleteDeviceFromApi(deviceId: String): Boolean {
+    AppLog.d(TAG, "Deleting device from API: $deviceId")
     val response = deviceApi.deleteScale(deviceId)
     if (response.isSuccessful) {
+      AppLog.i(TAG, "Device deleted from API successfully: $deviceId")
       return true
     } else {
       val errorBody = response.errorBody()?.string()
+      AppLog.e(TAG, "deleteDeviceFromApi failed with code: ${response.code()}, error: $errorBody")
       throw Exception("Failed to delete device from API: ${response.code()}, Error: $errorBody")
     }
   }
@@ -169,10 +183,13 @@ constructor(
   override suspend fun saveScalePreferencesToApi(
     preferences: R4ScalePreferenceApiModel,
   ): R4ScalePreferenceApiModel {
+    AppLog.d(TAG, "Saving scale preferences to API")
     val response = deviceApi.saveScalePreferences(preferences)
     if (response.isSuccessful) {
+      AppLog.i(TAG, "Scale preferences saved to API successfully")
       return response.body() ?: preferences
     } else {
+      AppLog.e(TAG, "saveScalePreferencesToApi failed with code: ${response.code()}")
       throw Exception("Failed to save scale preferences to API: ${response.code()}")
     }
   }
@@ -181,21 +198,27 @@ constructor(
     deviceId: String,
     metaData: ScaleMetaDataApiModel,
   ): Boolean {
+    AppLog.d(TAG, "Saving scale metadata to API for device: $deviceId")
     val response = deviceApi.updateScaleMetadata(deviceId, metaData)
     if (response.isSuccessful) {
+      AppLog.i(TAG, "Scale metadata saved to API successfully for device: $deviceId")
       return true
     } else {
+      AppLog.e(TAG, "saveScaleMetaDataToApi failed with code: ${response.code()}")
       throw Exception("Failed to save scale meta data to API: ${response.code()}")
     }
   }
 
   override suspend fun getScaleTokenFromApi(isR4: Boolean): String {
+    AppLog.d(TAG, "Fetching scale token from API (isR4=$isR4)")
     val param = if (isR4) "4" else null
     val response = deviceApi.getScaleToken(param)
     if (response.isSuccessful) {
       val tokenResponse = response.body()
+      AppLog.i(TAG, "Scale token fetched successfully")
       return tokenResponse?.token ?: throw Exception("Token response is null")
     } else {
+      AppLog.e(TAG, "getScaleTokenFromApi failed with code: ${response.code()}")
       throw Exception("Failed to get scale token from API: ${response.code()}")
     }
   }

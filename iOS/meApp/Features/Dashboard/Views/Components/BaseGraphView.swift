@@ -623,8 +623,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         hasher.combine(newData.count)
         if !newData.isEmpty {
             // Sample key points for efficient hashing
-// swiftlint:disable:next line_length
-            let indices = newData.count <= 5 ? Array(0..<newData.count) : [0, newData.count / 4, newData.count / 2, (3 * newData.count) / 4, newData.count - 1]
+            let indices = newData.count <= 5
+                ? Array(0..<newData.count)
+                : [0, newData.count / 4, newData.count / 2, (3 * newData.count) / 4, newData.count - 1]
             for i in indices {
                 let point = newData[i]
                 hasher.combine(point.date.timeIntervalSince1970.bitPattern)

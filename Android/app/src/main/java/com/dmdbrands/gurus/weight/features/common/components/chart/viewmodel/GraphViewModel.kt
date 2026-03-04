@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
@@ -10,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.filterXValuesInRange
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
@@ -17,7 +19,6 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.chart.AxisMeta
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.greatergoods.meapp.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import dagger.assisted.Assisted
@@ -36,7 +37,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.icu.util.Calendar
-import android.util.Log
 
 /**
  * ViewModel for the graph component, managing chart state and business logic.
@@ -55,6 +55,10 @@ class GraphViewModel @AssistedInject constructor(
 ) : BaseIntentViewModel<GraphState, GraphIntent>(
   reducer = GraphReducer(),
 ) {
+
+  companion object {
+    private const val TAG = "GraphViewModel"
+  }
 
   override fun handleIntent(intent: GraphIntent) {
     super.handleIntent(intent)
@@ -110,8 +114,7 @@ class GraphViewModel @AssistedInject constructor(
       super.handleIntent(GraphIntent.SetSecondaryKey(immediateSecondaryKey))
       initializeGraph(immediateData, immediateGoal, immediateSecondaryKey)
     } catch (e: Exception) {
-      // Log error but don't crash - fallback to async initialization
-      Log.w("GraphViewModel", "Failed to initialize immediate data, falling back to async", e)
+      AppLog.w(TAG, "Failed to initialize immediate data, falling back to async")
     }
   }
 
@@ -138,8 +141,7 @@ class GraphViewModel @AssistedInject constructor(
         handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
       }
     } catch (e: Exception) {
-      // Log error but don't crash - fallback to default KG
-      Log.w("GraphViewModel", "Failed to initialize weight unit, using default KG", e)
+      AppLog.w(TAG, "Failed to initialize weight unit, using default KG")
     }
   }
 
@@ -150,8 +152,9 @@ class GraphViewModel @AssistedInject constructor(
       combine(
         dataFlow,
         dashboardService.selectedKey,
-      ) { data, secondaryKey ->
-        Pair(data, secondaryKey)
+        goalService.getCurrentGoal(),
+      ) { data, secondaryKey, goal ->
+        Triple(data, secondaryKey, goal)
       }
         .drop(1)
         .collect { (data, secondaryKey) ->
@@ -247,8 +250,7 @@ class GraphViewModel @AssistedInject constructor(
           }
         }
       } catch (e: Exception) {
-        // Log error but don't crash the UI
-        Log.e("GraphViewModel", "Error setting up empty chart model producer", e)
+        AppLog.e(TAG, "Error setting up empty chart model producer", e)
       }
     }
   }
@@ -392,8 +394,7 @@ class GraphViewModel @AssistedInject constructor(
           super.handleIntent(GraphIntent.UpdateIsLoading(false))
         }
       } catch (e: Exception) {
-        // Log error but don't crash the UI
-        Log.e("GraphViewModel", "Error setting up chart model producer", e)
+        AppLog.e(TAG, "Error setting up chart model producer", e)
       }
     }
     this.isInitialized = true
@@ -426,45 +427,28 @@ class GraphViewModel @AssistedInject constructor(
     // Filter out NaN and infinite values before calculating min/max
     val validPaddedValues = paddedValues.filter { it.isFinite() }
 
-    if (validPaddedValues.isNotEmpty()) {
-      val graphMeta = generateNiceScale(
-        minValue = validPaddedValues.min(),
-        maxValue = validPaddedValues.max(),
-        goalWeight = goal?.goalWeight ?: 0.0, isWeightLessMode = isWeightlessMode,
-        targetTickCount = 4,
-      )
+    val goalWeight = goal?.goalWeight ?: 0.0
 
-      // Validate graphMeta values are finite
-      if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
-        // Return default range if graphMeta is invalid
-        return AxisMeta(
-          axisRange = CartesianRangeValues(
-            maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
-              segment,
-              Calendar.getInstance().timeInMillis,
-            )?.toDouble(),
-            minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
-              segment,
-              initialTimestamp,
-            )
-              ?.toDouble(),
-          ),
-        )
-      }
+    val graphMeta = if (validPaddedValues.isNotEmpty()) generateNiceScale(
+      minValue = validPaddedValues.min(),
+      maxValue = validPaddedValues.max(),
+      goalWeight = goalWeight,
+      isWeightLessMode = isWeightlessMode,
+      targetTickCount = 4,
+    ) else generateNiceScale(
+      minValue = goalWeight.div(10) - 10,
+      maxValue = goalWeight.div(10) + 10,
+      goalWeight = goalWeight,
+      isWeightLessMode = isWeightlessMode,
+      targetTickCount = 3,
+    )
 
+    // Validate graphMeta values are finite
+    if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
+      // Return default range if graphMeta is invalid
       return AxisMeta(
         axisRange = CartesianRangeValues(
-          minY = graphMeta.min,
-          maxY = graphMeta.max,
-          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
-            val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
-              ?: Calendar.getInstance().timeInMillis
-            val paddedEndX = Calendar.getInstance().apply {
-              timeInMillis = paddedEnd_StartRange
-              add(Calendar.DAY_OF_YEAR, 30)
-            }.timeInMillis
-            paddedEndX.toDouble()
-          } else GraphUtil.getEndRange(
+          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
             segment,
             Calendar.getInstance().timeInMillis,
           )?.toDouble(),
@@ -474,12 +458,13 @@ class GraphViewModel @AssistedInject constructor(
           )
             ?.toDouble(),
         ),
-        axisStep = graphMeta.step,
       )
     }
 
     return AxisMeta(
       axisRange = CartesianRangeValues(
+        minY = graphMeta.min,
+        maxY = graphMeta.max,
         maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
           val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
             ?: Calendar.getInstance().timeInMillis
@@ -492,9 +477,13 @@ class GraphViewModel @AssistedInject constructor(
           segment,
           Calendar.getInstance().timeInMillis,
         )?.toDouble(),
-        minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(segment, initialTimestamp)
+        minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
+          segment,
+          initialTimestamp,
+        )
           ?.toDouble(),
       ),
+      axisStep = graphMeta.step,
     )
   }
 
@@ -525,8 +514,6 @@ class GraphViewModel @AssistedInject constructor(
         }
         if (isActive) {
           // Pre-calculate all data on background thread
-          val graphLines = filterXValuesInRange(currentState.graphLines, min, max)
-          graphLines.flatMap { it.points.map { it.x.value.toDouble() } }
           val primaryYAxis = calculateYAxisRange(
             currentState.graphLines.first(),
             goal = currentState.goal,
@@ -552,7 +539,7 @@ class GraphViewModel @AssistedInject constructor(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        Log.e("GraphViewModel", "Error handling scroll", e)
+        AppLog.e(TAG, "Error handling scroll", e)
       }
     }
   }
@@ -675,7 +662,7 @@ class GraphViewModel @AssistedInject constructor(
           }
         }
       } catch (e: Exception) {
-        Log.e("GraphViewModel", "Error renormalizing on Y-axis change", e)
+        AppLog.e(TAG, "Error renormalizing on Y-axis change", e)
       }
     }
   }

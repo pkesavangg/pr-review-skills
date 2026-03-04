@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleUsers.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGDevicePreference
@@ -36,6 +37,10 @@ constructor(
 ) : BaseIntentViewModel<ScaleUserListState, ScaleUserListIntent>(
   reducer = ScaleUserListReducer(),
 ) {
+  companion object {
+    private const val TAG = "ScaleUserListViewModel"
+  }
+
   @AssistedFactory
   interface Factory {
     fun create(scaleId: String): ScaleUserListViewModel
@@ -81,11 +86,11 @@ constructor(
     }
     viewModelScope.launch {
       try {
+        AppLog.d(TAG, "Loading scale users for scale: ${state.value.scale?.id}")
         val device = state.value.scale!!.toGGBTDevice()
         val currentUserDisplayName = state.value.scale!!.preferences?.displayName
 
         ggDeviceService.getUsers(device) { response ->
-          // Filter out the current connected user to prevent duplication
           val filteredUsers = if (currentUserDisplayName != null) {
             response.user.filter { user ->
               !user.name.equals(currentUserDisplayName, ignoreCase = true)
@@ -93,11 +98,12 @@ constructor(
           } else {
             response.user
           }
-
+          AppLog.i(TAG, "Scale users loaded successfully: ${filteredUsers.size} user(s)")
           handleIntent(ScaleUserListIntent.SetUserList(filteredUsers))
           handleIntent(ScaleUserListIntent.UpdateFormWithUserList(filteredUsers))
         }
       } catch (err: Exception) {
+        AppLog.e(TAG, "Failed to load scale users", err)
         handleIntent(ScaleUserListIntent.SetUserList(emptyList()))
         handleIntent(ScaleUserListIntent.UpdateFormWithUserList(emptyList()))
         showToast(ScaleUsersStrings.Toast.LoadError)
@@ -116,9 +122,9 @@ constructor(
 
     viewModelScope.launch {
       try {
+        AppLog.d(TAG, "Updating scale username for scale: $scaleId")
         dialogQueueService.showLoader(message = ScaleUsersStrings.LoaderMessage)
 
-        // Create updated preferences with new display metrics
         val preferences =
           scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
             displayName = state.value.usernameForm.username.value,
@@ -129,7 +135,6 @@ constructor(
         ).toGGDevicePreference()
         val updatedScale = scale.toGGBTDevice().copy(preference = updatedScalePreference)
 
-        // Update scale preferences via API and BLE service
         ggDeviceService.updateAccount(
           updatedScale,
         ) {
@@ -138,11 +143,13 @@ constructor(
               viewModelScope.launch {
                 val success = deviceService.updateScalePreferences(scaleId, preferences)
                 if (success) {
+                  AppLog.i(TAG, "Scale username updated successfully for scale: $scaleId")
                   dialogQueueService.dismissLoader()
                   deviceService.syncDevices()
                   showToast(ScaleUsersStrings.Toast.Success)
                   navigateBack()
                 } else {
+                  AppLog.e(TAG, "Failed to update scale preferences for scale: $scaleId")
                   showToast(ScaleUsersStrings.Toast.Error)
                   dialogQueueService.dismissLoader()
                 }
@@ -150,12 +157,14 @@ constructor(
             }
 
             else -> {
+              AppLog.e(TAG, "BLE account update returned unexpected response: $it")
               showToast(ScaleUsersStrings.Toast.Error)
               dialogQueueService.dismissLoader()
             }
           }
         }
       } catch (err: Exception) {
+        AppLog.e(TAG, "Failed to update scale username", err)
         dialogQueueService.dismissLoader()
         showToast(ScaleUsersStrings.Toast.Error)
       }
@@ -192,10 +201,9 @@ constructor(
 
     viewModelScope.launch {
       try {
+        AppLog.d(TAG, "Deleting scale user: ${user.name} from scale: ${currentScale.id}")
         dialogQueueService.showLoader(message = ScaleUsersStrings.Loading)
 
-        // Create a device copy with the user's information for deletion
-        // Similar to BtWifiScaleSetupViewModel's deleteUser implementation
         val deleteDevice = currentScale.copy(
           preferences = currentScale.preferences?.copy(
             displayName = user.name,
@@ -204,14 +212,15 @@ constructor(
           token = user.token,
         )
 
-        // Delete the user account from the scale
         ggDeviceService.deleteAccount(deleteDevice.toGGBTDevice()) { response ->
           viewModelScope.launch {
+            AppLog.i(TAG, "Scale user deleted successfully: ${user.name}")
             dialogQueueService.dismissLoader()
             loadScaleUsers()
           }
         }
       } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to delete scale user: ${user.name}", e)
         dialogQueueService.dismissLoader()
         showToast(ScaleUsersStrings.Toast.Error)
       }

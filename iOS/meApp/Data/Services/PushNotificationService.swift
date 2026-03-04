@@ -224,7 +224,8 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
             logger.log(
                 level: .error,
                 tag: tag,
-                message: "Push setup not registering for remote notifications. permissionResult=\(permissionResult.rawValue), authorized=\(isNotificationAuthorized())" // swiftlint:disable:this line_length
+                message: "Push setup not registering for remote notifications. "
+                    + "permissionResult=\(permissionResult.rawValue), authorized=\(isNotificationAuthorized())"
             )
         }
     }

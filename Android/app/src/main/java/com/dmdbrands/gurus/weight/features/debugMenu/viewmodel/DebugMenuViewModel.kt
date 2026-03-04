@@ -197,7 +197,7 @@ class DebugMenuViewModel @Inject constructor(
             try {
                 val activeAccount = accountService.activeAccountFlow.first()
                 activeAccount?.let { account ->
-                    // Sync operations (equivalent to Angular's operationService.syncOperations())
+                    accountService.clearSyncTimestampForResync()
                     entryService.syncOperations()
                     dialogQueueService.showToast(
                         Toast(

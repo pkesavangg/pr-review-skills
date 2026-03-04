@@ -52,10 +52,6 @@ class HealthConnectRepository @Inject constructor(
     healthConnectDataStore.setHealthConnectData(accountId, data)
   }
 
-  override suspend fun removeAccount(accountId: String) {
-    healthConnectDataStore.removeHealthConnectData(accountId)
-  }
-
   override suspend fun clearData() {
     healthConnectDataStore.clearData()
   }
@@ -75,6 +71,9 @@ class HealthConnectRepository @Inject constructor(
 
   override suspend fun updateAlertSeen(accountId: String, seen: Boolean) {
     healthConnectDataStore.updateAlertSeen(accountId, seen)
+    // Verify the data was saved correctly
+    val savedData = getAccountByID(accountId)
+    AppLog.d(tag, "updateAlertSeen: accountId=$accountId, seen=$seen, dataExists=${savedData != null}, alertSeen=${savedData?.alertSeen}")
   }
 
   /**
@@ -117,38 +116,6 @@ class HealthConnectRepository @Inject constructor(
    */
   override suspend fun clearAssignedTo(accountId: String) {
     healthConnectDataStore.clearAssignedTo(accountId)
-  }
-
-  /**
-   * Checks if Health Connect is already assigned to another account.
-   * Similar to Angular's checkIfAppleHealthIsAlreadyUsed method.
-   * @return true if Health Connect can be used by current account, false if assigned to different account
-   * @throws Exception if Health Connect is assigned to a different account
-   */
-  override suspend fun checkIfHealthConnectIsAlreadyAssigned(): Boolean {
-    try {
-      val currentAccount = accountRepository.getActiveAccount().first()
-      if (currentAccount == null) {
-        AppLog.w(tag, "No active account found for Health Connect assignment check")
-        return true
-      }
-
-      val allAccountData = getAccountDataMap()
-      val assignedToAccountId = allAccountData.values
-        .firstOrNull { it.hasAssignedTo() }
-        ?.assignedTo
-
-      if (assignedToAccountId.isNullOrEmpty() || assignedToAccountId == currentAccount.id) {
-        AppLog.d(tag, "Health Connect is available for account: ${currentAccount.id}")
-        return true
-      } else {
-        AppLog.w(tag, "Health Connect is already assigned to account: $assignedToAccountId")
-        throw Exception("Integration Conflict: Health Connect is already assigned to another account")
-      }
-    } catch (e: Exception) {
-      AppLog.e(tag, "Failed to check Health Connect assignment", e)
-      throw e
-    }
   }
 
   /**
@@ -321,11 +288,7 @@ class HealthConnectRepository @Inject constructor(
    */
   override suspend fun setStoredIntegrationData(accountId: String, integrationInfo: IntegratedDeviceInfo?) {
     try {
-      if (integrationInfo == null) {
-        //TODO: Need to remove this when everything gets cleared
-        AppLog.i(tag, "Clearing stored integration data for account: $accountId")
-        removeAccount(accountId)
-      } else {
+      if(integrationInfo != null){
         AppLog.i(tag, "Storing integration data for account: $accountId")
         val healthConnectData = getAccountByID(accountId)
         val updatedData = healthConnectData?.toBuilder()
@@ -336,9 +299,9 @@ class HealthConnectRepository @Inject constructor(
             .setIntegrated(integrationInfo.operationType == IntegrationOperationType.SAVE.value)
             .setUpdatedAt(System.currentTimeMillis().toString())
             .build()
-
         addAccount(accountId, updatedData)
       }
+
     } catch (e: Exception) {
       AppLog.e(tag, "Failed to store integration data", e)
     }
