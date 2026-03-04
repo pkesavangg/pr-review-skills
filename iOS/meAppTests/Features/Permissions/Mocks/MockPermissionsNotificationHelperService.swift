@@ -2,7 +2,7 @@ import Foundation
 @testable import meApp
 
 @MainActor
-final class MockNotificationHelperService: NotificationHelperServiceProtocol {
+final class MockPermissionsNotificationHelperService: NotificationHelperServiceProtocol {
     var isOverlayActive: Bool = false
     var isAlertVisible: Bool { currentAlert != nil }
     var isToastVisible: Bool { false }

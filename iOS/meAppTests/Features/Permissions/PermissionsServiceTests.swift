@@ -122,7 +122,7 @@ struct PermissionsServiceTests {
 
     @Test("handlePermission bluetoothSwitch: dismiss returns cached state")
     func handleBluetoothSwitchReturnsCachedState() async {
-        let notification = MockNotificationHelperService()
+        let notification = MockPermissionsNotificationHelperService()
         let sut = makeSUT(notification: notification)
         sut.setPermissions(PermissionsTestFixtures.permissionMap(bluetoothSwitch: .ENABLED))
 
@@ -138,7 +138,7 @@ struct PermissionsServiceTests {
 
     @Test("handlePermission bluetooth: permissions button requests and returns new state")
     func handleBluetoothPermissionRequests() async {
-        let notification = MockNotificationHelperService()
+        let notification = MockPermissionsNotificationHelperService()
         let sdk = MockPermissionSDKClient()
         sdk.requestResults[.BLUETOOTH] = GGPermissionState.ENABLED.rawValue
         let sut = makeSUT(notification: notification, permissionClient: sdk)
@@ -156,7 +156,7 @@ struct PermissionsServiceTests {
 
     @Test("handlePermission notification: ignore path returns cached denied state")
     func handleNotificationIgnoreReturnsCachedState() async {
-        let notification = MockNotificationHelperService()
+        let notification = MockPermissionsNotificationHelperService()
         let sut = makeSUT(notification: notification)
         sut.setPermissions(PermissionsTestFixtures.permissionMap(notification: .DISABLED))
 
@@ -172,7 +172,7 @@ struct PermissionsServiceTests {
 
     @Test("handlePermission locationSwitch: why flow re-shows alert and final exit resolves")
     func handleLocationSwitchWhyFlow() async {
-        let notification = MockNotificationHelperService()
+        let notification = MockPermissionsNotificationHelperService()
         let sut = makeSUT(notification: notification)
         sut.setPermissions(PermissionsTestFixtures.permissionMap(locationSwitch: .DISABLED))
 
@@ -192,7 +192,7 @@ struct PermissionsServiceTests {
 
     @Test("handlePermission location: permissions button requests updated state")
     func handleLocationPermissionRequests() async {
-        let notification = MockNotificationHelperService()
+        let notification = MockPermissionsNotificationHelperService()
         let sdk = MockPermissionSDKClient()
         sdk.requestResults[.LOCATION] = GGPermissionState.ENABLED.rawValue
         let sut = makeSUT(notification: notification, permissionClient: sdk)
@@ -209,7 +209,7 @@ struct PermissionsServiceTests {
 
     @Test("handlePermission camera: allow path requests permission")
     func handleCameraPermissionRequests() async {
-        let notification = MockNotificationHelperService()
+        let notification = MockPermissionsNotificationHelperService()
         let sdk = MockPermissionSDKClient()
         sdk.requestResults[.CAMERA] = GGPermissionState.ENABLED.rawValue
         let sut = makeSUT(notification: notification, permissionClient: sdk)
@@ -226,7 +226,7 @@ struct PermissionsServiceTests {
 
     @Test("handlePermission wifi and internet share wifi disabled flow")
     func handleWifiAndInternetShareFlow() async {
-        let notification = MockNotificationHelperService()
+        let notification = MockPermissionsNotificationHelperService()
         let sut = makeSUT(notification: notification)
         sut.setPermissions(PermissionsTestFixtures.permissionMap(wifiSwitch: .DISABLED))
 
@@ -248,13 +248,13 @@ struct PermissionsServiceTests {
     // MARK: - Helpers
 
     private func makeSUT(
-        notification: MockNotificationHelperService? = nil,
+        notification: MockPermissionsNotificationHelperService? = nil,
         scale: MockScaleService? = nil,
         logger: MockLoggerService? = nil,
         permissionClient: MockPermissionSDKClient? = nil
     ) -> PermissionsService {
         PermissionsService(
-            notificationService: notification ?? MockNotificationHelperService(),
+            notificationService: notification ?? MockPermissionsNotificationHelperService(),
             scaleService: scale ?? MockScaleService(),
             logger: logger ?? MockLoggerService(),
             permissionClient: permissionClient ?? MockPermissionSDKClient()

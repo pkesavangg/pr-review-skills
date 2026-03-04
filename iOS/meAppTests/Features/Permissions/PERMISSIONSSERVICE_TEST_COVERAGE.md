@@ -13,7 +13,7 @@ This document summarizes test coverage for `PermissionsService`, the mock strate
 - Fixtures:
   - `meAppTests/Features/Permissions/Fixtures/PermissionsTestFixtures.swift`
 - Mocks:
-  - `meAppTests/Features/Permissions/Mocks/MockNotificationHelperService.swift`
+  - `meAppTests/Features/Permissions/Mocks/MockPermissionsNotificationHelperService.swift`
   - `meAppTests/Features/Permissions/Mocks/MockPermissionSDKClient.swift`
   - `meAppTests/Features/Bluetooth/Mocks/MockScaleService.swift`
   - `meAppTests/Support/Mocks/Services/MockLoggerService.swift`
