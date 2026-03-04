@@ -1,7 +1,7 @@
 # HealthKitService Test Coverage Guide
 
 ## Purpose
-This document explains how `HealthKitService` is tested, what flows are covered, and how to reach **85%+** code coverage for the service (per TESTING_GUIDELINES.md).
+This document explains how `HealthKitService` is tested, what flows are covered, and how to reach **85%+** code coverage for the service (per docs/TESTING.md).
 
 ## Files Involved
 - Service under test: `meApp/Data/Services/HealthKitService.swift`
