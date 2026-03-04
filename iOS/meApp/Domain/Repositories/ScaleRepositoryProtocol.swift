@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Protocol for abstracting all paired-scale data access and operations (local or remote).
 ///
@@ -6,6 +7,8 @@ import Foundation
 /// editing, deleting, and updating scale meta and preferences. Implementations may use local storage or remote API.
 @MainActor
 protocol ScaleRepositoryProtocol {
+    var context: ModelContext { get }
+
     /// Deletes all scales from local storage.
     func clearAllData() async throws
 
@@ -26,6 +29,9 @@ protocol ScaleRepositoryProtocol {
     /// Updates a device in the local storage.
     /// - Parameter device: The device to update.
     func updateDevice(_ device: Device) async throws
+
+    /// Updates an existing local device when a server-assigned ID replaces a temporary local ID.
+    func updateDeviceWithNewId(oldId: String, updatedDevice: Device) async throws
 
     /// Gets all devices that haven't been synced with the API.
     /// - Returns: An array of unsynced devices.

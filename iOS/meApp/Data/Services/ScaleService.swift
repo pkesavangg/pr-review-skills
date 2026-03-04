@@ -48,11 +48,11 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     private let tag = "ScaleService"
 
     @MainActor
-    private lazy var remoteRepo: ScaleAPIRepository = // Ensure this is always created on the main actor
+    private lazy var remoteRepo: ScaleRepositoryAPIProtocol = // Ensure this is always created on the main actor
         _apiRepository
 
-    private let _apiRepository: ScaleAPIRepository
-    private let localRepository: ScaleRepository
+    private let _apiRepository: ScaleRepositoryAPIProtocol
+    private let localRepository: ScaleRepositoryProtocol
     private let localKVRepo: ScaleRepositoryLocal
     private let accountService: AccountServiceProtocol
     private let logger = LoggerService.shared
@@ -134,12 +134,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     /// Initializes the scale service with required dependencies.
     init(accountService: AccountServiceProtocol,
-         apiRepository: ScaleAPIRepository,
-         localRepository: ScaleRepository,
+         apiRepository: ScaleRepositoryAPIProtocol? = nil,
+         localRepository: ScaleRepositoryProtocol? = nil,
          localKVRepo: ScaleRepositoryLocal = ScaleRepositoryLocal()) {
         self.accountService = accountService
-        _apiRepository = apiRepository
-        self.localRepository = localRepository
+        _apiRepository = apiRepository ?? ScaleAPIRepository()
+        self.localRepository = localRepository ?? ScaleRepository()
         self.localKVRepo = localKVRepo
     }
 
@@ -253,13 +253,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
         // Get devices for the current account
         let localDevices = try await localRepository.listScales(forAccountId: accountId)
-
-        // Filter out deleted devices for the UI
-        let activeDevices = localDevices.filter { device in
-            device.isSoftDeleted != true
-        }
-
-        return activeDevices
+        return activeScales(from: localDevices)
     }
 
     func getDevice(by deviceId: String) async throws -> Device? {
@@ -271,38 +265,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// Only returns connected devices for the current active account to prevent
     /// cross-account connection status contamination when switching accounts.
     func getConnectedDevices() async -> [String: Any] {
-        // Get current active accountId - CRITICAL: Only return devices for current account
-        let currentAccountId: String?
         do {
-            currentAccountId = try await getAccountId()
-        } catch {
-            currentAccountId = nil
-        }
-
-        guard let accountId = currentAccountId else {
-            return [:]
-        }
-
-        // Filter by accountId to prevent cross-account contamination
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate {
-            $0.isConnected == true && $0.accountId == accountId
-        })
-        do {
-            let connectedDevices = try localRepository.context.fetch(descriptor)
-            var connectedDevicesDict: [String: Any] = [:]
-            for device in connectedDevices {
-                if let broadcastId = device.broadcastIdString {
-                    connectedDevicesDict[broadcastId] = [
-                        "id": device.id,
-                        "name": device.deviceName ?? "",
-                        "nickname": device.nickname ?? "",
-                        "type": device.deviceType ?? "",
-                        "isWifiConfigured": device.isWifiConfigured ?? false,
-                        "wifiMac": device.wifiMac ?? ""
-                    ]
-                }
-            }
-            return connectedDevicesDict
+            let accountId = try await getAccountId()
+            let devices = try await localRepository.listScales(forAccountId: accountId)
+            return makeConnectedDevicesMap(from: devices)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to fetch connected devices: \(error.localizedDescription)")
             return [:]
@@ -719,51 +685,17 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     }
 
     func updateAllScalesStatus(_ scales: [Device]? = nil) async throws {
-        // Get current active accountId - CRITICAL: Only update devices for current account
         let accountId = try await getAccountId()
-
-        // Determine which device list to process. If none provided, fetch all scales from local storage for current account.
-        let deviceList: [Device]
-        if let providedScales = scales {
-            // Filter provided scales to only include devices for current account
-            deviceList = providedScales.filter { $0.accountId == accountId && $0.isSoftDeleted != true }
-        } else {
-            // Only fetch scales for the current account
-            deviceList = try await localRepository.listScales(forAccountId: accountId).filter { $0.isSoftDeleted != true }
-        }
-
-        // Fetch a map of currently connected devices keyed by broadcastIdString (already filtered by accountId)
+        let deviceList = try await resolveStatusDeviceList(scales, accountId: accountId)
         let connectedDevices = await getConnectedDevices()
 
-        // Iterate over each scale and refresh its status fields
         for device in deviceList {
-            // Double-check accountId to prevent cross-account updates
             guard device.accountId == accountId else {
                 continue
             }
-
-            // Reset flags before evaluation
-            device.isConnected = false
-            device.isWifiConfigured = false
-
-            // Ensure broadcastIdString is populated so that look-ups work reliably
-            if device.broadcastIdString?.isEmpty != false {
-                if let bidInt64 = device.broadcastId {
-                    let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "") ?? .bluetoothScale
-                    let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
-                    device.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(bidInt64), protocolType: protocolType)
-                }
-            }
-
-            // Update connection + Wi-Fi flags based on the connectedDevices map
-            if let bidString = device.broadcastIdString,
-               let connectedDetails = connectedDevices[bidString] as? [String: Any] {
-                device.isConnected = true
-                device.isWifiConfigured = (connectedDetails["isWifiConfigured"] as? Bool) ?? false
-            }
+            applyConnectionStatus(to: device, connectedDevices: connectedDevices)
         }
 
-        // Persist the updates
         do {
             try localRepository.context.save()
             await refreshScalesFromLocal()
@@ -805,7 +737,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             let accountId = try await getAccountId()
             let previousSnapshot = scales.map { scaleLogDescriptor($0) }.sorted()
             let allScales = try await localRepository.listScales(forAccountId: accountId)
-            let activeScales = allScales.filter { $0.isSoftDeleted != true }
+            let activeScales = activeScales(from: allScales)
             scales = activeScales
             let currentSnapshot = activeScales.map { scaleLogDescriptor($0) }.sorted()
             if previousSnapshot != currentSnapshot {
@@ -823,37 +755,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
 
     private func scaleLogDescriptor(_ device: Device) -> String {
         let preference = fetchAttachedPreferenceSync(by: device.id)
-        let preferenceDisplayName = preference?.displayName ?? "nil"
-        let preferenceDisplayMetrics = preference?.displayMetrics.joined(separator: "|") ?? "nil"
-        let preferenceFactoryReset = preference != nil ? String(preference?.shouldFactoryReset ?? false) : "nil"
-        let preferenceImpedance = preference != nil ? String(preference?.shouldMeasureImpedance ?? false) : "nil"
-        let preferencePulse = preference != nil ? String(preference?.shouldMeasurePulse ?? false) : "nil"
-        let preferenceTimeFormat = preference?.timeFormat ?? "nil"
-        let preferenceTzOffset = preference != nil ? String(preference?.tzOffset ?? 0) : "nil"
-        let preferenceWifiFotaScheduleTime = preference?.wifiFotaScheduleTime.map(String.init) ?? "nil"
-        let preferenceUpdatedAt = preference?.updatedAt ?? "nil"
-        let preferenceIsSynced = preference != nil ? String(preference?.isSynced ?? false) : "nil"
-        let parts = [
-            "id=\(device.id)", "accountId=\(device.accountId)", "sku=\(device.sku ?? "nil")",
-            "deviceName=\(device.deviceName ?? "nil")", "nickname=\(device.nickname ?? "nil")",
-            "mac=\(device.mac ?? "nil")", "wifiMac=\(device.wifiMac ?? "nil")",
-            "password=\(device.password.map(String.init) ?? "nil")", "token=\(device.token ?? "nil")",
-            "broadcastId=\(device.broadcastId.map(String.init) ?? "nil")",
-            "broadcastIdString=\(device.broadcastIdString ?? "nil")",
-            "peripheralIdentifier=\(device.peripheralIdentifier ?? "nil")",
-            "userNumber=\(device.userNumber ?? "nil")", "protocolType=\(device.protocolType ?? "nil")",
-            "createdAt=\(device.createdAt ?? "nil")",
-            "isConnected=\(device.isConnected.map(String.init) ?? "nil")",
-            "isWifiConfigured=\(device.isWifiConfigured.map(String.init) ?? "nil")",
-            "isSynced=\(device.isSynced.map(String.init) ?? "nil")", "hasServerID=\(device.hasServerID)",
-            "isSoftDeleted=\(device.isSoftDeleted.map(String.init) ?? "nil")",
-            "prefDisplayName=\(preferenceDisplayName)", "prefDisplayMetrics=\(preferenceDisplayMetrics)",
-            "prefShouldFactoryReset=\(preferenceFactoryReset)", "prefImpedance=\(preferenceImpedance)",
-            "prefPulse=\(preferencePulse)", "prefTimeFormat=\(preferenceTimeFormat)",
-            "prefTzOffset=\(preferenceTzOffset)", "prefWifiFotaScheduleTime=\(preferenceWifiFotaScheduleTime)",
-            "prefUpdatedAt=\(preferenceUpdatedAt)", "prefIsSynced=\(preferenceIsSynced)"
-        ]
-        return parts.joined(separator: ", ")
+        return ScaleDeviceLogDescriptor.describe(device: device, preference: preference)
     }
 
     @Sendable
@@ -1036,97 +938,12 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             try await localRepository.replaceAllDevicesForAccount(accountId, with: serverScales, preserveUnsynced: unsyncedDevices)
             await refreshScalesFromLocal()
 
-            var corrected = 0
-            for dto in serverScales {
-                // Prefer match by server id, but ONLY if it belongs to the current account
-                // Device IDs are globally unique, but we need to verify accountId matches
-                if let devId = dto.id {
-                    // Try to find device by ID AND accountId to ensure we don't match across accounts
-                    let byIdAndAccount = FetchDescriptor<Device>(predicate: #Predicate {
-                        $0.id == devId && $0.accountId == accountId
-                    })
-                    if (try? localRepository.context.fetch(byIdAndAccount).first) != nil {
-                        // Device already has correct accountId, continue
-                        continue
-                    }
-
-                    // If device exists but with wrong accountId, that's an error - don't auto-correct
-                    // because it might belong to a different account legitimately
-                    if let device = try? await localRepository.getDevice(devId) {
-                        if device.accountId != accountId {
-                            continue
-                        }
-                    }
-                }
-                // Fallback: try match by MAC (scoped to current account)
-                var matchedDevice: Device?
-                if let mac = dto.mac, !mac.isEmpty {
-                    let byMac = FetchDescriptor<Device>(predicate: #Predicate { $0.mac == mac && $0.accountId == accountId })
-                    if let found = try? localRepository.context.fetch(byMac).first {
-                        matchedDevice = found
-                    }
-                }
-
-                // Fallback: try match by broadcastIdString (scoped to current account)
-                if matchedDevice == nil, let bid = dto.broadcastIdString, !bid.isEmpty {
-                    let byBid = FetchDescriptor<Device>(predicate: #Predicate { $0.broadcastIdString == bid && $0.accountId == accountId })
-                    if let found = try? localRepository.context.fetch(byBid).first {
-                        matchedDevice = found
-                    }
-                }
-
-                if let device = matchedDevice {
-                    // Normalize accountId
-                    if device.accountId != accountId {
-                        device.accountId = accountId
-                        try await localRepository.updateDevice(device)
-                        corrected += 1
-                    }
-                    // If server has an ID and local has a different ID, unify to server ID to avoid duplicates
-                    if let serverId = dto.id, device.id != serverId {
-                        let oldId = device.id
-                        device.id = serverId
-                        try await localRepository.updateDeviceWithNewId(oldId: oldId, updatedDevice: device)
-                        corrected += 1
-                    }
-                }
-            }
+            let corrected = try await reconcileServerDevices(serverScales, accountId: accountId)
             if corrected > 0 {
                 await refreshScalesFromLocal()
             }
 
-            // Prune orphan purely-local devices that don't exist on server for this account
-            // CRITICAL: Only prune devices that belong to current accountId
-            // Multiple accounts can have devices with same MAC/SKU, so we must check accountId
-            let serverIds = Set(serverScales.compactMap { $0.id })
-            let serverMacs = Set(serverScales.compactMap { $0.mac }.filter { !$0.isEmpty })
-            let serverBids = Set(serverScales.compactMap { $0.broadcastIdString }.filter { !$0.isEmpty })
-
-            let localForAccount = try await localRepository.listScales(forAccountId: accountId)
-            var pruned = 0
-            for dev in localForAccount {
-                // CRITICAL: Verify device belongs to current account before pruning
-                guard dev.accountId == accountId else {
-                    continue
-                }
-
-                // Only prune synced devices that don't match server
-                // Keep unsynced devices even if they don't match (they might be new local creations)
-                let isSynced = dev.isSynced ?? false
-                if !isSynced {
-                    continue
-                }
-
-                // If any server device matches by id/mac/broadcastId, keep it
-                let matchesByMac = dev.mac.map { serverMacs.contains($0) } ?? false
-                let matchesByBroadcastId = dev.broadcastIdString.map { serverBids.contains($0) } ?? false
-                let matchesServer = serverIds.contains(dev.id) || matchesByMac || matchesByBroadcastId
-                if !matchesServer {
-                    // Orphan synced local device -> delete to align with server
-                    try await localRepository.deleteScale(dev.id)
-                    pruned += 1
-                }
-            }
+            let pruned = try await pruneOrphanSyncedDevices(accountId: accountId, serverScales: serverScales)
             if pruned > 0 {
                 await refreshScalesFromLocal()
             }
@@ -1145,6 +962,180 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
                 message: "Failed to fetch server state and replace local storage: accountId=\(accountId), error=\(error.localizedDescription)"
             )
         }
+    }
+
+    private func activeScales(from devices: [Device]) -> [Device] {
+        var activeDevices: [Device] = []
+        for device in devices where device.isSoftDeleted != true {
+            activeDevices.append(device)
+        }
+        return activeDevices
+    }
+
+    private func makeConnectedDevicesMap(from devices: [Device]) -> [String: Any] {
+        var connectedDevices: [String: Any] = [:]
+        for device in devices where device.isConnected == true {
+            guard let broadcastId = device.broadcastIdString else {
+                continue
+            }
+            connectedDevices[broadcastId] = [
+                "id": device.id,
+                "name": device.deviceName ?? "",
+                "nickname": device.nickname ?? "",
+                "type": device.deviceType ?? "",
+                "isWifiConfigured": device.isWifiConfigured ?? false,
+                "wifiMac": device.wifiMac ?? ""
+            ]
+        }
+        return connectedDevices
+    }
+
+    private func resolveStatusDeviceList(_ providedScales: [Device]?, accountId: String) async throws -> [Device] {
+        if let providedScales {
+            var filteredDevices: [Device] = []
+            for device in providedScales where device.accountId == accountId && device.isSoftDeleted != true {
+                filteredDevices.append(device)
+            }
+            return filteredDevices
+        }
+        return activeScales(from: try await localRepository.listScales(forAccountId: accountId))
+    }
+
+    private func applyConnectionStatus(to device: Device, connectedDevices: [String: Any]) {
+        device.isConnected = false
+        device.isWifiConfigured = false
+        ensureBroadcastIdString(for: device)
+
+        guard let bidString = device.broadcastIdString,
+              let connectedDetails = connectedDevices[bidString] as? [String: Any]
+        else {
+            return
+        }
+
+        device.isConnected = true
+        device.isWifiConfigured = (connectedDetails["isWifiConfigured"] as? Bool) ?? false
+    }
+
+    private func ensureBroadcastIdString(for device: Device) {
+        if device.broadcastIdString?.isEmpty == false {
+            return
+        }
+        guard let bidInt64 = device.broadcastId else {
+            return
+        }
+        let scaleSource = ScaleSourceType(rawValue: device.deviceType ?? "") ?? .bluetoothScale
+        let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
+        device.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(bidInt64), protocolType: protocolType)
+    }
+
+    private func reconcileServerDevices(_ serverScales: [ScaleDTO], accountId: String) async throws -> Int {
+        var corrected = 0
+        for dto in serverScales {
+            guard await shouldAttemptServerScaleMatch(dto, accountId: accountId) else {
+                continue
+            }
+            guard let matchedDevice = try await findMatchingLocalDevice(for: dto, accountId: accountId) else {
+                continue
+            }
+            corrected += try await normalizeMatchedDevice(matchedDevice, with: dto, accountId: accountId)
+        }
+        return corrected
+    }
+
+    private func shouldAttemptServerScaleMatch(_ dto: ScaleDTO, accountId: String) async -> Bool {
+        guard let deviceId = dto.id else {
+            return true
+        }
+        if let fetchedDevices = try? localRepository.context.fetch(FetchDescriptor<Device>()) {
+            for device in fetchedDevices where device.id == deviceId && device.accountId == accountId {
+                return false
+            }
+        }
+        if let device = try? await localRepository.getDevice(deviceId),
+           device.accountId != accountId {
+            return false
+        }
+        return true
+    }
+
+    private func findMatchingLocalDevice(for dto: ScaleDTO, accountId: String) async throws -> Device? {
+        let localDevices = try await localRepository.listScales(forAccountId: accountId)
+
+        if let mac = dto.mac, !mac.isEmpty {
+            for device in localDevices where device.mac == mac {
+                return device
+            }
+        }
+
+        if let broadcastId = dto.broadcastIdString, !broadcastId.isEmpty {
+            for device in localDevices where device.broadcastIdString == broadcastId {
+                return device
+            }
+        }
+
+        return nil
+    }
+
+    private func normalizeMatchedDevice(_ device: Device, with dto: ScaleDTO, accountId: String) async throws -> Int {
+        var corrected = 0
+        if device.accountId != accountId {
+            device.accountId = accountId
+            try await localRepository.updateDevice(device)
+            corrected += 1
+        }
+        if let serverId = dto.id, device.id != serverId {
+            let oldId = device.id
+            device.id = serverId
+            try await localRepository.updateDeviceWithNewId(oldId: oldId, updatedDevice: device)
+            corrected += 1
+        }
+        return corrected
+    }
+
+    private func pruneOrphanSyncedDevices(accountId: String, serverScales: [ScaleDTO]) async throws -> Int {
+        let identifiers = makeServerIdentifiers(from: serverScales)
+        let localDevices = try await localRepository.listScales(forAccountId: accountId)
+        var pruned = 0
+
+        for device in localDevices {
+            guard shouldPruneDevice(device, accountId: accountId, identifiers: identifiers) else {
+                continue
+            }
+            try await localRepository.deleteScale(device.id)
+            pruned += 1
+        }
+
+        return pruned
+    }
+
+    private func makeServerIdentifiers(from serverScales: [ScaleDTO]) -> ScaleServerIdentifiers {
+        var ids = Set<String>()
+        var macs = Set<String>()
+        var broadcastIds = Set<String>()
+
+        for serverScale in serverScales {
+            if let id = serverScale.id {
+                ids.insert(id)
+            }
+            if let mac = serverScale.mac, !mac.isEmpty {
+                macs.insert(mac)
+            }
+            if let broadcastId = serverScale.broadcastIdString, !broadcastId.isEmpty {
+                broadcastIds.insert(broadcastId)
+            }
+        }
+
+        return ScaleServerIdentifiers(ids: ids, macs: macs, broadcastIds: broadcastIds)
+    }
+
+    private func shouldPruneDevice(_ device: Device, accountId: String, identifiers: ScaleServerIdentifiers) -> Bool {
+        guard device.accountId == accountId else {
+            return false
+        }
+        guard device.isSynced ?? false else {
+            return false
+        }
+        return !identifiers.matches(device)
     }
 
     /// Helper method to create properties dictionary from DTO for API calls.
