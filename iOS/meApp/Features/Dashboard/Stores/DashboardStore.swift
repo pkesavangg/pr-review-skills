@@ -2065,57 +2065,21 @@ class DashboardStore: ObservableObject {
                 self.state.metrics = self.metricsManager.state
                 self.state.streak = self.streakManager.state
 
-                    // Now manually sync manager states to UI state since we suppressed updates
-                    self.state.metrics = self.metricsManager.state
-                    self.state.streak = self.streakManager.state
-
-                    // Now batch all UI state changes together to prevent flickering
-                    // Clear the reset flag as part of the batched update
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        self.state.ui.isLoading = false
-                        self.state.ui.loaderOverride = nil
-                        self.state.ui.isGoalCardRemoved = false
-                        self.state.ui.selectedMetricLabel = nil
-                        self.state.graph.clearSelection()
-                        self.state.ui.isEditMode = false
-                        self.state.ui.resetDragState()
-                        self.state.ui.isResettingDashboard = false
-                        self.hasEditSnapshot = false
-                    }
-
-                    self.notificationService.dismissLoader()
-                    self.updateMetricsWithVisibleRegionAverage()
-
-                    // Single UI update after all state changes are complete
-                    self.forceImmediateUIUpdate()
-                } catch {
-                    self.logger.log(level: .error, tag: "DashboardStore", message: "Failed to reset dashboard: \(error)")
-
-                    // Manually sync manager states even on error
-                    self.state.metrics = self.metricsManager.state
-                    self.state.streak = self.streakManager.state
-
-                    // Clear the reset flag as part of the batched update
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        self.state.ui.isLoading = false
-                        self.state.ui.loaderOverride = nil
-                        self.state.ui.isGoalCardRemoved = false
-                        self.state.ui.selectedMetricLabel = nil
-                        self.state.graph.clearSelection()
-                        self.state.ui.isEditMode = false
-                        self.state.ui.resetDragState()
-                        self.state.ui.isResettingDashboard = false
-                        self.hasEditSnapshot = false
-                    }
-                    self.notificationService.dismissLoader()
-                    
-                    // Update metrics to show visible region average instead of latest entry
-                    self.updateMetricsWithVisibleRegionAverage()
-                    
-                    self.forceImmediateUIUpdate()
+                // Batch UI state changes together to prevent flickering
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.state.ui.isLoading = false
+                    self.state.ui.loaderOverride = nil
+                    self.state.ui.isGoalCardRemoved = false
+                    self.state.ui.selectedMetricLabel = nil
+                    self.state.graph.clearSelection()
+                    self.state.ui.isEditMode = false
+                    self.state.ui.resetDragState()
+                    self.state.ui.isResettingDashboard = false
+                    self.hasEditSnapshot = false
                 }
 
                 self.notificationService.dismissLoader()
+                self.updateMetricsWithVisibleRegionAverage()
                 self.resetMetricsToLatestEntry()
 
                 // Mark metric values as loaded since reset restores defaults
@@ -2143,6 +2107,7 @@ class DashboardStore: ObservableObject {
                     self.hasEditSnapshot = false
                 }
                 self.notificationService.dismissLoader()
+                self.updateMetricsWithVisibleRegionAverage()
                 self.resetMetricsToLatestEntry()
                 // Mark metric values as loaded on error recovery too
                 self.state.ui.hasLoadedMetricValues = true

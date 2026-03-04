@@ -454,8 +454,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                                     self?.openBIAModel()
                                 },
                                 onValueChanged: { [weak self] scaleMode, heartRateEnabled in
-                                    self?.updateScaleMode(scaleMode)
-                                    self?.updateHeartRateEnabled(heartRateEnabled)
+                                    self?.handleScaleModeChange(scaleMode, heartRateEnabled: heartRateEnabled)
                                 }
                             )
                         case .scaleMetrics:
