@@ -194,7 +194,7 @@ dependencies {
   implementation(libs.lib.vico.compose.m3)
 
   // Gif Image
-  implementation(libs.coil.compose)       // For Jetpack Compose
+  implementation(libs.coil.compose) // For Jetpack Compose
   implementation(libs.coil.gif)
 
   // foundation-pullrefresh

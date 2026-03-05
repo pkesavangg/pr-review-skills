@@ -7,4 +7,15 @@ plugins {
     alias(libs.plugins.google.service) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.ktlint) apply false
+}
+
+subprojects {
+    apply(plugin = "org.jlleitschuh.gradle.ktlint")
+
+    configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
+        ignoreFailures.set(true)
+        outputToConsole.set(true)
+        baseline.set(file("ktlint-baseline.xml"))
+    }
 }
