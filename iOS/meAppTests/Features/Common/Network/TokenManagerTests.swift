@@ -89,14 +89,11 @@ struct TokenManagerTests {
     func refreshToken_retryableStatus_retriesThenSucceeds() async throws {
         let mock = MockTokenManagerAccountService()
         let refreshed = makeTokens(access: "retry-access", refresh: "retry-refresh")
-        mock.refreshTokensResult = .failure(HTTPError.statusCode(HTTPStatusCode.badGateway.rawValue))
+        mock.refreshTokensResultsQueue = [
+            .failure(HTTPError.statusCode(HTTPStatusCode.badGateway.rawValue)),
+            .success(refreshed)
+        ]
         let sut = TokenManager(accountService: mock)
-
-        // Swap result after first attempt by monitoring call count in parallel task.
-        Task { @MainActor in
-            while mock.refreshTokensCalls == 0 { try? await Task.sleep(nanoseconds: 1_000_000) }
-            mock.refreshTokensResult = .success(refreshed)
-        }
 
         let tokens = try await sut.refreshToken(accountId: "acc-1")
 
@@ -110,13 +107,11 @@ struct TokenManagerTests {
     func refreshToken_noInternet_retriesThenSucceeds() async throws {
         let mock = MockTokenManagerAccountService()
         let refreshed = makeTokens(access: "net-access", refresh: "net-refresh")
-        mock.refreshTokensResult = .failure(HTTPError.noInternet)
+        mock.refreshTokensResultsQueue = [
+            .failure(HTTPError.noInternet),
+            .success(refreshed)
+        ]
         let sut = TokenManager(accountService: mock)
-
-        Task { @MainActor in
-            while mock.refreshTokensCalls == 0 { try? await Task.sleep(nanoseconds: 1_000_000) }
-            mock.refreshTokensResult = .success(refreshed)
-        }
 
         let tokens = try await sut.refreshToken(accountId: "acc-1")
 

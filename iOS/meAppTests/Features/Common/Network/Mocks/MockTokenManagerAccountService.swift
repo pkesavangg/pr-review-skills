@@ -11,6 +11,7 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
     var allAccountsPublisher: Published<[Account]>.Publisher { $allAccounts }
 
     var refreshTokensResult: Result<Tokens, Error> = .failure(UnexpectedCallError.methodCalled("refreshTokens"))
+    var refreshTokensResultsQueue: [Result<Tokens, Error>] = []
     var getActiveTokensResult: Result<Tokens, Error> = .failure(UnexpectedCallError.methodCalled("getActiveTokens"))
     var updateTokensError: Error?
     var logOutError: Error?
@@ -158,6 +159,9 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         lastRefreshAccountId = accountId
         if refreshDelayNs > 0 {
             try? await Task.sleep(nanoseconds: refreshDelayNs)
+        }
+        if !refreshTokensResultsQueue.isEmpty {
+            return try refreshTokensResultsQueue.removeFirst().get()
         }
         return try refreshTokensResult.get()
     }
