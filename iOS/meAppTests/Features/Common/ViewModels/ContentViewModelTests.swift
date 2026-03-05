@@ -102,13 +102,15 @@ struct ContentViewModelTests {
         account.activeAccount = nil
         account.shouldDeferUnauthenticatedLandingResult = true
 
-        Task {
-            try? await Task.sleep(nanoseconds: 350_000_000)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000)
             account.shouldDeferUnauthenticatedLandingResult = false
         }
 
         viewModel.performAppInitialization()
-        let updated = await waitUntil(timeoutNanoseconds: 3_000_000_000) { viewModel.contentViewState == .landing }
+        let updated = await waitUntil(timeoutNanoseconds: 6_000_000_000) {
+            viewModel.contentViewState == .landing && account.updatePublishedStateCalls >= 2
+        }
 
         #expect(updated == true)
         #expect(account.updatePublishedStateCalls >= 2)

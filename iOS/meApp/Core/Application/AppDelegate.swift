@@ -20,17 +20,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     /// Initializes Firebase and sets up notification handling
     /// - Returns: true if initialization was successful
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         AppDelegate.shared = self
 
-        // Initialize ServiceRegistry synchronously to avoid DI race at startup.
+        #if DEBUG
+        MainActor.assumeIsolated {
+            UITestLaunchHandler.handleIfNeeded()
+        }
+        #endif
+
         _ = ServiceRegistry.shared
+
+        #if DEBUG
+        UITestLaunchHandler.registerMockServicesIfNeeded()
+        guard !UITestLaunchHandler.isUITesting else { return true }
+        #endif
 
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
         application.registerForRemoteNotifications()
-        
+
         return true
     }
     

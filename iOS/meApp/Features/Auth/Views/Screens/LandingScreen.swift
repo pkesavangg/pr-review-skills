@@ -60,6 +60,7 @@ struct LandingScreen: View {
                                     .padding(.vertical, .spacingXS)
                             })
                             .buttonStyle(AppPressableButtonStyle(type: .filledSecondary, size: .large, backgroundColorOverride: nil))
+                            .accessibilityIdentifier(AccessibilityID.landingLogInButton)
 
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
@@ -67,6 +68,7 @@ struct LandingScreen: View {
                                 }
                             }
                             .frame(width: 96)
+                            .accessibilityIdentifier(AccessibilityID.landingSignUpButton)
                         }
                         .padding(.bottom, .spacing6XL)
 
@@ -131,6 +133,7 @@ struct LandingScreen: View {
                                     }
                                 }
                                 .padding(.vertical, .spacingSM)
+                                .accessibilityIdentifier(AccessibilityID.landingLogInToExistingAccountButton)
 
                                 ButtonView(text: lang.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                                     if landingStore.canAddMoreAccounts() {
@@ -138,6 +141,7 @@ struct LandingScreen: View {
                                     }
                                 }
                                 .padding(.bottom, .spacing6XL)
+                                .accessibilityIdentifier(AccessibilityID.landingCreateNewAccountButton)
                             }
 
                         }
@@ -148,6 +152,7 @@ struct LandingScreen: View {
             }
         }
         .environmentObject(router)
+        .accessibilityIdentifier(AccessibilityID.landingScreenRoot)
     }
 }
 
