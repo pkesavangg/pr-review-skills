@@ -13,10 +13,10 @@ actor TokenManager {
     static let shared = TokenManager()
 
     // Manual dependency resolution replacing @Injector (incompatible with actors due to mutating getter)
-    private var _accountService: AccountService?
-    private var accountService: AccountService {
+    private var _accountService: AccountServiceProtocol?
+    private var accountService: AccountServiceProtocol {
         if _accountService == nil {
-            _accountService = DependencyContainer.shared.resolve(AccountService.self)
+            _accountService = DependencyContainer.shared.resolve(AccountServiceProtocol.self)
         }
         guard let accountService = _accountService else {
             fatalError("AccountService dependency is not registered")
@@ -26,6 +26,10 @@ actor TokenManager {
 
     private var isRefreshing = false
     private var refreshContinuations: [CheckedContinuation<Void, Error>] = []
+
+    init(accountService: AccountServiceProtocol? = nil) {
+        self._accountService = accountService
+    }
 
     /// Checks if the token is expired based on the expiration date.
     /// This is nonisolated because it accesses no actor state — only its parameters and static constants.
