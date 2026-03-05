@@ -31,6 +31,24 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// Updates scale preference from a DTO (safe for async boundaries — no @Model crossing required).
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws
 
+    // swiftlint:disable:next function_parameter_count
+    func createR4Scale(
+        scaleId: String,
+        accountId: String,
+        displayName: String,
+        token: String,
+        mac: String?,
+        broadcastIdString: String?,
+        broadcastId: Int64?,
+        sku: String?,
+        deviceName: String?,
+        wifiMac: String?,
+        deviceMetadata: DeviceMetaData?,
+        isWifiConfigured: Bool,
+        isConnected: Bool,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device
+
     /// Updates the status of a scale.
     /// - Parameters:
     ///   - scales: The scales to update.

@@ -172,6 +172,26 @@ final class MockPushScaleService: ScaleServiceProtocol {
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {}
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {}
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {}
+    // swiftlint:disable:next function_parameter_count
+    func createR4Scale(
+        scaleId: String,
+        accountId: String,
+        displayName: String,
+        token: String,
+        mac: String?,
+        broadcastIdString: String?,
+        broadcastId: Int64?,
+        sku: String?,
+        deviceName: String?,
+        wifiMac: String?,
+        deviceMetadata: DeviceMetaData?,
+        isWifiConfigured: Bool,
+        isConnected: Bool,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createR4Scale")
+    }
+
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
     func pushLocalChangesToServer() async {}

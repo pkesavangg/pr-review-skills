@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import GGBluetoothSwiftPackage
 
 /// Protocol defining the service interface for managing Bluetooth-enabled scales and related operations.
 ///
@@ -36,6 +37,9 @@ protocol BluetoothServiceProtocol {
 
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { get }
+
+    /// Publisher for live measurement data while a user is on the scale.
+    var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { get }
 
     // MARK: - Lifecycle / Initialisation
     /// Initializes the Bluetooth service and subscribes to account changes.

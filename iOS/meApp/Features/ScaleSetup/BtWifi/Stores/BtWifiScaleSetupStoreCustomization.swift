@@ -440,7 +440,7 @@ extension BtWifiScaleSetupStore {
         bluetoothService.resumeSmartScan(clearOnlyPairing: false)
 
         do {
-            try await scaleService.updateAllScalesStatus()
+            try await scaleService.updateAllScalesStatus(nil)
             bluetoothService.syncDevices([])
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to resume scanning and sync devices: \(error.localizedDescription)")
@@ -473,6 +473,8 @@ extension BtWifiScaleSetupStore {
 
     /// Returns true if dashboard customization has changed compared to initial snapshot
     func hasDashboardCustomizationChanged() -> Bool {
+        guard initialDashboardMetricLabelsSnapshot != nil else { return false }
+
         let state = dashboardStore.metricsManager.state.metrics.map { $0.label }
         let removed = dashboardStore.state.ui.removedMetrics
         let removedStreaks = dashboardStore.state.ui.removedStreaks
@@ -480,7 +482,7 @@ extension BtWifiScaleSetupStore {
         let goalRemoved = dashboardStore.state.ui.isGoalCardRemoved
         let goalPos = dashboardStore.state.ui.goalCardPosition
 
-        return (initialDashboardMetricLabelsSnapshot != nil && initialDashboardMetricLabelsSnapshot != state) ||
+        return (initialDashboardMetricLabelsSnapshot != state) ||
             (initialDashboardRemovedMetricsSnapshot != nil && initialDashboardRemovedMetricsSnapshot != removed) ||
             (initialDashboardRemovedStreaksSnapshot != nil && initialDashboardRemovedStreaksSnapshot != removedStreaks) ||
             (initialDashboardStreakOrderSnapshot != nil && initialDashboardStreakOrderSnapshot != order) ||
