@@ -12,9 +12,9 @@ import Foundation
 @MainActor
 final class WeightOnlyModeAlertStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var scaleService: ScaleService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var notificationService: NotificationHelperServiceProtocol
+    private let scaleService: ScaleServiceProtocol
+    private let bluetoothService: BluetoothServiceProtocol
+    private let notificationService: NotificationHelperServiceProtocol
 
     // MARK: - Published Properties
     @Published var isLoading = false
@@ -25,7 +25,14 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
-    init() {
+    init(
+        scaleService: ScaleServiceProtocol? = nil,
+        bluetoothService: BluetoothServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil
+    ) {
+        self.scaleService = scaleService ?? Self.resolveDependency(ScaleServiceProtocol.self)
+        self.bluetoothService = bluetoothService ?? Self.resolveDependency(BluetoothServiceProtocol.self)
+        self.notificationService = notificationService ?? Self.resolveDependency(NotificationHelperServiceProtocol.self)
         setupObservers()
     }
 
@@ -138,5 +145,13 @@ final class WeightOnlyModeAlertStore: ObservableObject {
                 self?.loadWeightOnlyScales()
             }
             .store(in: &cancellables)
+    }
+
+    private static func resolveDependency<T>(_ type: T.Type) -> T {
+        guard let dependency = DependencyContainer.shared.resolve(type) else {
+            let keys = DependencyContainer.shared.dependencies.keys.sorted().joined(separator: ", ")
+            fatalError("Dependency \(type) is not registered in DependencyContainer. Registered keys: [\(keys)]")
+        }
+        return dependency
     }
 }

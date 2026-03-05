@@ -10,6 +10,7 @@ final class MockScaleService: ScaleServiceProtocol {
     var updateAllScalesStatusError: Error?
     var syncDevicesError: Error?
     var createDeviceError: Error?
+    var getDevicesError: Error?
     var updateScalePreferenceError: Error?
     var deleteDeviceError: Error?
     var createR4ScaleError: Error?
@@ -35,7 +36,12 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var lastCreatedR4Scale: Device?
 
     func clearAllData() async {}
-    func getDevices() async throws -> [Device] { scales }
+    func getDevices() async throws -> [Device] {
+        if let getDevicesError {
+            throw getDevicesError
+        }
+        return scales
+    }
     func getConnectedDevices() async -> [String: Any] { [:] }
 
     func updateConnectedDevices(device: Any, isConnected: Bool) async {
