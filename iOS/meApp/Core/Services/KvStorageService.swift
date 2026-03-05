@@ -22,6 +22,14 @@ class KvStorageService: KvStorageServiceProtocol {
             UserDefaults.standard.removePersistentDomain(forName: appDomain)
         }
     }
+
+    func getAllKeys() -> [String] {
+        guard let domain = Bundle.main.bundleIdentifier,
+              let dict = UserDefaults.standard.persistentDomain(forName: domain) else {
+            return []
+        }
+        return Array(dict.keys)
+    }
 }
 
 extension KvStorageService {

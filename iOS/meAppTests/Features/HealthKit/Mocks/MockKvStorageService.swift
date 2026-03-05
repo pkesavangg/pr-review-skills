@@ -28,4 +28,8 @@ final class MockKvStorageService: KvStorageServiceProtocol {
     func getCodable<T: Codable>(forKey key: String, as type: T.Type) -> T? {
         storage[key] as? T
     }
+
+    func getAllKeys() -> [String] {
+        Array(storage.keys)
+    }
 }
