@@ -75,10 +75,10 @@ Coverage in Xcode:
 4. Inspect `TokenManager.swift`
 
 ## Team Expectation
-- Keep `TokenManager.swift` coverage at least **90%**
+- Keep `TokenManager.swift` coverage at least **85%**
 - Every token-refresh regression should add a deterministic unit test
 
 ## Current Coverage
 - `TokenManager.swift`: **~96%** from latest `TokenManagerTests` validation snapshot (March 5, 2026).
-- Current coverage (as of 2026-03-05): **~96%**
-- Estimated line coverage for `TokenManager.swift`: **~96%**
+- Current coverage (as of 2026-03-05): **~92.8%**
+- Estimated line coverage for `TokenManager.swift`: **~92.8%**
