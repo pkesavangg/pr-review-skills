@@ -110,10 +110,18 @@ class EntryRepository @Inject constructor(
    * @return Flow of list of Entry objects
    */
   override suspend fun getLastNDaysEntries(accountId: String, days: Int): Flow<List<Entry>> {
-    val startInstant = java.time.Instant.now().minus(java.time.Duration.ofDays(days.toLong()))
+    val endInstant = java.time.Instant.now()
+    val startInstant = endInstant.minus(java.time.Duration.ofDays(days.toLong()))
+
+    // Format as ISO 8601 strings matching the format used by DateTimeConverter.timestampToIso
+    // Uses format: "yyyy-MM-dd'T'HH:mm:ss.SSSXXX" (e.g., "2025-01-15T10:30:00.000+00:00")
     val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-    val startDate = java.time.ZonedDateTime.ofInstant(startInstant, java.time.ZoneOffset.UTC).format(formatter)
-    return entryDao.getEntriesSince(accountId, startDate).map { list ->
+    val endZonedDateTime = java.time.ZonedDateTime.ofInstant(endInstant, java.time.ZoneOffset.UTC)
+    val startZonedDateTime = java.time.ZonedDateTime.ofInstant(startInstant, java.time.ZoneOffset.UTC)
+
+    val endDate = endZonedDateTime.format(formatter)
+    val startDate = startZonedDateTime.format(formatter)
+    return entryDao.getEntriesInRange(accountId, startDate, endDate).map { list ->
       list.mapNotNull { it.toEntry() }
     }
   }
