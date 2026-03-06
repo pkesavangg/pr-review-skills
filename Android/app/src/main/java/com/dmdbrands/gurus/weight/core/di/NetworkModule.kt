@@ -101,9 +101,8 @@ object NetworkModule {
     fun provideAuthTokenInterceptor(
         tokenManager: ITokenManager,
         refreshTokenAPI: RefreshTokenAPI,
-        userDataStore: UserDataStore,
     ): AuthTokenInterceptor =
-        AuthTokenInterceptor(tokenManager, refreshTokenAPI, userDataStore)
+        AuthTokenInterceptor(tokenManager, refreshTokenAPI)
 
     /**
      * Provides a response interceptor for OkHttp.
