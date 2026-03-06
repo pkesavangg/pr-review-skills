@@ -154,6 +154,30 @@
 -keep @dagger.Module class * { *; }
 -keep @dagger.hilt.InstallIn class * { *; }
 
+# Dagger Assisted Injection (GraphViewModel, HistoryDetailViewModel, etc.)
+-keep class dagger.assisted.** { *; }
+-keep @dagger.assisted.AssistedFactory class * { *; }
+-keepclassmembers @dagger.assisted.AssistedInject class * { <init>(...); }
+
+# ----------------------------------------------------------------------------
+# Sealed Entry hierarchy (Entry, ScaleEntry, BpmEntry) - used in EntryService
+# when() and toPeriodBodyScaleSummary(); must keep for runtime type checks
+# ----------------------------------------------------------------------------
+-keep class com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry { *; }
+-keep class com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry$* { *; }
+-keep class com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry { *; }
+-keep class com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry { *; }
+-keepclassmembers class com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry { *; }
+-keepclassmembers class com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry { *; }
+
+# IUnitProcessable (process() used by HistoryMonth, PeriodBodyScaleSummary, Entry)
+-keep interface com.dmdbrands.gurus.weight.domain.model.common.IUnitProcessable { *; }
+-keepclassmembers class * implements com.dmdbrands.gurus.weight.domain.model.common.IUnitProcessable { *; }
+
+# History list and graph: HistoryMonth used in StateFlow and reducer
+-keepclassmembers class com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth { <fields>; <methods>; }
+-keepnames class com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth { *; }
+
 # ----------------------------------------------------------------------------
 # Firebase
 # ----------------------------------------------------------------------------
