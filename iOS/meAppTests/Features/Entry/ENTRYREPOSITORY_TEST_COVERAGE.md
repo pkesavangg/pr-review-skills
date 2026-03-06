@@ -73,5 +73,5 @@
 xcodebuild test -project iOS/meApp.xcodeproj -scheme meAppTests -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:meAppTests/EntryRepositoryTests
 ```
 
-## Minimum Coverage Target
-85%
+## Current Coverage
+- Current coverage (as of 2026-03-06): **~92.2%**
