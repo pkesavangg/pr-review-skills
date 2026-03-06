@@ -2,7 +2,11 @@ import Foundation
 
 @MainActor
 final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
+        self.httpClient = httpClient
+    }
 
     func syncOperation(operation: BathScaleOperationDTO) async throws {
         _ = try await httpClient.send(
