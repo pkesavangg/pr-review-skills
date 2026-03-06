@@ -14,10 +14,24 @@ final class HTTPClient: HTTPClientProtocol {
     @Injector var notificationHelperService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
-    private let tokenManager = TokenManager.shared
+    private let tokenManager: any TokenManaging
+    private let requestExecutor: (@Sendable (URLRequest) async throws -> (Data, URLResponse))?
+    private let connectivityProvider: (() -> Bool)?
     @Atomic private var lastToastShownTime: Date?
 
-    private init() {}
+    private convenience init() {
+        self.init(tokenManager: nil, requestExecutor: nil, connectivityProvider: nil)
+    }
+
+    init(
+        tokenManager: (any TokenManaging)? = nil,
+        requestExecutor: (@Sendable (URLRequest) async throws -> (Data, URLResponse))? = nil,
+        connectivityProvider: (() -> Bool)? = nil
+    ) {
+        self.tokenManager = tokenManager ?? TokenManager.shared
+        self.requestExecutor = requestExecutor
+        self.connectivityProvider = connectivityProvider
+    }
     
     // MARK: - GET Request
     func get<T: Decodable>(
@@ -79,7 +93,7 @@ final class HTTPClient: HTTPClientProtocol {
             let expiresAt = account.expiresAt
             let acctId = account.accountId
             if tokenManager.checkTokenExpiration(expiresAt: expiresAt) {
-                let tokens = try await tokenManager.refreshToken(accountId: acctId)
+                let tokens = try await tokenManager.refreshToken(accountId: acctId, retryCount: 0)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                 return try await performRequest(newRequest)
@@ -98,7 +112,7 @@ final class HTTPClient: HTTPClientProtocol {
                         let account = try await getAccount(accountId)
                         // Extract primitives from @Model before crossing async boundaries (R1)
                         let acctId = account.accountId
-                        let tokens = try await tokenManager.refreshToken(accountId: acctId)
+                        let tokens = try await tokenManager.refreshToken(accountId: acctId, retryCount: 0)
                         var newRequest = request
                         newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                         return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId, restartWithNewTokens: true)
@@ -116,7 +130,11 @@ final class HTTPClient: HTTPClientProtocol {
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            if let requestExecutor {
+                (data, response) = try await requestExecutor(request)
+            } else {
+                (data, response) = try await URLSession.shared.data(for: request)
+            }
         } catch let urlError as URLError {
             // Convert URLErrors to HTTPErrors so callers can detect network errors reliably.
             switch urlError.code {
@@ -257,7 +275,7 @@ final class HTTPClient: HTTPClientProtocol {
     
     // MARK: - Connectivity Check
     private func checkConnectivity() throws {
-        let isConnected = NetworkMonitor.shared.getCurrentConnectionStatus()
+        let isConnected = connectivityProvider?() ?? NetworkMonitor.shared.getCurrentConnectionStatus()
         if !isConnected {
             if !skipCheckNetwork {
                 showToastIfNeeded(ToastStrings.unableToConnect)

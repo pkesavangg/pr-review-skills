@@ -1,5 +1,13 @@
 import Foundation
 
+// MARK: - TokenManaging Protocol
+
+/// Abstracts token management to allow injection of mock implementations in tests.
+protocol TokenManaging: Sendable {
+    nonisolated func checkTokenExpiration(expiresAt: String?) -> Bool
+    func refreshToken(accountId: String?, retryCount: Int) async throws -> Tokens
+}
+
 // MARK: - Refresh Token Flow
 //
 // When an API request is made with `needsAuth = true`, the token expiration is first checked.
@@ -9,7 +17,7 @@ import Foundation
 // - If the refresh ultimately fails or returns 401 (unauthorized), the user is logged out.
 // - Successful refresh updates the stored tokens and resumes all waiting requests.
 
-actor TokenManager {
+actor TokenManager: TokenManaging {
     static let shared = TokenManager()
 
     // Manual dependency resolution replacing @Injector (incompatible with actors due to mutating getter)
