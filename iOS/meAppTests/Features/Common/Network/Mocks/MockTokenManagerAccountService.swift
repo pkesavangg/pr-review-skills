@@ -16,6 +16,7 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
     var updateTokensError: Error?
     var logOutError: Error?
     var refreshDelayNs: UInt64 = 0
+    var fetchAccountById: [String: Account] = [:]
 
     private(set) var refreshTokensCalls = 0
     private(set) var updateTokensCalls = 0
@@ -26,6 +27,8 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
     private(set) var lastUpdateAccountId: String?
     private(set) var lastLogoutAccountId: String?
     private(set) var lastLogoutIsAutoLogout: Bool?
+    private(set) var fetchAccountCalls = 0
+    private(set) var lastFetchAccountId: String?
 
     func signUp(email: String, password: String, profile: Profile) async throws -> Account {
         throw UnexpectedCallError.methodCalled("signUp")
@@ -71,7 +74,9 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
     }
 
     func fetchAccount(byId id: String) async throws -> Account? {
-        throw UnexpectedCallError.methodCalled("fetchAccount")
+        fetchAccountCalls += 1
+        lastFetchAccountId = id
+        return fetchAccountById[id]
     }
 
     func fetchAllAccounts() async throws -> [Account] {

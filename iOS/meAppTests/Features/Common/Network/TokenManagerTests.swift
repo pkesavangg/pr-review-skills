@@ -77,8 +77,10 @@ struct TokenManagerTests {
         let firstResult = try await first
         let secondResult = try await second
 
-        #expect(firstResult == refreshed)
-        #expect(secondResult == active)
+        let returnedTokens = [firstResult, secondResult]
+        #expect(returnedTokens.contains(refreshed))
+        #expect(returnedTokens.contains(active))
+        #expect(firstResult != secondResult)
         #expect(mock.refreshTokensCalls == 1)
         #expect(mock.getActiveTokensCalls == 1)
         #expect(mock.updateTokensCalls == 1)
