@@ -10,13 +10,34 @@ import Foundation
 /// Service to migrate scale data from Ionic app (Capacitor Preferences) to SwiftUI app (SwiftData)
 @MainActor
 final class ScaleMigrationService {
-    @Injector private var logger: LoggerService
-    @Injector private var scaleService: ScaleService
-    private let scaleRepository = ScaleRepository()
-    private let kvStorage = KvStorageService.shared
-    
+    private let logger: LoggerServiceProtocol
+    private let kvStorage: KvStorageServiceProtocol
+    private let createScaleInLocal: @MainActor (Device) async throws -> Device
+    private let syncAllScalesWithRemote: @MainActor () async -> Void
+    private let getDeviceById: @MainActor (String) async throws -> Device?
+
     private let tag = "ScaleMigrationService"
-    
+
+    init(
+        logger: LoggerServiceProtocol? = nil,
+        kvStorage: KvStorageServiceProtocol? = nil,
+        createScaleInLocal: (@MainActor (Device) async throws -> Device)? = nil,
+        syncAllScalesWithRemote: (@MainActor () async -> Void)? = nil,
+        getDeviceById: (@MainActor (String) async throws -> Device?)? = nil
+    ) {
+        self.logger = logger ?? LoggerService.shared
+        self.kvStorage = kvStorage ?? KvStorageService.shared
+        self.createScaleInLocal = createScaleInLocal ?? { device in
+            try await ScaleService.shared.createScaleInLocal(device)
+        }
+        self.syncAllScalesWithRemote = syncAllScalesWithRemote ?? {
+            await ScaleService.shared.syncAllScalesWithRemote()
+        }
+        self.getDeviceById = getDeviceById ?? { id in
+            try await ScaleService.shared.getDevice(by: id)
+        }
+    }
+
     // Using shared public MigrationKey enum for key composition
     
     /// Checks if scale migration is needed by looking for Ionic app scale data
@@ -48,10 +69,16 @@ final class ScaleMigrationService {
         for ionicScale in ionicScales {
             do {
                 let device = try convertIonicScaleToDevice(ionicScale, accountId: accountId)
-                
+
+                // Avoid re-creating an existing device so migration can be safely re-run.
+                if try await getDeviceById(device.id) != nil {
+                    logger.log(level: .info, tag: tag, message: "Skipping duplicate scale during migration: \(device.id)")
+                    continue
+                }
+
                 // Save device to SwiftData
+                _ = try await createScaleInLocal(device)
                 migratedDevices.append(device)
-                _ = try await self.scaleService.createScaleInLocal(device)
                 logger.log(level: .info, tag: tag, message: "scaleRepository.createScale: \(ionicScale.id ?? "unknown") for account: \(device.sku ?? "unknown")")
                 logger.log(level: .info, tag: tag, message: "Successfully migrated scale: \(ionicScale.id ?? "unknown") for account: \(accountId)")
             } catch {
@@ -59,7 +86,7 @@ final class ScaleMigrationService {
                 // Continue with other scales even if one fails
             }
         }
-        await self.scaleService.syncAllScalesWithRemote()
+        await syncAllScalesWithRemote()
         logger.log(
             level: .info,
             tag: tag,
