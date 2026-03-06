@@ -10,27 +10,60 @@ import Foundation
 @MainActor
 final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
-    @Injector var accountService: AccountServiceProtocol
-    @Injector var notificationHelperService: NotificationHelperServiceProtocol
-    @Injector var logger: LoggerServiceProtocol
+    private var injectedAccountService: AccountServiceProtocol?
+    private var injectedNotificationHelperService: NotificationHelperServiceProtocol?
+    private var injectedLogger: LoggerServiceProtocol?
     @Atomic public var skipCheckNetwork: Bool = false
-    private let tokenManager: any TokenManaging
-    private let requestExecutor: (@Sendable (URLRequest) async throws -> (Data, URLResponse))?
-    private let connectivityProvider: (() -> Bool)?
+    private let tokenManager: TokenManaging
+    private let requestExecutor: (URLRequest) async throws -> (Data, URLResponse)
+    private let connectivityProvider: () -> Bool
     @Atomic private var lastToastShownTime: Date?
 
-    private convenience init() {
-        self.init(tokenManager: nil, requestExecutor: nil, connectivityProvider: nil)
-    }
-
     init(
-        tokenManager: (any TokenManaging)? = nil,
-        requestExecutor: (@Sendable (URLRequest) async throws -> (Data, URLResponse))? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        notificationHelperService: NotificationHelperServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        tokenManager: TokenManaging? = nil,
+        requestExecutor: ((URLRequest) async throws -> (Data, URLResponse))? = nil,
         connectivityProvider: (() -> Bool)? = nil
     ) {
+        self.injectedAccountService = accountService
+        self.injectedNotificationHelperService = notificationHelperService
+        self.injectedLogger = logger
         self.tokenManager = tokenManager ?? TokenManager.shared
-        self.requestExecutor = requestExecutor
-        self.connectivityProvider = connectivityProvider
+        self.requestExecutor = requestExecutor ?? { request in
+            try await URLSession.shared.data(for: request)
+        }
+        self.connectivityProvider = connectivityProvider ?? {
+            NetworkMonitor.shared.getCurrentConnectionStatus()
+        }
+    }
+
+    private var accountService: AccountServiceProtocol {
+        if let injectedAccountService { return injectedAccountService }
+        guard let resolved: AccountServiceProtocol = DependencyContainer.shared.resolve(AccountServiceProtocol.self) else {
+            fatalError("AccountServiceProtocol dependency is not registered")
+        }
+        injectedAccountService = resolved
+        return resolved
+    }
+
+    private var notificationHelperService: NotificationHelperServiceProtocol {
+        if let injectedNotificationHelperService { return injectedNotificationHelperService }
+        guard let resolved: NotificationHelperServiceProtocol = DependencyContainer.shared.resolve(NotificationHelperServiceProtocol.self) else {
+            fatalError("NotificationHelperServiceProtocol dependency is not registered")
+        }
+        injectedNotificationHelperService = resolved
+        return resolved
+    }
+
+    private var logger: LoggerServiceProtocol {
+        if let injectedLogger { return injectedLogger }
+        guard let resolved: LoggerServiceProtocol = DependencyContainer.shared.resolve(LoggerServiceProtocol.self) else {
+            fatalError("LoggerServiceProtocol dependency is not registered")
+        }
+        injectedLogger = resolved
+        return resolved
     }
     
     // MARK: - GET Request
@@ -130,11 +163,7 @@ final class HTTPClient: HTTPClientProtocol {
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response): (Data, URLResponse)
         do {
-            if let requestExecutor {
-                (data, response) = try await requestExecutor(request)
-            } else {
-                (data, response) = try await URLSession.shared.data(for: request)
-            }
+            (data, response) = try await requestExecutor(request)
         } catch let urlError as URLError {
             // Convert URLErrors to HTTPErrors so callers can detect network errors reliably.
             switch urlError.code {
@@ -183,24 +212,6 @@ final class HTTPClient: HTTPClientProtocol {
             logger.log(level: .error, tag: "HTTPClient", message: "Decoding error", data: error)
             throw HTTPError.decodingError
         }
-    }
-
-    private func fetchData(for request: URLRequest) async throws -> (Data, URLResponse) {
-        do {
-            return try await URLSession.shared.data(for: request)
-        } catch {
-            if let urlError = error as? URLError, shouldCheckConnectivity(for: urlError) {
-                try checkConnectivity()
-            }
-            throw error
-        }
-    }
-
-    private func shouldCheckConnectivity(for error: URLError) -> Bool {
-        error.code == .notConnectedToInternet ||
-        error.code == .networkConnectionLost ||
-        error.code == .cannotConnectToHost ||
-        error.code == .timedOut
     }
 
     private func parseErrorResponse(data: Data, status: HTTPStatusCode, statusCode: Int) -> HTTPError {
@@ -275,7 +286,7 @@ final class HTTPClient: HTTPClientProtocol {
     
     // MARK: - Connectivity Check
     private func checkConnectivity() throws {
-        let isConnected = connectivityProvider?() ?? NetworkMonitor.shared.getCurrentConnectionStatus()
+        let isConnected = connectivityProvider()
         if !isConnected {
             if !skipCheckNetwork {
                 showToastIfNeeded(ToastStrings.unableToConnect)

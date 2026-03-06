@@ -1,9 +1,6 @@
 import Foundation
 
-// MARK: - TokenManaging Protocol
-
-/// Abstracts token management to allow injection of mock implementations in tests.
-protocol TokenManaging: Sendable {
+protocol TokenManaging: AnyObject {
     nonisolated func checkTokenExpiration(expiresAt: String?) -> Bool
     func refreshToken(accountId: String?, retryCount: Int) async throws -> Tokens
 }

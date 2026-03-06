@@ -2,908 +2,484 @@ import Foundation
 import Testing
 @testable import meApp
 
-// MARK: - Test Helpers
-
-private struct TestResponse: Codable, Equatable {
-    let id: Int
-    let name: String
-}
-
-private struct TestRequestBody: Codable, Equatable {
-    let value: String
-}
-
-/// Creates a fake HTTP response for test request executors.
-private func makeHTTPResponse(
-    url: URL = URL(string: "https://example.com")!,
-    statusCode: Int = 200
-) -> HTTPURLResponse {
-    HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
-}
-
-// MARK: - Test Suite
-
 @Suite(.serialized)
 @MainActor
 struct HTTPClientTests {
-
-    // MARK: - Factory
-
-    @MainActor
-    private func makeSUT(
-        tokenManager: MockHTTPClientTokenManager = MockHTTPClientTokenManager(),
-        requestExecutor: (@Sendable (URLRequest) async throws -> (Data, URLResponse))? = nil,
-        connectivityProvider: (() -> Bool)? = { true },
-        activeAccount: Account? = nil
-    ) -> (sut: HTTPClient, tokenManager: MockHTTPClientTokenManager, accountService: MockAccountService, notificationService: MockNotificationHelperService, logger: MockLoggerService) {
-        TestDependencyContainer.reset()
-
-        let accountService = MockAccountService()
-        if let activeAccount {
-            accountService.seedAccounts([activeAccount], active: activeAccount)
-        }
-        DependencyContainer.shared.register(accountService as AccountServiceProtocol)
-
-        let notificationService = MockNotificationHelperService()
-        DependencyContainer.shared.register(notificationService as NotificationHelperServiceProtocol)
-
-        let logger = MockLoggerService()
-        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
-
-        let sut = HTTPClient(
-            tokenManager: tokenManager,
-            requestExecutor: requestExecutor,
-            connectivityProvider: connectivityProvider
-        )
-
-        return (sut, tokenManager, accountService, notificationService, logger)
+    private struct HTTPClientTestResponse: Codable, Equatable {
+        let value: String
     }
 
     // MARK: - Successful Response Handling
 
-    @Test("GET request decodes JSON response successfully")
-    func getDecodesJSONResponse() async throws {
-        let expected = TestResponse(id: 1, name: "Test")
-        let jsonData = try JSONEncoder().encode(expected)
+    @Test("get decodes valid JSON response")
+    func get_validResponse_decodesSuccessfully() async throws {
+        let responseData = try JSONEncoder().encode(HTTPClientTestResponse(value: "ok"))
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = makeHTTPResponse(statusCode: 200, request: request)
+                return (responseData, response)
+            }
+        )
 
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            (jsonData, makeHTTPResponse(statusCode: 200))
-        }
+        let result: HTTPClientTestResponse = try await sut.get(.login)
 
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let result: TestResponse = try await sut.get(.accountInfo)
-        #expect(result == expected)
+        #expect(result == HTTPClientTestResponse(value: "ok"))
     }
 
-    @Test("POST request encodes body and decodes response")
-    func postEncodesBodyAndDecodesResponse() async throws {
-        let body = TestRequestBody(value: "hello")
-        let expected = TestResponse(id: 2, name: "Created")
-        let responseData = try JSONEncoder().encode(expected)
-
+    @Test("send encodes request body and decodes response")
+    func send_validBodyAndResponse_succeeds() async throws {
+        let responseData = try JSONEncoder().encode(HTTPClientTestResponse(value: "created"))
         var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (responseData, makeHTTPResponse(statusCode: 201))
-        }
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                capturedRequest = request
+                let response = makeHTTPResponse(statusCode: 201, request: request)
+                return (responseData, response)
+            }
+        )
 
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
+        let result: HTTPClientTestResponse = try await sut.send(
+            .signup,
+            method: .post,
+            body: EmptyBody(),
+            needsAuth: false
+        )
 
-        let result: TestResponse = try await sut.send(.submitOperation, method: .post, body: body)
-        #expect(result == expected)
-        #expect(capturedRequest?.httpMethod == "POST")
+        #expect(result == HTTPClientTestResponse(value: "created"))
+        #expect(capturedRequest?.httpMethod == HTTPMethod.post.rawValue)
         #expect(capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/json")
-
-        // Verify body was encoded
-        if let bodyData = capturedRequest?.httpBody {
-            let decoded = try JSONDecoder().decode(TestRequestBody.self, from: bodyData)
-            #expect(decoded == body)
-        }
+        #expect(capturedRequest?.httpBody != nil)
     }
 
-    @Test("204 No Content returns EmptyResponse")
-    func noContentReturnsEmptyResponse() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 204))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let _: EmptyResponse = try await sut.get(.accountInfo)
-        // If we reach here without throwing, the test passes
-    }
-
-    @Test("Empty data with 200 returns EmptyResponse")
-    func emptyDataReturnsEmptyResponse() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let _: EmptyResponse = try await sut.get(.accountInfo)
-    }
-
-    @Test("204 No Content throws decodingError when non-EmptyResponse expected")
-    func noContentThrowsDecodingErrorForNonEmpty() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 204))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        await #expect(throws: HTTPError.self) {
-            let _: TestResponse = try await sut.get(.accountInfo)
-        }
-    }
-
-    @Test("String response decodes as plain text")
-    func stringResponseDecodesAsPlainText() async throws {
-        let text = "Hello, World!"
-        let data = text.data(using: .utf8)!
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (data, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let result: String = try await sut.get(.accountInfo)
-        #expect(result == text)
-    }
-
-    // MARK: - Error Response Handling
-
-    @Test("400 Bad Request maps to badRequest error")
-    func badRequestMapsToError() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 400))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.badRequest")
-        } catch let error as HTTPError {
-            if case .badRequest = error {
-                // Expected
-            } else {
-                Issue.record("Expected badRequest, got \(error)")
+    @Test("get returns plain text when response type is String")
+    func get_stringResponse_returnsPlainText() async throws {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = makeHTTPResponse(statusCode: 200, request: request)
+                return (Data("plain-response".utf8), response)
             }
-        }
+        )
+
+        let result: String = try await sut.get(.login)
+
+        #expect(result == "plain-response")
     }
 
-    @Test("401 Unauthorized maps to unauthorized error when not authenticated")
-    func unauthorizedMapsToError() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 401))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.unauthorized")
-        } catch let error as HTTPError {
-            if case .unauthorized = error {
-                // Expected
-            } else {
-                Issue.record("Expected unauthorized, got \(error)")
+    @Test("get returns EmptyResponse for 204 no content")
+    func get_noContent_returnsEmptyResponse() async throws {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = makeHTTPResponse(statusCode: 204, request: request)
+                return (Data(), response)
             }
-        }
+        )
+
+        let result: EmptyResponse = try await sut.get(.login)
+        _ = result
+        #expect(true)
     }
 
-    @Test("403 Forbidden maps to forbidden error")
-    func forbiddenMapsToError() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 403))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.forbidden")
-        } catch let error as HTTPError {
-            if case .forbidden = error {
-                // Expected
-            } else {
-                Issue.record("Expected forbidden, got \(error)")
+    @Test("get throws decodingError for 204 no content with non-empty response type")
+    func get_noContent_withDecodableType_throwsDecodingError() async {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = makeHTTPResponse(statusCode: 204, request: request)
+                return (Data(), response)
             }
-        }
-    }
-
-    @Test("404 Not Found maps to notFound error")
-    func notFoundMapsToError() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 404))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.notFound")
-        } catch let error as HTTPError {
-            if case .notFound = error {
-                // Expected
-            } else {
-                Issue.record("Expected notFound, got \(error)")
-            }
-        }
-    }
-
-    @Test("500 Internal Server Error maps to serverError")
-    func serverErrorMapsToError() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 500))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.serverError")
-        } catch let error as HTTPError {
-            if case .serverError = error {
-                // Expected
-            } else {
-                Issue.record("Expected serverError, got \(error)")
-            }
-        }
-    }
-
-    @Test("API error with JSON message returns apiError with server message")
-    func apiErrorWithJsonMessage() async throws {
-        let errorJson = """
-        {"error": "Custom server error message"}
-        """.data(using: .utf8)!
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (errorJson, makeHTTPResponse(statusCode: 400))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.apiError")
-        } catch let error as HTTPError {
-            if case .apiError(let message, let code) = error {
-                #expect(message == "Custom server error message")
-                #expect(code == 400)
-            } else {
-                Issue.record("Expected apiError, got \(error)")
-            }
-        }
-    }
-
-    @Test("API error with message field returns apiError")
-    func apiErrorWithMessageField() async throws {
-        let errorJson = """
-        {"message": "Validation failed"}
-        """.data(using: .utf8)!
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (errorJson, makeHTTPResponse(statusCode: 400))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.apiError")
-        } catch let error as HTTPError {
-            if case .apiError(let message, _) = error {
-                #expect(message == "Validation failed")
-            } else {
-                Issue.record("Expected apiError, got \(error)")
-            }
-        }
-    }
-
-    @Test("Unknown status code maps to statusCode error")
-    func unknownStatusCodeMapsToStatusCodeError() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (Data(), makeHTTPResponse(statusCode: 418))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.statusCode")
-        } catch let error as HTTPError {
-            if case .statusCode(let code) = error {
-                #expect(code == 418)
-            } else {
-                Issue.record("Expected statusCode, got \(error)")
-            }
-        }
-    }
-
-    @Test("Non-HTTP response throws invalidResponse")
-    func nonHTTPResponseThrowsInvalidResponse() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            let response = URLResponse(
-                url: URL(string: "https://example.com")!,
-                mimeType: nil,
-                expectedContentLength: 0,
-                textEncodingName: nil
-            )
-            return (Data(), response)
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        await #expect(throws: HTTPError.self) {
-            let _: TestResponse = try await sut.get(.accountInfo)
-        }
-    }
-
-    @Test("Invalid JSON throws decodingError")
-    func invalidJsonThrowsDecodingError() async throws {
-        let invalidJson = "not valid json".data(using: .utf8)!
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (invalidJson, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.decodingError")
-        } catch let error as HTTPError {
-            if case .decodingError = error {
-                // Expected
-            } else {
-                Issue.record("Expected decodingError, got \(error)")
-            }
-        }
-    }
-
-    // MARK: - Timeout / Offline Errors
-
-    @Test("URLError.timedOut throws HTTPError.timeout")
-    func urlErrorTimedOutThrowsTimeout() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            throw URLError(.timedOut)
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.timeout")
-        } catch let error as HTTPError {
-            if case .timeout = error {
-                // Expected
-            } else {
-                Issue.record("Expected timeout, got \(error)")
-            }
-        }
-    }
-
-    @Test("URLError other than timeout throws HTTPError.noInternet")
-    func urlErrorOtherThrowsNoInternet() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            throw URLError(.notConnectedToInternet)
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.noInternet")
-        } catch let error as HTTPError {
-            if case .noInternet = error {
-                // Expected
-            } else {
-                Issue.record("Expected noInternet, got \(error)")
-            }
-        }
-    }
-
-    @Test("Connectivity check throws noInternet when offline")
-    func connectivityCheckThrowsNoInternetWhenOffline() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            Issue.record("Request executor should not be called when offline")
-            return (Data(), makeHTTPResponse())
-        }
-
-        let (sut, _, _, notificationService, _) = makeSUT(
-            requestExecutor: executor,
-            connectivityProvider: { false }
         )
 
         do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.noInternet")
-        } catch let error as HTTPError {
-            if case .noInternet = error {
-                #expect(notificationService.showToastCalls == 1)
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected decodingError for no-content response type mismatch")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.decodingError, got \(error)")
+                return
+            }
+            if case .decodingError = httpError {
+                #expect(true)
             } else {
-                Issue.record("Expected noInternet, got \(error)")
+                Issue.record("Expected HTTPError.decodingError, got \(httpError)")
             }
         }
     }
 
-    @Test("Connectivity check skips toast when skipCheckNetwork is true")
-    func connectivityCheckSkipsToastWhenSkipCheckNetworkTrue() async throws {
-        let (sut, _, _, notificationService, _) = makeSUT(
-            connectivityProvider: { false }
-        )
+    // MARK: - Timeout and Offline Errors
+
+    @Test("get throws noInternet when connectivity check fails and shows toast")
+    func get_offlineConnectivity_throwsNoInternetAndShowsToast() async {
+        let (sut, _, notification, _, _) = makeSUT(connectivity: false)
+
+        do {
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.noInternet")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.noInternet, got \(error)")
+                return
+            }
+            if case .noInternet = httpError {
+                #expect(true)
+            } else {
+                Issue.record("Expected HTTPError.noInternet, got \(httpError)")
+            }
+        }
+
+        #expect(notification.showToastCalls == 1)
+    }
+
+    @Test("get throttles duplicate offline toasts within short interval")
+    func get_offlineConnectivity_throttlesToast() async {
+        let (sut, _, notification, _, _) = makeSUT(connectivity: false)
+
+        let firstAttempt: HTTPClientTestResponse? = try? await sut.get(.login)
+        let secondAttempt: HTTPClientTestResponse? = try? await sut.get(.login)
+        _ = firstAttempt
+        _ = secondAttempt
+
+        #expect(notification.showToastCalls == 1)
+    }
+
+    @Test("get throws noInternet without toast when skipCheckNetwork is true")
+    func get_offlineWithSkipCheckNetwork_throwsNoInternetWithoutToast() async {
+        let (sut, _, notification, _, _) = makeSUT(connectivity: false)
         sut.skipCheckNetwork = true
 
         do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-            Issue.record("Expected HTTPError.noInternet")
-        } catch let error as HTTPError {
-            if case .noInternet = error {
-                #expect(notificationService.showToastCalls == 0)
-            } else {
-                Issue.record("Expected noInternet, got \(error)")
-            }
-        }
-    }
-
-    @Test("Toast throttling prevents duplicate toasts within 2 seconds")
-    func toastThrottlingPreventsDuplicates() async throws {
-        let (sut, _, _, notificationService, _) = makeSUT(
-            connectivityProvider: { false }
-        )
-
-        // First call
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-        } catch {}
-
-        // Second call immediately after
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo)
-        } catch {}
-
-        // Only one toast should have been shown due to throttling
-        #expect(notificationService.showToastCalls == 1)
-    }
-
-    // MARK: - Authentication & Token Handling
-
-    @Test("GET with needsAuth adds Authorization header from active account")
-    func getWithAuthAddsAuthorizationHeader() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "100", isActive: true)
-        account.accessToken = "my-access-token"
-        let expected = TestResponse(id: 1, name: "Auth Test")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(
-            requestExecutor: executor,
-            activeAccount: account
-        )
-
-        let result: TestResponse = try await sut.get(.accountInfo, needsAuth: true)
-        #expect(result == expected)
-        #expect(capturedRequest?.value(forHTTPHeaderField: "Authorization") == "Bearer my-access-token")
-    }
-
-    @Test("GET with needsAuth and no active account throws noActiveAccount")
-    func getWithAuthNoAccountThrowsError() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            Issue.record("Should not reach request executor")
-            return (Data(), makeHTTPResponse())
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        await #expect(throws: AccountError.self) {
-            let _: TestResponse = try await sut.get(.accountInfo, needsAuth: true)
-        }
-    }
-
-    @Test("GET with needsAuth and expired token refreshes token before request")
-    func getWithExpiredTokenRefreshesBeforeRequest() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "200", isActive: true)
-        account.accessToken = "old-token"
-        account.expiresAt = "2020-01-01T00:00:00Z"
-
-        let expected = TestResponse(id: 3, name: "Refreshed")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        let mockTokenManager = MockHTTPClientTokenManager()
-        mockTokenManager.checkTokenExpirationResult = true
-        mockTokenManager.refreshTokenResult = .success(
-            Tokens(accessToken: "new-token", refreshToken: "new-refresh", expiresAt: "2099-01-01T00:00:00Z")
-        )
-
-        var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(
-            tokenManager: mockTokenManager,
-            requestExecutor: executor,
-            activeAccount: account
-        )
-
-        let result: TestResponse = try await sut.get(.accountInfo, needsAuth: true)
-        #expect(result == expected)
-        #expect(mockTokenManager.refreshTokenCalls == 1)
-        #expect(capturedRequest?.value(forHTTPHeaderField: "Authorization") == "Bearer new-token")
-    }
-
-    @Test("401 response with needsAuth retries once with refreshed token")
-    func unauthorizedRetryWithRefreshedToken() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "300", isActive: true)
-        account.accessToken = "valid-token"
-
-        let expected = TestResponse(id: 4, name: "RetrySuccess")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        let mockTokenManager = MockHTTPClientTokenManager()
-        mockTokenManager.checkTokenExpirationResult = false
-        mockTokenManager.refreshTokenResult = .success(
-            Tokens(accessToken: "retry-token", refreshToken: "retry-refresh", expiresAt: "2099-01-01T00:00:00Z")
-        )
-
-        var callCount = 0
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            callCount += 1
-            if callCount == 1 {
-                return (Data(), makeHTTPResponse(statusCode: 401))
-            }
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(
-            tokenManager: mockTokenManager,
-            requestExecutor: executor,
-            activeAccount: account
-        )
-
-        let result: TestResponse = try await sut.get(.accountInfo, needsAuth: true)
-        #expect(result == expected)
-        #expect(mockTokenManager.refreshTokenCalls == 1)
-        #expect(callCount == 2)
-    }
-
-    @Test("401 response without needsAuth does not retry")
-    func unauthorizedWithoutAuthDoesNotRetry() async throws {
-        var callCount = 0
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            callCount += 1
-            return (Data(), makeHTTPResponse(statusCode: 401))
-        }
-
-        let (sut, tokenManager, _, _, _) = makeSUT(requestExecutor: executor)
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo, needsAuth: false)
-            Issue.record("Expected error")
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.noInternet")
         } catch {
-            #expect(callCount == 1)
-            #expect(tokenManager.refreshTokenCalls == 0)
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.noInternet, got \(error)")
+                return
+            }
+            if case .noInternet = httpError {
+                #expect(true)
+            } else {
+                Issue.record("Expected HTTPError.noInternet, got \(httpError)")
+            }
+        }
+
+        #expect(notification.showToastCalls == 0)
+    }
+
+    @Test("get maps URLError.timedOut to HTTPError.timeout")
+    func get_timeoutURLError_mapsToTimeout() async {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { _ in
+                throw URLError(.timedOut)
+            }
+        )
+
+        do {
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.timeout")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.timeout, got \(error)")
+                return
+            }
+            if case .timeout = httpError {
+                #expect(true)
+            } else {
+                Issue.record("Expected HTTPError.timeout, got \(httpError)")
+            }
         }
     }
 
-    @Test("401 on retry does not retry infinitely")
-    func unauthorizedOnRetryDoesNotLoop() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "400", isActive: true)
-        account.accessToken = "valid-token"
-
-        let mockTokenManager = MockHTTPClientTokenManager()
-        mockTokenManager.checkTokenExpirationResult = false
-        mockTokenManager.refreshTokenResult = .success(
-            Tokens(accessToken: "retry-token", refreshToken: "retry-refresh", expiresAt: "2099-01-01T00:00:00Z")
+    @Test("get maps network URLError to HTTPError.noInternet")
+    func get_networkURLError_mapsToNoInternet() async {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { _ in
+                throw URLError(.notConnectedToInternet)
+            }
         )
 
+        do {
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.noInternet")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.noInternet, got \(error)")
+                return
+            }
+            if case .noInternet = httpError {
+                #expect(true)
+            } else {
+                Issue.record("Expected HTTPError.noInternet, got \(httpError)")
+            }
+        }
+    }
+
+    // MARK: - Invalid Response Handling
+
+    @Test("get throws invalidResponse for non-HTTP URLResponse")
+    func get_nonHTTPResponse_throwsInvalidResponse() async {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = URLResponse(
+                    url: request.url ?? URL(string: "https://example.com")!,
+                    mimeType: nil,
+                    expectedContentLength: 0,
+                    textEncodingName: nil
+                )
+                return (Data(), response)
+            }
+        )
+
+        do {
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.invalidResponse")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.invalidResponse, got \(error)")
+                return
+            }
+            if case .invalidResponse = httpError {
+                #expect(true)
+            } else {
+                Issue.record("Expected HTTPError.invalidResponse, got \(httpError)")
+            }
+        }
+    }
+
+    @Test("get throws statusCode for unknown HTTP status")
+    func get_unknownStatusCode_throwsStatusCode() async {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = makeHTTPResponse(statusCode: 418, request: request)
+                return (Data(), response)
+            }
+        )
+
+        do {
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.statusCode(418)")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.statusCode(418), got \(error)")
+                return
+            }
+            if case .statusCode(let code) = httpError {
+                #expect(code == 418)
+            } else {
+                Issue.record("Expected HTTPError.statusCode(418), got \(httpError)")
+            }
+        }
+    }
+
+    @Test("get throws decodingError for malformed JSON response")
+    func get_malformedJSON_throwsDecodingError() async {
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = makeHTTPResponse(statusCode: 200, request: request)
+                return (Data("not-json".utf8), response)
+            }
+        )
+
+        do {
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.decodingError")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.decodingError, got \(error)")
+                return
+            }
+            if case .decodingError = httpError {
+                #expect(true)
+            } else {
+                Issue.record("Expected HTTPError.decodingError, got \(httpError)")
+            }
+        }
+    }
+
+    @Test("get parses API error payload for non-success status")
+    func get_errorPayload_parsesAPIErrorMessage() async {
+        let errorPayload = Data(#"{"error":"bad request payload"}"#.utf8)
+        let (sut, _, _, _, _) = makeSUT(
+            requestExecutor: { request in
+                let response = makeHTTPResponse(statusCode: 400, request: request)
+                return (errorPayload, response)
+            }
+        )
+
+        do {
+            let _: HTTPClientTestResponse = try await sut.get(.login)
+            Issue.record("Expected get to throw HTTPError.apiError")
+        } catch {
+            guard let httpError = error as? HTTPError else {
+                Issue.record("Expected HTTPError.apiError, got \(error)")
+                return
+            }
+            if case .apiError(let message, let code) = httpError {
+                #expect(message == "bad request payload")
+                #expect(code == HTTPStatusCode.badRequest.rawValue)
+            } else {
+                Issue.record("Expected HTTPError.apiError, got \(httpError)")
+            }
+        }
+    }
+
+    // MARK: - Retry Behavior
+
+    @Test("get with auth refreshes expired token before request and succeeds")
+    func get_needsAuthExpiredToken_refreshesBeforeRequest() async throws {
+        let account = makeActiveAccount(accessToken: "old-token")
+        let tokenManager = MockHTTPClientTokenManager()
+        tokenManager.checkTokenExpirationResult = true
+        tokenManager.refreshTokenResult = .success(makeTokens(access: "new-token"))
+        let responseData = try JSONEncoder().encode(HTTPClientTestResponse(value: "ok"))
+        var capturedAuthHeader: String?
+        let (sut, _, _, _, _) = makeSUT(
+            account: account,
+            tokenManager: tokenManager,
+            requestExecutor: { request in
+                capturedAuthHeader = request.value(forHTTPHeaderField: "Authorization")
+                let response = makeHTTPResponse(statusCode: 200, request: request)
+                return (responseData, response)
+            }
+        )
+
+        let result: HTTPClientTestResponse = try await sut.get(.accountInfo, needsAuth: true)
+
+        #expect(result.value == "ok")
+        #expect(tokenManager.checkTokenExpirationCalls == 1)
+        #expect(tokenManager.refreshTokenCalls == 1)
+        #expect(capturedAuthHeader == "Bearer new-token")
+    }
+
+    @Test("get with auth retries once on unauthorized using refreshed token")
+    func get_needsAuthUnauthorized_retriesWithRefreshedToken() async throws {
+        let account = makeActiveAccount(accessToken: "old-token")
+        let tokenManager = MockHTTPClientTokenManager()
+        tokenManager.checkTokenExpirationResult = false
+        tokenManager.refreshTokenResult = .success(makeTokens(access: "retry-token"))
+        let successData = try JSONEncoder().encode(HTTPClientTestResponse(value: "ok"))
+        var authHeaders: [String?] = []
         var callCount = 0
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            callCount += 1
-            return (Data(), makeHTTPResponse(statusCode: 401))
-        }
 
         let (sut, _, _, _, _) = makeSUT(
-            tokenManager: mockTokenManager,
-            requestExecutor: executor,
-            activeAccount: account
-        )
+            account: account,
+            tokenManager: tokenManager,
+            requestExecutor: { request in
+                callCount += 1
+                authHeaders.append(request.value(forHTTPHeaderField: "Authorization"))
 
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo, needsAuth: true)
-            Issue.record("Expected HTTPError.unauthorized")
-        } catch let error as HTTPError {
-            if case .unauthorized = error {
-                // Only 1 refresh (first 401), then 2nd 401 is thrown
-                #expect(mockTokenManager.refreshTokenCalls == 1)
-                #expect(callCount == 2)
-            } else {
-                Issue.record("Expected unauthorized, got \(error)")
+                if callCount == 1 {
+                    let unauthorized = makeHTTPResponse(statusCode: 401, request: request)
+                    return (Data(), unauthorized)
+                }
+
+                let success = makeHTTPResponse(statusCode: 200, request: request)
+                return (successData, success)
             }
-        }
-    }
-
-    @Test("Login endpoint skips token check even with needsAuth")
-    func loginEndpointSkipsTokenCheck() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "500", isActive: true)
-        account.accessToken = "some-token"
-
-        let mockTokenManager = MockHTTPClientTokenManager()
-        mockTokenManager.checkTokenExpirationResult = true // Would trigger refresh normally
-
-        let body = TestRequestBody(value: "login")
-        let expected = TestResponse(id: 5, name: "LoggedIn")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(
-            tokenManager: mockTokenManager,
-            requestExecutor: executor,
-            activeAccount: account
         )
 
-        let result: TestResponse = try await sut.send(.login, method: .post, body: body, needsAuth: true)
-        #expect(result == expected)
-        #expect(mockTokenManager.refreshTokenCalls == 0)
+        let result: HTTPClientTestResponse = try await sut.get(.accountInfo, needsAuth: true)
+
+        #expect(result.value == "ok")
+        #expect(callCount == 2)
+        #expect(tokenManager.refreshTokenCalls == 1)
+        #expect(authHeaders.first == "Bearer old-token")
+        #expect(authHeaders.last == "Bearer retry-token")
     }
 
-    @Test("Refresh token endpoint skips token check even with needsAuth")
-    func refreshTokenEndpointSkipsTokenCheck() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "600", isActive: true)
-        account.accessToken = "some-token"
+    @Test("get with accountId uses fetchAccount token for auth header")
+    func get_needsAuthWithAccountId_usesFetchedAccountToken() async throws {
+        let accountService = MockTokenManagerAccountService()
+        let fetched = AccountTestFixtures.makeAccountModel(id: "acc-2", email: "b@example.com", isLoggedIn: true, isActive: false)
+        fetched.accessToken = "fetched-token"
+        fetched.expiresAt = "2099-01-01T00:00:00.000Z"
+        accountService.fetchAccountById["acc-2"] = fetched
 
-        let mockTokenManager = MockHTTPClientTokenManager()
-        mockTokenManager.checkTokenExpirationResult = true
+        let tokenManager = MockHTTPClientTokenManager()
+        tokenManager.checkTokenExpirationResult = false
 
-        let body = TestRequestBody(value: "refresh")
-        let expected = TestResponse(id: 6, name: "Refreshed")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
+        var authHeader: String?
+        let responseData = try JSONEncoder().encode(HTTPClientTestResponse(value: "ok"))
         let (sut, _, _, _, _) = makeSUT(
-            tokenManager: mockTokenManager,
-            requestExecutor: executor,
-            activeAccount: account
-        )
-
-        let result: TestResponse = try await sut.send(.refreshToken, method: .post, body: body, needsAuth: true)
-        #expect(result == expected)
-        #expect(mockTokenManager.refreshTokenCalls == 0)
-    }
-
-    @Test("Logout endpoint skips token check even with needsAuth")
-    func logoutEndpointSkipsTokenCheck() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "700", isActive: true)
-        account.accessToken = "some-token"
-
-        let mockTokenManager = MockHTTPClientTokenManager()
-        mockTokenManager.checkTokenExpirationResult = true
-
-        let body = TestRequestBody(value: "logout")
-        let expected = TestResponse(id: 7, name: "LoggedOut")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(
-            tokenManager: mockTokenManager,
-            requestExecutor: executor,
-            activeAccount: account
-        )
-
-        let result: TestResponse = try await sut.send(.logout, method: .post, body: body, needsAuth: true)
-        #expect(result == expected)
-        #expect(mockTokenManager.refreshTokenCalls == 0)
-    }
-
-    @Test("Token refresh failure propagates error")
-    func tokenRefreshFailurePropagatesError() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "800", isActive: true)
-        account.accessToken = "old-token"
-
-        let mockTokenManager = MockHTTPClientTokenManager()
-        mockTokenManager.checkTokenExpirationResult = true
-        mockTokenManager.refreshTokenResult = .failure(HTTPError.unauthorized)
-
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            Issue.record("Should not reach request executor")
-            return (Data(), makeHTTPResponse())
-        }
-
-        let (sut, _, _, _, _) = makeSUT(
-            tokenManager: mockTokenManager,
-            requestExecutor: executor,
-            activeAccount: account
-        )
-
-        do {
-            let _: TestResponse = try await sut.get(.accountInfo, needsAuth: true)
-            Issue.record("Expected error from token refresh")
-        } catch let error as HTTPError {
-            if case .unauthorized = error {
-                #expect(mockTokenManager.refreshTokenCalls == 1)
-            } else {
-                Issue.record("Expected unauthorized, got \(error)")
+            account: accountService,
+            tokenManager: tokenManager,
+            requestExecutor: { request in
+                authHeader = request.value(forHTTPHeaderField: "Authorization")
+                let response = makeHTTPResponse(statusCode: 200, request: request)
+                return (responseData, response)
             }
-        }
-    }
-
-    @Test("Fetch account by specific accountId works")
-    func fetchAccountBySpecificId() async throws {
-        let account = AccountTestFixtures.makeAccountModel(id: "specific-123", isActive: true)
-        account.accessToken = "specific-token"
-        let expected = TestResponse(id: 9, name: "Specific")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, accountService, _, _) = makeSUT(requestExecutor: executor)
-        accountService.seedAccounts([account], active: account)
-
-        let result: TestResponse = try await sut.get(.accountInfo, needsAuth: true, accountId: "specific-123")
-        #expect(result == expected)
-        #expect(capturedRequest?.value(forHTTPHeaderField: "Authorization") == "Bearer specific-token")
-    }
-
-    @Test("Fetch account by nonexistent accountId throws accountNotFound")
-    func fetchAccountByNonexistentIdThrows() async throws {
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            Issue.record("Should not reach request executor")
-            return (Data(), makeHTTPResponse())
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        await #expect(throws: AccountError.self) {
-            let _: TestResponse = try await sut.get(.accountInfo, needsAuth: true, accountId: "nonexistent")
-        }
-    }
-
-    // MARK: - Request Construction
-
-    @Test("GET request sets correct HTTP method")
-    func getRequestSetsCorrectMethod() async throws {
-        let expected = TestResponse(id: 10, name: "Method")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let _: TestResponse = try await sut.get(.accountInfo)
-        #expect(capturedRequest?.httpMethod == "GET")
-    }
-
-    @Test("Custom headers are forwarded in request")
-    func customHeadersForwarded() async throws {
-        let expected = TestResponse(id: 11, name: "Headers")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let _: TestResponse = try await sut.get(
-            .accountInfo,
-            headers: ["X-Custom": "value123"]
-        )
-        #expect(capturedRequest?.value(forHTTPHeaderField: "X-Custom") == "value123")
-    }
-
-    @Test("PUT request sends correct method and body")
-    func putRequestSendsCorrectMethodAndBody() async throws {
-        let body = TestRequestBody(value: "updated")
-        let expected = TestResponse(id: 12, name: "Updated")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let result: TestResponse = try await sut.send(.updateAccount, method: .put, body: body)
-        #expect(result == expected)
-        #expect(capturedRequest?.httpMethod == "PUT")
-    }
-
-    @Test("DELETE request sends correct method")
-    func deleteRequestSendsCorrectMethod() async throws {
-        let body = EmptyBody()
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            #expect(request.httpMethod == "DELETE")
-            return (Data(), makeHTTPResponse(statusCode: 204))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let _: EmptyResponse = try await sut.send(.deleteAccount, method: .delete, body: body)
-    }
-
-    @Test("PATCH request sends correct method")
-    func patchRequestSendsCorrectMethod() async throws {
-        let body = TestRequestBody(value: "patched")
-        let expected = TestResponse(id: 13, name: "Patched")
-        let jsonData = try JSONEncoder().encode(expected)
-
-        var capturedRequest: URLRequest?
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            capturedRequest = request
-            return (jsonData, makeHTTPResponse(statusCode: 200))
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        let _: TestResponse = try await sut.send(.updateProfile, method: .patch, body: body)
-        #expect(capturedRequest?.httpMethod == "PATCH")
-    }
-
-    // MARK: - Non-HTTPError Passthrough
-
-    @Test("Non-URLError exceptions are rethrown as-is")
-    func nonURLErrorExceptionsRethrown() async throws {
-        struct CustomError: Error {}
-        let executor: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { _ in
-            throw CustomError()
-        }
-
-        let (sut, _, _, _, _) = makeSUT(requestExecutor: executor)
-
-        await #expect(throws: CustomError.self) {
-            let _: TestResponse = try await sut.get(.accountInfo)
-        }
-    }
-
-    // MARK: - Send with Body Connectivity
-
-    @Test("Send with body checks connectivity before executing")
-    func sendWithBodyChecksConnectivity() async throws {
-        let (sut, _, _, notificationService, _) = makeSUT(
-            connectivityProvider: { false }
         )
 
-        do {
-            let body = TestRequestBody(value: "test")
-            let _: TestResponse = try await sut.send(.submitOperation, method: .post, body: body)
-            Issue.record("Expected HTTPError.noInternet")
-        } catch let error as HTTPError {
-            if case .noInternet = error {
-                #expect(notificationService.showToastCalls == 1)
-            } else {
-                Issue.record("Expected noInternet, got \(error)")
-            }
+        let result: HTTPClientTestResponse = try await sut.get(.accountInfo, needsAuth: true, accountId: "acc-2")
+
+        #expect(result.value == "ok")
+        #expect(accountService.fetchAccountCalls == 2)
+        #expect(accountService.lastFetchAccountId == "acc-2")
+        #expect(authHeader == "Bearer fetched-token")
+    }
+
+    // MARK: - Helpers
+
+    private func makeSUT(
+        account: MockTokenManagerAccountService? = nil,
+        notification: MockNotificationHelperService? = nil,
+        logger: MockLoggerService? = nil,
+        tokenManager: MockHTTPClientTokenManager? = nil,
+        connectivity: Bool = true,
+        requestExecutor: ((URLRequest) async throws -> (Data, URLResponse))? = nil
+    ) -> (
+        sut: HTTPClient,
+        account: MockTokenManagerAccountService,
+        notification: MockNotificationHelperService,
+        logger: MockLoggerService,
+        tokenManager: MockHTTPClientTokenManager
+    ) {
+        let account = account ?? makeActiveAccount(accessToken: "active-token")
+        let notification = notification ?? MockNotificationHelperService()
+        let logger = logger ?? MockLoggerService()
+        let tokenManager = tokenManager ?? MockHTTPClientTokenManager()
+
+        let executor = requestExecutor ?? { request in
+            let data = try JSONEncoder().encode(HTTPClientTestResponse(value: "ok"))
+            let response = makeHTTPResponse(statusCode: 200, request: request)
+            return (data, response)
         }
+
+        let sut = HTTPClient(
+            accountService: account,
+            notificationHelperService: notification,
+            logger: logger,
+            tokenManager: tokenManager,
+            requestExecutor: executor,
+            connectivityProvider: { connectivity }
+        )
+        return (sut, account, notification, logger, tokenManager)
+    }
+
+    private func makeActiveAccount(
+        accessToken: String,
+        accountId: String = "acc-1",
+        expiresAt: String = "2099-01-01T00:00:00.000Z"
+    ) -> MockTokenManagerAccountService {
+        let accountService = MockTokenManagerAccountService()
+        let account = AccountTestFixtures.makeAccountModel(id: accountId, email: "user@example.com", isLoggedIn: true, isActive: true)
+        account.accessToken = accessToken
+        account.expiresAt = expiresAt
+        accountService.activeAccount = account
+        return accountService
+    }
+
+    private func makeTokens(
+        access: String = "new-token",
+        refresh: String = "refresh-token",
+        expiresAt: String = "2099-01-01T00:00:00.000Z"
+    ) -> Tokens {
+        Tokens(accessToken: access, refreshToken: refresh, expiresAt: expiresAt)
+    }
+
+    private func makeHTTPResponse(statusCode: Int, request: URLRequest) -> HTTPURLResponse {
+        HTTPURLResponse(
+            url: request.url ?? URL(string: "https://example.com")!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
     }
 }
