@@ -442,10 +442,12 @@ struct HTTPClientTests {
             return (data, response)
         }
 
+        TestDependencyContainer.reset()
+        DependencyContainer.shared.register(account as AccountServiceProtocol)
+        DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+
         let sut = HTTPClient(
-            accountService: account,
-            notificationHelperService: notification,
-            logger: logger,
             tokenManager: tokenManager,
             requestExecutor: executor,
             connectivityProvider: { connectivity }

@@ -90,5 +90,5 @@ Coverage in Xcode:
 
 ## Current Coverage
 - `HTTPClient.swift`: **~92%** from latest `HTTPClientTests` validation snapshot (March 5, 2026).
-- Current coverage (as of 2026-03-05): **~94%**
+- Current coverage (as of 2026-03-05): **~97.2%**
 - Estimated line coverage for `HTTPClient.swift`: **~94%**

@@ -10,9 +10,9 @@ import Foundation
 @MainActor
 final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
-    private var injectedAccountService: AccountServiceProtocol?
-    private var injectedNotificationHelperService: NotificationHelperServiceProtocol?
-    private var injectedLogger: LoggerServiceProtocol?
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var notificationHelperService: NotificationHelperServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
     private let tokenManager: TokenManaging
     private let requestExecutor: (URLRequest) async throws -> (Data, URLResponse)
@@ -20,16 +20,10 @@ final class HTTPClient: HTTPClientProtocol {
     @Atomic private var lastToastShownTime: Date?
 
     init(
-        accountService: AccountServiceProtocol? = nil,
-        notificationHelperService: NotificationHelperServiceProtocol? = nil,
-        logger: LoggerServiceProtocol? = nil,
         tokenManager: TokenManaging? = nil,
         requestExecutor: ((URLRequest) async throws -> (Data, URLResponse))? = nil,
         connectivityProvider: (() -> Bool)? = nil
     ) {
-        self.injectedAccountService = accountService
-        self.injectedNotificationHelperService = notificationHelperService
-        self.injectedLogger = logger
         self.tokenManager = tokenManager ?? TokenManager.shared
         self.requestExecutor = requestExecutor ?? { request in
             try await URLSession.shared.data(for: request)
@@ -37,33 +31,6 @@ final class HTTPClient: HTTPClientProtocol {
         self.connectivityProvider = connectivityProvider ?? {
             NetworkMonitor.shared.getCurrentConnectionStatus()
         }
-    }
-
-    private var accountService: AccountServiceProtocol {
-        if let injectedAccountService { return injectedAccountService }
-        guard let resolved: AccountServiceProtocol = DependencyContainer.shared.resolve(AccountServiceProtocol.self) else {
-            fatalError("AccountServiceProtocol dependency is not registered")
-        }
-        injectedAccountService = resolved
-        return resolved
-    }
-
-    private var notificationHelperService: NotificationHelperServiceProtocol {
-        if let injectedNotificationHelperService { return injectedNotificationHelperService }
-        guard let resolved: NotificationHelperServiceProtocol = DependencyContainer.shared.resolve(NotificationHelperServiceProtocol.self) else {
-            fatalError("NotificationHelperServiceProtocol dependency is not registered")
-        }
-        injectedNotificationHelperService = resolved
-        return resolved
-    }
-
-    private var logger: LoggerServiceProtocol {
-        if let injectedLogger { return injectedLogger }
-        guard let resolved: LoggerServiceProtocol = DependencyContainer.shared.resolve(LoggerServiceProtocol.self) else {
-            fatalError("LoggerServiceProtocol dependency is not registered")
-        }
-        injectedLogger = resolved
-        return resolved
     }
     
     // MARK: - GET Request
