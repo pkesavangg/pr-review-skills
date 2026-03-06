@@ -372,13 +372,17 @@ final class BluetoothScaleSetupStore: ObservableObject {
     
     private func startEntrySyncing() {
         self.bluetoothConnectionState = .success
+
+        // Attach listener immediately so the first entry is never missed while UI advances.
+        bluetoothService.resumeSmartScan(clearOnlyPairing: false)
+        setupNewEntrySubscription()
+        Task {
+            await self.syncNewScale()
+        }
+
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
             self.moveToNextStep()
-            // Sync the newly paired scale and start listening for entries
-            Task {
-                await self.syncNewScaleAndListenForEntries()
-            }
         }
     }
     
@@ -423,7 +427,10 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 self.updateNextEnabled()
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: self.stepTransitionDelayNs)
-                    self.moveToNextStep()
+                    if let stepOnIndex = self.steps.firstIndex(of: .stepOn),
+                       self.currentStepIndex <= stepOnIndex {
+                        self.currentStepIndex = stepOnIndex
+                    }
                 }
                 self.cleanupEntrySubscription()
             }

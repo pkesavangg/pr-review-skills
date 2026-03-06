@@ -23,6 +23,8 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
+    private var loadTask: Task<Void, Never>?
+    private var latestLoadRequestID = 0
 
     // MARK: - Initialization
     init(
@@ -40,24 +42,30 @@ final class WeightOnlyModeAlertStore: ObservableObject {
 
     /// Loads scales that have weight-only mode enabled by other users
     func loadWeightOnlyScales() {
+        latestLoadRequestID += 1
+        let requestID = latestLoadRequestID
         isLoading = true
+        loadTask?.cancel()
 
-        Task {
+        loadTask = Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            defer {
+                if requestID == self.latestLoadRequestID {
+                    self.isLoading = false
+                }
+            }
+
             do {
-                let allScales = try await scaleService.getDevices()
+                let allScales = try await self.scaleService.getDevices()
                 let filteredScales = allScales.filter { scale in
                     scale.isWeighOnlyModeEnabledByOthers == true
                 }
 
-                await MainActor.run {
-                    self.weightOnlyScales = filteredScales
-                    self.isLoading = false
-                }
+                guard !Task.isCancelled, requestID == self.latestLoadRequestID else { return }
+                self.weightOnlyScales = filteredScales
             } catch {
-                await MainActor.run {
-                    self.weightOnlyScales = []
-                    self.isLoading = false
-                }
+                guard !Task.isCancelled, requestID == self.latestLoadRequestID else { return }
+                self.weightOnlyScales = []
             }
         }
     }
@@ -140,9 +148,10 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     /// Sets up observers for device discovery
     private func setupObservers() {
         bluetoothService.deviceDiscoveredPublisher
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.loadWeightOnlyScales()
+                Task { @MainActor in
+                    self?.loadWeightOnlyScales()
+                }
             }
             .store(in: &cancellables)
     }
