@@ -265,11 +265,11 @@ struct AccountFlagServiceTests {
         let logger = logger ?? MockLoggerService()
         let review = appReviewHandler ?? MockAppReviewHandler()
 
-        let sut = AccountFlagService(
-            apiRepo: repo,
-            logger: logger,
-            appReviewService: review
-        )
+        TestDependencyContainer.reset()
+        DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+        DependencyContainer.shared.register(review as AppReviewHandlerProtocol)
+
+        let sut = AccountFlagService(apiRepo: repo)
         return (sut, repo, review, logger)
     }
 }
