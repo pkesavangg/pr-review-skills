@@ -148,10 +148,9 @@ final class WeightOnlyModeAlertStore: ObservableObject {
     /// Sets up observers for device discovery
     private func setupObservers() {
         bluetoothService.deviceDiscoveredPublisher
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.loadWeightOnlyScales()
-                }
+                self?.loadWeightOnlyScales()
             }
             .store(in: &cancellables)
     }

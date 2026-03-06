@@ -382,7 +382,11 @@ final class BluetoothScaleSetupStore: ObservableObject {
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
-            self.moveToNextStep()
+            if self.isEntrySynced {
+                self.promoteToStepOnIfPossible()
+            } else if self.currentStep == .connectingBluetooth {
+                self.moveToNextStep()
+            }
         }
     }
     
@@ -421,19 +425,22 @@ final class BluetoothScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-
-                // Mark entry as synced and update UI
-                self.isEntrySynced = true
-                self.updateNextEnabled()
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: self.stepTransitionDelayNs)
-                    if let stepOnIndex = self.steps.firstIndex(of: .stepOn),
-                       self.currentStepIndex <= stepOnIndex {
-                        self.currentStepIndex = stepOnIndex
-                    }
+                    // Mark entry as synced and update UI.
+                    self.isEntrySynced = true
+                    self.updateNextEnabled()
+                    self.promoteToStepOnIfPossible()
+                    self.cleanupEntrySubscription()
                 }
-                self.cleanupEntrySubscription()
             }
+    }
+
+    private func promoteToStepOnIfPossible() {
+        guard let stepOnIndex = steps.firstIndex(of: .stepOn),
+              currentStepIndex <= stepOnIndex else {
+            return
+        }
+        currentStepIndex = stepOnIndex
     }
     
     private func cleanupEntrySubscription() {
