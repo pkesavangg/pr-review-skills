@@ -22,7 +22,7 @@ class SettingsStore: ObservableObject {
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var feedService: FeedServiceProtocol
-    @Injector var goalAlertService: GoalAlertService
+    @Injector var goalAlertService: GoalAlertServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var integrationService: IntegrationServiceProtocol
     private let httpClient = HTTPClient.shared

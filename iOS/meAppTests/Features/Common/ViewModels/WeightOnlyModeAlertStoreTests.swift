@@ -230,11 +230,10 @@ struct WeightOnlyModeAlertStoreTests {
         let bluetooth = bluetooth ?? MockBluetoothService()
         let notification = notification ?? MockNotificationHelperService()
 
-        let store = WeightOnlyModeAlertStore(
-            scaleService: scaleService,
-            bluetoothService: bluetooth,
-            notificationService: notification
-        )
+        DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
+        DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+
+        let store = WeightOnlyModeAlertStore(scaleService: scaleService)
         return (store, scaleService, bluetooth, notification)
     }
 

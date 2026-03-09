@@ -170,13 +170,14 @@ enum BluetoothScaleSetupStoreTestFixtures {
 
     @MainActor
     static func waitUntil(
-        timeoutNanoseconds: UInt64 = 1_000_000_000,
+        timeoutNanoseconds: UInt64 = 2_000_000_000,
         pollNanoseconds: UInt64 = 20_000_000,
         condition: @escaping @MainActor () -> Bool
-    ) async {
+    ) async -> Bool {
         let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
         while !condition() && ContinuousClock.now < deadline {
             try? await Task.sleep(nanoseconds: pollNanoseconds)
         }
+        return condition()
     }
 }

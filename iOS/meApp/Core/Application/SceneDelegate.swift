@@ -18,6 +18,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         if let windowScene = scene as? UIWindowScene {
+            if AppRuntime.isRunningTests {
+                let window = UIWindow(windowScene: windowScene)
+                window.rootViewController = UIHostingController(rootView: EmptyView())
+                self.window = window
+                window.makeKeyAndVisible()
+                return
+            }
             setupMainWindow(in: windowScene)
             appModalWindow(in: windowScene)
         }
