@@ -6,8 +6,12 @@ import Foundation
 
 @MainActor
 final class ScaleAPIRepository: ScaleRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
-    
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
+        self.httpClient = httpClient
+    }
+
     func listScales() async throws -> [ScaleDTO] {
         // GET /paired-scale
         return try await httpClient.get(
