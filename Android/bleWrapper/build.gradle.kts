@@ -47,5 +47,4 @@ dependencies {
   api(libs.gg.bluetooth.android)
   // implementation(project(":ggBluetoothLibrary"))
   implementation(libs.androidx.datastore.preferences)
-
 }
