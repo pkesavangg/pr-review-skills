@@ -6,6 +6,7 @@ protocol GoalAlertServiceProtocol: AnyObject {
     var isOnDashboardTab: (() -> Bool)? { get set }
 
     func showGoalMetMessage(currentWeight: Double) async
+    func checkPendingGoalAlerts() async
     func resetGoalMetFlag()
     func checkSetGoalCard(entryCount: Int) async
 }
