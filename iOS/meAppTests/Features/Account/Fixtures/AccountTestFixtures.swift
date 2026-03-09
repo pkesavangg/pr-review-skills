@@ -108,4 +108,28 @@ enum AccountTestFixtures {
         account.expiresAt = "2099-01-01T00:00:00Z"
         return account
     }
+
+    // MARK: - Account flag fixtures
+
+    static func makeAccountFlagDTO(
+        id: String = "flag-1",
+        type: String = "app-rate-ask",
+        trigger: String = "login",
+        metadata: [String: String]? = nil,
+        createdAt: String = "2026-03-01T08:00:00Z",
+        accountId: String = "100"
+    ) -> AccountFlagDTO {
+        AccountFlagDTO(
+            id: id,
+            type: type,
+            trigger: trigger,
+            metadata: metadata,
+            createdAt: createdAt,
+            accountId: accountId
+        )
+    }
+
+    static func makeAccountFlagDTOs(ids: [String] = ["flag-1"], trigger: String = "login") -> [AccountFlagDTO] {
+        ids.map { makeAccountFlagDTO(id: $0, trigger: trigger) }
+    }
 }
