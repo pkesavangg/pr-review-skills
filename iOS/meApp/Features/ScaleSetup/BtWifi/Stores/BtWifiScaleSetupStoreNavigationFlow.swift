@@ -128,8 +128,8 @@ extension BtWifiScaleSetupStore {
             if isReconnect && !isDuplicated {
                 Task {
                     await self.getUserList()
-                    self.scaleSetupError = .maxUserReached
                 }
+                self.scaleSetupError = .maxUserReached
                 return .gatheringNetwork
             } else if isWifiSetupOnly {
                 // Directly enter the Wi-Fi flow when setting up Wi-Fi only.

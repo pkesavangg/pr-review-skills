@@ -10,14 +10,19 @@ final class MockScaleService: ScaleServiceProtocol {
     var updateAllScalesStatusError: Error?
     var syncDevicesError: Error?
     var createDeviceError: Error?
+    var getDevicesError: Error?
     var updateScalePreferenceError: Error?
     var deleteDeviceError: Error?
+    var createR4ScaleError: Error?
+    var fetchAttachedPreferenceResult: R4ScalePreference?
 
     private(set) var updateConnectedDevicesCalls = 0
     private(set) var updateConnectedDeviceWifiStatusCalls = 0
     private(set) var updateConnectedDeviceWeightOnlyModeCalls = 0
     private(set) var syncDevicesCalls = 0
     private(set) var createDeviceCalls = 0
+    private(set) var createBluetoothScaleCalls = 0
+    private(set) var createR4ScaleCalls = 0
     private(set) var deleteDeviceCalls = 0
     private(set) var pushLocalChangesToServerCalls = 0
     private(set) var syncAllScalesWithRemoteCalls = 0
@@ -27,9 +32,16 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var lastUpdatedScalePreferenceDeviceId: String?
     private(set) var lastUpdatedScalePreferenceDTO: R4ScalePreferenceDTO?
     private(set) var lastCreatedDevice: Device?
+    private(set) var lastCreatedBluetoothScale: Device?
+    private(set) var lastCreatedR4Scale: Device?
 
     func clearAllData() async {}
-    func getDevices() async throws -> [Device] { scales }
+    func getDevices() async throws -> [Device] {
+        if let getDevicesError {
+            throw getDevicesError
+        }
+        return scales
+    }
     func getConnectedDevices() async -> [String: Any] { [:] }
 
     func updateConnectedDevices(device: Any, isConnected: Bool) async {
@@ -53,6 +65,72 @@ final class MockScaleService: ScaleServiceProtocol {
         createDeviceCalls += 1
         lastCreatedDevice = device
         if let createDeviceError { throw createDeviceError }
+        return device
+    }
+
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        createBluetoothScaleCalls += 1
+        if let createDeviceError { throw createDeviceError }
+
+        device.accountId = accountId
+        device.sku = sku
+        device.userNumber = userNumber
+        device.metaData = deviceMetadata
+        device.bathScale = device.bathScale ?? BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
+        lastCreatedBluetoothScale = device
+        return device
+    }
+
+    func createR4Scale(
+        scaleId: String,
+        accountId: String,
+        displayName: String,
+        token: String,
+        mac: String?,
+        broadcastIdString: String?,
+        broadcastId: Int64?,
+        sku: String?,
+        deviceName: String?,
+        wifiMac: String? = nil,
+        deviceMetadata: DeviceMetaData? = nil,
+        isWifiConfigured: Bool = false,
+        isConnected: Bool = false,
+        skipDuplicateCheck: Bool = false
+    ) async throws -> Device {
+        createR4ScaleCalls += 1
+        if let createR4ScaleError { throw createR4ScaleError }
+
+        let device = Device(
+            id: scaleId,
+            accountId: accountId,
+            nickname: "AccuCheck Verve Smart Scale",
+            sku: sku,
+            mac: mac,
+            deviceName: deviceName,
+            deviceType: DeviceType.scale.rawValue,
+            broadcastId: broadcastId,
+            broadcastIdString: broadcastIdString,
+            userNumber: "0",
+            createdAt: "2026-03-03T00:00:00Z",
+            isConnected: isConnected,
+            wifiMac: wifiMac,
+            isWifiConfigured: isWifiConfigured,
+            token: token,
+            metaData: deviceMetadata
+        )
+        device.bathScale = BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
+        device.r4ScalePreference = R4ScalePreference(
+            from: ScaleTestFixtures.makePreferenceDTO(scaleId: scaleId, displayName: displayName),
+            scaleId: scaleId
+        )
+        lastCreatedR4Scale = device
         return device
     }
 
@@ -85,6 +163,6 @@ final class MockScaleService: ScaleServiceProtocol {
     func syncAllScalesWithRemote() async { syncAllScalesWithRemoteCalls += 1 }
     func pushLocalChangesToServer() async { pushLocalChangesToServerCalls += 1 }
     func getDevice(by deviceId: String) async throws -> Device? { scales.first { $0.id == deviceId } }
-    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
-    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
+    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { fetchAttachedPreferenceResult }
+    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { fetchAttachedPreferenceResult }
 }
