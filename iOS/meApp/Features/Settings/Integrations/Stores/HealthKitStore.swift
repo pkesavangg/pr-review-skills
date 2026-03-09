@@ -114,14 +114,19 @@ final class HealthKitStore: ObservableObject {
     }
 
     func getLocalStoredData() {
-        Task {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
             do {
-                let result = try await integrationService.getStoredIntegrationData()
-                isIntegrated = (result?.isIntegrated ?? false) && (result?.assignedTo == accountService.activeAccount?.accountId)
-                isOutOfSync = await healthKitService.isHKOutOfSync()
-                logger.log(level: .info, tag: tag, message: "Loaded HealthKit local state. isIntegrated=\(isIntegrated), isOutOfSync=\(isOutOfSync)")
+                let result = try await self.integrationService.getStoredIntegrationData()
+                self.isIntegrated = (result?.isIntegrated ?? false) && (result?.assignedTo == self.accountService.activeAccount?.accountId)
+                self.isOutOfSync = await self.healthKitService.isHKOutOfSync()
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Loaded HealthKit local state. isIntegrated=\(self.isIntegrated), isOutOfSync=\(self.isOutOfSync)"
+                )
             } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to load integration data", data: error.localizedDescription)
             }
         }
     }

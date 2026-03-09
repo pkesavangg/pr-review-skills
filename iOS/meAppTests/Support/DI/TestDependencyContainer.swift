@@ -29,6 +29,9 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(MockWifiScaleService() as WifiScaleServiceProtocol)
         DependencyContainer.shared.register(MockPushNotificationService() as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelAccountFlagService() as AccountFlagServiceProtocol)
+        // Some stores/managers inject concrete dashboard services.
+        // Register mock-backed concrete instances to keep tests isolated and avoid DI fatals.
+        _ = registerDashboardConcreteDependencies()
     }
 
     @discardableResult
@@ -37,15 +40,39 @@ enum TestDependencyContainer {
     ) -> DashboardConcreteDependencies {
         DependencyContainer.shared.register(KvStorageService.shared as KvStorageService)
 
-        let accountService = AccountService(performInitialLoad: performInitialAccountLoad)
+        let accountService = AccountService(
+            apiRepo: MockAccountAPIRepository(),
+            localRepo: MockAccountRepository(),
+            integrationApiRepo: MockIntegrationAPIRepository(),
+            networkMonitor: MockNetworkMonitor(isConnected: true),
+            performInitialLoad: performInitialAccountLoad
+        )
         let loggerService = LoggerService()
-        let scaleService = ScaleService(accountService: accountService)
-        let entryService = EntryService(accountService: accountService)
+        let scaleService = ScaleService(
+            accountService: accountService,
+            apiRepository: MockScaleRepositoryAPI(),
+            localRepository: MockScaleRepository()
+        )
+        let entryService = EntryService(
+            accountService: accountService,
+            localRepo: MockEntryRepository(),
+            localKVRepo: MockEntrySyncStore(),
+            remoteRepo: MockEntryRepositoryAPI()
+        )
+        let goalAlertService = GoalAlertService(
+            notificationService: MockNotificationHelperService(),
+            accountService: accountService,
+            bluetoothService: MockBluetoothService(),
+            logger: MockLoggerService(),
+            kv: MockKvStorageService(),
+            setGoalModalDelay: 0
+        )
 
         DependencyContainer.shared.register(accountService as AccountService)
         DependencyContainer.shared.register(loggerService as LoggerService)
         DependencyContainer.shared.register(scaleService as ScaleService)
         DependencyContainer.shared.register(entryService as EntryService)
+        DependencyContainer.shared.register(goalAlertService as GoalAlertService)
 
         return (
             account: accountService,
