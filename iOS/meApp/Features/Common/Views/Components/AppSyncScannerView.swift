@@ -1,5 +1,5 @@
-import SwiftUI
 import AppSyncPackage
+import SwiftUI
 
 /// A thin wrapper around `AppSyncView` that lives inside the app-code hierarchy so it can be
 /// reused wherever scanning is required without importing `AppSyncPackage` at call-sites.
@@ -7,7 +7,7 @@ import AppSyncPackage
 public struct AppSyncScannerView: View {
     // MARK: ‑ Configuration
     public var showManualEntryButton: Bool = true
-    public var initialZoom: CGFloat? = nil
+    public var initialZoom: CGFloat?
 
     // MARK: ‑ Callbacks
     public let onClose: () -> Void

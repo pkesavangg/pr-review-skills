@@ -5,12 +5,15 @@
 //  Created by Lakshmipriya on 02/07/25.
 //
 
-import UIKit
 import SwiftUI
+// This UICollectionViewCell intentionally aggregates all cell configuration logic
+// to maintain proper state synchronization between UIKit and SwiftUI components.
+// Splitting would fragment drag/drop, wiggle animation, and overlay management logic.
+import UIKit
 
-/// Custom UICollectionViewCell that represents a metric item with drag-and-drop support
-/// Features include wiggle animation and iOS home screen-like behavior
-/// Uses MetricCardView SwiftUI component for UI with EditModeOverlay
+// Custom UICollectionViewCell that represents a metric item with drag-and-drop support
+// Features include wiggle animation and iOS home screen-like behavior
+// Uses MetricCardView SwiftUI component for UI with EditModeOverlay
 class MetricCell: UICollectionViewCell {
     private static let overlayButtonSize: CGFloat = 48
     
@@ -35,7 +38,7 @@ class MetricCell: UICollectionViewCell {
     private var suppressOverlay: Bool = false
     private var overlayButtonAction: (() -> Void)?
     private var overlayButtonVisible: Bool = false
-    private var overlayButtonOffset: CGSize = CGSize(width: 20, height: -26)
+    private var overlayButtonOffset = CGSize(width: 20, height: -26)
     
     // MARK: - Initialization
     
@@ -111,14 +114,14 @@ class MetricCell: UICollectionViewCell {
     
     // MARK: - Configuration
     
-    /// Configures the cell with a MetricItem
-    /// - Parameters:
-    ///   - item: The MetricItem to display
-    ///   - dashboardType: The dashboard type for styling
-    ///   - store: The dashboard store for formatting
-    ///   - isBeingDragged: Whether this cell is currently being dragged
-    ///   - parentView: The context in which this cell is displayed (dashboard vs R4ScaleSetup)
-    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, parentView: DashboardMetricsParentView, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) {
+    // Configures the cell with a MetricItem
+    // - Parameters:
+    //   - item: The MetricItem to display
+    //   - dashboardType: The dashboard type for styling
+    //   - store: The dashboard store for formatting
+    //   - isBeingDragged: Whether this cell is currently being dragged
+    //   - parentView: The context in which this cell is displayed (dashboard vs R4ScaleSetup)
+    func configure(with item: MetricItem, dashboardType: DashboardType, store: DashboardStore, isBeingDragged: Bool = false, parentView: DashboardMetricsParentView, onMetricLongPress: ((String) -> Void)? = nil, onSelectMetric: ((String) -> Void)? = nil) { // swiftlint:disable:this function_body_length
         representedItem = item
         currentStore = store
         currentDashboardType = dashboardType
@@ -126,10 +129,10 @@ class MetricCell: UICollectionViewCell {
         currentParentView = parentView
         
         // Determine if this item is removed using the new removal state
-        let itemIsRemoved = store.isMetricRemoved(item.label)
+        let itemIsRemoved = store.gridEditingManager.isMetricRemoved(item.label)
         isRemoved = itemIsRemoved
         
-        let displayValue = store.formattedMetricValue(for: (item.preLabel, item.value))
+        let displayValue = store.displayManager.formattedMetricValue(for: (item.preLabel, item.value))
 
         let metricCardView = MetricCardView(
             value: displayValue,
@@ -140,7 +143,7 @@ class MetricCell: UICollectionViewCell {
             isRemoved: itemIsRemoved,
             isSelected: store.state.ui.selectedMetricLabel == item.label,
             onToggleRemoval: {
-                store.toggleMetricRemoval(item.label)
+                store.gridEditingManager.toggleMetricRemoval(item.label)
             },
             onTap: {
                 // Only allow selection if not in edit mode
@@ -172,7 +175,7 @@ class MetricCell: UICollectionViewCell {
                     isEditMode: store.state.ui.isEditMode,
                     isRemoved: itemIsRemoved,
                     onToggleRemoval: {
-                        store.toggleMetricRemoval(item.label)
+                        store.gridEditingManager.toggleMetricRemoval(item.label)
                     },
                     isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
@@ -181,7 +184,7 @@ class MetricCell: UICollectionViewCell {
                 )
         ) : AnyView(metricCardView)
 
-        overlayButtonAction = { store.toggleMetricRemoval(item.label) }
+        overlayButtonAction = { store.gridEditingManager.toggleMetricRemoval(item.label) }
         overlayButtonVisible = store.state.ui.isEditMode &&
             !(isBeingDragged || store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped) &&
             !(store.state.ui.dropHoverId == item.id.uuidString)
@@ -284,7 +287,13 @@ class MetricCell: UICollectionViewCell {
             }
             // Reconfigure to show overlay after drag ends
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: suppressOverlay, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: suppressOverlay,
+                    parentView: currentParentView
+                )
             }
         case .lifting, .dragging:
             // Don't reduce opacity during drag - let EditModeOverlay handle visibility
@@ -379,7 +388,6 @@ class MetricCell: UICollectionViewCell {
     /// Updates the drag state for this cell
     /// - Parameter isBeingDragged: Whether this cell is currently being dragged
     func updateDragState(_ isBeingDragged: Bool) {
-        let oldState = currentIsBeingDragged
         currentIsBeingDragged = isBeingDragged
         
         if isBeingDragged {
@@ -397,9 +405,9 @@ class MetricCell: UICollectionViewCell {
             layer.shadowOffset = CGSize(width: 0, height: 4)
             
             // Smooth transform animation
-            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut]) {
                 self.transform = CGAffineTransform(scaleX: 1.05, y: 1.05)
-            })
+            }
         } else {
             // Restore normal behavior when not dragging
             layer.actions = [
@@ -430,9 +438,9 @@ class MetricCell: UICollectionViewCell {
             clearAllShadowEffects()
             
             // Smooth return to normal size
-            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut], animations: {
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.allowUserInteraction, .curveEaseInOut]) {
                 self.transform = .identity
-            })
+            }
         }
         
         // Reconfigure the cell with the new drag state
@@ -504,8 +512,8 @@ class MetricCell: UICollectionViewCell {
         set { objc_setAssociatedObject(self, &AssociatedKeys.metricSelectCallback, newValue, .OBJC_ASSOCIATION_COPY_NONATOMIC) }
     }
     private struct AssociatedKeys {
-        static var metricLongPressCallback = "metricLongPressCallback"
-        static var metricSelectCallback = "metricSelectCallback"
+        static var metricLongPressCallback: UInt8 = 0
+        static var metricSelectCallback: UInt8 = 0
     }
     
     @objc private func handleMetricLongPressForInfo(_ gesture: UILongPressGestureRecognizer) {
@@ -514,11 +522,17 @@ class MetricCell: UICollectionViewCell {
             isLongPressed = true
             // Enter edit mode on long press if not already in edit mode
             if let store = currentStore, !store.state.ui.isEditMode {
-                store.toggleEditMode()
+                store.gridEditingManager.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: currentIsBeingDragged,
+                    parentView: currentParentView
+                )
             }
             guard let item = representedItem,
               let callback = onMetricLongPressCallback else { return }
@@ -531,9 +545,14 @@ class MetricCell: UICollectionViewCell {
             isLongPressed = false
             // Reconfigure to show overlay after long press ends
             if let item = representedItem, let store = currentStore {
-                configure(with: item, dashboardType: currentDashboardType, store: store, isBeingDragged: currentIsBeingDragged, parentView: currentParentView)
+                configure(
+                    with: item,
+                    dashboardType: currentDashboardType,
+                    store: store,
+                    isBeingDragged: currentIsBeingDragged,
+                    parentView: currentParentView
+                )
             }
-            break
         default:
             break
         }

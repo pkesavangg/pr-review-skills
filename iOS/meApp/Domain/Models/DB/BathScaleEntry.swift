@@ -22,7 +22,6 @@ final class BathScaleEntry {
     var bmi: Int?
     var source: String?
 
-
     init(weight: Int? = nil,
          bodyFat: Int? = nil,
          muscleMass: Int? = nil,

@@ -11,10 +11,10 @@ struct UserNumberSelectionView: View {
     @Environment(\.appTheme) private var theme
 
     private let lang = ScaleSetupStrings.UserNumberSelectionViewStrings.self
-    @State var selectedNumber: Int? = nil
+    @State var selectedNumber: Int?
 
     /// Callback triggered when a user number is tapped.
-    var onNumberSelected: ((Int) -> Void)? = nil
+    var onNumberSelected: ((Int) -> Void)?
 
     /// All available user numbers (U1–U8)
     private let numbers = Array(1...8)
@@ -50,8 +50,6 @@ struct UserNumberSelectionView: View {
 }
 
 #Preview {
-    UserNumberSelectionView() { value in
-        print("Selected U\(value)")
-    }
+    UserNumberSelectionView { _ in }
         .environmentObject(Theme.shared)
 }

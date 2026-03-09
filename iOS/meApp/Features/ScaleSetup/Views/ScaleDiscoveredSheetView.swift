@@ -85,7 +85,7 @@ struct ScaleDiscoveredSheetView: View {
         .padding([.horizontal, .top], .spacingMD)
         .frame(maxWidth: .infinity)
         .background(theme.backgroundPrimary)
-        .onDisappear(){
+        .onDisappear {
             viewModel.clearTimer()
         }
     }

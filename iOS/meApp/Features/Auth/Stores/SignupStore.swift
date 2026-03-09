@@ -5,18 +5,20 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
+import Combine
+// This store intentionally aggregates all signup flow logic to maintain
+// a single source of truth for the multi-step signup process. Splitting would
+// fragment state management and reduce maintainability.
 import Foundation
 import SwiftUI
-import Combine
-
 
 // MARK: SignupStore
 /// This store is responsible for managing the signup process.
 @MainActor
 final class SignupStore: ObservableObject {
-    @Injector var notificationService: NotificationHelperService
-    @Injector var accountService: AccountService
-    @Injector var logger: LoggerService
+    @Injector var notificationService: NotificationHelperServiceProtocol
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     var commonLang = CommonStrings.self
@@ -53,6 +55,12 @@ final class SignupStore: ObservableObject {
     private let tag = "SignupStore"
     
     init() {
+        // Resolve once per store instance to avoid cross-test DI races when
+        // async step actions execute after other suites reset the container.
+        _ = notificationService
+        _ = accountService
+        _ = logger
+
         previousMetricValue = signupForm.useMetric.value
         setupFormObservers()
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
@@ -293,17 +301,26 @@ final class SignupStore: ObservableObject {
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            let _ = try await accountService.signUp(
+            _ = try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
             // Create the goal if it's not skipped
             if let goal = goal {
-                logger.log(level: .info, tag: tag, message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)")
-                let _ = try await accountService.createGoal(goal)
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Signup flow creating initial goal. goalType=\(goal.goalType.rawValue), "
+                        + "goalWeight=\(goal.goalWeight), initialWeight=\(goal.initialWeight)"
+                )
+                _ = try await accountService.createGoal(goal)
             }
-            logger.log(level: .success, tag: tag, message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)")
+            logger.log(
+                level: .success,
+                tag: tag,
+                message: "Signup flow succeeded. goalSkipped=\(goal == nil), accountSwitching=\(isFromAccountSwitching)"
+            )
             if isFromAccountSwitching {
                 dismissAction?()
             } else {
@@ -311,7 +328,12 @@ final class SignupStore: ObservableObject {
             }
             resetForm()
         } catch {
-            logger.log(level: .error, tag: tag, message: "Signup flow failed. error=\(error.localizedDescription), errorType=\(String(describing: type(of: error)))")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Signup flow failed. error=\(error.localizedDescription), "
+                    + "errorType=\(String(describing: type(of: error)))"
+            )
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
@@ -350,8 +372,8 @@ final class SignupStore: ObservableObject {
         let current = Double(signupForm.currentWeight.value) ?? 0.0
         let target = Double(signupForm.goalWeight.value) ?? 0.0
         
-        let convert = { (w: Double) -> Int in
-            ConversionTools.convertDisplayToStored(w, forceMetric: useMetric)
+        let convert = { (weight: Double) -> Int in
+            ConversionTools.convertDisplayToStored(weight, forceMetric: useMetric)
         }
         
         if goalTypeValue == GoalType.maintain.rawValue {
@@ -377,7 +399,7 @@ final class SignupStore: ObservableObject {
         let toastTitle: String = toastLang.errorCreatingAccount
 
         switch error {
-        case HTTPError.apiError(let message, let code):
+        case HTTPError.apiError(let message, _):
             if message == commonLang.emailAlreadyInUse {
                 toastMessage = toastLang.emailInUse
             } else {
@@ -396,10 +418,15 @@ final class SignupStore: ObservableObject {
         if let message = toastMessage {
             notificationService.showToast(ToastModel(title: toastTitle, message: message))
         }
-        logger.log(level: .error, tag: tag, message: "Signup error handled. mappedToastShown=\(toastMessage != nil), errorType=\(String(describing: type(of: error)))")
+        logger.log(
+            level: .error,
+            tag: tag,
+            message: "Signup error handled. mappedToastShown=\(toastMessage != nil), "
+                + "errorType=\(String(describing: type(of: error)))"
+        )
     }
-    
-    private func setupFormObservers() {
+
+    private func setupFormObservers() { // swiftlint:disable:this function_body_length
         signupForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in

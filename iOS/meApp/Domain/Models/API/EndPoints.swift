@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-
 import Foundation
 
 enum API {
@@ -51,7 +50,7 @@ enum Endpoint {
     case integrationHealthDevice(String) 
     case integrationHealth
     case integrationHealthLog
-    case wifiScale(r: String?)
+    case wifiScale(request: String?)
 
     var urlRequest: URLRequest? {
         switch self {
@@ -142,10 +141,10 @@ enum Endpoint {
             return request(path: "/integrations/health")
         case .integrationHealthLog:
             return request(path: "/integrations/health/log")
-        case .wifiScale(let r):
+        case .wifiScale(let request):
             var components = URLComponents(string: "\(API.baseURL)/account/scale")
-            if let r = r {
-                components?.queryItems = [URLQueryItem(name: "r", value: r)]
+            if let requestValue = request {
+                components?.queryItems = [URLQueryItem(name: "r", value: requestValue)]
             }
             guard let url = components?.url else { return nil }
             return URLRequest(url: url)

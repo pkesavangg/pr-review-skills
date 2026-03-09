@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// ViewModel responsible for supplying data for `GoalProgressView`.
 /// It observes the `AccountService` for changes to the active account and
@@ -49,6 +49,7 @@ final class GoalProgressViewModel: ObservableObject {
     }
     
     // MARK: - Data Loading
+// swiftlint:disable:next function_body_length
     private func loadData() async {
         // Keep last-rendered UI visible after initial load to avoid flicker.
         // Only gate the UI (isLoaded = false) before the very first load.
@@ -100,9 +101,9 @@ final class GoalProgressViewModel: ObservableObject {
         }()
         
         // Convert stored (tenths-lb) values to display units, applying weightless offset.
-        let initialDisplay  = convertStoredWeight(initialWeightStored - baselineStored,  unit: weightUnit)
-        let goalDisplay     = convertStoredWeight(goalWeightStored    - baselineStored,  unit: weightUnit)
-        let currentDisplay  = convertStoredWeight(currentWeightStored - baselineStored,  unit: weightUnit)
+        let initialDisplay  = convertStoredWeight(initialWeightStored - baselineStored, unit: weightUnit)
+        let goalDisplay     = convertStoredWeight(goalWeightStored - baselineStored, unit: weightUnit)
+        let currentDisplay  = convertStoredWeight(currentWeightStored - baselineStored, unit: weightUnit)
         
         // Populate published properties
         startWeight = initialDisplay

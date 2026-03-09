@@ -83,11 +83,7 @@ class IntegrationRepository @Inject constructor(
 
   override suspend fun updateLocalAccount() {
     try {
-      val localAccount = accountRepository.getActiveAccount().first()
-      if (localAccount == null) {
-        _integrations.value = defaultIntegrations
-        return
-      }
+      val localAccount = accountRepository.getActiveAccount().first() ?: return
       val remoteAccount = accountRepository.getAccountFromAPI(localAccount.id)
       AppLog.d("IntegrationRepository", "Updated local account: $remoteAccount")
 

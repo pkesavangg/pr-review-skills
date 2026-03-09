@@ -10,7 +10,7 @@ public enum KvStorageKeys: String {
     
     // MARK: - Appearance/Theme Keys
     /// Global appearance mode key (when no account is active)
-    case appearanceMode = "appearanceMode"
+    case appearanceMode
     
     // MARK: - HealthKit Modal Keys
     /// Base key for "has seen add Apple Health integration modal" flag
@@ -31,19 +31,21 @@ public enum KvStorageKeys: String {
     // MARK: - Migration Keys
     /// Key for tracking if Ionic to native app migration has been completed
     case ionicToNativeAppMigrationCompleted = "ionicToNativeAppMigrationCompleted"
+    /// Key for tracking if account tokens have been migrated from SwiftData to Keychain
+    case tokensMigratedToKeychain = "tokensMigratedToKeychain"
     
     // MARK: - Account-Scoped Keys
     /// Goal met flag key suffix (per account)
-    case goalMetFlag = "goalMetFlag"
+    case goalMetFlag
     /// Notification only alert shown flag suffix (per account)
-    case notificationOnlyAlertShown = "notificationOnlyAlertShown"
+    case notificationOnlyAlertShown
     /// Notification only permission alert shown flag suffix (per account)
-    case notificationOnlyPermAlertShown = "notificationOnlyPermAlertShown"
+    case notificationOnlyPermAlertShown
     /// Feed info settings key suffix (per account)
-    case feedInfo = "feedInfo"
+    case feedInfo
     /// Feed last triggered at timestamp key suffix (per account)
-    case feedLastTriggeredAt = "feedLastTriggeredAt"
-    case setAGoalCardViewed = "setAGoalCardViewed"
+    case feedLastTriggeredAt
+    case setAGoalCardViewed
     
     // MARK: - FCM Token Key
     /// FCM token storage key (device-scoped, not account-scoped)
@@ -124,4 +126,3 @@ public enum KvStorageKeys: String {
         return "\(Self.fcmToken.rawValue)_\(accountId)"
     }
 }
-

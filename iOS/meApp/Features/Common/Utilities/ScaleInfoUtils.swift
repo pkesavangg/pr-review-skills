@@ -45,9 +45,10 @@ class ScaleInfoUtils {
         return scales.first { $0.sku == lookupSku }
     }
 
-    /// Get scale information by scale name with fallback logic
-    /// - Parameter scaleName: The scale name to search for
-    /// - Returns: ScaleItemInfo if found, nil otherwise
+    // Get scale information by scale name with fallback logic
+    // - Parameter scaleName: The scale name to search for
+    // - Returns: ScaleItemInfo if found, nil otherwise
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func getScaleInfo(byScaleName scaleName: String?) -> ScaleItemInfo? {
         guard let scaleName = scaleName?.trimmingCharacters(in: .whitespacesAndNewlines) else {
             return nil
@@ -131,7 +132,7 @@ class ScaleInfoUtils {
     private func resolveImagePath(for sku: String) -> String? {
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-        return SCALES.first(where: { $0.sku == lookupSku })?.imgPath ?? nil
+        return SCALES.first { $0.sku == lookupSku }?.imgPath
     }
 }
 

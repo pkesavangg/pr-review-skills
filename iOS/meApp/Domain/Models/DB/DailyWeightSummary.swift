@@ -93,5 +93,3 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
                lhs.impedance == rhs.impedance
     }
 }
-
-

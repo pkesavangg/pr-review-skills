@@ -1,6 +1,7 @@
 [versions]
 activityComposeVersion = "1.8.2"
 agp = "8.13.1"
+detekt = "1.23.7"
 cameraCore = "1.4.2"
 coil = "2.7.0"
 coreSplashscreen = "1.0.1"
@@ -143,5 +144,6 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 google-service = { id = "com.google.gms.google-services", version.ref = "googleService" }
 google-proto = { id = "com.google.protobuf", version.ref = "protobuf" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
 

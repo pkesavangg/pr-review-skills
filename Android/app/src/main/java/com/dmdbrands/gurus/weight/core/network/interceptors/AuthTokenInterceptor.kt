@@ -6,12 +6,13 @@ import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
-import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -29,7 +30,6 @@ import javax.inject.Inject
 class AuthTokenInterceptor @Inject constructor(
   private val tokenManager: ITokenManager,
   private val refreshTokenAPI: RefreshTokenAPI,
-  private val userDataStore: UserDataStore,
 ) : Interceptor {
   companion object {
     private const val TAG = "AuthTokenInterceptor"
@@ -37,6 +37,9 @@ class AuthTokenInterceptor @Inject constructor(
     private const val MAX_RETRY_ATTEMPTS = 2 // Max 2 retries (3 total attempts)
     private const val RETRY_DELAY_MS = 750L // Base delay in milliseconds
   }
+
+  // Ensures only one proactive refresh runs at a time across concurrent requests
+  private val proactiveRefreshMutex = Mutex()
 
   private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
 
@@ -59,27 +62,43 @@ class AuthTokenInterceptor @Inject constructor(
         accountId = tokenManager.getCurrentAccountID()
       }
 
+      // Capture into a local val so smart-cast works in all nested lambdas
+      val localAccountId = accountId
+
       // Get expiry time for the account
-      val expiresAt = if (accountId != null) {
-        tokenManager.getAccountExpiresAt(accountId)
+      val expiresAt = if (localAccountId != null) {
+        tokenManager.getAccountExpiresAt(localAccountId)
       } else {
         tokenManager.getCurrentAcccountExpiresAt()
       }
 
       // Check if token needs proactive refresh
       if (!expiresAt.isNullOrEmpty() && isTokenExpired(expiresAt)) {
-        AppLog.v(TAG, "Token expires within 5 minutes - refreshing proactively for account: $accountId")
-        val refreshedToken = refreshTokenProactively(accountId)
+        AppLog.v(TAG, "Token expires within 5 minutes - refreshing proactively for account: $localAccountId")
+        val refreshedToken = proactiveRefreshMutex.withLock {
+          // Double-check inside the lock: a previous waiter may have already refreshed
+          val currentExpiresAt = if (localAccountId != null) {
+            tokenManager.getAccountExpiresAt(localAccountId)
+          } else {
+            tokenManager.getCurrentAcccountExpiresAt()
+          }
+          if (!currentExpiresAt.isNullOrEmpty() && isTokenExpired(currentExpiresAt)) {
+            refreshTokenProactively(localAccountId)
+          } else {
+            AppLog.v(TAG, "Token already refreshed by another thread, skipping for account: $localAccountId")
+            null
+          }
+        }
         if (refreshedToken != null) {
           return@runBlocking refreshedToken.accessToken
         } else {
-          AppLog.w(TAG, "Proactive token refresh failed, using original token for account: $accountId")
+          AppLog.w(TAG, "Proactive token refresh failed, using original token for account: $localAccountId")
         }
       }
 
       // Get the access token (either original or from refresh)
-      if (accountId != null) {
-        return@runBlocking tokenManager.getAccessToken(accountId)
+      if (localAccountId != null) {
+        return@runBlocking tokenManager.getAccessToken(localAccountId)
       } else {
         return@runBlocking tokenManager.getAccessToken()
       }
@@ -101,9 +120,9 @@ class AuthTokenInterceptor @Inject constructor(
    */
   private fun isTokenExpired(expiresAt: String): Boolean {
     return try {
-      val tokenExpires = dateFormat.parse(expiresAt)
+      val tokenExpires = dateFormat.parse(expiresAt) ?: return true
       val currentTime = Date()
-      val timeUntilExpiry = tokenExpires!!.time - currentTime.time
+      val timeUntilExpiry = tokenExpires.time - currentTime.time
       AppLog.v(TAG, "Token expires at: $expiresAt ($timeUntilExpiry ms until expiry)")
 
       val isExpired = timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_MS
@@ -200,7 +219,7 @@ class AuthTokenInterceptor @Inject constructor(
   }
 
   /**
-   * Extract HTTP error status from exception (similar to Angular err.status).
+   * Extract HTTP error status from exception (similar to Angular err. Status).
    * Handles timeout errors, network errors, and HTTP status codes.
    * @param e The exception to extract status from
    * @return HTTP status code, or 0 for network/timeout errors, or -1 if unknown

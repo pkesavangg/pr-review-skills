@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 14/07/25.
 //
 
-
 import SwiftUI
 
 /// A reusable view that visualizes the WiFi connection lifecycle (loading, success, failure, noNetworks).
@@ -23,7 +22,7 @@ struct WifiConnectionView: View {
     let state: ConnectionState
     var setupType: ScaleSetupType = .btWifiR4
     /// Optional error code to display when `state == .failure`.
-    var errorCode: String? = nil
+    var errorCode: String?
     /// True when this view is used in the Scale Settings Wi-Fi setup flow (not initial scale setup).
     var isFromSettingsFlow: Bool = false
     
@@ -48,7 +47,7 @@ struct WifiConnectionView: View {
     }
     
     private var showErrorCode: Bool {
-        state == .failure && errorCode != nil && !errorCode!.isEmpty
+        state == .failure && !(errorCode?.isEmpty ?? true)
     }
     
     private var image: String? {
@@ -91,7 +90,7 @@ struct WifiConnectionView: View {
                                 .themeDropShadow()
                         }
                         
-                        VStack(spacing: .spacingMD){
+                        VStack(spacing: .spacingMD) {
                             // Re-instantiate the loader every time the state changes so
                             // we don't keep the previous animation colours (e.g. red ➜ blue).
                             SetupLoaderView(connectionState: state)
@@ -106,7 +105,7 @@ struct WifiConnectionView: View {
                     }
                     
                     // Action buttons (visible only on failure)
-                    if (state == .failure || state == .noNetworks) {
+                    if state == .failure || state == .noNetworks {
                         VStack(spacing: .spacingMD) {
                             ButtonView(
                                 text: commonStrings.tryAgain,

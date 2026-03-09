@@ -5,10 +5,10 @@
 //  Created by Kesavan Panchabakesan on 04/06/25.
 //
 
-import Foundation
-import SwiftUI
 import FirebaseCore
 import FirebaseMessaging
+import Foundation
+import SwiftUI
 import UserNotifications
 
 // MARK: - AppDelegate
@@ -20,22 +20,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     
     /// Initializes Firebase and sets up notification handling
     /// - Returns: true if initialization was successful
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
         AppDelegate.shared = self
-        
-        // Initialize services first
-        Task { @MainActor in
-            // Initialize ServiceRegistry to register all services
-            _ = ServiceRegistry.shared
-            
-            // Initialize Firebase and notifications
-            FirebaseApp.configure()
-            Messaging.messaging().delegate = self
-            UNUserNotificationCenter.current().delegate = self
-            
-            application.registerForRemoteNotifications()
+
+        #if DEBUG
+        MainActor.assumeIsolated {
+            UITestLaunchHandler.handleIfNeeded()
         }
-        
+        #endif
+
+        // if AppRuntime.isRunningTests {
+        //     return true
+        // }
+
+        // Initialize ServiceRegistry synchronously to avoid DI race at startup.
+        _ = ServiceRegistry.shared
+
+        #if DEBUG
+        UITestLaunchHandler.registerMockServicesIfNeeded()
+        guard !UITestLaunchHandler.isUITesting else { return true }
+        #endif
+
+        FirebaseApp.configure()
+        Messaging.messaging().delegate = self
+        UNUserNotificationCenter.current().delegate = self
+        application.registerForRemoteNotifications()
+
         return true
     }
     
@@ -52,15 +65,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     ///   - center: The notification center
     ///   - notification: The notification to be presented
     ///   - completionHandler: Callback to specify how to present the notification
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                              willPresent notification: UNNotification,
-                              withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
         let userInfo = notification.request.content.userInfo
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
         // Let PushNotificationService handle the notification
         Task { @MainActor in
-           PushNotificationService.shared.handleNotification(userInfo) {
+            PushNotificationService.shared.handleNotification(userInfo) {
                 completionHandler([.banner, .badge, .sound])
             }
         }
@@ -71,16 +86,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     ///   - center: The notification center
     ///   - response: The user's response to the notification
     ///   - completionHandler: Callback to indicate completion
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                              didReceive response: UNNotificationResponse,
-                              withCompletionHandler completionHandler: @escaping () -> Void) {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
         let userInfo = response.notification.request.content.userInfo
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
         // Only handle tap if it's a new notification
-        if userInfo["gcm.message_id"] as? String != nil {
+        if userInfo["gcm.message_id"] is String {
             Task { @MainActor in
-                 PushNotificationService.shared.handleNotification(userInfo) {
+                PushNotificationService.shared.handleNotification(userInfo) {
                     completionHandler()
                 }
             }
@@ -110,8 +127,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     /// - Parameters:
     ///   - application: The application instance
     ///   - deviceToken: The APNs device token
-    func application(_ application: UIApplication,
-                    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
         Messaging.messaging().apnsToken = deviceToken
     }
     
@@ -119,9 +138,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     /// - Parameters:
     ///   - application: The application instance
     ///   - error: The error that occurred
-    func application(_ application: UIApplication,
-                    didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        // TODO: Handle error
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        // Log the error for debugging - registration failures are non-critical
+        // Common causes: simulator (no APNs), user denied permissions, network issues
+        Task { @MainActor in
+            LoggerService.shared.log(
+                level: .error,
+                tag: "AppDelegate",
+                message: "Failed to register for remote notifications",
+                data: error.localizedDescription
+            )
+        }
     }
     
     /// Handles background notifications
@@ -129,14 +159,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     ///   - application: The application instance
     ///   - userInfo: The notification payload
     ///   - completionHandler: Callback to indicate completion
-    func application(_ application: UIApplication,
-                    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
-                    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
         Messaging.messaging().appDidReceiveMessage(userInfo)
         
         // Let PushNotificationService handle the notification
         Task { @MainActor in
-             PushNotificationService.shared.handleNotification(userInfo) {
+            PushNotificationService.shared.handleNotification(userInfo) {
                 completionHandler(UIBackgroundFetchResult.newData)
             }
         }

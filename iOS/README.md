@@ -24,6 +24,7 @@ meApp is an iOS application built using Swift and SwiftUI. It includes core app 
 ## Testing
 - Run unit tests with `Cmd+U` in Xcode.
 - UI tests are located in the `meAppUITests` directory.
+- See `docs/TESTING.md` for the full testing conventions, coverage requirements, and how to run/export coverage reports.
 
 
 

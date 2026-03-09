@@ -31,8 +31,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.round
 import javax.inject.Inject
+import kotlin.math.round
 
 /**
  * ViewModel for the Goal screen. Handles form state, validation, goal logic, and navigation.
@@ -105,7 +105,7 @@ constructor(
     // Create form controls with weight match validation
     // Pass weightUnit and initial values directly, following EntryReducer pattern
     // This ensures form is not marked as dirty initially
-    val initialStartingWeight = if(goal.initialWeight.toString() == "0.0") "0" else goal.initialWeight.toInt().toString()
+    val initialStartingWeight = if(goal.initialWeight.toString() == "0.0") "" else goal.initialWeight.toInt().toString()
     val initialGoalWeight = if(goal.goalWeight.toString() == "0.0") "" else goal.goalWeight.toInt().toString()
 
     val goalFormControls = GoalFormControls.createWithWeightMatchValidation(
@@ -114,11 +114,6 @@ constructor(
       initialStartingWeight = initialStartingWeight,
       initialGoalWeight = initialGoalWeight,
     )
-
-    if (goalType != GoalType.MAINTAIN && initialStartingWeight == "0") {
-      goalFormControls.startingWeight.forceShowError()
-      goalFormControls.startingWeight.validate()
-    }
 
     val newState =
       GoalState(

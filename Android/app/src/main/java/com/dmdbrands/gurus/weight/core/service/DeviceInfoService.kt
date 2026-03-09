@@ -186,6 +186,7 @@ constructor(
     )
 
   override suspend fun updateLocalIntegrationInfo() {
+    AppLog.d(TAG, "Update local integration info")
     integrationRepository.updateLocalAccount()
   }
 

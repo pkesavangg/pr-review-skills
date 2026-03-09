@@ -41,10 +41,10 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                 if let leadingContent = leadingContent {
                     Button(action: {
                         onLeadingTap?()
-                    }) {
+                    }, label: {
                         leadingContent()
                             .foregroundColor(theme.actionPrimary)
-                    }
+                    })
                 }
 
                 Spacer()
@@ -66,7 +66,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     Capsule()
                         .fill(theme.statusUtilityPrimary)
                         .frame(width: 36, height: 5)
-                        .padding(.top, 4) // TODO: Need to update after UX design provides the correct padding
+                        .padding(.top, 4) // Placeholder value until UX finalizes top padding.
                     
                     Spacer()
                 }

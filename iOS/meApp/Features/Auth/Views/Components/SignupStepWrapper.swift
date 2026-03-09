@@ -50,5 +50,3 @@ struct SignupStepWrapper<Content: View>: View {
     }
     .padding()
 }
-
-

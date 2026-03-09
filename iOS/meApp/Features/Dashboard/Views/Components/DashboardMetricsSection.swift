@@ -16,12 +16,12 @@ struct DashboardMetricsSection: View {
     var body: some View {
         VStack(spacing: 0) {
             if parentView == .R4ScaleSetup {
-                VStack(alignment: .leading, spacing: .spacingXS){
+                VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(DashboardStrings.customizeDashboardTitle)
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
-                    VStack{
+                    VStack {
                         Text(DashboardStrings.customizeDashboardSubtitle)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textHeading)
@@ -56,18 +56,18 @@ struct DashboardMetricsSection: View {
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
                 }
-                store.syncRemovalStateFromMetricsManager()
+                store.gridEditingManager.syncRemovalStateFromMetricsManager()
                 store.objectWillChange.send()
             }
         }
         .onChange(of: store.metricsManager.state.metrics) { _, _ in
             if parentView == .R4ScaleSetup {
-                store.debouncedSyncRemovalState()
+                store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: store.metricsManager.state.activeMetricsCount) { _, _ in
             if parentView == .R4ScaleSetup {
-                store.debouncedSyncRemovalState()
+                store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: parentView) { _, newValue in
@@ -87,12 +87,12 @@ struct DashboardMetricsSection: View {
     
     private func metricsGridSection() -> some View {
         Group {
-            MetricGridUIKitView(parentView: parentView, store: store, onMetricLongPress: { label in
+            MetricGridUIKitView(parentView: parentView, store: store) { _ in
                 // Long press on any metric should directly open edit dashboard mode
                 if !store.state.ui.isEditMode {
-                    store.toggleEditMode()
+                    store.gridEditingManager.toggleEditMode()
                 }
-            })
+            }
             .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)
             .padding(.top, .spacingSM)
             .id(store.state.ui.gridLayoutId)
@@ -126,8 +126,8 @@ struct DashboardMetricsSection: View {
         let skeletonCount = store.effectiveDashboardType == .dashboard12 ? 12 : 4
         
         return LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columnCount),
-            spacing: DashboardConstants.UI.gridSpacing
+            columns: Array(repeating: GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columnCount),
+            spacing: DashboardConstants.UIConstants.gridSpacing
         ) {
             ForEach(0..<skeletonCount, id: \.self) { _ in
                 SkeletonMetricCardView(dashboardType: store.effectiveDashboardType)
@@ -146,7 +146,7 @@ struct DashboardMetricsSection: View {
         return VStack(spacing: .spacingLG) {
             SkeletonGoalCardView()
             LazyVGrid(
-                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UI.gridSpacing), count: columns),
+                columns: Array(repeating: .init(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing), count: columns),
                 spacing: .spacingLG
             ) {
                 ForEach(0..<6, id: \.self) { _ in
@@ -163,5 +163,3 @@ struct DashboardMetricsSection: View {
 #Preview("DashboardContentSection") {
     DashboardMetricsSection(store: DashboardStore(), parentView: .dashboard, openMetricInfoWithoutSelection: .constant(nil))
 }
-
-

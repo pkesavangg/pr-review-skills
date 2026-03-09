@@ -107,8 +107,6 @@ struct WifiSelectionView: View {
         }
     }
     
-
-    
     @ViewBuilder
     private func refreshButton() -> some View {
         ButtonView(

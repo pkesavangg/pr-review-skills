@@ -12,12 +12,12 @@ import SwiftData
 final class LoggerService: LoggerServiceProtocol {
     public static let shared = LoggerService()
     
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     
     private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
     private let loggerApiRepository: LoggerApiRepositoryProtocol = LoggerApiRepository()
     private let sessionId: String = UUID().uuidString
-    private let systemLogger: AppLogger = AppLogger(tag: "GGMeAppLogger")
+    private let systemLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
     private var consoleMinimumLogLevel: LogLevel = .info
     private let kv = KvStorageService.shared
@@ -131,7 +131,11 @@ final class LoggerService: LoggerServiceProtocol {
             
             // Clear logs for the account after successful upload
             try await loggerRepository.deleteLogs(forAccount: resolvedAccountId)
-            systemLogger.log(level: .info, tag: "LoggerService", message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)")
+            systemLogger.log(
+                level: .info,
+                tag: "LoggerService",
+                message: "Uploaded logs successfully and cleared local for accountId=\(resolvedAccountId)"
+            )
         } catch {
             systemLogger.log(level: .error, tag: "LoggerService", message: "Failed to upload logs: \(error.localizedDescription)")
             throw error

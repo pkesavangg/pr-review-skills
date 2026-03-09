@@ -5,12 +5,12 @@
 //  Created by Kesavan Panchabakesan on 16/06/25.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - ManualEntryScreen
-/// A view for manual entry of body metrics and other related information.
-/// This screen allows users to input various body metrics such as weight, BMI, body fat, and more.
+// A view for manual entry of body metrics and other related information.
+// This screen allows users to input various body metrics such as weight, BMI, body fat, and more.
 struct ManualEntryScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var entryStore = EntryStore()
@@ -103,7 +103,7 @@ struct ManualEntryScreen: View {
                                     .fontOpenSans(.heading4)
                                     .foregroundColor(theme.textHeading)
                                 Spacer()
-                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp: appAssets.chevronDown,
+                                AppIconView(icon: entryStore.showMetrics ? appAssets.chevronUp : appAssets.chevronDown,
                                             size: IconSize(width: 32, height: 32))
                                 .foregroundColor(theme.actionPrimary)
                             }
@@ -129,6 +129,7 @@ struct ManualEntryScreen: View {
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.bmi,
                                                             inputType: .metric,
+// swiftlint:disable:next multiline_arguments
                                                             errorMessage: entryStore.getError(for: entryStore.manualEntryForm.bmi), focusField: .bmi,
                                                             maxLength: 3,
                                                             maxValue: 99.9),

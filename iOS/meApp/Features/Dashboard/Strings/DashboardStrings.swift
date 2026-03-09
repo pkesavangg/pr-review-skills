@@ -62,13 +62,13 @@ struct DashboardStrings {
     
     // Goal Card/Progress strings
     static let goalTypeLabel = "Goal Type: %@"
-    static let plus  = "+"
-    static let minus  = "-"
+    static let plus = "+"
+    static let minus = "-"
     static let placeholder = "--"
     static let goalReached = "goal reached!"
     static let reachYourGoals = "Reach Your Goals!"
     static let setGoalWeight = "Set a goal weight"
-    static func loseGoalWeightLabel(_ unit: String) -> String{
+    static func loseGoalWeightLabel(_ unit: String) -> String {
         return "\(unit) to goal"
     }
     static func gainGoalWeightLabel(_ goalWeight: String, _ unit: String) -> String {

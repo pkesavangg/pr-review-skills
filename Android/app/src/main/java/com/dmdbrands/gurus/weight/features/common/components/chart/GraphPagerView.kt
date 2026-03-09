@@ -110,20 +110,22 @@ fun GraphPagerView(
       }
 
       LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage, state.isConsuming) {
-        if (graphState.minTarget != null && graphState.maxTarget != null && !state.isConsuming) {
+        val minTarget = graphState.minTarget
+        val maxTarget = graphState.maxTarget
+        if (minTarget != null && maxTarget != null && !state.isConsuming) {
           val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !graphState.isEmptyGraph) {
             val calendar = java.util.Calendar.getInstance()
-            calendar.timeInMillis = graphState.minTarget!!
+            calendar.timeInMillis = minTarget
             calendar.add(java.util.Calendar.MONTH, +6)
             val min = calendar.timeInMillis
 
             val calendar1 = java.util.Calendar.getInstance()
-            calendar1.timeInMillis = graphState.maxTarget!!
+            calendar1.timeInMillis = maxTarget
             calendar1.add(java.util.Calendar.MONTH, -6)
             val max = calendar1.timeInMillis
             min to max
           } else {
-            graphState.minTarget!! to graphState.maxTarget!!
+            minTarget to maxTarget
           }
           val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
           AppLog.i(

@@ -52,8 +52,6 @@ struct ScaleMetricsView: View {
         _selectedMetricState = State(initialValue: selectedMetric)
     }
     
-    
-
     var body: some View {
         VStack(spacing: 0) {
 
@@ -91,21 +89,19 @@ struct ScaleMetricsView: View {
                     MetricDetailView(
                         entryDTO: entryDTO,
                         metric: metric,
-                        measurementLabel: dashboardStore.metricInfoDateLabel(for: entryDTO)
+                        measurementLabel: dashboardStore.displayManager.metricInfoDateLabel(for: entryDTO)
                     )
                     .tag(metric)
                 }
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .onAppear {
-                selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
+                selectedMetricState = dashboardStore.displayManager.validateMetricInfoSelection(selectedMetricState)
             }
             .onChange(of: dashboardStore.state.metrics.dashboardType) { _, _ in
-                selectedMetricState = dashboardStore.validateMetricInfoSelection(selectedMetricState)
+                selectedMetricState = dashboardStore.displayManager.validateMetricInfoSelection(selectedMetricState)
             }
         }
         .background(theme.backgroundSecondary)
     }
 }
-
-

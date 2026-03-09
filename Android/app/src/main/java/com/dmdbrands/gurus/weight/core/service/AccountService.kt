@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.toAccountInfo
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
@@ -22,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +44,7 @@ class AccountService
 @Inject
 constructor(
   private val accountRepository: IAccountRepository,
+  private val offlineHandlerService: IOfflineHandlerService,
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
@@ -249,7 +252,8 @@ constructor(
         AppLog.w(TAG, "No active account found for changePassword(). Returning false.")
         return false
       }
-      accountRepository.updatePassword(activeAccountFlow.first()!!.id, currentPassword, newPassword)
+      val accountId = activeAccountFlow.first()?.id ?: return false
+      accountRepository.updatePassword(accountId, currentPassword, newPassword)
       AppLog.d(TAG, "Password changed successfully")
       dialogQueueService.showToast(Toast(ToastStrings.Success.ChangePasswordSuccess.Message))
       true
@@ -325,7 +329,7 @@ constructor(
   override suspend fun updateDashboardType(type: DashboardType) {
     AppLog.d(TAG, "Update Dashboard Type")
     try {
-      val accountId = activeAccountFlow.first()!!.id
+      val accountId = activeAccountFlow.first()?.id ?: return
       accountRepository.updateDashboardType(type.value)
       accountRepository.updateLocalDashboardType(accountId, dashboardType = type)
     } catch (e: Exception) {
@@ -352,6 +356,8 @@ constructor(
         AppLog.d(TAG, "No active account found in checkLoginStatusForActiveAccount(). Returning false.")
         return false
       }
+      // Sync any unsynced changes for the active account before checking login status
+      offlineHandlerService.handleOfflineSync()
       AppLog.d(TAG, "Checking login status for active account: ${activeAccount.id}")
       val accountInfo = accountRepository.getAccountFromAPI(activeAccount.id)
       accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)
@@ -457,42 +463,41 @@ constructor(
       }
       val filterLoggedInAccounts = loggedInAccounts.filter { !it.isExpired }
 
-      // Run account checks - network failures don't mark accounts as expired
-      for (account in filterLoggedInAccounts) {
-        try {
-          AppLog.d(TAG, "Checking login status for account: ${account.id}")
-          // Get account info from API and update tokens for background operations
-          val accountInfo = accountRepository.getAccountFromAPI(account.id)
-          // Update account data with API response
-          accountRepository.updateAccountInfo(account.id, accountInfo)
-          AppLog.d(TAG, "Account ${account.id} login status check successful")
-        } catch (e: IOException) {
-          // Network failure - don't mark account as expired, just log and continue
-          AppLog.w(TAG, "Network failure while checking account ${account.id}, skipping (not marking as expired)", e.toString())
-          // Continue to next account - network failures shouldn't invalidate accounts
-        } catch (e: HttpException) {
-          // Only mark as expired on 401 Unauthorized errors
-          if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
-            AppLog.w(TAG, "Account is unauthorized (401). Marking as expired: ${account.id}")
-            accountRepository.markAccountExpired(account.id)
-            accountRepository.removeAccount(account.id)
-          } else {
-            // Other HTTP errors (500, 404, etc.) - don't mark as expired, just log
-            AppLog.w(TAG, "HTTP error ${e.code()} while checking account ${account.id}, not marking as expired")
+      // Run account checks in parallel - network failures don't mark accounts as expired
+      coroutineScope {
+        filterLoggedInAccounts.forEach { account ->
+          launch {
+            try {
+              AppLog.d(TAG, "Checking login status for account: ${account.id}")
+              // Get account info from API and update tokens for background operations
+              val accountInfo = accountRepository.getAccountFromAPI(account.id)
+              // Update account data with API response
+              accountRepository.updateAccountInfo(account.id, accountInfo)
+              AppLog.d(TAG, "Account ${account.id} login status check successful")
+            } catch (e: IOException) {
+              // Network failure - don't mark account as expired, just log and continue
+              AppLog.w(TAG, "Network failure while checking account ${account.id}, skipping (not marking as expired)", e.toString())
+            } catch (e: HttpException) {
+              // Only mark as expired on 401 Unauthorized errors
+              if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
+                AppLog.w(TAG, "Account is unauthorized (401). Marking as expired: ${account.id}")
+                accountRepository.markAccountExpired(account.id)
+                accountRepository.removeAccount(account.id)
+              } else {
+                // Other HTTP errors (500, 404, etc.) - don't mark as expired, just log
+                AppLog.w(TAG, "HTTP error ${e.code()} while checking account ${account.id}, not marking as expired")
+              }
+            } catch (e: java.net.UnknownHostException) {
+              AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}")
+            } catch (e: java.io.InterruptedIOException) {
+              AppLog.w(TAG, "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}")
+            } catch (e: java.net.SocketTimeoutException) {
+              AppLog.w(TAG, "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}")
+            } catch (e: Exception) {
+              // Other exceptions - log but don't mark as expired
+              AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
+            }
           }
-        }
-        catch (e: java.net.UnknownHostException){
-          AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}", )
-        }
-        catch (e: java.io.InterruptedIOException){
-          AppLog.w(TAG, "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}", )
-        }
-        catch (e: java.net.SocketTimeoutException) {
-          AppLog.w(TAG, "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}")
-        }
-        catch (e: Exception) {
-          // Other exceptions - log but don't mark as expired
-          AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
         }
       }
       AppLog.d(TAG, "Logged-in accounts status check completed.")
@@ -775,6 +780,10 @@ constructor(
     } catch (e: Exception) {
       throw e
     }
+  }
+
+  override suspend fun clearSyncTimestampForResync() {
+    accountRepository.updateSyncTimeStamp("")
   }
 
   /**

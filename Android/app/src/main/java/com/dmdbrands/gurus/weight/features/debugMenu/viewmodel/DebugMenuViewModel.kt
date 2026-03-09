@@ -197,7 +197,7 @@ class DebugMenuViewModel @Inject constructor(
             try {
                 val activeAccount = accountService.activeAccountFlow.first()
                 activeAccount?.let { account ->
-                    // Sync operations (equivalent to Angular's operationService.syncOperations())
+                    accountService.clearSyncTimestampForResync()
                     entryService.syncOperations()
                     dialogQueueService.showToast(
                         Toast(
@@ -254,7 +254,8 @@ class DebugMenuViewModel @Inject constructor(
                 singularScale != null -> {
                     dialogQueueService.showLoader(message = DebugMenuStrings.Loading.SendScaleLogs)
                     try {
-                        exportService.sendScaleLog(singularScale!!.getBroadcastIdString())
+                        val broadcastId = singularScale?.getBroadcastIdString() ?: return@launch
+                        exportService.sendScaleLog(broadcastId)
                         dialogQueueService.showToast(Toast(message = DebugMenuStrings.Success.LogSent))
                         AppLog.i(tag, "Scale logs sent for singular scale")
                     } catch (e: Exception) {

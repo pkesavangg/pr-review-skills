@@ -5,8 +5,8 @@
 //  Created by Lakshmipriya on 02/07/25.
 //
 
-import UIKit
 import SwiftUI
+import UIKit
 
 /// Custom UICollectionViewCell that represents the goal card as a large widget
 /// Features include wiggle animation and iOS home screen-like behavior
@@ -32,7 +32,7 @@ class GoalCardCell: UICollectionViewCell {
     private let goalProgressViewModel = GoalProgressViewModel()
     private var overlayButtonAction: (() -> Void)?
     private var overlayButtonVisible: Bool = false
-    private var overlayButtonOffset: CGSize = CGSize(width: 20, height: -28)
+    private var overlayButtonOffset = CGSize(width: 20, height: -28)
     
     // MARK: - Initialization
     
@@ -117,7 +117,7 @@ class GoalCardCell: UICollectionViewCell {
             applySelectionShadow()
             // Enter edit mode on long press if not already in edit mode
             if let store = currentStore, !store.state.ui.isEditMode {
-                store.toggleEditMode()
+                store.gridEditingManager.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
             if let store = currentStore {
@@ -157,7 +157,7 @@ class GoalCardCell: UICollectionViewCell {
                         isEditMode: true,
                         isRemoved: store.state.ui.isGoalCardRemoved,
                         onToggleRemoval: {
-                            store.toggleGoalCardRemoval()
+                            store.gridEditingManager.toggleGoalCardRemoval()
                         },
                         isBeingDragged: isDragging, // Let overlay handle icon visibility during drag
                         isDropTarget: store.state.ui.dropHoverId == "goalCard",
@@ -168,7 +168,7 @@ class GoalCardCell: UICollectionViewCell {
                     )
             )
             overlayButtonVisible = !isDragging && !(store.state.ui.dropHoverId == "goalCard")
-            overlayButtonAction = { store.toggleGoalCardRemoval() }
+            overlayButtonAction = { store.gridEditingManager.toggleGoalCardRemoval() }
         } else {
             viewWithOverlay = AnyView(goalCardView)
             overlayButtonVisible = false
@@ -364,7 +364,8 @@ class GoalCardCell: UICollectionViewCell {
             isLongPressed = false
             
             // When restoring overlays, add a small delay to ensure layout is fully settled
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 200_000_000)
                 guard let self = self,
                       let store = self.currentStore else { return }
                 
@@ -387,7 +388,6 @@ class GoalCardCell: UICollectionViewCell {
             isLongPressed = true
         }
     }
-
 
     /// Force clear all shadow effects - call this when items are dropped
     func clearAllShadowEffects() {

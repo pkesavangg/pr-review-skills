@@ -11,7 +11,7 @@ struct ScaleSetupIntroView: View {
 
     /// Scale metadata retrieved from the central `SCALES` array.
     let scale: ScaleItemInfo
-    var onClick: (() -> Void)? = nil
+    var onClick: (() -> Void)?
     let scaleSetupLang = ScaleSetupStrings.self
 
     var body: some View {
@@ -62,10 +62,7 @@ struct ScaleSetupIntroView: View {
     }
 }
 
-
 #Preview(body: {
-    ScaleSetupIntroView(scale: SCALES[0]) {
-        print("Button clicked")
-    }
+    ScaleSetupIntroView(scale: SCALES[0]) { }
     .padding(.horizontal)
 })

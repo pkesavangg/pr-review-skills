@@ -1,3 +1,4 @@
+import Combine
 //
 //  HistoryStore.swift
 //  meApp
@@ -5,7 +6,6 @@
 //  Created by Barath Chittibabu on 17/06/25.
 //
 import Foundation
-import Combine
 import SwiftUI
 
 /// Store / ViewModel that powers the History feature (monthly summaries, month detail, entry detail, metric info).
@@ -14,7 +14,7 @@ final class HistoryStore: ObservableObject {
     
     // MARK: - Dependencies
     @Injector private var entryService: EntryService
-    @Injector private var notificationService: NotificationHelperService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var logger: LoggerService
     @Injector private var accountService: AccountService
     
@@ -44,7 +44,7 @@ final class HistoryStore: ObservableObject {
     /// Logger tag for this store
     private let tag = "HistoryStore"
     private var hasLoadedMonths = false
-    private var monthsLoadTask: Task<Void, Never>? = nil
+    private var monthsLoadTask: Task<Void, Never>?
     
     // MARK: - Init ------------------------------------------------------
     
@@ -89,7 +89,6 @@ final class HistoryStore: ObservableObject {
         Task { [weak self] in await self?.loadMonthsInternal() }
     }
     
-    
     /// User tapped a month row.
     func selectMonth(_ month: HistoryMonth) {
         selectedMonth = month
@@ -115,7 +114,7 @@ final class HistoryStore: ObservableObject {
     
     func refreshAllEntries() async {
         // Refresh account data to ensure we have latest unit settings
-        try? await accountService.refreshAccount()
+        _ = try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal(canShowLoader: false)
         if let selectedMonth {
@@ -198,8 +197,8 @@ final class HistoryStore: ObservableObject {
 
             // UI-level deduplication:
             // Group by entryTimestamp and keep the latest operation by serverTimestamp.
-            let grouped = Dictionary(grouping: fetched, by: { $0.entryTimestamp })
-            let latestPerTimestamp: [Entry] = grouped.compactMap { (_, values) in
+            let grouped = Dictionary(grouping: fetched) { $0.entryTimestamp }
+            let latestPerTimestamp: [Entry] = grouped.compactMap { _, values in
                 values.max { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }
             }
             // Show only final creates; hide deletes

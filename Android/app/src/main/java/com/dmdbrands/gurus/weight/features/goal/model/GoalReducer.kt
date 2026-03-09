@@ -77,7 +77,7 @@ data class GoalFormControls(
     fun createWithWeightMatchValidation(
       goalType: GoalType = GoalType.LOSE_GAIN,
       weightUnit: WeightUnit? = WeightUnit.LB,
-      initialStartingWeight: String = "0",
+      initialStartingWeight: String = "",
       initialGoalWeight: String = "",
     ): GoalFormControls {
       val goalTypeControl = FormControl.create(
@@ -230,10 +230,6 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
         } else {
           // Add required validator for lose/gain mode
           controls.startingWeight.addValidator(FormValidations.required())
-          if (controls.startingWeight.value == "0") {
-            controls.startingWeight.forceShowError()
-            controls.startingWeight.validate()
-          }
         }
         state.copy() // same form reference; UI observes updated controls
       }

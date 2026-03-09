@@ -1,24 +1,22 @@
 package com.dmdbrands.gurus.weight.features.common.helper
 
-import com.dmdbrands.gurus.weight.R
+import android.content.Context
 import com.dmdbrands.gurus.weight.resources.AppIcons
 
 object ScaleUtility {
   /**
    * Returns the drawable resource for a given scale SKU, or placeholder image if not found.
-   * Uses reflection to dynamically access the drawable resource based on SKU.
+   * Uses Resources.getIdentifier() which is R8/ProGuard-safe.
    */
-  fun scaleImageResource(sku: String?): Int {
-    // Special case: SKU 0378 uses the image for 0383
-    val sku = if (sku == "0397") "0396" else sku
-    return try {
-      // Use reflection to get the field from R.drawable class
-      val fieldName = "scale_$sku"
-      val field = R.drawable::class.java.getDeclaredField(fieldName)
-      field.getInt(null) // Static field, so pass null
-    } catch (e: Exception) {
-      // Return placeholder if the resource doesn't exist
-      AppIcons.Default.ScalePlaceholder
-    }
+  fun scaleImageResource(context: Context, sku: String?): Int {
+    // Special case: SKU 0397 uses the image for 0396
+    val resolvedSku = if (sku == "0397") "0396" else sku
+    if (resolvedSku.isNullOrEmpty()) return AppIcons.Default.ScalePlaceholder
+    val resId = context.resources.getIdentifier(
+      "scale_$resolvedSku",
+      "drawable",
+      context.packageName,
+    )
+    return if (resId != 0) resId else AppIcons.Default.ScalePlaceholder
   }
 }

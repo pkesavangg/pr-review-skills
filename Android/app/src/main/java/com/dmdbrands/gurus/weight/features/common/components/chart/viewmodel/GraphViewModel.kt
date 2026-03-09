@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
@@ -23,7 +24,6 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -322,19 +322,21 @@ class GraphViewModel @AssistedInject constructor(
           calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
         val primaryYAxisRange = axisMeta.axisRange
         super.handleIntent(GraphIntent.UpdatePrimaryYAxis(primaryYAxisRange, axisMeta.axisStep))
+        val primaryMinY = primaryYAxisRange.minY
+        val primaryMaxY = primaryYAxisRange.maxY
         val normalizedSecondaryGraphLines = if (secondaryGraphLines != null &&
           secondaryGraphLines.points.isNotEmpty() &&
-          primaryYAxisRange.minY != null &&
-          primaryYAxisRange.maxY != null &&
-          primaryYAxisRange.minY!!.isFinite() &&
-          primaryYAxisRange.maxY!!.isFinite() &&
-          primaryYAxisRange.minY!! < primaryYAxisRange.maxY!!
+          primaryMinY != null &&
+          primaryMaxY != null &&
+          primaryMinY.isFinite() &&
+          primaryMaxY.isFinite() &&
+          primaryMinY < primaryMaxY
         ) {
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
           GraphUtil.normalizeMetricToWeightRange(
             metricGraphLine = secondaryGraphLines,
-            weightMin = primaryYAxisRange.minY!!,
-            weightMax = primaryYAxisRange.maxY!!,
+            weightMin = primaryMinY,
+            weightMax = primaryMaxY,
             minX = startX,
             maxX = endX,
           )
@@ -436,8 +438,8 @@ class GraphViewModel @AssistedInject constructor(
       isWeightLessMode = isWeightlessMode,
       targetTickCount = 4,
     ) else generateNiceScale(
-      minValue = goalWeight - 10,
-      maxValue = goalWeight + 10,
+      minValue = goalWeight.div(10) - 10,
+      maxValue = goalWeight.div(10) + 10,
       goalWeight = goalWeight,
       isWeightLessMode = isWeightlessMode,
       targetTickCount = 3,
@@ -569,10 +571,12 @@ class GraphViewModel @AssistedInject constructor(
 
     // Only renormalize if we have secondary metrics and Y-axis
     // Validate Y-axis values are finite before use (matching iOS defensive checks)
+    val cachedMinY = cachedYAxis?.minY
+    val cachedMaxY = cachedYAxis?.maxY
     if (secondaryKey == null || data.isEmpty() || cachedYAxis == null ||
-      cachedYAxis.minY == null || cachedYAxis.maxY == null ||
-      !cachedYAxis.minY!!.isFinite() || !cachedYAxis.maxY!!.isFinite() ||
-      cachedYAxis.minY!! >= cachedYAxis.maxY!!
+      cachedMinY == null || cachedMaxY == null ||
+      !cachedMinY.isFinite() || !cachedMaxY.isFinite() ||
+      cachedMinY >= cachedMaxY
     ) {
       return
     }
@@ -599,8 +603,8 @@ class GraphViewModel @AssistedInject constructor(
           // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
           val normalized = GraphUtil.normalizeMetricToWeightRange(
             metricGraphLine = secondaryGraphLines,
-            weightMin = cachedYAxis.minY!!,
-            weightMax = cachedYAxis.maxY!!,
+            weightMin = cachedMinY,
+            weightMax = cachedMaxY,
             minX = startX,
             maxX = endX,
           )

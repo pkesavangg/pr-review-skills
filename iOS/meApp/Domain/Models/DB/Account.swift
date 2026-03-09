@@ -13,9 +13,9 @@
 /// | isLoggedIn      | bool?   | If the user is logged in                    |
 /// | isExpired       | bool?   | Whether the account/session is expired      |
 /// | isActiveAccount | bool?   | Indicates if the account is active          |
-/// | accessToken     | string? | OAuth or app-specific access token           |
-/// | refreshToken    | string? | OAuth refresh token                         |
-/// | expiresAt       | string? | Access token expiration time                |
+/// | accessToken     | string? | In-memory only; tokens live in Keychain     |
+/// | refreshToken    | string? | In-memory only; tokens live in Keychain     |
+/// | expiresAt       | string? | In-memory only; tokens live in Keychain     |
 /// | fcmToken        | string? | Firebase Cloud Messaging token              |
 /// | lastActiveTime  | string? | Timestamp of last activity                  |
 /// | isSynced        | bool?   | Whether account is synced online            |
@@ -57,12 +57,12 @@ final class Account {
     var isExpired: Bool?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
-    /// OAuth or app-specific access token
-    var accessToken: String?
-    /// OAuth refresh token
-    var refreshToken: String?
-    /// Access token expiration time
-    var expiresAt: String?
+    /// OAuth or app-specific access token (in-memory only; source of truth is Keychain).
+    @Transient var accessToken: String?
+    /// OAuth refresh token (in-memory only; source of truth is Keychain).
+    @Transient var refreshToken: String?
+    /// Access token expiration time (in-memory only; source of truth is Keychain).
+    @Transient var expiresAt: String?
     /// Firebase Cloud Messaging token
     var fcmToken: String?
     /// Timestamp of last activity
@@ -84,6 +84,7 @@ final class Account {
     @Relationship(deleteRule: .cascade) var dashboardSettings: DashboardSettings?
     // Relationship to IntegrationSettings
     @Relationship(deleteRule: .cascade) var integrationSettings: IntegrationSettings?
+    // swiftlint:disable:next function_body_length
     init(from dto: AccountDTO) {
         self.accountId = dto.id
         self.email = dto.email
@@ -136,7 +137,7 @@ final class Account {
             accountId: dto.id,
             isWeightlessOn: dto.isWeightlessOn ?? false,
             weightlessTimestamp: dto.weightlessTimestamp,
-            weightlessWeight: dto.weightlessWeight != nil ? Double(dto.weightlessWeight!) : nil,
+            weightlessWeight: dto.weightlessWeight.flatMap { Double($0) },
             isSynced: false
         )
         self.weightlessSettings = weightlessSettings
@@ -155,7 +156,7 @@ final class Account {
             accountId: dto.id,
             dashboardMetrics: dto.dashboardMetrics?.map { String(describing: $0) }.joined(separator: ","),
             progressMetrics: dto.progressMetrics?.joined(separator: ","),
-            dashboardType: dto.dashboardType != nil ? String(describing: dto.dashboardType!) : nil,
+            dashboardType: dto.dashboardType.map { String(describing: $0) },
             isSynced: false
         )
         self.dashboardSettings = dashboardSettings
@@ -188,7 +189,7 @@ final class Account {
             activityLevel: self.weightSettings?.activityLevel,
             dob: self.dob ?? "",
             weightlessTimestamp: self.weightlessSettings?.weightlessTimestamp,
-            weightlessWeight: self.weightlessSettings?.weightlessWeight != nil ? Double(self.weightlessSettings!.weightlessWeight!) : nil,
+            weightlessWeight: self.weightlessSettings?.weightlessWeight.flatMap { Double($0) },
             isStreakOn: self.streaksSettings?.isStreakOn,
             streakTimestamp: self.streaksSettings?.streakTimestamp,
             dashboardType: self.dashboardSettings?.dashboardType.flatMap { DashboardType(rawValue: $0) },
@@ -212,7 +213,9 @@ final class Account {
 
 // MARK: - Update Methods
 extension Account {
-    func update(from response: AccountDTO) {
+    /// Updates account from AccountDTO response.
+    /// This method intentionally has high complexity to handle all account update scenarios in one place for maintainability.
+    func update(from response: AccountDTO) { // swiftlint:disable:this cyclomatic_complexity function_body_length
         self.accountId = response.id
         self.email = response.email
         self.firstName = response.firstName

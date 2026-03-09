@@ -1,7 +1,6 @@
 import Foundation
 import UIKit
 
-
 /// A validator that performs synchronous validation.
 ///
 /// ## Adding Custom Validators
@@ -80,7 +79,7 @@ extension Validator where Value == String {
     /// Validator that prevents whitespace-only values
     public static let noWhiteSpace = Validator(type: .noWhiteSpace) { value in
         // Only fail if it's NOT empty but trimming removes everything (i.e. only whitespace)
-        value.isEmpty || value.trimmingCharacters(in: .whitespacesAndNewlines).count > 0
+        value.isEmpty || !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     /// Validator that requires the length of the control's value to be greater than
@@ -127,7 +126,7 @@ extension Validator where Value == String {
     public static let skuMatch = Validator(type: .skuMatch) { value in
         // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
         let lookupSku = DeviceHelper.mapSkuForDisplay(value)
-        return SCALES.contains(where: { $0.sku == lookupSku })
+        return SCALES.contains { $0.sku == lookupSku }
     }
     
     /// Validator that checks for duplicate usernames in a provided user list
@@ -205,8 +204,9 @@ extension Validator where Value == Date {
 
 // MARK: - Validation Rules
 private struct Rule {
-    /// A regular expression that matches valid e-mail addresses.
-    static let emailPattern = #"(?i)^\s*(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})\s*$"#
+    // A regular expression that matches valid e-mail addresses.
+    static let emailPattern = #"(?i)^\s*(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))"#
+        + #"@(([^<>()\[\]\\.,;:\s@"]+\.)+[^<>()\[\]\\.,;:\s@"]{2,})\s*$"#
 
     /// A regular expression that matches valid URLs.
     static let urlPattern = ##"^(https?://)?(www\\.)?[a-zA-Z0-9@:%._\\+~#?&//=]{2,256}\\.[a-z]{2,6}\\b(?:[-a-zA-Z0-9@:%._\\+~#?&//=]*)$"##

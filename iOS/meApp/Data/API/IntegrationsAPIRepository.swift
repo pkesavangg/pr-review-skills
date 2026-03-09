@@ -5,11 +5,21 @@
 //  Created by Lakshmi Priya on 02/06/25.
 //
 
+// swiftlint:disable function_parameter_count
+// The logHealthIntegration function intentionally has many parameters to match the backend API contract
+// and provide clear, explicit parameter names for all health integration data fields.
+// This matches the protocol definition which also disables this rule for the same reason.
+
 import Foundation
 
+@MainActor
 final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
-    
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
+        self.httpClient = httpClient
+    }
+
     func removeIntegration(accountId: String, provider: IntegrationType) async throws {
         switch provider {
         case .healthKit, .healthConnect:
@@ -90,4 +100,4 @@ final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
         ) as EmptyResponse
     }
 }
-
+// swiftlint:enable function_parameter_count

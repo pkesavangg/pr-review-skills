@@ -9,7 +9,7 @@ import Foundation
 
 /// Protocol defining the interface for account flag operations
 @MainActor
-public protocol AccountFlagServiceProtocol {
+public protocol AccountFlagServiceProtocol: AppReviewHandlerProtocol, ScaleReviewHandlerProtocol {
     /// Fetches account flags from the API
     /// Prefers flags with trigger 'login' if present, otherwise returns the first flag
     /// - Returns: The preferred account flag or nil if none found

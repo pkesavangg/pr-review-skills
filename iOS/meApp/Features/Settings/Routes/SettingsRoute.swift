@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 19/06/25.
 //
 
-
 import SwiftUI
 
 // MARK: - Settings Route
@@ -43,7 +42,15 @@ enum SettingsRoute: Routable {
             ScaleBluetoothScreen(scale: scale)
         case .wifi(let scale):
             let sku = scale.sku ?? "default"
-            BtWifiScaleSetupScreen(sku: sku, discoveredScale: nil, discoveryEvent: nil, savedScale: scale, isReconnect: false, isDuplicated: false, isWifiSetupOnly: true)
+            BtWifiScaleSetupScreen(
+                sku: sku,
+                discoveredScale: nil,
+                discoveryEvent: nil,
+                savedScale: scale,
+                isReconnect: false,
+                isDuplicated: false,
+                isWifiSetupOnly: true
+            )
         case .editProfile:
             EditProfileScreen()
         case .goal:
@@ -63,4 +70,3 @@ enum SettingsRoute: Routable {
         }
     }
 }
-

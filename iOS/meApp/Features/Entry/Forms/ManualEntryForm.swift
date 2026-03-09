@@ -4,8 +4,8 @@
 //  Created by Kesavan Panchabakesan on 16/06/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 /// Form that manages manual weight entry.
 /// Only weight field is included for now; additional fields will be added later.
@@ -34,7 +34,6 @@ class ManualEntryForm: ObservableForm {
     var bmr = FormControl("", validators: [.minValue(), .maxValue(10000.0)])
     var metabolicAge = FormControl("", validators: [.minValue(), .maxValue(150.0)])
     
-
     /// Publisher that emits whenever any field in the form changes.
     var formDidChange: AnyPublisher<Void, Never> {
         Publishers.MergeMany([
@@ -52,7 +51,7 @@ class ManualEntryForm: ObservableForm {
             protein.$value.map { _ in () }.eraseToAnyPublisher(),
             skeletalMuscles.$value.map { _ in () }.eraseToAnyPublisher(),
             bmr.$value.map { _ in () }.eraseToAnyPublisher(),
-            metabolicAge.$value.map { _ in () }.eraseToAnyPublisher(),
+            metabolicAge.$value.map { _ in () }.eraseToAnyPublisher()
         ])
         .eraseToAnyPublisher()
     }

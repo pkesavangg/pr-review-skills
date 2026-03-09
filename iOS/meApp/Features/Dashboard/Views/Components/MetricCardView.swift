@@ -16,7 +16,7 @@ struct MetricCardView: View {
     let onDropTargetChanged: (Bool) -> Void
     let verticalPadding: CGFloat
     let parentView: DashboardMetricsParentView
-    static let twelveCardVerticalPadding: CGFloat = .spacingMD/2
+    static let twelveCardVerticalPadding: CGFloat = .spacingMD / 2
     static let fourCardVerticalPadding: CGFloat = .spacingXS
     static let defaultCardMinHeight: CGFloat = 70
     
@@ -81,6 +81,7 @@ struct MetricCardView: View {
         return label
     }
     
+// swiftlint:disable:next cyclomatic_complexity
     private func getR4ScaleSetupLabel(for originalLabel: String) -> String {
         switch originalLabel {
         case DashboardStrings.bmi:

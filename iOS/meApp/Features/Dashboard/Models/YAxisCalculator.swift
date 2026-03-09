@@ -11,28 +11,39 @@ struct YAxisScale {
     let average: Double
 }
 
+// MARK: - NiceScaleResult
+
+/// Result structure for nice scale calculations to avoid large tuples
+private struct NiceScaleResult {
+    let min: Double
+    let max: Double
+    let step: Double
+    let ticks: [Double]
+    let domain: ClosedRange<Double>
+}
+
 // MARK: - YAxisCalculator
 
 struct YAxisCalculator {
     // Fallback defaults for Y-axis when no data is available
-    private static let FALLBACK_MIN: Double = 0
-    private static let FALLBACK_MAX: Double = 100
-    private static let FALLBACK_STEP: Double = 25
-    private static let GOAL_TICK_OFFSETS: [Double] = [-2, -1, 0, 1, 2]
+    private static let fallbackMin: Double = 0
+    private static let fallbackMax: Double = 100
+    private static let fallbackStep: Double = 25
+    private static let goalTickOffsets: [Double] = [-2, -1, 0, 1, 2]
     /// Expanded set of nice numbers used for step selection (normalized domain)
-    private static let niceNumbers: [Double] = [1, 2, 4, 5, 10, 15, 20, 25,40, 50, 100, 200]
+    private static let niceNumbers: [Double] = [1, 2, 4, 5, 10, 15, 20, 25, 40, 50, 100, 200]
 
-    /// Calculate Y-axis scale for chart display
-    /// - Parameters:
-    ///   - operations: Array of weight summaries
-    ///   - goalWeight: Goal weight for display
-    ///   - isWeightlessMode: Whether weightless mode is enabled
-    ///   - anchorWeight: Anchor weight for weightless mode
-    ///   - convertStoredWeightToDisplay: Function to convert stored weight to display weight
-    ///   - chartHeight: Chart height for optimal tick calculation
-    ///   - lastScale: Previous YAxisScale to use as fallback when no data
-    /// - Returns: YAxisScale with calculated domain and ticks
-    static func calculateYAxis(
+    // Calculate Y-axis scale for chart display.
+    // Parameters:
+    // - operations: Array of weight summaries
+    // - goalWeight: Goal weight for display
+    // - isWeightlessMode: Whether weightless mode is enabled
+    // - anchorWeight: Anchor weight for weightless mode
+    // - convertStoredWeightToDisplay: Function to convert stored weight to display weight
+    // - chartHeight: Chart height for optimal tick calculation
+    // - lastScale: Previous YAxisScale to use as fallback when no data
+    // Returns: YAxisScale with calculated domain and ticks
+    static func calculateYAxis( // swiftlint:disable:this function_body_length
         operations: [BathScaleWeightSummary],
         goalWeight: Double?,
         isWeightlessMode: Bool,
@@ -89,7 +100,6 @@ struct YAxisCalculator {
             convertStoredWeightToDisplay: convertStoredWeightToDisplay
         )
 
-
         guard let minValue = weightValues.min(),
               let maxValue = weightValues.max() else {
             return createFallbackScale(goalWeight: goalWeight, lastScale: lastScale)
@@ -137,6 +147,7 @@ struct YAxisCalculator {
         min: Double,
         max: Double,
         desiredTickCount: Int
+// swiftlint:disable:next large_tuple
     ) -> (ticks: [Double], step: Double, domain: ClosedRange<Double>) {
         let range = max - min
         guard range.isFinite, range > 0, desiredTickCount > 1 else {
@@ -151,10 +162,15 @@ struct YAxisCalculator {
         let residual = rawInterval / magnitude
 
         let niceResidual: Double
-        if residual <= 1 { niceResidual = 1 }
-        else if residual <= 2 { niceResidual = 2 }
-        else if residual <= 5 { niceResidual = 5 }
-        else { niceResidual = 10 }
+        if residual <= 1 {
+            niceResidual = 1
+        } else if residual <= 2 {
+            niceResidual = 2
+        } else if residual <= 5 {
+            niceResidual = 5
+        } else {
+            niceResidual = 10
+        }
 
         // Ensure minimum step of 1.0 to avoid decimal ticks that look like duplicates
         let step = Swift.max(niceResidual * magnitude, 1.0)
@@ -251,7 +267,6 @@ struct YAxisCalculator {
         let finalMin: Double = scaleMin
         let finalMax: Double = scaleMax
 
-
         // Create simple ticks with appropriate steps for small datasets
         var (adjustedStep, adjustedTicks) = enforceTickLimits(
             min: finalMin,
@@ -282,8 +297,8 @@ struct YAxisCalculator {
         )
     }
 
-    /// Enforce tick limits (min 3, max 8) by adjusting step size
-    internal static func enforceTickLimits(min: Double, max: Double, initialStep: Double) -> (step: Double, ticks: [Double]) {
+    // Enforce tick limits (min 3, max 8) by adjusting step size
+    internal static func enforceTickLimits(min: Double, max: Double, initialStep: Double) -> (step: Double, ticks: [Double]) { // swiftlint:disable:this function_body_length
         // Helper to snap values to the nearest nice multiple of step
         @inline(__always) func snapDown(_ value: Double, step: Double) -> Double {
             guard step > 0 else { return value }
@@ -339,7 +354,10 @@ struct YAxisCalculator {
             if nonUniform {
                 // Force rebuild using the computed mean as step, snapped to a nice step
                 let rng = (ticks.last ?? snappedMax) - (ticks.first ?? snappedMin)
-                let snappedStep = ImprovedNiceScaleCalculator.calculateOptimalStep(range: rng, targetTickCount: Swift.max(3, Swift.min(6, ticks.count)))
+                let snappedStep = ImprovedNiceScaleCalculator.calculateOptimalStep(
+                    range: rng,
+                    targetTickCount: Swift.max(3, Swift.min(6, ticks.count))
+                )
                 // Ensure minimum step of 1.0 to avoid decimal ticks
                 step = Swift.max(snappedStep, 1.0)
                 let sMin = floor(min / step) * step
@@ -358,20 +376,22 @@ struct YAxisCalculator {
         } else {
             // Goal-independent default fallback
             var ticks: [Double] = []
-            var t = FALLBACK_MIN
-            while t <= FALLBACK_MAX + 0.001 {
-                ticks.append(t)
-                t += FALLBACK_STEP
+            var tickValue = fallbackMin
+            while tickValue <= fallbackMax + 0.001 {
+                ticks.append(tickValue)
+                tickValue += fallbackStep
             }
-            let domainMin = ticks.first ?? FALLBACK_MIN
-            let domainMax = ticks.last ?? FALLBACK_MAX
+            let domainMin = ticks.first ?? fallbackMin
+            let domainMax = ticks.last ?? fallbackMax
             return YAxisScale(
-                min: FALLBACK_MIN,
-                max: FALLBACK_MAX,
-                step: FALLBACK_STEP,
-                ticks: (goalWeight != nil && (goalWeight ?? 0) > 0) ? buildGoalCentricFallback(goalWeight: goalWeight!).ticks : ticks,
+                min: fallbackMin,
+                max: fallbackMax,
+                step: fallbackStep,
+                ticks: (goalWeight != nil && (goalWeight ?? 0) > 0)
+                    ? buildGoalCentricFallback(goalWeight: goalWeight ?? 0).ticks
+                    : ticks,
                 domain: domainMin...domainMax,
-                average: (FALLBACK_MIN + FALLBACK_MAX) / 2
+                average: (fallbackMin + fallbackMax) / 2
             )
         }
     }
@@ -381,11 +401,12 @@ struct YAxisCalculator {
     static func buildGoalCentricFallback(goalWeight: Double) -> YAxisScale {
         // Pick a nice step based on goal magnitude (prefer 5 for lbs, 2 for tight ranges)
         let stepCandidates: [Double] = [2, 5, 10]
+// swiftlint:disable:next trailing_closure
         let step = stepCandidates.first(where: { goalWeight / $0 > 20 }) ?? 5
 
         // Center around nearest multiple of step
         let nearest = round(goalWeight / step) * step
-        let ticks: [Double] = GOAL_TICK_OFFSETS.map { nearest + (Double($0) * step) }
+        let ticks: [Double] = goalTickOffsets.map { nearest + (Double($0) * step) }
         let domainMin = ticks.first ?? max(0, nearest - 2 * step)
         let domainMax = ticks.last ?? nearest + 2 * step
         return YAxisScale(
@@ -411,7 +432,7 @@ struct YAxisCalculator {
         let upperBoundCandidate = max(scale.max, scale.domain.upperBound, scale.ticks.last ?? 0)
         let upper = max(0, upperBoundCandidate)
 
-        let (ticks, step, domain) = niceTicks(min: 0, max: upper, desiredTickCount: count)
+        let (ticks, step, _) = niceTicks(min: 0, max: upper, desiredTickCount: count)
 
         let minVal: Double = 0
         let maxVal: Double = ticks.last ?? step
@@ -431,6 +452,7 @@ struct YAxisCalculator {
         let magnitude = pow(10.0, floor(log10(max(threshold, AppConstants.Precision.doubleEqualityEpsilon))))
         let normalized = threshold / magnitude
         // Use expanded nice numbers
+// swiftlint:disable:next trailing_closure
         let nice = niceNumbers.first(where: { $0 >= normalized }) ?? niceNumbers.last ?? 1.0
         // Ensure minimum step of 1.0 to avoid decimal ticks
         return Swift.max(nice * magnitude, 1.0)
@@ -439,9 +461,9 @@ struct YAxisCalculator {
     /// Pick the largest nice step <= threshold using classic nice set {1,2,5,10} × 10^k
     private static func pickNiceStepAtMost(_ threshold: Double) -> Double {
         let minEps = AppConstants.Precision.doubleEqualityEpsilon
-        let t = Swift.max(threshold, minEps)
-        let magnitude = pow(10.0, floor(log10(t)))
-        let normalized = t / magnitude
+        let thresholdValue = Swift.max(threshold, minEps)
+        let magnitude = pow(10.0, floor(log10(thresholdValue)))
+        let normalized = thresholdValue / magnitude
         let reversedNice = niceNumbers.sorted(by: >)
         if let candidate = reversedNice.first(where: { $0 <= normalized }) {
             // Ensure minimum step of 1.0 to avoid decimal ticks
@@ -458,7 +480,7 @@ struct YAxisCalculator {
 
 /// Improved algorithm for Y-axis tick calculation optimized for gradual weight changes
 /// Handles small ranges better and ensures unique, non-decimal tick values
-fileprivate struct ImprovedNiceScaleCalculator {
+private struct ImprovedNiceScaleCalculator {
 
     /// Nice numbers optimized for weight display (avoiding decimals)
     private static let niceNumbers: [Double] = [1, 2, 4, 5, 10, 15, 20, 25, 40, 50, 100, 200]
@@ -469,12 +491,12 @@ fileprivate struct ImprovedNiceScaleCalculator {
         maxValue: Double,
         goalWeight: Double,
         targetTickCount: Int = 6
-    ) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
+    ) -> NiceScaleResult {
         let dataMin = Swift.min(minValue, maxValue)
         let dataMax = Swift.max(minValue, maxValue)
         let desired = Swift.max(3, Swift.min(6, targetTickCount))
         let result = YAxisCalculator.niceTicks(min: dataMin, max: dataMax, desiredTickCount: desired)
-        return (
+        return NiceScaleResult(
             min: result.domain.lowerBound,
             max: result.domain.upperBound,
             step: result.step,
@@ -484,7 +506,7 @@ fileprivate struct ImprovedNiceScaleCalculator {
     }
 
             /// Handle very small ranges (gradual weight changes)
-    private static func handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
+    private static func handleSmallRange(dataMin: Double, dataMax: Double, goalWeight: Double) -> NiceScaleResult {
         // For very small ranges, use 1-unit steps and ensure we show the trend
         let range = max(dataMax - dataMin, 2.0) // Minimum 2-unit range for visibility
 
@@ -508,11 +530,11 @@ fileprivate struct ImprovedNiceScaleCalculator {
         // Align domain to tick range so plot bounds coincide with horizontal rules
         let domainMin = adjustedTicks.first ?? finalMin
         let domainMax = adjustedTicks.last ?? finalMax
-        return (finalMin, finalMax, adjustedStep, adjustedTicks, domainMin...domainMax)
+        return NiceScaleResult(min: finalMin, max: finalMax, step: adjustedStep, ticks: adjustedTicks, domain: domainMin...domainMax)
     }
 
         /// Handle medium ranges (5-15 units)
-    private static func handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
+    private static func handleMediumRange(dataMin: Double, dataMax: Double, goalWeight: Double) -> NiceScaleResult {
         // For medium ranges, use 2-unit steps
         let range = dataMax - dataMin
         let padding = range * 0.15
@@ -531,11 +553,11 @@ fileprivate struct ImprovedNiceScaleCalculator {
             initialStep: 2.0
         )
 
-        return (finalMin, finalMax, adjustedStep, adjustedTicks, finalMin...finalMax)
+        return NiceScaleResult(min: finalMin, max: finalMax, step: adjustedStep, ticks: adjustedTicks, domain: finalMin...finalMax)
     }
 
     /// Handle normal ranges (15+ units)
-    private static func handleNormalRange(dataMin: Double, dataMax: Double, goalWeight: Double, targetTickCount: Int) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
+    private static func handleNormalRange(dataMin: Double, dataMax: Double, goalWeight: Double, targetTickCount: Int) -> NiceScaleResult {
         // Calculate the raw range
         let rawRange = dataMax - dataMin
 
@@ -571,7 +593,7 @@ fileprivate struct ImprovedNiceScaleCalculator {
         // Align domain to tick range so plot bounds coincide with horizontal rules
         let domainMin = adjustedTicks.first ?? finalMin
         let domainMax = adjustedTicks.last ?? finalMax
-        return (
+        return NiceScaleResult(
             min: finalMin,
             max: finalMax,
             step: adjustedStep,
@@ -589,6 +611,7 @@ fileprivate struct ImprovedNiceScaleCalculator {
         let magnitude = pow(10.0, floor(log10(rough)))
         let normalized = rough / magnitude
         // Pick first nice >= normalized using expanded set
+// swiftlint:disable:next trailing_closure
         let nice = niceNumbers.first(where: { $0 >= normalized }) ?? niceNumbers.last ?? 1.0
         // Ensure minimum step of 1.0 to avoid decimal ticks
         return Swift.max(nice * magnitude, 1.0)
@@ -617,9 +640,9 @@ extension YAxisCalculator {
         maxTicks: Int = 6
     ) -> (step: Double, ticks: [Double]) {
         guard !ticks.isEmpty else { return (step, ticks) }
-
-        var proposedMin = ticks.first!
-        var proposedMax = ticks.last!
+        guard let firstTick = ticks.first, let lastTick = ticks.last else { return (step, ticks) }
+        var proposedMin = firstTick
+        var proposedMax = lastTick
         let proposedStep = step
 
         // Determine if data is too close to outer ticks
@@ -648,6 +671,7 @@ extension YAxisCalculator {
 
 // MARK: - Legacy YAxisHelper (kept for reference, not used)
 
+// swiftlint:disable:next private_over_fileprivate
 fileprivate struct YAxisHelper {
     /// Generate Y-axis with Apple Health–style domain and ticks
     static func generateYAxis(
@@ -655,7 +679,7 @@ fileprivate struct YAxisHelper {
         maxValue: Double,
         goalWeight: Double,
         desiredLabelCount: Int = 10
-    ) -> (min: Double, max: Double, step: Double, ticks: [Double], domain: ClosedRange<Double>) {
+    ) -> NiceScaleResult {
 
         // Include goalWeight in data range
         var dataMin = min(minValue, goalWeight)
@@ -685,11 +709,17 @@ fileprivate struct YAxisHelper {
 
         // Snap step to nice values
         let step: Double
-        if roughStep <= 2 { step = 2 }
-        else if roughStep <= 5 { step = 5 }
-        else if roughStep <= 10 { step = 10 }
-        else if roughStep <= 20 { step = 20 }
-        else { step = 25 }
+        if roughStep <= 2 {
+            step = 2
+        } else if roughStep <= 5 {
+            step = 5
+        } else if roughStep <= 10 {
+            step = 10
+        } else if roughStep <= 20 {
+            step = 20
+        } else {
+            step = 25
+        }
 
         // Generate ticks
         var ticks: [Double] = []
@@ -699,6 +729,7 @@ fileprivate struct YAxisHelper {
             tick += step
         }
 
-        return (niceMin, niceMax, step, ticks, niceMin...niceMax)
+        return NiceScaleResult(min: niceMin, max: niceMax, step: step, ticks: ticks, domain: niceMin...niceMax)
     }
+// swiftlint:disable:next file_length
 }

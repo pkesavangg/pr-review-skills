@@ -77,7 +77,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
                 state.goalProgress = 1.0
             }
 
-
         } catch let error as DashboardError {
             throw error
         } catch {
@@ -120,7 +119,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             } else {
                 state.goalProgress = 1.0
             }
-
 
         } catch let error as DashboardError {
             throw error
@@ -175,7 +173,6 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
             } else {
                 state.goalProgress = 1.0
             }
-
 
         } catch let error as DashboardError {
             throw error
@@ -355,7 +352,8 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         return !continuousOperations.isEmpty && visibleOperations.isEmpty
     }
 
-    /// Updates visible data after scroll ends (forces UI update and logs average weight)
+    // Updates visible data after scroll ends (forces UI update and logs average weight)
+    // swiftlint:disable:next function_parameter_count
     func updateVisibleDataAfterScroll(visibleOperations: [BathScaleWeightSummary], isWeightlessMode: Bool, anchorWeight: Double?, convertWeight: @escaping (Int) -> Double, triggerUpdate: @escaping () -> Void, logAverage: @escaping (Double) -> Void) {
         triggerUpdate()
         let opsToUse = visibleOperations.isEmpty ? visibleOperations : visibleOperations

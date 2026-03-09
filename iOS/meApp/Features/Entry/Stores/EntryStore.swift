@@ -1,15 +1,15 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 @MainActor
 final class EntryStore: ObservableObject {
     // Dependencies
-    @Injector var accountService: AccountService
-    @Injector var notificationService: NotificationHelperService
-    @Injector var entryService: EntryService
-    @Injector var logger: LoggerService
-    @Injector var scaleService: ScaleService
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var notificationService: NotificationHelperServiceProtocol
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
 
     // Strings
     private let toastLang = ToastStrings.self
@@ -55,7 +55,7 @@ final class EntryStore: ObservableObject {
 
     // MARK: - Init
     init() {
-        scaleService.$scales
+        scaleService.scalesPublisher
             .map { $0.contains { $0.bathScale?.scaleType == ScaleSourceType.btWifiR4.rawValue } }
             .receive(on: DispatchQueue.main)
             .assign(to: \.canShowOtherBodyMetrics, on: self)
@@ -83,8 +83,8 @@ final class EntryStore: ObservableObject {
         isBmiAutoCalculationEnabled = true
     }
 
-    /// Save entry with gating, no artificial sleeps, and minimal main-thread churn.
-    func saveEntry() async {
+    // Save entry with gating, no artificial sleeps, and minimal main-thread churn.
+    func saveEntry() async { // swiftlint:disable:this function_body_length
         guard !isSaving else { return }
         isSaving = true
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
@@ -276,7 +276,7 @@ final class EntryStore: ObservableObject {
 
     private func initializeObservers() {
         // Observe account changes directly to catch all updates
-        accountService.$activeAccount
+        accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] account in
                 guard let self = self else { return }
@@ -295,7 +295,7 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func updateWeightUnitFromAccount(_ account: Account?) {
+    @MainActor private func updateWeightUnitFromAccount(_ account: Account?) {
         let unit = account?.weightSettings?.weightUnit ?? .lb
         
         if self.weightUnit != unit {
@@ -303,9 +303,7 @@ final class EntryStore: ObservableObject {
             self.updateWeightValidators()
             self.calculateBMI()
             // Force UI update
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
         }
     }
 
@@ -321,13 +319,11 @@ final class EntryStore: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func calculateBMI() {
+    @MainActor private func calculateBMI() {
         guard isBmiAutoCalculationEnabled else { return }
         guard let weightDouble = Double(manualEntryForm.weight.value), weightDouble > 0 else {
             manualEntryForm.bmi.value = ""
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
             return
         }
 
@@ -352,9 +348,7 @@ final class EntryStore: ObservableObject {
         manualEntryForm.bmi.validate()
         
         // Force UI update to ensure MetricInputField reflects the new BMI value immediately
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
-        }
+        self.objectWillChange.send()
     }
 
     private func updateWeightValidators() {
@@ -368,7 +362,7 @@ final class EntryStore: ObservableObject {
         return Int(floor(value * 10))
     }
 
-    func resetForm() {
+    @MainActor func resetForm() {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
         stopAutoTimeSync()
@@ -442,7 +436,7 @@ final class EntryStore: ObservableObject {
         timeSyncCancellable = nil
     }
 
-    private func performAutoTimeTick() {
+    @MainActor private func performAutoTimeTick() {
         guard isTimeSyncActive else { return }
         // Only auto-update when selected date is today, picker is not open, and user hasn't adjusted time
         guard Calendar.current.isDateInToday(manualEntryForm.date.value) else { return }
@@ -461,9 +455,7 @@ final class EntryStore: ObservableObject {
             manualEntryForm.time.value = clamped
             manualEntryForm.time.markAsPristine()
             // Ensure SwiftUI sees the nested change
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
         }
     }
 }
