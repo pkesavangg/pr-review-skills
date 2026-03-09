@@ -145,13 +145,15 @@ constructor(
         } ?: true
     }
 
-   override suspend fun getAccessToken(): String? =
-            val accountId = userDataStore.currentAccountIdFlow.first()
-            accountId?.let { accountTokens[it]?.accessToken ?: secureTokenStore.getToken(it)?.accessToken }
+    override suspend fun getAccessToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        return accountId?.let { accountTokens[it]?.accessToken ?: secureTokenStore.getToken(it)?.accessToken }
+    }
 
-    override suspend fun getRefreshToken(): String? =
-            val accountId = userDataStore.currentAccountIdFlow.first()
-            accountId?.let { accountTokens[it]?.refreshToken ?: secureTokenStore.getToken(it)?.refreshToken }
+    override suspend fun getRefreshToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        return accountId?.let { accountTokens[it]?.refreshToken ?: secureTokenStore.getToken(it)?.refreshToken }
+    }
 
     override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
