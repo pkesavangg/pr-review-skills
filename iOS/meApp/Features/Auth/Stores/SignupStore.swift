@@ -55,6 +55,12 @@ final class SignupStore: ObservableObject {
     private let tag = "SignupStore"
     
     init() {
+        // Resolve once per store instance to avoid cross-test DI races when
+        // async step actions execute after other suites reset the container.
+        _ = notificationService
+        _ = accountService
+        _ = logger
+
         previousMetricValue = signupForm.useMetric.value
         setupFormObservers()
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
