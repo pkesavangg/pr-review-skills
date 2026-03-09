@@ -24,6 +24,7 @@ final class MockAccountService: AccountServiceProtocol {
     var logOutResult: Result<Void, Error> = .success(())
     var logOutAllAccountsResult: Result<Void, Error> = .success(())
     var deleteAccountResult: Result<Void, Error> = .success(())
+    var switchAccountResult: Result<Void, Error> = .failure(UnexpectedCallError.methodCalled("switchAccount"))
     var refreshAccountResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("refreshAccount"))
     var updatePublishedStateError: Error?
     var shouldDeferUnauthenticatedLandingResult = false
@@ -42,6 +43,7 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var logOutCalls = 0
     private(set) var logOutAllAccountsCalls = 0
     private(set) var deleteAccountCalls = 0
+    private(set) var switchAccountCalls = 0
     private(set) var refreshAccountCalls = 0
     private(set) var updatePublishedStateCalls = 0
     private(set) var lastLoginEmail: String?
@@ -61,6 +63,9 @@ final class MockAccountService: AccountServiceProtocol {
     private(set) var lastUpdatedWeightlessWeight: Double?
     private(set) var lastUpdatedOldPassword: String?
     private(set) var lastUpdatedNewPassword: String?
+    private(set) var lastLoggedOutAccountId: String?
+    private(set) var lastIsAutoLogout: Bool?
+    private(set) var lastSwitchedAccountId: String?
     private(set) var lastRefreshAccountId: String?
 
     func seedAccounts(_ accounts: [Account], active: Account? = nil) {
@@ -91,6 +96,8 @@ final class MockAccountService: AccountServiceProtocol {
 
     func logOut(accountId: String?, isAutoLogout: Bool) async throws {
         logOutCalls += 1
+        lastLoggedOutAccountId = accountId
+        lastIsAutoLogout = isAutoLogout
         _ = try logOutResult.get()
     }
 
@@ -104,7 +111,10 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func switchAccount(to account: Account) async throws {
-        throw UnexpectedCallError.methodCalled("switchAccount")
+        switchAccountCalls += 1
+        lastSwitchedAccountId = account.accountId
+        _ = try switchAccountResult.get()
+        activeAccount = account
     }
 
     func setActiveAccount(_ account: Account) async throws {
