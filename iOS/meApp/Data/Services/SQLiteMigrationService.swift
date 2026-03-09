@@ -4,17 +4,23 @@ import SwiftData
 
 /// Service to migrate data from Ionic app's SQLite database to SwiftData
 final class SQLiteMigrationService {
-    @Injector private var logger: LoggerService
+    @Injector private var logger: LoggerServiceProtocol
     private let tag = "SQLiteMigrationService"
-    
+    private let databasePathOverride: String?
+    private let injectedEntryRepository: (any EntryRepositoryProtocol)?
+
     /// Initialize the service
-    init() {}
-    
+    init(databasePathOverride: String? = nil, entryRepository: (any EntryRepositoryProtocol)? = nil) {
+        self.databasePathOverride = databasePathOverride
+        self.injectedEntryRepository = entryRepository
+    }
+
     /// SQLite database connection
     private var db: OpaquePointer?
-    
+
     /// Path to the Ionic app's SQLite database (Capacitor stores in Library/CapacitorDatabase)
     private var databasePath: String {
+        if let databasePathOverride { return databasePathOverride }
         guard let libraryPath = FileManager.default.urls(
             for: .libraryDirectory,
             in: .userDomainMask
@@ -24,7 +30,7 @@ final class SQLiteMigrationService {
         let dbPath = libraryPath.appendingPathComponent("CapacitorDatabase/WeightGurus4SQLite.db").path
         return dbPath
     }
-    
+
     /// Get the actual database path for logging purposes
     private var actualDatabasePath: String {
         return databasePath
@@ -144,7 +150,12 @@ final class SQLiteMigrationService {
     }
     
     private func migrateAllUsersEntries() async throws -> [String: Int] {
-        let entryRepository = await MainActor.run { EntryRepository() }
+        let entryRepository: any EntryRepositoryProtocol
+        if let injectedEntryRepository {
+            entryRepository = injectedEntryRepository
+        } else {
+            entryRepository = await MainActor.run { EntryRepository() }
+        }
         var migratedData: [String: Int] = [:]
         
         // Query to fetch ALL unsynced operations with metrics joined - no user filter
@@ -212,7 +223,7 @@ final class SQLiteMigrationService {
         // Extract basic opStack operation data
         let entryTimestamp = String(cString: sqlite3_column_text(statement, 2))
         let operationType = sqlite3_column_text(statement, 4) != nil ? String(cString: sqlite3_column_text(statement, 4)) : "create"
-        _ = sqlite3_column_type(statement, 22) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 22)) : 0
+        _ = sqlite3_column_type(statement, 21) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 21)) : 0
         
         // Create the main entry (this will be treated as an unsynced operation)
         let entry = Entry(
@@ -233,7 +244,7 @@ final class SQLiteMigrationService {
                 muscleMass: sqlite3_column_type(statement, 7) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 7)) : nil,
                 water: sqlite3_column_type(statement, 8) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 8)) : nil,
                 bmi: sqlite3_column_type(statement, 9) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 9)) : nil,
-                source: sqlite3_column_text(statement, 12) != nil ? String(cString: sqlite3_column_text(statement, 12)) : nil
+                source: sqlite3_column_text(statement, 11) != nil ? String(cString: sqlite3_column_text(statement, 11)) : nil
             )
             entry.scaleEntry = scaleEntry
         }
