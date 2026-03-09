@@ -86,8 +86,9 @@
 -keep,allowobfuscation interface <1>
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
 
-# Keep all Retrofit API interfaces
--keep interface com.dmdbrands.gurus.weight.data.api.** { *; }
+# Keep all Retrofit API interfaces AND data classes in the api package
+# (e.g. OperationsResponse, HealthConnectIntegrationRequest, HealthConnectSyncEntry)
+-keep class com.dmdbrands.gurus.weight.data.api.** { *; }
 
 # OkHttp
 -dontwarn okhttp3.internal.platform.**
@@ -138,8 +139,8 @@
 
 # ----------------------------------------------------------------------------
 # Hilt / Dagger
+# Hilt ships its own consumer rules for annotations, but javax.inject does not.
 # ----------------------------------------------------------------------------
--keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager { *; }
 -dontwarn dagger.hilt.internal.aggregatedroot.codegen.**
@@ -179,7 +180,7 @@
 -keepnames class com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth { *; }
 
 # ----------------------------------------------------------------------------
-# Firebase
+# Firebase / GMS
 # ----------------------------------------------------------------------------
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
@@ -214,10 +215,25 @@
 -keepnames class com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary { *; }
 
 # ----------------------------------------------------------------------------
+# FormControl reflection: FormGroup/MultiFormGroup use javaClass.declaredFields
+# to iterate form controls by field name. Must preserve field names.
+# ----------------------------------------------------------------------------
+-keepclassmembers class * {
+    com.dmdbrands.gurus.weight.features.common.helper.form.FormControl *;
+    com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup *;
+}
+
+# ----------------------------------------------------------------------------
 # Graph/Chart helper classes (uses KProperty1 reflection)
 # ----------------------------------------------------------------------------
 -keep class com.dmdbrands.gurus.weight.features.common.helper.graph.** { *; }
 -keep class com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper { *; }
+
+# ----------------------------------------------------------------------------
+# SegmentButtonGroup uses KProperty1.get() on data class properties
+# ----------------------------------------------------------------------------
+-keepclassmembers class com.dmdbrands.gurus.weight.features.common.components.SegmentButtonData { <fields>; }
+-keepclassmembers class com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoKey { <fields>; }
 
 # ----------------------------------------------------------------------------
 # GG Bluetooth library (external AAR)
