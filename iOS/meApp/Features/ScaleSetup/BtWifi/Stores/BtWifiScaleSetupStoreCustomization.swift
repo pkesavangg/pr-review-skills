@@ -177,7 +177,7 @@ extension BtWifiScaleSetupStore {
         hasSavedSettings = true
         selectedCustomizeItems.insert(CustomizeSettingsItem.dashboardMetrics.rawValue)
         Task { @MainActor in
-            dashboardStore.syncRemovalStateFromMetricsManager()
+            dashboardStore.gridEditingManager.syncRemovalStateFromMetricsManager()
             dashboardStore.updateSnapshot()
             dashboardStore.state.ui.gridLayoutId = UUID()
             dashboardStore.objectWillChange.send()
@@ -537,7 +537,7 @@ extension BtWifiScaleSetupStore {
             dashboardStore.state.metrics.dashboardType = .dashboard12
             dashboardStore.metricsManager.setupInitialMetrics(forceShowAll: true)
             dashboardStore.metricsManager.resetOrderToDefault()
-            dashboardStore.syncRemovalStateFromMetricsManager()
+            dashboardStore.gridEditingManager.syncRemovalStateFromMetricsManager()
             LoggerService.shared.log(level: .info, tag: tag, message: "R4 setup: Upgraded to dashboard12 with default order. All 12 metrics enabled.")
         }
 
@@ -565,7 +565,7 @@ extension BtWifiScaleSetupStore {
         if isDashboardFour {
             await upgradeDashboardTypeFrom4To12WithDefaults()
             try? await dashboardStore.streakManager.refreshStreakData()
-            await dashboardStore.loadProgressMetricsFromAccount()
+            await dashboardStore.gridEditingManager.loadProgressMetricsFromAccount()
         } else {
             await syncOrLoadDashboardMetricsWhenNotTypeFour()
         }
@@ -580,14 +580,14 @@ extension BtWifiScaleSetupStore {
 
     private func syncOrLoadDashboardMetricsWhenNotTypeFour() async {
         await MainActor.run {
-            dashboardStore.syncRemovalStateFromMetricsManager()
+            dashboardStore.gridEditingManager.syncRemovalStateFromMetricsManager()
             if dashboardStore.metricsManager.state.metrics.isEmpty {
                 LoggerService.shared.log(level: .info, tag: tag, message: "Dashboard metrics empty, loading from API as fallback")
                 Task {
                     do {
                         try await dashboardStore.metricsManager.loadMetricsFromAPI()
                         await MainActor.run {
-                            dashboardStore.syncRemovalStateFromMetricsManager()
+                            dashboardStore.gridEditingManager.syncRemovalStateFromMetricsManager()
                         }
                     } catch {
                         LoggerService.shared.log(
@@ -649,10 +649,10 @@ extension BtWifiScaleSetupStore {
     @MainActor
     func persistDashboardMetrics() async {
         do {
-            dashboardStore.syncRemovalStateFromMetricsManager()
-            dashboardStore.syncRemovalStateFromStreakManager()
+            dashboardStore.gridEditingManager.syncRemovalStateFromMetricsManager()
+            dashboardStore.gridEditingManager.syncRemovalStateFromStreakManager()
             try await dashboardStore.metricsManager.saveMetricsToAPI()
-            try await dashboardStore.saveProgressMetricsToAPI()
+            try await dashboardStore.lifecycleManager.saveProgressMetricsToAPI()
             _ = try? await accountService.refreshAccount(
                 accountId: accountService.activeAccount?.accountId
             )

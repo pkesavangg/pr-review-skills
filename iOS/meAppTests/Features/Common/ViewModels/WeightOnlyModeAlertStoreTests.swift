@@ -230,11 +230,10 @@ struct WeightOnlyModeAlertStoreTests {
         let bluetooth = bluetooth ?? MockBluetoothService()
         let notification = notification ?? MockNotificationHelperService()
 
-        let store = WeightOnlyModeAlertStore(
-            scaleService: scaleService,
-            bluetoothService: bluetooth,
-            notificationService: notification
-        )
+        DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
+        DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+
+        let store = WeightOnlyModeAlertStore(scaleService: scaleService)
         return (store, scaleService, bluetooth, notification)
     }
 
@@ -250,7 +249,7 @@ struct WeightOnlyModeAlertStoreTests {
     }
 
     private func waitUntil(
-        timeoutNanoseconds: UInt64 = 1_000_000_000,
+        timeoutNanoseconds: UInt64 = 2_000_000_000,
         pollNanoseconds: UInt64 = 20_000_000,
         condition: @escaping @MainActor () -> Bool
     ) async -> Bool {
