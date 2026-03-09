@@ -3,17 +3,17 @@ import Foundation
 protocol BluetoothSetupManaging {
     func disconnectIfNeeded(
         broadcastId: String,
-        bluetoothService: BluetoothService,
+        bluetoothService: BluetoothServiceProtocol,
         considerForSession: Bool
     ) async
 
-    func cancelWifi(on scale: Device, bluetoothService: BluetoothService) async
+    func cancelWifi(on scale: Device, bluetoothService: BluetoothServiceProtocol) async
 }
 
 struct BluetoothSetupManager: BluetoothSetupManaging {
     func disconnectIfNeeded(
         broadcastId: String,
-        bluetoothService: BluetoothService,
+        bluetoothService: BluetoothServiceProtocol,
         considerForSession: Bool = true
     ) async {
         _ = await bluetoothService.disconnectDevice(
@@ -22,7 +22,7 @@ struct BluetoothSetupManager: BluetoothSetupManaging {
         )
     }
 
-    func cancelWifi(on scale: Device, bluetoothService: BluetoothService) async {
+    func cancelWifi(on scale: Device, bluetoothService: BluetoothServiceProtocol) async {
         _ = await bluetoothService.cancelWifi(on: scale)
     }
 }

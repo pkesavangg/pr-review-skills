@@ -22,6 +22,7 @@ class HelpStore: ObservableObject {
     @Injector var feedService: FeedServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
+    private let appReviewHandler: AppReviewHandlerProtocol
     var kvStorage = KvStorageService.shared
     var theme = Theme.shared
     
@@ -59,7 +60,8 @@ class HelpStore: ObservableObject {
     private var firstTapTime: Date?
     private let tag = "HelpStore"
     
-    init() {
+    init(appReviewHandler: AppReviewHandlerProtocol? = nil) {
+        self.appReviewHandler = appReviewHandler ?? AppReviewService.shared
         scaleService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] scales in
@@ -206,8 +208,9 @@ class HelpStore: ObservableObject {
     /// Shows the system/app rating modal.
     func showAppRateModal() {
         logger.log(level: .info, tag: tag, message: "Presenting app rating modal")
-        // iOS: Request review prompt if available.
-        AppRatingHelper.requestReview()
+        Task {
+            await appReviewHandler.triggerAppReview(isFromDebug: true)
+        }
     }
     
     /// Sends scale-specific logs.

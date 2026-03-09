@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import GGBluetoothSwiftPackage
 import ggInAppMessagingPackage
 @testable import meApp
 
@@ -125,6 +126,37 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {}
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {}
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {}
+    // swiftlint:disable:next function_parameter_count
+    func createR4Scale(
+        scaleId: String,
+        accountId: String,
+        displayName: String,
+        token: String,
+        mac: String?,
+        broadcastIdString: String?,
+        broadcastId: Int64?,
+        sku: String?,
+        deviceName: String?,
+        wifiMac: String?,
+        deviceMetadata: DeviceMetaData?,
+        isWifiConfigured: Bool,
+        isConnected: Bool,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createR4Scale")
+    }
+
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createBluetoothScale")
+    }
+
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
 
     func syncAllScalesWithRemote() async {
@@ -153,6 +185,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { Empty().eraseToAnyPublisher() }
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
+    var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { Empty().eraseToAnyPublisher() }
 
     func initialize() { initializeCalls += 1 }
     func stopScan() {}

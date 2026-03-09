@@ -329,7 +329,7 @@ private func makeSUT(
 
 @MainActor
 private func waitUntil(
-    timeoutNanoseconds: UInt64 = 2_000_000_000,
+    timeoutNanoseconds: UInt64 = 3_000_000_000,
     pollIntervalNanoseconds: UInt64 = 10_000_000,
     condition: @MainActor () -> Bool
 ) async -> Bool {

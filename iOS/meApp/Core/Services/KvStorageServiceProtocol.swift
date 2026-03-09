@@ -7,4 +7,5 @@ protocol KvStorageServiceProtocol {
     func clearAll()
     func setCodable<T: Codable>(_ value: T, forKey key: String)
     func getCodable<T: Codable>(forKey key: String, as type: T.Type) -> T?
+    func getAllKeys() -> [String]
 }
