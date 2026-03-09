@@ -82,8 +82,9 @@ class CustomTabManager
             withContext(Dispatchers.IO) {
                 packageName = packageResolver.resolve()
                 if (packageName == null) return@withContext false
+                val resolvedPackage = packageName ?: return@withContext false
                 binder =
-                    CustomTabServiceBinder(context, packageName!!, callback).also {
+                    CustomTabServiceBinder(context, resolvedPackage, callback).also {
                         it.bind()
                     }
                 return@withContext true
@@ -108,8 +109,9 @@ class CustomTabManager
             }
             val uri = url.toUri()
             try {
-                if (binder?.session != null && packageName != null) {
-                    val intent = intentBuilder.build(binder!!.session, packageName, url, showBack, showShare)
+                val session = binder?.session
+                if (session != null && packageName != null) {
+                    val intent = intentBuilder.build(session, packageName, url, showBack, showShare)
                     context.let {
                         intent.launchUrl(it, uri)
                     }

@@ -44,7 +44,7 @@ object NetworkModule {
      */
     @Provides
     @Singleton
-    fun provideHttpClient(okHttpClient: OkHttpClient): HttpClient = HttpClient(AppConfig.BASE_URL, okHttpClient)
+    fun provideHttpClient(okHttpClient: OkHttpClient): HttpClient = HttpClient(BuildConfig.BASE_URL, okHttpClient)
 
     /**
      * Provides a logging interceptor for HTTP requests. Logging is enabled only in debug builds.
@@ -101,9 +101,8 @@ object NetworkModule {
     fun provideAuthTokenInterceptor(
         tokenManager: ITokenManager,
         refreshTokenAPI: RefreshTokenAPI,
-        userDataStore: UserDataStore,
     ): AuthTokenInterceptor =
-        AuthTokenInterceptor(tokenManager, refreshTokenAPI, userDataStore)
+        AuthTokenInterceptor(tokenManager, refreshTokenAPI)
 
     /**
      * Provides a response interceptor for OkHttp.
@@ -130,7 +129,7 @@ object NetworkModule {
     @Singleton
     fun provideRefreshTokenAPI(@RefreshClient refreshOkHttpClient: OkHttpClient): RefreshTokenAPI =
         Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(refreshOkHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

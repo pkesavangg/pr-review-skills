@@ -205,11 +205,12 @@ constructor(
           ),
         )
       } else if (sku != null) {
-        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku!!)
+        val localSku = sku ?: return@launch
+        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
         // Pass original SKU to routes (not mapped), setup will save original SKU
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
-            sku!!,
+            localSku,
             discoveredBroadcastId,
             LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
             scaleInfo = scaleInfo,
@@ -619,14 +620,15 @@ constructor(
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
-          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
+          if (currentRoute !is AppRoute.ScaleSetup) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
                   viewModelScope.launch {
                     val accountId = currentAccountId ?: return@launch
+                    val broadcastId = data.broadcastId ?: return@launch
                     dialogQueueService.showLoader("Loading...")
-                    val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
+                    val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
                     ggDeviceService.addCacheDevice(data.broadcastId, device)
                     ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                       viewModelScope.launch {
@@ -644,8 +646,8 @@ constructor(
                   }
                 },
                 onCancel = {
-                  if (data.broadcastId != null) {
-                    ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
+                  data.broadcastId?.let { broadcastId ->
+                    ggDeviceService.skipDevice(broadcastId, considerForSession = true)
                   }
                 },
               ),
@@ -662,7 +664,8 @@ constructor(
                   onConfirm = {
                     viewModelScope.launch {
                       val accountId = currentAccountId ?: return@launch
-                      val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
+                      val broadcastId = data.broadcastId ?: return@launch
+                      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
                       val userList = suspendCoroutine { continuation ->
                         ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                           continuation.resume(response.user)
@@ -686,8 +689,8 @@ constructor(
                     }
                   },
                   onCancel = {
-                    if (data.broadcastId != null) {
-                      ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
+                    data.broadcastId?.let { broadcastId ->
+                      ggDeviceService.skipDevice(broadcastId, considerForSession = true)
                     }
                   },
                 ),
@@ -794,17 +797,14 @@ constructor(
   private fun checkAndRequestNotificationPermission() {
     viewModelScope.launch {
       try {
-        val notificationAlertShown = if (currentAccountId != null) {
-          accountService.hasShownNotificationAlertForAccount(currentAccountId!!)
-        } else {
-          false
-        }
-        if (!notificationAlertShown && currentAccountId != null) {
-          accountService.setNotificationAlertShownForAccount(currentAccountId!!, true)
-          AppLog.d(TAG, "Stored notification alert setting for account: $currentAccountId")
+        val accountId = currentAccountId ?: return@launch
+        val notificationAlertShown = accountService.hasShownNotificationAlertForAccount(accountId)
+        if (!notificationAlertShown) {
+          accountService.setNotificationAlertShownForAccount(accountId, true)
+          AppLog.d(TAG, "Stored notification alert setting for account: $accountId")
           requestPermissions(GGPermissionType.NOTIFICATION)
         } else {
-          AppLog.d(TAG, "Notification alert already shown for account: $currentAccountId, skipping permission request")
+          AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check/request notification permission", e.toString())

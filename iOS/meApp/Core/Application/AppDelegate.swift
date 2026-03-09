@@ -32,6 +32,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         }
         #endif
 
+        // if AppRuntime.isRunningTests {
+        //     return true
+        // }
+
+        // Initialize ServiceRegistry synchronously to avoid DI race at startup.
         _ = ServiceRegistry.shared
 
         #if DEBUG

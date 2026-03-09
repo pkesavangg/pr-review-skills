@@ -122,10 +122,11 @@ constructor(
         dialogQueueService.showLoader(message = ScaleDisplayMetricsStrings.LoaderMessage)
 
         // Create updated preferences with new display metrics
-        val preferences =
+        val preferences = requireNotNull(
           scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
             displayMetrics = currentState.enabledMetrics,
-          )!!
+          )
+        ) { "Scale preferences are null; cannot update display metrics" }
 
         val updatedScalePreference = scale.preferences.copy(
           displayMetrics = currentState.enabledMetrics,

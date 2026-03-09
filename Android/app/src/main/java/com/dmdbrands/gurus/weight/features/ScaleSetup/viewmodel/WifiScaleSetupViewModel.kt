@@ -516,9 +516,10 @@ constructor(
           }
         handleIntent(WifiScaleSetupIntent.SetWifiSsid(effectiveSsid))
         updateFormValuesWithSsid(effectiveSsid)
+        val savedSsid = lastSsid
         val displayStatus =
-          if (!hasAllRequiredPermissions && status.ssid.isEmpty() && lastSsid != null) {
-            status.copy(ssid = lastSsid!!, bssid = currentState.wifiStatus?.bssid ?: "")
+          if (!hasAllRequiredPermissions && status.ssid.isEmpty() && savedSsid != null) {
+            status.copy(ssid = savedSsid, bssid = currentState.wifiStatus?.bssid ?: "")
           } else {
             status
           }
