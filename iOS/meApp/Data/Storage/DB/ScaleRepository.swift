@@ -11,8 +11,12 @@ import SwiftData
 @MainActor
 final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
-    let context: ModelContext = PersistenceController.shared.context
+    let context: ModelContext
     let logger = LoggerService.shared
+
+    init(context: ModelContext? = nil) {
+        self.context = context ?? PersistenceController.shared.context
+    }
 
     /// Deletes all scales from local storage.
     func clearAllData() async throws {
@@ -83,7 +87,17 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Saves a new scale to the local data store.
     /// - Parameter scale: The Device object to save.
     /// - Returns: The created Device.
+    /// - Throws: An error if a device with the same ID already exists.
     func createScale(_ scale: Device) async throws -> Device {
+        // Check for duplicate ID before inserting
+        if let existingDevice = try? await getDevice(scale.id), existingDevice != nil {
+            throw NSError(
+                domain: "ScaleRepository",
+                code: 409,
+                userInfo: [NSLocalizedDescriptionKey: "Device with ID '\(scale.id)' already exists"]
+            )
+        }
+        
         scale.isSynced = false
         context.insert(scale)
         insertDeviceRelationships(scale)

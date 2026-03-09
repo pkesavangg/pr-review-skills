@@ -14,10 +14,24 @@ final class HTTPClient: HTTPClientProtocol {
     @Injector var notificationHelperService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
-    private let tokenManager = TokenManager.shared
+    private let tokenManager: TokenManaging
+    private let requestExecutor: (URLRequest) async throws -> (Data, URLResponse)
+    private let connectivityProvider: () -> Bool
     @Atomic private var lastToastShownTime: Date?
 
-    private init() {}
+    init(
+        tokenManager: TokenManaging? = nil,
+        requestExecutor: ((URLRequest) async throws -> (Data, URLResponse))? = nil,
+        connectivityProvider: (() -> Bool)? = nil
+    ) {
+        self.tokenManager = tokenManager ?? TokenManager.shared
+        self.requestExecutor = requestExecutor ?? { request in
+            try await URLSession.shared.data(for: request)
+        }
+        self.connectivityProvider = connectivityProvider ?? {
+            NetworkMonitor.shared.getCurrentConnectionStatus()
+        }
+    }
     
     // MARK: - GET Request
     func get<T: Decodable>(
@@ -79,7 +93,7 @@ final class HTTPClient: HTTPClientProtocol {
             let expiresAt = account.expiresAt
             let acctId = account.accountId
             if tokenManager.checkTokenExpiration(expiresAt: expiresAt) {
-                let tokens = try await tokenManager.refreshToken(accountId: acctId)
+                let tokens = try await tokenManager.refreshToken(accountId: acctId, retryCount: 0)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                 return try await performRequest(newRequest)
@@ -98,7 +112,7 @@ final class HTTPClient: HTTPClientProtocol {
                         let account = try await getAccount(accountId)
                         // Extract primitives from @Model before crossing async boundaries (R1)
                         let acctId = account.accountId
-                        let tokens = try await tokenManager.refreshToken(accountId: acctId)
+                        let tokens = try await tokenManager.refreshToken(accountId: acctId, retryCount: 0)
                         var newRequest = request
                         newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                         return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId, restartWithNewTokens: true)
@@ -116,7 +130,7 @@ final class HTTPClient: HTTPClientProtocol {
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await requestExecutor(request)
         } catch let urlError as URLError {
             // Convert URLErrors to HTTPErrors so callers can detect network errors reliably.
             switch urlError.code {
@@ -165,24 +179,6 @@ final class HTTPClient: HTTPClientProtocol {
             logger.log(level: .error, tag: "HTTPClient", message: "Decoding error", data: error)
             throw HTTPError.decodingError
         }
-    }
-
-    private func fetchData(for request: URLRequest) async throws -> (Data, URLResponse) {
-        do {
-            return try await URLSession.shared.data(for: request)
-        } catch {
-            if let urlError = error as? URLError, shouldCheckConnectivity(for: urlError) {
-                try checkConnectivity()
-            }
-            throw error
-        }
-    }
-
-    private func shouldCheckConnectivity(for error: URLError) -> Bool {
-        error.code == .notConnectedToInternet ||
-        error.code == .networkConnectionLost ||
-        error.code == .cannotConnectToHost ||
-        error.code == .timedOut
     }
 
     private func parseErrorResponse(data: Data, status: HTTPStatusCode, statusCode: Int) -> HTTPError {
@@ -257,7 +253,7 @@ final class HTTPClient: HTTPClientProtocol {
     
     // MARK: - Connectivity Check
     private func checkConnectivity() throws {
-        let isConnected = NetworkMonitor.shared.getCurrentConnectionStatus()
+        let isConnected = connectivityProvider()
         if !isConnected {
             if !skipCheckNetwork {
                 showToastIfNeeded(ToastStrings.unableToConnect)
