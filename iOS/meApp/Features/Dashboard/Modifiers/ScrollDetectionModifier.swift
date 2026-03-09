@@ -9,7 +9,7 @@ struct ScrollDetectionModifier: ViewModifier {
         content
             .onScrollPhaseChange { _, newPhase in
                 Task { @MainActor in
-                    await dashboardStore.handleScrollPhaseChange(to: newPhase)
+                    await dashboardStore.chartManager.handleScrollPhaseChange(to: newPhase)
 
                     // Immediately clear local selection state when scrolling starts
                     if newPhase == .interacting {

@@ -16,6 +16,10 @@ final class NetworkMonitor: ObservableObject {
     
     @Published private(set) var isConnected = false
     @Published private(set) var connectionType: NWInterface.InterfaceType?
+
+    var isConnectedPublisher: AnyPublisher<Bool, Never> {
+        $isConnected.eraseToAnyPublisher()
+    }
     
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue.global(qos: .utility)

@@ -34,9 +34,9 @@ struct DashboardScreen: View {
               dashboardScroll()
         }
         .refreshable {
-            await store.refreshAll()
+            await store.lifecycleManager.refreshAll()
         }
-        .onAppear(perform: store.onAppearActions)
+        .onAppear(perform: store.lifecycleManager.onAppearActions)
         .ignoresSafeArea(.all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
@@ -44,46 +44,46 @@ struct DashboardScreen: View {
         }
         .sheet(item: $openMetricInfoWithoutSelection) { wrapper in
             MetricInfoSheetWrapper(
-                entry: metricInfoEntry ?? store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
-                selectedMetric: store.getBodyMetric(for: wrapper.metricLabel),
+                entry: metricInfoEntry ?? store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel),
+                selectedMetric: store.displayManager.getBodyMetric(for: wrapper.metricLabel),
                 dashboardStore: store
             )
         }
         .task(id: selectedMetricInfo) {
             if let newValue = selectedMetricInfo {
-                await store.handleSelectedMetricInfoChange(newValue, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
+                await store.lifecycleManager.handleSelectedMetricInfoChange(newValue, selectedEntry: $selectedEntry, selectedMetric: $selectedMetric)
                 selectedMetricInfo = nil
             }
         }
         .task(id: openMetricInfoWithoutSelection) {
             if let wrapper = openMetricInfoWithoutSelection {
-                metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
+                metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
-            store.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
+            store.lifecycleManager.handleMetricInfoSheetDismiss(openMetricInfoWithoutSelection)
         }
         // Keep the metric info entry in sync with metric tile values while the sheet is open
         .task(id: store.state.metrics.metrics) {
             if let wrapper = openMetricInfoWithoutSelection {
-                metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
+                metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
         // Update metric info entry when time period changes
         .task(id: store.state.graph.selectedPeriod) {
             if let wrapper = openMetricInfoWithoutSelection {
-                metricInfoEntry = store.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
+                metricInfoEntry = store.displayManager.createEntryForMetricInfo(metricLabel: wrapper.metricLabel)
             }
         }
         .task(id: store.state.ui.selectedMetricLabel) {
-            store.handleSelectedMetricLabelChange(store.state.ui.selectedMetricLabel)
+            store.lifecycleManager.handleSelectedMetricLabelChange(store.state.ui.selectedMetricLabel)
         }
         .task(id: selectedEntry) {
-            store.handleSelectedEntryChange(selectedEntry)
+            store.lifecycleManager.handleSelectedEntryChange(selectedEntry)
         }
         .task(id: store.currentUnit) {
-            store.handleUnitChange()
+            store.lifecycleManager.handleUnitChange()
         }
         .task(id: store.state.data.latestWeightStored) {
-            store.resetMetricsToLatestEntry()
+            store.displayManager.resetMetricsToLatestEntry()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             if store.state.ui.isEditMode {
@@ -91,12 +91,12 @@ struct DashboardScreen: View {
                     try? await Task.sleep(
                         nanoseconds: UInt64(WiggleAnimationConstants.wiggleRestartDelayAfterAppActive * 1_000_000_000)
                     )
-                    store.restartWiggleAnimations()
+                    store.gridEditingManager.restartWiggleAnimations()
                 }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .dashboardMetricsUpdated)) { _ in
-            Task { await store.reloadDashboardConfiguration(fullRefresh: true) }
+            Task { await store.lifecycleManager.reloadDashboardConfiguration(fullRefresh: true) }
         }
         .onReceive(
             Publishers.MergeMany([
@@ -169,15 +169,15 @@ struct DashboardScreen: View {
         VStack(alignment: .center, spacing: .spacingSM) {
             if store.state.ui.isEditMode {
                 ButtonView(text: lang.saveChanges, type: .filledPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
-                    store.saveChanges()
-                    store.resetDragState()
+                    store.lifecycleManager.saveChanges()
+                    store.gridEditingManager.resetDragState()
                 }
                 ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
-                    store.showResetDashboardAlert()
+                    store.lifecycleManager.showResetDashboardAlert()
                 }
             } else {
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
-                    store.toggleEditMode()
+                    store.gridEditingManager.toggleEditMode()
                 }
                 if store.hasGoalSet {
                     ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {

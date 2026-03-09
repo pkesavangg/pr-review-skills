@@ -19,7 +19,7 @@ class AccountsStore: ObservableObject {
     @Injector var logger: LoggerServiceProtocol
     @Injector var feedService: FeedServiceProtocol
 
-    private let networkMonitor = NetworkMonitor.shared
+    private let networkMonitor: NetworkMonitoring
 
     let alertStrings = AlertStrings.self
     let appConstants = AppConstants.self
@@ -39,7 +39,31 @@ class AccountsStore: ObservableObject {
     private let tag = "AccountsStore"
     var cancellables: Set<AnyCancellable> = []
 
-    init() {
+    init(
+        injectedAccountService: AccountServiceProtocol? = nil,
+        injectedNotificationService: NotificationHelperServiceProtocol? = nil,
+        injectedEntryService: EntryServiceProtocol? = nil,
+        injectedLogger: LoggerServiceProtocol? = nil,
+        injectedFeedService: FeedServiceProtocol? = nil,
+        networkMonitor: NetworkMonitoring = NetworkMonitor.shared
+    ) {
+        self.networkMonitor = networkMonitor
+        if let injectedAccountService {
+            self.accountService = injectedAccountService
+        }
+        if let injectedNotificationService {
+            self.notificationService = injectedNotificationService
+        }
+        if let injectedEntryService {
+            self.entryService = injectedEntryService
+        }
+        if let injectedLogger {
+            self.logger = injectedLogger
+        }
+        if let injectedFeedService {
+            self.feedService = injectedFeedService
+        }
+
         accountService.activeAccountPublisher
             .sink { [weak self] account in
                 self?.activeAccount = account
