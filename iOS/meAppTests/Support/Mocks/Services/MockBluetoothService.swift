@@ -31,6 +31,9 @@ final class MockBluetoothService: BluetoothServiceProtocol {
 
     private(set) var disconnectConnectedScalesCalls = 0
     private(set) var scanForPairingCalls = 0
+    private(set) var resumeSmartScanCalls = 0
+    private(set) var syncDevicesCalls = 0
+    private(set) var handleWeightOnlyModeAlertDismissedCalls = 0
     private(set) var resyncAndScanCalls = 0
     private(set) var deleteCurrentUserFromScaleIfPossibleCalls = 0
     private(set) var disconnectDeviceCalls = 0
@@ -72,6 +75,8 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var lastCancelWifiDevice: Device?
     private(set) var lastStartLiveMeasurementDevice: Device?
     private(set) var lastStopLiveMeasurementDevice: Device?
+    private(set) var lastResumeClearOnlyPairing: Bool?
+    private(set) var lastSyncedDevices: [Device] = []
 
     let deviceDiscoveredSubject = PassthroughSubject<DeviceDiscoveryEvent, Never>()
     let newEntryReceivedSubject = PassthroughSubject<EntryNotification, Never>()
@@ -89,17 +94,23 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     func startBluetoothOperations() async {}
     func disconnectConnectedScales() async { disconnectConnectedScalesCalls += 1 }
     func reapplySkipDevicesExcludingPaired() {}
-    func handleWeightOnlyModeAlertDismissed() {}
+    func handleWeightOnlyModeAlertDismissed() { handleWeightOnlyModeAlertDismissedCalls += 1 }
     func clearDevices() {}
     func pauseSmartScan() {}
-    func resumeSmartScan(clearOnlyPairing: Bool) {}
+    func resumeSmartScan(clearOnlyPairing: Bool) {
+        resumeSmartScanCalls += 1
+        lastResumeClearOnlyPairing = clearOnlyPairing
+    }
     func scanForPairing() { scanForPairingCalls += 1 }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> {
         resyncAndScanCalls += 1
         return resyncAndScanResult
     }
-    func syncDevices(_ devices: [Device]) {}
+    func syncDevices(_ devices: [Device]) {
+        syncDevicesCalls += 1
+        lastSyncedDevices = devices
+    }
     func addNewDevice(_ device: Device, metaData: DeviceMetaData?, _ skipDuplicateCheck: Bool?) async -> Result<Device, BluetoothServiceError> { .failure(.notImplemented) }
     func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError> {
         confirmSmartPairCalls += 1

@@ -75,7 +75,7 @@ class StreakCardCell: UICollectionViewCell {
     private func setupBasicState(item: MetricItem, store: DashboardStore) {
         representedItem = item
         currentStore = store
-        isRemoved = store.isStreakRemoved(item.label)
+        isRemoved = store.gridEditingManager.isStreakRemoved(item.label)
     }
     
     private func getStreakValue(for item: MetricItem) -> String {
@@ -101,7 +101,7 @@ class StreakCardCell: UICollectionViewCell {
             isRemoved: isRemoved,
             isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
             onToggleRemoval: {
-                store.toggleStreakRemoval(item.label)
+                store.gridEditingManager.toggleStreakRemoval(item.label)
             },
             onDrop: { _, _ in false },
             onDropTargetChanged: { _ in },
@@ -121,7 +121,7 @@ class StreakCardCell: UICollectionViewCell {
                         isEditMode: true,
                         isRemoved: isRemoved,
                         onToggleRemoval: {
-                            store.toggleStreakRemoval(item.label)
+                            store.gridEditingManager.toggleStreakRemoval(item.label)
                         },
                         isBeingDragged: currentIsBeingDragged || isLongPressed,
                         isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
@@ -131,7 +131,7 @@ class StreakCardCell: UICollectionViewCell {
                     )
             )
             overlayButtonVisible = store.state.ui.dropHoverId != item.id.uuidString
-            overlayButtonAction = { store.toggleStreakRemoval(item.label) }
+            overlayButtonAction = { store.gridEditingManager.toggleStreakRemoval(item.label) }
             return viewWithOverlay
         } else {
             overlayButtonVisible = false
@@ -441,7 +441,7 @@ class StreakCardCell: UICollectionViewCell {
             applySelectionShadow()
             // Enter edit mode on long press if not already in edit mode
             if let store = currentStore, !store.state.ui.isEditMode {
-                store.toggleEditMode()
+                store.gridEditingManager.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {
