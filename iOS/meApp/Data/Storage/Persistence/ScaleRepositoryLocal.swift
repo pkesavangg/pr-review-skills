@@ -2,10 +2,10 @@ import Foundation
 
 /// Repository for managing the last sync timestamp for scales per account, using KvStorageService.
 final class ScaleRepositoryLocal {
-    private let kv: KvStorageService
+    private let kv: KvStorageServiceProtocol
     private let timestampKey = "scale_last_sync_timestamp"
 
-    init(kv: KvStorageService = .shared) {
+    init(kv: KvStorageServiceProtocol = KvStorageService.shared) {
         self.kv = kv
     }
 
