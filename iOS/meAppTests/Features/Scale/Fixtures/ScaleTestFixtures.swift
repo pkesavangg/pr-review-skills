@@ -84,10 +84,11 @@ enum ScaleTestFixtures {
         displayName: String = "Bathroom Scale",
         mac: String = "AA:BB:CC:DD:EE:FF",
         broadcastIdString: String = "A1B2C3",
-        broadcastId: Int = 123456,
+        broadcastId: Int? = 123456,
         sku: String = "R4-001",
         deviceName: String = "AccuCheck Verve Smart Scale",
-        token: String = "token-1"
+        token: String = "token-1",
+        type: String = ScaleSourceType.btWifiR4.rawValue
     ) -> ScaleDTO {
         ScaleDTO(
             broadcastId: broadcastId,
@@ -109,7 +110,7 @@ enum ScaleTestFixtures {
             preference: makePreferenceDTO(scaleId: id ?? "temp-scale", displayName: displayName),
             scaleToken: token,
             sku: sku,
-            type: ScaleSourceType.btWifiR4.rawValue,
+            type: type,
             userId: accountId,
             userNumber: 0
         )
