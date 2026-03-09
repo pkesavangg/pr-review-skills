@@ -39,4 +39,7 @@ protocol PermissionsServiceProtocol: AnyObject {
     /// - Parameter type: The permission type to query.
     /// - Returns: The cached `GGPermissionState` if available.
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState?
+
+    /// Opens iOS Wi-Fi settings.
+    func navigateToWifiSettings()
 }

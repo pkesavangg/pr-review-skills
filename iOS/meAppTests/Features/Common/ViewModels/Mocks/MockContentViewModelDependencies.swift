@@ -146,6 +146,17 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
         throw UnexpectedCallError.methodCalled("createR4Scale")
     }
 
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createBluetoothScale")
+    }
+
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
 
     func syncAllScalesWithRemote() async {

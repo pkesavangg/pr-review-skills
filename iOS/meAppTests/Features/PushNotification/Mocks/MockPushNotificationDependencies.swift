@@ -127,6 +127,7 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
     var handlePermissionResult: GGPermissionState = .ENABLED
     private(set) var handlePermissionCalls = 0
     private(set) var lastHandledPermission: PermissionType?
+    private(set) var navigateToWifiSettingsCalls = 0
 
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
@@ -150,6 +151,10 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
 
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState? {
         forcedGetPermissionState ?? currentState
+    }
+
+    func navigateToWifiSettings() {
+        navigateToWifiSettingsCalls += 1
     }
 }
 
@@ -190,6 +195,17 @@ final class MockPushScaleService: ScaleServiceProtocol {
         skipDuplicateCheck: Bool
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createR4Scale")
+    }
+
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createBluetoothScale")
     }
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}

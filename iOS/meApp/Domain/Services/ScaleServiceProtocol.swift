@@ -49,6 +49,16 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
         skipDuplicateCheck: Bool
     ) async throws -> Device
 
+    // swiftlint:disable:next function_parameter_count
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device
+
     /// Updates the status of a scale.
     /// - Parameters:
     ///   - scales: The scales to update.
