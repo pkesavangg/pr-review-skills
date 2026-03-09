@@ -11,17 +11,16 @@ import UIKit
 @MainActor
 final class WifiScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperServiceProtocol
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var wifiScaleService: WifiScaleService
-    @Injector private var accountService: AccountService
-    @Injector private var logger: LoggerService
-    @Injector private var scaleService: ScaleService
-    @Injector private var pushNotificationService: PushNotificationService
-    @Injector private var httpClient: HTTPClient
-    @Injector private var bluetoothService: BluetoothService
-    
-    let networkMonitor = NetworkMonitor.shared
+    private let notificationService: NotificationHelperServiceProtocol
+    private let permissionsService: PermissionsServiceProtocol
+    private let wifiScaleService: WifiScaleServiceProtocol
+    private let accountService: AccountServiceProtocol
+    private let logger: LoggerServiceProtocol
+    private let scaleService: ScaleServiceProtocol
+    private let pushNotificationService: PushNotificationServiceProtocol
+    private let httpClient: HTTPClientProtocol
+    private var bluetoothService: BluetoothServiceProtocol
+    private let networkMonitor: NetworkMonitoring
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -203,12 +202,49 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Lifecycle
-    init() {
+    convenience init() {
+        self.init(
+            notificationService: WifiScaleSetupStore.resolveDependency(NotificationHelperServiceProtocol.self),
+            permissionsService: WifiScaleSetupStore.resolveDependency(PermissionsServiceProtocol.self),
+            wifiScaleService: WifiScaleSetupStore.resolveDependency(WifiScaleServiceProtocol.self),
+            accountService: WifiScaleSetupStore.resolveDependency(AccountServiceProtocol.self),
+            logger: WifiScaleSetupStore.resolveDependency(LoggerServiceProtocol.self),
+            scaleService: WifiScaleSetupStore.resolveDependency(ScaleServiceProtocol.self),
+            pushNotificationService: WifiScaleSetupStore.resolveDependency(PushNotificationServiceProtocol.self),
+            httpClient: WifiScaleSetupStore.resolveDependency(HTTPClientProtocol.self),
+            bluetoothService: WifiScaleSetupStore.resolveDependency(BluetoothServiceProtocol.self),
+            networkMonitor: NetworkMonitor.shared
+        )
+    }
+
+    init(
+        notificationService: NotificationHelperServiceProtocol,
+        permissionsService: PermissionsServiceProtocol,
+        wifiScaleService: WifiScaleServiceProtocol,
+        accountService: AccountServiceProtocol,
+        logger: LoggerServiceProtocol,
+        scaleService: ScaleServiceProtocol,
+        pushNotificationService: PushNotificationServiceProtocol,
+        httpClient: HTTPClientProtocol,
+        bluetoothService: BluetoothServiceProtocol,
+        networkMonitor: NetworkMonitoring
+    ) {
+        self.notificationService = notificationService
+        self.permissionsService = permissionsService
+        self.wifiScaleService = wifiScaleService
+        self.accountService = accountService
+        self.logger = logger
+        self.scaleService = scaleService
+        self.pushNotificationService = pushNotificationService
+        self.httpClient = httpClient
+        self.bluetoothService = bluetoothService
+        self.networkMonitor = networkMonitor
+
         // Initialize HTTPClient skipCheckNetwork to false
         httpClient.skipCheckNetwork = false
         
         // Observe permission updates
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -216,7 +252,7 @@ final class WifiScaleSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
         
-        networkMonitor.$isConnected
+        networkMonitor.isConnectedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isConnected in
                 self?.updateNextEnabled()
@@ -661,7 +697,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     token: self.scaleToken ?? "",
                     bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice)
+                let response = try await self.scaleService.createDevice(newDevice, false)
                 await self.scaleService.syncAllScalesWithRemote()
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
@@ -854,6 +890,15 @@ final class WifiScaleSetupStore: ObservableObject {
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
+    }
+}
+
+private extension WifiScaleSetupStore {
+    static func resolveDependency<T>(_ type: T.Type) -> T {
+        guard let dependency = DependencyContainer.shared.resolve(T.self) else {
+            fatalError("Dependency \(T.self) is not registered in DependencyContainer")
+        }
+        return dependency
     }
 }
 // swiftlint:disable:next file_length
