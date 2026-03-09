@@ -15,6 +15,9 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -117,11 +120,15 @@ constructor(
    */
   private suspend fun loadData(account: Account) {
     accountService.subscribeAccount()
-    entryService.updateAllData(accountId = account.id)
-    dashboardService.setAccountId(account.id)
-    deviceService.setAccountId(account.id)
     deviceInfoService.updateDeviceInfo()
-    deviceInfoService.updateLocalIntegrationInfo()
+    coroutineScope {
+      awaitAll(
+        async { entryService.updateAllData(accountId = account.id) },
+        async { dashboardService.setAccountId(account.id) },
+        async { deviceService.setAccountId(account.id) },
+        async { deviceInfoService.updateLocalIntegrationInfo() },
+      )
+    }
   }
 
   /**
