@@ -373,16 +373,20 @@ final class BluetoothScaleSetupStore: ObservableObject {
     private func startEntrySyncing() {
         self.bluetoothConnectionState = .success
 
-        // Attach listener immediately so the first entry is never missed while UI advances.
-        bluetoothService.resumeSmartScan(clearOnlyPairing: false)
+        // Attach listener before resuming scan so no first-entry event is missed.
         setupNewEntrySubscription()
+        bluetoothService.resumeSmartScan(clearOnlyPairing: false)
         Task {
             await self.syncNewScale()
         }
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
-            self.moveToNextStep()
+            if self.isEntrySynced {
+                self.promoteToStepOnIfPossible()
+            } else if self.currentStep == .connectingBluetooth {
+                self.moveToNextStep()
+            }
         }
     }
     
@@ -390,15 +394,15 @@ final class BluetoothScaleSetupStore: ObservableObject {
         guard discoveredScale != nil else {
             return
         }
-        
+
+        // Set up subscription first so entry events during resume/sync are not dropped.
+        setupNewEntrySubscription()
+
         // Resume smart scan
         bluetoothService.resumeSmartScan(clearOnlyPairing: false)
-        
+
         // Sync the newly paired device with BluetoothService
         await syncNewScale()
-        
-        // Set up subscription to listen for new entries
-        setupNewEntrySubscription()
     }
     
     private func syncNewScale() async {
@@ -421,19 +425,20 @@ final class BluetoothScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-
-                // Mark entry as synced and update UI
+                // Mark entry as synced and update UI immediately on main queue.
                 self.isEntrySynced = true
                 self.updateNextEnabled()
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: self.stepTransitionDelayNs)
-                    if let stepOnIndex = self.steps.firstIndex(of: .stepOn),
-                       self.currentStepIndex <= stepOnIndex {
-                        self.currentStepIndex = stepOnIndex
-                    }
-                }
+                self.promoteToStepOnIfPossible()
                 self.cleanupEntrySubscription()
             }
+    }
+
+    private func promoteToStepOnIfPossible() {
+        guard let stepOnIndex = steps.firstIndex(of: .stepOn),
+              currentStepIndex <= stepOnIndex else {
+            return
+        }
+        currentStepIndex = stepOnIndex
     }
     
     private func cleanupEntrySubscription() {
