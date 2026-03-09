@@ -18,7 +18,7 @@ protocol ScaleMigrationServiceProtocol {
 
 /// Service to migrate scale data from Ionic app (Capacitor Preferences) to SwiftUI app (SwiftData)
 @MainActor
-final class ScaleMigrationService {
+final class ScaleMigrationService: ScaleMigrationServiceProtocol {
     @Injector private var logger: LoggerServiceProtocol
     @Injector private var scaleService: ScaleService
     private let scaleRepository = ScaleRepository()
