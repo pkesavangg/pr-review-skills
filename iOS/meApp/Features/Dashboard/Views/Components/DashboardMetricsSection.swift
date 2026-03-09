@@ -56,18 +56,18 @@ struct DashboardMetricsSection: View {
                 if !store.state.ui.isEditMode {
                     store.state.ui.isEditMode = true
                 }
-                store.syncRemovalStateFromMetricsManager()
+                store.gridEditingManager.syncRemovalStateFromMetricsManager()
                 store.objectWillChange.send()
             }
         }
         .onChange(of: store.metricsManager.state.metrics) { _, _ in
             if parentView == .R4ScaleSetup {
-                store.debouncedSyncRemovalState()
+                store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: store.metricsManager.state.activeMetricsCount) { _, _ in
             if parentView == .R4ScaleSetup {
-                store.debouncedSyncRemovalState()
+                store.gridEditingManager.debouncedSyncRemovalState()
             }
         }
         .onChange(of: parentView) { _, newValue in
@@ -90,7 +90,7 @@ struct DashboardMetricsSection: View {
             MetricGridUIKitView(parentView: parentView, store: store) { _ in
                 // Long press on any metric should directly open edit dashboard mode
                 if !store.state.ui.isEditMode {
-                    store.toggleEditMode()
+                    store.gridEditingManager.toggleEditMode()
                 }
             }
             .frame(minHeight: DevicePlatform.isTablet ? 74 : 100)

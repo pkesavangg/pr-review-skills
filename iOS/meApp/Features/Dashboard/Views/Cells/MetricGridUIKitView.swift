@@ -98,7 +98,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                                 isBeingDragged: false,
                                 parentView: parentView
                             )
-                            metricCell.isRemoved = store.isMetricRemoved(item.label)
+                            metricCell.isRemoved = store.gridEditingManager.isMetricRemoved(item.label)
                         }
                     }
                 }
@@ -115,7 +115,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                             isBeingDragged: false,
                             parentView: parentView
                         )
-                        metricCell.isRemoved = store.isMetricRemoved(item.label)
+                        metricCell.isRemoved = store.gridEditingManager.isMetricRemoved(item.label)
                     }
                 }
             }
@@ -285,7 +285,7 @@ extension MetricGridUIKitView {
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
             // Reflect removal status on the cell so UI can render accordingly
-            cell.isRemoved = store.isMetricRemoved(item.label)
+            cell.isRemoved = store.gridEditingManager.isMetricRemoved(item.label)
             // Do not add custom gesture recognizers in edit mode; allow SwiftUI buttons to receive taps.
             // Reorder is handled via UICollectionView interactive movement (long-press + beginInteractiveMovementForItem).
             cell.isUserInteractionEnabled = true
@@ -299,7 +299,7 @@ extension MetricGridUIKitView {
                         
                         // Sync the UI state with the metrics manager after the change
                         await MainActor.run {
-                            self.store.syncRemovalStateFromMetricsManager()
+                            self.store.gridEditingManager.syncRemovalStateFromMetricsManager()
                         }
                     }
                 }
@@ -369,7 +369,7 @@ extension MetricGridUIKitView {
                   destinationIndexPath.item < firstRemovedIndex else {
                 return
             }
-            store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
+            store.gridEditingManager.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
             HapticFeedbackService.light()
         }
 
@@ -407,7 +407,7 @@ extension MetricGridUIKitView {
                 // If not in edit mode, enter edit mode on long press of a metric cell,
                 // then immediately proceed to start the drag for the same cell.
                 if !store.state.ui.isEditMode {
-                    store.toggleEditMode()
+                    store.gridEditingManager.toggleEditMode()
                 }
                 
                 // Only allow interactive movement when edit mode is ON

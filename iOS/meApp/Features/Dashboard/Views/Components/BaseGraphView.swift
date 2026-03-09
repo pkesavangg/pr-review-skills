@@ -508,7 +508,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         // Don't grey out points while scrolling
         guard !viewModel.isScrolling else { return false }
 
-        guard let monthInterval = dashboardStore.activeMonthInterval else {
+        guard let monthInterval = dashboardStore.displayManager.activeMonthInterval else {
             return false
         }
         // Check if date is before month start or on/after month end
@@ -586,10 +586,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ViewBuilder
     private func goalWeightChip(_ value: Double) -> some View {
         // Round value for display, then format for weightless sign semantics
-        let rounded = viewModel.dashboardStore?.roundedGoalWeight(value) ?? value.rounded(.toNearestOrAwayFromZero)
+        let rounded = viewModel.dashboardStore?.displayManager.roundedGoalWeight(value) ?? value.rounded(.toNearestOrAwayFromZero)
         let label: String = {
             if let store = viewModel.dashboardStore {
-                return store.formatWeightDisplayText(rounded)
+                return store.displayManager.formatWeightDisplayText(rounded)
             } else {
                 return getCachedYAxisLabel(rounded)
             }
@@ -774,7 +774,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
     /// Returns cached Y-axis label (read-only during rendering)
     private func getCachedYAxisLabel(_ value: Double) -> String {
-        return cachedYAxisLabels[value] ?? dashboardStore.formatYAxisTickLabel(value)
+        return cachedYAxisLabels[value] ?? dashboardStore.displayManager.formatYAxisTickLabel(value)
     }
 
     /// Returns cached X-axis label (read-only during rendering)
@@ -788,14 +788,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         for tick in viewModel.yAxisTicks {
 // swiftlint:disable:next for_where
             if cachedYAxisLabels[tick] == nil {
-                cachedYAxisLabels[tick] = dashboardStore.formatYAxisTickLabel(tick)
+                cachedYAxisLabels[tick] = dashboardStore.displayManager.formatYAxisTickLabel(tick)
             }
         }
 
         // Cache goal weight label if present (non-nil)
         // In weightless mode, goal of 0 is valid (maintain anchor weight)
         if let goalWeight = viewModel.goalWeight, cachedYAxisLabels[goalWeight] == nil {
-            cachedYAxisLabels[goalWeight] = dashboardStore.formatYAxisTickLabel(goalWeight)
+            cachedYAxisLabels[goalWeight] = dashboardStore.displayManager.formatYAxisTickLabel(goalWeight)
         }
 
         // Cache X-axis labels for scrollable views
@@ -998,12 +998,12 @@ extension View {
                                 // Use view model's preferredSelectedDate if provided, else fallback to raw selection
                                 let dateToSend = viewModel.preferredSelectedDate ?? selectedDate
                                 Task {
-                                    await dashboardStore.handleChartSelection(at: dateToSend)
+                                    await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                 }
                             } else {
                                 // Clear any previous selection in the store
                                 Task {
-                                    await dashboardStore.handleChartSelection(at: nil)
+                                    await dashboardStore.chartManager.handleChartSelection(at: nil)
                                 }
                             }
                         }
@@ -1021,12 +1021,12 @@ extension View {
                                 if viewModel.showCrosshair {
                                     let dateToSend = viewModel.preferredSelectedDate ?? date
                                     Task {
-                                        await dashboardStore.handleChartSelection(at: dateToSend)
+                                        await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                     }
                                 } else {
                                     // Clear any previous selection in the store
                                     Task {
-                                        await dashboardStore.handleChartSelection(at: nil)
+                                        await dashboardStore.chartManager.handleChartSelection(at: nil)
                                     }
                                 }
                             }
@@ -1067,10 +1067,10 @@ extension View {
                             if viewModel.showCrosshair {
                                 let dateToSend = viewModel.preferredSelectedDate ?? rawDate
                                 Task {
-                                    await dashboardStore.handleChartSelection(at: dateToSend)
+                                    await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                 }
                             } else {
-                                Task { await dashboardStore.handleChartSelection(at: nil) }
+                                Task { await dashboardStore.chartManager.handleChartSelection(at: nil) }
                             }
                         }
                     }
@@ -1086,12 +1086,12 @@ extension View {
                                 if viewModel.showCrosshair {
                                     let dateToSend = viewModel.preferredSelectedDate ?? date
                                     Task {
-                                        await dashboardStore.handleChartSelection(at: dateToSend)
+                                        await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                     }
                                 } else {
                                     // Clear any previous selection in the store
                                     Task {
-                                        await dashboardStore.handleChartSelection(at: nil)
+                                        await dashboardStore.chartManager.handleChartSelection(at: nil)
                                     }
                                 }
                             }
