@@ -61,19 +61,21 @@ constructor(
 
   suspend fun saveScale(){
     try {
-      if (discoveredScale != null) {
+      val scale = discoveredScale
+      if (scale != null) {
         val scaleInfo = state.value.scaleSetupState.scaleInfo
         val currentTime = Instant.now().toString()
-        discoveredScale = discoveredScale!!.copy(
+        val updatedScale = scale.copy(
           nickname = scaleInfo?.productName ?: "Bluetooth Smart Scale",
           deviceType = ScaleSetupType.Lcbt.value,
           sku = sku,
           createdAt = currentTime,
-          device = discoveredScale!!.device?.copy(
-            deviceName = discoveredScale!!.device?.deviceName ?: scaleInfo?.productName ?: "",
+          device = scale.device?.copy(
+            deviceName = scale.device.deviceName.ifEmpty { scaleInfo?.productName ?: "" },
           ),
         )
-        deviceService.saveScale(discoveredScale!!)
+        discoveredScale = updatedScale
+        deviceService.saveScale(updatedScale)
         AppLog.i(TAG, "Successfully saved LCBT scale with SKU: $sku")
       } else {
         AppLog.w(TAG, "No discovered LCBT scale to save")
@@ -101,8 +103,7 @@ constructor(
       }
     } else {
       AppLog.d(TAG, "After Next intent - new currentStep: ${currentState.step}")
-      if (currentState.nextStep != null)
-        handleIntent(ScaleSetupIntent.SetNewStep(currentState.nextStep!!))
+      currentState.nextStep?.let { handleIntent(ScaleSetupIntent.SetNewStep(it)) }
     }
   }
 

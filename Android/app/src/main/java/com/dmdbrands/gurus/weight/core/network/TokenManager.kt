@@ -6,8 +6,8 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,9 +32,9 @@ interface ITokenManager {
 
     fun isTokenExpired(): Boolean
 
-    fun getAccessToken(): String?
+    suspend fun getAccessToken(): String?
 
-    fun getRefreshToken(): String?
+    suspend fun getRefreshToken(): String?
 
     fun getTokenExpiresAt(): String?
 
@@ -77,8 +77,8 @@ constructor(
     override var isOtherUserTokenRefreshed = false
         private set
 
-    // In-memory map for multi-account token management
-     override val accountTokens = mutableMapOf<String, Token>()
+    // In-memory map for multi-account token management (ConcurrentHashMap for thread safety)
+    override val accountTokens = ConcurrentHashMap<String, Token>()
 
     override suspend fun setTokens(token: Token) {
         AppLog.v(TAG, "Setting tokens for account: ${token.accountId}")
@@ -145,24 +145,18 @@ constructor(
         } ?: true
     }
 
-    override fun getAccessToken(): String? {
-        return runBlocking {
+   override suspend fun getAccessToken(): String? =
             val accountId = userDataStore.currentAccountIdFlow.first()
             accountId?.let { accountTokens[it]?.accessToken ?: secureTokenStore.getToken(it)?.accessToken }
-        }
-    }
 
-    override fun getRefreshToken(): String? {
-        return runBlocking {
+    override suspend fun getRefreshToken(): String? =
             val accountId = userDataStore.currentAccountIdFlow.first()
             accountId?.let { accountTokens[it]?.refreshToken ?: secureTokenStore.getToken(it)?.refreshToken }
-        }
-    }
 
     override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
   override suspend fun getAccessToken(accountId: String): String? {
-    AppLog.d("Accountrepo2", "Processing request for account: $accountId")
+    AppLog.d("Token manager", "Processing request for account: $accountId")
     return try {
       accountTokens[accountId]?.accessToken
         ?: secureTokenStore.getToken(accountId)?.accessToken

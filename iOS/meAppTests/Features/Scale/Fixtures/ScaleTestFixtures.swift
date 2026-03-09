@@ -84,10 +84,11 @@ enum ScaleTestFixtures {
         displayName: String = "Bathroom Scale",
         mac: String = "AA:BB:CC:DD:EE:FF",
         broadcastIdString: String = "A1B2C3",
-        broadcastId: Int = 123456,
+        broadcastId: Int? = 123456,
         sku: String = "R4-001",
         deviceName: String = "AccuCheck Verve Smart Scale",
-        token: String = "token-1"
+        token: String = "token-1",
+        type: String = ScaleSourceType.btWifiR4.rawValue
     ) -> ScaleDTO {
         ScaleDTO(
             broadcastId: broadcastId,
@@ -109,7 +110,7 @@ enum ScaleTestFixtures {
             preference: makePreferenceDTO(scaleId: id ?? "temp-scale", displayName: displayName),
             scaleToken: token,
             sku: sku,
-            type: ScaleSourceType.btWifiR4.rawValue,
+            type: type,
             userId: accountId,
             userNumber: 0
         )
@@ -128,5 +129,29 @@ enum ScaleTestFixtures {
         )
         metaData.isSynced = isSynced
         return metaData
+    }
+
+    static func makeScaleMetaDataDTO(
+        modelNumber: String? = "R4",
+        serialNumber: String? = "serial-1",
+        latestFirmwareVersion: String? = "1.0.0",
+        firmwareRevision: String? = nil,
+        hardwareRevision: String? = nil,
+        softwareRevision: String? = nil,
+        manufacturerName: String? = nil,
+        systemId: String? = nil,
+        wifiMac: String? = "AA:BB:CC:DD:EE:FF"
+    ) -> ScaleMetaDataDTO {
+        ScaleMetaDataDTO(
+            firmwareRevision: firmwareRevision,
+            hardwareRevision: hardwareRevision,
+            latestFirmwareVersion: latestFirmwareVersion,
+            manufacturerName: manufacturerName,
+            modelNumber: modelNumber,
+            serialNumber: serialNumber,
+            softwareRevision: softwareRevision,
+            systemId: systemId,
+            wifiMac: wifiMac
+        )
     }
 }

@@ -150,7 +150,8 @@ constructor(
   private fun configureR4ScaleDetails() {
     viewModelScope.launch {
       try {
-        ggDeviceService.getConnectedWifiSSID(state.value.scale!!.toGGBTDevice()) { ssid ->
+        val scale = state.value.scale ?: return@launch
+        ggDeviceService.getConnectedWifiSSID(scale.toGGBTDevice()) { ssid ->
           handleIntent(ScaleDetailsIntent.SetConnectedSSID(if (ssid.isEmpty()) null else ssid.cleanCorruptedChars()))
         }
         fetchWifiMacAddress()
@@ -239,23 +240,15 @@ constructor(
 
   private fun openScaleMode() {
     viewModelScope.launch {
-      if (!state.value.scale
-          ?.id
-          .isNullOrEmpty()
-      ) {
-        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(state.value.scale!!.id))
-      }
+      val id = state.value.scale?.id ?: return@launch
+      navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(id))
     }
   }
 
   private fun openScaleDisplayMetrics() {
     viewModelScope.launch {
-      if (!state.value.scale
-          ?.id
-          .isNullOrEmpty()
-      ) {
-        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(state.value.scale!!.id))
-      }
+      val id = state.value.scale?.id ?: return@launch
+      navigationService.navigateTo(AppRoute.ScaleDetails.ScaleDisplayMetrics(id))
     }
   }
 
@@ -270,7 +263,7 @@ constructor(
             primaryActionType = com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText,
             onConfirm = {
               viewModelScope.launch {
-                val scale = state.value.scale!!
+                val scale = state.value.scale ?: return@launch
                 dialogQueueService.dismissCurrent()
                 dialogQueueService.showLoader(message = ScaleDetailsStrings.DeleteLoaderMessage)
                 try {
@@ -321,12 +314,8 @@ constructor(
 
   private fun openScaleUsers() {
     viewModelScope.launch {
-      if (!state.value.scale
-          ?.id
-          .isNullOrEmpty()
-      ) {
-        navigationService.navigateTo(AppRoute.ScaleDetails.ScaleUsers(state.value.scale!!.id))
-      }
+      val id = state.value.scale?.id ?: return@launch
+      navigationService.navigateTo(AppRoute.ScaleDetails.ScaleUsers(id))
     }
   }
 
@@ -368,7 +357,8 @@ constructor(
     )
     viewModelScope.launch {
       try {
-        deviceService.updateScaleNickname(state.value.scale!!, scaleName)
+        val scale = state.value.scale ?: return@launch
+        deviceService.updateScaleNickname(scale, scaleName)
         AppLog.i("SaveScaleName", "Updated scale name: ${state.value.scale}")
         showToast(ScaleNameDialogStrings.Toast.Success)
         dialogQueueService.dismissCurrent()

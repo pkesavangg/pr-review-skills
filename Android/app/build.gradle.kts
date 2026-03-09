@@ -12,7 +12,6 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.google.proto)
-  kotlin("kapt")
 }
 
 android {
@@ -42,12 +41,23 @@ android {
 
   buildTypes {
     debug {
+      buildConfigField(
+        "String",
+        "BASE_URL",
+        "\"https://api.weightgurus.com/v3/\"",
+      )
     }
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
+      )
+      buildConfigField(
+        "String",
+        "BASE_URL",
+        "\"https://api.weightgurus.com/v3/\"",
       )
     }
   }
@@ -125,7 +135,7 @@ dependencies {
 
   // Hilt
   implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
+  ksp(libs.hilt.android.compiler)
 
   // Retrofit
   implementation(libs.retrofit)
@@ -192,11 +202,6 @@ dependencies {
 
   // foundation-pullrefresh
   // implementation(libs.androidx.foundation.pullrefresh)
-}
-
-// Allow references to generated code
-kapt {
-  correctErrorTypes = true
 }
 
 protobuf {
