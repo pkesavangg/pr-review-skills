@@ -21,4 +21,3 @@ public struct ScaleReviewEvent {
         self.flagId = flagId
     }
 }
-

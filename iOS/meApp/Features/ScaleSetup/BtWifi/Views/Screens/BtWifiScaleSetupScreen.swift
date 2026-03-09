@@ -80,14 +80,13 @@ struct BtWifiScaleSetupScreen: View {
             // Step views with swiper
             SwiperView(
                 selectedIndex: $setupStore.currentStepIndex,
-                views: stepViews,
-                shouldApplyHorizontalPadding: { index in
+                views: stepViews
+            ) { index in
                     // Omit horizontal padding for Scale Metrics and Dashboard Metrics customization screens.
                     !(setupStore.steps[index] == .viewSettings &&
                       (setupStore.currentCustomizeSetting == .scaleMetrics ||
                        setupStore.currentCustomizeSetting == .dashboardMetrics))
                 }
-            )
             
             // Footer Buttons - hide for specific steps if needed
             if setupStore.shouldShowFooter() {
@@ -114,6 +113,7 @@ struct BtWifiScaleSetupScreen: View {
                                  discoveryEvent: discoveryEvent,
                                  saveScale: savedScale,
                                  isReconnect: isReconnect,
+// swiftlint:disable:next multiline_arguments
                                  isDuplicated: isDuplicated, isWifiSetupOnly: isWifiSetupOnly)
             
         }
@@ -139,9 +139,9 @@ struct BtWifiScaleSetupScreen: View {
                 // Show Skip only when no network is already connected.
                 if setupStore.scaleSetupError == .none && setupStore.connectedWifiNetwork == nil {
                     Spacer()
-                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false, action: {
+                    ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false) {
                         setupStore.handleSkipWifiStep()
-                    })
+                    }
                     Spacer()
                 } else {
                     // Otherwise, show the standard Back/Next buttons.
@@ -149,26 +149,24 @@ struct BtWifiScaleSetupScreen: View {
                                type: .inlineTextPrimary,
                                size: .small,
                                isDisabled: setupStore.shouldDisableBackButton(),
-                               useFrameForInlineText: true,
-                               action: {
+                               useFrameForInlineText: true) {
                         withAnimation {
                             hideKeyboard()
                         }
                         setupStore.handleBackButtonClick()
-                    })
+                    }
                     Spacer()
                     ButtonView(text: setupStore.nextButtonText,
                                type: .filledPrimary,
                                size: .small,
                                isDisabled: !setupStore.isNextEnabled,
                                customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
-                               customVerticalPadding: .spacingXS / 4,
-                               action: {
+                               customVerticalPadding: .spacingXS / 4) {
                         withAnimation {
                             hideKeyboard()
                         }
                         setupStore.handleNextButtonClick()
-                    })
+                    }
                 }
             } else if setupStore.currentStep == .scaleConnected {
                 // Show centered finish button for scaleConnected step
@@ -178,39 +176,36 @@ struct BtWifiScaleSetupScreen: View {
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
                            customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
-                           customVerticalPadding: .spacingXS / 4,
-                           action: {
+                           customVerticalPadding: .spacingXS / 4) {
                     withAnimation {
                         hideKeyboard()
                     }
                     setupStore.handleNextButtonClick()
-                })
+                }
                 Spacer()
             } else {
                 ButtonView(text: commonLang.back,
                            type: .inlineTextPrimary,
                            size: .small,
                            isDisabled: setupStore.shouldDisableBackButton(),
-                           useFrameForInlineText: true,
-                           action: {
+                           useFrameForInlineText: true) {
                     withAnimation {
                         hideKeyboard()
                     }
                     setupStore.handleBackButtonClick()
-                })
+                }
                 Spacer()
                 ButtonView(text: setupStore.nextButtonText,
                            type: .filledPrimary,
                            size: .small,
                            isDisabled: !setupStore.isNextEnabled,
                            customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
-                           customVerticalPadding: .spacingXS / 4,
-                           action: {
+                           customVerticalPadding: .spacingXS / 4) {
                     withAnimation {
                         hideKeyboard()
                     }
                     setupStore.handleNextButtonClick()
-                })
+                }
             }
         }
     }

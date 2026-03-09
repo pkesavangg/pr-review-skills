@@ -86,7 +86,7 @@ struct PickerView<T: Hashable>: View {
             
             // Picker Section
             ZStack {
-                //Selection background
+                // Selection background
                 RoundedRectangle(cornerRadius: .radiusSM)
                     .fill(theme.backgroundSecondary)
                     .frame(height: 35)

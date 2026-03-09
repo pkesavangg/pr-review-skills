@@ -1,6 +1,6 @@
-import Foundation
 import Combine
-
+import Foundation
+import GGBluetoothSwiftPackage
 
 /// Protocol defining the service interface for managing Bluetooth-enabled scales and related operations.
 ///
@@ -18,6 +18,8 @@ protocol BluetoothServiceProtocol {
 
     /// Indicates whether a setup is currently in progress.
     var isSetupInProgress: Bool { get set }
+    var skipDevices: [String] { get }
+    var onOpenScaleSetup: ((Device, DeviceDiscoveryEvent?, Bool, Bool) -> Void)? { get set }
 
     // MARK: - Publishers
     /// Publisher for unified device discovery events containing device, protocol type, and isNew flag.
@@ -36,12 +38,19 @@ protocol BluetoothServiceProtocol {
     /// Publisher for firmware update progress.
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { get }
 
+    /// Publisher for live measurement data while a user is on the scale.
+    var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { get }
+
     // MARK: - Lifecycle / Initialisation
     /// Initializes the Bluetooth service and subscribes to account changes.
     func initialize()
 
     /// Stops all ongoing Bluetooth operations and scanning.
     func stopScan()
+    func startBluetoothOperations() async
+    func disconnectConnectedScales() async
+    func reapplySkipDevicesExcludingPaired()
+    func handleWeightOnlyModeAlertDismissed()
 
     /// Clears all devices from the underlying Bluetooth plugin / cache.
     func clearDevices()
@@ -154,4 +163,20 @@ protocol BluetoothServiceProtocol {
     /// This method is typically called during account deletion to clean up scale connections.
     /// - Returns: Result<Void, BluetoothServiceError>
     func deleteR4Scales() async -> Result<Void, BluetoothServiceError>
+
+    func convertHexToInt(_ hex: String) -> Int64
+}
+
+extension BluetoothServiceProtocol {
+    func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError> {
+        await getDeviceInfo(for: device, skipConnectionCheck: false)
+    }
+
+    func getScaleUserList(for device: Device) async -> Result<[DeviceUser], BluetoothServiceError> {
+        await getScaleUserList(for: device, skipConnectionCheck: false)
+    }
+
+    func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+        await disconnectDevice(broadcastId: broadcastId, considerForSession: true)
+    }
 }

@@ -4,6 +4,7 @@ import Foundation
 ///
 /// This protocol defines the contract for interacting with entry data sources (e.g., local database, cache).
 /// It includes CRUD operations, queries by user/month, progress/streak calculations, and sync support.
+@MainActor
 protocol EntryRepositoryProtocol {
     // MARK: - CRUD
 

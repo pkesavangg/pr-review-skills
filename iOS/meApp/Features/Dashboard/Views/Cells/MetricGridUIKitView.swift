@@ -18,7 +18,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
     // MARK: - Properties
     
     @ObservedObject var store: DashboardStore
-    var onMetricLongPress: ((String) -> Void)? = nil
+    var onMetricLongPress: ((String) -> Void)?
     
     // MARK: - UIViewRepresentable
     
@@ -29,6 +29,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
         return collectionView
     }
     
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func updateUIView(_ uiView: UICollectionView, context: Context) {
         let coordinator = context.coordinator
         coordinator.store = store
@@ -45,11 +46,6 @@ struct MetricGridUIKitView: UIViewRepresentable {
         let selectionChanged = newSelectedLabel != coordinator.lastSelectedMetricLabel
         let removalStateChanged = newRemovedMetrics != coordinator.lastRemovedMetrics
         let activeMetricsCountChanged = newActiveMetricsCount != coordinator.lastActiveMetricsCount
-        
-        // Check if this is a reset operation (all metrics restored and order reset)
-        let isResetOperation = newRemovedMetrics.isEmpty && 
-                              newActiveMetricsCount == store.metricsManager.state.metrics.count &&
-                              coordinator.lastRemovedMetrics.count > 0
         
         // Disable system drag interaction; we use interactive movement with a clamped gesture
         uiView.dragInteractionEnabled = false
@@ -102,7 +98,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                                 isBeingDragged: false,
                                 parentView: parentView
                             )
-                            metricCell.isRemoved = store.isMetricRemoved(item.label)
+                            metricCell.isRemoved = store.gridEditingManager.isMetricRemoved(item.label)
                         }
                     }
                 }
@@ -119,7 +115,7 @@ struct MetricGridUIKitView: UIViewRepresentable {
                             isBeingDragged: false,
                             parentView: parentView
                         )
-                        metricCell.isRemoved = store.isMetricRemoved(item.label)
+                        metricCell.isRemoved = store.gridEditingManager.isMetricRemoved(item.label)
                     }
                 }
             }
@@ -210,7 +206,7 @@ extension MetricGridUIKitView {
         var lastItemIds: [UUID] = []
         var lastDashboardType: DashboardType = .dashboard12
         var lastIsEditMode: Bool = false
-        var lastSelectedMetricLabel: String? = nil
+        var lastSelectedMetricLabel: String?
         var lastRemovedMetrics: Set<String> = []
         var lastActiveMetricsCount: Int = 0
         var suppressNextReload: Bool = false
@@ -254,7 +250,12 @@ extension MetricGridUIKitView {
         }
         
         func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "MetricCell", for: indexPath) as! MetricCell
+            guard let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: "MetricCell",
+                for: indexPath
+            ) as? MetricCell else {
+                return UICollectionViewCell()
+            }
             
             // Ensure we're using the current metricsToShow array to prevent stale data during reloads
             guard indexPath.item < store.metricsToShow.count else {
@@ -271,8 +272,8 @@ extension MetricGridUIKitView {
                 store: store,
                 isBeingDragged: false,
                 parentView: parent.parentView,
-                onMetricLongPress: parent.onMetricLongPress,
-                onSelectMetric: { label in
+                onMetricLongPress: parent.onMetricLongPress
+            ) { label in
                     if label.isEmpty {
                         self.store.state.ui.selectedMetricLabel = nil
                     } else {
@@ -281,11 +282,10 @@ extension MetricGridUIKitView {
                     // Publish selection change so the grid reconfigures visible cells immediately
                     self.store.objectWillChange.send()
                 }
-            )
             cell.rowIndex = indexPath.row
             cell.isWiggling = store.state.ui.isEditMode
             // Reflect removal status on the cell so UI can render accordingly
-            cell.isRemoved = store.isMetricRemoved(item.label)
+            cell.isRemoved = store.gridEditingManager.isMetricRemoved(item.label)
             // Do not add custom gesture recognizers in edit mode; allow SwiftUI buttons to receive taps.
             // Reorder is handled via UICollectionView interactive movement (long-press + beginInteractiveMovementForItem).
             cell.isUserInteractionEnabled = true
@@ -299,7 +299,7 @@ extension MetricGridUIKitView {
                         
                         // Sync the UI state with the metrics manager after the change
                         await MainActor.run {
-                            self.store.syncRemovalStateFromMetricsManager()
+                            self.store.gridEditingManager.syncRemovalStateFromMetricsManager()
                         }
                     }
                 }
@@ -369,7 +369,7 @@ extension MetricGridUIKitView {
                   destinationIndexPath.item < firstRemovedIndex else {
                 return
             }
-            store.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
+            store.gridEditingManager.moveMetric(from: sourceIndexPath.item, to: destinationIndexPath.item)
             HapticFeedbackService.light()
         }
 
@@ -393,6 +393,7 @@ extension MetricGridUIKitView {
         }
 
         // MARK: - Interactive Movement with Clamped Bounds
+        // swiftlint:disable:next cyclomatic_complexity function_body_length
         @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
             guard let collectionView = gesture.view as? UICollectionView else { return }
 
@@ -406,7 +407,7 @@ extension MetricGridUIKitView {
                 // If not in edit mode, enter edit mode on long press of a metric cell,
                 // then immediately proceed to start the drag for the same cell.
                 if !store.state.ui.isEditMode {
-                    store.toggleEditMode()
+                    store.gridEditingManager.toggleEditMode()
                 }
                 
                 // Only allow interactive movement when edit mode is ON
@@ -423,7 +424,7 @@ extension MetricGridUIKitView {
 
                 // Temporarily allow animations by clearing suppressed actions
                 if originalLayerActions == nil {
-                    originalLayerActions = collectionView.layer.actions as? [String: CAAction]
+                    originalLayerActions = collectionView.layer.actions
                     collectionView.layer.actions = [:]
                 }
 

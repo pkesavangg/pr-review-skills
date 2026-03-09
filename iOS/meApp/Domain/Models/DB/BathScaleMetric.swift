@@ -82,4 +82,3 @@ final class BathScaleMetric {
 
 // NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
 // Use PersistentIdentifier to pass references between contexts.
-

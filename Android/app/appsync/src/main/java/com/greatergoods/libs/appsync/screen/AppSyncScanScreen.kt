@@ -41,7 +41,6 @@ import com.greatergoods.libs.appsync.utility.AppSyncZoomManager
 import java.util.concurrent.Executors
 import android.Manifest
 import android.content.pm.PackageManager
-import android.util.Log
 
 /**
  * Main Composable for the AppSync scan screen.
@@ -185,8 +184,9 @@ fun AppSyncScanScreen(
         when {
             // Show error message if camera initialization failed
             cameraError != null -> {
+                val error = cameraError
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = cameraError!!, color = MaterialTheme.colorScheme.error)
+                    Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
                 }
             }
 
@@ -274,7 +274,7 @@ fun AppSyncScanScreen(
  * Placeholder result screen for displaying scan results.
  *
  * This composable is a simple placeholder that can be used to display
- * scan results in a separate screen. Currently shows a basic completion message.
+ * scan results in a separate screen. Currently, shows a basic completion message.
  *
  * @param result The scan result to display
  */

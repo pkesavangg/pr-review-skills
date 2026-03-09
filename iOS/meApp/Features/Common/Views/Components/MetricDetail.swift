@@ -22,8 +22,19 @@ struct MetricDetailView: View {
     let measurementLabel: String?
     
     private let placeholder = "--"
-
-    private var config: MetricData { BodyMetrics.config[metric]! }
+    private var config: MetricData {
+        BodyMetrics.config[metric]
+        ?? BodyMetrics.config[.weight]
+        ?? MetricData(
+            unit: "",
+            label: MetricStrings.weight,
+            bodyCompositionRelated: true,
+            icon: AppAssets.bmiIcon
+        )
+    }
+    private var fallbackBrowserURL: URL {
+        URL(string: URLStrings.baseUrl) ?? AppConstants.LegalURLs.greaterGoodsWebsite
+    }
 
     // Extract raw metric value from DTO (no SwiftData access needed)
     private var rawValue: Double? {
@@ -138,7 +149,7 @@ struct MetricDetailView: View {
                       Text(pre)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.trailing, .spacingXS/2)
+                        .padding(.trailing, .spacingXS / 2)
                     }
                       Text(formattedValue)
                         .fontOpenSans(.heading2)
@@ -149,13 +160,13 @@ struct MetricDetailView: View {
                       Text(weightUnitLabel)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.leading, .spacingXS/2)
+                        .padding(.leading, .spacingXS / 2)
                     }
                     if !config.unit.isEmpty {
                       Text(config.unit)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
-                        .padding(.leading, .spacingXS/2)
+                        .padding(.leading, .spacingXS / 2)
                     }
                   }
                     // Measurement date/placeholder
@@ -214,14 +225,13 @@ struct MetricDetailView: View {
                                 type: .inlineTextPrimary,
                                 size: .small,
                                 isDisabled: false,
-                                alignment: .leading,
-                                action: {
+                                alignment: .leading
+                            ) {
                                   if let url = URL(string: res.link) {
                                     presentingBrowserURL = url
                                     isBrowserPresented = true
                                   }
                                 }
-                            )
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .multilineTextAlignment(.leading)
                         }
@@ -232,7 +242,7 @@ struct MetricDetailView: View {
             .padding(.horizontal, .spacingSM)
         }
         .inAppBrowser(
-          url: presentingBrowserURL ?? URL(string: URLStrings.baseUrl)!,
+          url: presentingBrowserURL ?? fallbackBrowserURL,
           isPresented: $isBrowserPresented
       )
         .sheet(isPresented: $showScaleModesSheet) {

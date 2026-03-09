@@ -37,7 +37,7 @@ struct ActionListItemView: View {
                     // Toggle or value display
                     if let toggleBinding = config.toggleBinding {
                         CustomToggleView(isOn: toggleBinding)
-                            .onChange(of: toggleBinding.wrappedValue) { _, newValue in
+                            .onChange(of: toggleBinding.wrappedValue) { _, _ in
                                 config.onTap?()
                             }
                     } else if let value = config.value {
@@ -79,7 +79,7 @@ struct ActionListItemView: View {
     private func actionLabelText(_ text: String, isDestructive: Bool = false) -> some View {
         Text(text)
             .fontOpenSans(.body2)
-            .foregroundColor(isDestructive ? theme.textError: theme.textBody)
+            .foregroundColor(isDestructive ? theme.textError : theme.textBody)
     }
     
     private func valueText(_ text: String) -> some View {
@@ -95,46 +95,40 @@ struct ActionListItemView: View {
     List {
         Section("Preview") {
             ActionListItemView(config: ActionListItemConfig(
-                title: "Default Row",
-                onTap: { print("Tapped Default Row") }
-            ))
+                title: "Default Row"
+            ) { })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Value",
-                value: "Enabled",
-                onTap: { print("Tapped Value Row") }
-            ))
+                value: "Enabled"
+            ) { })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Up/Down Chevron",
-                chevronType: .upDown,
-                onTap: { print("Tapped Up/Down Row") }
-            ))
+                chevronType: .upDown
+            ) { })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row without Chevron",
-                chevronType: .none,
-                onTap: { print("Tapped No Chevron Row") }
-            ))
+                chevronType: .none
+            ) { })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Row with Dot",
-                showDot: true,
-                onTap: { print("Tapped Dot Row") }
-            ))
-            
+                showDot: true
+            ) { })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Toggle Row",
-                chevronType: .none, toggleBinding: $toggleState,
-                onTap: { print("Toggle tapped") }
-            ))
+// swiftlint:disable:next multiline_arguments
+                chevronType: .none, toggleBinding: $toggleState
+            ) { })
             
             ActionListItemView(config: ActionListItemConfig(
                 title: "Destructive Row",
-                chevronType: .none, isDestructive: true,
-                onTap: { print("Tapped Destructive Row") }
-            ))
+// swiftlint:disable:next multiline_arguments
+                chevronType: .none, isDestructive: true
+            ) { })
             .listRowInsets()
         }
     }

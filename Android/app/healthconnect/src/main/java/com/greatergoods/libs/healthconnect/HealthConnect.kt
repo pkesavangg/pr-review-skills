@@ -33,8 +33,7 @@ import com.greatergoods.libs.healthconnect.interfaces.IHealthConnect
 import com.greatergoods.libs.healthconnect.model.HealthConnectData
 import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -81,7 +80,6 @@ class HealthConnect(
      * This method sets up the ActivityResultLauncher for permission requests.
      * Must be called before requesting permissions.
      */
-    @OptIn(DelicateCoroutinesApi::class)
     private fun load() {
         if (HealthConnectClient.getSdkStatus(activity) == HealthConnectClient.SDK_AVAILABLE ||
             HealthConnectClient.getSdkStatus(activity) == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) {
@@ -89,7 +87,7 @@ class HealthConnect(
             try {
                 val requestPermissionActivityContract = PermissionController.createRequestPermissionResultContract()
                 requestPermissions = activity.registerForActivityResult(requestPermissionActivityContract) { grantedPermissions ->
-                    GlobalScope.launch {
+                    activity.lifecycleScope.launch {
                         try {
                             val hasAnyPermission = hasAnyPermissions(grantedPermissions)
 
@@ -108,11 +106,13 @@ class HealthConnect(
                             sendAuthorizationStatus(result)
 
                         } catch (e: Exception) {
-
+                            Log.e(TAG, "Failed to process permission result", e)
+                            sendAuthorizationStatus(HealthConnectRequestStatus.CANCELLED)
                         }
                     }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to register for activity result", e)
             }
         }
     }

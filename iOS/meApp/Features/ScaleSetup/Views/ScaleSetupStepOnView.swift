@@ -29,7 +29,6 @@ struct ScaleSetupStepOnView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, .spacingXSM)
                 
- 
                 VStack(alignment: .center) {
                     GifView(gifName: appAssets.btStepOnGif)
                         .frame(width: DevicePlatform.isMiniPhone ? 350 : 370,

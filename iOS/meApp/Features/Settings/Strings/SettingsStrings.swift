@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 struct SettingsStrings {
     static let title = "Settings"
 
@@ -50,4 +49,3 @@ struct SettingsStrings {
     static let switchAccounts = "Switch Accounts"
     static let deleteAccount = "Delete Account"
 }
-

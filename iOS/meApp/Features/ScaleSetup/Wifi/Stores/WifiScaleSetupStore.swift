@@ -1,23 +1,26 @@
+// swiftlint:disable type_body_length
+// This file intentionally aggregates WiFi scale setup orchestration logic.
+// Breaking it into smaller files would fragment the multi-step flow management.
+
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 import UIKit
 
 /// Store responsible for orchestrating the WiFi scale setup multi-step flow.
 @MainActor
 final class WifiScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var wifiScaleService: WifiScaleService
-    @Injector private var accountService: AccountService
-    @Injector private var logger: LoggerService
-    @Injector private var scaleService: ScaleService
-    @Injector private var pushNotificationService: PushNotificationService
-    @Injector private var httpClient: HTTPClient
-    @Injector private var bluetoothService: BluetoothService
-    
-    let networkMonitor = NetworkMonitor.shared
+    private let notificationService: NotificationHelperServiceProtocol
+    private let permissionsService: PermissionsServiceProtocol
+    private let wifiScaleService: WifiScaleServiceProtocol
+    private let accountService: AccountServiceProtocol
+    private let logger: LoggerServiceProtocol
+    private let scaleService: ScaleServiceProtocol
+    private let pushNotificationService: PushNotificationServiceProtocol
+    private let httpClient: HTTPClientProtocol
+    private var bluetoothService: BluetoothServiceProtocol
+    private let networkMonitor: NetworkMonitoring
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -34,7 +37,7 @@ final class WifiScaleSetupStore: ObservableObject {
     private var scaleToken: String?
     
     /// Active subscription to the network form changes
-    private var networkFormCancellable: AnyCancellable? = nil
+    private var networkFormCancellable: AnyCancellable?
     
     /// Indicates if the user manually cleared the SSID field (prevents auto-fill).
     private var hasUserManuallyClearedSSID: Bool = false
@@ -43,9 +46,9 @@ final class WifiScaleSetupStore: ObservableObject {
     private var previousSSID: String = ""
     
     /// Tracks the step that presented `.errorSelect` so we can navigate back correctly.
-    private var errorSelectSourceStep: WifiScaleSetupStep? = nil
+    private var errorSelectSourceStep: WifiScaleSetupStep?
     /// Tracks the step that presented `.stepOn` so we can navigate back correctly.
-    private var stepOnSourceStep: WifiScaleSetupStep? = nil
+    private var stepOnSourceStep: WifiScaleSetupStep?
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
@@ -85,11 +88,11 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Connected network identifiers captured right before switching the phone to the
     /// scale’s `gg_SmartScale_##` access point.  Required because iOS APIs stop returning
     /// the original SSID/BSSID once the phone moves to the AP.
-    @Published var connectedSsid: String? = nil
-    @Published var connectedBssid: String? = nil
+    @Published var connectedSsid: String?
+    @Published var connectedBssid: String?
     
     /// Captured MAC address once retrieved (Get-MAC flow).
-    @Published var retrievedMacAddress: String? = nil
+    @Published var retrievedMacAddress: String?
     
     /// Set to *true* when the user taps **Skip** on the permissions page.  Smart-connect
     /// is skipped completely in this case and only AP-mode UI is shown.
@@ -150,7 +153,10 @@ final class WifiScaleSetupStore: ObservableObject {
                     self.navigateToStep(.errorSelect)
                 })
             case .apMode:
-                return AnyView(ApModeConnectionView(connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "", permissionsSkipped: permissionsSkipped) {
+                return AnyView(ApModeConnectionView(
+                    connectedSSID: networkForm.isValidApModeSSID() ? networkForm.ssid.value : "",
+                    permissionsSkipped: permissionsSkipped
+                ) {
                     self.openWifiSettings()
                 })
             case .apModeConfirm:
@@ -159,12 +165,13 @@ final class WifiScaleSetupStore: ObservableObject {
                     userNumber: selectedUserNumber,
                     selectedOption: selectedConnectionMode,
                     mode: .apModeConfirmation
-                ) { selectedMode in
+                ) { _ in
                     self.updateNextEnabled()
                 } onClickButton: {
                     self.navigateToStep(.errorSelect)
                 })
             case .errorSelect:
+// swiftlint:disable:next multiline_arguments
                 return AnyView(ErrorCodeSelectionView(sku: scaleItem.sku, selectedError: selectedErrorCode, onErrorSelected: { code in
                     self.selectedErrorCode = code
                 }, onClickButton: {
@@ -177,7 +184,10 @@ final class WifiScaleSetupStore: ObservableObject {
             case .stepOn:
                 return AnyView(ScaleSetupStepOnView())
             case .setupFinish:
-                return AnyView(ScaleSetupFinishView(title: scaleSetupStrings.FinishViewStrings.title, description: scaleSetupStrings.FinishViewStrings.description))
+                return AnyView(ScaleSetupFinishView(
+                    title: scaleSetupStrings.FinishViewStrings.title,
+                    description: scaleSetupStrings.FinishViewStrings.description
+                ))
             }
         }
     }
@@ -192,12 +202,49 @@ final class WifiScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Lifecycle
-    init() {
+    convenience init() {
+        self.init(
+            notificationService: WifiScaleSetupStore.resolveDependency(NotificationHelperServiceProtocol.self),
+            permissionsService: WifiScaleSetupStore.resolveDependency(PermissionsServiceProtocol.self),
+            wifiScaleService: WifiScaleSetupStore.resolveDependency(WifiScaleServiceProtocol.self),
+            accountService: WifiScaleSetupStore.resolveDependency(AccountServiceProtocol.self),
+            logger: WifiScaleSetupStore.resolveDependency(LoggerServiceProtocol.self),
+            scaleService: WifiScaleSetupStore.resolveDependency(ScaleServiceProtocol.self),
+            pushNotificationService: WifiScaleSetupStore.resolveDependency(PushNotificationServiceProtocol.self),
+            httpClient: WifiScaleSetupStore.resolveDependency(HTTPClientProtocol.self),
+            bluetoothService: WifiScaleSetupStore.resolveDependency(BluetoothServiceProtocol.self),
+            networkMonitor: NetworkMonitor.shared
+        )
+    }
+
+    init(
+        notificationService: NotificationHelperServiceProtocol,
+        permissionsService: PermissionsServiceProtocol,
+        wifiScaleService: WifiScaleServiceProtocol,
+        accountService: AccountServiceProtocol,
+        logger: LoggerServiceProtocol,
+        scaleService: ScaleServiceProtocol,
+        pushNotificationService: PushNotificationServiceProtocol,
+        httpClient: HTTPClientProtocol,
+        bluetoothService: BluetoothServiceProtocol,
+        networkMonitor: NetworkMonitoring
+    ) {
+        self.notificationService = notificationService
+        self.permissionsService = permissionsService
+        self.wifiScaleService = wifiScaleService
+        self.accountService = accountService
+        self.logger = logger
+        self.scaleService = scaleService
+        self.pushNotificationService = pushNotificationService
+        self.httpClient = httpClient
+        self.bluetoothService = bluetoothService
+        self.networkMonitor = networkMonitor
+
         // Initialize HTTPClient skipCheckNetwork to false
         httpClient.skipCheckNetwork = false
         
         // Observe permission updates
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -205,7 +252,7 @@ final class WifiScaleSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
         
-        networkMonitor.$isConnected
+        networkMonitor.isConnectedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isConnected in
                 self?.updateNextEnabled()
@@ -221,15 +268,17 @@ final class WifiScaleSetupStore: ObservableObject {
             .sink { [weak self] _ in
                 guard let self else { return }
                 // Refresh Wi-Fi status after slight delay so underlying services are ready.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
                     self.getWifiStatus()
                 }
                 /// Check if location permissions are revoked and show alert if they are
                 /// If the user has revoked location permissions, this method will show an alert
                 /// prompting the user to enable location permissions
                 if self.currentStepIndex > 1 && !self.permissionsSkipped {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        Task { await self.showPermissionRevokedAlert() }
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        await self.showPermissionRevokedAlert()
                     }
                 }
             }
@@ -307,13 +356,13 @@ final class WifiScaleSetupStore: ObservableObject {
         return currentStep == .intro || currentStep == .setupFinish
     }
     
+// swiftlint:disable:next cyclomatic_complexity
     func handleNextButtonClick() {
         switch currentStep {
         case .intro:
             // User is following the normal wizard path – clear any previously-set "Get-MAC" flag.
             isForGetMac = false
             moveToNextStep()
-            break
         case .permissions:
             // A valid scale token is mandatory beyond this point; bail out (and show a toast) if we don't have one yet.
             if checkScaleToken() == nil {
@@ -337,7 +386,6 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 self.navigateToStep(.apMode)
             }
-            break
         case .apMode:
             // In Get-MAC flow we poll the scale's AP for its MAC address, otherwise we just proceed to the next wizard step.
             if isForGetMac {
@@ -351,14 +399,12 @@ final class WifiScaleSetupStore: ObservableObject {
             } else {
                 moveToNextStep()
             }
-            break
         case .apModeConfirm:
             // User confirmed AP-mode connection; advance to the scale calibration (Step-On) stage.
             self.navigateToStep(.stepOn)
         case .errorDetail, .copyMacAddress:
             // When the user taps "Finish" on the error detail screen/copy mac address screen, we exit the setup entirely.
             exitSetup()
-            break
         case .stepOn:
             // Move to next step without saving
             moveToNextStep()
@@ -368,7 +414,6 @@ final class WifiScaleSetupStore: ObservableObject {
             moveToNextStep()
         default:
             moveToNextStep()
-            break
         }
     }
     
@@ -380,11 +425,11 @@ final class WifiScaleSetupStore: ObservableObject {
             //   • Otherwise we must guide the user back to the permissions screen.
             if isForGetMac {
                 // Ternary chooses the appropriate destination based on current permission state.
+// swiftlint:disable:next void_function_in_ternary
                 arePermissionsEnabled() ? navigateToStep(.intro) : navigateToStep(.permissions)
             } else {
                 moveToPreviousStep()
             }
-            break
         case .errorSelect:
             // Return to whichever screen originally presented the error selection list.
             if let origin = errorSelectSourceStep {
@@ -395,7 +440,6 @@ final class WifiScaleSetupStore: ObservableObject {
         case .copyMacAddress:
             // Simply rewind to the AP-mode instructions when the user taps "Back" from the copy screen.
             navigateToStep(.apMode)
-            break
         case .stepOn:
             // Allow the user to return to the screen that led to Step-On (e.g. Connection Confirm) when possible.
             if let origin = stepOnSourceStep {
@@ -405,7 +449,6 @@ final class WifiScaleSetupStore: ObservableObject {
             }
         default:
             moveToPreviousStep()
-            break
         }
     }
     
@@ -542,7 +585,6 @@ final class WifiScaleSetupStore: ObservableObject {
         default:
             // Reset skipCheckNetwork to false for other steps
             setSkipCheckNetwork(false)
-            break
         }
     }
     
@@ -556,7 +598,6 @@ final class WifiScaleSetupStore: ObservableObject {
         skipCheckNetwork = skip
         httpClient.skipCheckNetwork = skip
     }
-    
     
     /// Resets skipCheckNetwork to false (called when view disappears)
     func resetSkipCheckNetwork() {
@@ -600,7 +641,7 @@ final class WifiScaleSetupStore: ObservableObject {
         }
         Task {
             do {
-                let scaleTokenResponse = try await wifiScaleService.getScaleToken(r: "4")
+                let scaleTokenResponse = try await wifiScaleService.getScaleToken(request: "4")
                 self.scaleToken = scaleTokenResponse.token
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to fetch WiFi scale token: \(error.localizedDescription)")
@@ -656,7 +697,7 @@ final class WifiScaleSetupStore: ObservableObject {
                     token: self.scaleToken ?? "",
                     bathScale: BathScale(scaleType: ScaleSourceType.wifi.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice)
+                let response = try await self.scaleService.createDevice(newDevice, false)
                 await self.scaleService.syncAllScalesWithRemote()
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
@@ -688,7 +729,11 @@ final class WifiScaleSetupStore: ObservableObject {
     /// On error the method simply logs via `LoggerService`; UI feedback is handled by
     /// observers of `LoggerService` elsewhere in the app.
     private func startSmartConnect() async {
-        LoggerService.shared.log(level: .info, tag: tag, message: "startSmartConnect initiated – setupType: \(String(describing: scaleItem?.setupType))")
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "startSmartConnect initiated – setupType: \(String(describing: scaleItem?.setupType))"
+        )
         
         // If permissions were skipped, do NOT try to configure the scale.
         if permissionsSkipped { return }
@@ -758,8 +803,8 @@ final class WifiScaleSetupStore: ObservableObject {
         // Prepare the payload (mutating SSID/BSSID when available).
         let baseInfo = getSetupInfo()
         let info = WifiSetupInfo(
-            ssid:  self.connectedSsid ?? wifiStatus?.ssid ?? baseInfo.ssid,
-            bssid: self.connectedBssid ??  wifiStatus?.bssid ?? baseInfo.bssid,
+            ssid: self.connectedSsid ?? wifiStatus?.ssid ?? baseInfo.ssid,
+            bssid: self.connectedBssid ?? wifiStatus?.bssid ?? baseInfo.bssid,
             password: baseInfo.password,
             userNumber: baseInfo.userNumber,
             token: baseInfo.token
@@ -847,3 +892,14 @@ final class WifiScaleSetupStore: ObservableObject {
         cancellables.removeAll()
     }
 }
+
+private extension WifiScaleSetupStore {
+    static func resolveDependency<T>(_ type: T.Type) -> T {
+        guard let dependency = DependencyContainer.shared.resolve(T.self) else {
+            fatalError("Dependency \(T.self) is not registered in DependencyContainer")
+        }
+        return dependency
+    }
+}
+// swiftlint:disable:next file_length
+// swiftlint:enable type_body_length

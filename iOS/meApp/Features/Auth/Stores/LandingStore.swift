@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 //  LandingStore.swift
@@ -12,9 +12,9 @@ import SwiftUI
 @MainActor
 final class LandingStore: ObservableObject {
     // MARK: Dependencies
-    @Injector private var accountService: AccountService
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var logger: LoggerService
+    @Injector private var accountService: AccountServiceProtocol
+    @Injector private var notificationService: NotificationHelperServiceProtocol
+    @Injector private var logger: LoggerServiceProtocol
     
     private let networkMonitor = NetworkMonitor.shared
     
@@ -42,11 +42,11 @@ final class LandingStore: ObservableObject {
     
     /// Observes account changes and updates the local account list.
     private func setupAccountObservation() {
-        accountService.$allAccounts
+        accountService.allAccountsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
                 guard let self = self else { return }
-                //Only show logged-in accounts
+                // Only show logged-in accounts
                 let loggedInAccounts = all.filter { 
                     $0.isLoggedIn == true && ($0.isExpired ?? false) == false
                 }
@@ -61,9 +61,10 @@ final class LandingStore: ObservableObject {
                 self.accounts = sortedLoggedInAccounts
                 
                 self.userItems = sortedLoggedInAccounts.map { account in
+                    let displayName = account.firstName?.isEmpty == false ? (account.firstName ?? account.email) : account.email
                     return UserItemInfo(
                         accountID: account.accountId,
-                        name: account.firstName?.isEmpty == false ? account.firstName! : account.email,
+                        name: displayName,
                         email: account.email,
                         isSelected: false,
                         isExpired: false, // Only logged-in accounts are shown

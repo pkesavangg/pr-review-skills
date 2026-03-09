@@ -17,7 +17,7 @@ struct UserListItemView: View {
     /// Width of each swipe action button; allows per-screen customization
     var swipeButtonWidth: CGFloat = 72
     var onTap: ((String, Bool) -> Void)
-    var onDelete: ((String) -> Void)? = nil // optional deletion trigger
+    var onDelete: ((String) -> Void)? // optional deletion trigger
     
     var body: some View {
         rowContent
@@ -91,7 +91,6 @@ struct UserListItemView: View {
     }
 }
 
-
 // Testing Purpose View
 struct AccountListView: View {
     @Environment(\.appTheme) private var theme
@@ -99,13 +98,13 @@ struct AccountListView: View {
         .init(accountID: "567", name: "Kesavan", email: "kesavan@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
         .init(accountID: "Random", name: "Random", email: "Random@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
         .init(accountID: "abc", name: "Kristin", email: "kristin@gmail.com", isSelected: false, isExpired: false, canShowSelection: true),
-        .init(accountID: "123",name: "William", email: "william@gmail.com", isSelected: true, isExpired: false, canShowSelection: true),
-        .init(accountID: "xyz",name: "Jacob", email: "jacob@gmail.com", isSelected: false, isExpired: true, canShowSelection: true)
+        .init(accountID: "123", name: "William", email: "william@gmail.com", isSelected: true, isExpired: false, canShowSelection: true),
+        .init(accountID: "xyz", name: "Jacob", email: "jacob@gmail.com", isSelected: false, isExpired: true, canShowSelection: true)
     ]
     
     @State private var showDeleteAlert = false
     @State private var userToDelete: UserItemInfo?
-    @State private var openItemID: UUID? = nil
+    @State private var openItemID: UUID?
     
     var body: some View {
         List {
@@ -113,11 +112,8 @@ struct AccountListView: View {
                 UserListItemView(
                     user: account,
                     openItemID: $openItemID, // Binding to track open item and closes the other open item
-                    onTap: { _, isFromLogin in
-                        print("\(account.name) tapped", isFromLogin)
-                    },
+                    onTap: { _, _ in },
                     onDelete: { _ in
-                        print("Delete tapped for \(account.name)")
                         userToDelete = account
                         showDeleteAlert = true
                     }
@@ -138,7 +134,6 @@ struct AccountListView: View {
         }
     }
 }
-
 
 // MARK: - Preview
 #Preview {

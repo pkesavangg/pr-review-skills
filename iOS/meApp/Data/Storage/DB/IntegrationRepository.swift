@@ -81,8 +81,11 @@ final class IntegrationRepository: IntegrationRepositoryProtocol {
                     return true
                 }
             } catch {
-                logger.log(level: .error, tag: "IntegrationRepository", 
-                          message: "Failed to decode integration info for key \(key): \(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: "IntegrationRepository",
+                    message: "Failed to decode integration info for key \(key): \(error.localizedDescription)"
+                )
                 continue
             }
         }

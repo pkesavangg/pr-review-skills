@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 19/07/25.
 //
 
-
 import SwiftUI
 
 /// A grid of circular buttons displaying user numbers
@@ -60,11 +59,8 @@ struct UserNumberButtonGrid: View {
 #Preview("Button Grid Only") {
     UserNumberButtonGrid(
         numbers: Array(1...8),
-        selectedNumber: .constant(3),
-        onNumberSelected: { number in
-            print("Selected U\(number)")
-        }
-    )
+        selectedNumber: .constant(3)
+    ) { _ in }
     .environmentObject(Theme.shared)
     .padding()
 }

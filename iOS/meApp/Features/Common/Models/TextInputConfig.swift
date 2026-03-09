@@ -11,17 +11,17 @@ struct TextInputConfig {
     var placeholder: String?
     var inputType: TextFieldType = .text
     var submitLabel: SubmitLabel = .next
-    var errorMessage: String? = nil
+    var errorMessage: String?
     var isDisabled: Bool = false
     var focusField: FocusField = .none
     
     // Custom icon support
-    var customIcon: String? = nil
-    var onCustomIconTap: (() -> Void)? = nil
+    var customIcon: String?
+    var onCustomIconTap: (() -> Void)?
     
     // Bank input specific properties
     var maxLength: Int = 3
-    var maxValue: Double? = nil
+    var maxValue: Double?
     var allowWholeNumbers: Bool = false
     /// Determines whether leading zeros should be preserved when `allowWholeNumbers` is true.
     /// - Note: Defaults to `false` to keep the previous trimming behaviour. Set to `true` when

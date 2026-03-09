@@ -7,23 +7,55 @@
 
 import Foundation
 
+// MARK: - Protocol
+
+@MainActor
+protocol ScaleMigrationServiceProtocol {
+    func isMigrationNeeded(for accountId: String) -> Bool
+    func migrateScaleData(for accountId: String) async throws -> [Device]
+    func cleanupAfterMigration(for accountId: String)
+}
+
 /// Service to migrate scale data from Ionic app (Capacitor Preferences) to SwiftUI app (SwiftData)
 @MainActor
-final class ScaleMigrationService {
-    @Injector private var logger: LoggerService
+final class ScaleMigrationService: ScaleMigrationServiceProtocol {
+    @Injector private var logger: LoggerServiceProtocol
     @Injector private var scaleService: ScaleService
     private let scaleRepository = ScaleRepository()
-    private let kvStorage = KvStorageService.shared
-    
+    private let kvStorage: KvStorageServiceProtocol
+    private let createScaleInLocalOverride: (@MainActor (Device) async throws -> Device)?
+    private let syncAllScalesWithRemoteOverride: (@MainActor () async -> Void)?
+    private let getDeviceByIdOverride: (@MainActor (String) async throws -> Device?)?
+
     private let tag = "ScaleMigrationService"
-    
+
+    init(
+        logger: LoggerServiceProtocol? = nil,
+        kvStorage: KvStorageServiceProtocol? = nil,
+        createScaleInLocal: (@MainActor (Device) async throws -> Device)? = nil,
+        syncAllScalesWithRemote: (@MainActor () async -> Void)? = nil,
+        getDeviceById: (@MainActor (String) async throws -> Device?)? = nil
+    ) {
+        self.kvStorage = kvStorage ?? KvStorageService.shared
+        self.createScaleInLocalOverride = createScaleInLocal
+        self.syncAllScalesWithRemoteOverride = syncAllScalesWithRemote
+        self.getDeviceByIdOverride = getDeviceById
+        if let logger {
+            self.logger = logger
+        }
+    }
+
     // Using shared public MigrationKey enum for key composition
     
     /// Checks if scale migration is needed by looking for Ionic app scale data
     func isMigrationNeeded(for accountId: String) -> Bool {
         let scaleKey = MigrationKey.scaleKey(for: accountId)
         let hasScaleData = kvStorage.getValue(forKey: scaleKey) != nil
-        logger.log(level: .info, tag: tag, message: "Scale migration check for account: \(accountId), hasScaleData=\(hasScaleData)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Scale migration check for account \(accountId) with key: \(scaleKey) - Scale data exists: \(hasScaleData)"
+        )
         return hasScaleData
     }
     
@@ -44,17 +76,29 @@ final class ScaleMigrationService {
         for ionicScale in ionicScales {
             do {
                 let device = try convertIonicScaleToDevice(ionicScale, accountId: accountId)
-                
+
+                // Avoid re-creating an existing device so migration can be safely re-run.
+                if try await resolveDeviceById(device.id) != nil {
+                    logger.log(level: .info, tag: tag, message: "Skipping duplicate scale during migration: \(device.id)")
+                    continue
+                }
+
                 // Save device to SwiftData
+                _ = try await resolveCreateScaleInLocal(device)
                 migratedDevices.append(device)
-                let _ = try await self.scaleService.createScaleInLocal(device)
+                logger.log(level: .info, tag: tag, message: "scaleRepository.createScale: \(ionicScale.id ?? "unknown") for account: \(device.sku ?? "unknown")")
+                logger.log(level: .info, tag: tag, message: "Successfully migrated scale: \(ionicScale.id ?? "unknown") for account: \(accountId)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to migrate scale \(ionicScale.id ?? "unknown"): \(error.localizedDescription)")
                 // Continue with other scales even if one fails
             }
         }
-        await self.scaleService.syncAllScalesWithRemote()
-        logger.log(level: .info, tag: tag, message: "Scale migration completed successfully for account: \(accountId). Migrated \(migratedDevices.count) scales")
+        await resolveSyncAllScalesWithRemote()
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Scale migration completed successfully for account: \(accountId). Migrated \(migratedDevices.count) scales"
+        )
         
         return migratedDevices
     }
@@ -70,6 +114,28 @@ final class ScaleMigrationService {
     }
     
     // MARK: - Private Methods
+
+    private func resolveCreateScaleInLocal(_ device: Device) async throws -> Device {
+        if let createScaleInLocalOverride {
+            return try await createScaleInLocalOverride(device)
+        }
+        return try await scaleService.createScaleInLocal(device)
+    }
+
+    private func resolveSyncAllScalesWithRemote() async {
+        if let syncAllScalesWithRemoteOverride {
+            await syncAllScalesWithRemoteOverride()
+            return
+        }
+        await scaleService.syncAllScalesWithRemote()
+    }
+
+    private func resolveDeviceById(_ id: String) async throws -> Device? {
+        if let getDeviceByIdOverride {
+            return try await getDeviceByIdOverride(id)
+        }
+        return try await scaleService.getDevice(by: id)
+    }
     
     /// Retrieves stored Ionic scale data for a specific account
     private func getStoredIonicScaleData(for accountId: String) -> [IonicScaleData]? {
@@ -97,7 +163,12 @@ final class ScaleMigrationService {
     }
     
     /// Converts Ionic scale data to SwiftUI Device model
-    private func convertIonicScaleToDevice(_ ionicScale: IonicScaleData, accountId: String) throws -> Device {
+    private func convertIonicScaleToDevice( // swiftlint:disable:this function_body_length
+        _ ionicScale: IonicScaleData,
+        accountId: String
+    ) throws -> Device {
+        logger.log(level: .info, tag: tag, message: "Converting Ionic scale to Device model: \(ionicScale.id ?? "unknown")")
+        
         // Create BathScale
         let bathScale = BathScale(
             scaleType: ionicScale.type,
@@ -106,7 +177,7 @@ final class ScaleMigrationService {
         )
         
         // Create R4ScalePreference if it exists
-        var r4Preference: R4ScalePreference? = nil
+        var r4Preference: R4ScalePreference?
         if let preference = ionicScale.preference {
             r4Preference = R4ScalePreference(
                 scaleId: ionicScale.id ?? UUID().uuidString,
@@ -124,7 +195,7 @@ final class ScaleMigrationService {
         }
         
         // Create DeviceMetaData if latestVersion exists
-        var metaData: DeviceMetaData? = nil
+        var metaData: DeviceMetaData?
         if let latestVersion = ionicScale.latestVersion {
             metaData = DeviceMetaData(
                 latestVersion: latestVersion,
@@ -140,7 +211,7 @@ final class ScaleMigrationService {
             sku: ionicScale.sku,
             mac: ionicScale.mac,
             password: ionicScale.password.map { Int64($0) },
-            isSoftDeleted:  ionicScale.isDeleted, // Deletion status is preserved from Ionic data
+            isSoftDeleted: ionicScale.isDeleted, // Deletion status is preserved from Ionic data
             deviceName: ionicScale.name,
             deviceType: "scale",
             broadcastId: ionicScale.broadcastId.map { Int64($0) },

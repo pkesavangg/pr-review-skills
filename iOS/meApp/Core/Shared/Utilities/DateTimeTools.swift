@@ -1,5 +1,9 @@
 // DateTimeTools.swift
 
+// This utility class intentionally aggregates all date/time formatting operations
+// to provide a centralized, thread-safe API. Splitting would fragment related functionality
+// and reduce discoverability of date/time utilities.
+
 import Foundation
 
 /// A utility class for date and time formatting, parsing, and timezone operations.
@@ -165,7 +169,6 @@ final class DateTimeTools {
         return Date()
     }
 
-
     static func getMonthStringFromDate(_ dateString: String) -> String {
         guard let date = parse(dateString) else { return invalidString }
         return formatter("yyyy-MM").string(from: date)
@@ -241,7 +244,6 @@ final class DateTimeTools {
     static func getTimeZoneInMinutes() -> Int {
         return TimeZone.current.secondsFromGMT() / 60
     }
-
 
     // MARK: - Helpers
 

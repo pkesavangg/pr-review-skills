@@ -1,16 +1,20 @@
 import Foundation
 
+@MainActor
 final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
+        self.httpClient = httpClient
+    }
 
     func syncOperation(operation: BathScaleOperationDTO) async throws {
         _ = try await httpClient.send(
-                .operationsR4(startTimestamp: nil),
-                method: .post,
-                body: operation,
-                needsAuth: true
-
-            ) as EmptyResponse
+            .operationsR4(startTimestamp: nil),
+            method: .post,
+            body: operation,
+            needsAuth: true
+        ) as EmptyResponse
     }
 
     func fetchOperations(startTimestamp: String?) async throws -> BathScaleOperationListResponse {
@@ -24,7 +28,9 @@ final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
 
     func exportCsv(useR4Endpoint: Bool) async throws -> ExportResponse {
         let utcOffset = DateTimeTools.getUTCOffset()
-        let endPoint: Endpoint = useR4Endpoint ? .operationsR4CSV(utcOffset: utcOffset, download: false) : .operationsCSV(utcOffset: utcOffset, download: false)
+        let endPoint: Endpoint = useR4Endpoint
+            ? .operationsR4CSV(utcOffset: utcOffset, download: false)
+            : .operationsCSV(utcOffset: utcOffset, download: false)
         let response: ExportResponse = try await httpClient.get(
             endPoint,
             needsAuth: true

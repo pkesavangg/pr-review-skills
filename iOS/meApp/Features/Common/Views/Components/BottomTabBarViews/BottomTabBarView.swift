@@ -135,9 +135,12 @@ struct BottomTabBarView: View {
                 }
         }
         // Setup flow presentation
-        .sheet(item: $viewModel.setupPayload, onDismiss: {
-            viewModel.bluetoothService.isSetupInProgress = false
-        }) { payload in
+        .sheet(
+            item: $viewModel.setupPayload,
+            onDismiss: {
+                viewModel.bluetoothService.isSetupInProgress = false
+            },
+            content: { payload in
             // Determine setup type from the scale item info
             let setupType = payload.event?.deviceInfo.setupType ?? .lcbt
             switch setupType {
@@ -160,7 +163,8 @@ struct BottomTabBarView: View {
                                    discoveryEvent: payload.event)
                 .interactiveDismissDisabled(true)
             }
-        }
+            }
+        )
     }
     
     // MARK: - Helpers
@@ -192,7 +196,6 @@ struct BottomTabBarView: View {
         }
     }
 }
-
 
 #Preview {
     BottomTabBarView()

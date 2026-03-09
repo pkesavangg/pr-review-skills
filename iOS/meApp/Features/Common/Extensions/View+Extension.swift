@@ -166,7 +166,6 @@ extension View {
         )
     }
   
-    
     /// Applies a conditional wiggle animation to the view.
     /// - Parameter shouldWiggle: If true, applies the wiggle animation.
     /// - Returns: A view that conditionally wiggles based on the parameter.
@@ -300,7 +299,7 @@ extension View {
                             },
                             onDragEnd: {
                                 // Ensure immediate state reset
-                                DispatchQueue.main.async {
+                                Task { @MainActor in
                                     onDragEnd?()
                                 }
                             }

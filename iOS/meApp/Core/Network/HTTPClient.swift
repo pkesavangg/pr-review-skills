@@ -7,15 +7,31 @@
 
 import Foundation
 
-final class HTTPClient {
+@MainActor
+final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
-    @Injector var accountService: AccountService
-    @Injector var notificationHelperService: NotificationHelperService
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var notificationHelperService: NotificationHelperServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
     @Atomic public var skipCheckNetwork: Bool = false
-    private let tokenManager = TokenManager.shared
+    private let tokenManager: TokenManaging
+    private let requestExecutor: (URLRequest) async throws -> (Data, URLResponse)
+    private let connectivityProvider: () -> Bool
     @Atomic private var lastToastShownTime: Date?
 
-    private init() {}
+    init(
+        tokenManager: TokenManaging? = nil,
+        requestExecutor: ((URLRequest) async throws -> (Data, URLResponse))? = nil,
+        connectivityProvider: (() -> Bool)? = nil
+    ) {
+        self.tokenManager = tokenManager ?? TokenManager.shared
+        self.requestExecutor = requestExecutor ?? { request in
+            try await URLSession.shared.data(for: request)
+        }
+        self.connectivityProvider = connectivityProvider ?? {
+            NetworkMonitor.shared.getCurrentConnectionStatus()
+        }
+    }
     
     // MARK: - GET Request
     func get<T: Decodable>(
@@ -24,7 +40,7 @@ final class HTTPClient {
         needsAuth: Bool = false,
         accountId: String? = nil
     ) async throws -> T {
-        try await checkConnectivity()
+        try checkConnectivity()
         
         let request = try await makeRequest(
             for: endpoint,
@@ -45,7 +61,7 @@ final class HTTPClient {
         needsAuth: Bool = false,
         accountId: String? = nil
     ) async throws -> R {
-        try await checkConnectivity()
+        try checkConnectivity()
         
         var request = try await makeRequest(
             for: endpoint,
@@ -76,9 +92,8 @@ final class HTTPClient {
             // Extract primitives from @Model before crossing async boundaries (R1)
             let expiresAt = account.expiresAt
             let acctId = account.accountId
-            if tokenManager.checkTokenExpiration(expiresAt: expiresAt)
-            {
-                let tokens = try await tokenManager.refreshToken(accountId: acctId)
+            if tokenManager.checkTokenExpiration(expiresAt: expiresAt) {
+                let tokens = try await tokenManager.refreshToken(accountId: acctId, retryCount: 0)
                 var newRequest = request
                 newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                 return try await performRequest(newRequest)
@@ -97,7 +112,7 @@ final class HTTPClient {
                         let account = try await getAccount(accountId)
                         // Extract primitives from @Model before crossing async boundaries (R1)
                         let acctId = account.accountId
-                        let tokens = try await tokenManager.refreshToken(accountId: acctId)
+                        let tokens = try await tokenManager.refreshToken(accountId: acctId, retryCount: 0)
                         var newRequest = request
                         newRequest.setValue("Bearer \(tokens.accessToken)", forHTTPHeaderField: "Authorization")
                         return try await send(request: newRequest, needsAuth: needsAuth, accountId: accountId, restartWithNewTokens: true)
@@ -115,7 +130,7 @@ final class HTTPClient {
     private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await requestExecutor(request)
         } catch let urlError as URLError {
             // Convert URLErrors to HTTPErrors so callers can detect network errors reliably.
             switch urlError.code {
@@ -139,15 +154,7 @@ final class HTTPClient {
         
         // Check for success status
         guard status.isSuccess else {
-            // Attempt to decode server-provided error message for more context
-            if let apiError = try? JSONDecoder().decode(ErrorResponse.self, from: data),
-               let serverMessage = apiError.error ?? apiError.message, !serverMessage.isEmpty {
-                throw HTTPError.apiError(message: serverMessage, code: status.rawValue)
-            }
-            if let status = HTTPStatusCode(rawValue: httpResponse.statusCode) {
-                throw HTTPError.from(status: status)
-            }
-            throw HTTPError.statusCode(status.rawValue)
+            throw parseErrorResponse(data: data, status: status, statusCode: httpResponse.statusCode)
         }
         
         // Handle 204 No Content
@@ -166,23 +173,36 @@ final class HTTPClient {
         
         // Attempt to decode response
         do {
-            // 🔹 Print raw JSON or text response for debugging
-            if let rawString = String(data: data, encoding: .utf8) {
-#if DEBUG
-                print("🔍 HTTPClient Raw Response: \(rawString)")
-#endif
-            } else {
-#if DEBUG
-                print("⚠️ HTTPClient Unable to decode data to string")
-#endif
-            }
+            logRawResponse(data: data)
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-#if DEBUG
-            print("🔍 HTTPClient Decoding Error: \(error)")
-#endif
+            logger.log(level: .error, tag: "HTTPClient", message: "Decoding error", data: error)
             throw HTTPError.decodingError
         }
+    }
+
+    private func parseErrorResponse(data: Data, status: HTTPStatusCode, statusCode: Int) -> HTTPError {
+        if let apiError = try? JSONDecoder().decode(ErrorResponse.self, from: data),
+           let serverMessage = apiError.error ?? apiError.message,
+           !serverMessage.isEmpty {
+            return HTTPError.apiError(message: serverMessage, code: status.rawValue)
+        }
+
+        if let mappedStatus = HTTPStatusCode(rawValue: statusCode) {
+            return HTTPError.from(status: mappedStatus)
+        }
+
+        return HTTPError.statusCode(status.rawValue)
+    }
+
+    private func logRawResponse(data: Data) {
+        #if DEBUG
+        if let rawString = String(data: data, encoding: .utf8) {
+            logger.log(level: .debug, tag: "HTTPClient", message: "Raw response", data: rawString)
+        } else {
+            logger.log(level: .debug, tag: "HTTPClient", message: "Unable to decode data to string")
+        }
+        #endif
     }
     
     // MARK: - Account Handling
@@ -194,7 +214,7 @@ final class HTTPClient {
             }
             return account
         } else {
-            guard let account = await accountService.activeAccount else {
+            guard let account = accountService.activeAccount else {
                 throw AccountError.noActiveAccount
             }
             return account
@@ -232,21 +252,23 @@ final class HTTPClient {
     }
     
     // MARK: - Connectivity Check
-    private func checkConnectivity() async throws {
-        let isConnected = await NetworkMonitor.shared.getCurrentConnectionStatus()
+    private func checkConnectivity() throws {
+        let isConnected = connectivityProvider()
         if !isConnected {
             if !skipCheckNetwork {
-                await showToastIfNeeded(ToastStrings.unableToConnect)
+                showToastIfNeeded(ToastStrings.unableToConnect)
             }
             throw HTTPError.noInternet
         }
     }
     
-    private func showToastIfNeeded(_ message: String) async {
+    private func showToastIfNeeded(_ message: String) {
         let now = Date()
-        guard lastToastShownTime == nil || now.timeIntervalSince(lastToastShownTime!) >= 2.0 else { return }
+        if let lastToastShownTime, now.timeIntervalSince(lastToastShownTime) < 2.0 {
+            return
+        }
         lastToastShownTime = now
-        await notificationHelperService.showToast(ToastModel(message: message))
+        notificationHelperService.showToast(ToastModel(message: message))
     }
     
 }

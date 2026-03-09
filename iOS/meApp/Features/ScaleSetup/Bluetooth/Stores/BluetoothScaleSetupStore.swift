@@ -5,25 +5,27 @@
 ///  Created by Cursor AI on 18/07/25.
 ///
 
+import Combine
+// This file intentionally aggregates Bluetooth scale setup orchestration logic.
+// Breaking it into smaller files would fragment the multi-step flow management.
 import Foundation
 import SwiftUI
-import Combine
 
 /// Store responsible for orchestrating the Bluetooth (A3) scale-setup multi-step flow.
 @MainActor
 final class BluetoothScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperService
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var scaleService: ScaleService
-    @Injector private var accountService: AccountService
+    @Injector private var notificationService: NotificationHelperServiceProtocol
+    @Injector private var permissionsService: PermissionsServiceProtocol
+    @Injector private var bluetoothService: BluetoothServiceProtocol
+    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
-    private var deviceDiscoveryCancellable: AnyCancellable? = nil
-    private var stepTimerTask: Task<Void, Never>? = nil
-    private var newEntrySubscription: AnyCancellable? = nil
+    private var deviceDiscoveryCancellable: AnyCancellable?
+    private var stepTimerTask: Task<Void, Never>?
+    private var newEntrySubscription: AnyCancellable?
     
     private var scaleItem: ScaleItemInfo?
     private var discoveredScale: Device?
@@ -69,17 +71,18 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     /// Selected user number (1-8) captured from SelectUser step.
-    @Published var selectedUserNumber: Int? = nil {
+    @Published var selectedUserNumber: Int? {
         didSet { updateNextEnabled() }
     }
     @Published var bluetoothConnectionState: ConnectionState = .loading
-    @Published var scaleToDelete: Device? = nil
+    @Published var scaleToDelete: Device?
     
     private let tag = "BluetoothScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
     private let alertLang = AlertStrings.self
-    private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     private let loaderLang = LoaderStrings.self
+    private let pairingTimeoutNs: UInt64
+    private let stepTransitionDelayNs: UInt64
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -94,9 +97,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
             case .selectUser:
                 // Dummy view – UI to select user number will be implemented later.
                 return AnyView(
-                    UserNumberSelectionView(selectedNumber: selectedUserNumber, onNumberSelected: { value in
+                    UserNumberSelectionView(selectedNumber: selectedUserNumber) { value in
                         self.selectedUserNumber = value
-                    })
+                    }
                 )
             case .connectingBluetooth:
                 return AnyView(
@@ -123,9 +126,14 @@ final class BluetoothScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Init
-    init() {
+    init(
+        pairingTimeoutNs: UInt64 = UInt64(AppConstants.TimeoutsAndRetention.bluetoothTimeoutNs),
+        stepTransitionDelayNs: UInt64 = 1_500_000_000
+    ) {
+        self.pairingTimeoutNs = pairingTimeoutNs
+        self.stepTransitionDelayNs = stepTransitionDelayNs
         // Observe permission updates so the footer button reacts instantly.
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -163,7 +171,6 @@ final class BluetoothScaleSetupStore: ObservableObject {
             currentStepIndex = nextIndex
         }
     }
-    
     
     func moveToPreviousStep() {
         let candidate = currentStepIndex - 1
@@ -222,7 +229,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         case .stepOn:
             // If scale is already saved, set up entry subscription
             // This handles the case where user navigates to stepOn after Bluetooth is turned back on
-            if isScaleSaved, let savedScale = discoveredScale {
+            if isScaleSaved, discoveredScale != nil {
                 Task {
                     await syncNewScaleAndListenForEntries()
                 }
@@ -251,8 +258,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         // Timeout after N seconds if nothing is found
         stepTimerTask = Task { [weak self] in
             guard let self else { return }
-            let ns = UInt64(timeoutConstants.bluetoothTimeoutNs)
-            try? await Task.sleep(nanoseconds: ns)
+            try? await Task.sleep(nanoseconds: pairingTimeoutNs)
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 if self.discoveredScale == nil && self.currentStep == .connectingBluetooth {
@@ -262,7 +268,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
     }
     
-    private func confirmPair() async {
+    private func confirmPair() async { // swiftlint:disable:this function_body_length
         guard let scale = discoveredScale, discoveryEvent != nil else {
             LoggerService.shared.log(level: .error, tag: tag, message: "confirmPair - missing discovery event or scale")
             setConnectionFailure()
@@ -295,7 +301,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
                     discoveredScale?.peripheralIdentifier = deviceInfo.serialNumber
                     discoveredScale?.userNumber = "\(selectedUserNumber ?? 0)"
                     discoveredScale?.mac = deviceInfo.macAddress
-                    let scaleToDelete = scaleService.scales.first(where: { $0.peripheralIdentifier == discoveredScale?.peripheralIdentifier })
+                    let scaleToDelete = scaleService.scales.first {
+                        $0.peripheralIdentifier == discoveredScale?.peripheralIdentifier
+                    }
                     if scaleToDelete != nil {
                         self.scaleToDelete = scaleToDelete
                         handleDuplicateScale()
@@ -304,16 +312,14 @@ final class BluetoothScaleSetupStore: ObservableObject {
                         await saveDiscoveredScaleWithLoader(isExiting: false)
                         startEntrySyncing()
                     }
-                    break
+                    LoggerService.shared.log(level: .info, tag: tag, message: "Creation Completed \(response)")
                 case .failure(let error):
                     setConnectionFailure()
                     LoggerService.shared.log(level: .error, tag: tag, message: "Failed to get device info: \(error.localizedDescription)")
                 }
-                break
             default:
                 setConnectionFailure()
                 LoggerService.shared.log(level: .error, tag: tag, message: "Unexpected pairing response: \(response)")
-                break
             }
         case .failure(let error):
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to pair scale: \(error.localizedDescription)")
@@ -366,11 +372,20 @@ final class BluetoothScaleSetupStore: ObservableObject {
     
     private func startEntrySyncing() {
         self.bluetoothConnectionState = .success
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            self.moveToNextStep()
-            // Sync the newly paired scale and start listening for entries
-            Task {
-                await self.syncNewScaleAndListenForEntries()
+
+        // Attach listener before resuming scan so no first-entry event is missed.
+        setupNewEntrySubscription()
+        bluetoothService.resumeSmartScan(clearOnlyPairing: false)
+        Task {
+            await self.syncNewScale()
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
+            if self.isEntrySynced {
+                self.promoteToStepOnIfPossible()
+            } else if self.currentStep == .connectingBluetooth {
+                self.moveToNextStep()
             }
         }
     }
@@ -379,15 +394,15 @@ final class BluetoothScaleSetupStore: ObservableObject {
         guard discoveredScale != nil else {
             return
         }
-        
+
+        // Set up subscription first so entry events during resume/sync are not dropped.
+        setupNewEntrySubscription()
+
         // Resume smart scan
         bluetoothService.resumeSmartScan(clearOnlyPairing: false)
-        
+
         // Sync the newly paired device with BluetoothService
         await syncNewScale()
-        
-        // Set up subscription to listen for new entries
-        setupNewEntrySubscription()
     }
     
     private func syncNewScale() async {
@@ -410,15 +425,20 @@ final class BluetoothScaleSetupStore: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-
-                // Mark entry as synced and update UI
+                // Mark entry as synced and update UI immediately on main queue.
                 self.isEntrySynced = true
                 self.updateNextEnabled()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    self.moveToNextStep()
-                }
+                self.promoteToStepOnIfPossible()
                 self.cleanupEntrySubscription()
             }
+    }
+
+    private func promoteToStepOnIfPossible() {
+        guard let stepOnIndex = steps.firstIndex(of: .stepOn),
+              currentStepIndex <= stepOnIndex else {
+            return
+        }
+        currentStepIndex = stepOnIndex
     }
     
     private func cleanupEntrySubscription() {
@@ -450,7 +470,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         }
     }
     
-    private func saveDiscoveredScaleWithLoader(isExiting: Bool) async {
+    private func saveDiscoveredScaleWithLoader(isExiting: Bool) async { // swiftlint:disable:this function_body_length
         // Prevent duplicate saves
         if isScaleSaved {
             return
@@ -484,7 +504,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         deviceToSave.id = UUID().uuidString
         
         // Get device metadata for Bluetooth scales (matching BluetoothService.addNewDevice logic)
-        var deviceMetadata: DeviceMetaData? = nil
+        var deviceMetadata: DeviceMetaData?
         let deviceInfoResult = await bluetoothService.getDeviceInfo(for: deviceToSave, skipConnectionCheck: true)
         switch deviceInfoResult {
         case .success(let deviceInfo):
@@ -662,4 +682,60 @@ final class BluetoothScaleSetupStore: ObservableObject {
         // Reset saved flag
         isScaleSaved = false
     }
+} // swiftlint:disable:this file_length
+
+#if DEBUG
+extension BluetoothScaleSetupStore {
+    @MainActor
+    func testWarmInjectedDependencies() {
+        let injectedDependencies = (
+            notificationHelper: notificationService,
+            permissions: permissionsService,
+            bluetooth: bluetoothService,
+            scale: scaleService,
+            account: accountService
+        )
+        _ = injectedDependencies
+    }
+
+    @MainActor
+    func testSetInternalState(
+        discoveredScale: Device? = nil,
+        discoveryEvent: DeviceDiscoveryEvent? = nil,
+        isScaleSaved: Bool? = nil,
+        scaleToDelete: Device? = nil
+    ) {
+        self.discoveredScale = discoveredScale
+        self.discoveryEvent = discoveryEvent
+        if let isScaleSaved {
+            self.isScaleSaved = isScaleSaved
+        }
+        self.scaleToDelete = scaleToDelete
+    }
+
+    @MainActor
+    func testConfirmPair() async {
+        await confirmPair()
+    }
+
+    @MainActor
+    func testSyncNewScaleAndListenForEntries() async {
+        await syncNewScaleAndListenForEntries()
+    }
+
+    @MainActor
+    func testSyncNewScale() async {
+        await syncNewScale()
+    }
+
+    @MainActor
+    func testSaveDiscoveredScale() {
+        saveDiscoveredScale()
+    }
+
+    @MainActor
+    func testHandleDuplicateScaleReturn() async {
+        await handleDuplicateScaleReturn()
+    }
 }
+#endif

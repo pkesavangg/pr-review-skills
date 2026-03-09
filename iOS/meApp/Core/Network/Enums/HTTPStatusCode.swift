@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 28/05/25.
 //
 
-
 enum HTTPStatusCode: Int {
     case networkError = 0
     case ok = 200
@@ -33,4 +32,3 @@ enum HTTPStatusCode: Int {
         }
     }
 }
-

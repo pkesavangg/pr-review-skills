@@ -10,4 +10,4 @@ import ggInAppMessagingPackage
 #endif
 
 @available(iOS 17.0, macOS 14.0, *)
-extension AppColors.Palette: IAMColorPalette {} 
+extension AppColors.Palette: IAMColorPalette, @unchecked Sendable {}

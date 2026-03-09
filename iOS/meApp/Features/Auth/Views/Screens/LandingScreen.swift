@@ -13,7 +13,7 @@ struct LandingScreen: View {
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var router = Router<AuthRoute>()
     @StateObject private var landingStore = LandingStore()
-    @State private var openItemID: UUID? = nil
+    @State private var openItemID: UUID?
     let lang = LandingScreenStrings.self
     let commonLang = CommonStrings.self
     let itemHeight = 72
@@ -32,6 +32,7 @@ struct LandingScreen: View {
             ZStack {
                 Group {
                     // Show empty landing screen if no logged-in users exist
+                    // swiftlint:disable:next empty_count
                     (hasLoggedInUsers && landingStore.userItems.count > 0) ? theme.backgroundSecondary : theme.actionPrimary
                 }
                 .ignoresSafeArea()
@@ -44,14 +45,14 @@ struct LandingScreen: View {
                         LogoView()
                             .padding(.bottom, 55)
 
-                        VStack(alignment: .center, spacing: .spacingSM){
+                        VStack(alignment: .center, spacing: .spacingSM) {
 
                             Button(action: {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .login(nil))
                                 }
 
-                            }, label:{
+                            }, label: {
                                 Text(commonLang.logIn.uppercased())
                                     .fontWeight(.bold)
                                     .fontOpenSans(.button1)
@@ -59,6 +60,7 @@ struct LandingScreen: View {
                                     .padding(.vertical, .spacingXS)
                             })
                             .buttonStyle(AppPressableButtonStyle(type: .filledSecondary, size: .large, backgroundColorOverride: nil))
+                            .accessibilityIdentifier(AccessibilityID.landingLogInButton)
 
                             ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
@@ -66,6 +68,7 @@ struct LandingScreen: View {
                                 }
                             }
                             .frame(width: 96)
+                            .accessibilityIdentifier(AccessibilityID.landingSignUpButton)
                         }
                         .padding(.bottom, .spacing6XL)
 
@@ -95,8 +98,8 @@ struct LandingScreen: View {
                                                 VStack(spacing: 0) {
                                                     UserListItemView(
                                                         user: item,
-                                                        openItemID: $openItemID,
-                                                        onTap: { id, needsLogin in
+                                                        openItemID: $openItemID
+                                                    ) { id, needsLogin in
                                                             if needsLogin {
                                                                 // If the user is expired or logged out, allow login with the same email.
                                                                 // If the user modifies the email and the account limit has been reached, show the max accounts alert.
@@ -105,7 +108,6 @@ struct LandingScreen: View {
                                                                 landingStore.switchAccount(to: id)
                                                             }
                                                         }
-                                                    )
                                                     if index < landingStore.userItems.count - 1 {
                                                         Divider()
                                                             .frame(height: 0.5)
@@ -131,6 +133,7 @@ struct LandingScreen: View {
                                     }
                                 }
                                 .padding(.vertical, .spacingSM)
+                                .accessibilityIdentifier(AccessibilityID.landingLogInToExistingAccountButton)
 
                                 ButtonView(text: lang.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                                     if landingStore.canAddMoreAccounts() {
@@ -138,6 +141,7 @@ struct LandingScreen: View {
                                     }
                                 }
                                 .padding(.bottom, .spacing6XL)
+                                .accessibilityIdentifier(AccessibilityID.landingCreateNewAccountButton)
                             }
 
                         }
@@ -148,6 +152,7 @@ struct LandingScreen: View {
             }
         }
         .environmentObject(router)
+        .accessibilityIdentifier(AccessibilityID.landingScreenRoot)
     }
 }
 

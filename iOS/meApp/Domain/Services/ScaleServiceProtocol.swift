@@ -1,11 +1,12 @@
-import Foundation
 import Combine
+import Foundation
 
 /// Protocol for business logic and orchestration related to paired-scale management.
 ///
 /// This protocol defines high-level operations for paired scales, including listing, creating,
 /// editing, deleting, updating scale meta and preferences, connection management, and pairing logic.
 protocol ScaleServiceProtocol: DeviceServiceProtocol {
+    func clearAllData() async
 
     /// The scales managed by the service.
     ///
@@ -15,6 +16,7 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     ///
     /// The subject is updated on the main thread.
     var scalesPublisher: AnyPublisher<[Device], Never> { get }
+    var scales: [Device] { get }
 
     /// Updates scale meta data.
     /// - Parameters:
@@ -29,10 +31,41 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// Updates scale preference from a DTO (safe for async boundaries — no @Model crossing required).
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws
 
+    // swiftlint:disable:next function_parameter_count
+    func createR4Scale(
+        scaleId: String,
+        accountId: String,
+        displayName: String,
+        token: String,
+        mac: String?,
+        broadcastIdString: String?,
+        broadcastId: Int64?,
+        sku: String?,
+        deviceName: String?,
+        wifiMac: String?,
+        deviceMetadata: DeviceMetaData?,
+        isWifiConfigured: Bool,
+        isConnected: Bool,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device
+
+    // swiftlint:disable:next function_parameter_count
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device
+
     /// Updates the status of a scale.
     /// - Parameters:
     ///   - scales: The scales to update.
     func updateAllScalesStatus(_ scales: [Device]?) async throws
+    func syncAllScalesWithRemote() async
+    func pushLocalChangesToServer() async
+    func getDevice(by deviceId: String) async throws -> Device?
 
     /// Updates connected device information including connection status and WiFi configuration.
     /// - Parameters:

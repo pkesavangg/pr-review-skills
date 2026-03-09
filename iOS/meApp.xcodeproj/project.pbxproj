@@ -154,6 +154,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				D0102DC82F20F8B70090AA7F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				105A1F9C2DE585B800FBB764 /* meApp */,
@@ -258,6 +259,7 @@
 				D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */,
 				10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */,
 				D0BCA1AF2E3A42070094546D /* XCRemoteSwiftPackageReference "ggInAppMessagingPackage" */,
+				D0102DC62F20F8A80090AA7F /* XCRemoteSwiftPackageReference "SwiftLint" */,
 				10E5F8EA2F2DCF82001C1DD3 /* XCRemoteSwiftPackageReference "ggBluetoothNativeLibrary" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -331,302 +333,13 @@
 			target = 105A1F992DE585B800FBB764 /* meApp */;
 			targetProxy = 105A1FB72DE585BA00FBB764 /* PBXContainerItemProxy */;
 		};
+		D0102DC82F20F8B70090AA7F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = D0102DC72F20F8B70090AA7F /* SwiftLintBuildToolPlugin */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		105A1FBE2DE585BA00FBB764 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		105A1FBF2DE585BA00FBB764 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		105A1FC12DE585BA00FBB764 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = meApp/meApp.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
-				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
-				DEVELOPMENT_TEAM = PX369MG78T;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = meApp/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Weight Gurus";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 5.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gurus.weight;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		105A1FC22DE585BA00FBB764 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = meApp/meApp_Release.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
-				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
-				DEVELOPMENT_TEAM = PX369MG78T;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = meApp/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Weight Gurus";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen";
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 5.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gurus.weight;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		105A1FC42DE585BA00FBB764 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = PX369MG78T;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/meApp";
-			};
-			name = Debug;
-		};
-		105A1FC52DE585BA00FBB764 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = PX369MG78T;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/meApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/meApp";
-			};
-			name = Release;
-		};
-		105A1FC72DE585BA00FBB764 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Dev.xcconfig;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = PX369MG78T;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = meApp;
-			};
-			name = Debug;
-		};
-		105A1FC82DE585BA00FBB764 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
-			baseConfigurationReferenceRelativePath = Core/Config/Production.xcconfig;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = PX369MG78T;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = meApp;
-			};
-			name = Release;
-		};
 		105A21E22DE5A29400FBB764 /* Dev */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReferenceAnchor = 105A1F9C2DE585B800FBB764 /* meApp */;
@@ -710,9 +423,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Weight Gurus";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -747,7 +457,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PX369MG78T;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -767,6 +477,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PX369MG78T;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -853,9 +564,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Weight Gurus";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app uses bluetooth to pair and sync with bluetooth devices";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "meApp syncs weight and body composition data with Apple Health to help you track your fitness progress.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "meApp writes your weight and body composition data to Apple Health to help you track your fitness progress.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -890,7 +598,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PX369MG78T;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -910,6 +618,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PX369MG78T;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.greatergoods.meAppUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -926,9 +635,7 @@
 		105A1F952DE585B800FBB764 /* Build configuration list for PBXProject "meApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				105A1FBE2DE585BA00FBB764 /* Debug */,
 				105A21E22DE5A29400FBB764 /* Dev */,
-				105A1FBF2DE585BA00FBB764 /* Release */,
 				105A21E62DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -937,9 +644,7 @@
 		105A1FC02DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				105A1FC12DE585BA00FBB764 /* Debug */,
 				105A21E32DE5A29400FBB764 /* Dev */,
-				105A1FC22DE585BA00FBB764 /* Release */,
 				105A21E72DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -948,9 +653,7 @@
 		105A1FC32DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meAppTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				105A1FC42DE585BA00FBB764 /* Debug */,
 				105A21E42DE5A29400FBB764 /* Dev */,
-				105A1FC52DE585BA00FBB764 /* Release */,
 				105A21E82DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -959,9 +662,7 @@
 		105A1FC62DE585BA00FBB764 /* Build configuration list for PBXNativeTarget "meAppUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				105A1FC72DE585BA00FBB764 /* Debug */,
 				105A21E52DE5A29400FBB764 /* Dev */,
-				105A1FC82DE585BA00FBB764 /* Release */,
 				105A21E92DE5A2A700FBB764 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -992,6 +693,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 11.14.0;
+			};
+		};
+		D0102DC62F20F8A80090AA7F /* XCRemoteSwiftPackageReference "SwiftLint" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/realm/SwiftLint";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.63.1;
 			};
 		};
 		D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */ = {
@@ -1040,6 +749,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		D0102DC72F20F8B70090AA7F /* SwiftLintBuildToolPlugin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D0102DC62F20F8A80090AA7F /* XCRemoteSwiftPackageReference "SwiftLint" */;
+			productName = "plugin:SwiftLintBuildToolPlugin";
 		};
 		D01B218F2E374CD6005D1CA2 /* ggInAppMessagingPackage */ = {
 			isa = XCSwiftPackageProductDependency;

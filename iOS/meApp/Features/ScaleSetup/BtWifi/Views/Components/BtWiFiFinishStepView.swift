@@ -40,5 +40,5 @@ struct BtWiFiFinishStepView: View {
 }
 
 #Preview {
-    BtWiFiFinishStepView() {}
+    BtWiFiFinishStepView {}
 }

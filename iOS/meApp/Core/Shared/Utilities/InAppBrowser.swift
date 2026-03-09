@@ -1,5 +1,5 @@
-import SwiftUI
 import SafariServices
+import SwiftUI
 
 /// A SwiftUI wrapper for presenting an in-app browser using SFSafariViewController.
 /// Use this view to present a web page modally within your app.
@@ -24,9 +24,7 @@ struct SafariView: UIViewControllerRepresentable {
 
 #Preview {
     // Example usage in a preview
-    SafariView(url: URL(string: "https://greatergoods.com/service")!, completion: {
-        print("Browser was dismissed")
-    })
+    SafariView(url: URL(string: "https://greatergoods.com/service") ?? URL(fileURLWithPath: "/")) { }
 }
 
 // MARK: - Usage Example
@@ -43,9 +41,7 @@ struct ContentView: View {
         .inAppBrowser(
             url: URL(string: "https://example.com")!,
             isPresented: $showBrowser
-        ) {
-            print("Browser was dismissed")
-        }
+        ) { }
     }
 }
 */

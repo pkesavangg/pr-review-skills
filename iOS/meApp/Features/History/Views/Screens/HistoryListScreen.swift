@@ -17,7 +17,7 @@ struct HistoryListScreen: View {
     
     // iOS 17 fix: Prevent duplicate lifecycle calls
     @State private var hasAppeared = false
-    @State private var lastTabCheck: BottomTab? = nil
+    @State private var lastTabCheck: BottomTab?
     
     // Prevent multiple simultaneous navigation
     @State private var isNavigating = false
@@ -49,12 +49,12 @@ struct HistoryListScreen: View {
                   .background(theme.backgroundSecondary)
                   .edgesIgnoringSafeArea(.bottom)
           }
-          .onAppear(perform: {
+          .onAppear {
               // Register reselect handler to pop to root when history tab is tapped
               tabViewModel.registerReselectHandler(for: .history) {
                   router.navigateToRoot()
               }
-          })
+          }
           .background(theme.backgroundSecondary)
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
@@ -140,4 +140,3 @@ struct HistoryListScreen_Previews: PreviewProvider {
     }
 }
 #endif
-

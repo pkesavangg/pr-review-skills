@@ -2,7 +2,11 @@ import Foundation
 
 @MainActor
 final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
+        self.httpClient = httpClient
+    }
 
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {
         struct RegisterRequest: Codable {
@@ -80,17 +84,32 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
 
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse {
         struct DashboardMetricsRequest: Codable { let dashboardMetrics: [String] }
-        return try await httpClient.send(.updateDashboardMetrics, method: .patch, body: DashboardMetricsRequest(dashboardMetrics: metrics), needsAuth: true)
+        return try await httpClient.send(
+            .updateDashboardMetrics,
+            method: .patch,
+            body: DashboardMetricsRequest(dashboardMetrics: metrics),
+            needsAuth: true
+        )
     }
 
     func patchProgressMetrics(_ metrics: [String]) async throws -> AccountResponse {
         struct ProgressMetricsRequest: Codable { let progressMetrics: [String] }
-        return try await httpClient.send(.updateProgressMetrics, method: .patch, body: ProgressMetricsRequest(progressMetrics: metrics), needsAuth: true)
+        return try await httpClient.send(
+            .updateProgressMetrics,
+            method: .patch,
+            body: ProgressMetricsRequest(progressMetrics: metrics),
+            needsAuth: true
+        )
     }
 
     func patchStreak(_ isStreakOn: Bool, _ streakTimestamp: String) async throws -> AccountResponse {
         struct StreakRequest: Codable { let isStreakOn: Bool, streakTimestamp: String }
-        return try await httpClient.send(.updateStreak, method: .patch, body: StreakRequest(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp), needsAuth: true)
+        return try await httpClient.send(
+            .updateStreak,
+            method: .patch,
+            body: StreakRequest(isStreakOn: isStreakOn, streakTimestamp: streakTimestamp),
+            needsAuth: true
+        )
     }
 
     func patchWeightless(_ isWeightlessOn: Bool, _ weightlessTimestamp: String, _ weightlessWeight: Int) async throws -> AccountResponse {
@@ -99,7 +118,16 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             let weightlessTimestamp: String
             let weightlessWeight: Int
         }
-        return try await httpClient.send(.updateWeightless, method: .patch, body: WeightlessRequest(isWeightlessOn: isWeightlessOn, weightlessTimestamp: weightlessTimestamp, weightlessWeight: weightlessWeight), needsAuth: true)
+        return try await httpClient.send(
+            .updateWeightless,
+            method: .patch,
+            body: WeightlessRequest(
+                isWeightlessOn: isWeightlessOn,
+                weightlessTimestamp: weightlessTimestamp,
+                weightlessWeight: weightlessWeight
+            ),
+            needsAuth: true
+        )
     }
 
     func deleteAccount(accountId: String) async throws {
@@ -113,7 +141,12 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
 
     func updatePassword(oldPassword: String, newPassword: String) async throws -> Tokens {
         struct Request: Codable { let oldPassword: String; let newPassword: String }
-        return try await httpClient.send(.changePassword, method: .put, body: Request(oldPassword: oldPassword, newPassword: newPassword), needsAuth: true)
+        return try await httpClient.send(
+            .changePassword,
+            method: .put,
+            body: Request(oldPassword: oldPassword, newPassword: newPassword),
+            needsAuth: true
+        )
     }
     
     func refreshToken(refreshToken: String, accountId: String?) async throws -> Tokens {

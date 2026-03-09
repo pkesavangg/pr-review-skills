@@ -61,7 +61,6 @@ final class Device {
     @Relationship(deleteRule: .cascade, inverse: \R4ScalePreference.device) var r4ScalePreference: R4ScalePreference?
     @Relationship(deleteRule: .cascade, inverse: \DeviceMetaData.device) var metaData: DeviceMetaData?
 
-
     init(id: String,
          accountId: String,
          peripheralIdentifier: String? = nil,
@@ -122,6 +121,7 @@ final class Device {
         }
 
     }
+    // swiftlint:disable:next function_body_length
     convenience init(from dto: ScaleDTO,
                      accountId: String? = nil,
                      protocolType: String? = nil,
@@ -134,12 +134,12 @@ final class Device {
         let id = dto.id ?? UUID().uuidString
 
         // Create R4ScalePreference first if needed
-        var r4Preference: R4ScalePreference? = nil
+        var r4Preference: R4ScalePreference?
         if let preference = dto.preference {
             r4Preference = R4ScalePreference(from: preference, scaleId: id)
         }
 
-        var metaData: DeviceMetaData? = nil
+        var metaData: DeviceMetaData?
         if let metaDataDto = dto.metaData {
             metaData = DeviceMetaData(from: metaDataDto)
         }
@@ -152,7 +152,7 @@ final class Device {
             }
         }
 
-        var bathScale: BathScale? = nil
+        var bathScale: BathScale?
         let resolvedScaleType = scaleType ?? dto.type
         if let resolvedScaleType {
             bathScale = BathScale(scaleType: resolvedScaleType, bodyComp: bodyComp)
@@ -198,7 +198,6 @@ final class Device {
 //            metaData.device = self
 //        }
 
-
         // Note: Relationship setup (device references) will be handled when the object is
         // inserted into a SwiftData ModelContext to avoid crashes with non-persisted instances
 
@@ -211,7 +210,7 @@ final class Device {
 
     func toDTO() -> ScaleDTO {
         return ScaleDTO(
-            broadcastId: self.broadcastId != nil ? Int(self.broadcastId!) : nil,
+            broadcastId: self.broadcastId.map { Int($0) },
             broadcastIdString: self.broadcastIdString,
             createdAt: self.createdAt,
             id: self.id,
@@ -225,14 +224,14 @@ final class Device {
             metaData: self.metaData?.toDTO(),
             name: self.deviceName,
             nickname: self.nickname,
-            password: self.password != nil ? Int(self.password!) : nil,
+            password: self.password.map { Int($0) },
             peripheralIdentifier: self.peripheralIdentifier,
             preference: self.r4ScalePreference?.toDTO(),
             scaleToken: self.token,
             sku: self.sku,
             type: self.bathScale?.scaleType,
             userId: self.accountId,
-            userNumber: self.userNumber != nil ? Int(self.userNumber!) : nil
+            userNumber: self.userNumber.flatMap { Int($0) }
         )
     }
 }

@@ -1,5 +1,9 @@
 // ScaleRepository.swift
 
+// This repository intentionally aggregates all Device/Scale CRUD operations
+// to maintain a single source of truth for scale data access patterns.
+// Splitting would fragment SwiftData context management and reduce maintainability.
+
 import Foundation
 import SwiftData
 
@@ -7,8 +11,12 @@ import SwiftData
 @MainActor
 final class ScaleRepository: ScaleRepositoryProtocol {
     // MARK: - Properties
-    let context: ModelContext = PersistenceController.shared.context
+    let context: ModelContext
     let logger = LoggerService.shared
+
+    init(context: ModelContext? = nil) {
+        self.context = context ?? PersistenceController.shared.context
+    }
 
     /// Deletes all scales from local storage.
     func clearAllData() async throws {
@@ -72,14 +80,24 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// Gets all devices that haven't been synced with the API.
     /// - Returns: An array of unsynced devices.
     func getUnsyncedDevices() async throws -> [Device] {
-        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { ($0.isSynced ?? false) == false  })
+        let descriptor = FetchDescriptor<Device>(predicate: #Predicate { ($0.isSynced ?? false) == false })
         return try context.fetch(descriptor)
     }
 
     /// Saves a new scale to the local data store.
     /// - Parameter scale: The Device object to save.
     /// - Returns: The created Device.
+    /// - Throws: An error if a device with the same ID already exists.
     func createScale(_ scale: Device) async throws -> Device {
+        // Check for duplicate ID before inserting
+        if let existingDevice = try? await getDevice(scale.id), existingDevice != nil {
+            throw NSError(
+                domain: "ScaleRepository",
+                code: 409,
+                userInfo: [NSLocalizedDescriptionKey: "Device with ID '\(scale.id)' already exists"]
+            )
+        }
+        
         scale.isSynced = false
         context.insert(scale)
         insertDeviceRelationships(scale)
@@ -201,8 +219,16 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     ///   - accountId: The account ID to filter devices by.
     ///   - serverDevices: Array of fresh Device objects from the server.
     ///   - preserveUnsynced: Array of unsynced local devices to preserve.
-    func replaceAllDevicesForAccount(_ accountId: String, with serverDevices: [ScaleDTO], preserveUnsynced unsyncedDevices: [Device]) async throws {
-        logger.log(level: .debug, tag: "ScaleRepository", message: "Starting replaceAllDevicesForAccount with \(serverDevices.count) server devices, \(unsyncedDevices.count) unsynced devices")
+    func replaceAllDevicesForAccount( // swiftlint:disable:this function_body_length
+        _ accountId: String,
+        with serverDevices: [ScaleDTO],
+        preserveUnsynced unsyncedDevices: [Device]
+    ) async throws {
+        logger.log(
+            level: .debug,
+            tag: "ScaleRepository",
+            message: "Starting replaceAllDevicesForAccount with \(serverDevices.count) server devices, \(unsyncedDevices.count) unsynced devices"
+        )
         
         // Delete only synced devices for this account (preserve unsynced ones)
         let syncedDescriptor = FetchDescriptor<Device>(predicate: #Predicate {
@@ -267,7 +293,12 @@ final class ScaleRepository: ScaleRepositoryProtocol {
                let preservedStatus = connectionStatusMap[broadcastId] {
                 device.isConnected = preservedStatus.isConnected
                 device.isWifiConfigured = preservedStatus.isWifiConfigured
-                logger.log(level: .debug, tag: "ScaleRepository", message: "Restored connection status for device \(device.id): connected=\(preservedStatus.isConnected), wifi=\(preservedStatus.isWifiConfigured)")
+                logger.log(
+                    level: .debug,
+                    tag: "ScaleRepository",
+                    message: "Restored connection status for device \(device.id): " +
+                        "connected=\(preservedStatus.isConnected), wifi=\(preservedStatus.isWifiConfigured)"
+                )
             }
             
             context.insert(device)
@@ -276,7 +307,11 @@ final class ScaleRepository: ScaleRepositoryProtocol {
         }
         
         try context.save()
-        logger.log(level: .debug, tag: "ScaleRepository", message: "Completed replaceAllDevicesForAccount: Inserted=\(insertedCount), Updated=\(updatedCount)")
+        logger.log(
+            level: .debug,
+            tag: "ScaleRepository",
+            message: "Completed replaceAllDevicesForAccount: Inserted=\(insertedCount), Updated=\(updatedCount)"
+        )
     }
 
     /// Marks a device as deleted locally (for server sync).
@@ -366,7 +401,13 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     }
 
     /// Copy device fields from a ScaleDTO to a Device.
-    private func copyDeviceFields(from dto: ScaleDTO, to device: Device, accountId: String, preserveConnectionStatus: Bool = false, connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)] = [:]) {
+    private func copyDeviceFields(
+        from dto: ScaleDTO,
+        to device: Device,
+        accountId: String,
+        preserveConnectionStatus: Bool = false,
+        connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)] = [:]
+    ) {
         device.peripheralIdentifier = dto.peripheralIdentifier ?? device.peripheralIdentifier
         device.nickname = dto.nickname ?? device.nickname
         device.sku = dto.sku ?? device.sku
@@ -495,11 +536,22 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     }
 
     /// Updates a device from a ScaleDTO, preserving relationships.
-    private func updateDeviceFromDTO(_ device: Device, from dto: ScaleDTO, accountId: String, connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)]) {
+    private func updateDeviceFromDTO(
+        _ device: Device,
+        from dto: ScaleDTO,
+        accountId: String,
+        connectionStatusMap: [String: (isConnected: Bool, isWifiConfigured: Bool)]
+    ) {
         if let serverId = dto.id {
             device.id = serverId
         }
-        copyDeviceFields(from: dto, to: device, accountId: accountId, preserveConnectionStatus: true, connectionStatusMap: connectionStatusMap)
+        copyDeviceFields(
+            from: dto,
+            to: device,
+            accountId: accountId,
+            preserveConnectionStatus: true,
+            connectionStatusMap: connectionStatusMap
+        )
         
         // Update R4 preference if server has one
         if let preferenceDTO = dto.preference {

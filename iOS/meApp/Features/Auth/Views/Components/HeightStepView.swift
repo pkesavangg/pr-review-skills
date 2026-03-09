@@ -5,7 +5,6 @@
 //  Created by Kesavan Panchabakesan on 11/06/25.
 //
 
-
 import SwiftUI
 
 // MARK: - HeightStepView
@@ -21,16 +20,15 @@ struct HeightStepView: View {
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
             
-            VStack(alignment: .leading, spacing: .spacingLG){
+            VStack(alignment: .leading, spacing: .spacingLG) {
                 // Height Selection Chip
                 ChipView(
                     text: signupStore.getFormattedHeight(),
                     style: .bordered,
-                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
-                    onTap: {
+                    isSelected: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
+                ) {
                         signupStore.showHeightPicker()
                     }
-                )
                 .padding(.top, .spacingLG)
                 
                 CustomToggleView(isOn: $signupStore.signupForm.useMetric.value,

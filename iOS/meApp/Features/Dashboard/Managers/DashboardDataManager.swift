@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 /// Manages UI state and coordinates with EntryService for dashboard data operations
 @MainActor
@@ -59,11 +59,43 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
 
     // MARK: - Data Loading
     func loadInitialData() async throws {
+        logger.log(
+            level: .debug,
+            tag: "DashboardDataManager",
+            message: "Dashboard data manager initialized - listening to EntryService published arrays"
+        )
     
         // No need to load data here - ContentView handles data loading
         // We just listen to EntryService's published arrays via setupEntryServiceBindings()
     }
 
+    /// Initialize the data manager (sets up bindings and prepares for data loading)
+    func initializeDataManager() async throws {
+        try await loadInitialData()
+    }
+
+    /// Loads the latest entry data and updates internal state
+    /// - Returns: The latest entry if available, along with its weight
+    func loadLatestEntryData() async throws -> (entry: Entry?, weight: Int?) {
+        do {
+            guard let latestEntry = try await getLatestEntry() else {
+                return (nil, nil)
+            }
+
+            // Extract relationship data immediately after fetch, before any further await
+            let weight = latestEntry.scaleEntry?.weight
+
+            // Update latest weight stored if available
+            if let weight = weight {
+                state.latestWeightStored = weight
+            }
+
+            return (latestEntry, weight)
+        } catch {
+            logger.log(level: .error, tag: "DashboardDataManager", message: "Failed to load latest entry data: \(error)")
+            throw error
+        }
+    }
 
     // MARK: - Data Retrieval
 
@@ -157,10 +189,11 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
         }
 
         guard entryServiceMonthlyCount == stateMonthlyCount else {
-            throw DashboardError.cacheUpdateFailed("Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)")
+            throw DashboardError.cacheUpdateFailed(
+                "Monthly cache inconsistency: EntryService=\(entryServiceMonthlyCount), state=\(stateMonthlyCount)"
+            )
         }
 
-    
     }
 
     // MARK: - Data Analytics
@@ -198,6 +231,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: dailySummaries.map { ($0.period, $0) }
         )
 
+        logger.log(
+            level: .debug,
+            tag: "DashboardDataManager",
+            message: "Updated daily summaries cache: \(cachedSortedDailySummaries.count) items, " +
+                "bounds: \(cachedDailyMinDate?.description ?? "nil") to \(cachedDailyMaxDate?.description ?? "nil")"
+        )
     
     }
 
@@ -213,6 +252,12 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             uniqueKeysWithValues: monthlySummaries.map { ($0.period, $0) }
         )
 
+        logger.log(
+            level: .debug,
+            tag: "DashboardDataManager",
+            message: "Updated monthly summaries cache: \(cachedSortedMonthlySummaries.count) items, " +
+                "bounds: \(cachedMonthlyMinDate?.description ?? "nil") to \(cachedMonthlyMaxDate?.description ?? "nil")"
+        )
     
     }
 

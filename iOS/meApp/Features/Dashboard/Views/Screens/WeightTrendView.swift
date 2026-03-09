@@ -14,7 +14,7 @@ struct WeightTrendView: View {
 
     var body: some View {
         ZStack {
-            VStack(alignment: .leading,spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 weightInfoSection(dashboardStore: dashboardStore)
                 GraphView(dashboardStore: dashboardStore)
                 SegmentedButtonView(
@@ -52,7 +52,7 @@ struct WeightTrendView: View {
                 anchorDate = dashboardStore.graphManager.visibleMidpoint(for: oldValue)
             }
 
-            dashboardStore.updateSelectedPeriod(newValue, anchorDate: anchorDate)
+            dashboardStore.chartManager.updateSelectedPeriod(newValue, anchorDate: anchorDate)
         }
     }
 
@@ -62,7 +62,7 @@ struct WeightTrendView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: .zero) {
             // Show label based on selection state
-            Text(dashboardStore.weightDisplayLabel)
+            Text(dashboardStore.displayManager.weightDisplayLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .padding(.leading, .spacingSM)
@@ -70,20 +70,20 @@ struct WeightTrendView: View {
             WeightDisplayView(
                 weightText: {
                     // Prefer current selection (exact point or interpolated crosshair) when available
-                    if let displayWeight = dashboardStore.displayWeight {
+                    if let displayWeight = dashboardStore.displayManager.displayWeight {
                         if abs(displayWeight) < AppConstants.Precision.doubleEqualityEpsilon {
                             return "000.0"
                         }
-                        return dashboardStore.formatWeightDisplayText(displayWeight)
+                        return dashboardStore.displayManager.formatWeightDisplayText(displayWeight)
                     }
                     // Fallback to average weight
-                    let averageWeight = dashboardStore.getCurrentAverageWeight()
+                    let averageWeight = dashboardStore.displayManager.getCurrentAverageWeight()
                     if abs(averageWeight) < AppConstants.Precision.doubleEqualityEpsilon {
                         return "000.0"
                     }
-                    return dashboardStore.formatWeightDisplayText(averageWeight)
+                    return dashboardStore.displayManager.formatWeightDisplayText(averageWeight)
                 }(),
-                unitText: dashboardStore.displayUnitText
+                unitText: dashboardStore.displayManager.displayUnitText
             )
         }
     }
