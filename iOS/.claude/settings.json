@@ -1,0 +1,21 @@
+{
+  "enabledPlugins": {
+    "code-simplifier@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [[ \"$FILE\" == *.swift ]] && [[ \"$FILE\" != *DerivedData* ]] && [[ \"$FILE\" != *SourcePackages* ]]; then cd /Users/kesavan/meApp-1/iOS && swiftlint lint --config .swiftlint.yml --reporter xcode --quiet \"$FILE\" 2>&1 | head -30; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
