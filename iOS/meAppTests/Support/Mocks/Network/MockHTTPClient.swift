@@ -23,6 +23,7 @@ final class MockHTTPClient: HTTPClientProtocol {
     private(set) var lastSendMethod: HTTPMethod?
     private(set) var lastSendNeedsAuth: Bool = false
     private(set) var lastSendAccountId: String?
+    private(set) var lastSendBody: (any Encodable)?
 
     // MARK: - MockError
 
@@ -62,6 +63,7 @@ final class MockHTTPClient: HTTPClientProtocol {
         lastSendMethod = method
         lastSendNeedsAuth = needsAuth
         lastSendAccountId = accountId
+        lastSendBody = body
         if let sendError { throw sendError }
         guard let result = sendResult else { throw MockError.noResultConfigured }
         guard let typed = result as? R else { throw MockError.typeMismatch }

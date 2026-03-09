@@ -10,15 +10,19 @@ import SwiftData
 
 @MainActor
 final class LoggerRepository: LoggerRepositoryProtocol {
-    private let modelContext: ModelContext = PersistenceController.shared.context
+    private let container: ModelContainer
     private let appLogger = AppLogger(tag: "LoggerRepository")
+
+    init(container: ModelContainer = PersistenceController.shared.container) {
+        self.container = container
+    }
 
     /// Executes work on a background `ModelContext` to avoid blocking the main actor.
     /// Mirrors the approach used in `EntryRepository`.
     /// - Parameter work: Closure that performs fetch/update/delete using the provided background context.
     /// - Returns: The result of the work closure.
     private func performBackgroundTask<T>(_ work: @escaping (ModelContext) throws -> T) async throws -> T {
-        let container = PersistenceController.shared.container
+        let container = self.container
         return try await Task.detached(priority: .userInitiated) {
             let backgroundContext = ModelContext(container)
             return try work(backgroundContext)

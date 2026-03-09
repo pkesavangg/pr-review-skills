@@ -14,8 +14,12 @@ import Foundation
 
 @MainActor
 final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
-    
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
+        self.httpClient = httpClient
+    }
+
     func removeIntegration(accountId: String, provider: IntegrationType) async throws {
         switch provider {
         case .healthKit, .healthConnect:
