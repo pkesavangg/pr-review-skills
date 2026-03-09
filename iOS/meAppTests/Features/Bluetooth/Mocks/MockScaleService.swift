@@ -10,6 +10,7 @@ final class MockScaleService: ScaleServiceProtocol {
     var updateAllScalesStatusError: Error?
     var syncDevicesError: Error?
     var createDeviceError: Error?
+    var getDevicesError: Error?
     var updateScalePreferenceError: Error?
     var deleteDeviceError: Error?
     var createR4ScaleError: Error?
@@ -20,6 +21,7 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var updateConnectedDeviceWeightOnlyModeCalls = 0
     private(set) var syncDevicesCalls = 0
     private(set) var createDeviceCalls = 0
+    private(set) var createBluetoothScaleCalls = 0
     private(set) var createR4ScaleCalls = 0
     private(set) var deleteDeviceCalls = 0
     private(set) var pushLocalChangesToServerCalls = 0
@@ -30,10 +32,16 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var lastUpdatedScalePreferenceDeviceId: String?
     private(set) var lastUpdatedScalePreferenceDTO: R4ScalePreferenceDTO?
     private(set) var lastCreatedDevice: Device?
+    private(set) var lastCreatedBluetoothScale: Device?
     private(set) var lastCreatedR4Scale: Device?
 
     func clearAllData() async {}
-    func getDevices() async throws -> [Device] { scales }
+    func getDevices() async throws -> [Device] {
+        if let getDevicesError {
+            throw getDevicesError
+        }
+        return scales
+    }
     func getConnectedDevices() async -> [String: Any] { [:] }
 
     func updateConnectedDevices(device: Any, isConnected: Bool) async {
@@ -57,6 +65,26 @@ final class MockScaleService: ScaleServiceProtocol {
         createDeviceCalls += 1
         lastCreatedDevice = device
         if let createDeviceError { throw createDeviceError }
+        return device
+    }
+
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        createBluetoothScaleCalls += 1
+        if let createDeviceError { throw createDeviceError }
+
+        device.accountId = accountId
+        device.sku = sku
+        device.userNumber = userNumber
+        device.metaData = deviceMetadata
+        device.bathScale = device.bathScale ?? BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
+        lastCreatedBluetoothScale = device
         return device
     }
 
