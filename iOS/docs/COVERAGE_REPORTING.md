@@ -1,9 +1,14 @@
 # Coverage Reporting
 
+## Related Testing Docs
+- High-level testing index: `docs/TESTING.md`
+- Unit testing details: `meAppTests/docs/UNIT_TESTING.md`
+- UI testing details: `meAppUITests/docs/UI_TESTING.md`
+
 ## Purpose
 Xcode's Coverage UI (`Cmd+9`) is useful for quick local inspection but hard to share with reviewers.
 
-This project uses `iOS/scripts/run_tests_with_coverage.sh` + `iOS/scripts/export_coverage_reports.py` to generate shareable coverage artifacts after unit tests.
+This project uses `iOS/scripts/run_tests_with_coverage.sh` + `iOS/scripts/export_coverage_reports.py` to generate shareable coverage artifacts after unit or UI tests.
 
 ## Prerequisites
 Before running coverage commands, verify Python 3 is available:

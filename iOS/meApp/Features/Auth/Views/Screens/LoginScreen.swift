@@ -77,7 +77,8 @@ struct LoginScreen: View {
                                             focusField: .email
                                         ),
                                         value: $store.loginForm.email.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.loginEmailField
                                     ) {
                                         store.setEmailTouched()
                                         focusedField = .password
@@ -100,7 +101,8 @@ struct LoginScreen: View {
                                             focusField: .password
                                         ),
                                         value: $store.loginForm.password.value,
-                                        focusedField: $focusedField
+                                        focusedField: $focusedField,
+                                        accessibilityIdentifier: AccessibilityID.loginPasswordField
                                     ) {
                                         store.setPasswordTouched()
                                         focusedField = nil
@@ -137,7 +139,8 @@ struct LoginScreen: View {
                                                 }
                                             }
                                         }
-                                    
+                                    .accessibilityIdentifier(AccessibilityID.loginSubmitButton)
+
                                     ButtonView(
                                         text: lang.forgotPassword,
                                         type: .textPrimary,
@@ -147,6 +150,7 @@ struct LoginScreen: View {
                                             focusedField = nil
                                             store.showPasswordResetPrompt()
                                         }
+                                    .accessibilityIdentifier(AccessibilityID.loginForgotPasswordButton)
                                 }
                             }
                             .padding(.top, .spacingLG)
@@ -221,6 +225,7 @@ struct LoginScreen: View {
                 hideKeyboard()
             }
         }
+        .accessibilityIdentifier(AccessibilityID.loginScreenRoot)
     }
 }
 

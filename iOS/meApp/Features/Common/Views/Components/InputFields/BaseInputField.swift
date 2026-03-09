@@ -25,6 +25,9 @@ struct BaseInputField: View {
     // Callbacks
     var onCommit: (() -> Void)?
     var onEditingChanged: ((Bool) -> Void)?
+
+    // Accessibility
+    var accessibilityIdentifier: String?
     
     // Internal state for password visibility
     @State private var isSecureTextVisible: Bool = false
@@ -34,6 +37,30 @@ struct BaseInputField: View {
     // Constants
     let focusedTopPadding: CGFloat = 15
     let trailingPadding: CGFloat = 40
+
+    init(
+        inputType: TextFieldType,
+        keyboardType: UIKeyboardType,
+        submitLabel: SubmitLabel,
+        isDisabled: Bool,
+        fieldType: FocusField,
+        value: Binding<String>,
+        focusedField: Binding<FocusField?>,
+        onCommit: (() -> Void)? = nil,
+        onEditingChanged: ((Bool) -> Void)? = nil,
+        accessibilityIdentifier: String? = nil
+    ) {
+        self.inputType = inputType
+        self.keyboardType = keyboardType
+        self.submitLabel = submitLabel
+        self.isDisabled = isDisabled
+        self.fieldType = fieldType
+        self._value = value
+        self._focusedField = focusedField
+        self.onCommit = onCommit
+        self.onEditingChanged = onEditingChanged
+        self.accessibilityIdentifier = accessibilityIdentifier
+    }
     
     // Computed property for theme palette (derived from themeManager)
     private var theme: AppColors.Palette {
@@ -77,6 +104,7 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
+        .accessibilityIdentifier(accessibilityIdentifier ?? "")
         .id("\(fieldType)-\(themeRefreshId)")
         .padding(.top, (isFocused || !value.isEmpty) ? focusedTopPadding : 0)
         .padding(.trailing, trailingPadding)

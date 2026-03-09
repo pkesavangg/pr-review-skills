@@ -12,9 +12,9 @@ import SwiftUI
 @MainActor
 final class LandingStore: ObservableObject {
     // MARK: Dependencies
-    @Injector private var accountService: AccountService
+    @Injector private var accountService: AccountServiceProtocol
     @Injector private var notificationService: NotificationHelperServiceProtocol
-    @Injector private var logger: LoggerService
+    @Injector private var logger: LoggerServiceProtocol
     
     private let networkMonitor = NetworkMonitor.shared
     
@@ -42,7 +42,7 @@ final class LandingStore: ObservableObject {
     
     /// Observes account changes and updates the local account list.
     private func setupAccountObservation() {
-        accountService.$allAccounts
+        accountService.allAccountsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
                 guard let self = self else { return }
