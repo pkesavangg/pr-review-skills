@@ -12,11 +12,10 @@ import Foundation
 @MainActor
 final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     static let shared = AccountFlagService()
-    
-    @Injector private var logger: LoggerService
-    @Injector private var appReviewService: AppReviewService
-    
-    private let apiRepo: AccountFlagRepositoryAPIProtocol = AccountFlagRepositoryAPI()
+
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var appReviewService: AppReviewHandlerProtocol
+    private let apiRepo: AccountFlagRepositoryAPIProtocol
     private let tag = "AccountFlagService"
     
     /// Currently stored flag (cached after fetching)
@@ -25,7 +24,9 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     /// Scale review event publisher for scale review flags
     let scaleReviewSubject = PassthroughSubject<ScaleReviewEvent, Never>()
     
-    private init() {}
+    init(apiRepo: AccountFlagRepositoryAPIProtocol? = nil) {
+        self.apiRepo = apiRepo ?? AccountFlagRepositoryAPI()
+    }
     
     /// Fetches account flags from the API
     /// Prefers flags with trigger 'login' if present, otherwise returns the first flag
