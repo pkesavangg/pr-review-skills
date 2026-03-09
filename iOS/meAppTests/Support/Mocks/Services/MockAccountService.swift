@@ -19,8 +19,10 @@ final class MockAccountService: AccountServiceProtocol {
     var refreshAccountResult: Result<Account, Error> = .failure(UnexpectedCallError.methodCalled("refreshAccount"))
     var updatePublishedStateError: Error?
     var shouldDeferUnauthenticatedLandingResult = false
+    var deleteAllAccountsError: Error?
 
     private(set) var logInCalls = 0
+    private(set) var deleteAllAccountsCalls = 0
     private(set) var signUpCalls = 0
     private(set) var createGoalCalls = 0
     private(set) var requestPasswordResetCalls = 0
@@ -75,7 +77,8 @@ final class MockAccountService: AccountServiceProtocol {
     }
 
     func deleteAllAccounts() async throws {
-        throw UnexpectedCallError.methodCalled("deleteAllAccounts")
+        deleteAllAccountsCalls += 1
+        if let error = deleteAllAccountsError { throw error }
     }
 
     func switchAccount(to account: Account) async throws {

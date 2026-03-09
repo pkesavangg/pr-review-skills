@@ -14,7 +14,11 @@ import SwiftData
 final class EntryRepository: EntryRepositoryProtocol {
 
     // MARK: - Properties
-    private let container: ModelContainer = PersistenceController.shared.container
+    private let container: ModelContainer
+
+    init(container: ModelContainer? = nil) {
+        self.container = container ?? PersistenceController.shared.container
+    }
     
     /// Executes work on a background ModelContext to avoid blocking the main actor.
     /// - Parameter work: Closure that performs the work using the provided background context.

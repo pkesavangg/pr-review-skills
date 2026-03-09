@@ -8,12 +8,12 @@ final class AppSyncSetupStore: ObservableObject {
     // MARK: - Dependencies
 
     @Injector private var notificationService: NotificationHelperServiceProtocol
-    @Injector private var logger: LoggerService
-    @Injector private var scaleService: ScaleService
-    @Injector private var accountService: AccountService
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var accountService: AccountServiceProtocol
     // Permissions
-    @Injector private var permissionsService: PermissionsService
-    @Injector private var bluetoothService: BluetoothService
+    @Injector private var permissionsService: PermissionsServiceProtocol
+    @Injector private var bluetoothService: BluetoothServiceProtocol
 
     // MARK: - Public state
 
@@ -67,7 +67,7 @@ final class AppSyncSetupStore: ObservableObject {
 
     init() {
         // Observe permission changes and update button state accordingly
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -283,7 +283,7 @@ final class AppSyncSetupStore: ObservableObject {
                     createdAt: createdAt,
                     bathScale: BathScale(scaleType: ScaleSourceType.appsync.rawValue, bodyComp: scaleItem.bodyComp)
                 )
-                let response = try await self.scaleService.createDevice(newDevice)
+                let response = try await self.scaleService.createDevice(newDevice, false)
                 await self.scaleService.syncAllScalesWithRemote()
                 logger.log(
                     level: .info,

@@ -200,7 +200,7 @@ private func makeSUT(
     let entry = entryService ?? MockAppSyncTabStoreEntryService()
     let logger = loggerService ?? MockLoggerService()
 
-    DependencyContainer.shared.dependencies.removeAll()
+    TestDependencyContainer.reset()
     DependencyContainer.shared.register(account as AccountServiceProtocol)
     DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
     DependencyContainer.shared.register(entry as EntryServiceProtocol)

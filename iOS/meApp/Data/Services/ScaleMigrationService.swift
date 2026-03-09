@@ -7,9 +7,18 @@
 
 import Foundation
 
+// MARK: - Protocol
+
+@MainActor
+protocol ScaleMigrationServiceProtocol {
+    func isMigrationNeeded(for accountId: String) -> Bool
+    func migrateScaleData(for accountId: String) async throws -> [Device]
+    func cleanupAfterMigration(for accountId: String)
+}
+
 /// Service to migrate scale data from Ionic app (Capacitor Preferences) to SwiftUI app (SwiftData)
 @MainActor
-final class ScaleMigrationService {
+final class ScaleMigrationService: ScaleMigrationServiceProtocol {
     @Injector private var logger: LoggerService
     @Injector private var scaleService: ScaleService
     private let scaleRepository = ScaleRepository()

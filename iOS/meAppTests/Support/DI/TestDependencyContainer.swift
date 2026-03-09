@@ -13,6 +13,7 @@ enum TestDependencyContainer {
         )
         let notification = MockNotificationHelperService()
         DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+        DependencyContainer.shared.register(MockAccountService() as AccountServiceProtocol)
         DependencyContainer.shared.register(MockEntryService() as EntryServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelFeedService() as FeedServiceProtocol)
         DependencyContainer.shared.register(MockGoalAlertService() as GoalAlertServiceProtocol)
