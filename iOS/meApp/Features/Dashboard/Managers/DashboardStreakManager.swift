@@ -179,7 +179,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
         if isEditMode {
             return state.streakItems
         } else {
-            return Array(state.streakItems.prefix(state.activeStreakItemsCount))
+            return Array(state.streakItems.prefix(max(0, state.activeStreakItemsCount)))
         }
     }
     
