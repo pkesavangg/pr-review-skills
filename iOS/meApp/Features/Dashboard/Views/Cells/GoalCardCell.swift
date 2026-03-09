@@ -117,7 +117,7 @@ class GoalCardCell: UICollectionViewCell {
             applySelectionShadow()
             // Enter edit mode on long press if not already in edit mode
             if let store = currentStore, !store.state.ui.isEditMode {
-                store.toggleEditMode()
+                store.gridEditingManager.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
             if let store = currentStore {
@@ -157,7 +157,7 @@ class GoalCardCell: UICollectionViewCell {
                         isEditMode: true,
                         isRemoved: store.state.ui.isGoalCardRemoved,
                         onToggleRemoval: {
-                            store.toggleGoalCardRemoval()
+                            store.gridEditingManager.toggleGoalCardRemoval()
                         },
                         isBeingDragged: isDragging, // Let overlay handle icon visibility during drag
                         isDropTarget: store.state.ui.dropHoverId == "goalCard",
@@ -168,7 +168,7 @@ class GoalCardCell: UICollectionViewCell {
                     )
             )
             overlayButtonVisible = !isDragging && !(store.state.ui.dropHoverId == "goalCard")
-            overlayButtonAction = { store.toggleGoalCardRemoval() }
+            overlayButtonAction = { store.gridEditingManager.toggleGoalCardRemoval() }
         } else {
             viewWithOverlay = AnyView(goalCardView)
             overlayButtonVisible = false

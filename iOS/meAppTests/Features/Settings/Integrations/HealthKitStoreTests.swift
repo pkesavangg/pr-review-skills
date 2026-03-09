@@ -639,6 +639,13 @@ private func makeSUT(
     let logger = loggerService ?? MockLoggerService()
     let kv = kvStorage ?? MockKvStorageService()
 
+    DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+    DependencyContainer.shared.register(entry as EntryServiceProtocol)
+    DependencyContainer.shared.register(account as AccountServiceProtocol)
+    DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
+    DependencyContainer.shared.register(healthKit as HealthKitServiceProtocol)
+    DependencyContainer.shared.register(logger as LoggerServiceProtocol)
+
     let store = HealthKitStore(
         kvStorage: kv,
         notificationService: notification,

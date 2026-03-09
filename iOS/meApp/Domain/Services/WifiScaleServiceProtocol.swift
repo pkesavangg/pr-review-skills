@@ -13,4 +13,16 @@ protocol WifiScaleServiceProtocol {
 
     /// Returns information about currently connected Wi-Fi network and permission state.
     func getConnectedWifiInfo() async -> WifiStatus
+
+    /// Stops any ongoing Wi-Fi setup operation.
+    func stop() async
+
+    /// Starts SmartConfig flow.
+    func smartConnect(_ info: WifiSetupInfo) async throws
+
+    /// Starts ESP Touch flow.
+    func espSmartConnect(_ info: WifiSetupInfo) async throws
+
+    /// Starts AP mode flow.
+    func apMode(_ info: WifiSetupInfo) async throws
 } 
