@@ -16,10 +16,10 @@ class ScaleStore: ObservableObject {
     
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperServiceProtocol
-    @Injector private var scaleService: ScaleService
-    @Injector private var bluetoothService: BluetoothService
-    @Injector private var logger: LoggerService
-    @Injector private var permissionsService: PermissionsService
+    @Injector private var scaleService: ScaleServiceProtocol
+    @Injector private var bluetoothService: BluetoothServiceProtocol
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var permissionsService: PermissionsServiceProtocol
     
     @Published var scales: [Device] = []
     @Published var addScaleForm = AddScaleForm()    

@@ -20,7 +20,9 @@ struct MeApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
-        _ = ServiceRegistry.shared
+        if !AppRuntime.isRunningTests {
+            _ = ServiceRegistry.shared
+        }
     }
     
     var body: some Scene {
