@@ -7,6 +7,10 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
+import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
@@ -20,6 +24,8 @@ import javax.inject.Inject
 
 interface IScaleSettingsManager {
   suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType
+
+  fun handleScaleUpdateResult(scaleResult: GGUserActionResponseType)
 
   fun loadMacAddressSettings(
     scope: CoroutineScope,
@@ -42,6 +48,43 @@ constructor(
 ) : IScaleSettingsManager {
   companion object {
     private const val TAG = "ScaleSettingsManager"
+  }
+
+  override fun handleScaleUpdateResult(scaleResult: GGUserActionResponseType) {
+    when (scaleResult) {
+      GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
+        dialogQueueService.enqueue(
+          DialogModel.Alert(
+            title = AppPopupStrings.R4ProfileUpdatePending.Title,
+            message = AppPopupStrings.R4ProfileUpdatePending.Message,
+            onDismiss = { dialogQueueService.dismissCurrent() },
+          ),
+        )
+      }
+
+      GGUserActionResponseType.CREATION_COMPLETED,
+      GGUserActionResponseType.UPDATE_COMPLETED,
+      GGUserActionResponseType.CREATION_FAILED,
+      -> {
+        dialogQueueService.dismissLoader()
+        dialogQueueService.showToast(
+          Toast(
+            ToastStrings.Success.UpdateProfileSuccess.Message,
+            ToastStrings.Success.UpdateProfileSuccess.Header,
+          ),
+        )
+      }
+
+      else -> {
+        dialogQueueService.dismissLoader()
+        dialogQueueService.showToast(
+          Toast(
+            ToastStrings.Success.UpdateProfileSuccess.Message,
+            ToastStrings.Success.UpdateProfileSuccess.Header,
+          ),
+        )
+      }
+    }
   }
 
   override suspend fun updateR4Profile(profile: GGBTUserProfile): GGUserActionResponseType {

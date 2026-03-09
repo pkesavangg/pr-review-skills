@@ -19,9 +19,6 @@ import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.Toast
-import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
-import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
@@ -232,8 +229,7 @@ constructor(
       if (weightlessWeight != null) {
         val displayWeight =
           WeightlessHelper.processStoredWeightToDisplay(weightlessWeight.toDouble(), account.weightUnit)
-        val unitLabel = account.weightUnit?.label ?: ""
-        "On - ${displayWeight / 10} $unitLabel"
+        "On - ${displayWeight / 10}"
       } else {
         "On"
       }
@@ -300,7 +296,7 @@ constructor(
         val updatedProfile = currentAccount.toGGBTUserProfile().copy(sex = gender)
         val scaleResult = scaleSettingsManager.updateR4Profile(updatedProfile)
         AppLog.d(TAG, "Scale result: $scaleResult")
-        handleScaleUpdateResult(scaleResult)
+        scaleSettingsManager.handleScaleUpdateResult(scaleResult)
 
         accountService.updateProfile(updatedCurrentProfile, isFromProfile = false, showToast = false)
         AppLog.i(TAG, "Successfully updated biological sex")
@@ -372,7 +368,7 @@ constructor(
           currentAccount.toGGBTUserProfile().copy(isAthlete = (activityLevel == ActivityLevel.ATHLETE.name.lowercase()))
         val scaleResult = scaleSettingsManager.updateR4Profile(updatedProfile)
         AppLog.d(TAG, "Scale result: $scaleResult")
-        handleScaleUpdateResult(scaleResult)
+        scaleSettingsManager.handleScaleUpdateResult(scaleResult)
 
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.ACTIVITY_LEVEL, bodyComposition)
         AppLog.i(TAG, "Successfully updated activity level")
@@ -448,7 +444,7 @@ constructor(
         )
         val scaleResult = scaleSettingsManager.updateR4Profile(updatedProfile)
         AppLog.d(TAG, "Scale result: $scaleResult")
-        handleScaleUpdateResult(scaleResult)
+        scaleSettingsManager.handleScaleUpdateResult(scaleResult)
 
         bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         AppLog.i(TAG, "Successfully updated height to ${heightInput.getString()}")
@@ -487,40 +483,4 @@ constructor(
     }
   }
 
-  private fun handleScaleUpdateResult(scaleResult: GGUserActionResponseType) {
-    when (scaleResult) {
-      GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
-        dialogQueueService.enqueue(
-          DialogModel.Alert(
-            title = AppPopupStrings.R4ProfileUpdatePending.Title,
-            message = AppPopupStrings.R4ProfileUpdatePending.Message,
-            onDismiss = { dialogQueueService.dismissCurrent() },
-          ),
-        )
-      }
-
-      GGUserActionResponseType.CREATION_COMPLETED,
-      GGUserActionResponseType.UPDATE_COMPLETED,
-      GGUserActionResponseType.CREATION_FAILED,
-      -> {
-        dialogQueueService.dismissLoader()
-        dialogQueueService.showToast(
-          Toast(
-            ToastStrings.Success.UpdateProfileSuccess.Message,
-            ToastStrings.Success.UpdateProfileSuccess.Header,
-          ),
-        )
-      }
-
-      else -> {
-        dialogQueueService.dismissLoader()
-        dialogQueueService.showToast(
-          Toast(
-            ToastStrings.Success.UpdateProfileSuccess.Message,
-            ToastStrings.Success.UpdateProfileSuccess.Header,
-          ),
-        )
-      }
-    }
-  }
 }
