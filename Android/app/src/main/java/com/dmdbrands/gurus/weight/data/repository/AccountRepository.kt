@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.repository
 
+import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.network.utility.HttpErrorResponse
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -61,6 +62,7 @@ constructor(
   private val accountDao: AccountDao,
   private val userDataStore: UserDataStore,
   private val tokenManager: ITokenManager,
+  private val secureTokenStore: ISecureTokenStore,
   private val authAPI: IAuthAPI,
   private val userAPI: IUserAPI,
 ) : IAccountRepository {
@@ -682,6 +684,7 @@ constructor(
    * Clears the tokens for the given account ID.
    */
   override suspend fun clearAccountTokens(accountId: String) {
+    secureTokenStore.removeToken(accountId)
     userDataStore.clearAccountTokens(accountId)
   }
 
@@ -690,6 +693,7 @@ constructor(
    */
   override suspend fun removeAccount(accountId: String) {
     try {
+      secureTokenStore.removeToken(accountId)
       userDataStore.clearAccountTokens(accountId)
     } catch (e: Exception) {
       AppLog.d(TAG, "Failed to clear account tokens")
@@ -709,6 +713,7 @@ constructor(
       }
 
       // Clear all tokens and local data
+      secureTokenStore.removeToken(accountID)
       userDataStore.clearAccountTokens(accountID)
       tokenManager.clearTokens()
       AppLog.d(TAG, "Account deleted in local data")

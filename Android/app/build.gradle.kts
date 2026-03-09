@@ -157,6 +157,9 @@ dependencies {
   implementation(libs.androidx.datastore.preferences.core)
   implementation(libs.gson)
 
+  // Security - EncryptedSharedPreferences
+  implementation(libs.androidx.security.crypto)
+
   // Protobuf dependencies
   implementation(libs.protobuf.javalite)
   implementation(libs.androidx.datastore)

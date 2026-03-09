@@ -5,7 +5,9 @@ import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.config.NetworkConfig
 import com.dmdbrands.gurus.weight.core.network.HttpClient
+import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.TokenManager
 import com.dmdbrands.gurus.weight.core.network.interceptors.AuthTokenInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.BaseUrlInterceptor
@@ -173,6 +175,16 @@ object NetworkModule {
             .authenticator(tokenAuthenticator)
         return okHttpClient.build()
     }
+
+    @Provides
+    @Singleton
+    fun provideSecureTokenStore(@ApplicationContext context: Context): SecureTokenStore =
+        SecureTokenStore(context)
+
+    @Provides
+    @Singleton
+    fun provideSecureTokenStoreInterface(secureTokenStore: SecureTokenStore): ISecureTokenStore =
+        secureTokenStore
 
     @Provides
     @Singleton
