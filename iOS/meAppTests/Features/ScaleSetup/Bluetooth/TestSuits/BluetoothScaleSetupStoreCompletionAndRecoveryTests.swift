@@ -21,17 +21,19 @@ extension BluetoothScaleSetupStoreTests {
             store.currentStepIndex = BluetoothScaleSetupStep.connectingBluetooth.index
             harness.bluetooth.deviceDiscoveredSubject.send(BluetoothScaleSetupStoreTestFixtures.makeDiscoveryEvent())
 
-            await BluetoothScaleSetupStoreTestFixtures.waitUntil {
+            let reachedSetUser = await BluetoothScaleSetupStoreTestFixtures.waitUntil {
                 store.currentStep == .setUser && store.bluetoothConnectionState == .success
             }
+            #expect(reachedSetUser == true)
 
             harness.bluetooth.newEntryReceivedSubject.send(
                 BluetoothScaleSetupStoreTestFixtures.makeEntryNotification()
             )
 
-            await BluetoothScaleSetupStoreTestFixtures.waitUntil {
+            let reachedStepOn = await BluetoothScaleSetupStoreTestFixtures.waitUntil {
                 store.currentStep == .stepOn && store.isEntrySynced
             }
+            #expect(reachedStepOn == true)
 
             #expect(store.isEntrySynced == true)
             #expect(store.currentStep == .stepOn)

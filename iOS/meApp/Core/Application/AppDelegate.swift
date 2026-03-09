@@ -23,6 +23,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         AppDelegate.shared = self
 
+        if AppRuntime.isRunningTests {
+            return true
+        }
+
         // Initialize ServiceRegistry synchronously to avoid DI race at startup.
         _ = ServiceRegistry.shared
 

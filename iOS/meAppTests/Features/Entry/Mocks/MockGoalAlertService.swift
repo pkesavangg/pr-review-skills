@@ -20,6 +20,8 @@ final class MockGoalAlertService: GoalAlertServiceProtocol {
         _ = showGoalMetMessageError
     }
 
+    func checkPendingGoalAlerts() async {}
+
     func resetGoalMetFlag() {}
 
     func checkSetGoalCard(entryCount: Int) async {
