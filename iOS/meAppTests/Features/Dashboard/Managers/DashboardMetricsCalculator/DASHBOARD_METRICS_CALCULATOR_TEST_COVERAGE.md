@@ -4,7 +4,7 @@
 
 Unit tests for `DashboardMetricsCalculator`, covering average weight calculations, display weight resolution, entry creation from all code paths, and edge cases.
 
-Current measured coverage (as of 2026-03-09): **98.6%**
+Current measured coverage (as of 2026-03-10): **98.57% (484/491)** from the focused dashboard range/formatter/calculator coverage run.
 
 **File:** `DashboardMetricsCalculatorTests.swift`
 **Target Class:** `DashboardMetricsCalculator` (`iOS/meApp/Features/Dashboard/Managers/DashboardMetricsCalculator.swift`)
@@ -93,8 +93,9 @@ Current measured coverage (as of 2026-03-09): **98.6%**
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | **57** ||
-| **Measured Coverage** | **98.6%** |
+| **Total Tests** | **59** |
+| **Measured Coverage** | **98.57% (484/491)** |
+| **Target Minimum** | **90%** |
 
 ### Code Paths Covered
 getCurrentAverageWeight (empty/single/multi/rounding/weightless/anchor/no-anchor/negative/large/small), calculateDisplayWeight (all 6 code paths with variations), createEntryForMetricInfo (all 4 code paths with metric edge cases), unit conversions, priority ordering.
