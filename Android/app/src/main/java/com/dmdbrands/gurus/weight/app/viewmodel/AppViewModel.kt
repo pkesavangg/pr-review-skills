@@ -620,7 +620,8 @@ constructor(
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
-          if (currentRoute !is AppRoute.ScaleSetup) {
+          val isOnAuthScreen = currentRoute is AppRoute.Auth
+          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale && !isOnAuthScreen) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
@@ -658,7 +659,8 @@ constructor(
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
           try {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            val isOnAuthScreen = currentRoute is AppRoute.Auth
+            if (currentRoute !is AppRoute.ScaleSetup && !isOnAuthScreen) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {
