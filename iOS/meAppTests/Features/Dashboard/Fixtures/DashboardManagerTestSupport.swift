@@ -17,6 +17,19 @@ enum DashboardManagerTestSupport {
         TestDependencyContainer.reset()
         let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
         let store = DashboardStore(lightweight: true, formatter: formatter, cacheManager: cacheManager)
+
+        // Pin the concrete dashboard dependency graph on the store and the
+        // managers that expose injectable concrete services so full-suite DI
+        // churn cannot change behavior after lazy resolution.
+        store.accountService = deps.account
+        store.logger = deps.logger
+        store.chartManager.accountService = deps.account
+        store.chartManager.logger = deps.logger
+        store.displayManager.accountService = deps.account
+        store.displayManager.logger = deps.logger
+        store.lifecycleManager.accountService = deps.account
+        store.lifecycleManager.logger = deps.logger
+
         return (store, deps.account, deps.entry)
     }
 

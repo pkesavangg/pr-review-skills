@@ -263,6 +263,14 @@ struct UsersViewModelTests {
         let (store, _, _, notification, _) = makeSUT(scale: scale, bluetooth: bluetooth)
         var onDeleteCalls = 0
 
+        let initialLoadCompleted = await waitUntil {
+            store.isLoadingUsers == false &&
+                bluetooth.getScaleUserListCalls >= 1 &&
+                store.deviceUsers.map(\.name) == ["Owner", "AfterDelete"]
+        }
+
+        #expect(initialLoadCompleted == true)
+
         store.showDeleteUserAlert(for: makeUser(name: "Guest", token: "guest-token")) {
             onDeleteCalls += 1
         }
@@ -270,8 +278,9 @@ struct UsersViewModelTests {
 
         let completed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
             bluetooth.deleteUserByTokenCalls == 1 &&
+            bluetooth.getScaleUserListCalls >= 2 &&
             notification.dismissLoaderCalls >= 1 &&
-            notification.showToastCalls >= 1 &&
+            notification.toastData?.message == ToastStrings.userDeleted &&
             onDeleteCalls == 1
         }
 

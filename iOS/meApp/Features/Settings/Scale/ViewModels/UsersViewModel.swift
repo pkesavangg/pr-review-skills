@@ -107,11 +107,20 @@ final class UsersViewModel: ObservableObject {
             }
             userNameForm.updateUserList(scaleUsers)
         }
+
+        // Resolve DI-backed services up front so async work started from init
+        // does not pick up a different dependency after another test mutates
+        // the shared container.
+        _ = notificationService
+        _ = bluetoothService
+        _ = permissionsService
+        _ = scaleService
+        _ = logger
         
         setupFormObservers()
         
-        Task {
-            await loadUsers()
+        Task { @MainActor [weak self] in
+            await self?.loadUsers()
         }
     }
     
