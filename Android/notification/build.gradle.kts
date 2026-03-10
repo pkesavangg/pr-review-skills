@@ -2,8 +2,7 @@ plugins {
   alias(libs.plugins.android.library)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.hilt)
-  kotlin("kapt")
-    alias(libs.plugins.ksp)
+  alias(libs.plugins.ksp)
 }
 
 android {
@@ -33,7 +32,6 @@ android {
 }
 
 dependencies {
-
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   testImplementation(libs.junit)
@@ -44,14 +42,10 @@ dependencies {
   implementation(libs.timber)
 
   // Firebase
-  // Import the Firebase BoM
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.messaging.ktx)
 
   // Hilt
   implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
-    // Hilt
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.android.compiler)
+  ksp(libs.hilt.android.compiler)
 }

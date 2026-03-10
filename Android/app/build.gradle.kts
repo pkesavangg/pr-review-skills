@@ -12,6 +12,7 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.google.proto)
+  id("jacoco")
 }
 
 android {
@@ -41,6 +42,7 @@ android {
 
   buildTypes {
     debug {
+      enableUnitTestCoverage = true
       buildConfigField(
         "String",
         "BASE_URL",
@@ -121,7 +123,13 @@ dependencies {
   implementation(libs.work.runtime.ktx)
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
+  // Unit test dependencies
   testImplementation(libs.junit)
+  testImplementation(libs.mockk)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.turbine)
+  testImplementation(libs.truth)
+  // Instrumented test dependencies
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -214,4 +222,56 @@ protobuf {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// JaCoCo coverage report: ./gradlew jacocoTestReport
+// ---------------------------------------------------------------------------
+tasks.register<JacocoReport>("jacocoTestReport") {
+  dependsOn("testDebugUnitTest")
+
+  reports {
+    html.required.set(true)
+    xml.required.set(true)
+  }
+
+  // Patterns that match generated / framework code — excluded from coverage
+  val jacocoExcludes = listOf(
+    // Android build-generated
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    // Hilt-generated
+    "**/hilt_aggregated_deps/**",
+    "**/*_HiltComponents*",
+    "**/*_HiltModules*",
+    "**/Hilt_*",
+    "**/*_MembersInjector*",
+    "**/*_Factory*",
+    // Room-generated (DAO implementations, DB impl)
+    "**/*_Impl*",
+    // Compose compiler–generated
+    "**/*ComposableSingletons*",
+    // Protobuf-generated
+    "**/*OuterClass*",
+  )
+
+  val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
+  classDirectories.setFrom(
+    fileTree(kotlinClassDir) { exclude(jacocoExcludes) },
+  )
+
+  sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+
+  executionData.setFrom(
+    fileTree(layout.buildDirectory.get().asFile) {
+      include(
+        // AGP 8.x location when enableUnitTestCoverage = true
+        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+        // Fallback for older AGP / legacy jacoco plugin
+        "jacoco/testDebugUnitTest.exec",
+      )
+    },
+  )
 }
