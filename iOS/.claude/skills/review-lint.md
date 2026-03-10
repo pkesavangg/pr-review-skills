@@ -1,34 +1,57 @@
-Check new/changed Swift code in the PR against the project's SwiftLint config and code style rules.
+---
+name: review-lint
+description: Check new/changed Swift code against the project's SwiftLint config and code style rules. Use when reviewing a PR for lint issues, or when the user says "lint check", "check style", "run swiftlint". Also called automatically by /self-review and /review-pr.
+---
 
-Inputs available: PR_META (number, title, branch), DIFF (full patch text), CHANGED_FILES (list), WORKTREE_PATH
+Check new/changed Swift code against the project's SwiftLint config and code style rules.
+
+Inputs available (from PR review context): PR_META, DIFF, CHANGED_FILES, WORKTREE_PATH.
+When running standalone, derive these from git (see Step 0).
 
 ## Instructions
 
-### 1 — Read the Active SwiftLint Config
+### 0 — Derive Inputs if Running Standalone
 
-Before reviewing, always read the live config from the worktree so your review reflects the current rules:
+If CHANGED_FILES and DIFF were not provided by a caller:
+
+```bash
+# Files changed on this branch vs main
+git diff --name-only $(git merge-base HEAD origin/main) HEAD
+git diff --cached --name-only
+
+# Full diff
+git diff $(git merge-base HEAD origin/main) HEAD
+git diff --cached
+```
+
+Set:
+- **CHANGED_FILES** — union of `.swift` files from both outputs
+- **DIFF** — combined patch text
+- **WORKTREE_PATH** — `/Users/kesavan/meApp-1`
+
+---
+
+### 1 — Read the Active SwiftLint Config
 
 ```bash
 cat {WORKTREE_PATH}/iOS/.swiftlint.yml
 ```
 
 Extract and note:
-- **opt_in_rules**: the full list of enabled opt-in rules
-- **disabled_rules**: rules that are turned off (do not flag these)
-- **Thresholds**: `line_length.warning`, `function_body_length.warning`, `type_body_length.warning`, `cyclomatic_complexity.warning`, `function_parameter_count.warning`, `nesting` levels
-- **Naming bounds**: `type_name` and `identifier_name` min/max lengths and exclusions
-- **Force operations severity**: whether `force_cast`, `force_try`, `force_unwrapping` are warnings or errors
+- **opt_in_rules** — full list of enabled opt-in rules
+- **disabled_rules** — rules that are off (do not flag these)
+- **Thresholds** — `line_length.warning`, `function_body_length.warning`, `type_body_length.warning`, `cyclomatic_complexity.warning`, `function_parameter_count.warning`, nesting levels
+- **Naming bounds** — `type_name` and `identifier_name` min/max lengths and exclusions
+- **Force operations severity** — whether `force_cast`, `force_try`, `force_unwrapping` are warnings or errors
 
-Use these extracted values in Steps 2–4 instead of any hardcoded defaults.
+Use these values in Steps 2–4 instead of hardcoded defaults.
 
 ---
 
 ### 2 — Run SwiftLint on Changed Files
 
-From the repo root (`meApp-1/`), run SwiftLint scoped to only the files changed in this PR:
-
 ```bash
-cd iOS && swiftlint lint \
+cd /Users/kesavan/meApp-1/iOS && swiftlint lint \
   --config .swiftlint.yml \
   --reporter xcode \
   $(echo "{CHANGED_FILES}" | tr ' ' '\n' | grep '\.swift$' | xargs)
@@ -42,9 +65,7 @@ If SwiftLint is not available, skip to Step 3 and note "SwiftLint not available 
 
 ### 3 — Manual Style Review of New Lines
 
-Read the `+` lines in the diff. Check only the rules that are **active** in `.swiftlint.yml` (from Step 1). Skip any rule listed under `disabled_rules`.
-
-For each active opt-in rule, apply the corresponding check:
+Read the `+` lines in the diff. Check only rules **active** in `.swiftlint.yml` (Step 1). Skip any rule under `disabled_rules`.
 
 | Rule | What to check |
 |------|--------------|
@@ -59,10 +80,8 @@ For each active opt-in rule, apply the corresponding check:
 | `empty_count` | `count == 0` → `isEmpty` |
 | `empty_string` | `== ""` → `isEmpty` |
 | `contains_over_filter_count` | `filter{}.count > 0` → `contains(where:)` |
-| `contains_over_filter_is_empty` | `filter{}.isEmpty` → `!contains(where:)` |
 | `first_where` | `filter{}.first` → `first(where:)` |
 | `last_where` | `filter{}.last` → `last(where:)` |
-| `redundant_nil_coalescing` | `x ?? nil` is redundant |
 | `toggle_bool` | `x = !x` → `x.toggle()` |
 | `operator_usage_whitespace` | `a+b` → `a + b` |
 | `force_unwrapping` | Trailing `!` on optionals (severity from config) |
@@ -71,22 +90,21 @@ For each active opt-in rule, apply the corresponding check:
 
 ### 4 — Check Thresholds in New Code
 
-Use the thresholds read from `.swiftlint.yml` in Step 1 (not hardcoded values).
+Use thresholds from `.swiftlint.yml` (Step 1) — not hardcoded values.
 
-For any new **function** added in the diff:
-- Flag if body line count exceeds `function_body_length.warning`
-- Flag if cyclomatic complexity (if/else/guard/switch/for/while/catch branches) exceeds `cyclomatic_complexity.warning`
-- Flag if parameter count exceeds `function_parameter_count.warning`
+For any new **function** in the diff:
+- Body line count > `function_body_length.warning`
+- Cyclomatic complexity (if/else/guard/switch/for/while/catch) > `cyclomatic_complexity.warning`
+- Parameter count > `function_parameter_count.warning`
 
 For any new **type** (class/struct/enum):
-- Flag if body exceeds `type_body_length.warning`
+- Body > `type_body_length.warning`
 
 For any new **line**:
-- Flag if character count exceeds `line_length.warning` (excluding URLs, function declarations, and comments if `ignores_*` flags are set in config)
+- Character count > `line_length.warning` (respect `ignores_*` flags)
 
 For any new **identifier or type name**:
-- Flag if shorter than `identifier_name.min_length.warning` or longer than `identifier_name.max_length.warning`
-- Skip names listed under `identifier_name.excluded` or `type_name.excluded`
+- Shorter than min or longer than max (skip exclusion lists)
 
 ---
 

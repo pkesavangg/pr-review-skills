@@ -1,0 +1,110 @@
+---
+name: verify-tests
+description: Build and run unit or UI tests on a connected physical device, verify coverage meets layer thresholds, and add targeted tests for any file below its minimum. Use this skill whenever tests need to be run after writing or modifying Swift code — unit tests after services/stores/repositories, UI tests after screen flows. Also use when the user says "run tests", "check coverage", or "verify tests pass".
+---
+
+Build and run tests (unit or UI), verify coverage meets layer thresholds, and add targeted tests for any file below its minimum.
+
+## Instructions
+
+### 1 — Determine Test Type
+
+If not already specified by the caller, ask:
+> "Unit tests or UI tests?"
+
+- **Unit** → scheme `meAppTests`, coverage report type `1`, reports in `iOS/meAppTests/Reports/`
+- **UI** → scheme `meAppUITests`, coverage report type `2`, reports in `iOS/meAppUITests/Reports/`
+
+Store as `{SCHEME}` and `{REPORT_TYPE}`.
+
+---
+
+### 2 — Find Physical Device
+
+Run from the repo root (`meApp-1/`):
+
+```bash
+xcodebuild -project iOS/meApp.xcodeproj -scheme "{SCHEME}" -showdestinations 2>&1 \
+  | grep "platform:iOS," | grep -v Simulator | head -5
+```
+
+Pick the first result with **no `error:` field** and store its `id:` value as `{DEVICE_ID}`.
+
+- If no eligible device is listed: stop and ask the user to connect one before continuing.
+- Never fall back to a simulator.
+
+---
+
+### 3 — Build & Run Tests
+
+Run from the repo root (`meApp-1/`):
+
+```bash
+xcodebuild test \
+  -project iOS/meApp.xcodeproj \
+  -scheme "{SCHEME}" \
+  -configuration Dev \
+  -destination 'id={DEVICE_ID}'
+```
+
+- **Build failure**: read errors, fix root cause in the changed files, re-run. Do not proceed with errors.
+- **Test failure**: investigate each failure — check mock setups, assertions, and async timing — fix and re-run.
+
+---
+
+### 4 — Generate Coverage Report
+
+```bash
+SCHEME="{SCHEME}" DEVICE_ID={DEVICE_ID} CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
+```
+
+When prompted for test type, enter `{REPORT_TYPE}`.
+
+Reads coverage from the generated `coverage-report.md`.
+
+---
+
+### 5 — Check Coverage Thresholds
+
+Read the coverage report and extract % for each source file touched by this task.
+
+**Unit test thresholds:**
+
+| File path contains | Layer | Minimum |
+|--------------------|-------|---------|
+| `Data/API/` | Repository API adapter | 75% |
+| `Data/Services/` (auth / account / sync) | Critical service | 85% |
+| `Data/Services/` (other) | Service | 80% |
+| `Data/Storage/` | Local repository | 80% |
+| `Features/*/Stores/` | Store / ViewModel | 80% |
+| `Features/*/Forms/` | Form / validation | 85% |
+
+**UI test threshold:** 85% flat for all exercised source files.
+
+UI layer files (`Views/`, `*View.swift`, `*Screen.swift`, `*Modifier.swift`) are excluded from coverage metrics.
+
+| Source file | Layer | Minimum | Coverage % | Pass? |
+|-------------|-------|---------|-----------|-------|
+| … | … | … | … | ✅ / ❌ |
+
+---
+
+### 6 — Improve Coverage If Below Minimum
+
+For any file below its threshold:
+1. Read the source file and its test file side by side.
+2. Identify uncovered methods, branches, and guard conditions.
+3. Add targeted tests — focus on:
+   - Failure / error paths
+   - Guard / early return conditions
+   - Edge cases (nil inputs, empty collections, boundary values)
+   - For UI tests: untested screen states (empty, error, loading) and navigation paths
+4. Re-run from Step 3 until all files pass.
+
+---
+
+### 7 — Report
+
+Summarise:
+- Final coverage % per file (✅ / ❌)
+- Any tests added and why

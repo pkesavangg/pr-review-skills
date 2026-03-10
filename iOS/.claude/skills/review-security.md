@@ -1,3 +1,8 @@
+---
+name: review-security
+description: Review Swift/SwiftUI code changes for security issues — hardcoded secrets, force unwrap in critical paths, tokens stored outside Keychain, insecure HTTP, PII in logs, actor isolation bugs, and input sanitisation. Use when reviewing a PR for security, or when the user says "security review", "check for secrets", "security audit". Also called automatically by /self-review and /review-pr.
+---
+
 Review the PR diff for Swift/SwiftUI security concerns.
 
 Inputs available: PR_META (number, title, branch), DIFF (full patch text), CHANGED_FILES (list), WORKTREE_PATH

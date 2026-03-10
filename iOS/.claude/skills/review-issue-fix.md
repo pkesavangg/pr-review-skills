@@ -1,3 +1,8 @@
+---
+name: review-issue-fix
+description: Verify that a PR's code changes and tests actually address all acceptance criteria in the linked Jira issue. Use when reviewing a PR for issue completeness, or when the user says "check issue coverage", "does this fix the ticket", "verify acceptance criteria". Also called automatically by /self-review and /review-pr.
+---
+
 Verify the PR actually addresses the Jira issue it claims to fix.
 
 Inputs available: PR_META (number, title, body, branch), DIFF (full patch text), CHANGED_FILES (list), WORKTREE_PATH, JIRA_ID (extracted from PR title/body, e.g. MA-3316)

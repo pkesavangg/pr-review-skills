@@ -1,3 +1,8 @@
+---
+name: fetch-ticket
+description: Fetch and display full details of a Jira issue from greatergoods.atlassian.net. Use when the user says "fetch ticket", "show me the ticket", "get issue details", or provides a Jira ID like MA-3370. Also runs automatically at the start of /work-ticket and /create-prd.
+---
+
 Fetch and display full details of a Jira issue using the Atlassian MCP tools.
 
 The Jira issue ID is: $ARGUMENTS

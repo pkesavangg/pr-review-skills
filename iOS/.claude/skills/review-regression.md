@@ -1,3 +1,8 @@
+---
+name: review-regression
+description: Check whether a PR risks breaking existing behaviour outside its stated scope — protocol changes, stale tests, DI registration gaps, SwiftData migrations, and build config parity. Use when reviewing a PR for regressions, or when the user says "check for regressions", "regression review", "will this break anything". Also called automatically by /self-review and /review-pr.
+---
+
 Check whether the PR risks breaking existing behaviour outside its stated scope.
 
 Inputs available: PR_META (number, title, branch), DIFF (full patch text), CHANGED_FILES (list), WORKTREE_PATH

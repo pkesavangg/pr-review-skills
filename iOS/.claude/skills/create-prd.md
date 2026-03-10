@@ -1,3 +1,8 @@
+---
+name: create-prd
+description: Generate a Product Requirements Document (PRD) as a markdown plan file before starting implementation. Use when the user says "create a PRD", "plan this ticket", "write up a plan for", or before starting any non-trivial feature or bug fix. Also runs automatically as step 3 of /work-ticket. Fetches the Jira ticket, explores the codebase, and writes a structured plan to iOS/docs/plans/.
+---
+
 Generate a Product Requirements Document (PRD) / implementation plan as a markdown file before starting work on a Jira issue or task.
 
 The Jira issue ID or task description is: $ARGUMENTS

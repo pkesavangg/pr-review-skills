@@ -1,3 +1,8 @@
+---
+name: raise-pr
+description: Push the current branch and create a pull request targeting main (or a specified branch). Use when the user says "raise a PR", "open a PR", "create pull request", or at the end of a task after committing. Also runs automatically as the final step of /work-ticket.
+---
+
 Push the current branch and create a pull request using the GitHub CLI.
 
 Inputs available: ISSUE_ID, ISSUE_SUMMARY, list of changed files, base branch chosen by user, coverage results (if task involves unit/UI tests)
@@ -5,7 +10,7 @@ Inputs available: ISSUE_ID, ISSUE_SUMMARY, list of changed files, base branch ch
 ## Instructions
 
 1. Ask the user:
-   > "Which branch should I raise the PR against?"
+   > "Which branch should I raise the PR against? (default: `main`)"
 
 2. Push the branch:
    ```
@@ -51,5 +56,7 @@ Inputs available: ISSUE_ID, ISSUE_SUMMARY, list of changed files, base branch ch
 
 5. Transition the Jira issue to **In Review**:
    - Call `getAccessibleAtlassianResources` to retrieve the `cloudId` (if not already known)
-   - Call `transitionJiraIssue` with `issueIdOrKey: ISSUE_ID` and `transition.id: "3"` (In Review)
-   - Confirm the status was updated.
+   - Call `getTransitionsForJiraIssue` with `cloudId` and `ISSUE_ID` to list available transitions
+   - Find the transition whose name contains "In Review" (case-insensitive)
+   - Call `transitionJiraIssue` with that transition's `id`
+   - Confirm the status was updated

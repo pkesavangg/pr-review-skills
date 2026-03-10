@@ -10,6 +10,34 @@ iOS application for [Greater Goods](https://greatergoods.com) — a health/weigh
 
 ---
 
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| `Auth` | Login, signup, and landing flows |
+| `Dashboard` | Home screen — weight trends, graphs, and daily summaries |
+| `Entry` | Manual weight and body metric entry form |
+| `History` | Weight history browser with monthly and historical views |
+| `ScaleSetup` | Scale pairing flows — Bluetooth, Wi-Fi, Hybrid, A6, AppSync |
+| `AppSync` | Body composition scanning and data entry via AppSync scales |
+| `Feed` | Social/activity feed |
+| `Settings` | User preferences, account management, and third-party integrations |
+| `Common` | Shared UI components, utilities, forms, styles, and extensions |
+
+### Bottom Tab Navigation
+
+Five tabs, rendered in order:
+
+| Tab | Screen | Notes |
+|-----|--------|-------|
+| `.dash` | `DashboardScreen` | Default home |
+| `.entry` | `ManualEntryScreen` | Quick entry |
+| `.history` | `HistoryListScreen` | Weight log |
+| `.settings` | `SettingsScreen` | Preferences & integrations |
+| `.appsync` | `AppSyncTabScreen` | Shown only when an AppSync scale is paired |
+
+---
+
 ## Architecture
 
 Clean Architecture layered as follows:
@@ -17,7 +45,7 @@ Clean Architecture layered as follows:
 ```
 Features/          # Feature modules (Auth, Dashboard, Entry, Feed, Settings, …)
   <Feature>/
-    Stores/        # @MainActor ObservableObject — state + business logic
+    Stores/        # @MainActor ObservableObject — state + event handling
     Views/         # SwiftUI views (excluded from unit test coverage)
     Forms/         # Reactive form validators
     Models/        # Feature-local models/enums
@@ -51,6 +79,54 @@ Theme/             # Design tokens, typography
 
 ---
 
+## Key Domain Models
+
+### SwiftData (`Domain/Models/DB/`)
+
+| Model | Purpose |
+|-------|---------|
+| `Account` | User account record |
+| `Entry` | Individual weight/metric entry |
+| `DailyWeightSummary` | Aggregated daily stats |
+| `Device`, `DeviceMetaData` | Paired scale metadata |
+| `BathScale`, `BathScaleEntry`, `BathScaleMetric` | Scale measurement data |
+| `DashboardSettings`, `GoalSettings`, `StreaksSettings` | User preferences |
+| `IntegrationSettings` | Third-party integration config |
+| `NotificationSettings` | Notification preferences |
+| `R4ScalePreference` | R4 scale-specific settings |
+
+### Domain Models (`Domain/Models/Domain/`)
+
+`Profile`, `Goal`, `BodyComp`, `Tokens` (auth) · `Entry`, `BodyMetric`, `HistoryMonth`, `ProgressSummary` · `BTScaleData`, `ScaleEnums`, `WifiConnectionStatus` · `FeedItem`, `FeedAction` · `Integrations`, `IntegrationInfo` · `Streak`, `Progress`
+
+---
+
+## Services
+
+Registered via `ServiceRegistry` at launch (essential) or after login (session-scoped):
+
+| Service | Responsibility |
+|---------|---------------|
+| `AccountService` | User account management |
+| `EntryService` | Weight entry CRUD |
+| `ScaleService` | Paired scale management |
+| `BluetoothService` | BLE scale discovery and connection |
+| `WifiScaleService` | Wi-Fi scale connectivity |
+| `HealthKitService` | Apple HealthKit sync |
+| `IntegrationsService` | Fitbit / MyFitnessPal integrations |
+| `FeedService` | Social feed data |
+| `GoalAlertService` | Goal notifications and prompts |
+| `AccountFlagService` | Per-account feature flags |
+| `NotificationHelperService` | Toast / alert / modal UI |
+| `PushNotificationService` | Firebase push notifications |
+| `AppReviewService` | In-app review prompts |
+| `PermissionsService` | App permission management |
+| `KeychainService` | Secure token and credential storage |
+| `KvStorageService` | Local key-value persistence |
+| `LoggerService` | App logging |
+
+---
+
 ## Dependency Injection
 
 **Production:** `DependencyContainer.shared` singleton + `@Injector` property wrapper.
@@ -71,8 +147,6 @@ TestDependencyContainer.reset()
 DependencyContainer.shared.register(mockService as ServiceProtocol)
 ```
 
-Reference: `meAppTests/Support/DI/TestDependencyContainer.swift`
-
 ---
 
 ## Networking
@@ -86,132 +160,6 @@ When adding a new API call:
 1. Add the case to `enum Endpoint` with its `urlRequest`.
 2. Add the method to the relevant `*RepositoryAPIProtocol`.
 3. Implement in the concrete `*RepositoryAPI` class with injected `httpClient`.
-
----
-
-## Unit Tests (`meAppTests`)
-
-### Framework
-Swift Testing (`@Test`, `@Suite(.serialized)`, `#expect`, `Issue.record`).
-
-### File placement
-Tests live in `meAppTests/Features/<Feature>/`. New `.swift` files are **auto-included** by the test target via `PBXFileSystemSynchronizedRootGroup` — **no `.pbxproj` editing needed**.
-
-### Structure per test file
-```swift
-@Suite(.serialized)
-@MainActor
-struct FooTests {
-    private func makeSUT() -> (sut: Foo, dep: MockDep) { ... }
-
-    // MARK: - methodName
-    @Test("methodName success: description")
-    func methodNameSuccess() async throws { ... }
-
-    @Test("methodName failure: description")
-    func methodNameFailure() async throws { ... }
-}
-```
-
-### Test organization within each group
-1. Success path
-2. Validation / guard failures
-3. Runtime / API / network / persistence failures
-
-### Naming convention
-`"methodName <qualifier>: expected behavior"` — e.g.:
-- `"syncOperation success: calls send with operationsR4(nil) POST with auth"`
-- `"fetchOperations failure: propagates noInternet error"`
-
-### Key shared mocks
-| Mock | Location | Used for |
-|------|----------|----------|
-| `MockHTTPClient` | `Support/Mocks/Network/` | All `*RepositoryAPI` tests |
-| `TestDependencyContainer` | `Support/DI/` | Store/Service tests needing DI |
-| Feature mocks | `Features/<Feature>/Mocks/` | Per-feature service/repo mocks |
-| Fixtures | `Features/<Feature>/Fixtures/` | Factory helpers for domain objects |
-
-### Assertions
-```swift
-#expect(http.sendCalls == 1)
-#expect(http.lastSendMethod == .post)
-guard case .operationsR4(let ts) = http.lastSendEndpoint else {
-    Issue.record("Expected .operationsR4 endpoint"); return
-}
-await #expect(throws: HTTPError.unauthorized) { try await sut.method() }
-```
-
-### Coverage minimums
-| Layer | Min |
-|-------|-----|
-| `Data/Services` | 80% (85% for auth/account/sync) |
-| Stores / ViewModels | 80% |
-| Forms / validation | 85% |
-| `Data/API` repository adapters | 75% |
-
-UI layer files (`Views/`, `*View.swift`, `*Screen.swift`, `*Modifier.swift`) are **excluded** from the coverage metric.
-
----
-
-## Running Tests
-
-**Always run tests on a connected physical device — never use a simulator.**
-
-### Xcode
-- Scheme: `meAppTests`, Configuration: `Dev`, `Cmd+U`
-
-### CLI
-
-First find the physical device ID (pick the first entry without an `error:` field):
-```bash
-xcodebuild -project iOS/meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator
-```
-
-Then run:
-```bash
-xcodebuild test \
-  -project iOS/meApp.xcodeproj \
-  -scheme meAppTests \
-  -configuration Dev \
-  -destination 'id={DEVICE_ID}'
-```
-
-### Coverage reports
-```bash
-SCHEME="meAppTests" DEVICE_ID={DEVICE_ID} CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
-```
-Reports output to `iOS/meAppTests/Reports/` (ignored by git).
-
----
-
-## Git & Branching
-
-- **Branch format:** `{ISSUE-ID}-{slugified-summary}` — e.g. `MA-3318-add-unit-tests-for-entry-api-repository`
-- **Commit format:** `MA-XXXX Short description of what was done`
-  - Examples: `MA-3316 Add unit tests for AccountRepositoryAPI`
-- **Main branch:** `main` — always target PRs here unless told otherwise
-- **Jira project:** `MA` on `greatergoods.atlassian.net`
-
----
-
-## Key Patterns
-
-### Adding a `*RepositoryAPI` test
-1. Check the concrete class (`Data/API/`) for methods and their `Endpoint`/`HTTPMethod`/auth.
-2. Ensure the class accepts `HTTPClientProtocol` via `init` (refactor if not).
-3. Create `meAppTests/Features/<Feature>/<Feature>RepositoryAPITests.swift`.
-4. Use `MockHTTPClient` — set `sendResult`/`getResult` or `sendError`/`getError`.
-5. Pattern-match the endpoint case: `guard case .myEndpoint = http.lastSendEndpoint`.
-
-### Adding a Service test
-1. Use `TestDependencyContainer.reset()` in each test or a shared `init`.
-2. Register mock dependencies before creating the SUT.
-3. Pin dependencies directly on SUT where async/lazy resolve could race.
-4. Use `@Suite(.serialized)` if any shared global state is unavoidable.
-
-### SwiftData (persistence) tests
-- Use **in-memory** `ModelContainer` only — never production paths.
-- Build a per-test container in `Arrange`.
 
 ---
 
@@ -237,6 +185,50 @@ API base URL is read from `API_BASE_URL` in `Info.plist` via `AppEnvironment.api
 
 ---
 
+## Unit Tests (`meAppTests`)
+
+**Framework:** Swift Testing (`@Test`, `@Suite(.serialized)`, `#expect`, `Issue.record`).
+
+**File placement:** `meAppTests/Features/<Feature>/` — files are auto-included via `PBXFileSystemSynchronizedRootGroup`, no `.pbxproj` editing needed.
+
+**Always run tests on a connected physical device — never a simulator.**
+
+```bash
+# Find device ID
+xcodebuild -project iOS/meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator
+
+# Run tests
+xcodebuild test \
+  -project iOS/meApp.xcodeproj \
+  -scheme meAppTests \
+  -configuration Dev \
+  -destination 'id={DEVICE_ID}'
+```
+
+### Coverage minimums
+
+| Layer | Min |
+|-------|-----|
+| `Data/Services` | 80% (85% for auth/account/sync) |
+| Stores / ViewModels | 80% |
+| Forms / validation | 85% |
+| `Data/API` repository adapters | 75% |
+
+UI layer (`Views/`, `*View.swift`, `*Screen.swift`, `*Modifier.swift`) is excluded from coverage.
+
+For detailed test patterns, mock usage, and assertion examples → `meAppTests/docs/UNIT_TESTING.md`.
+
+---
+
+## Git & Branching
+
+- **Branch format:** `{ISSUE-ID}-{slugified-summary}` — e.g. `MA-3318-add-unit-tests-for-entry-api-repository`
+- **Commit format:** `MA-XXXX Short description of what was done`
+- **Main branch:** `main` — always target PRs here unless told otherwise
+- **Jira project:** `MA` on `greatergoods.atlassian.net`
+
+---
+
 ## Useful File Locations
 
 | What | Where |
@@ -244,6 +236,8 @@ API base URL is read from `API_BASE_URL` in `Info.plist` via `AppEnvironment.api
 | All API endpoints | `meApp/Domain/Models/API/EndPoints.swift` |
 | HTTP client protocol | `meApp/Core/Network/HTTPClientProtocol.swift` |
 | DI container | `meApp/Core/DI/DependencyContainer.swift` |
+| Service registration | `meApp/Core/Services/ServiceRegistry.swift` |
+| Bottom tab definition | `meApp/Features/Common/Enums/BottomTab.swift` |
 | App environments | `meApp/Core/Config/Environment.swift` |
 | App constants | `meApp/Core/Config/AppConstants.swift` |
 | Test DI setup | `meAppTests/Support/DI/TestDependencyContainer.swift` |

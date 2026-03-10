@@ -1,27 +1,42 @@
+---
+name: self-review
+description: Run all four specialist review checks (lint, regression, security, issue coverage) on everything changed in the current task before committing. Use this before every commit — invoke when the user says "self review", "review my changes", "check before committing", or when a task is about to be committed. Also runs automatically as part of /work-ticket.
+---
+
 Review all files changed in the current task using the four specialist review skills before committing.
 
 ## Instructions
 
 ### 1 — Gather Context
 
-Identify changed files and the full diff:
+Collect the full set of changes on this branch relative to `main`, plus any staged but uncommitted work:
+
 ```bash
-git diff --name-only HEAD~1 HEAD
-git diff HEAD~1 HEAD
+# All changes committed on this branch vs main
+git diff $(git merge-base HEAD origin/main) HEAD
+
+# Staged but not yet committed
+git diff --cached
+```
+
+If `origin/main` is not reachable, fall back to the local `main` ref:
+```bash
+git diff $(git merge-base HEAD main) HEAD
+git diff --cached
 ```
 
 Extract:
-- **CHANGED_FILES** — list of modified/created Swift files
-- **DIFF** — the full patch text
-- **PR_META** — use the current branch name and recent commit message as the title/body proxy
-- **WORKTREE_PATH** — the repo root (e.g. `/Users/kesavan/meApp-1`)
-- **JIRA_ID** — extracted from the branch name or commit message (e.g. `MA-3316`)
+- **CHANGED_FILES** — union of modified/created `.swift` files from both outputs
+- **DIFF** — the combined patch text
+- **WORKTREE_PATH** — the repo root (`/Users/kesavan/meApp-1`)
+- **JIRA_ID** — from the current branch name or most recent commit message (pattern `MA-\d+`)
+- **PR_META** — branch name + most recent commit message as the title/body proxy
 
 ---
 
 ### 2 — Run All Four Specialist Reviews
 
-Execute each skill in order, passing the context gathered above:
+Execute each skill in order, passing the context gathered above.
 
 #### 2a — Lint & Formatting
 Read and execute `.claude/skills/review-lint.md`
@@ -39,17 +54,15 @@ Read and execute `.claude/skills/review-issue-fix.md`
 
 ### 3 — Aggregate & Report
 
-Summarise all findings in one block:
-
 ```
 ### Self-Review Summary
 
-| Check             | Verdict         |
-|-------------------|-----------------|
-| Lint              | PASS / WARNING / FAIL |
-| Regression Risk   | Low / Medium / High |
-| Security          | PASS / WARNING / FAIL |
-| Issue Coverage    | Complete / Partial / Missing |
+| Check           | Verdict                      |
+|-----------------|------------------------------|
+| Lint            | PASS / WARNING / FAIL        |
+| Regression Risk | Low / Medium / High          |
+| Security        | PASS / WARNING / FAIL        |
+| Issue Coverage  | Complete / Partial / Missing |
 
 **Overall verdict:** PASS / NEEDS FIXES
 
@@ -58,8 +71,10 @@ Key findings:
 - "None" if all checks passed
 ```
 
+---
+
 ### 4 — Fix or Proceed
 
-- If any check is **FAIL** or regression risk is **High**: fix the issue before proceeding to commit
-- If only **WARNING** items remain: use judgement — fix if straightforward, otherwise note and proceed
-- If all **PASS / Low / Complete**: confirm the code is ready to commit
+- **FAIL** or regression risk **High** → fix before committing; re-run the affected check after fixing
+- **WARNING only** → fix if straightforward; otherwise note and proceed
+- **All PASS / Low / Complete** → confirm ready to commit and call `/commit`
