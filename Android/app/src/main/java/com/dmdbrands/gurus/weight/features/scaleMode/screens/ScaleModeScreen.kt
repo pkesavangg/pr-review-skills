@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -33,7 +33,7 @@ fun ScaleModeScreen(scaleId: String) {
     hiltViewModel<ScaleModeViewModel, ScaleModeViewModel.Factory>(
       creationCallback = { factory -> factory.create(scaleId) },
     )
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   BackHandler {
     viewModel.handleIntent(ScaleModeIntent.Back)
