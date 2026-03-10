@@ -7,11 +7,15 @@ final class MockEntryService: EntryServiceProtocol {
     let entrySaved = PassthroughSubject<EntryNotification, Never>()
     let entryDeleted = PassthroughSubject<EntryNotification, Never>()
     var getMonthsAllResult: Result<[HistoryMonth], Error> = .success([])
+    var getMonthDetailResult: Result<[Entry], Error> = .success([])
     var exportCSVResult: Result<Void, Error> = .success(())
     var getLatestEntryResult: Result<Entry?, Error> = .success(nil)
     var getEntryCountResult: Result<Int, Error> = .success(0)
 
     private(set) var getMonthsAllCalls = 0
+    private(set) var getMonthDetailCalls = 0
+    private(set) var getMonthDetailLastMonth: String?
+    private(set) var syncAllEntriesWithRemoteCalls = 0
     private(set) var exportCSVCalls = 0
     private(set) var getLatestEntryCalls = 0
     private(set) var clearAllDataCalls = 0
@@ -20,7 +24,7 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var deleteEntryCalls = 0
     private(set) var getEntryCountCalls = 0
 
-    func syncAllEntriesWithRemote() async {}
+    func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData() async {}
     func clearAllData() async { clearAllDataCalls += 1 }
@@ -46,7 +50,11 @@ final class MockEntryService: EntryServiceProtocol {
         getMonthsAllCalls += 1
         return try getMonthsAllResult.get()
     }
-    func getMonthDetail(month: String) async throws -> [Entry] { [] }
+    func getMonthDetail(month: String) async throws -> [Entry] {
+        getMonthDetailCalls += 1
+        getMonthDetailLastMonth = month
+        return try getMonthDetailResult.get()
+    }
     func getMonthYear() async throws -> [HistoryMonth] { [] }
     func getProgress() async throws -> meApp.Progress {
         meApp.Progress(

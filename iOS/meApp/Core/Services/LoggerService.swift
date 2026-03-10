@@ -14,19 +14,29 @@ final class LoggerService: LoggerServiceProtocol {
     
     @Injector var accountService: AccountServiceProtocol
     
-    private let loggerRepository: LoggerRepositoryProtocol = LoggerRepository()
-    private let loggerApiRepository: LoggerApiRepositoryProtocol = LoggerApiRepository()
-    private let sessionId: String = UUID().uuidString
+    let loggerRepository: LoggerRepositoryProtocol
+    let loggerApiRepository: LoggerApiRepositoryProtocol
+    private let sessionId: String
     private let systemLogger = AppLogger(tag: "GGMeAppLogger")
     private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
     private var consoleMinimumLogLevel: LogLevel = .info
-    private let kv = KvStorageService.shared
+    private let kv: KvStorageService
     private static let lastCleanupKey = "logger_last_cleanup_ts"
     
-    init() {
-        // Run log retention cleanup off the main actor to avoid blocking launch.
-        // We add a short delay so it doesn't contend with initial UI work.
-        Self.scheduleDeleteOldLogsBackground(service: self)
+    init(
+        loggerRepository: LoggerRepositoryProtocol? = nil,
+        loggerApiRepository: LoggerApiRepositoryProtocol? = nil,
+        sessionId: String? = nil,
+        kv: KvStorageService? = nil,
+        skipCleanup: Bool = false
+    ) {
+        self.loggerRepository = loggerRepository ?? LoggerRepository()
+        self.loggerApiRepository = loggerApiRepository ?? LoggerApiRepository()
+        self.sessionId = sessionId ?? UUID().uuidString
+        self.kv = kv ?? KvStorageService.shared
+        if !skipCleanup {
+            Self.scheduleDeleteOldLogsBackground(service: self)
+        }
     }
     
     public func log(level: LogLevel,
