@@ -93,7 +93,8 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     func stopScan() {}
     func startBluetoothOperations() async {}
     func disconnectConnectedScales() async { disconnectConnectedScalesCalls += 1 }
-    func reapplySkipDevicesExcludingPaired() {}
+    private(set) var reapplySkipDevicesExcludingPairedCalls = 0
+    func reapplySkipDevicesExcludingPaired() { reapplySkipDevicesExcludingPairedCalls += 1 }
     func handleWeightOnlyModeAlertDismissed() { handleWeightOnlyModeAlertDismissedCalls += 1 }
     func clearDevices() {}
     func pauseSmartScan() {}
