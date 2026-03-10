@@ -26,7 +26,7 @@ final class ContentViewModel: ObservableObject {
     
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
-    private var initializationTask: Task<Void, Never>?
+    private(set) var initializationTask: Task<Void, Never>?
     private let tag = "ContentViewModel"
 
     init(
@@ -101,6 +101,10 @@ final class ContentViewModel: ObservableObject {
         initializationTask = Task { @MainActor [weak self] in
             await self?.runAppInitialization()
         }
+    }
+
+    func waitForInitialization() async {
+        await initializationTask?.value
     }
 
     private func runAppInitialization() async {
