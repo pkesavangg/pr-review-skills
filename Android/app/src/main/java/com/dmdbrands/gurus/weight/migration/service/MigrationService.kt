@@ -273,12 +273,12 @@ class MigrationService @Inject constructor(
         return
       }
       val userDataStore = UserDataStore(context)
-      AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries")
+       AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries ${timestampMap}")
       timestampMap.forEach { (accountId, timestamp) ->
         if (accountId == activeAccountID ) {
-          AppLog.d(TAG, "Updating sync timestamp")
+          AppLog.d(TAG, "Updating sync timestamp for $accountId: $timestamp")
           userDataStore.updateSyncTimestamp(accountId, timestamp)
-          AppLog.d(TAG, "Migrated Sync timestamp updated")
+         AppLog.d(TAG, "Migrated Sync timestamp updated for $accountId")
         }
       }
     } catch (e: Exception) {
@@ -376,7 +376,7 @@ class MigrationService @Inject constructor(
       // Save account and related data
       saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
       AppLog.d(TAG, "Account migration completed")
-      AppLog.i(TAG, "Account migration successful")
+      AppLog.i(TAG, "Account migration successful: activeAccountId=${accountEntity.id}")
       Pair(true, accountEntity.id)
     } catch (e: Exception) {
       AppLog.e(TAG, "Account migration failed: ${e.message}")

@@ -73,7 +73,7 @@ class UserSettingsService
       weightlessWeight: Double?,
     ) {
       try {
-        AppLog.d(TAG, "Toggling weightless setting to: $isWeightlessOn")
+       AppLog.d(TAG, "Toggling weightless setting to: $isWeightlessOn, weight: $weightlessWeight")
 
         val weightlessRequest =
           WeightlessRequest(

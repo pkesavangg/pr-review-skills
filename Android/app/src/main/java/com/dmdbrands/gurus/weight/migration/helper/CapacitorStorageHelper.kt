@@ -108,7 +108,7 @@ object CapacitorStorageHelper {
       val key = "timestampkey-$accountId"
       sharedPrefs.getString(key, null)?.takeIf { it.isNotBlank() }
     } catch (e: Exception) {
-      AppLog.w(TAG, "Could not read timestampkey: ${e.message}")
+      AppLog.w(TAG, "Could not read timestampkey for $accountId: ${e.message}")
       null
     }
   }

@@ -81,7 +81,7 @@ constructor(
     return try {
       val loginResponse = authAPI.login(LoginRequest(email, password))
       val account = addAccountFromLoginResponse(loginResponse)
-      AppLog.i(TAG, "login API call succeeded")
+      AppLog.i(TAG, "login API call succeeded, account: ${account.id}")
       account
     } catch (e: Exception) {
       AppLog.e(TAG, "login API call failed", e)
@@ -97,7 +97,7 @@ constructor(
     return try {
       val loginResponse = authAPI.createAccount(request)
       val account = addAccountFromLoginResponse(loginResponse)
-      AppLog.i(TAG, "signup API call succeeded")
+       AppLog.i(TAG, "signup API call succeeded, account: ${account.id}")
       account
     } catch (e: Exception) {
       AppLog.e(TAG, "signup API call failed", e)

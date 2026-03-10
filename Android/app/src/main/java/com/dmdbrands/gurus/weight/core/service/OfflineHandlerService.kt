@@ -277,9 +277,9 @@ class OfflineHandlerService
           isSynced = true,
         )
 
-        AppLog.i(TAG, "Successfully synced dashboard settings")
+        AppLog.i(TAG, "Successfully synced dashboard settings for account: ${unsyncedSettings.accountId}")
       } catch (e: Exception) {
-        AppLog.e(TAG, "Error syncing dashboard settings", e)
+         AppLog.e(TAG, "Error syncing dashboard settings for account ${unsyncedSettings.accountId}", e)
       }
     }
   }

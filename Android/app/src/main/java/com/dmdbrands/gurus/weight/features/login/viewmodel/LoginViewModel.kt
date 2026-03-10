@@ -96,10 +96,10 @@ constructor(
         AppLog.d(TAG, "Login attempt")
         val account = accountService.login(email, password)
         if (account != null) {
-          AppLog.i(TAG, "Login successful")
+          AppLog.i(TAG, "Login successful for account: ${account.id}")
           handleIntent(LoginIntent.Success)
         } else {
-          AppLog.w(TAG, "Login returned null account")
+           AppLog.w(TAG, "Login returned null account for email: $email")
           handleIntent(LoginIntent.Error("Login failed"))
         }
       } catch (e: MaxAccountsReachedException) {
