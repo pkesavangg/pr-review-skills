@@ -57,12 +57,22 @@ struct UIState {
 struct MetricsState {
     var dashboardType: DashboardType = .dashboard12
     var metrics: [MetricItem] = []
-    var activeMetricsCount: Int = 12
+    var activeMetricsCount: Int = 12 {
+        didSet {
+            if activeMetricsCount < 0 {
+                activeMetricsCount = 0
+            }
+        }
+    }
     var removedMetrics: Set<String> = []
+
+    private var sanitizedActiveMetricsCount: Int {
+        max(0, activeMetricsCount)
+    }
 
     var metricsToShow: [MetricItem] {
         // Show only active metrics based on activeMetricsCount
-        return Array(metrics.prefix(activeMetricsCount))
+        return Array(metrics.prefix(sanitizedActiveMetricsCount))
     }
 
     /// Returns grid columns configuration based on dashboard type
@@ -78,11 +88,21 @@ struct MetricsState {
 // MARK: - Streak State
 struct StreakState {
     var streakItems: [MetricItem] = []
-    var activeStreakItemsCount: Int = 6
+    var activeStreakItemsCount: Int = 6 {
+        didSet {
+            if activeStreakItemsCount < 0 {
+                activeStreakItemsCount = 0
+            }
+        }
+    }
     var removedStreaks: Set<String> = []
 
+    private var sanitizedActiveStreakItemsCount: Int {
+        max(0, activeStreakItemsCount)
+    }
+
     var streakItemsToShow: [MetricItem] {
-        Array(streakItems.prefix(activeStreakItemsCount))
+        Array(streakItems.prefix(sanitizedActiveStreakItemsCount))
     }
 }
 
