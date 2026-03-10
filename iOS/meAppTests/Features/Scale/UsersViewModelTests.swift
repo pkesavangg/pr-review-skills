@@ -375,7 +375,7 @@ struct UsersViewModelTests {
         DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
         DependencyContainer.shared.register(logger as LoggerServiceProtocol)
 
-        let store = UsersViewModel(scale: scale, initialUsersList: initialUsersList)
+        let store = UsersViewModel(scale: scale, initialUsersList: initialUsersList, userDeletionDelayNanoseconds: 0)
         // Pin dependencies on the instance to avoid cross-suite DI races from global container mutation.
         store.notificationService = notification
         store.bluetoothService = bluetooth

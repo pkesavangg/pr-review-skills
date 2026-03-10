@@ -72,7 +72,7 @@ final class UsersViewModel: ObservableObject {
     private let initialUsersList: [DeviceUser]
     
     // Delay after user deletion to ensure scale processes the deletion before reloading
-    private let userDeletionDelayNanoseconds: UInt64 = 500_000_000 // 0.5 seconds
+    private let userDeletionDelayNanoseconds: UInt64
     
     var otherDeviceUsersList: [DeviceUser] {
         return deviceUsers.filter { user in
@@ -86,11 +86,16 @@ final class UsersViewModel: ObservableObject {
         }
     }
     
-    init(scale: Device, initialUsersList: [DeviceUser] = []) {
+    init(
+        scale: Device,
+        initialUsersList: [DeviceUser] = [],
+        userDeletionDelayNanoseconds: UInt64 = 500_000_000
+    ) {
         self.scaleId = scale.persistentModelID
         self.scaleIdString = scale.id
         self.cachedScale = scale
         self.initialUsersList = initialUsersList
+        self.userDeletionDelayNanoseconds = userDeletionDelayNanoseconds
         if !initialUsersList.isEmpty {
             self.deviceUsers = initialUsersList
             self.currentDeviceUser = findCurrentUser(in: initialUsersList)
