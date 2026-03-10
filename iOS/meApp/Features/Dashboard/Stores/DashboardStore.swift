@@ -11,6 +11,11 @@ import SwiftUI
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
 class DashboardStore: ObservableObject, DashboardStateProviding {
+    private struct DataContentSignature: Equatable {
+        let daily: [String]
+        let monthly: [String]
+    }
+
     // MARK: - Dependencies
 
     @Injector var notificationService: NotificationHelperServiceProtocol
@@ -41,6 +46,19 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     private var initializationTask: Task<Void, Never>?
     @Published private(set) var isInitialized: Bool = false
+
+    private static func makeDataContentSignature(from state: DataState) -> DataContentSignature {
+        DataContentSignature(
+            daily: state.dailySummaries.compactMap { summary in
+                guard let summary else { return nil }
+                return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)"
+            },
+            monthly: state.monthlySummaries.compactMap { summary in
+                guard let summary else { return nil }
+                return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)"
+            }
+        )
+    }
 
     func scheduleUIUpdate() {
         guard !pendingUIUpdate else { return }
@@ -269,11 +287,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .store(in: &cancellables)
 
         dataManager.$state
-            .map { ($0.dailySummaries.count, $0.monthlySummaries.count) }
-            .removeDuplicates { $0 == $1 }
+            .map(Self.makeDataContentSignature)
+            .removeDuplicates()
             .dropFirst()
             .sink { [weak self] _ in
-                self?.invalidateContinuousOperationsCache()
+                guard let self else { return }
+                self.invalidateContinuousOperationsCache()
+                self.graphManager.forceVisibleOperationsRecalculation()
             }
             .store(in: &cancellables)
 
