@@ -93,13 +93,13 @@ constructor(
     val password = state.value.form.controls.password.value
     viewModelScope.launch {
       try {
-        AppLog.d(TAG, "Login attempt for email: $email")
+        AppLog.d(TAG, "Login attempt")
         val account = accountService.login(email, password)
         if (account != null) {
-          AppLog.i(TAG, "Login successful for account: ${account.id}")
+          AppLog.i(TAG, "Login successful")
           handleIntent(LoginIntent.Success)
         } else {
-          AppLog.w(TAG, "Login returned null account for email: $email")
+          AppLog.w(TAG, "Login returned null account")
           handleIntent(LoginIntent.Error("Login failed"))
         }
       } catch (e: MaxAccountsReachedException) {

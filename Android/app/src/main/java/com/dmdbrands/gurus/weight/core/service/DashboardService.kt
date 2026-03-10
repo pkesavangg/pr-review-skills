@@ -77,7 +77,7 @@ constructor(
 
   override suspend fun refreshDashboard(accountId: String?) {
     try {
-      AppLog.d("DashboardService", "Refreshing dashboard data from server for account: $accountId")
+      AppLog.d("DashboardService", "Refreshing dashboard data from server")
       val accountId = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
       val account = accountRepository.getAccountFromAPI(accountId)
       val dashboardType = DashboardType.entries.find { it.value == account.dashboardType }

@@ -273,12 +273,12 @@ class MigrationService @Inject constructor(
         return
       }
       val userDataStore = UserDataStore(context)
-      AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries ${timestampMap}")
+      AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries")
       timestampMap.forEach { (accountId, timestamp) ->
         if (accountId == activeAccountID ) {
-          AppLog.d(TAG, "Updating sync timestamp for $accountId: $timestamp")
+          AppLog.d(TAG, "Updating sync timestamp")
           userDataStore.updateSyncTimestamp(accountId, timestamp)
-          AppLog.d(TAG, "Migrated Sync timestamp updated for $accountId")
+          AppLog.d(TAG, "Migrated Sync timestamp updated")
         }
       }
     } catch (e: Exception) {
@@ -376,7 +376,7 @@ class MigrationService @Inject constructor(
       // Save account and related data
       saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
       AppLog.d(TAG, "Account migration completed")
-      AppLog.i(TAG, "Account migration successful: ${accountEntity.email}, activeAccountId=${accountEntity.id}")
+      AppLog.i(TAG, "Account migration successful")
       Pair(true, accountEntity.id)
     } catch (e: Exception) {
       AppLog.e(TAG, "Account migration failed: ${e.message}")
@@ -442,7 +442,7 @@ class MigrationService @Inject constructor(
     )
 
     // Dashboard metrics are now properly handled via DashboardSettingsEntity
-    AppLog.i(TAG, "Dashboard settings migrated successfully for ${accountEntity.email}")
+    AppLog.i(TAG, "Dashboard settings migrated successfully")
   }
 
   /**

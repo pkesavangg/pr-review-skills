@@ -803,10 +803,10 @@ constructor(
         val notificationAlertShown = accountService.hasShownNotificationAlertForAccount(accountId)
         if (!notificationAlertShown) {
           accountService.setNotificationAlertShownForAccount(accountId, true)
-          AppLog.d(TAG, "Stored notification alert setting for account: $accountId")
+          AppLog.d(TAG, "Stored notification alert setting for account")
           requestPermissions(GGPermissionType.NOTIFICATION)
         } else {
-          AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
+          AppLog.d(TAG, "Notification alert already shown for account, skipping permission request")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check/request notification permission", e.toString())
@@ -854,7 +854,7 @@ constructor(
             handleIntent(AppIntent.SetScanStatus(true))
           }
           ggDeviceService.updateProfile(updatedProfile) {}
-          AppLog.i(TAG, "Scan started with current weight: $currentWeight")
+          AppLog.i(TAG, "Scan started")
         }
       }
     }
