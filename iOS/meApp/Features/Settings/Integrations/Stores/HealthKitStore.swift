@@ -51,6 +51,7 @@ final class HealthKitStore: ObservableObject {
 
     /// Tracks the previous activeState value to detect transitions between nil and non-nil
     private var previousActiveState: AppleHealthIntegrationState?
+    private(set) var loadStatusTask: Task<Void, Never>?
 
     let alertLang = AlertStrings.self
     let tag = "HealthKitStore"
@@ -110,24 +111,32 @@ final class HealthKitStore: ObservableObject {
     }
 
     func loadStatus() {
-        getLocalStoredData()
+        loadStatusTask?.cancel()
+        loadStatusTask = Task { [weak self] in
+            await self?.getLocalStoredData()
+        }
     }
 
-    func getLocalStoredData() {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
-                let result = try await self.integrationService.getStoredIntegrationData()
-                self.isIntegrated = (result?.isIntegrated ?? false) && (result?.assignedTo == self.accountService.activeAccount?.accountId)
-                self.isOutOfSync = await self.healthKitService.isHKOutOfSync()
-                self.logger.log(
-                    level: .info,
-                    tag: self.tag,
-                    message: "Loaded HealthKit local state. isIntegrated=\(self.isIntegrated), isOutOfSync=\(self.isOutOfSync)"
-                )
-            } catch {
-                self.logger.log(level: .error, tag: self.tag, message: "Failed to load integration data", data: error.localizedDescription)
-            }
+    func waitForLoadStatus() async {
+        await loadStatusTask?.value
+    }
+
+    private func getLocalStoredData() async {
+        do {
+            let result = try await integrationService.getStoredIntegrationData()
+            let accountId = accountService.activeAccount?.accountId
+            let isIntegrated = (result?.isIntegrated ?? false) && (result?.assignedTo == accountId)
+            let isOutOfSync = await healthKitService.isHKOutOfSync()
+
+            self.isIntegrated = isIntegrated
+            self.isOutOfSync = isOutOfSync
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Loaded HealthKit local state. isIntegrated=\(isIntegrated), isOutOfSync=\(isOutOfSync)"
+            )
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to load integration data", data: error.localizedDescription)
         }
     }
 
@@ -411,7 +420,7 @@ final class HealthKitStore: ObservableObject {
 
             do {
                 try await healthKitService.clearHealthKit()
-                getLocalStoredData()
+                await getLocalStoredData()
                 notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationRemoved))
                 logger.log(level: .success, tag: tag, message: "HealthKit clear integration completed from store")
             } catch {
@@ -562,7 +571,7 @@ final class HealthKitStore: ObservableObject {
             )
             try await integrationService.setStoredIntegrationData(integrationInfo)
             // Refresh the local state to reflect the updated integration status
-            getLocalStoredData()
+            await getLocalStoredData()
             logger.log(level: .success, tag: tag, message: "Persisted HealthKit integration after permission grant. accountId=\(accountID)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to persist integration after permission grant", data: error.localizedDescription)
