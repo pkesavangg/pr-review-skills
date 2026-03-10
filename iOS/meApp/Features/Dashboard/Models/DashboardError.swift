@@ -1,7 +1,7 @@
 import Foundation
 
 /// Comprehensive error handling for Dashboard operations
-enum DashboardError: Error, LocalizedError {
+enum DashboardError: Error, LocalizedError, Equatable {
 
     // MARK: - Data Loading Errors
     case dataLoadingFailed(Error)
@@ -127,10 +127,41 @@ enum DashboardError: Error, LocalizedError {
     }
 }
 
+extension DashboardError {
+    static func == (lhs: DashboardError, rhs: DashboardError) -> Bool {
+        switch (lhs, rhs) {
+        case (.dataLoadingFailed(let lhsError), .dataLoadingFailed(let rhsError)):
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        case (.noActiveAccount, .noActiveAccount),
+             (.noEntriesFound, .noEntriesFound):
+            return true
+        case (.cacheUpdateFailed(let lhsMessage), .cacheUpdateFailed(let rhsMessage)),
+             (.invalidMetricData(let lhsMessage), .invalidMetricData(let rhsMessage)),
+             (.metricConversionFailed(let lhsMessage), .metricConversionFailed(let rhsMessage)),
+             (.unsupportedMetricType(let lhsMessage), .unsupportedMetricType(let rhsMessage)),
+             (.unsupportedScaleType(let lhsMessage), .unsupportedScaleType(let rhsMessage)),
+             (.chartDataGenerationFailed(let lhsMessage), .chartDataGenerationFailed(let rhsMessage)),
+             (.invalidTimeRange(let lhsMessage), .invalidTimeRange(let rhsMessage)),
+             (.scrollPositionUpdateFailed(let lhsMessage), .scrollPositionUpdateFailed(let rhsMessage)),
+             (.goalCalculationFailed(let lhsMessage), .goalCalculationFailed(let rhsMessage)),
+             (.weightlessSettingsInvalid(let lhsMessage), .weightlessSettingsInvalid(let rhsMessage)),
+             (.unitConversionFailed(let lhsMessage), .unitConversionFailed(let rhsMessage)):
+            return lhsMessage == rhsMessage
+        case (.apiSyncFailed(let lhsError), .apiSyncFailed(let rhsError)),
+             (.configurationLoadFailed(let lhsError), .configurationLoadFailed(let rhsError)),
+             (.metricsSaveFailed(let lhsError), .metricsSaveFailed(let rhsError)),
+             (.scaleDetectionFailed(let lhsError), .scaleDetectionFailed(let rhsError)):
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        default:
+            return false
+        }
+    }
+}
+
 // MARK: - Error Logging Extension
 extension DashboardError {
     /// Log the error with appropriate severity
-  @MainActor func log(with logger: LoggerService, tag: String = "DashboardError") {
+  @MainActor func log(with logger: LoggerServiceProtocol, tag: String = "DashboardError") {
         let severity: LogLevel = {
             switch self {
             case .noActiveAccount, .noEntriesFound:
@@ -153,7 +184,7 @@ extension DashboardError {
 // MARK: - Result Type Extension
 extension Result where Failure == DashboardError {
     /// Log error if result is failure
-  @MainActor func logError(with logger: LoggerService, tag: String = "DashboardResult") {
+  @MainActor func logError(with logger: LoggerServiceProtocol, tag: String = "DashboardResult") {
         if case .failure(let error) = self {
             error.log(with: logger, tag: tag)
         }
