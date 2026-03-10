@@ -4,7 +4,7 @@
 
 Unit tests for `GraphDataPreparer`, covering chart-series construction, weightless-mode handling, metric normalization, Hermite interpolation, visible-window extraction, binary-search helpers, and edge-case behavior.
 
-Current measured coverage (as of 2026-03-09): **97.1%**
+Current measured coverage (as of 2026-03-10): **97.05%**
 
 **File:** `GraphDataPreparerTests.swift`
 **Target Class:** `GraphDataPreparer` (`iOS/meApp/Features/Dashboard/Managers/Graph/GraphDataPreparer.swift`)
@@ -15,8 +15,8 @@ Current measured coverage (as of 2026-03-09): **97.1%**
 
 | Metric | Value |
 |--------|-------|
-| **Total Tests** | **42** |
-| **Measured Coverage** | **97.1%** |
+| **Total Tests** | **43** |
+| **Measured Coverage** | **97.05%** |
 
 ### Covered Areas
 
@@ -33,6 +33,6 @@ Current measured coverage (as of 2026-03-09): **97.1%**
 ### Coverage Command
 
 ```bash
-xcodebuild test -enableCodeCoverage YES -project meApp/iOS/meApp.xcodeproj -scheme meApp -destination 'id=<device-id>' -only-testing:meAppTests/GraphDataPreparerTests
-xcrun xccov view --report --json --archive <result-bundle>
+xcodebuild test -enableCodeCoverage YES -resultBundlePath /tmp/GraphPipelineCoverage.xcresult -project meApp/iOS/meApp.xcodeproj -scheme meAppTests -destination 'id=<device-id>' -only-testing:meAppTests/GraphDataPreparerTests -only-testing:meAppTests/YAxisCalculatorTests -only-testing:meAppTests/GraphRenderingConfigurationTests -only-testing:meAppTests/GraphInteractionHandlerTests -only-testing:meAppTests/GraphAnimationManagerTests
+xcrun xccov view --report /tmp/GraphPipelineCoverage.xcresult | rg 'GraphDataPreparer.swift|YAxisCalculator.swift|GraphRenderingConfiguration.swift|GraphInteractionHandler.swift|GraphAnimationManager.swift'
 ```

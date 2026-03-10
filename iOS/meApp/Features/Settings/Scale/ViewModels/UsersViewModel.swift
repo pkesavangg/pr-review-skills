@@ -238,32 +238,39 @@ final class UsersViewModel: ObservableObject {
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.cancelButton, type: .secondary) { _ in },
                 AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.deleteButton, type: .danger) { _ in
-                    // Check Bluetooth authorization and power state before proceeding with deletion
-                    let isBluetoothAuthorized = self.permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
-                    let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-                    guard isBluetoothAuthorized && isBluetoothOn else {
-                        self.logger.log(
-                            level: .info,
-                            tag: self.tag,
-                            message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast."
-                        )
-                        self.notificationService.showToast(
-                            ToastModel(
-                                title: ToastStrings.bluetoothRequiredTitle,
-                                message: ToastStrings.bluetoothRequiredMessage
-                            )
-                        )
-                        return
-                    }
-                    
-                    Task {
-                        await self.deleteUser(user)
-                        onDelete()
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        await self.handleDeleteUserAction(for: user, onDelete: onDelete)
                     }
                 }
             ]
         )
         notificationService.showAlert(alert)
+    }
+
+    @MainActor
+    private func handleDeleteUserAction(for user: DeviceUser, onDelete: @escaping () -> Void) async {
+        // Alert button actions are plain closures, so explicitly hop back to MainActor
+        // before touching actor-isolated services and state.
+        let isBluetoothAuthorized = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
+        let isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+        guard isBluetoothAuthorized && isBluetoothOn else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast."
+            )
+            notificationService.showToast(
+                ToastModel(
+                    title: ToastStrings.bluetoothRequiredTitle,
+                    message: ToastStrings.bluetoothRequiredMessage
+                )
+            )
+            return
+        }
+
+        await deleteUser(user)
+        onDelete()
     }
     
     private func deleteUser(_ user: DeviceUser) async {

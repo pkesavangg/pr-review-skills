@@ -263,13 +263,11 @@ struct UsersViewModelTests {
         let (store, _, _, notification, _) = makeSUT(scale: scale, bluetooth: bluetooth)
         var onDeleteCalls = 0
 
-        let initialLoadCompleted = await waitUntil {
-            store.isLoadingUsers == false &&
-                bluetooth.getScaleUserListCalls >= 1 &&
-                store.deviceUsers.map(\.name) == ["Owner", "AfterDelete"]
-        }
+        await store.loadUsers()
 
-        #expect(initialLoadCompleted == true)
+        #expect(store.isLoadingUsers == false)
+        #expect(bluetooth.getScaleUserListCalls >= 1)
+        #expect(store.deviceUsers.map(\.name) == ["Owner", "AfterDelete"])
 
         store.showDeleteUserAlert(for: makeUser(name: "Guest", token: "guest-token")) {
             onDeleteCalls += 1
