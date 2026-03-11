@@ -12,6 +12,26 @@ Read and execute the skill at `.claude/skills/fetch-ticket.md` with `$ARGUMENTS`
 
 ---
 
+## STEP 1.7 — Read Design Assets (Conditional)
+
+Check the ticket fetched in Step 1 for design assets. Run both checks independently:
+
+**Check A — Figma URL:**
+Scan the ticket description for a Figma URL (pattern: `https://www.figma.com/...`).
+- If found: read and execute `.claude/skills/read-figma.md`, passing the full description. Display the Design Summary. Store as `{FIGMA_DESIGN_SUMMARY}`.
+- If not found: set `{FIGMA_DESIGN_SUMMARY}` to empty.
+
+**Check B — Image Attachments:**
+Inspect `fields.attachment` from the issue data for image files (png, jpg, gif, webp).
+- If found: read and execute `.claude/skills/read-jira-images.md`, passing the full issue data. Display the Image Summary. Store as `{IMAGE_SUMMARY}`.
+- If not found: set `{IMAGE_SUMMARY}` to empty.
+
+Both `{FIGMA_DESIGN_SUMMARY}` and `{IMAGE_SUMMARY}` are passed to Step 3 to enrich the PRD.
+
+**If neither is found:** skip this step silently and continue.
+
+---
+
 ## STEP 1.5 — Set Original Estimate
 
 After fetching the ticket, check whether an Original Estimate is already set on the issue:
@@ -46,7 +66,10 @@ In a **single codebase exploration pass** (read at most 8 files total):
 
 Then, using that same exploration — **without re-reading any files**:
 
-1. **Write the PRD** to `docs/plans/{ISSUE-ID}-{slugified-title}.md` using the template at `docs/templates/prd-template.md`. Populate every section from the Jira ticket and codebase findings.
+1. **Write the PRD** to `docs/plans/{ISSUE-ID}-{slugified-title}.md` using the template at `docs/templates/prd-template.md`. Populate every section from the Jira ticket and codebase findings. Use available design context to populate the UI/UX Requirements and Acceptance Criteria sections:
+   - If `{FIGMA_DESIGN_SUMMARY}` is non-empty: use screen names, component names, text strings, and design tokens from it.
+   - If `{IMAGE_SUMMARY}` is non-empty: use the UI layout, text content, and annotations from it.
+   - If both are present: combine them — Figma provides structure/specs, images provide annotations/flow context.
 
 2. **Present an interactive plan** to the user covering:
    - What the task requires (your understanding)
