@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -48,6 +49,7 @@ constructor(
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
   private val deviceService: IDeviceService,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
@@ -66,7 +68,7 @@ constructor(
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
   private var account: Account? = null
   init {
-    CoroutineScope(Dispatchers.IO).launch {
+    appScope.launch {
       accountRepository.getActiveAccount().collect {
         if (it != null) {
           account = it
@@ -362,7 +364,7 @@ constructor(
         params = mapOf(
           "onSetGoal" to {
             AppLog.d(TAG, "User confirmed Set Goal popup - navigating to goal screen")
-            CoroutineScope(Dispatchers.Main).launch {
+            appScope.launch(Dispatchers.Main) {
               appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
             }
             dialogQueueService.dismissCurrent()
@@ -419,7 +421,7 @@ constructor(
         cancelText = GoalStrings.SetNewGoalButton,
         onConfirm = {
           dialogQueueService.dismissCurrent()
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             handleGoalMet(true)
           }
           isShowingAlert = false
@@ -427,7 +429,7 @@ constructor(
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
             handleGoalMet(false)
           }
@@ -435,7 +437,7 @@ constructor(
         onDismiss = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             handleGoalMet(false)
           }
         }
@@ -457,14 +459,14 @@ constructor(
         onConfirm = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
           }
         },
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             handleGoalLeave(updateGoal = false)
           }
         },

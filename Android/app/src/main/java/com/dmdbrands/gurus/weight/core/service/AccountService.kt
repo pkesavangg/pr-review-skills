@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
@@ -20,9 +21,7 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.Log
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +48,7 @@ constructor(
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
@@ -56,7 +56,7 @@ constructor(
     private const val TAG = "AccountService"
   }
 
-  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var accountSubscriptionJob: Job? = null
 
   // region Public Properties
 
@@ -92,9 +92,8 @@ constructor(
   override val checkIntegrations: StateFlow<Boolean> = _checkIntegrations
 
   override fun subscribeAccount() {
-    repositoryScope.cancel()
-    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    repositoryScope.launch {
+    accountSubscriptionJob?.cancel()
+    accountSubscriptionJob = appScope.launch {
       accountRepository.getActiveAccount().collect {
         _activeAccount.value = it
       }

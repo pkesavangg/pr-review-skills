@@ -9,13 +9,12 @@ import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,9 +37,10 @@ constructor(
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDashboardService {
   private var accountId: String? = null
-  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var visibleKeysJob: Job? = null
 
   private val _selectedKey = MutableStateFlow<DashboardKey?>(null)
   override val selectedKey: StateFlow<DashboardKey?>
@@ -57,7 +57,7 @@ constructor(
     clearAllData()
     this.accountId = accountId
     refreshDashboard(accountId)
-    repositoryScope.launch {
+    visibleKeysJob = appScope.launch {
       getVisibleKeys(accountId).collect {
         _visibleKeys.value = it
       }
@@ -69,10 +69,10 @@ constructor(
   }
 
   private fun clearAllData() {
-    repositoryScope.cancel()
+    visibleKeysJob?.cancel()
+    visibleKeysJob = null
     accountId = null
     _visibleKeys.value = emptyList()
-    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   }
 
   override suspend fun refreshDashboard(accountId: String?) {
