@@ -524,7 +524,6 @@ constructor(
         val scale = state.value.scale
         if (scale != null && scale.connectionStatus == BLEStatus.CONNECTED) {
           showToast(ScaleDetailsStrings.DownloadingLogs)
-// TODO: need to implement download option
           ggDeviceService.getDeviceLogs(scale.toGGBTDevice()) { logResponse ->
             // AppLog.d(TAG, "Device logs downloaded: ${logResponse.logs?.size ?: 0} entries")
             showToast(ScaleDetailsStrings.LogsDownloaded)

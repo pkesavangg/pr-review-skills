@@ -41,7 +41,6 @@ fun AppScaleImage(
   modifier: Modifier = Modifier,
   scaleImageSize: ScaleImageSize = ScaleImageSize.Small,
 ) {
-  // TODO: Update color tokens for glow effect
   Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
       modifier =
