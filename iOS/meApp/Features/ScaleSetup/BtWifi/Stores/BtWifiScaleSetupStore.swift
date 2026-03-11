@@ -29,7 +29,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
     @Injector var scaleService: ScaleService
     @Injector var pushNotificationService: PushNotificationService
     @Injector var entryService: EntryService
-    @Injector var goalAlertService: GoalAlertService
+    @Injector var goalAlertService: GoalAlertServiceProtocol
     
     let networkMonitor = NetworkMonitor.shared
     let bluetoothSetupManager: BluetoothSetupManaging
