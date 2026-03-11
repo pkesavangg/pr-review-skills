@@ -33,6 +33,12 @@ enum MetricInfoSheetDTOResolver {
 /// Wrapper that safely extracts DTO from Entry before displaying ScaleMetricsView.
 /// This ensures SwiftData properties are accessed on main actor within a ModelContext.
 struct MetricInfoSheetWrapper: View {
+    private struct ReloadTrigger: Equatable {
+        let entryId: UUID
+        let selectedPeriod: TimePeriod
+        let metricLabels: [String]
+    }
+
     let entry: Entry
     let selectedMetric: BodyMetric
     @ObservedObject var dashboardStore: DashboardStore
@@ -62,19 +68,17 @@ struct MetricInfoSheetWrapper: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: entry.id) {
+        .task(id: reloadTrigger) {
             await extractDTO()
         }
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
-            Task {
-                await extractDTO()
-            }
-        }
-        .onChange(of: dashboardStore.state.metrics.metrics) { _, _ in
-            Task {
-                await extractDTO()
-            }
-        }
+    }
+
+    private var reloadTrigger: ReloadTrigger {
+        ReloadTrigger(
+            entryId: entry.id,
+            selectedPeriod: dashboardStore.state.graph.selectedPeriod,
+            metricLabels: dashboardStore.state.metrics.metrics.map(\.label)
+        )
     }
 
     private func extractDTO() async {
