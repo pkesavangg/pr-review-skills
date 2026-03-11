@@ -301,3 +301,10 @@
     public static void d(...);
     public static void v(...);
 }
+
+# ----------------------------------------------------------------------------
+# EncryptedSharedPreferences / security-crypto (Tink)
+# Required because Tink classes must not be obfuscated (release builds have isMinifyEnabled = true)
+# ----------------------------------------------------------------------------
+-keep class com.google.crypto.tink.** { *; }
+-dontwarn com.google.crypto.tink.**

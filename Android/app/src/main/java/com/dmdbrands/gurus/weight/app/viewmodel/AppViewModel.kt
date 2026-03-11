@@ -282,6 +282,22 @@ constructor(
             }
           }
 
+          is AuthState.EncryptionFailure -> {
+            // Encryption failure affects all accounts (shared encrypted file).
+            // Reuse existing logout alert pattern — force re-login.
+            viewModelScope.launch {
+              val activeAccount = accountService.getCurrentAccount()
+              val username = activeAccount?.firstName ?: ""
+              // Log out all accounts since encrypted storage is shared
+              accountService.logoutAll()
+              stopScan()
+              navigationService.replaceStack(route = AppRoute.Auth.Landing)
+              if (username.isNotEmpty()) {
+                dialogUtility.showAccountLoggedOutAlert(username)
+              }
+            }
+          }
+
           is AuthState.AccountAdded -> {
           }
 
