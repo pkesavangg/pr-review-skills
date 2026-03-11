@@ -13,10 +13,10 @@ import SwiftUI
 final class HistoryStore: ObservableObject {
     
     // MARK: - Dependencies
-    @Injector private var entryService: EntryService
-    @Injector private var notificationService: NotificationHelperServiceProtocol
-    @Injector private var logger: LoggerService
-    @Injector private var accountService: AccountService
+    @Injector var entryService: EntryServiceProtocol
+    @Injector var notificationService: NotificationHelperServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var accountService: AccountServiceProtocol
     
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
