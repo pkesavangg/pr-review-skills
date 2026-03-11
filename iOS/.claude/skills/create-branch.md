@@ -1,3 +1,8 @@
+---
+name: create-branch
+description: Create a git branch from a Jira issue ID and slugified summary, then transition the ticket to In Progress. Use when the user says "create a branch", "start working on MA-XXXX", or at the start of a new task. Also runs as part of /work-ticket Step 2.
+---
+
 Create a git branch derived from a Jira issue ID and its summary, then transition the Jira ticket to In Progress.
 
 Inputs available: ISSUE_ID, ISSUE_SUMMARY (from the fetched ticket details)

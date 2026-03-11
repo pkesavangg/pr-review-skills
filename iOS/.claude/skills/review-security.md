@@ -40,7 +40,7 @@ For each occurrence, note the file, line, and whether a safe alternative (`guard
 
 ### 3. Sensitive Data in Keychain vs UserDefaults / SwiftData
 
-Read `meApp/Core/Config/AppConstants.swift` and `meApp/Domain/Repositories/` to understand what counts as sensitive (auth tokens, refresh tokens, passwords, user PII).
+Sensitive data includes: auth tokens, refresh tokens, passwords, email addresses, weight/health metrics, and any user PII.
 
 Check new `+` lines for:
 - Sensitive fields being written to `UserDefaults`

@@ -1,3 +1,8 @@
+---
+name: gen-test-file
+description: Scaffold a complete unit test file for a Service, Repository, or Store using Swift Testing. Use when the user says "generate tests for X", "add unit tests", or "write a test file for Y". Also called automatically by /work-ticket Step 4.
+---
+
 Scaffold a complete unit test file for a Swift Service, Repository, or Store class.
 
 The source file to generate tests for is: $ARGUMENTS
@@ -8,7 +13,7 @@ The source file to generate tests for is: $ARGUMENTS
 
 Read the file at `$ARGUMENTS`. If only a class name was given, search for it:
 ```bash
-grep -r "class\|struct" /Users/kesavan/meApp-1/iOS/meApp --include="*.swift" -l | xargs grep -l "$ARGUMENTS"
+rg -l "$ARGUMENTS" meApp -g '*.swift'
 ```
 
 Extract:
@@ -22,23 +27,14 @@ Extract:
 
 ### 2 — Determine Coverage Threshold
 
-| File path contains | Layer | Min coverage |
-|--------------------|-------|-------------|
-| `Data/API/` | Repository API adapter | 75% |
-| `Data/Services/` (Auth, Account, AppSync) | Critical service | 85% |
-| `Data/Services/` (other) | Service | 80% |
-| `Data/Storage/` | Local repository | 80% |
-| `Features/*/Stores/` | Store / ViewModel | 80% |
-| `Features/*/Forms/` | Form / validation | 85% |
-
-Note this threshold at the top of the generated file as a comment.
+Use the layer minimums from `CLAUDE.md`. Note the threshold for this file's layer as a comment at the top of the generated file: `// Coverage target: <N>% (<Layer>)`
 
 ---
 
 ### 3 — Identify Required Mocks
 
 For each constructor dependency:
-1. Search for an existing mock: `grep -r "Mock<DepName>" /Users/kesavan/meApp-1/iOS/meAppTests --include="*.swift" -l`
+1. Search for an existing mock: `rg -l "Mock<DepName>" meAppTests -g '*.swift'`
 2. List which mocks already exist vs. need to be created
 
 ---

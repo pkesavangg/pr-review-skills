@@ -1,3 +1,8 @@
+---
+name: log-work
+description: Log time spent on the current Jira issue via the Atlassian worklog API. Use when the user says "log work", "log time", or "add worklog". Also runs as part of /work-ticket Step 9.
+---
+
 Log time on a Jira issue using Atlassian MCP tools.
 
 Inputs available: ISSUE_ID, summary of work done across all phases, PR URL

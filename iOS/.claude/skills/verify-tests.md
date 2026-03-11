@@ -12,39 +12,40 @@ Build and run tests (unit or UI), verify coverage meets layer thresholds, and ad
 If not already specified by the caller, ask:
 > "Unit tests or UI tests?"
 
-- **Unit** → scheme `meAppTests`, coverage report type `1`, reports in `iOS/meAppTests/Reports/`
-- **UI** → scheme `meAppUITests`, coverage report type `2`, reports in `iOS/meAppUITests/Reports/`
+- **Unit** → scheme `meAppTests`, coverage report type `1`, reports in `meAppTests/Reports/`
+- **UI** → scheme `meAppUITests`, coverage report type `2`, reports in `meAppUITests/Reports/`
 
 Store as `{SCHEME}` and `{REPORT_TYPE}`.
 
 ---
 
-### 2 — Find Physical Device
+### 2 — Find Connected Physical Device
 
-Run from the repo root (`meApp-1/`):
+All tests must run on a physical device — never use a simulator.
 
 ```bash
-xcodebuild -project iOS/meApp.xcodeproj -scheme "{SCHEME}" -showdestinations 2>&1 \
+xcodebuild -project meApp.xcodeproj -scheme "{SCHEME}" -showdestinations 2>&1 \
   | grep "platform:iOS," | grep -v Simulator | head -5
 ```
 
-Pick the first result with **no `error:` field** and store its `id:` value as `{DEVICE_ID}`.
+Pick the first result with no `error:` field. Store the `id:` value as `{DEVICE_ID}` and use `{DESTINATION}` = `id={DEVICE_ID}`.
 
-- If no eligible device is listed: stop and ask the user to connect one before continuing.
-- Never fall back to a simulator.
+If no physical device is found, tell the user:
+> "No physical device detected. Please connect and unlock your iPhone, then try again."
+Stop here.
 
 ---
 
 ### 3 — Build & Run Tests
 
-Run from the repo root (`meApp-1/`):
+Run from the repo root:
 
 ```bash
 xcodebuild test \
-  -project iOS/meApp.xcodeproj \
+  -project meApp.xcodeproj \
   -scheme "{SCHEME}" \
   -configuration Dev \
-  -destination 'id={DEVICE_ID}'
+  -destination '{DESTINATION}'
 ```
 
 - **Build failure**: read errors, fix root cause in the changed files, re-run. Do not proceed with errors.
@@ -55,7 +56,7 @@ xcodebuild test \
 ### 4 — Generate Coverage Report
 
 ```bash
-SCHEME="{SCHEME}" DEVICE_ID={DEVICE_ID} CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
+SCHEME="{SCHEME}" DESTINATION="{DESTINATION}" CONFIGURATION=Dev ./scripts/run_tests_with_coverage.sh
 ```
 
 When prompted for test type, enter `{REPORT_TYPE}`.
@@ -68,18 +69,7 @@ Reads coverage from the generated `coverage-report.md`.
 
 Read the coverage report and extract % for each source file touched by this task.
 
-**Unit test thresholds:**
-
-| File path contains | Layer | Minimum |
-|--------------------|-------|---------|
-| `Data/API/` | Repository API adapter | 75% |
-| `Data/Services/` (auth / account / sync) | Critical service | 85% |
-| `Data/Services/` (other) | Service | 80% |
-| `Data/Storage/` | Local repository | 80% |
-| `Features/*/Stores/` | Store / ViewModel | 80% |
-| `Features/*/Forms/` | Form / validation | 85% |
-
-**UI test threshold:** 85% flat for all exercised source files.
+Use the layer minimums from `CLAUDE.md`. **UI test threshold:** 85% flat for all exercised source files.
 
 UI layer files (`Views/`, `*View.swift`, `*Screen.swift`, `*Modifier.swift`) are excluded from coverage metrics.
 

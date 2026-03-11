@@ -28,7 +28,7 @@ git diff --cached
 Extract:
 - **CHANGED_FILES** — union of modified/created `.swift` files from both outputs
 - **DIFF** — the combined patch text
-- **WORKTREE_PATH** — the repo root (`/Users/kesavan/meApp-1`)
+- **WORKTREE_PATH** — the repo root
 - **JIRA_ID** — from the current branch name or most recent commit message (pattern `MA-\d+`)
 - **PR_META** — branch name + most recent commit message as the title/body proxy
 

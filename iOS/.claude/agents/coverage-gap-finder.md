@@ -1,4 +1,5 @@
 ---
+name: coverage-gap-finder
 description: Run the test coverage pipeline and provide detailed insights on which methods and branches are uncovered. Asks whether to run unit or UI tests, executes the coverage script on a connected physical device, reads the generated report, and outputs a prioritised list of missing test cases with exact method names, line numbers, and suggested test names.
 ---
 
@@ -17,10 +18,10 @@ Wait for the answer. Store as `{TEST_TYPE}` = `unit` or `ui`.
 
 ### 2 — Find Connected Device
 
-Run from the repo root (`meApp-1/`):
+Run from the repo root:
 
 ```bash
-xcodebuild -project iOS/meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator
+xcodebuild -project meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator
 ```
 
 Pick the first result with no `error:` field. Store the `id:` value as `{DEVICE_ID}`.
@@ -35,11 +36,11 @@ Stop here.
 
 List available schemes:
 ```bash
-xcodebuild -project iOS/meApp.xcodeproj -list 2>&1 | grep -A 20 "Schemes:"
+xcodebuild -project meApp.xcodeproj -list 2>&1 | grep -A 20 "Schemes:"
 ```
 
-- For **unit tests**: pick the scheme matching `meAppTests` (prefer `meAppTests 1` if both exist)
-- For **UI tests**: pick the scheme matching `meAppUITests` (prefer `meAppUITests 1` if both exist)
+- For **unit tests**: pick the scheme whose name exactly matches `meAppTests`. If multiple variants exist (e.g. `meAppTests 1`), list them and ask the user which to use.
+- For **UI tests**: pick the scheme whose name exactly matches `meAppUITests`. If multiple variants exist, list them and ask the user which to use.
 
 Store as `{SCHEME}`.
 
@@ -47,10 +48,10 @@ Store as `{SCHEME}`.
 
 ### 4 — Run Tests With Coverage
 
-Run from the repo root (`meApp-1/`):
+Run from the repo root:
 
 ```bash
-SCHEME="{SCHEME}" DEVICE_ID={DEVICE_ID} CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
+SCHEME="{SCHEME}" DEVICE_ID={DEVICE_ID} CONFIGURATION=Dev ./scripts/run_tests_with_coverage.sh
 ```
 
 - If tests fail: report the failures to the user and stop — do not proceed to analysis
@@ -61,8 +62,8 @@ SCHEME="{SCHEME}" DEVICE_ID={DEVICE_ID} CONFIGURATION=Dev ./iOS/scripts/run_test
 ### 5 — Read the Coverage Report
 
 Based on `{TEST_TYPE}`:
-- Unit tests → read `iOS/meAppTests/Reports/coverage-report.md`
-- UI tests → read `iOS/meAppUITests/Reports/coverage-report.md`
+- Unit tests → read `meAppTests/Reports/coverage-report.md`
+- UI tests → read `meAppUITests/Reports/coverage-report.md`
 
 ---
 

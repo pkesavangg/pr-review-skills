@@ -45,7 +45,7 @@ For each acceptance criterion (or implicit requirement):
 - Search the diff `+` lines for logic that addresses this criterion
 - If not obvious in the diff, search the worktree for related files:
   ```bash
-  grep -r "{keyword from AC}" {WORKTREE_PATH}/iOS/meApp --include="*.swift" -l
+  rg -l "{keyword from AC}" {WORKTREE_PATH}/meApp -g '*.swift'
   ```
 
 **b) Find relevant test coverage**

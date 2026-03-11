@@ -1,6 +1,6 @@
 ---
-name: gen-mock
-description: Generate a mock class for a Swift protocol following the project's exact mock conventions. Use when the user says "generate a mock", "create a mock for", "mock this protocol", or when a test file needs a mock that doesn't exist yet. Also called automatically by /gen-test-file when required mocks are missing.
+name: gen-mock-single
+description: Generate a mock class for a single Swift protocol following the project's exact mock conventions. Use when the user says "generate a mock", "create a mock for", "mock this protocol", or when a test file needs a mock that doesn't exist yet. Also called automatically by /gen-test-file when required mocks are missing.
 ---
 
 Generate a mock class for a Swift protocol, following the project's exact mock conventions.
@@ -14,7 +14,7 @@ The protocol to mock is: $ARGUMENTS
 If `$ARGUMENTS` is a file path, read it directly.
 If it's a protocol name (e.g. `EntryServiceProtocol`), search for it:
 ```bash
-grep -r "protocol $ARGUMENTS" /Users/kesavan/meApp-1/iOS/meApp --include="*.swift" -l
+rg -l "protocol $ARGUMENTS" meApp -g '*.swift'
 ```
 Read the file and extract the full protocol definition.
 
@@ -48,68 +48,17 @@ Read the file and extract the full protocol definition.
 
 ### 4 — Generate the Mock
 
-Apply the chosen pattern to the actual protocol methods. The structures below are reference templates — adapt them to the real protocol, don't copy them verbatim.
+Apply the chosen pattern to the actual protocol methods. Key structure per pattern:
 
-**Pattern A (Service) — reference:**
-```swift
-import Foundation
-@testable import meApp
-
-@MainActor
-final class MockFooService: FooServiceProtocol {
-
-    // MARK: - Stubs
-    var fetchResult: Result<Foo, Error> = .failure(UnexpectedCallError.methodCalled("fetch"))
-
-    // MARK: - Call Tracking
-    private(set) var fetchCalls = 0
-    private(set) var lastFetchId: String?
-
-    // MARK: - FooServiceProtocol
-    func fetch(id: String) async throws -> Foo {
-        fetchCalls += 1
-        lastFetchId = id
-        return try fetchResult.get()
-    }
-}
-```
-
-**Pattern B (Repository) — reference:**
-```swift
-import Foundation
-@testable import meApp
-
-@MainActor
-final class MockFooRepository: FooRepositoryProtocol {
-
-    // MARK: - In-Memory State
-    var items: [Foo] = []
-
-    // MARK: - Error Stubs
-    var saveError: Error?
-    var deleteError: Error?
-
-    // MARK: - Call Tracking
-    private(set) var saveCalls = 0
-    private(set) var deleteCalls = 0
-
-    // MARK: - FooRepositoryProtocol
-    func save(_ item: Foo) async throws {
-        saveCalls += 1
-        if let saveError { throw saveError }
-        items.removeAll { $0.id == item.id }
-        items.append(item)
-    }
-
-    func fetchAll() async throws -> [Foo] { items }
-
-    func delete(byId id: String) async throws {
-        deleteCalls += 1
-        if let deleteError { throw deleteError }
-        items.removeAll { $0.id == id }
-    }
-}
-```
+| Component | Pattern A (Service) | Pattern B (Repository) |
+|-----------|--------------------|-----------------------|
+| Imports | `Foundation`, `@testable import meApp` | same |
+| Class attrs | `@MainActor final class Mock<Name>: <Protocol>` | same |
+| Stubs | `var <method>Result: Result<T, Error> = .failure(UnexpectedCallError.methodCalled("<method>"))` | `var <method>Error: Error?` per mutating method |
+| State | — | `var items: [T] = []` (in-memory backing) |
+| Call tracking | `private(set) var <method>Calls = 0` + `private(set) var last<Arg>: T?` | same for mutating methods |
+| Impl | `<method>Calls += 1; capture args; return try <method>Result.get()` | `<method>Calls += 1; if let err { throw err }; mutate items` |
+| Read methods | uses `Result` stub | returns slice of `items` directly — no `Result` |
 
 **Additional rules:**
 - Import `Combine` only if the protocol uses `@Published` / `Publisher` properties

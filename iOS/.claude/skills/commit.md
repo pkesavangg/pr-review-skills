@@ -1,3 +1,8 @@
+---
+name: commit
+description: Stage changed files and create a git commit with the Jira issue ID prefix. Use when the user says "commit", "save my changes", or at the end of a work session. Also runs as part of /work-ticket Step 7.
+---
+
 Stage and commit all changes with the Jira issue ID in the commit message.
 
 Inputs available: ISSUE_ID (e.g. MA-3316), a concise description of what was done
@@ -23,5 +28,6 @@ Note: SwiftLint has already been run in Step 4. Do not re-run it here.
    Example: `MA-3316 Add unit tests for AccountRepositoryAPI`
 
    Do NOT add a `Co-Authored-By` trailer or any other trailers.
+   (Claude Code adds one by default — this skill intentionally overrides that behavior. The project does not use attribution trailers.)
 
 4. Confirm the commit was created and show the commit hash and message.

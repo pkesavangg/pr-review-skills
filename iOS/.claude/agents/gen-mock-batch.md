@@ -1,5 +1,6 @@
 ---
-description: Generate mock implementations for multiple Swift protocols in parallel. Use when implementing a new feature that requires 2 or more new mock files simultaneously. Reads all protocol definitions in parallel and applies the project's mock conventions to each. Returns the complete list of generated file paths.
+name: gen-mock-batch
+description: Generate mock implementations for 2 or more Swift protocols simultaneously in parallel. Use when implementing a new feature that requires 2 or more new mock files simultaneously. Reads all protocol definitions in parallel and applies the project's mock conventions to each. Returns the complete list of generated file paths.
 ---
 
 You are a Swift mock generation specialist for the meApp iOS project.
@@ -19,10 +20,21 @@ The caller will provide one of:
 
 For each protocol, search simultaneously:
 ```bash
-grep -r "protocol <Name>" /Users/kesavan/meApp-1/iOS/meApp --include="*.swift" -l
+rg -l "protocol <Name>" meApp -g '*.swift'
 ```
 
 Read all protocol files in parallel.
+
+### 1.5 — Check for Existing Mocks
+
+For each protocol, check if a mock already exists:
+```bash
+rg -l "Mock<NameWithoutProtocolSuffix>" meAppTests -g '*.swift'
+```
+
+- If a mock exists and its methods match the current protocol: **skip** — do not overwrite.
+- If a mock exists but is outdated (missing methods or mismatched signatures): **warn** the caller and skip — suggest running `/update-mock` instead.
+- If no mock exists: proceed to generate.
 
 ### 2 — Apply Mock Pattern to Each
 

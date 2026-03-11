@@ -321,3 +321,47 @@ UI layer (`Views/`, `*View.swift`, `*Screen.swift`, `*Modifier.swift`) is exclud
 | **BLE** | Bluetooth Low Energy — used for wireless scale communication |
 | **SPM** | Swift Package Manager — dependency management for all external packages |
 | **SUT** | System Under Test — the object being tested in a unit test |
+
+---
+
+## 12. Dashboard Graph Patterns
+
+The Dashboard feature uses a layered graph architecture. When making changes to chart behavior, follow these rules.
+
+### Layer Responsibilities
+
+| Layer | Type | Responsibility |
+|-------|------|---------------|
+| `DashboardStore` | Store | Orchestrates chart manager calls and owns selected period state |
+| `DashboardGraphManager` | Manager | Coordinates data prep, axis calculation, and series generation |
+| `YAxisCalculator` | Calculator | Computes y-axis domain, tick marks, and label values |
+| `BaseGraphView` | View | Shared rendering logic — period-specific wrappers stay thin |
+
+Do not put calculation or orchestration logic directly into views. Keep the rendering layer thin.
+
+### Key Rules
+
+- Keep orchestration in managers (`DashboardGraphManager`)
+- Keep axis/domain logic in calculator types (`YAxisCalculator`)
+- Preserve caching and throttling behavior when changing chart data generation
+- Treat scroll state, selection state, and animation state as coordinated concerns
+- Prefer testing manager/calculator logic; avoid unit-testing raw chart rendering
+
+### Change Checklist
+
+Before finishing a Dashboard graph change, verify:
+- Does the change affect all periods or only week/month/year/total?
+- Does it invalidate cached chart data, labels, or y-axis calculations?
+- Does it change interaction behavior during scroll or selection?
+- Could it introduce animation glitches or performance regressions?
+- Does the change belong in `DashboardStore`, a manager, a calculator, or a view?
+
+### Testing Focus
+
+- Calculator/manager tests for deterministic logic
+- Period-specific behavior
+- Cache invalidation behavior
+- Selection/scroll edge cases
+- Weightless/goal-state handling
+
+If the change also affects async data preparation or background processing, apply `/swift-concurrency` patterns.

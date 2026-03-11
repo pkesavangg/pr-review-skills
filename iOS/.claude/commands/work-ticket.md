@@ -2,6 +2,8 @@ You are a full software development lifecycle agent. The user has given you a Ji
 
 The Jira issue ID is: $ARGUMENTS
 
+> **Resuming mid-way:** If this command failed or was interrupted in a previous session, the user can tell you which step to resume from (e.g. "resume from step 5"). Skip completed steps and continue from the specified point. Gather any required context (branch name, changed files, Jira ID) from git and the working directory before resuming.
+
 ---
 
 ## STEP 1 — Fetch & Display Jira Task Details
@@ -16,41 +18,30 @@ Read and execute the skill at `.claude/skills/create-branch.md` using the issue 
 
 ---
 
-## STEP 3 — Generate PRD
+## STEP 3 — Explore, Generate PRD, and Plan
 
-Read and execute the skill at `.claude/skills/create-prd.md` with `$ARGUMENTS` as the issue ID.
-
-This generates `iOS/docs/plans/{ISSUE-ID}-{slugified-title}.md` capturing:
-- Problem statement + acceptance criteria from Jira
-- Files to create / modify / delete
-- Mocks and test files needed (with coverage thresholds)
-- Risks and open questions
-- Implementation checklist
-
-Show the user the PRD path and key decisions captured. Continue automatically — no user confirmation needed at this step.
-
----
-
-## STEP 4 — Deep Brainstorm & Interactive Planning
-
-Thoroughly explore the codebase relevant to this task:
-- Read existing files, patterns, tests, and conventions
+In a **single codebase exploration pass** (read at most 8 files total):
+- Find source files related to the feature area: `rg -l "{keyword}" meApp -g '*.swift'`
+- Read the 2–3 most relevant existing source files, tests, and patterns
 - Identify what files need to change, be created, or deleted
 - Identify risks, edge cases, and dependencies
-- Think about the best approach
 
-Then present a **detailed interactive plan** to the user covering:
-- What the task requires (your understanding)
-- Proposed approach with alternatives if applicable
-- Files to **create**, **modify**, and **delete**
-- Test strategy
-- Risks or things to watch out for
+Then, using that same exploration — **without re-reading any files**:
 
-**Ask the user for approval or feedback before proceeding.** Use EnterPlanMode for this step so the user can review and approve the plan.
+1. **Write the PRD** to `docs/plans/{ISSUE-ID}-{slugified-title}.md` using the template at `docs/templates/prd-template.md`. Populate every section from the Jira ticket and codebase findings.
+
+2. **Present an interactive plan** to the user covering:
+   - What the task requires (your understanding)
+   - Proposed approach with alternatives if applicable
+   - Files to **create**, **modify**, and **delete**
+   - Test strategy
+   - Risks or things to watch out for
+
+Show the user the PRD path. **Ask the user for approval or feedback before proceeding.** Use EnterPlanMode for this step.
 
 ---
 
-## STEP 5 — Implement
+## STEP 4 — Implement
 
 After plan approval, implement the changes using TodoWrite to track progress:
 - Mark each task in_progress before starting it
@@ -59,64 +50,77 @@ After plan approval, implement the changes using TodoWrite to track progress:
 - Do not over-engineer — only implement what the task requires
 
 Use scaffolding tools during implementation:
-- **New feature module**: read and execute `.claude/skills/new-feature.md` before writing any code
+- **Any feature scaffold**: read and execute `.claude/skills/feature-slice.md` (handles simple top-level and nested archetypes)
 - **New test file needed**: read and execute `.claude/skills/gen-test-file.md` to scaffold the file
-- **1 new mock needed**: read and execute `.claude/skills/gen-mock.md`
-- **2+ new mocks needed at once**: spawn the agent at `.claude/agents/mock-generator.md` in the background while writing production code
+- **1 new mock needed**: read and execute `.claude/skills/gen-mock-single.md`
+- **2+ new mocks needed at once**: spawn the agent at `.claude/agents/gen-mock-batch.md` in the background while writing production code
+- **New backend call or endpoint wiring**: read and execute `.claude/skills/add-endpoint.md`
+- **New service / DI registration work**: read and execute `.claude/skills/wire-service.md`
+- **SwiftData / Keychain / local storage changes**: read and execute `.claude/skills/storage-change.md`
+- **Environment or build configuration changes**: read and execute `.claude/skills/config-change.md`
 
 SwiftLint runs automatically via hook after each file edit — fix any violations surfaced before moving to the next file.
 
 ---
 
-## STEP 6 — Build & Test Verification
+## STEP 5 — Build & Test Verification
 
 Determine the task type and act accordingly:
 
-**If the task involves writing or modifying unit tests:**
-Read and execute the skill at `.claude/skills/verify-unit-tests.md` with the list of test files and source files changed in this task. Do not proceed until all files reach their layer coverage threshold.
+**If the task involves production or unit-test code that should be covered by unit tests:**
+Read and execute the skill at `.claude/skills/verify-tests.md` for **unit** tests with the list of changed source files and test files. Do not proceed until all changed files that are in coverage scope reach their layer threshold.
 
 If any file is below threshold after the first run, spawn the agent at `.claude/agents/coverage-gap-finder.md` to identify exactly which methods/branches are uncovered. Add the missing tests, then re-run until all files pass.
 
 **If the task involves writing or modifying UI tests:**
-Read and execute the skill at `.claude/skills/verify-ui-tests.md` with the list of UI test files and screens/flows covered. Do not proceed until all files reach ≥ 85% coverage.
+Read and execute the skill at `.claude/skills/verify-tests.md` for **UI** tests with the list of UI test files and screens/flows covered. Do not proceed until all files reach ≥ 85% coverage.
 
 **For all other tasks (feature work, bug fixes, refactoring, etc.):**
-Read and execute the skill at `.claude/skills/build-verify.md`. Fix any build errors before proceeding.
+Run a direct build verification from the repo root:
+```bash
+xcodebuild build \
+  -project meApp.xcodeproj \
+  -scheme meApp \
+  -configuration Dev \
+  -destination 'generic/platform=iOS' \
+  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+```
+Fix any build errors before proceeding.
 
 Once verification passes, ask the user:
 > "Lint is clean and verification passed. Please check the changes and confirm everything looks good before I commit."
 
-**Do not proceed to Step 7 until the user explicitly confirms.**
+**Do not proceed to Step 6 until the user explicitly confirms.**
 
-> ⚠️ When the user confirms (e.g. "looks good", "proceed", "commit"), do NOT jump to Step 8.
-> You MUST execute Step 7 (Self-Review) first — it is mandatory and non-skippable.
+> ⚠️ When the user confirms (e.g. "looks good", "proceed", "commit"), do NOT jump to Step 7.
+> You MUST execute Step 6 (Self-Review) first — it is mandatory and non-skippable.
 
 ---
 
-## STEP 7 — Self-Review
+## STEP 6 — Self-Review
 
 Read and execute the skill at `.claude/skills/self-review.md`.
 
-**This step is mandatory. Execute it automatically after user confirmation in Step 6 — do not skip it even if the user says "commit" or "looks good".**
+**This step is mandatory. Execute it automatically after user confirmation in Step 5 — do not skip it even if the user says "commit" or "looks good".**
 
 ---
 
-## STEP 8 — Commit
+## STEP 7 — Commit
 
 Read and execute the skill at `.claude/skills/commit.md` using the issue ID from Step 1.
 
 ---
 
-## STEP 9 — Raise PR
+## STEP 8 — Raise PR
 
 Read and execute the skill at `.claude/skills/raise-pr.md` using the issue ID and summary from Step 1.
 
-**After the PR URL is returned, immediately proceed to Step 10 — do not stop or wait for the user.**
+**After the PR URL is returned, immediately proceed to Step 9 — do not stop or wait for the user.**
 
 ---
 
-## STEP 10 — Log Work
+## STEP 9 — Log Work
 
 Read and execute the skill at `.claude/skills/log-work.md` using the issue ID from Step 1 and a summary of all work done.
 
-**This step is mandatory and must be initiated automatically after Step 9. The skill will ask the user for the time spent — that is the only pause allowed here.**
+**This step is mandatory and must be initiated automatically after Step 8. The skill will ask the user for the time spent — that is the only pause allowed here.**

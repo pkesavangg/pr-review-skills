@@ -4,7 +4,7 @@
 
 iOS application for [Greater Goods](https://greatergoods.com) — a health/weight tracking app (branded as Weight Gurus). Built with **Swift + SwiftUI**, targeting iOS. Integrates Bluetooth scales, Wi-Fi scales, HealthKit, Fitbit, MyFitnessPal, and Firebase.
 
-**Xcode project:** `iOS/meApp.xcodeproj`
+**Xcode project:** `meApp.xcodeproj`
 **Main target:** `meApp`
 **Test targets:** `meAppTests` (unit), `meAppUITests` (UI)
 
@@ -191,15 +191,15 @@ API base URL is read from `API_BASE_URL` in `Info.plist` via `AppEnvironment.api
 
 **File placement:** `meAppTests/Features/<Feature>/` — files are auto-included via `PBXFileSystemSynchronizedRootGroup`, no `.pbxproj` editing needed.
 
-**Always run tests on a connected physical device — never a simulator.**
+**All tests must run on a connected physical device — never use a simulator.**
 
 ```bash
 # Find device ID
-xcodebuild -project iOS/meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator
+xcodebuild -project meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator
 
 # Run tests
 xcodebuild test \
-  -project iOS/meApp.xcodeproj \
+  -project meApp.xcodeproj \
   -scheme meAppTests \
   -configuration Dev \
   -destination 'id={DEVICE_ID}'

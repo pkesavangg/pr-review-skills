@@ -50,7 +50,7 @@ Flag tests that would **fail to compile** due to the change as **FAIL**.
 For each changed file, search the worktree for usages:
 
 ```bash
-grep -r "{TypeOrFunctionName}" {WORKTREE_PATH}/iOS/meApp --include="*.swift" -l
+rg -l "{TypeOrFunctionName}" {WORKTREE_PATH}/meApp -g '*.swift'
 ```
 
 - List all files that import or reference the changed type/function
@@ -82,7 +82,7 @@ If a new protocol conformance or service was introduced in the diff:
 - Search for `@Injector` usages of the new protocol to confirm resolve path exists
 
 ```bash
-grep -r "register(" {WORKTREE_PATH}/iOS/meApp/Core/DI/ --include="*.swift"
+rg -n "register\\(" {WORKTREE_PATH}/meApp/Core -g '*.swift'
 ```
 
 Flag as **FAIL** if a new injectable dependency has no registration.

@@ -30,7 +30,7 @@ Store for each PR:
 
 ## STEP 2 — Set Up Worktrees & Collect Diffs
 
-For each PR, run from the repo root (`meApp-1/`):
+For each PR, run from the repo root:
 
 ```bash
 git fetch origin {BRANCH}
@@ -80,7 +80,9 @@ Collect the output of each skill for this PR before moving to the next PR.
 
 ## STEP 4 — Clean Up Worktrees
 
-After all PRs are reviewed, remove all worktrees:
+**This step MUST execute even if Steps 2 or 3 failed.** If an earlier step errors out, skip to this step to clean up before reporting the error.
+
+After all PRs are reviewed (or after a failure), remove all worktrees:
 
 ```bash
 git worktree remove /tmp/pr-review-{BRANCH} --force
@@ -111,7 +113,7 @@ For each PR, derive the overall verdict from the four skill outputs:
 
 Determine the output path:
 ```
-iOS/meAppTests/Reports/pr-review-{YYYYMMDD-HHMM}.md
+meAppTests/Reports/pr-review-{YYYYMMDD-HHMM}.md
 ```
 
 Write the file with the following structure:

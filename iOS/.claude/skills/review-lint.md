@@ -27,15 +27,13 @@ git diff --cached
 Set:
 - **CHANGED_FILES** — union of `.swift` files from both outputs
 - **DIFF** — combined patch text
-- **WORKTREE_PATH** — `/Users/kesavan/meApp-1`
+- **WORKTREE_PATH** — the git repo root
 
 ---
 
 ### 1 — Read the Active SwiftLint Config
 
-```bash
-cat {WORKTREE_PATH}/iOS/.swiftlint.yml
-```
+Use the Read tool to read `{WORKTREE_PATH}/.swiftlint.yml`. Do not use `cat`.
 
 Extract and note:
 - **opt_in_rules** — full list of enabled opt-in rules
@@ -51,7 +49,7 @@ Use these values in Steps 2–4 instead of hardcoded defaults.
 ### 2 — Run SwiftLint on Changed Files
 
 ```bash
-cd /Users/kesavan/meApp-1/iOS && swiftlint lint \
+cd {WORKTREE_PATH} && swiftlint lint \
   --config .swiftlint.yml \
   --reporter xcode \
   $(echo "{CHANGED_FILES}" | tr ' ' '\n' | grep '\.swift$' | xargs)
