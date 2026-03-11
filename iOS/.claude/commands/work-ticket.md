@@ -12,6 +12,24 @@ Read and execute the skill at `.claude/skills/fetch-ticket.md` with `$ARGUMENTS`
 
 ---
 
+## STEP 1.5 — Set Original Estimate
+
+After fetching the ticket, check whether an Original Estimate is already set on the issue:
+- Call `getJiraIssue` and inspect the `timeoriginalestimate` field (in seconds) or the `originalEstimate` from `timetracking`.
+
+**If an estimate is already set:** display it to the user and proceed to Step 2.
+
+**If no estimate is set:**
+1. Ask the user:
+   > "No original estimate is set on this ticket. How long do you estimate this will take? (e.g. `1h`, `2h 30m`, `30m`)"
+2. Wait for the user's response.
+3. Call `editJiraIssue` to update the `timetracking` field with the provided value as the `originalEstimate`.
+4. Confirm: "Original estimate set to `{value}` on {ISSUE_ID}."
+
+**Do not proceed to Step 2 until this step is complete.**
+
+---
+
 ## STEP 2 — Create Git Branch
 
 Read and execute the skill at `.claude/skills/create-branch.md` using the issue ID and summary from Step 1.
@@ -113,7 +131,12 @@ Read and execute the skill at `.claude/skills/commit.md` using the issue ID from
 
 ## STEP 8 — Raise PR
 
-Read and execute the skill at `.claude/skills/raise-pr.md` using the issue ID and summary from Step 1.
+Ask the user:
+> "Which branch should I raise the PR against? (default: `main`)"
+
+**Wait for the user's response before proceeding.** Store as `{BASE_BRANCH}` (default `main` if the user confirms or provides no input).
+
+Then read and execute the skill at `.claude/skills/raise-pr.md` using the issue ID, summary from Step 1, and `{BASE_BRANCH}` as the target branch. Pass `{BASE_BRANCH}` so the skill uses it directly and does not ask again.
 
 **After the PR URL is returned, immediately proceed to Step 9 — do not stop or wait for the user.**
 
