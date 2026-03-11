@@ -86,3 +86,10 @@ Methods removed: <count and names>
 Signatures updated: <count and names>
 Test files updated: <count and paths>
 ```
+
+---
+
+### Follow-Up
+
+- Run `/run-tests` to confirm no existing tests broke after the update
+- Run `/verify-tests` if coverage for the affected feature needs to be re-checked

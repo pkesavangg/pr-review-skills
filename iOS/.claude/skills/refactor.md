@@ -87,7 +87,7 @@ Find a connected physical device and run tests on it:
 
 ```bash
 # Find device ID
-xcodebuild -project meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator | head -1
+DEVICE_ID=$(./scripts/find-device.sh meAppTests)
 
 # Run tests
 xcodebuild test \

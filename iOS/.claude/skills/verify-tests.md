@@ -24,15 +24,10 @@ Store as `{SCHEME}` and `{REPORT_TYPE}`.
 All tests must run on a physical device — never use a simulator.
 
 ```bash
-xcodebuild -project meApp.xcodeproj -scheme "{SCHEME}" -showdestinations 2>&1 \
-  | grep "platform:iOS," | grep -v Simulator | head -5
+DEVICE_ID=$(./scripts/find-device.sh "{SCHEME}")
 ```
 
-Pick the first result with no `error:` field. Store the `id:` value as `{DEVICE_ID}` and use `{DESTINATION}` = `id={DEVICE_ID}`.
-
-If no physical device is found, tell the user:
-> "No physical device detected. Please connect and unlock your iPhone, then try again."
-Stop here.
+If the script exits with a non-zero status, relay its error message to the user and stop. Store `{DESTINATION}` = `id={DEVICE_ID}`.
 
 ---
 

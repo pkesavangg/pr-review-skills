@@ -21,14 +21,10 @@ Wait for the answer. Store as `{TEST_TYPE}` = `unit` or `ui`.
 Run from the repo root:
 
 ```bash
-xcodebuild -project meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 | grep "platform:iOS," | grep -v Simulator
+DEVICE_ID=$(./scripts/find-device.sh meAppTests)
 ```
 
-Pick the first result with no `error:` field. Store the `id:` value as `{DEVICE_ID}`.
-
-If no physical device is found, tell the user:
-> "No physical device detected. Please connect and unlock your iPhone, then try again."
-Stop here.
+If the script exits with a non-zero status, relay its error message to the user and stop.
 
 ---
 

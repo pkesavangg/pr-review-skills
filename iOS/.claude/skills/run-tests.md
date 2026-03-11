@@ -23,15 +23,10 @@ Store as `{SCHEME}` and optional `{ONLY_TESTING}`.
 ### 2 — Find Connected Physical Device
 
 ```bash
-xcodebuild -project meApp.xcodeproj -scheme "{SCHEME}" -showdestinations 2>&1 \
-  | grep "platform:iOS," | grep -v Simulator | head -1
+DEVICE_ID=$(./scripts/find-device.sh "{SCHEME}")
 ```
 
-Extract the `id:` value as `{DEVICE_ID}`.
-
-If no physical device is found:
-> "No physical device detected. Please connect and unlock your iPhone, then try again."
-Stop here.
+If the script exits with a non-zero status, relay its error message to the user and stop.
 
 ---
 

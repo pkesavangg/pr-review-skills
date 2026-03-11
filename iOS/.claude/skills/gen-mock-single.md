@@ -72,3 +72,11 @@ Apply the chosen pattern to the actual protocol methods. Key structure per patte
 Write the mock to the determined path. Confirm the full file path to the caller.
 
 If called from `gen-test-file`, return the mock class name and file path so the test file can reference it correctly.
+
+---
+
+### Follow-Up
+
+If called standalone (not from `/gen-test-file`):
+- Run `/gen-test-file` to scaffold a test file that uses this mock
+- Run `/verify-tests` after writing tests to confirm coverage meets the layer threshold

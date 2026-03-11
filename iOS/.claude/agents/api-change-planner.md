@@ -36,4 +36,4 @@ Return:
 - likely reference files to imitate
 - exact files to create or modify
 - architectural risks
-- recommended follow-up skill (`/add-endpoint`, `/wire-service`, `/gen-test-file`, `/gen-mock`)
+- recommended follow-up skill (`/add-endpoint`, `/wire-service`, `/gen-test-file`, `/gen-mock-single`)
