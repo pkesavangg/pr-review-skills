@@ -128,6 +128,7 @@ dependencies {
   androidTestImplementation(libs.androidx.ui.test.junit4)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
+  debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
   implementation(libs.hilt.navigation.compose)
 
   // browser
