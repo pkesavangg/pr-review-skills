@@ -6,6 +6,7 @@ import Foundation
 final class MockEntryService: EntryServiceProtocol {
     let entrySaved = PassthroughSubject<EntryNotification, Never>()
     let entryDeleted = PassthroughSubject<EntryNotification, Never>()
+    var latestEntry: Entry?
 
     func syncAllEntriesWithRemote() async {}
     func migrateFromSQLiteIfNeeded() async {}
@@ -20,7 +21,7 @@ final class MockEntryService: EntryServiceProtocol {
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }
     func getEntryCount() async throws -> Int { 0 }
     func getOldestEntry() async throws -> Entry? { nil }
-    func getLatestEntry() async throws -> Entry? { nil }
+    func getLatestEntry() async throws -> Entry? { latestEntry }
     func getEntries(lastNDays: Int) async throws -> [Entry] { [] }
     func getEntries(forMonth month: String) async throws -> [Entry] { [] }
     func getMonthsAll() async throws -> [HistoryMonth] { [] }

@@ -45,7 +45,7 @@ extension BluetoothService {
             bid = entry.broadcastIdString
         }
         if let bid = bid, blockedBroadcastIds.contains(bid) {
-            ggBleSDK.skipDevice(bid)
+            ggBleSDK.skipDevice(bid, true)
             return
         }
         guard let responseType = data.type else { return }

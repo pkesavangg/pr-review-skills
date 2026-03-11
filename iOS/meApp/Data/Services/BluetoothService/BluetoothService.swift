@@ -124,7 +124,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     let scaleService: ScaleServiceProtocol
     let entryService: EntryServiceProtocol
     let logger: LoggerServiceProtocol
-    let ggBleSDK = GGBluetoothSwiftPackage.shared
+    let ggBleSDK: BluetoothSDKClient
     let timeoutConstants = AppConstants.TimeoutsAndRetention.self
     let tag = "BluetoothService"
 
@@ -160,13 +160,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         scaleService: ScaleServiceProtocol,
         entryService: EntryServiceProtocol,
         logger: LoggerServiceProtocol,
-        discoveryManager: BLEDiscoveryManaging? = nil
+        discoveryManager: BLEDiscoveryManaging? = nil,
+        ggBleSDK: BluetoothSDKClient? = nil
     ) {
         self.accountService = accountService
         self.scaleService = scaleService
         self.entryService = entryService
         self.logger = logger
         self.discoveryManager = discoveryManager ?? BLEDiscoveryManager()
+        self.ggBleSDK = ggBleSDK ?? GGBluetoothSDKClient()
         setupSubscriptions()
         initialize()
     }
