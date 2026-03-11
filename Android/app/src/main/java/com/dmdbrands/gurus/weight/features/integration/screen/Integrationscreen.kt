@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.integration.viewmodel.IntegrationView
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Integration screen composable. Displays available and connected integrations, handles user interactions.
@@ -70,7 +71,7 @@ private fun IntegrationContent(
 fun IntegrationScreenPreview() {
     MeAppTheme {
         val dummyState = IntegrationState(
-            integrations = emptyList(),
+            integrations = persistentListOf(),
         )
         IntegrationContent(
             state = dummyState,

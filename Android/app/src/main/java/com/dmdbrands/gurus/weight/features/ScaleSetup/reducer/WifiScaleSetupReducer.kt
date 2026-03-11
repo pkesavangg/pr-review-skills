@@ -8,6 +8,10 @@ import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Setup path options for WiFi scale setup
@@ -62,10 +66,11 @@ data class ScaleNetworkForm(
 /**
  * State for WifiScaleSetupScreen.
  */
+@Stable
 data class WifiScaleSetupState(
   val currentStep: WifiScaleSetupStep = WifiScaleSetupStep.SCALE_INFO,
   val sku: String = "0384",
-  val steps: List<WifiScaleSetupStep> = listOf(
+  val steps: ImmutableList<WifiScaleSetupStep> = persistentListOf(
     WifiScaleSetupStep.SCALE_INFO,
     WifiScaleSetupStep.PERMISSIONS,
     WifiScaleSetupStep.WIFI_PASSWORD,

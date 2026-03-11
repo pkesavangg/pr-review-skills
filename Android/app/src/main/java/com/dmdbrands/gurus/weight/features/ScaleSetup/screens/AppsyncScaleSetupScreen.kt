@@ -38,6 +38,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 
 @Composable
@@ -243,7 +244,7 @@ fun AppsyncScaleSetupPreview() {
         AppsyncScaleSetupState(
           sku = "0342",
           bodyComp = true,
-          steps = listOf(
+          steps = persistentListOf(
             AppsyncScaleSetupStep.SCALE_INFO,
             AppsyncScaleSetupStep.PERMISSIONS,
             AppsyncScaleSetupStep.ACTIVATE_SCALE,

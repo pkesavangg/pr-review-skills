@@ -101,6 +101,7 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
   implementation(libs.kotlinx.serialization.core)
+  implementation(libs.kotlinx.collections.immutable)
   implementation(libs.androidx.hilt.navigation.fragment)
   implementation(libs.androidx.core.splashscreen)
   // Existing dependencies

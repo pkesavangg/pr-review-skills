@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.toImmutableList
 import sh.calvin.reorderable.mainAxisViewportSize
 import sh.calvin.reorderable.rememberScroller
 
@@ -158,7 +159,7 @@ fun ScaleDisplayMetricsScreenPreview() {
   val dummyState =
     ScaleDisplayMetricsState(
       scale = dummyDevice,
-      enabledMetrics = listOf("bmi", "bodyFatPercent", "musclePercent", "bodyWaterPercent"),
+      enabledMetrics = listOf("bmi", "bodyFatPercent", "musclePercent", "bodyWaterPercent").toImmutableList(),
       hasUpdated = true,
     )
 

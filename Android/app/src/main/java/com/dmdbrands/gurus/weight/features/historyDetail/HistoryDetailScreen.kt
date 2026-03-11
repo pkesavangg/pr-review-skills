@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetail
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @Composable
@@ -177,7 +178,7 @@ fun HistoryDetailScreenPreview() {
             state =
                 HistoryDetailState(
                     month = "Dec 2022",
-                    historyItems = sampleItems,
+                    historyItems = sampleItems.toImmutableList(),
                 ),
             isRefreshing = false,
             onRefresh = {},

@@ -95,7 +95,7 @@ fun FeedMessagesScreen(
                   state = listState,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(state.feedItems) { feedItem ->
+                    items(state.feedItems, key = { feedItem -> feedItem.elementId }) { feedItem ->
                         FeedItemCard(
                             feedItem = feedItem,
                             onItemClick = { item ->

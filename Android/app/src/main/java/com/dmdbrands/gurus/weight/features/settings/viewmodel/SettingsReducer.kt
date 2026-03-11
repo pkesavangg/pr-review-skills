@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import androidx.compose.runtime.Stable
 
 // TODO: MyAccountsReducer and related state/intent may be implemented for MyAccountsScreen if needed, following the same pattern.
 
@@ -11,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
  * @property isLoading Whether data is currently loading.
  * @property errorMessage Error message if any error occurs.
  */
+@Stable
 data class SettingsState(
   val isLoading: Boolean = false,
   val errorMessage: String? = null,

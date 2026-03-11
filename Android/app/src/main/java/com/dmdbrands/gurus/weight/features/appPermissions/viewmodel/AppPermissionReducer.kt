@@ -2,10 +2,12 @@ package com.dmdbrands.gurus.weight.features.appPermissions.viewmodel
 
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import androidx.compose.runtime.Stable
 
 /**
  * State class for the App Permissions screen.
  */
+@Stable
 data class AppPermissionsState(
   val permissionMap: GGPermissionStatusMap = mutableMapOf(),
   val requiredPermissions: Set<String> = emptySet(),

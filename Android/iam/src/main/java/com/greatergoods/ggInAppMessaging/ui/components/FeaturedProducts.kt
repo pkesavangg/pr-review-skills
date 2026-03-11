@@ -89,7 +89,7 @@ private fun ProductsHorizontalScrollContainer(
     horizontalArrangement = Arrangement.spacedBy(40.dp),
     // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
   ) {
-    itemsIndexed(products) { index, product ->
+    itemsIndexed(products, key = { index, _ -> index }) { index, product ->
       ProductCard(
         product = product,
         productIndex = index,

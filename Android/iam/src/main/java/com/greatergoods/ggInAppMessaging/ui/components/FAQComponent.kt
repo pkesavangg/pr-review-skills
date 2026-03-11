@@ -77,7 +77,7 @@ fun FAQComponent(
       .padding(16.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
-    items(faqItems) { faqItem ->
+    items(faqItems, key = { faqItem -> faqItem.id }) { faqItem ->
       FAQItemCard(
         faqItem = faqItem,
         isExpanded = expandedFaqIds.contains(faqItem.id),
