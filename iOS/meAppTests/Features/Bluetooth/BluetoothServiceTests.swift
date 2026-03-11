@@ -298,14 +298,16 @@ struct BluetoothServiceTests {
         scale: MockScaleService? = nil,
         entry: MockEntryService? = nil,
         logger: MockLoggerService? = nil,
-        discovery: MockBLEDiscoveryManager? = nil
+        discovery: MockBLEDiscoveryManager? = nil,
+        notification: MockNotificationHelperService? = nil
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
             scaleService: scale ?? MockScaleService(),
             entryService: entry ?? MockEntryService(),
             logger: logger ?? MockLoggerService(),
-            discoveryManager: discovery ?? MockBLEDiscoveryManager()
+            discoveryManager: discovery ?? MockBLEDiscoveryManager(),
+            notificationService: notification ?? MockNotificationHelperService()
         )
     }
 
