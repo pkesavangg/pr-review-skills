@@ -167,12 +167,18 @@ struct ContentViewModelTests {
 
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t1")
         _ = await waitUntil { account.refreshAccountCalls == 1 }
+        await viewModel.waitForInitialization()
 
+        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t2"))
         viewModel.contentViewState = .landing
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t2")
-        let updated = await waitUntil { account.refreshAccountCalls == 2 }
+        await Task.yield()
+        let restarted = await waitUntil { account.refreshAccountCalls == 2 }
+        await viewModel.waitForInitialization()
 
-        #expect(updated == true)
+        #expect(restarted == true)
+        #expect(viewModel.currentAccount?.lastActiveTime == "t2")
+        #expect(viewModel.contentViewState == .dashboard)
     }
 
     @Test("entry saved publisher triggers account-flag check for entry flow")
