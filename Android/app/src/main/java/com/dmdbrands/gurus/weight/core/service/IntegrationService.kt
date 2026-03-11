@@ -139,7 +139,7 @@ class IntegrationService @Inject constructor(
    */
   override suspend fun connectIntegration(provider: IntegrationProvider, accountId: String): String? {
     return try {
-      AppLog.d(TAG, "Connecting to integration: $provider for account: $accountId")
+      AppLog.d(TAG, "Connecting to integration: $provider")
       if (provider.requiresOAuth()) {
         val oAuthUrl = provider.getOAuthUrl(accountId)
         if (oAuthUrl != null) {

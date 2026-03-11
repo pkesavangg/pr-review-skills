@@ -57,6 +57,7 @@ workRuntimeKtxVersion = "2.10.3"
 hiltCommon = "1.2.0"
 hiltWork = "1.2.0"
 material3 = "1.5.0-alpha06"
+securityCrypto = "1.1.0-alpha06"
 
 [libraries]
 vico-core = { module = "com.dmdbrands.lib:vico-core", version.ref = "vico" }
@@ -131,6 +132,7 @@ androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtim
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtxVersion" }
 androidx-hilt-common = { group = "androidx.hilt", name = "hilt-common", version.ref = "hiltCommon" }
 androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 
 
 [plugins]

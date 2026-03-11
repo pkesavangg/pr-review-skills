@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
@@ -92,6 +93,7 @@ constructor(
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
   private val accountFlagService: IAccountFlagService,
+  private val tokenMigrationHelper: TokenMigrationHelper,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -131,9 +133,11 @@ constructor(
         AppLog.e("MainActivity", "Failed to cleanup old logs", e)
       }
 
-      // Load all tokens into TokenManager's in-memory map
+      // Migrate tokens from DataStore to EncryptedSharedPreferences (one-time)
+      // then load all tokens into TokenManager's in-memory map
       try {
         initEvents()
+        tokenMigrationHelper.migrateIfNeeded()
         tokenManager.loadAllTokens()
         tokenManager.getCurrentAccountID()
         AppLog.v(TAG, "Loaded all tokens into TokenManager")
@@ -806,7 +810,7 @@ constructor(
           AppLog.d(TAG, "Stored notification alert setting for account: $accountId")
           requestPermissions(GGPermissionType.NOTIFICATION)
         } else {
-          AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
+           AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check/request notification permission", e.toString())
