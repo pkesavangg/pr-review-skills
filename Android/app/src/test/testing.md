@@ -1,4 +1,4 @@
-can u # Android Testing Infrastructure
+# Android Testing Infrastructure
 
 
 ## Quick Start — The 3 Commands You Need
@@ -19,7 +19,7 @@ Run these from the root of the Android project (`/Android`):
 
 This document covers the unit test setup for the Android app — dependencies, project structure, how to run tests, and how to generate coverage reports.
 
-The stack uses **MockK** (mocking), **Turbine** (Flow testing), **kotlinx-coroutines-test** (coroutine/dispatcher control), and **Truth** (assertions), all configured for JUnit 4.
+The stack uses **MockK** (mocking), **Turbine** (Flow testing), **kotlinx-coroutines-test** (coroutine/dispatcher control), **Truth** (assertions), and **MockWebServer** (API response parsing), all configured for JUnit 4.
 
 ---
 
@@ -34,15 +34,24 @@ All versions are managed in `gradle/libs.versions.toml`.
 | `app.cash.turbine:turbine` | 1.2.0 | Testing Kotlin Flow emissions |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-test` | 1.10.2 | Test dispatcher for coroutine-based code |
 | `com.google.truth:truth` | 1.4.4 | Fluent assertion library |
+| `com.squareup.okhttp3:mockwebserver` | 4.12.0 | Local HTTP server for API response parsing tests |
 
 Declared in `app/build.gradle.kts`:
 
 ```kotlin
+// Unit test dependencies
 testImplementation(libs.junit)
 testImplementation(libs.mockk)
 testImplementation(libs.kotlinx.coroutines.test)
 testImplementation(libs.turbine)
 testImplementation(libs.truth)
+testImplementation(libs.mockwebserver)
+
+// Compose UI test dependencies (instrumented)
+androidTestImplementation(libs.androidx.ui.test.junit4)
+debugImplementation(libs.androidx.ui.test.manifest)
+androidTestImplementation(libs.androidx.espresso.core)
+androidTestImplementation(libs.androidx.junit)
 ```
 
 ---
@@ -302,3 +311,132 @@ Run it directly:
 ```
 
 Expected output: **12 tests, 0 failures, 0 errors.**
+
+---
+
+## Types of Android Tests
+
+### 1. Unit Tests (`src/test/`)
+Runs on the **JVM on your machine**. No Android device needed.
+
+- Tests pure logic — reducers, ViewModels, repositories
+- Fast (milliseconds per test)
+- Uses MockK to fake Android dependencies
+- What JaCoCo measures for coverage
+
+### 2. Instrumented Tests (`src/androidTest/`)
+Runs on a **real Android device or emulator**. Requires `AndroidJUnitRunner`.
+
+- Tests things that need real Android context — UI, navigation, database
+- Slow (seconds per test)
+- Compose UI tests and Espresso tests live here
+- **Does NOT count toward JaCoCo coverage**
+
+### 3. Integration Tests
+Not a separate folder — a concept. Tests multiple layers working together (e.g. Repository + API + parsing). MockWebServer tests are integration-level but still run as unit tests on the JVM.
+
+| Type | Runs on | Speed | Folder | Counts for JaCoCo |
+|---|---|---|---|---|
+| Unit test | JVM | Fast | `src/test/` | ✅ Yes |
+| Instrumented test | Device/Emulator | Slow | `src/androidTest/` | ❌ No |
+| Integration test | JVM | Fast | `src/test/` | ✅ Yes |
+
+---
+
+## API Response Parsing Tests (MockWebServer)
+
+MockWebServer spins up a real local HTTP server, letting Retrofit actually parse JSON — the same as production. This catches issues MockK cannot.
+
+### When to use MockK vs MockWebServer
+
+| | MockK | MockWebServer |
+|---|---|---|
+| Tests business logic | ✅ | ✅ |
+| Tests JSON field parsing | ❌ | ✅ |
+| Tests HTTP error codes | ❌ | ✅ |
+| Needs a device | ❌ | ❌ |
+
+### Example
+
+```kotlin
+class MyApiTest {
+
+    private lateinit var server: MockWebServer
+    private lateinit var api: IMyAPI
+
+    @Before
+    fun setUp() {
+        server = MockWebServer()
+        server.start()
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl(server.url("/"))
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(OkHttpClient())
+            .build()
+
+        api = retrofit.create(IMyAPI::class.java)
+    }
+
+    @After
+    fun tearDown() {
+        server.shutdown()
+    }
+
+    @Test
+    fun `endpoint returns correctly parsed response`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{ "id": "123", "name": "John" }""")
+        )
+
+        val response = api.getUser()
+
+        assertThat(response.id).isEqualTo("123")
+        assertThat(response.name).isEqualTo("John")
+    }
+}
+```
+
+> If a JSON field name mismatches the data class, Gson silently returns `null` and the assertion fails — that's exactly the bug MockWebServer catches. Fix with `@SerializedName("field_name")`.
+
+---
+
+## Room / Database Testing
+
+**Do NOT test Room DAO files directly.** Room DAO implementations (`*_Impl`) are already excluded from JaCoCo coverage and testing them adds no coverage value.
+
+Instead, test the **repository that wraps the DAO** by mocking the DAO with MockK:
+
+```kotlin
+class EntryRepositoryTest {
+
+    private val entryDao: EntryDao = mockk()
+    private val repository = EntryRepository(entryDao)
+
+    @Test
+    fun `getEntries returns mapped domain models`() = runTest {
+        coEvery { entryDao.getAll() } returns listOf(fakeEntryEntity)
+
+        val result = repository.getEntries()
+
+        assertThat(result).hasSize(1)
+    }
+}
+```
+
+---
+
+## Recommended Test Writing Order (for coverage targets)
+
+Writing tests in this order gives the fastest path to 80% coverage:
+
+| Priority | Layer | Why |
+|---|---|---|
+| 1 | **Reducers** | Pure functions, zero mocks, fastest coverage gain |
+| 2 | **ViewModels** | Biggest bang for buck — covers all business logic + state |
+| 3 | **Repositories** | Medium complexity — mock DAO/API, no device needed |
+| 4 | **Services** | Most complex — leave for last |
+| Skip | **Room DAOs** | Excluded from JaCoCo, no coverage value |
+| Skip (for now) | **Compose UI tests** | Instrumented — don't count toward JaCoCo |
