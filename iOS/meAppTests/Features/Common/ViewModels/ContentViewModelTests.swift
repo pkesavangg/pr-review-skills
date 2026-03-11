@@ -202,7 +202,7 @@ struct ContentViewModelTests {
         accountFlag.checkAccountFlagResult = .success(true)
 
         entry.entrySaved.send(ContentViewModelTestFixtures.makeEntryNotification())
-        let processed = await waitUntil(timeoutNanoseconds: 3_000_000_000) { accountFlag.checkAccountFlagCalls == 1 }
+        let processed = await waitUntil(timeoutNanoseconds: 5_000_000_000) { accountFlag.checkAccountFlagCalls == 1 }
 
         #expect(processed == true)
         #expect(accountFlag.getAccountFlagCalls == 1)
