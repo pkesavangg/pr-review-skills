@@ -219,7 +219,7 @@ cd iOS && xcodebuild build \
   -project meApp.xcodeproj \
   -scheme meApp \
   -destination 'generic/platform=iOS' \
-  -configuration Debug \
+  -configuration Dev \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 ```
 
@@ -300,7 +300,7 @@ UI layer (`Views/`, `*View.swift`, `*Screen.swift`, `*Modifier.swift`) is exclud
 | **Bundle ID** | `com.dmdbrands.gurus.weight` |
 | **Jira Project** | `MA` on `greatergoods.atlassian.net` |
 | **Main Branch** | `main` |
-| **Date of Last Update** | 2026-03-10 |
+| **Date of Last Update** | 2026-03-11 |
 
 ---
 

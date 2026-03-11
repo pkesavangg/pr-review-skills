@@ -26,7 +26,21 @@ Store as `{SCHEME}` and optional `{ONLY_TESTING}`.
 DEVICE_ID=$(./scripts/find-device.sh "{SCHEME}")
 ```
 
-If the script exits with a non-zero status, relay its error message to the user and stop.
+If the script exits with a non-zero status, stop and display this message:
+
+> ❌ No physical iOS device found.
+>
+> This project requires a connected physical device — it cannot run on the iOS Simulator
+> because third-party packages (GGBluetoothSwiftPackage, gWifiScalePackage, AppSyncPackage)
+> do not support the simulator.
+>
+> To proceed:
+> 1. Connect an iOS device via USB
+> 2. Trust the Mac on the device (Settings → General → VPN & Device Management)
+> 3. Unlock the device and keep it awake
+> 4. Re-run this command
+>
+> Original error: {error from find-device.sh}
 
 ---
 

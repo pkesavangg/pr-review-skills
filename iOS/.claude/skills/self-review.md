@@ -1,9 +1,9 @@
 ---
 name: self-review
-description: Run all four specialist review checks (lint, regression, security, issue coverage) on everything changed in the current task before committing. Use this before every commit — invoke when the user says "self review", "review my changes", "check before committing", or when a task is about to be committed. Also runs automatically as part of /work-ticket.
+description: Run all five specialist review checks (lint, regression, security, issue coverage, accessibility) on everything changed in the current task before committing. Use this before every commit — invoke when the user says "self review", "review my changes", "check before committing", or when a task is about to be committed. Also runs automatically as part of /work-ticket.
 ---
 
-Review all files changed in the current task using the four specialist review skills before committing.
+Review all files changed in the current task using five specialist review skills before committing.
 
 ## Instructions
 
@@ -34,7 +34,7 @@ Extract:
 
 ---
 
-### 2 — Run All Four Specialist Reviews
+### 2 — Run All Five Specialist Reviews
 
 Execute each skill in order, passing the context gathered above.
 
@@ -50,6 +50,9 @@ Read and execute `.claude/skills/review-security.md`
 #### 2d — Issue Coverage
 Read and execute `.claude/skills/review-issue-fix.md`
 
+#### 2e — Accessibility
+Read and execute `.claude/skills/review-accessibility.md`
+
 ---
 
 ### 3 — Aggregate & Report
@@ -63,6 +66,7 @@ Read and execute `.claude/skills/review-issue-fix.md`
 | Regression Risk | Low / Medium / High          |
 | Security        | PASS / WARNING / FAIL        |
 | Issue Coverage  | Complete / Partial / Missing |
+| Accessibility   | PASS / WARNING / FAIL        |
 
 **Overall verdict:** PASS / NEEDS FIXES
 
@@ -75,6 +79,6 @@ Key findings:
 
 ### 4 — Fix or Proceed
 
-- **FAIL** or regression risk **High** → fix before committing; re-run the affected check after fixing
+- **FAIL** or regression risk **High** or accessibility **FAIL** → fix before committing; re-run the affected check after fixing
 - **WARNING only** → fix if straightforward; otherwise note and proceed
 - **All PASS / Low / Complete** → confirm ready to commit and call `/commit`
