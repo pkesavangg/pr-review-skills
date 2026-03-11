@@ -810,7 +810,7 @@ constructor(
           AppLog.d(TAG, "Stored notification alert setting for account: $accountId")
           requestPermissions(GGPermissionType.NOTIFICATION)
         } else {
-          AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
+           AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check/request notification permission", e.toString())
