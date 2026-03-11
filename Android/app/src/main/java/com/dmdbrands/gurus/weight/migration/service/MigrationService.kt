@@ -2,7 +2,9 @@ package com.dmdbrands.gurus.weight.migration.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.IonicDatabaseHelper
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.migration.helper.CapacitorStorageHelper
@@ -423,6 +425,20 @@ class MigrationService @Inject constructor(
       ionicAccount.expiresAt ?: "",
       true,
     )
+
+    // Also write tokens to EncryptedSharedPreferences
+    val secureTokenStore = SecureTokenStore(context)
+    secureTokenStore.saveToken(
+      accountEntity.id,
+      Token(
+        accountId = accountEntity.id,
+        isActive = true,
+        accessToken = ionicAccount.accessToken,
+        refreshToken = ionicAccount.refreshToken,
+        expiresAt = ionicAccount.expiresAt,
+      )
+    )
+
     userDataStore.setActiveAccount(accountEntity.id)
 
     // If account was not in themeModeMap, set sync timestamp here (addAccount already set it when key == accountEntity.id)
