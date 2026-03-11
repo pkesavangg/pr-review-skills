@@ -44,10 +44,11 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"https://api.weightgurus.com/v3/\"",
+        "\"http://ec2-54-161-28-150.compute-1.amazonaws.com:3005/\"",
       )
+      buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
-    release {
+release {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
@@ -59,6 +60,7 @@ android {
         "BASE_URL",
         "\"https://api.weightgurus.com/v3/\"",
       )
+      buildConfigField("Boolean", "ENABLE_ANALYTICS", "true")
     }
   }
   packaging {
