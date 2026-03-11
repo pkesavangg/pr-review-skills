@@ -11,9 +11,9 @@ struct ContentViewModelTests {
         account.activeAccount = nil
 
         viewModel.performAppInitialization()
-        let updated = await waitUntil { viewModel.contentViewState == .landing }
+        await viewModel.waitForInitialization()
 
-        #expect(updated == true)
+        #expect(viewModel.contentViewState == .landing)
         #expect(viewModel.isLoggedIn == false)
         #expect(viewModel.currentAccount == nil)
         #expect(entry.syncAllEntriesCalls == 0)
@@ -31,9 +31,10 @@ struct ContentViewModelTests {
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-1", count: 2))
 
         viewModel.performAppInitialization()
-        let updated = await waitUntil { viewModel.contentViewState == .dashboard && bluetooth.startBluetoothOperationsCalls == 1 }
+        await viewModel.waitForInitialization()
 
-        #expect(updated == true)
+        #expect(viewModel.contentViewState == .dashboard)
+        #expect(bluetooth.startBluetoothOperationsCalls == 1)
         #expect(account.refreshAccountCalls == 1)
         #expect(entry.migrateFromSQLiteCalls == 1)
         #expect(entry.syncAllEntriesCalls == 1)
@@ -55,9 +56,9 @@ struct ContentViewModelTests {
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-2", count: 1))
 
         viewModel.performAppInitialization()
-        let updated = await waitUntil { viewModel.contentViewState == .dashboard }
+        await viewModel.waitForInitialization()
 
-        #expect(updated == true)
+        #expect(viewModel.contentViewState == .dashboard)
         #expect(account.refreshAccountCalls == 1)
         #expect(entry.syncAllEntriesCalls == 1)
         #expect(feed.fetchFeedItemsCalls == 1)
@@ -73,9 +74,9 @@ struct ContentViewModelTests {
         entry.allEntriesResult = .failure(ContentViewModelTestError.fetchEntriesFailed)
 
         viewModel.performAppInitialization()
-        let updated = await waitUntil { viewModel.contentViewState == .dashboard }
+        await viewModel.waitForInitialization()
 
-        #expect(updated == true)
+        #expect(viewModel.contentViewState == .dashboard)
         #expect(viewModel.entries.isEmpty == true)
     }
 
@@ -86,9 +87,9 @@ struct ContentViewModelTests {
         account.updatePublishedStateError = ContentViewModelTestError.updateStateFailed
 
         viewModel.performAppInitialization()
-        let updated = await waitUntil { viewModel.contentViewState == .landing }
+        await viewModel.waitForInitialization()
 
-        #expect(updated == true)
+        #expect(viewModel.contentViewState == .landing)
         #expect(viewModel.isLoggedIn == false)
         #expect(viewModel.currentAccount == nil)
         #expect(account.refreshAccountCalls == 0)
@@ -108,11 +109,9 @@ struct ContentViewModelTests {
         }
 
         viewModel.performAppInitialization()
-        let updated = await waitUntil(timeoutNanoseconds: 6_000_000_000) {
-            viewModel.contentViewState == .landing && account.updatePublishedStateCalls >= 2
-        }
+        await viewModel.waitForInitialization()
 
-        #expect(updated == true)
+        #expect(viewModel.contentViewState == .landing)
         #expect(account.updatePublishedStateCalls >= 2)
     }
 

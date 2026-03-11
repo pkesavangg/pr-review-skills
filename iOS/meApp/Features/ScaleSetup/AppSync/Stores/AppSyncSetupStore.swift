@@ -7,13 +7,12 @@ import SwiftUI
 final class AppSyncSetupStore: ObservableObject {
     // MARK: - Dependencies
 
-    @Injector private var notificationService: NotificationHelperServiceProtocol
-    @Injector private var logger: LoggerServiceProtocol
-    @Injector private var scaleService: ScaleServiceProtocol
-    @Injector private var accountService: AccountServiceProtocol
-    // Permissions
-    @Injector private var permissionsService: PermissionsServiceProtocol
-    @Injector private var bluetoothService: BluetoothServiceProtocol
+    @Injector var notificationService: NotificationHelperServiceProtocol
+    @Injector var logger: LoggerServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var accountService: AccountServiceProtocol
+    @Injector var permissionsService: PermissionsServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
 
     // MARK: - Public state
 
