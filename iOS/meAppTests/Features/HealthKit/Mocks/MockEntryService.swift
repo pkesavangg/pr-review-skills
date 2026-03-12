@@ -41,7 +41,10 @@ final class MockEntryService: EntryServiceProtocol {
         return try getEntryCountResult.get()
     }
     func getOldestEntry() async throws -> Entry? { nil }
-    func getLatestEntry() async throws -> Entry? { latestEntry }
+    func getLatestEntry() async throws -> Entry? {
+        getLatestEntryCalls += 1
+        return try getLatestEntryResult.get()
+    }
     func getEntries(lastNDays: Int) async throws -> [Entry] { [] }
     func getEntries(forMonth month: String) async throws -> [Entry] { [] }
     func getMonthsAll() async throws -> [HistoryMonth] {

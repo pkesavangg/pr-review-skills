@@ -190,6 +190,6 @@ final class MockScaleService: ScaleServiceProtocol {
     func syncAllScalesWithRemote() async { syncAllScalesWithRemoteCalls += 1 }
     func pushLocalChangesToServer() async { pushLocalChangesToServerCalls += 1 }
     func getDevice(by deviceId: String) async throws -> Device? { scales.first { $0.id == deviceId } }
-    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { fetchAttachedPreferenceResult }
-    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { fetchAttachedPreferenceResult }
+    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
+    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
 }
