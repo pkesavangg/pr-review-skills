@@ -11,7 +11,6 @@ import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.TokenManager
 import com.dmdbrands.gurus.weight.core.network.interceptors.AuthTokenInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.BaseUrlInterceptor
-import com.dmdbrands.gurus.weight.core.network.interceptors.CertificatePinningInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.NetworkInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.ResponseInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.TokenAuthenticator
@@ -26,7 +25,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -43,75 +41,12 @@ import android.os.Build
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-
-    // ---------------------------------------------------------------------------
-    // Certificate Pinning
-    //
-    // We pin to the INTERMEDIATE CA (not the leaf certificate).
-    // Leaf certs rotate every ~90 days (Let's Encrypt). Pinning the leaf would
-    // break the app silently on every renewal. The intermediate CA rotates on a
-    // planned schedule (every 2–5 years) and requires a coordinated app release.
-    //
-    // TODO(MA-3355): Replace these placeholders with the actual SHA-256 SPKI hashes
-    //   from the infra team BEFORE this feature goes to production. Never ship with
-    //   placeholder hashes — they will cause ALL HTTPS requests to fail.
-    //
-    //   To extract the hashes from the live server:
-    //   openssl s_client -connect api.weightgurus.com:443 -showcerts 2>/dev/null \
-    //     | awk '/BEGIN CERT/,/END CERT/{ print }' \
-    //     | (index=0; while IFS= read -r line; do
-    //          if [[ "$line" == "-----BEGIN CERTIFICATE-----" ]]; then cert="";
-    //          elif [[ "$line" == "-----END CERTIFICATE-----" ]]; then
-    //            echo "=== Certificate $((index++)) ===";
-    //            echo "$cert" | base64 -d | openssl x509 -noout -subject -issuer;
-    //            echo "$cert" | base64 -d | openssl x509 -pubkey -noout \
-    //              | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | base64;
-    //          else cert+="$line"; fi; done)
-    //
-    //   Pick the intermediate CA entry (not the leaf, not the root). Provide both the
-    //   primary hash and a backup hash for the next rotation.
-    //
-    //   See rotation procedure in Android/CLAUDE.md.
-    // ---------------------------------------------------------------------------
-    private const val PRODUCTION_HOST = "api.weightgurus.com"
-
-    // TODO(MA-3355): Replace with real intermediate CA hash from infra team
-    private const val INTERMEDIATE_CA_PIN = "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" // PLACEHOLDER
-
-    // TODO(MA-3355): Replace with real backup pin hash for rotation (next intermediate CA)
-    private const val BACKUP_CA_PIN = "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=" // PLACEHOLDER
-
     /**
      * Provides a singleton instance of [HttpClient] configured with the app's base URL and OkHttpClient.
      */
     @Provides
     @Singleton
     fun provideHttpClient(okHttpClient: OkHttpClient): HttpClient = HttpClient(BuildConfig.BASE_URL, okHttpClient)
-
-    /**
-     * Provides the [CertificatePinner] pinned to the intermediate CA of [PRODUCTION_HOST].
-     *
-     * Two pins are included: primary (current intermediate CA) and backup (for rotation).
-     * The backup pin ensures existing installs continue to work when the primary CA is
-     * replaced — see the rotation procedure in Android/CLAUDE.md.
-     */
-    @Provides
-    @Singleton
-    fun provideCertificatePinner(): CertificatePinner =
-        CertificatePinner.Builder()
-            .add(PRODUCTION_HOST, INTERMEDIATE_CA_PIN)
-            .add(PRODUCTION_HOST, BACKUP_CA_PIN)
-            .build()
-
-    /**
-     * Provides the [CertificatePinningInterceptor] that handles pin mismatch failures
-     * by logging the event and directing the user to update the app.
-     */
-    @Provides
-    @Singleton
-    fun provideCertificatePinningInterceptor(
-        appNavigationService: IAppNavigationService,
-    ): CertificatePinningInterceptor = CertificatePinningInterceptor(appNavigationService)
 
     /**
      * Provides a logging interceptor for HTTP requests. Logging is enabled only in debug builds.
@@ -217,26 +152,22 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         authTokenInterceptor: AuthTokenInterceptor,
-        certificatePinningInterceptor: CertificatePinningInterceptor,
-        certificatePinner: CertificatePinner,
         @ApplicationContext context: Context,
         loggingInterceptor: HttpLoggingInterceptor,
         baseUrlInterceptor: BaseUrlInterceptor,
         networkInterceptor: NetworkInterceptor,
-        tokenAuthenticator: TokenAuthenticator,
+        tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(NetworkConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(NetworkConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(NetworkConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .certificatePinner(certificatePinner)
 
         // Only add logging interceptor if the app is debuggable
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             okHttpClient.addInterceptor(loggingInterceptor)
         }
         okHttpClient
-            .addInterceptor(certificatePinningInterceptor)
             .addInterceptor(networkInterceptor)
             .addInterceptor(baseUrlInterceptor)
             .addInterceptor(authTokenInterceptor)

@@ -67,7 +67,6 @@ fun NavHost(
         dashboardEntries()
         integrationEntries()
         feedMessagesEntries()
-        forceUpdateEntries()
       },
     transitionSpec = {
       // New screen slides in from the right over the old screen
