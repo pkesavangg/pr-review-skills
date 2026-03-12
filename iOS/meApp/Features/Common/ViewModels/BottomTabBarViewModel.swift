@@ -45,7 +45,7 @@ class BottomTabBarViewModel: ObservableObject {
 
     // MARK: - Dependencies
 
-    @Injector private var healthKitService: HealthKitService
+    @Injector private var healthKitService: HealthKitServiceProtocol
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector private var logger: LoggerServiceProtocol
     // New dependencies for Set Goal Card logic
@@ -54,7 +54,7 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var scaleService: ScaleServiceProtocol
     // New dependency to evaluate permission status
     @Injector private var permissionsService: PermissionsServiceProtocol
-    @Injector private var pushNotificationService: PushNotificationService
+    @Injector private var pushNotificationService: PushNotificationServiceProtocol
     @Injector private var integrationService: IntegrationServiceProtocol
     
     // MARK: - Permission Disabled Alert Tracking
@@ -93,6 +93,7 @@ class BottomTabBarViewModel: ObservableObject {
     private var hkForegroundObserver: AnyCancellable?
 
     init() { // swiftlint:disable:this function_body_length
+        warmInjectedDependencies()
         canShowFeedNotificationBadge = feedService.getUnreadFeedCount() > 0
         // Subscribe to Bluetooth discovery events to surface the half-sheet when appropriate
         bluetoothService.deviceDiscoveredPublisher
@@ -206,6 +207,25 @@ class BottomTabBarViewModel: ObservableObject {
         bluetoothService.onOpenScaleSetup = { [weak self] scale, event, isReconnect, isDuplicated in
             self?.openScaleSetup(scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         }
+    }
+
+    @MainActor
+    private func warmInjectedDependencies() {
+        let injectedDependencies = (
+            feed: feedService,
+            bluetooth: bluetoothService,
+            goalAlert: goalAlertService,
+            healthKit: healthKitService,
+            notification: notificationService,
+            logger: logger,
+            entry: entryService,
+            account: accountService,
+            scale: scaleService,
+            permissions: permissionsService,
+            push: pushNotificationService,
+            integration: integrationService
+        )
+        _ = injectedDependencies
     }
 
     // MARK: - Permission Disabled Alert Helpers

@@ -2,7 +2,11 @@ import Foundation
 
 @MainActor
 final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
-    private let httpClient = HTTPClient.shared
+    private let httpClient: HTTPClientProtocol
+
+    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
+        self.httpClient = httpClient
+    }
 
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {
         struct RegisterRequest: Codable {

@@ -127,6 +127,7 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
     var handlePermissionResult: GGPermissionState = .ENABLED
     private(set) var handlePermissionCalls = 0
     private(set) var lastHandledPermission: PermissionType?
+    private(set) var navigateToWifiSettingsCalls = 0
 
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
@@ -151,6 +152,10 @@ final class MockPushPermissionsService: PermissionsServiceProtocol {
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState? {
         forcedGetPermissionState ?? currentState
     }
+
+    func navigateToWifiSettings() {
+        navigateToWifiSettingsCalls += 1
+    }
 }
 
 @MainActor
@@ -172,6 +177,47 @@ final class MockPushScaleService: ScaleServiceProtocol {
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {}
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {}
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {}
+    // swiftlint:disable:next function_parameter_count
+    func createR4Scale(
+        scaleId: String,
+        accountId: String,
+        displayName: String,
+        token: String,
+        mac: String?,
+        broadcastIdString: String?,
+        broadcastId: Int64?,
+        sku: String?,
+        deviceName: String?,
+        wifiMac: String?,
+        deviceMetadata: DeviceMetaData?,
+        isWifiConfigured: Bool,
+        isConnected: Bool,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createR4Scale")
+    }
+
+    func createBluetoothScale(
+        device: Device,
+        sku: String?,
+        userNumber: String,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createBluetoothScale")
+    }
+
+    func createA6Scale(
+        device: Device,
+        sku: String?,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createA6Scale")
+    }
+
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
     func pushLocalChangesToServer() async {}

@@ -188,12 +188,13 @@ constructor(
         AppLog.d(TAG, "Updated display metrics count: ${updatedDisplayMetrics.size}")
 
         // Create R4ScalePreferenceApiModel with updated values
-        val preferences =
+        val preferences = requireNotNull(
           scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
             shouldMeasureImpedance = currentState.isAllBodyMetrics,
             shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
             displayMetrics = updatedDisplayMetrics,
-          )!!
+          )
+        ) { "Scale preferences are null; cannot update scale mode" }
         val updatedScalePreference = scale.preferences.copy(
           shouldMeasureImpedance = currentState.isAllBodyMetrics,
           shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,

@@ -80,13 +80,15 @@ fun BluetoothPermissionScreen(
       )
       Column {
         HorizontalDivider(thickness = 0.5.dp, color = colorScheme.utility)
-        AppScaleCard(
-          scale = state.scale?.toScaleInfo()!!,
-          horizontalSpacing = 0.dp,
-          isSavedScale = true,
-          canShowRightCaret = false,
-          onClick = {}
-        )
+        state.scale?.toScaleInfo()?.let { scaleInfo ->
+          AppScaleCard(
+            scale = scaleInfo,
+            horizontalSpacing = 0.dp,
+            isSavedScale = true,
+            canShowRightCaret = false,
+            onClick = {}
+          )
+        }
       }
 
       PermissionSettings(

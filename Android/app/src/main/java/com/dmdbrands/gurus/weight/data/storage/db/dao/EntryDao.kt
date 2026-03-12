@@ -849,4 +849,16 @@ ORDER BY d.day DESC
     """,
   )
   fun getEntriesInRange(accountId: String, startDate: String, endDate: String): Flow<List<PopulatedActiveEntry>>
+
+  @Transaction
+  @Query(
+    """
+        SELECT * FROM entry_view
+        WHERE accountId = :accountId
+          AND (operationType IS NULL OR operationType != 'delete')
+          AND entryTimestamp >= :startDate
+        ORDER BY datetime(entryTimestamp) DESC
+    """,
+  )
+  fun getEntriesSince(accountId: String, startDate: String): Flow<List<PopulatedActiveEntry>>
 }

@@ -26,6 +26,7 @@ final class ContentViewModel: ObservableObject {
     
     /// A set to hold Combine cancellables for this view model.
     private var cancellables = Set<AnyCancellable>()
+    private(set) var initializationTask: Task<Void, Never>?
     private let tag = "ContentViewModel"
 
     init(
@@ -96,44 +97,61 @@ final class ContentViewModel: ObservableObject {
     }
 
     func performAppInitialization() {
-        Task {
-            // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
-            notificationService.dismissLoader()
-            
-            logger.log(level: .info, tag: tag, message: "App initialization started")
-            contentViewState = .initializing
-            var loggedIn = await checkLoginStatus()
-            if !loggedIn {
-                await waitForStartupMigrationIfNeeded()
-                loggedIn = await checkLoginStatus()
-            }
-            if loggedIn {
-                // Refresh account data to sync weightless settings and other account data
-                do {
-                    _ = try await accountService.refreshAccount()
-                    logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
-                } catch {
-                    logger.log(
-                        level: .error,
-                        tag: tag,
-                        message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache."
-                    )
-                }
-                await loadData()
-            }
+        initializationTask?.cancel()
+        initializationTask = Task { @MainActor [weak self] in
+            await self?.runAppInitialization()
+        }
+    }
 
-            let afterUpdate = await checkLoginStatus()
-            await updateViewState(isLoggedIn: afterUpdate)
-            logger.log(level: .info, tag: tag, message: "App initialization completed. isLoggedIn=\(afterUpdate), state=\(contentViewState)")
-            
-            // Ensure loader is dismissed after initialization completes (safety mechanism)
-            notificationService.dismissLoader()
-            
-            // Start Bluetooth operations after dashboard is ready
-            if afterUpdate {
-                await bluetoothService.startBluetoothOperations()
-                logger.log(level: .info, tag: tag, message: "Bluetooth operations started after initialization")
+    func waitForInitialization() async {
+        await initializationTask?.value
+    }
+
+    private func runAppInitialization() async {
+        // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
+        notificationService.dismissLoader()
+        
+        logger.log(level: .info, tag: tag, message: "App initialization started")
+        contentViewState = .initializing
+        var loggedIn = await checkLoginStatus()
+        guard !Task.isCancelled else { return }
+
+        if !loggedIn {
+            await waitForStartupMigrationIfNeeded()
+            guard !Task.isCancelled else { return }
+            loggedIn = await checkLoginStatus()
+            guard !Task.isCancelled else { return }
+        }
+
+        if loggedIn {
+            // Refresh account data to sync weightless settings and other account data
+            do {
+                _ = try await accountService.refreshAccount()
+                logger.log(level: .info, tag: tag, message: "Account data refreshed successfully during initialization")
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to refresh account data during initialization: \(error.localizedDescription). Using local cache."
+                )
             }
+            guard !Task.isCancelled else { return }
+            await loadData()
+            guard !Task.isCancelled else { return }
+        }
+
+        let afterUpdate = await checkLoginStatus()
+        guard !Task.isCancelled else { return }
+        await updateViewState(isLoggedIn: afterUpdate)
+        logger.log(level: .info, tag: tag, message: "App initialization completed. isLoggedIn=\(afterUpdate), state=\(contentViewState)")
+        
+        // Ensure loader is dismissed after initialization completes (safety mechanism)
+        notificationService.dismissLoader()
+        
+        // Start Bluetooth operations after dashboard is ready
+        if afterUpdate {
+            await bluetoothService.startBluetoothOperations()
+            logger.log(level: .info, tag: tag, message: "Bluetooth operations started after initialization")
         }
     }
 

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import GGBluetoothSwiftPackage
 import SwiftUI
 
 // swiftlint:disable cyclomatic_complexity function_body_length
@@ -100,7 +101,7 @@ extension BtWifiScaleSetupStore {
                 await bluetoothService.startLiveMeasurement(for: savedScale)
                 self.liveMeasurementSubscription = self.bluetoothService.liveMeasurementPublisher
                     .receive(on: DispatchQueue.main)
-                    .sink { [weak self] liveEntry in
+                    .sink { [weak self] (liveEntry: GGWeightEntry) in
                         guard let self else { return }
                         
                         // Don't navigate if we're exiting, especially from stepOn
@@ -518,7 +519,7 @@ extension BtWifiScaleSetupStore {
             // Ensure connection status is updated after sync completes
             // This prevents UI flicker when navigating back to MyScalesScreen
             do {
-                try await scaleService.updateAllScalesStatus()
+                try await scaleService.updateAllScalesStatus(nil)
             } catch {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to update scales status after save: \(error.localizedDescription)")
             }

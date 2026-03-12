@@ -205,7 +205,7 @@ object AppPermissionsHelper {
     wifiName: String? = null
   ): List<PermissionGroup> {
     val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
-    val scaleSetupType = scaleInfo!!.setupType
+    val scaleSetupType = scaleInfo?.setupType ?: return emptyList()
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     // Build PermissionItems for only the required types
@@ -302,7 +302,7 @@ object AppPermissionsHelper {
       return false
     }
     val scaleInfo = sku?.let { ScaleDataHelper.findScaleInfoBySku(it) }
-    val scaleSetupType = setupType ?: scaleInfo!!.setupType
+    val scaleSetupType = setupType ?: scaleInfo?.setupType ?: return false
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.all { permissionType ->
@@ -342,7 +342,7 @@ object AppPermissionsHelper {
       return emptyList()
     }
     val scaleInfo = sku?.let { ScaleDataHelper.findScaleInfoBySku(it) }
-    val scaleSetupType = setupType ?: scaleInfo!!.setupType
+    val scaleSetupType = setupType ?: scaleInfo?.setupType ?: return emptyList()
     val requiredPermissionTypes = requiredPermissionTypes ?: getRequiredPermissionTypes(scaleSetupType)
 
     return requiredPermissionTypes.filter { permissionType ->
