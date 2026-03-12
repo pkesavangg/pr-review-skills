@@ -163,9 +163,12 @@ struct BluetoothServiceScanEventPipelineTests {
             await sendScanResponse(makeScanResponse(type: .WIFI_STATUS_UPDATE, data: makeDeviceDetails(broadcastId: "INFO-1", protocolType: "R4", isWifiConfigured: true)), through: sdk)
             await sendScanResponse(makeScanResponse(type: .DEVICE_INFO_UPDATE, data: makeDeviceDetails(broadcastId: "INFO-1", protocolType: "R4", impedanceSwitchState: true)), through: sdk)
         }
+        let routed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
+            scale.updateConnectedDeviceWifiStatusCalls == 1 &&
+            scale.updateConnectedDevicesCalls == 2
+        }
 
-        #expect(scale.updateConnectedDeviceWifiStatusCalls == 1)
-        #expect(scale.updateConnectedDevicesCalls == 2)
+        #expect(routed == true)
         #expect(infos.first?.broadcastIdString == "INFO-1")
     }
 

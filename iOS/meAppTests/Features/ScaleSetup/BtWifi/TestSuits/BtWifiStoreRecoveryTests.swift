@@ -127,4 +127,5 @@ extension BtWifiStoreTests {
             #expect(permissions.handlePermissionCalls.contains(.bluetooth))
         }
     }
+
 }

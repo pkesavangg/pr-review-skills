@@ -11,6 +11,11 @@ import SwiftUI
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
 class DashboardStore: ObservableObject, DashboardStateProviding {
+    private struct DataContentSignature: Equatable {
+        let daily: [String]
+        let monthly: [String]
+    }
+
     // MARK: - Dependencies
 
     @Injector var notificationService: NotificationHelperServiceProtocol
@@ -41,6 +46,19 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     private var initializationTask: Task<Void, Never>?
     @Published private(set) var isInitialized: Bool = false
+
+    private static func makeDataContentSignature(from state: DataState) -> DataContentSignature {
+        DataContentSignature(
+            daily: state.dailySummaries.compactMap { summary in
+                guard let summary else { return nil }
+                return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)"
+            },
+            monthly: state.monthlySummaries.compactMap { summary in
+                guard let summary else { return nil }
+                return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)"
+            }
+        )
+    }
 
     func scheduleUIUpdate() {
         guard !pendingUIUpdate else { return }
@@ -269,11 +287,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .store(in: &cancellables)
 
         dataManager.$state
-            .map { ($0.dailySummaries.count, $0.monthlySummaries.count) }
-            .removeDuplicates { $0 == $1 }
+            .map(Self.makeDataContentSignature)
+            .removeDuplicates()
             .dropFirst()
             .sink { [weak self] _ in
-                self?.invalidateContinuousOperationsCache()
+                guard let self else { return }
+                self.invalidateContinuousOperationsCache()
+                self.graphManager.forceVisibleOperationsRecalculation()
             }
             .store(in: &cancellables)
 
@@ -450,8 +470,21 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     // MARK: - Cached Operations (Performance Optimization)
 
     var continuousOperations: [BathScaleWeightSummary] {
-        return cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
+        let operations = cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
             dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
+        }
+        if !operations.isEmpty {
+            return operations
+        }
+
+        // Tests and a few initialization paths seed summaries directly onto state before
+        // DashboardDataManager's published-cache bindings have populated. Fall back to the
+        // state-backed arrays so selection and chart rendering remain consistent.
+        switch state.graph.selectedPeriod {
+        case .week, .month:
+            return state.data.dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
+        case .year, .total:
+            return state.data.monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
         }
     }
 
@@ -499,7 +532,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
               weightlessSettings.isWeightlessOn,
               let weightlessWeight = weightlessSettings.weightlessWeight
         else { return nil }
-        return goalManager.convertWeightToDisplay(Int(weightlessWeight))
+        let storedWeight = Int(weightlessWeight)
+        let unit = accountService.activeAccount?.weightSettings?.weightUnit ?? .lb
+        return unit == .kg
+            ? ConversionTools.convertStoredToKg(storedWeight)
+            : ConversionTools.convertStoredToLbs(storedWeight)
     }
 
     var goalWeightForDisplay: Double? {

@@ -220,6 +220,34 @@ struct DashboardDataManagerTests {
         #expect(sut.state.dailyCache["2026-03-02"]?.weight == 1810)
     }
 
+    @Test("daily summaries binding: state publication sees refreshed continuous cache")
+    func dailySummariesPublicationSeesUpdatedContinuousCache() async throws {
+        let (sut, entryService, _) = DashboardTestFixtures.makeDataManagerSUT()
+        let first = DashboardTestFixtures.makeSortedDailySummaries()
+        let second = [
+            DashboardTestFixtures.makeSummary(period: "2026-04-01", weight: 1900),
+            DashboardTestFixtures.makeSummary(period: "2026-04-02", weight: 1910)
+        ]
+        let expectedSnapshots = [first.map(\.period), second.map(\.period)]
+        var observedSnapshots: [[String]] = []
+        var cancellable: AnyCancellable?
+
+        cancellable = sut.$state
+            .dropFirst()
+            .sink { _ in
+                observedSnapshots.append(sut.getContinuousOperations(for: .week).map(\.period))
+            }
+
+        entryService.dailySummaries = first
+        await DashboardTestFixtures.waitUntil { observedSnapshots.contains(expectedSnapshots[0]) }
+
+        entryService.dailySummaries = second
+        await DashboardTestFixtures.waitUntil { observedSnapshots.contains(expectedSnapshots[1]) }
+
+        #expect(observedSnapshots.last == expectedSnapshots[1])
+        _ = cancellable
+    }
+
     @Test("monthly summaries binding: builds monthlyCache dictionary keyed by period")
     func monthlySummariesBuildsCacheDictionary() async throws {
         let (sut, entryService, _) = DashboardTestFixtures.makeDataManagerSUT()
@@ -234,6 +262,34 @@ struct DashboardDataManagerTests {
 
         #expect(sut.state.monthlyCache["2026-01"]?.weight == 1800)
         #expect(sut.state.monthlyCache["2026-02"]?.weight == 1810)
+    }
+
+    @Test("monthly summaries binding: state publication sees refreshed continuous cache")
+    func monthlySummariesPublicationSeesUpdatedContinuousCache() async throws {
+        let (sut, entryService, _) = DashboardTestFixtures.makeDataManagerSUT()
+        let first = DashboardTestFixtures.makeSortedMonthlySummaries()
+        let second = [
+            DashboardTestFixtures.makeSummary(period: "2026-04", entryTimestamp: "2026-04-01T00:00:00Z", weight: 1900),
+            DashboardTestFixtures.makeSummary(period: "2026-05", entryTimestamp: "2026-05-01T00:00:00Z", weight: 1910)
+        ]
+        let expectedSnapshots = [first.map(\.period), second.map(\.period)]
+        var observedSnapshots: [[String]] = []
+        var cancellable: AnyCancellable?
+
+        cancellable = sut.$state
+            .dropFirst()
+            .sink { _ in
+                observedSnapshots.append(sut.getContinuousOperations(for: .year).map(\.period))
+            }
+
+        entryService.monthlySummaries = first
+        await DashboardTestFixtures.waitUntil { observedSnapshots.contains(expectedSnapshots[0]) }
+
+        entryService.monthlySummaries = second
+        await DashboardTestFixtures.waitUntil { observedSnapshots.contains(expectedSnapshots[1]) }
+
+        #expect(observedSnapshots.last == expectedSnapshots[1])
+        _ = cancellable
     }
 
     // MARK: - getContinuousOperations Tests
@@ -465,6 +521,20 @@ struct DashboardDataManagerTests {
             Issue.record("Expected loadLatestEntryData to throw")
         } catch {
             // Expected: error is rethrown
+        }
+    }
+
+    @Test("loadLatestEntryData: propagates DashboardError.dataLoadingFailed mapping")
+    func loadLatestEntryDataPropagatesMappedDashboardError() async {
+        let (sut, _, _) = DashboardTestFixtures.makeDataManagerSUT(hasActiveAccount: false)
+
+        do {
+            _ = try await sut.loadLatestEntryData()
+            Issue.record("Expected loadLatestEntryData to throw")
+        } catch {
+            #expect(error as? DashboardError == DashboardError.dataLoadingFailed(
+                NSError(domain: "EntryService", code: 401, userInfo: [NSLocalizedDescriptionKey: "No active account"])
+            ))
         }
     }
 
