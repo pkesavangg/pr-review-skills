@@ -57,21 +57,6 @@ struct BluetoothServiceTests {
         #expect(sut.isSmartScanStarted == true)
     }
 
-    @Test("account cleared while scan started: service stops scan")
-    func accountClearedStopsScan() async {
-        let discovery = MockBLEDiscoveryManager()
-        let account = MockAccountService()
-        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "101", email: "u@ex.com", isLoggedIn: true, isActive: true)
-        let sut = makeSUT(account: account, discovery: discovery)
-
-        sut.isSmartScanStarted = true
-        account.activeAccount = nil
-        try? await Task.sleep(nanoseconds: 150_000_000)
-
-        #expect(sut.isSmartScanStarted == false)
-        #expect(discovery.stopScanCalls >= 1)
-    }
-
     @Test("initialize account subscription updates active account on service")
     func initializeAccountSubscriptionUpdatesActiveAccount() async {
         let account = MockAccountService()

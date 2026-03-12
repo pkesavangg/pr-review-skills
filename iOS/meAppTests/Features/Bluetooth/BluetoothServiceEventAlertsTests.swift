@@ -235,58 +235,6 @@ struct BluetoothServiceEventAlertsTests {
 
     // MARK: - handleDeviceEventAlert: openScaleSetup deletes user when userToDelete has token
 
-//    @Test("openScaleSetup deletes matching user before triggering callback")
-//    func openScaleSetupDeletesUserBeforeCallback() async {
-//        let notification = MockNotificationHelperService()
-//        let sdk = MockBluetoothSDKClient()
-//        let scale = MockScaleService()
-//        let sut = makeSUT(scale: scale, sdk: sdk, notification: notification)
-//
-//        // Create a device with R4 scale type and matching preference
-//        let device = BluetoothTestFixtures.makeDevice(
-//            id: "dev-del",
-//            broadcastIdString: "DEL-1",
-//            isConnected: true,
-//            bathScale: BathScale(scaleType: ScaleSourceType.btWifiR4.rawValue, bodyComp: true)
-//        )
-//        let pref = R4ScalePreference(
-//            scaleId: "dev-del",
-//            displayName: "Scale User",
-//            displayMetrics: ["weight"],
-//            shouldFactoryReset: false,
-//            shouldMeasureImpedance: false,
-//            shouldMeasurePulse: false,
-//            timeFormat: "12",
-//            tzOffset: 0,
-//            wifiFotaScheduleTime: 0,
-//            updatedAt: nil
-//        )
-//        device.r4ScalePreference = pref
-//        scale.attachedPreferences["dev-del"] = pref
-//        sut.bluetoothScales = [device]
-//
-//        // SDK returns a user matching the preference displayName
-//        sdk.getUsersResult = decodeScaleUsers([
-//            ["name": "Scale User", "token": "delete-token", "lastActive": 1, "isBodyMetricsEnabled": true]
-//        ])
-//
-//        var callbackInvoked = false
-//        sut.onOpenScaleSetup = { _, _, _, _ in
-//            callbackInvoked = true
-//        }
-//
-//        let deviceDetails = makeDeviceDetails(broadcastId: "DEL-1", protocolType: "R4")
-//        await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: false)
-//
-//        // Trigger reconnect button
-//        let reconnectButton = notification.alertData?.buttons.first { $0.type == .primary }
-//        reconnectButton?.action(nil)
-//
-//        let invoked = await waitUntil(timeoutNanoseconds: 5_000_000_000) { callbackInvoked }
-//        let deleted = await waitUntil(timeoutNanoseconds: 5_000_000_000) { sdk.deletedDevices.count == 1 }
-//        #expect(invoked == true)
-//        #expect(deleted == true)
-//    }
 
     // MARK: - findUserToDelete
 

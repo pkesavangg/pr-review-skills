@@ -45,6 +45,7 @@ final class MockEntryService: EntryServiceProtocol {
         }
     }
     func deleteEntry(_ entry: Entry) async throws {
+        deleteEntryCalls += 1
         deletedEntries.append(entry)
         entryDeleted.send(EntryNotification(from: entry))
     }
