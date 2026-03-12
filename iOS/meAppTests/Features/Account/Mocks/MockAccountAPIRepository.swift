@@ -48,6 +48,13 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
     private(set) var lastDeleteAccountId: String?
     private(set) var lastRequestPasswordResetEmail: String?
     private(set) var lastRefreshToken: String?
+    private(set) var lastPatchDashboardMetrics: [String]?
+    private(set) var lastPatchProgressMetrics: [String]?
+
+    func resetCapturedMetrics() {
+        lastPatchDashboardMetrics = nil
+        lastPatchProgressMetrics = nil
+    }
 
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {
         createAccountCalls += 1
@@ -106,11 +113,13 @@ final class MockAccountAPIRepository: AccountRepositoryAPIProtocol {
 
     func patchDashboardMetrics(_ metrics: [String]) async throws -> AccountResponse {
         patchDashboardMetricsCalls += 1
+        lastPatchDashboardMetrics = metrics
         return try patchDashboardMetricsResult.get()
     }
 
     func patchProgressMetrics(_ metrics: [String]) async throws -> AccountResponse {
         patchProgressMetricsCalls += 1
+        lastPatchProgressMetrics = metrics
         return try patchProgressMetricsResult.get()
     }
 

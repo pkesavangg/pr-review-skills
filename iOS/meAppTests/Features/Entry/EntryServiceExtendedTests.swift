@@ -603,11 +603,15 @@ struct EntryServiceExtendedTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
-        return EntryService(
+        let sut = EntryService(
             accountService: account,
             localRepo: repo ?? MockEntryRepository(),
             localKVRepo: syncStore ?? MockEntrySyncStore(),
             remoteRepo: remote ?? MockEntryRepositoryAPI()
         )
+        sut.logger = logger
+        sut.goalAlertService = goalAlert
+        sut.integrationService = integration
+        return sut
     }
 }

@@ -13,6 +13,7 @@ final class MockScaleService: ScaleServiceProtocol {
     var createDeviceError: Error?
     var getDevicesError: Error?
     var updateScalePreferenceError: Error?
+    var updateScalePreferenceErrorsByCall: [Int: Error] = [:]
     var deleteDeviceError: Error?
     var createR4ScaleError: Error?
     var fetchAttachedPreferenceResult: R4ScalePreference?
@@ -28,7 +29,10 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var deleteDeviceCalls = 0
     private(set) var pushLocalChangesToServerCalls = 0
     private(set) var syncAllScalesWithRemoteCalls = 0
+    private(set) var updateScalePreferenceCalls = 0
     private(set) var updateScalePreferenceFromDTOCalls = 0
+    private(set) var updateAllScalesStatusCalls = 0
+    private(set) var lastUpdatedScalePreference: R4ScalePreference?
     private(set) var lastDeletedDeviceId: String?
     private(set) var lastDeletedShowToast: Bool?
     private(set) var lastUpdatedScalePreferenceDeviceId: String?
@@ -38,6 +42,7 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var lastCreatedBluetoothScale: Device?
     private(set) var lastCreatedA6Scale: Device?
     private(set) var lastCreatedR4Scale: Device?
+    private(set) var lastCreateR4ScaleSkipDuplicateCheck: Bool?
     var createA6ScaleError: Error?
 
     func clearAllData() async {}
@@ -131,6 +136,7 @@ final class MockScaleService: ScaleServiceProtocol {
         skipDuplicateCheck: Bool = false
     ) async throws -> Device {
         createR4ScaleCalls += 1
+        lastCreateR4ScaleSkipDuplicateCheck = skipDuplicateCheck
         if let createR4ScaleError { throw createR4ScaleError }
 
         let device = Device(
@@ -173,6 +179,10 @@ final class MockScaleService: ScaleServiceProtocol {
 
     func updateScaleMeta(_ deviceId: String, metaData: DeviceMetaData) async throws {}
     func updateScalePreference(_ deviceId: String, _ preference: R4ScalePreference) async throws {
+        updateScalePreferenceCalls += 1
+        lastUpdatedScalePreference = preference
+        let callError = updateScalePreferenceErrorsByCall[updateScalePreferenceCalls]
+        if let callError { throw callError }
         if let updateScalePreferenceError { throw updateScalePreferenceError }
     }
     func updateScalePreference(_ deviceId: String, fromDTO dto: R4ScalePreferenceDTO) async throws {
@@ -183,6 +193,7 @@ final class MockScaleService: ScaleServiceProtocol {
     }
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {
+        updateAllScalesStatusCalls += 1
         callSequence.append("updateAllScalesStatus")
         if let updateAllScalesStatusError { throw updateAllScalesStatusError }
     }
