@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 // This service intentionally aggregates all HealthKit integration logic
 // to maintain a single source of truth for health data synchronization.
 // Splitting would fragment the integration flow and reduce maintainability.
@@ -8,7 +9,7 @@ import HealthKit
 import SwiftData
 
 @MainActor
-final class HealthKitService: HealthKitServiceProtocol {
+final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:this type_body_length
     static let shared = HealthKitService()
     private let integrationService: IntegrationServiceProtocol
     private let logger: LoggerServiceProtocol
@@ -61,7 +62,7 @@ final class HealthKitService: HealthKitServiceProtocol {
     // MARK: - HealthKitServiceProtocol
     
     /// Integrates or de-integrates Apple Health based on `turnOn`. Returns `true` when integration remains enabled after the call.
-    public func integrate(turnOn: Bool) async throws -> Bool {
+    public func integrate(turnOn: Bool) async throws -> Bool { // swiftlint:disable:this function_body_length
         let accountId = accountService.activeAccount?.accountId ?? "nil"
         logger.log(level: .info, tag: tag, message: "HealthKit integrate requested. turnOn=\(turnOn), accountId=\(accountId)")
         if turnOn {

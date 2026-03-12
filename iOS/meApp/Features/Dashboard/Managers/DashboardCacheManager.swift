@@ -74,6 +74,7 @@ final class DashboardCacheManager: DashboardCacheManagerProtocol {
     // Track cached Y-axis domain to detect changes and invalidate metric series cache
     private var lastCachedYAxisDomain: ClosedRange<Double>?
     
+    // swiftlint:disable:next function_parameter_count
     func getChartSeriesData(
         isScrolling: Bool,
         isProcessingScrollEnd: Bool,
@@ -144,14 +145,16 @@ final class DashboardCacheManager: DashboardCacheManagerProtocol {
         getOperations: () -> DateRangeOperationsResult
     ) -> DateRangeOperationsResult {
         // Check if cache is valid (same period and scrollPosition)
-        if _cachedLabelDateRangePeriod == period,
-           _cachedLabelDateRangeScrollPos == scrollPosition,
+        if let cachedPeriod = _cachedLabelDateRangePeriod,
+           let cachedScrollPos = _cachedLabelDateRangeScrollPos,
+           cachedPeriod == period,
+           cachedScrollPos == scrollPosition,
            !_cachedLabelDateRangeOps.isEmpty {
             // Return cached result
             return DateRangeOperationsResult(
                 operations: _cachedLabelDateRangeOps,
-                cachedPeriod: _cachedLabelDateRangePeriod!,
-                cachedScrollPos: _cachedLabelDateRangeScrollPos!,
+                cachedPeriod: cachedPeriod,
+                cachedScrollPos: cachedScrollPos,
                 cachedOps: _cachedLabelDateRangeOps
             )
         }

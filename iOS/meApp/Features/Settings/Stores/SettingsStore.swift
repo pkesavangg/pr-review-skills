@@ -1635,7 +1635,7 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.rawValue },
                 title: SettingsStrings.appearance,
                 showCancel: false,
-                updateValues: { vals in
+                updateValues: { vals in // swiftlint:disable:this trailing_closure
                     self.notificationService.dismissModal()
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 500_000_000)
@@ -1662,7 +1662,7 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.title },
                 title: SettingsStrings.notifications,
                 showCancel: false,
-                updateValues: { vals in
+                updateValues: { vals in // swiftlint:disable:this trailing_closure
                     self.notificationService.dismissModal()
                     if let pref = vals.first { self.updateNotificationPreference(pref) }
                 }
@@ -1682,7 +1682,7 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.biologicalSex,
                 showCancel: false,
-                updateValues: { vals in
+                updateValues: { vals in // swiftlint:disable:this trailing_closure
                     self.notificationService.dismissModal()
                     if let sex = vals.first { self.updateGender(sex) }
                 }
@@ -1702,7 +1702,7 @@ class SettingsStore: ObservableObject {
                 displayValue: { unit in unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs },
                 title: SettingsStrings.unitType,
                 showCancel: false,
-                updateValues: { vals in
+                updateValues: { vals in // swiftlint:disable:this trailing_closure
                     self.notificationService.dismissModal()
                     if let unit = vals.first { self.updateWeightUnit(unit) }
                 }
@@ -1722,7 +1722,7 @@ class SettingsStore: ObservableObject {
                 displayValue: { $0.rawValue.capitalized },
                 title: SettingsStrings.activityLevel,
                 showCancel: false,
-                updateValues: { vals in
+                updateValues: { vals in // swiftlint:disable:this trailing_closure
                     self.notificationService.dismissModal()
                     if let level = vals.first { self.updateActivityLevel(level) }
                 }
@@ -1744,7 +1744,7 @@ class SettingsStore: ObservableObject {
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
                     showCancel: false,
-                    updateValues: { vals in
+                    updateValues: { vals in // swiftlint:disable:this trailing_closure
                         self.notificationService.dismissModal()
                         self.updateHeight(fromMetric: true, values: vals)
                     }
@@ -1762,7 +1762,7 @@ class SettingsStore: ObservableObject {
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
                     showCancel: false,
-                    updateValues: { vals in
+                    updateValues: { vals in // swiftlint:disable:this trailing_closure
                         self.notificationService.dismissModal()
                         self.updateHeight(fromMetric: false, values: vals)
                     }

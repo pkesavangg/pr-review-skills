@@ -259,7 +259,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         // Check network connectivity before switching
         guard networkMonitor.getCurrentConnectionStatus(),
               await networkMonitor.verifyNetworkAvailability(baseURL: AppEnvironment.apiBaseURL) else {
-            logger.log(level: .error, tag: tag, message: "Switch account blocked: no internet. fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Switch account blocked: no internet. " +
+                    "fromAccountId=\(fromAccountId), targetAccountId=\(targetAccountId)"
+            )
             throw HTTPError.noInternet
         }
         // Save current active account to restore if switching fails mid-process,

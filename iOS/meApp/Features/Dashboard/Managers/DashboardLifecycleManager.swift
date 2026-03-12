@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 //
 //  DashboardLifecycleManager.swift
 //  meApp
@@ -10,7 +11,7 @@ import Foundation
 import SwiftUI
 
 @MainActor
-final class DashboardLifecycleManager: DashboardLifecycleManaging {
+final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint:disable:this type_body_length
 
     // MARK: - Dependencies
 
@@ -303,7 +304,11 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging {
                     stateProvider.state.ui.hasLoadedDashboardConfig = true
                 }
             } catch {
-                self.logger.log(level: .error, tag: "DashboardLifecycleManager", message: "Failed to refresh streak data after entry change: \(error)")
+                self.logger.log(
+                    level: .error,
+                    tag: "DashboardLifecycleManager",
+                    message: "Failed to refresh streak data after entry change: \(error)"
+                )
             }
         }
 
@@ -351,7 +356,11 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging {
                 }
                 try await self.goalManager.loadGoalData()
             } catch {
-                self.logger.log(level: .error, tag: "DashboardLifecycleManager", message: "Failed to reload goal data after settings change: \(error)")
+                self.logger.log(
+                    level: .error,
+                    tag: "DashboardLifecycleManager",
+                    message: "Failed to reload goal data after settings change: \(error)"
+                )
             }
 
             await MainActor.run {
@@ -447,11 +456,10 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging {
             streakOrder: stateProvider.state.ui.streakGridOrder,
             goalCardPosition: stateProvider.state.ui.goalCardPosition,
             isGoalCardRemoved: stateProvider.state.ui.isGoalCardRemoved,
-            removedStreaks: stateProvider.state.ui.removedStreaks,
-            updateProgressMetrics: { metrics in
-                _ = try await self.accountService.updateProgressMetrics(metrics: metrics)
-            }
-        )
+            removedStreaks: stateProvider.state.ui.removedStreaks
+        ) { metrics in
+            _ = try await self.accountService.updateProgressMetrics(metrics: metrics)
+        }
     }
 
     private func commonPostSaveUIReset() {
@@ -480,6 +488,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging {
         stateProvider.state.ui.goalCardPosition = 0
     }
 
+    // swiftlint:disable:next function_body_length
     private func performDashboardResetFlow() {
         guard let stateProvider else { return }
         stateProvider.state.ui.isLoading = true

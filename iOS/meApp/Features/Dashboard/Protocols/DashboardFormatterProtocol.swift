@@ -42,7 +42,7 @@ protocol DashboardFormatterProtocol {
     ///   - crosshairDate: Optional crosshair date.
     ///   - weightLabel: The weight label to use as fallback.
     /// - Returns: Formatted date label string.
-    func formatMetricInfoDateLabel(
+    func formatMetricInfoDateLabel( // swiftlint:disable:this function_parameter_count
         entryDate: Date?,
         isFromHistory: Bool,
         period: TimePeriod,
