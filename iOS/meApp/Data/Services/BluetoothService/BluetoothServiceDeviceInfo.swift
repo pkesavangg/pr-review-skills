@@ -26,7 +26,7 @@ extension BluetoothService {
                 operationKey: "\(device.id):getDeviceInfo"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
-                    await self.ggBleSDK.getDeviceInfo(ggDevice)
+                    try await self.ggBleSDK.getDeviceInfo(ggDevice)
                 }
             }
             guard let deviceDetails = details else {
@@ -47,7 +47,7 @@ extension BluetoothService {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let response = await ggBleSDK.getDeviceLogs(ggDevice)
+            let response = try await ggBleSDK.getDeviceLogs(ggDevice)
             let deviceLogs = DeviceLogs(logs: response.logs.map { log in
                 DeviceLogEntry(macAddress: log.macAddress, log: log.log)
             })
@@ -60,10 +60,16 @@ extension BluetoothService {
     }
 
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> {
-        let ggDevice = mapToGGBTDevice(broadcastId)
-        _ = await ggBleSDK.getMeasurementLiveData(ggDevice)
-        let liveData = MeasurementLiveData(weight: 0)
-        return .success(liveData)
+        do {
+            let ggDevice = mapToGGBTDevice(broadcastId)
+            _ = try await ggBleSDK.getMeasurementLiveData(ggDevice)
+            let liveData = MeasurementLiveData(weight: 0)
+            return .success(liveData)
+        } catch let error as BluetoothServiceError {
+            return .failure(error)
+        } catch {
+            return .failure(.updateProfileFailed(error))
+        }
     }
 
     func updateWeightOnlyMode(on connectedScale: Device?) async -> Result<Void, BluetoothServiceError> {

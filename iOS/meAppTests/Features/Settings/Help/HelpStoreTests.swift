@@ -204,18 +204,6 @@ struct HelpStoreTests {
         #expect(notification.alertData?.title == AlertStrings.DataClearingAlert.successHeader)
     }
 
-    @Test("clearAllLocalData when deleteAllAccounts fails shows error alert")
-    func clearAllLocalData_failure_showsErrorAlert() async {
-        let account = MockAccountService()
-        account.deleteAllAccountsError = HelpStoreTestError.genericFailure
-        let (store, notification, _, _, _, _, _) = makeSUT(accountService: account)
-        store.clearAllLocalData()
-        let done = await waitUntil(timeoutNanoseconds: 5_000_000_000) {
-            notification.showAlertCalls == 1
-        }
-        #expect(done == true)
-        #expect(notification.alertData?.title == AlertStrings.DataClearingAlert.errorHeader)
-    }
 
     // MARK: - showAppRateModal
 

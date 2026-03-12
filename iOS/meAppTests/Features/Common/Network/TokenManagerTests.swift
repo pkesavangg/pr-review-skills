@@ -72,10 +72,13 @@ struct TokenManagerTests {
         mock.getActiveTokensResult = .success(active)
         let sut = TokenManager(accountService: mock)
 
-        async let first = sut.refreshToken(accountId: "acc-1")
-        async let second = sut.refreshToken(accountId: "acc-1")
-        let firstResult = try await first
-        let secondResult = try await second
+        let firstTask = Task { try await sut.refreshToken(accountId: "acc-1") }
+        let firstStarted = await waitUntil { mock.refreshTokensCalls == 1 }
+        #expect(firstStarted == true)
+
+        let secondTask = Task { try await sut.refreshToken(accountId: "acc-1") }
+        let firstResult = try await firstTask.value
+        let secondResult = try await secondTask.value
 
         let returnedTokens = [firstResult, secondResult]
         #expect(returnedTokens.contains(refreshed))
@@ -200,12 +203,15 @@ struct TokenManagerTests {
         mock.getActiveTokensResult = .failure(TokenManagerTestError.serviceFailed)
         let sut = TokenManager(accountService: mock)
 
-        async let first = sut.refreshToken(accountId: "acc-1")
-        async let second = sut.refreshToken(accountId: "acc-1")
-        _ = try? await first
+        let firstTask = Task { try await sut.refreshToken(accountId: "acc-1") }
+        let firstStarted = await waitUntil { mock.refreshTokensCalls == 1 }
+        #expect(firstStarted == true)
+
+        let secondTask = Task { try await sut.refreshToken(accountId: "acc-1") }
+        _ = try? await firstTask.value
 
         do {
-            _ = try await second
+            _ = try await secondTask.value
             Issue.record("Expected waiting request to throw when getActiveTokens fails")
         } catch {
             #expect(error as? TokenManagerTestError == .serviceFailed)
@@ -234,5 +240,17 @@ struct TokenManagerTests {
 
     private func isoString(secondsFromNow: Int) -> String {
         DateTimeTools.isoFormatter(useUTC: true).string(from: Date().addingTimeInterval(TimeInterval(secondsFromNow)))
+    }
+
+    private func waitUntil(
+        timeoutNanoseconds: UInt64 = 1_000_000_000,
+        pollNanoseconds: UInt64 = 10_000_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+        while !condition() && ContinuousClock.now < deadline {
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+        return condition()
     }
 }
