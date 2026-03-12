@@ -225,6 +225,17 @@ protobuf {
   }
 }
 
+// Preload ByteBuddy agent at JVM startup so MockK doesn't load it dynamically.
+// Fixes "A Java agent has been loaded dynamically" warning on JDK 17+.
+tasks.withType<Test> {
+  doFirst {
+    val agentJar = classpath.find { it.name.contains("byte-buddy-agent") }
+    if (agentJar != null) {
+      jvmArgs("-javaagent:$agentJar")
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // JaCoCo coverage report: ./gradlew jacocoTestReport
 // ---------------------------------------------------------------------------
