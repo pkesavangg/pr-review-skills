@@ -36,11 +36,29 @@ final class UsersViewModel: ObservableObject {
         return Device(id: "", accountId: "", deviceName: "Error", deviceType: "")
     }
 
+    /// Avoid replacing a live in-memory scale with a fetched copy that has lost transient
+    /// connection/runtime fields still required by the current flow.
+    private func resolvedScaleForCaching(_ freshScale: Device) -> Device {
+        guard let cachedScale else { return freshScale }
+
+        let freshMissingBroadcastId = (freshScale.broadcastIdString?.isEmpty ?? true) &&
+            !(cachedScale.broadcastIdString?.isEmpty ?? true)
+        let freshMissingToken = (freshScale.token?.isEmpty ?? true) &&
+            !(cachedScale.token?.isEmpty ?? true)
+        let freshLostConnectionState = cachedScale.isConnected == true && freshScale.isConnected != true
+
+        if freshMissingBroadcastId || freshMissingToken || freshLostConnectionState {
+            return cachedScale
+        }
+
+        return freshScale
+    }
+
     /// Refreshes the scale from the database. Call this before operations that need fresh data.
     private func refreshScale() {
         // First try registeredModel for already-loaded models (fastest path)
         if let freshScale: Device = PersistenceController.shared.context.registeredModel(for: scaleId) {
-            cachedScale = freshScale
+            cachedScale = resolvedScaleForCaching(freshScale)
             return
         }
 
@@ -54,7 +72,7 @@ final class UsersViewModel: ObservableObject {
         do {
             let results = try PersistenceController.shared.context.fetch(descriptor)
             if let freshScale = results.first {
-                cachedScale = freshScale
+                cachedScale = resolvedScaleForCaching(freshScale)
                 return
             }
         } catch {
@@ -151,16 +169,7 @@ final class UsersViewModel: ObservableObject {
             self.refreshScale()
             switch result {
             case .success(let users):
-                self.deviceUsers = users
-                // Find current user using unified matching logic
-                self.currentDeviceUser = self.findCurrentUser(in: users)
-                logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
-                let currentName = currentDeviceUser?.name ?? ""
-                userNameForm.setDisplayName(currentName)
-                let scaleUsers = otherDeviceUsersList.map { deviceUser in
-                    ScaleUser(name: deviceUser.name, token: deviceUser.token)
-                }
-                userNameForm.updateUserList(scaleUsers)
+                self.applyLoadedUsers(users)
             case .failure(let error):
                 logger.log(level: .error, tag: tag, message: "Failed to load users from scale: \(error.localizedDescription)")
                 // Only clear users if we don't have initial users from navigation
@@ -231,6 +240,40 @@ final class UsersViewModel: ObservableObject {
         return nil
     }
 
+    private func nonEmpty(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    private func applyLoadedUsers(_ users: [DeviceUser]) {
+        self.deviceUsers = users
+        self.currentDeviceUser = self.findCurrentUser(in: users)
+        logger.log(level: .info, tag: tag, message: "Successfully loaded \(users.count) users from scale")
+        let currentName = currentDeviceUser?.name ?? ""
+        userNameForm.setDisplayName(currentName)
+        let scaleUsers = otherDeviceUsersList.map { deviceUser in
+            ScaleUser(name: deviceUser.name, token: deviceUser.token)
+        }
+        userNameForm.updateUserList(scaleUsers)
+    }
+
+    private func reloadUsersAfterDeletion(using device: Device) async {
+        let result = await bluetoothService.getScaleUserList(for: device)
+
+        await MainActor.run {
+            switch result {
+            case .success(let users):
+                self.applyLoadedUsers(users)
+            case .failure(let error):
+                logger.log(level: .error, tag: tag, message: "Failed to reload users after deletion: \(error.localizedDescription)")
+                if self.initialUsersList.isEmpty {
+                    self.deviceUsers = []
+                    self.currentDeviceUser = nil
+                }
+            }
+        }
+    }
+
     func showDeleteUserAlert(for user: DeviceUser, onDelete: @escaping () -> Void) {
         let alert = AlertModel(
             title: AlertStrings.DeleteR4ScaleUserAlert.title,
@@ -238,42 +281,48 @@ final class UsersViewModel: ObservableObject {
             buttons: [
                 AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.cancelButton, type: .secondary) { _ in },
                 AlertButtonModel(title: AlertStrings.DeleteR4ScaleUserAlert.deleteButton, type: .danger) { _ in
-                    // Check Bluetooth authorization and power state before proceeding with deletion
-                    let isBluetoothAuthorized = self.permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
-                    let isBluetoothOn = self.permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-                    guard isBluetoothAuthorized && isBluetoothOn else {
-                        self.logger.log(
-                            level: .info,
-                            tag: self.tag,
-                            message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast."
-                        )
-                        self.notificationService.showToast(
-                            ToastModel(
-                                title: ToastStrings.bluetoothRequiredTitle,
-                                message: ToastStrings.bluetoothRequiredMessage
-                            )
-                        )
-                        return
-                    }
-                    
-                    Task {
-                        await self.deleteUser(user)
-                        onDelete()
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        await self.handleDeleteUserAction(for: user, onDelete: onDelete)
                     }
                 }
             ]
         )
         notificationService.showAlert(alert)
     }
+
+    @MainActor
+    private func handleDeleteUserAction(for user: DeviceUser, onDelete: @escaping () -> Void) async {
+        // Alert button actions are plain closures, so explicitly hop back to MainActor
+        // before touching actor-isolated services and state.
+        let isBluetoothAuthorized = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
+        let isBluetoothOn = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+        guard isBluetoothAuthorized && isBluetoothOn else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Bluetooth permission or switch is OFF. Blocking user deletion and showing toast."
+            )
+            notificationService.showToast(
+                ToastModel(
+                    title: ToastStrings.bluetoothRequiredTitle,
+                    message: ToastStrings.bluetoothRequiredMessage
+                )
+            )
+            return
+        }
+
+        await deleteUser(user)
+        onDelete()
+    }
     
     private func deleteUser(_ user: DeviceUser) async {
         notificationService.showLoader(LoaderModel(text: LoaderStrings.loading))
 
-        // Refresh to get latest scale data
-        refreshScale()
+        let operationScale = cachedScale ?? scale
 
         // Extract primitives before async call — never mutate @Model to pass data
-        guard let broadcastId = scale.broadcastIdString, !broadcastId.isEmpty else {
+        guard let broadcastId = nonEmpty(operationScale.broadcastIdString) ?? nonEmpty(scale.broadcastIdString) else {
             logger.log(level: .error, tag: tag, message: "Missing broadcastId for scale")
             notificationService.dismissLoader()
             return
@@ -284,7 +333,7 @@ final class UsersViewModel: ObservableObject {
             return
         }
 
-        logger.log(level: .debug, tag: tag, message: "Deleting user: \(user.name) with token: \(userToken) on scale \(scale.id)")
+        logger.log(level: .debug, tag: tag, message: "Deleting user: \(user.name) with token: \(userToken) on scale \(operationScale.id)")
         let result = await bluetoothService.deleteUserByToken(broadcastId: broadcastId, token: userToken, disconnect: false)
         
         switch result {
@@ -295,9 +344,9 @@ final class UsersViewModel: ObservableObject {
             // This prevents race conditions where the user list might be fetched before the scale updates
             try? await Task.sleep(nanoseconds: userDeletionDelayNanoseconds)
             
-            // Reload users from the scale to get the updated list
-            // This ensures we have the most up-to-date data including correct isBodyMetricsEnabled values
-            await loadUsers()
+            // Reload using the last known-good connected device instance so this flow
+            // does not depend on a refetched SwiftData model preserving runtime fields.
+            await reloadUsersAfterDeletion(using: operationScale)
             
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userDeleted))
         case .failure(let error):

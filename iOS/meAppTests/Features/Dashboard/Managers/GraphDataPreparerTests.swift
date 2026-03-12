@@ -119,6 +119,25 @@ struct GraphDataPreparerTests {
         #expect(result.map(\.value) == [180.0, 182.0])
     }
 
+    @Test("buildChartSeries: single operation with nil selected metric returns only the weight series")
+    func buildChartSeriesSingleOperationNilMetric() {
+        let ops = [makeSummary(day: 1, weight: 1800)]
+
+        let result = makeSUT().buildChartSeries(
+            from: ops,
+            selectedMetric: nil,
+            isWeightlessMode: false,
+            anchorWeight: nil,
+            convertWeight: DashboardTestFixtures.convertToLbs,
+            yAxisDomain: nil,
+            period: .month
+        )
+
+        #expect(result.count == 1)
+        #expect(result.first?.series == DashboardStrings.weight)
+        #expect(result.first?.value == 180)
+    }
+
     @Test("buildChartSeries: explicit domain uses axis operations and clamps outliers into safe bounds")
     func buildChartSeriesWithExplicitDomainClampsOutlier() {
         let ops = [

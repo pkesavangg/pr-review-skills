@@ -263,18 +263,17 @@ struct UsersViewModelTests {
         let (store, _, _, notification, _) = makeSUT(scale: scale, bluetooth: bluetooth)
         var onDeleteCalls = 0
 
-        let initialLoadCompleted = await waitUntil {
-            store.isLoadingUsers == false &&
-                bluetooth.getScaleUserListCalls >= 1 &&
-                store.deviceUsers.map(\.name) == ["Owner", "AfterDelete"]
-        }
+        await store.loadUsers()
 
-        #expect(initialLoadCompleted == true)
+        #expect(store.isLoadingUsers == false)
+        #expect(bluetooth.getScaleUserListCalls >= 1)
+        #expect(store.deviceUsers.map(\.name) == ["Owner", "AfterDelete"])
 
         store.showDeleteUserAlert(for: makeUser(name: "Guest", token: "guest-token")) {
             onDeleteCalls += 1
         }
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
             bluetooth.deleteUserByTokenCalls == 1 &&
@@ -297,6 +296,7 @@ struct UsersViewModelTests {
 
         store.showDeleteUserAlert(for: makeUser(name: "Guest", token: "guest-token")) {}
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil {
             bluetooth.deleteUserByTokenCalls == 1 &&
@@ -317,6 +317,7 @@ struct UsersViewModelTests {
             onDeleteCalls += 1
         }
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil {
             notification.dismissLoaderCalls == 1 && onDeleteCalls == 1
@@ -336,6 +337,7 @@ struct UsersViewModelTests {
             onDeleteCalls += 1
         }
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil {
             notification.dismissLoaderCalls == 1 && onDeleteCalls == 1

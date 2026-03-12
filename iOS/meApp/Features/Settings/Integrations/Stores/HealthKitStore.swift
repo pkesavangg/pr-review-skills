@@ -240,17 +240,17 @@ final class HealthKitStore: ObservableObject {
             switch state {
             case .permissionsNotAllowed:
                 setHasShownFirstTimeConnectScreen(true)
-                requestAuthorization()
+                await requestAuthorization()
             case .integrationComplete:
-                finishIntegrationFlow()
+                await finishIntegrationFlow()
             case .integrationFailed:
                 observeForegroundForPermissionChanges()
                 healthKitService.openAppleHealth()
             case .permissionsAllowed:
                 if await wasPreviouslyIntegrated() {
-                    requestAuthorization()
+                    await requestAuthorization()
                 } else {
-                    finishIntegrationFlow()
+                    await finishIntegrationFlow()
                 }
             case .userConflict:
                 dismissModal()
@@ -267,39 +267,37 @@ final class HealthKitStore: ObservableObject {
     // MARK: - Private Flow Steps -----------------------------------------
 
     /// Requests HealthKit authorisation via `HealthKitService`. Updates state depending on result.
-    private func requestAuthorization() {
+    private func requestAuthorization() async {
         logger.log(level: .info, tag: tag, message: "HealthKit authorization flow started")
-        Task {
-            do {
-                let wasPreviouslyIntegrated = await wasPreviouslyIntegrated()
-                let success = try await healthKitService.integrate(turnOn: true)
+        do {
+            let wasPreviouslyIntegrated = await wasPreviouslyIntegrated()
+            let success = try await healthKitService.integrate(turnOn: true)
 
-                if success {
-                    activeState = wasPreviouslyIntegrated ? nil : .integrationComplete
-                    logger.log(
-                        level: .success,
-                        tag: tag,
-                        message: "HealthKit authorization flow succeeded. wasPreviouslyIntegrated=\(wasPreviouslyIntegrated)"
-                    )
-                    if wasPreviouslyIntegrated {
-                        finishIntegrationFlow()
-                    }
-                } else {
-                    activeState = .integrationFailed
-                    logger.log(level: .error, tag: tag, message: "HealthKit authorization flow failed (service returned false)")
-                }
-                // Don't refresh integration status here - wait until after sync completes
-            } catch {
-                activeState = error is IntegrationError ? .userConflict : .integrationFailed
+            if success {
+                activeState = wasPreviouslyIntegrated ? nil : .integrationComplete
                 logger.log(
-                    level: .error,
+                    level: .success,
                     tag: tag,
-                    message: """
-                    HealthKit authorization flow error. mappedState=\(error is IntegrationError ? "userConflict" : "integrationFailed"), \
-                    error=\(error.localizedDescription)
-                    """
+                    message: "HealthKit authorization flow succeeded. wasPreviouslyIntegrated=\(wasPreviouslyIntegrated)"
                 )
+                if wasPreviouslyIntegrated {
+                    await finishIntegrationFlow()
+                }
+            } else {
+                activeState = .integrationFailed
+                logger.log(level: .error, tag: tag, message: "HealthKit authorization flow failed (service returned false)")
             }
+            // Don't refresh integration status here - wait until after sync completes
+        } catch {
+            activeState = error is IntegrationError ? .userConflict : .integrationFailed
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: """
+                HealthKit authorization flow error. mappedState=\(error is IntegrationError ? "userConflict" : "integrationFailed"), \
+                error=\(error.localizedDescription)
+                """
+            )
         }
     }
 
@@ -328,21 +326,19 @@ final class HealthKitStore: ObservableObject {
     /// Called when user taps **FINISH** on the *Integration Complete* screen.
     /// Presents *Sync Weight History* alert if needed, otherwise persists integration and shows toast.
     /// - Parameter hasAlreadySynced: If true, skips showing sync prompt since sync was already performed.
-    private func finishIntegrationFlow(hasAlreadySynced: Bool = false) {
+    private func finishIntegrationFlow(hasAlreadySynced: Bool = false) async {
         logger.log(level: .info, tag: tag, message: "Finish HealthKit integration flow requested. hasAlreadySynced=\(hasAlreadySynced)")
-        Task {
-            dismissModal()
+        dismissModal()
 
-            let hasEntries = ((try? await entryService.getEntryCount()) ?? 0) > 0
-            if hasEntries {
-                logger.log(level: .info, tag: tag, message: "HealthKit integration requires history sync prompt")
-                presentSyncHistoryAlert()
-            } else {
-                // No entries to sync - persist integration and show toast immediately
-                await persistIntegrationAfterPermissionGrant()
-                logger.log(level: .success, tag: tag, message: "HealthKit integration completed without history sync")
-                notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
-            }
+        let hasEntries = ((try? await entryService.getEntryCount()) ?? 0) > 0
+        if hasEntries {
+            logger.log(level: .info, tag: tag, message: "HealthKit integration requires history sync prompt")
+            presentSyncHistoryAlert()
+        } else {
+            // No entries to sync - persist integration and show toast immediately
+            await persistIntegrationAfterPermissionGrant()
+            logger.log(level: .success, tag: tag, message: "HealthKit integration completed without history sync")
+            notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
         }
     }
 
