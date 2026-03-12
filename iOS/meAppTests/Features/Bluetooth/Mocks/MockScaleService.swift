@@ -38,6 +38,7 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var lastCreatedDevice: Device?
     private(set) var lastCreatedBluetoothScale: Device?
     private(set) var lastCreatedR4Scale: Device?
+    private(set) var lastCreateR4ScaleSkipDuplicateCheck: Bool?
 
     func clearAllData() async {}
     func getDevices() async throws -> [Device] {
@@ -109,6 +110,7 @@ final class MockScaleService: ScaleServiceProtocol {
         skipDuplicateCheck: Bool = false
     ) async throws -> Device {
         createR4ScaleCalls += 1
+        lastCreateR4ScaleSkipDuplicateCheck = skipDuplicateCheck
         if let createR4ScaleError { throw createR4ScaleError }
 
         let device = Device(
