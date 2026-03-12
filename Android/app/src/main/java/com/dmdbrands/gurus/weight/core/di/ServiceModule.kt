@@ -23,7 +23,10 @@ import com.dmdbrands.gurus.weight.core.service.WifiScaleService
 import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.data.api.IExportAPI
+import com.dmdbrands.gurus.weight.data.services.EntryAggregationService
+import com.dmdbrands.gurus.weight.data.services.EntryCrudService
 import com.dmdbrands.gurus.weight.data.services.EntryService
+import com.dmdbrands.gurus.weight.data.services.EntrySyncService
 import com.dmdbrands.gurus.weight.data.services.ExportService
 import com.dmdbrands.gurus.weight.data.storage.datastore.BaseProtoDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.BluetoothPreferencesDataStore
@@ -56,7 +59,10 @@ import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
+import com.dmdbrands.gurus.weight.domain.services.IEntryAggregationService
+import com.dmdbrands.gurus.weight.domain.services.IEntryCrudService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IEntrySyncService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
@@ -207,14 +213,38 @@ object ServiceModule {
 
   @Provides
   @Singleton
-  fun provideEntryService(
+  fun provideEntryAggregationService(
     entryRepository: IEntryRepository,
-    goalRepository: IGoalRepository,
     accountRepository: IAccountRepository,
+    goalRepository: IGoalRepository,
+  ): IEntryAggregationService = EntryAggregationService(entryRepository, accountRepository, goalRepository)
+
+  @Provides
+  @Singleton
+  fun provideEntrySyncService(
+    entryRepository: IEntryRepository,
+    accountRepository: IAccountRepository,
+    goalService: IGoalService,
     healthConnectService: IHealthConnectService,
     healthConnectRepository: IHealthConnectRepository,
-    goalService: IGoalService
-  ): IEntryService = EntryService(entryRepository, goalRepository, accountRepository, goalService, healthConnectService, healthConnectRepository)
+  ): IEntrySyncService = EntrySyncService(entryRepository, accountRepository, goalService, healthConnectService, healthConnectRepository)
+
+  @Provides
+  @Singleton
+  fun provideEntryCrudService(
+    syncService: IEntrySyncService,
+  ): IEntryCrudService = EntryCrudService(syncService)
+
+  @Provides
+  @Singleton
+  fun provideEntryService(
+    crudService: IEntryCrudService,
+    syncService: IEntrySyncService,
+    aggregationService: IEntryAggregationService,
+    entryRepository: IEntryRepository,
+    accountRepository: IAccountRepository,
+    goalService: IGoalService,
+  ): IEntryService = EntryService(crudService, syncService, aggregationService, entryRepository, accountRepository, goalService)
 
   @Provides
   @Singleton

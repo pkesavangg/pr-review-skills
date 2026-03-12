@@ -5,6 +5,7 @@
 
 import Combine
 import Foundation
+import GGBluetoothSwiftPackage
 @testable import meApp
 
 @MainActor
@@ -19,6 +20,7 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     var showWeightOnlyModeAlertPublisher: AnyPublisher<Bool, Never> { Empty().eraseToAnyPublisher() }
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
+    var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { Empty().eraseToAnyPublisher() }
 
     var getDeviceLogsResult: Result<DeviceLogs, BluetoothServiceError> = .success(DeviceLogs(logs: []))
     private(set) var getDeviceLogsCalls = 0

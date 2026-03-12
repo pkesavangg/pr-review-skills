@@ -1,9 +1,14 @@
 # Coverage Reporting
 
+## Related Testing Docs
+- High-level testing index: `docs/TESTING.md`
+- Unit testing details: `meAppTests/docs/UNIT_TESTING.md`
+- UI testing details: `meAppUITests/docs/UI_TESTING.md`
+
 ## Purpose
 Xcode's Coverage UI (`Cmd+9`) is useful for quick local inspection but hard to share with reviewers.
 
-This project uses `iOS/scripts/run_tests_with_coverage.sh` + `iOS/scripts/export_coverage_reports.py` to generate shareable coverage artifacts after unit tests.
+This project uses `iOS/scripts/run_tests_with_coverage.sh` + `iOS/scripts/export_coverage_reports.py` to generate shareable coverage artifacts after unit or UI tests.
 
 ## Prerequisites
 Before running coverage commands, verify Python 3 is available:
@@ -83,16 +88,21 @@ Behavior:
 - Folder is ignored by git (`.gitignore`).
 
 ## Coverage Scope
-- Official metric for this workflow is App-only coverage (`meApp/**/*.swift`) only.
+- Official metric for this workflow is App-only non-UI coverage:
+  - Include: `meApp/**/*.swift`
+  - Exclude UI layer files not targeted by unit tests:
+    - Any file under `Views/`, `ViewModifiers/`, `Modifiers/`, `Previews/`
+    - Any file ending with `View.swift`, `Modifier.swift`, `Screen.swift`, `UIKitView.swift`, or `Cell.swift`
 - Reason:
   - Keeps coverage focused on app code quality.
+  - Prevents SwiftUI view rendering files from reducing unit-test coverage metrics.
   - Avoids skew from third-party packages/framework targets included in `.xcresult`.
   - Gives stable, team-actionable numbers for PRs and sprint tracking.
 
 ## Output Formats
 ### Markdown (`.md`)
 - Summary section (timestamp, source bundle, app-only covered/executable lines, app-only %).
-- Per-file table for `meApp/**/*.swift`.
+- Per-file table for filtered non-UI app scope.
 
 ### CSV (`.csv`)
 - One row per Swift file.

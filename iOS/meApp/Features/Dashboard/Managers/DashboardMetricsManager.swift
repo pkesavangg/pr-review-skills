@@ -151,7 +151,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
             if !state.metrics.isEmpty {
                 if let dashboardMetrics = account.dashboardSettings?.dashboardMetrics {
                     let apiMetricArray = dashboardMetrics.split(separator: ",").map(String.init)
-                    let localMetricLabels = state.metrics.prefix(state.activeMetricsCount).map { $0.label }
+                    let localMetricLabels = state.metrics.prefix(max(0, state.activeMetricsCount)).map { $0.label }
                     
                     // Map local labels to API format for comparison
                     let localApiMetrics = localMetricLabels.compactMap { displayLabel -> String? in
@@ -243,7 +243,7 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     /// Returns the set of removed metric labels based on the current state
     /// Returns labels of metrics beyond activeMetricsCount (inactive ones)
     func getRemovedMetricLabels() -> Set<String> {
-        let removedMetrics = Array(state.metrics.dropFirst(state.activeMetricsCount))
+        let removedMetrics = Array(state.metrics.dropFirst(max(0, state.activeMetricsCount)))
         let removedLabels = Set(removedMetrics.map { $0.label })
         return removedLabels
     }

@@ -5,7 +5,9 @@ import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.config.NetworkConfig
 import com.dmdbrands.gurus.weight.core.network.HttpClient
+import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.TokenManager
 import com.dmdbrands.gurus.weight.core.network.interceptors.AuthTokenInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.BaseUrlInterceptor
@@ -44,7 +46,7 @@ object NetworkModule {
      */
     @Provides
     @Singleton
-    fun provideHttpClient(okHttpClient: OkHttpClient): HttpClient = HttpClient(AppConfig.BASE_URL, okHttpClient)
+    fun provideHttpClient(okHttpClient: OkHttpClient): HttpClient = HttpClient(BuildConfig.BASE_URL, okHttpClient)
 
     /**
      * Provides a logging interceptor for HTTP requests. Logging is enabled only in debug builds.
@@ -101,9 +103,8 @@ object NetworkModule {
     fun provideAuthTokenInterceptor(
         tokenManager: ITokenManager,
         refreshTokenAPI: RefreshTokenAPI,
-        userDataStore: UserDataStore,
     ): AuthTokenInterceptor =
-        AuthTokenInterceptor(tokenManager, refreshTokenAPI, userDataStore)
+        AuthTokenInterceptor(tokenManager, refreshTokenAPI)
 
     /**
      * Provides a response interceptor for OkHttp.
@@ -130,7 +131,7 @@ object NetworkModule {
     @Singleton
     fun provideRefreshTokenAPI(@RefreshClient refreshOkHttpClient: OkHttpClient): RefreshTokenAPI =
         Retrofit.Builder()
-            .baseUrl(AppConfig.BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(refreshOkHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -173,6 +174,16 @@ object NetworkModule {
             .authenticator(tokenAuthenticator)
         return okHttpClient.build()
     }
+
+    @Provides
+    @Singleton
+    fun provideSecureTokenStore(@ApplicationContext context: Context): SecureTokenStore =
+        SecureTokenStore(context)
+
+    @Provides
+    @Singleton
+    fun provideSecureTokenStoreInterface(secureTokenStore: SecureTokenStore): ISecureTokenStore =
+        secureTokenStore
 
     @Provides
     @Singleton

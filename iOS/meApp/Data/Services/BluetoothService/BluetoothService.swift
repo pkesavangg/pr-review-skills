@@ -117,6 +117,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     var lastAccountId: String?
     var isSyncingPreferences = false // Guard against concurrent preference syncs
     var weightOnlyModeAlertDebounceTask: Task<Void, Never>? // Debounce task for weight-only mode alert check
+    var profileUpdateTask: Task<Void, Never>?
 
     // MARK: - Dependencies
 
@@ -192,26 +193,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         logger.log(level: .info, tag: tag, message: "Bluetooth service initialize called")
         accountService.activeAccountPublisher
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] account in
-                Task {
-                    await self?.handleAccountUpdate(account)
-                    // Only update R4 profile from subscription if:
-                    // 1. Account is not nil
-                    // 2. Not already updating (prevents concurrent calls)
-                    // 3. Account ID changed (account switch) or was nil (new account)
-                    // This prevents conflicts when updateUserProfileForR4Scales is called explicitly
-                    let currentAccountId = account?.accountId
-                    let accountIdChanged = currentAccountId != self?.lastAccountId
-                    if let accountId = currentAccountId,
-                       !(self?.isUpdatingR4Profile ?? false),
-                       accountIdChanged {
-                        self?.lastAccountId = accountId
-                        _ = await self?.updateUserProfileForR4Scales()
-                    } else if currentAccountId != nil {
-                        // Update lastAccountId even if we don't call updateUserProfileForR4Scales
-                        self?.lastAccountId = currentAccountId
-                    }
-                }
+            .sink { @MainActor [weak self] account in
+                guard let self else { return }
+                self.handleAccountUpdate(account)
+                self.scheduleProfileUpdateIfNeeded(for: account)
             }
             .store(in: &cancellables)
     }
@@ -278,7 +263,7 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         }
     }
 
-    private func handleAccountUpdate(_ account: Account?) async {
+    private func handleAccountUpdate(_ account: Account?) {
         if let account = account {
             activeAccount = account
             logger.log(level: .info, tag: tag, message: "Bluetooth active account updated. accountId=\(account.accountId)")
@@ -287,6 +272,24 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         } else if isSmartScanStarted {
             logger.log(level: .info, tag: tag, message: "Bluetooth account cleared; stopping active scan")
             stopScan()
+        }
+    }
+
+    private func scheduleProfileUpdateIfNeeded(for account: Account?) {
+        let currentAccountId = account?.accountId
+        guard let accountId = currentAccountId else {
+            profileUpdateTask?.cancel()
+            lastAccountId = nil
+            return
+        }
+
+        let accountIdChanged = accountId != lastAccountId
+        lastAccountId = accountId
+        guard accountIdChanged, !isUpdatingR4Profile else { return }
+
+        profileUpdateTask?.cancel()
+        profileUpdateTask = Task { [weak self] in
+            _ = await self?.updateUserProfileForR4Scales()
         }
     }
 

@@ -15,7 +15,7 @@ struct HelpStoreTests {
 
     @Test("isSendScaleLogEnabled returns true when more than one scale is present")
     func isSendScaleLogEnabled_multipleScales_returnsTrue() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         store.scales = [
             ScaleTestFixtures.makeDevice(id: "scale-1"),
             ScaleTestFixtures.makeDevice(id: "scale-2")
@@ -25,7 +25,7 @@ struct HelpStoreTests {
 
     @Test("isSendScaleLogEnabled returns true when single connected scale is present")
     func isSendScaleLogEnabled_singleConnectedScale_returnsTrue() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         let device = ScaleTestFixtures.makeDevice(id: "scale-1")
         device.isConnected = true
         store.scales = [device]
@@ -34,7 +34,7 @@ struct HelpStoreTests {
 
     @Test("isSendScaleLogEnabled returns false when single disconnected scale is present")
     func isSendScaleLogEnabled_singleDisconnectedScale_returnsFalse() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         let device = ScaleTestFixtures.makeDevice(id: "scale-1")
         device.isConnected = false
         store.scales = [device]
@@ -43,14 +43,14 @@ struct HelpStoreTests {
 
     @Test("shouldShowScaleTroubleshooting returns false when no scales are present")
     func shouldShowScaleTroubleshooting_emptyScales_returnsFalse() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         store.scales = []
         #expect(store.shouldShowScaleTroubleshooting == false)
     }
 
     @Test("shouldShowScaleTroubleshooting returns true when scales are present")
     func shouldShowScaleTroubleshooting_hasScales_returnsTrue() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         store.scales = [ScaleTestFixtures.makeDevice(id: "scale-1")]
         #expect(store.shouldShowScaleTroubleshooting == true)
     }
@@ -60,7 +60,7 @@ struct HelpStoreTests {
     @Test("init filters scalesPublisher to only include btWifiR4 scales")
     func init_scalesPublisher_filtersOnlyBtWifiR4Scales() async {
         let scaleService = MockScaleService()
-        let (store, _, _, _, _, _) = makeSUT(scaleService: scaleService)
+        let (store, _, _, _, _, _, _) = makeSUT(scaleService: scaleService)
 
         let r4Device = ScaleTestFixtures.makeDevice(id: "r4-scale")
         let nonR4Device = Device(id: "non-r4", accountId: "acct-1", hasServerID: false)
@@ -78,7 +78,7 @@ struct HelpStoreTests {
 
     @Test("openProductManual sets productURL and shows product browser")
     func openProductManual_setsURLAndShowsBrowser() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         store.openProductManual(sku: "0412")
         #expect(store.showProductBrowser == true)
         #expect(store.productURL?.absoluteString == "\(AppConstants.Product.baseURL)/0412")
@@ -88,21 +88,21 @@ struct HelpStoreTests {
 
     @Test("handleHeaderTap triggers debug menu after exactly five taps within the time window")
     func handleHeaderTap_fiveTapsWithinWindow_triggersDebugMenu() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         for _ in 1...5 { store.handleHeaderTap() }
         #expect(store.showDebugMenu == true)
     }
 
     @Test("handleHeaderTap does not trigger debug menu after only four taps")
     func handleHeaderTap_fourTaps_doesNotTriggerDebugMenu() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         for _ in 1...4 { store.handleHeaderTap() }
         #expect(store.showDebugMenu == false)
     }
 
     @Test("handleHeaderTap resets counter when taps fall outside the 5-second window")
     func handleHeaderTap_tapsOutsideWindow_resetsCounterAndDoesNotTrigger() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         for _ in 1...4 { store.handleHeaderTap() }
         // debug menu must not yet be shown after four rapid taps
         #expect(store.showDebugMenu == false)
@@ -112,7 +112,7 @@ struct HelpStoreTests {
 
     @Test("dismissDebugMenu sets showDebugMenu to false")
     func dismissDebugMenu_setsShowDebugMenuFalse() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         for _ in 1...5 { store.handleHeaderTap() }
         #expect(store.showDebugMenu == true)
         store.dismissDebugMenu()
@@ -123,7 +123,7 @@ struct HelpStoreTests {
 
     @Test("sendWeightGurusLog success shows loader, dismisses loader, and shows success toast")
     func sendWeightGurusLog_success_showsLoaderAndSuccessToast() async {
-        let (store, notification, _, logger, _, _) = makeSUT()
+        let (store, notification, _, logger, _, _, _) = makeSUT()
         store.sendWeightGurusLog()
         let done = await waitUntil { notification.dismissLoaderCalls >= 1 }
         #expect(done == true)
@@ -138,7 +138,7 @@ struct HelpStoreTests {
     func sendWeightGurusLog_noInternetError_noToastShown() async {
         let logger = MockHelpStoreLoggerService()
         logger.sendLogsToServerError = HTTPError.noInternet
-        let (store, notification, _, _, _, _) = makeSUT(loggerService: logger)
+        let (store, notification, _, _, _, _, _) = makeSUT(loggerService: logger)
         store.sendWeightGurusLog()
         let done = await waitUntil { notification.dismissLoaderCalls >= 1 }
         #expect(done == true)
@@ -151,7 +151,7 @@ struct HelpStoreTests {
     func sendWeightGurusLog_otherError_showsErrorToast() async {
         let logger = MockHelpStoreLoggerService()
         logger.sendLogsToServerError = HelpStoreTestError.genericFailure
-        let (store, notification, _, _, _, _) = makeSUT(loggerService: logger)
+        let (store, notification, _, _, _, _, _) = makeSUT(loggerService: logger)
         store.sendWeightGurusLog()
         let done = await waitUntil { notification.dismissLoaderCalls >= 1 }
         #expect(done == true)
@@ -167,7 +167,7 @@ struct HelpStoreTests {
     func resyncEntries_onlineSuccess_clearsDataAndShowsSuccessToast() async {
         guard NetworkMonitor.shared.isConnected else { return }
         let entry = MockHelpStoreEntryService()
-        let (store, notification, _, _, _, _) = makeSUT(entryService: entry)
+        let (store, notification, _, _, _, _, _) = makeSUT(entryService: entry)
         store.resyncEntries()
         let done = await waitUntil { entry.syncAllEntriesWithRemoteCalls == 1 }
         #expect(done == true)
@@ -182,7 +182,7 @@ struct HelpStoreTests {
         guard NetworkMonitor.shared.isConnected else { return }
         let entry = MockHelpStoreEntryService()
         entry.clearLastSyncTimestampError = HelpStoreTestError.genericFailure
-        let (store, notification, _, _, _, _) = makeSUT(entryService: entry)
+        let (store, notification, _, _, _, _, _) = makeSUT(entryService: entry)
         store.resyncEntries()
         let done = await waitUntil { entry.clearLastSyncTimestampCalls == 1 }
         #expect(done == true)
@@ -195,7 +195,7 @@ struct HelpStoreTests {
 
     @Test("clearAllLocalData success shows success alert after completing all steps")
     func clearAllLocalData_success_showsSuccessAlert() async {
-        let (store, notification, _, _, _, _) = makeSUT()
+        let (store, notification, _, _, _, _, _) = makeSUT()
         store.clearAllLocalData()
         let done = await waitUntil(timeoutNanoseconds: 5_000_000_000) {
             notification.showAlertCalls == 1
@@ -208,7 +208,7 @@ struct HelpStoreTests {
     func clearAllLocalData_failure_showsErrorAlert() async {
         let account = MockAccountService()
         account.deleteAllAccountsError = HelpStoreTestError.genericFailure
-        let (store, notification, _, _, _, _) = makeSUT(accountService: account)
+        let (store, notification, _, _, _, _, _) = makeSUT(accountService: account)
         store.clearAllLocalData()
         let done = await waitUntil(timeoutNanoseconds: 5_000_000_000) {
             notification.showAlertCalls == 1
@@ -219,11 +219,14 @@ struct HelpStoreTests {
 
     // MARK: - showAppRateModal
 
-    @Test("showAppRateModal logs an info message via the logger")
-    func showAppRateModal_logsInfoMessage() {
-        let (store, _, _, logger, _, _) = makeSUT()
+    @Test("showAppRateModal logs an info message and requests review via handler (no real modal)")
+    func showAppRateModal_logsAndCallsHandler() async {
+        let (store, _, _, logger, _, _, appReview) = makeSUT()
         store.showAppRateModal()
+        let called = await waitUntil { appReview.triggerAppReviewCalls == 1 }
+        #expect(called == true)
         #expect(logger.messages.contains(where: { $0.contains("Presenting app rating modal") }))
+        #expect(appReview.lastIsFromDebug == true)
     }
 
     // MARK: - sendScaleLogHandler
@@ -231,7 +234,7 @@ struct HelpStoreTests {
     @Test("sendScaleLogHandler with explicit device sends logs for that device without showing sheet")
     func sendScaleLogHandler_withDeviceArg_sendsForThatDevice() async {
         let bluetooth = MockHelpStoreBluetoothService()
-        let (store, notification, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
+        let (store, notification, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
         let device = ScaleTestFixtures.makeDevice(id: "target-scale")
         store.sendScaleLogHandler(device: device)
         let done = await waitUntil { bluetooth.getDeviceLogsCalls == 1 }
@@ -244,7 +247,7 @@ struct HelpStoreTests {
     @Test("sendScaleLogHandler with no argument and a single scale sends directly")
     func sendScaleLogHandler_noArgSingleScale_sendsDirectly() async {
         let bluetooth = MockHelpStoreBluetoothService()
-        let (store, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
+        let (store, _, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
         store.scales = [ScaleTestFixtures.makeDevice(id: "single-scale")]
         store.sendScaleLogHandler()
         let done = await waitUntil { bluetooth.getDeviceLogsCalls == 1 }
@@ -254,7 +257,7 @@ struct HelpStoreTests {
 
     @Test("sendScaleLogHandler with no argument and multiple scales shows the scale log sheet")
     func sendScaleLogHandler_noArgMultipleScales_showsSheet() {
-        let (store, _, _, _, _, _) = makeSUT()
+        let (store, _, _, _, _, _, _) = makeSUT()
         store.scales = [
             ScaleTestFixtures.makeDevice(id: "scale-a"),
             ScaleTestFixtures.makeDevice(id: "scale-b")
@@ -269,7 +272,7 @@ struct HelpStoreTests {
     func sendScaleLogsToServer_success_showsToastAndHidesSheet() async {
         let bluetooth = MockHelpStoreBluetoothService()
         bluetooth.getDeviceLogsResult = .success(DeviceLogs(logs: [DeviceLogEntry(macAddress: "AA:BB", log: "test")]))
-        let (store, notification, _, logger, _, _) = makeSUT(bluetoothService: bluetooth)
+        let (store, notification, _, logger, _, _, _) = makeSUT(bluetoothService: bluetooth)
         store.scales = [ScaleTestFixtures.makeDevice(id: "ok-scale")]
         store.showScaleLogSheet = true
         store.sendScaleLogHandler()
@@ -285,7 +288,7 @@ struct HelpStoreTests {
     func sendScaleLogsToServer_bluetoothGetLogsFails_showsErrorToast() async {
         let bluetooth = MockHelpStoreBluetoothService()
         bluetooth.getDeviceLogsResult = .failure(.notImplemented)
-        let (store, notification, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
+        let (store, notification, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
         store.scales = [ScaleTestFixtures.makeDevice(id: "fail-scale")]
         store.sendScaleLogHandler()
         let done = await waitUntil { bluetooth.getDeviceLogsCalls == 1 }
@@ -300,7 +303,7 @@ struct HelpStoreTests {
         let bluetooth = MockHelpStoreBluetoothService()
         let logger = MockHelpStoreLoggerService()
         logger.sendScaleLogsToServerError = HelpStoreTestError.genericFailure
-        let (store, notification, _, _, _, _) = makeSUT(loggerService: logger, bluetoothService: bluetooth)
+        let (store, notification, _, _, _, _, _) = makeSUT(loggerService: logger, bluetoothService: bluetooth)
         store.scales = [ScaleTestFixtures.makeDevice(id: "upload-fail-scale")]
         store.sendScaleLogHandler()
         let done = await waitUntil { logger.sendScaleLogsToServerCalls == 1 }
@@ -315,7 +318,7 @@ struct HelpStoreTests {
         let bluetooth = MockHelpStoreBluetoothService()
         let logger = MockHelpStoreLoggerService()
         logger.sendScaleLogsToServerError = HTTPError.noInternet
-        let (store, notification, _, _, _, _) = makeSUT(loggerService: logger, bluetoothService: bluetooth)
+        let (store, notification, _, _, _, _, _) = makeSUT(loggerService: logger, bluetoothService: bluetooth)
         store.scales = [ScaleTestFixtures.makeDevice(id: "no-internet-scale")]
         store.sendScaleLogHandler()
         let done = await waitUntil { logger.sendScaleLogsToServerCalls == 1 }
@@ -328,7 +331,7 @@ struct HelpStoreTests {
 
     @Test("openHelp presents a modal")
     func openHelp_showsModal() {
-        let (store, notification, _, _, _, _) = makeSUT()
+        let (store, notification, _, _, _, _, _) = makeSUT()
         store.openHelp()
         #expect(notification.showModalCalls == 1)
     }
@@ -349,14 +352,16 @@ private func makeSUT(
     entryService: MockHelpStoreEntryService? = nil,
     loggerService: MockHelpStoreLoggerService? = nil,
     scaleService: MockScaleService? = nil,
-    bluetoothService: MockHelpStoreBluetoothService? = nil
+    bluetoothService: MockHelpStoreBluetoothService? = nil,
+    appReviewHandler: MockAppReviewHandler? = nil
 ) -> (
     store: HelpStore,
     notification: MockNotificationHelperService,
     account: MockAccountService,
     logger: MockHelpStoreLoggerService,
     entry: MockHelpStoreEntryService,
-    bluetooth: MockHelpStoreBluetoothService
+    bluetooth: MockHelpStoreBluetoothService,
+    appReview: MockAppReviewHandler
 ) {
     let account = accountService ?? MockAccountService()
     let notification = notificationService ?? MockNotificationHelperService()
@@ -364,6 +369,7 @@ private func makeSUT(
     let logger = loggerService ?? MockHelpStoreLoggerService()
     let scale = scaleService ?? MockScaleService()
     let bluetooth = bluetoothService ?? MockHelpStoreBluetoothService()
+    let appReview = appReviewHandler ?? MockAppReviewHandler()
 
     TestDependencyContainer.reset()
     DependencyContainer.shared.register(account as AccountServiceProtocol)
@@ -373,7 +379,7 @@ private func makeSUT(
     DependencyContainer.shared.register(scale as ScaleServiceProtocol)
     DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
 
-    let store = HelpStore()
+    let store = HelpStore(appReviewHandler: appReview)
     store.accountService = account
     store.notificationService = notification
     store.entryService = entry
@@ -381,7 +387,7 @@ private func makeSUT(
     store.scaleService = scale
     store.bluetoothService = bluetooth
 
-    return (store, notification, account, logger, entry, bluetooth)
+    return (store, notification, account, logger, entry, bluetooth, appReview)
 }
 
 @MainActor

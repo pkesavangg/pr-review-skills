@@ -10,7 +10,7 @@ import UserNotifications
 @MainActor
 class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     /// Shared instance for accessing the NotificationService throughout the app
-    static let shared = PushNotificationService()
+    static let shared: PushNotificationService = PushNotificationService()
     static let fcmTokenDidRefresh = Notification.Name("FCMToken")
     @Injector var entryService: EntryServiceProtocol
     @Injector private var permissionsService: PermissionsServiceProtocol

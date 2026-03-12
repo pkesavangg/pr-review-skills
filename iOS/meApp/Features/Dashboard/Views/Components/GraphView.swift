@@ -72,7 +72,7 @@ struct GraphView: View {
             // Actual graph content
             VStack(alignment: .leading) {
                 // Preserve layout height: fade the label out instead of removing it to avoid jump
-                Text(dashboardStore.weightLabel.lowercased())
+                Text(dashboardStore.displayManager.weightLabel.lowercased())
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
                     // Hide immediately when the callout is shown (driven by the same VM flag)
@@ -95,7 +95,7 @@ struct GraphView: View {
             // We only need to handle view model configuration and UI updates here.
 
             // Immediate lightweight operations (cheap)
-            dashboardStore.clearSelection()
+            dashboardStore.chartManager.clearSelection()
             totalSectionViewModel.clearSelection()
             yearSectionViewModel.clearSelection()
             monthSectionViewModel.clearSelection()
@@ -136,12 +136,12 @@ struct GraphView: View {
                 }
 
                 // Recalculate and cache Y-axis based on the new visible region
-                dashboardStore.updateYAxisCache()
+                dashboardStore.chartManager.updateYAxisCache()
             }
         }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
-            dashboardStore.handleSettingsChange()
+            dashboardStore.lifecycleManager.handleSettingsChange()
         }
     }
 

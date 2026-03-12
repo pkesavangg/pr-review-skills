@@ -18,20 +18,20 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector var notificationService: NotificationHelperServiceProtocol
     /// Centralised permission handling service.
-    @Injector var permissionsService: PermissionsService
+    @Injector var permissionsService: PermissionsServiceProtocol
     /// Bluetooth service for device discovery
-    @Injector var bluetoothService: BluetoothService
+    @Injector var bluetoothService: BluetoothServiceProtocol
     /// Account service for account operations
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     /// Scale service for scale-related operations
-    @Injector var wifiScaleService: WifiScaleService
+    @Injector var wifiScaleService: WifiScaleServiceProtocol
     
-    @Injector var scaleService: ScaleService
-    @Injector var pushNotificationService: PushNotificationService
-    @Injector var entryService: EntryService
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var pushNotificationService: PushNotificationServiceProtocol
+    @Injector var entryService: EntryServiceProtocol
     @Injector var goalAlertService: GoalAlertServiceProtocol
     
-    let networkMonitor = NetworkMonitor.shared
+    let networkMonitor: NetworkMonitoring
     let bluetoothSetupManager: BluetoothSetupManaging
     let wifiSetupManager: WifiSetupManaging
     let setupCoordinator: ScaleSetupCoordinating
@@ -269,7 +269,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
     let customizeSettingsLang = BtWifiScaleSetupStrings.CustomizeSettingsStrings.self
     
     // Dashboard store used for the Dashboard Metrics customization view
-    let dashboardStore = DashboardStore()
+    private let makeDashboardStore: @MainActor () -> DashboardStore
+    lazy var dashboardStore: DashboardStore = makeDashboardStore()
     // Snapshots to detect changes and gate Save button enabling
     var initialDisplayNameSnapshot: String?
     var initialScaleModeSnapshot: ScaleModes?
@@ -554,18 +555,22 @@ final class BtWifiScaleSetupStore: ObservableObject {
         bluetoothSetupManager: BluetoothSetupManaging = BluetoothSetupManager(),
         wifiSetupManager: WifiSetupManaging = WifiSetupManager(),
         setupCoordinator: ScaleSetupCoordinating = ScaleSetupCoordinator(),
-        setupValidationService: SetupValidationServicing = SetupValidationService()
+        setupValidationService: SetupValidationServicing = SetupValidationService(),
+        networkMonitor: NetworkMonitoring = NetworkMonitor.shared,
+        dashboardStoreFactory: @escaping @MainActor () -> DashboardStore = { DashboardStore() }
     ) {
         self.bluetoothSetupManager = bluetoothSetupManager
         self.wifiSetupManager = wifiSetupManager
         self.setupCoordinator = setupCoordinator
         self.setupValidationService = setupValidationService
+        self.networkMonitor = networkMonitor
+        self.makeDashboardStore = dashboardStoreFactory
 
         // Cache the first name from active account
         self.firstName = accountService.activeAccount?.firstName ?? "User"
         
         // Observe permission updates so the footer button reacts instantly.
-        permissionsService.$permissions
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -573,7 +578,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
         
-        networkMonitor.$isConnected
+        networkMonitor.isConnectedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
