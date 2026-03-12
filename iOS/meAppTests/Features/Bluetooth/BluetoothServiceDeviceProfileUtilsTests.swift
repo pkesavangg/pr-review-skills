@@ -224,7 +224,7 @@ struct BluetoothServiceDeviceProfileUtilsTests {
 
         let testEntry = Entry(entryTimestamp: "2026-01-01T00:00:00Z", accountId: account.accountId, operationType: "create")
         testEntry.scaleEntry = BathScaleEntry(weight: 1500) // stored weight
-        entry.latestEntry = testEntry
+        entry.getLatestEntryResult = .success(testEntry)
 
         let result = await sut.getProfileInfo(from: account)
 
