@@ -121,7 +121,7 @@ struct DashboardErrorTests {
         #expect(logger.entries.count == 1)
         #expect(logger.entries[0].level == .info)
         #expect(logger.entries[0].tag == "DashboardError")
-        #expect(logger.entries[0].message == DashboardError.noActiveAccount.errorDescription)
+        #expect(logger.entries[0].message == DashboardError.noActiveAccount.errorDescription!)
     }
 
     @Test("log: invalidMetricData logs at error severity with custom tag")
@@ -134,7 +134,7 @@ struct DashboardErrorTests {
         #expect(logger.entries.count == 1)
         #expect(logger.entries[0].level == .error)
         #expect(logger.entries[0].tag == "DashboardTests")
-        #expect(logger.entries[0].message == error.errorDescription)
+        #expect(logger.entries[0].message == error.errorDescription!)
     }
 
     @Test("log: dataLoadingFailed logs mapped dashboard description at error severity")
@@ -162,6 +162,6 @@ struct DashboardErrorTests {
 
         #expect(logger.entries.count == 1)
         #expect(logger.entries[0].tag == "DashboardResultTests")
-        #expect(logger.entries[0].message == DashboardError.goalCalculationFailed("bad goal").errorDescription)
+        #expect(logger.entries[0].message == DashboardError.goalCalculationFailed("bad goal").errorDescription!)
     }
 }
