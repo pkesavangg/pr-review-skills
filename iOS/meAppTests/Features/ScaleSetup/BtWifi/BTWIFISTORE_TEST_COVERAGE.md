@@ -18,11 +18,12 @@ Bottom-line (base store file) coverage:
 
 ## Test Count Summary
 - `Store Core`: 13 tests
+- `Customization`: 11 tests
 - `Navigation`: 7 tests
 - `Pairing Flow`: 6 tests
 - `Recovery And Errors`: 7 tests
 - `WiFi And Users`: 9 tests
-- Total: **42 tests**
+- Total: **53 tests**
 
 ## Files Involved
 
@@ -42,6 +43,7 @@ Bottom-line (base store file) coverage:
 ### BT+WiFi-specific test fixtures and suites
 - `meAppTests/Features/ScaleSetup/BtWifi/Fixtures/BtWifiStoreTestFixtures.swift`
 - `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreCoreStateTests.swift`
+- `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreCustomizationTests.swift`
 - `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreNavigationTests.swift`
 - `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStorePairingTests.swift`
 - `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreWifiUserFlowTests.swift`
@@ -174,7 +176,58 @@ Covered examples:
 - back from password resets network form
 - reconnect flow loads user list and enters max-user recovery state
 
-### 3) Pairing Flow
+### 2) Customization
+File:
+- `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreCustomizationTests.swift`
+
+Test count:
+- 11
+
+Focus:
+- customization page preload behavior
+- username and scale-mode validation
+- save/back behavior for view-settings screens
+- dependency interactions during settings update
+- incomplete/invalid configuration rejection
+- repeated-entry and repeated-save stability
+
+Covered examples:
+- username customization preloads saved preference and current user list
+- scale metrics customization falls back to defaults and preserves saved snapshots on re-entry
+- scale mode changes toggle next-button enablement based on actual delta from snapshots
+- invalid username save is rejected without persisting or marking settings as saved
+- back from username customization restores original value
+- repeated scale-metrics saves preserve the latest snapshot without duplicating selection state
+- customization helper methods track visited items and present the correct modals
+- `updateCustomizeSettings()` fails fast when no saved scale exists
+- `updateCustomizeSettings()` success updates scale preference, pushes local changes, updates Bluetooth account state, and navigates to step-on
+- local scale-preference update failure surfaces `.updateSettingsFailed`
+- Bluetooth account update failure keeps the flow recoverable and prevents forward navigation
+
+### 3) Navigation
+File:
+- `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreNavigationTests.swift`
+
+Test count:
+- 7
+
+Focus:
+- intro routing
+- permissions/network gating
+- Wi-Fi-only entry
+- back-navigation behavior
+- reconnect entry behavior
+
+Covered examples:
+- intro -> wakeup when prerequisites are met
+- intro -> permissions when prerequisites are missing
+- Wi-Fi-only flow starts at gathering network
+- network selection opens password step
+- network selection falls back when permissions/network are missing
+- back from password resets network form
+- reconnect flow loads user list and enters max-user recovery state
+
+### 4) Pairing Flow
 File:
 - `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStorePairingTests.swift`
 
@@ -195,7 +248,7 @@ Covered examples:
 - memory-full response enters max-user recovery flow
 - pairing failure leaves connection in failure state
 
-### 4) Recovery And Errors
+### 5) Recovery And Errors
 File:
 - `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreRecoveryTests.swift`
 
@@ -218,7 +271,7 @@ Covered examples:
 - network loss on Wi-Fi list routes back to recovery state
 - permissions step requests the next missing Bluetooth permission
 
-### 5) Wi-Fi And User Flow
+### 6) Wi-Fi And User Flow
 File:
 - `meAppTests/Features/ScaleSetup/BtWifi/TestSuits/BtWifiStoreWifiUserFlowTests.swift`
 
@@ -257,6 +310,14 @@ The suites are designed to protect regressions in:
 - permission/network gating
 
 These are the areas most likely to break when the setup journey changes.
+
+The customization suite specifically protects regressions in:
+- preloaded customization state from saved preferences
+- view-settings save/back transitions
+- repeated customization entry/save cycles
+- invalid/incomplete customization input handling
+- scale-service and Bluetooth-service update sequencing
+- recovery behavior after failed update-settings attempts
 
 ## What Is Not Fully Covered Here
 
@@ -315,28 +376,32 @@ Reason:
 
 ## Verification Notes
 
-This project currently has:
-- Xcode targets in the project
-- no shared schemes in the `.xcodeproj`
-
-That means standard commands like:
-- `xcodebuild test -scheme ...`
-- `xcodebuild build-for-testing -scheme ...`
-
-are not directly available until schemes are shared or an alternative test invocation path is used.
-
-For local validation, one workable compile-only command is:
+Focused BT+WiFi store validation was run with:
 
 ```bash
-xcodebuild build \
-  -project meApp/iOS/meApp.xcodeproj \
-  -target meAppTests \
-  -configuration Dev \
-  -destination 'generic/platform=iOS Simulator' \
-  CODE_SIGNING_ALLOWED=NO
+xcodebuild test \
+  -project iOS/meApp.xcodeproj \
+  -scheme meAppTests \
+  -destination 'id=00008020-00191D5136E9002E' \
+  -only-testing:meAppTests/BtWifiStoreTests
 ```
 
-If package-cache corruption blocks the build, use an isolated package checkout path or clean the offending package checkout before retrying.
+Result:
+- `BtWifiStoreTests` passed on the connected iPhone
+- the new `Customization` suite passed end-to-end
+
+Important environment note:
+- this project currently relies on bundled XCFrameworks that do not build cleanly for the simulator path used in focused test runs here
+- for this reason, BT+WiFi store verification was performed on a connected physical device
+
+Device requirements:
+- connected
+- unlocked
+- trusted by Xcode
+
+Known warning from the current focused run:
+- `BtWifiStoreTestFixtures.swift` emits a Swift warning about sending non-Sendable `Device` across a protocol requirement boundary
+- this warning predates the customization tests and was not changed in this pass
 
 ## Team Guidance
 - Keep orchestration tests focused on store behavior, not service internals

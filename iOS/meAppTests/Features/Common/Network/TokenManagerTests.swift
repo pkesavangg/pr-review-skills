@@ -202,14 +202,23 @@ struct TokenManagerTests {
 
         async let first = sut.refreshToken(accountId: "acc-1")
         async let second = sut.refreshToken(accountId: "acc-1")
-        _ = try? await first
 
-        do {
-            _ = try await second
-            Issue.record("Expected waiting request to throw when getActiveTokens fails")
-        } catch {
-            #expect(error as? TokenManagerTestError == .serviceFailed)
+        // Task scheduling doesn't guarantee which call enters the actor first,
+        // so collect both results and assert one succeeds and one fails.
+        let firstResult: Result<Tokens, Error>
+        do { firstResult = .success(try await first) } catch { firstResult = .failure(error) }
+        let secondResult: Result<Tokens, Error>
+        do { secondResult = .success(try await second) } catch { secondResult = .failure(error) }
+
+        let successes = [firstResult, secondResult].compactMap { try? $0.get() }
+        let failures: [Error] = [firstResult, secondResult].compactMap {
+            guard case .failure(let e) = $0 else { return nil }
+            return e
         }
+
+        #expect(successes == [refreshed])
+        #expect(failures.count == 1)
+        #expect(failures.first as? TokenManagerTestError == .serviceFailed)
     }
 
     // MARK: - Helpers

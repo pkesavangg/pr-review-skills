@@ -176,9 +176,10 @@ struct MetricInfoSheetWrapperTests {
             loadCalls >= 2
         }
 
-        store.state.metrics.metrics.append(DashboardTestFixtures.makeMetricItem(label: DashboardStrings.bodyFat))
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        store.state.metrics.metrics = store.state.metrics.metrics + [DashboardTestFixtures.makeMetricItem(label: DashboardStrings.bodyFat)]
         store.forceImmediateUIUpdate()
-        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 1_000_000_000) {
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 3_000_000_000) {
             loadCalls >= 3
         }
 

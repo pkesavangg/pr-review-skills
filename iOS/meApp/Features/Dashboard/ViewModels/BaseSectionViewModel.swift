@@ -264,15 +264,21 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var isAtLeftBoundary: Bool {
         guard let store = dashboardStore else { return true }
         
-        // Use cached bounds from DataManager for O(1) lookup
-        guard let bounds = store.dataManager.getDateBounds(for: timePeriod) else { return true }
+        let minDate: Date
+        if let bounds = store.dataManager.getDateBounds(for: timePeriod) {
+            minDate = bounds.min
+        } else if let fallbackMin = chartOperations.min(by: { $0.date < $1.date })?.date {
+            minDate = fallbackMin
+        } else {
+            return true
+        }
         
         let domainLength = visibleDomainLength
         let visibleStart = scrollPosition.addingTimeInterval(-domainLength / 2)
         
         // Consider at boundary if visible start is at or before the minimum data date
         let boundaryThreshold: TimeInterval = 24 * 60 * 60 // 1 day
-        return visibleStart <= bounds.min.addingTimeInterval(boundaryThreshold)
+        return visibleStart <= minDate.addingTimeInterval(boundaryThreshold)
     }
     
     // MARK: - Initialization and Configuration

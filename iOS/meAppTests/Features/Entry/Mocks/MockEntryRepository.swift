@@ -10,6 +10,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     var deleteEntryError: Error?
     var fetchEntriesAsDTOError: Error?
     var fetchUnsyncedEntriesError: Error?
+    var fetchLatestEntryError: Error?
 
     private(set) var saveEntryCalls = 0
     private(set) var updateEntryCalls = 0
@@ -91,7 +92,8 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     }
 
     func fetchLatestEntry(forUserId userId: String) async throws -> Entry? {
-        entries
+        if let fetchLatestEntryError { throw fetchLatestEntryError }
+        return entries
             .filter { $0.accountId == userId }
             .sorted { $0.entryTimestamp > $1.entryTimestamp }
             .first
