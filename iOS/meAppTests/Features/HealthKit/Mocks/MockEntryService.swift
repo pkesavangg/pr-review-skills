@@ -7,6 +7,8 @@ final class MockEntryService: EntryServiceProtocol {
     let entrySaved = PassthroughSubject<EntryNotification, Never>()
     let entryDeleted = PassthroughSubject<EntryNotification, Never>()
     var latestEntry: Entry?
+    private(set) var savedEntries: [Entry] = []
+    private(set) var deletedEntries: [Entry] = []
     var getMonthsAllResult: Result<[HistoryMonth], Error> = .success([])
     var getMonthDetailResult: Result<[Entry], Error> = .success([])
     var exportCSVResult: Result<Void, Error> = .success(())
@@ -30,9 +32,23 @@ final class MockEntryService: EntryServiceProtocol {
     func loadDashboardData() async {}
     func clearAllData() async { clearAllDataCalls += 1 }
     func clearLastSyncTimestamp() async throws {}
-    func saveNewEntry(_ entry: Entry) async throws { saveNewEntryCalls += 1 }
-    func saveNewEntries(_ entries: [Entry]) async throws { saveNewEntriesCalls += 1 }
-    func deleteEntry(_ entry: Entry) async throws { deleteEntryCalls += 1 }
+    func saveNewEntry(_ entry: Entry) async throws {
+        savedEntries.append(entry)
+        latestEntry = entry
+        entrySaved.send(EntryNotification(from: entry))
+    }
+    func saveNewEntries(_ entries: [Entry]) async throws {
+        savedEntries.append(contentsOf: entries)
+        latestEntry = entries.last ?? latestEntry
+        for entry in entries {
+            entrySaved.send(EntryNotification(from: entry))
+        }
+    }
+    func deleteEntry(_ entry: Entry) async throws {
+        deleteEntryCalls += 1
+        deletedEntries.append(entry)
+        entryDeleted.send(EntryNotification(from: entry))
+    }
     func getAllEntries() async throws -> [Entry] { [] }
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] { [] }
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool { false }

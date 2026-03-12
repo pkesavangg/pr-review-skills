@@ -35,7 +35,7 @@ final class MockBluetoothSDKClient: BluetoothSDKClient {
         ["name": "Scale User", "token": "user-token", "lastActive": 42, "isBodyMetricsEnabled": true]
     ])
     var getWifiMacAddressResult = "11:22:33:44:55:66"
-    var getDeviceInfoResult = decodeDeviceDetails(
+    var getDeviceInfoResult: GGDeviceDetails? = decodeDeviceDetails(
         deviceName: "Scale",
         broadcastId: "ABC123",
         modelNumber: "Model-R4",

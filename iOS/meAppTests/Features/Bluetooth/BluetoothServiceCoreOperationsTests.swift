@@ -750,7 +750,8 @@ struct BluetoothServiceCoreOperationsTests {
         entry: MockEntryService? = nil,
         logger: MockLoggerService? = nil,
         discovery: MockBLEDiscoveryManager? = nil,
-        sdk: MockBluetoothSDKClient? = nil
+        sdk: MockBluetoothSDKClient? = nil,
+        notification: MockNotificationHelperService? = nil
     ) -> BluetoothService {
         BluetoothService(
             accountService: account ?? MockAccountService(),
@@ -758,7 +759,8 @@ struct BluetoothServiceCoreOperationsTests {
             entryService: entry ?? MockEntryService(),
             logger: logger ?? MockLoggerService(),
             discoveryManager: discovery ?? MockBLEDiscoveryManager(),
-            ggBleSDK: sdk ?? MockBluetoothSDKClient()
+            ggBleSDK: sdk ?? MockBluetoothSDKClient(),
+            notificationService: notification ?? MockNotificationHelperService()
         )
     }
 
