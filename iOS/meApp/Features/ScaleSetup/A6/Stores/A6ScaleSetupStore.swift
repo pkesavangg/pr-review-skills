@@ -222,10 +222,7 @@ final class A6ScaleSetupStore: ObservableObject {
                 guard let self else { return }
                 if self.discoveredScale == nil && self.currentStep == .wakeUp {
                     self.moveToNextStep()
-                    Task { @MainActor [weak self] in
-                        try? await Task.sleep(nanoseconds: 250_000_000)
-                        self?.connectionState = .failure
-                    }
+                    self.connectionState = .failure
                 }
             }
         }
