@@ -121,13 +121,13 @@ fun ScaleDetailsScreenContent(
     ) {
       // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       AppScaleImage(
-        sku = DeviceHelper.mapSkuForDisplay(device!!.getSKU()),
+        sku = DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: ""),
         modifier = Modifier.fillMaxWidth(),
         scaleImageSize = ScaleImageSize.Large,
       )
       Spacer(modifier = Modifier.height(spacing.xl))
       Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        if (state.scale.isWeighOnlyModeEnabledByOthers && state.scale.connectionStatus == BLEStatus.CONNECTED) {
+        if (state.scale?.isWeighOnlyModeEnabledByOthers == true && state.scale?.connectionStatus == BLEStatus.CONNECTED) {
           AppNote(
             message = ScaleMetricsSettingStrings.WeightOnlyNotes.Message,
             icon = AppIcons.Default.WeightOnlyMode,
@@ -281,7 +281,7 @@ fun ScaleDetailsScreenContent(
             ),
             SettingsItem(
               title = ScaleDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device!!.getSKU())),
+              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: "")),
             ),
             SettingsItem(
               title = ScaleDetailsStrings.DatePaired,

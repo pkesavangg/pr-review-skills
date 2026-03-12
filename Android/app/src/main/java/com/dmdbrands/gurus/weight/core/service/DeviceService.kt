@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -152,8 +153,9 @@ constructor(
   }
 
   override fun getGGBTDevices(): Flow<List<GGBTDevice>> {
+    val accountId = currentAccountId ?: return emptyFlow()
     return deviceRepository
-      .getDevices(currentAccountId!!)
+      .getDevices(accountId)
       .map { deviceList ->
         deviceList.map { it.toGGBTDevice() }
       }
@@ -170,7 +172,7 @@ constructor(
    * @param accountId The account ID to set
    */
   override suspend fun setAccountId(accountId: String) {
-    AppLog.d(tag, "Setting account ID: $accountId")
+   AppLog.d(tag, "Setting account ID: $accountId")
     currentAccountId = accountId
     syncDevices()
     fetchScales(accountId)
@@ -219,14 +221,14 @@ constructor(
     tempDevice: Device?
   ) {
     val tag = "DeviceService-syncDevices"
-    if (currentAccountId == null) return
+    val accountId = currentAccountId ?: return
 
     val unsyncedDevices = mutableListOf<Device>()
     val syncedDevicesToStore = mutableListOf<Device>()
 
     try {
       // 1. Get locally stored devices
-      val storedDevices = deviceRepository.getDevices(currentAccountId!!, false).first().toMutableList()
+      val storedDevices = deviceRepository.getDevices(accountId, false).first().toMutableList()
       // 2. Inject a temporary new device if passed
       tempDevice?.let { td ->
         // ✅ FIX: Only mark as unsynced if it's actually not synced yet
@@ -251,7 +253,7 @@ constructor(
       // 4. Sync new/updated devices
       for (device in devicesToSync) {
         try {
-          var savedDevice = deviceRepository.saveDeviceToApi(device, currentAccountId!!)
+          var savedDevice = deviceRepository.saveDeviceToApi(device, accountId)
           savedDevice = savedDevice.copy(isSynced = true)
 
           // Sync preference if needed
@@ -301,7 +303,7 @@ constructor(
             deviceRepository.markDeviceDeleted(device.id, true)
             deviceRepository.deleteDeviceFromDb(device.id)
           } else {
-            deviceRepository.updateDevice(device.copy(isDeleted = true, isSynced = false), accountId = currentAccountId!!)
+            deviceRepository.updateDevice(device.copy(isDeleted = true, isSynced = false), accountId = accountId)
             unsyncedDevices.add(device.copy(isDeleted = true, isSynced = false))
           }
         }
@@ -320,7 +322,7 @@ constructor(
 
     // 6. Get fresh data from API and merge with unsynced by id: same id = copy unsynced property onto existing item; new id = append
     val finalDevices = try {
-      val apiDevices = deviceRepository.getDevicesFromApi(currentAccountId!!)
+      val apiDevices = deviceRepository.getDevicesFromApi(accountId)
       AppLog.i(tag, "Successfully fetched ${apiDevices.size} devices from API")
       val syncedList = apiDevices.map { apiDev ->
         val localMatch = deviceRepository.getDevice(apiDev.id).first()
@@ -344,9 +346,9 @@ constructor(
     }
     // 7. Store updated device list locally
     try {
-      deviceRepository.deleteAllDevicesForAccount(accountId = currentAccountId!!)
+      deviceRepository.deleteAllDevicesForAccount(accountId = accountId)
       finalDevices.forEach { device ->
-        deviceRepository.saveDeviceToDb(device, currentAccountId!!)
+        deviceRepository.saveDeviceToDb(device, accountId)
       }
       // 8. Refresh the pairedScales StateFlow to reflect changes in UI
       fetchScales(currentAccountId)

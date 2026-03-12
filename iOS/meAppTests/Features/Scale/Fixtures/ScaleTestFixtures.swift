@@ -130,4 +130,28 @@ enum ScaleTestFixtures {
         metaData.isSynced = isSynced
         return metaData
     }
+
+    static func makeScaleMetaDataDTO(
+        modelNumber: String? = "R4",
+        serialNumber: String? = "serial-1",
+        latestFirmwareVersion: String? = "1.0.0",
+        firmwareRevision: String? = nil,
+        hardwareRevision: String? = nil,
+        softwareRevision: String? = nil,
+        manufacturerName: String? = nil,
+        systemId: String? = nil,
+        wifiMac: String? = "AA:BB:CC:DD:EE:FF"
+    ) -> ScaleMetaDataDTO {
+        ScaleMetaDataDTO(
+            firmwareRevision: firmwareRevision,
+            hardwareRevision: hardwareRevision,
+            latestFirmwareVersion: latestFirmwareVersion,
+            manufacturerName: manufacturerName,
+            modelNumber: modelNumber,
+            serialNumber: serialNumber,
+            softwareRevision: softwareRevision,
+            systemId: systemId,
+            wifiMac: wifiMac
+        )
+    }
 }

@@ -365,10 +365,11 @@ object EntryHelper {
     )
 
     // Calculate BMI if weight and height are available
-    val calculatedBmi = if (weight != null && userHeight != null) {
+    val localWeight = weight
+    val calculatedBmi = if (localWeight != null && userHeight != null) {
       val weightKg = when (mode?.lowercase()) {
-        "kg" -> weight!!.toDoublePreserve()
-        else -> ConversionTools.convertStoredToKg(weight!!.toDoublePreserve() * 10) // Convert lbs to kg
+        "kg" -> localWeight.toDoublePreserve()
+        else -> ConversionTools.convertStoredToKg(localWeight.toDoublePreserve() * 10) // Convert lbs to kg
       }
       val heightCm = ConversionTools.convertStoredHeightToCm(userHeight)
       ConversionTools.calculateBMIFromMetric(weightKg, heightCm)

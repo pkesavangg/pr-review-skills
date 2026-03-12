@@ -203,7 +203,7 @@ constructor(
           if (token.isNotBlank()) {
             appRepository.setFcmToken(token)
             fcmToken = token
-            AppLog.i(TAG, "FCM token populated from Firebase (e.g. post-migration): $token")
+            AppLog.i(TAG, "FCM token populated from Firebase (e.g. post-migration)")
           }
         }.onFailure { e -> AppLog.w(TAG, "Could not fetch FCM token from Firebase: ${e.message}") }
       }
@@ -242,7 +242,7 @@ constructor(
   override suspend fun getFcmToken(): String =
     try {
       val token = appRepository.getFcmToken()
-      AppLog.d(TAG, "Retrieved FCM token from DataStore: $token")
+      AppLog.d(TAG, "Retrieved FCM token from DataStore")
       token
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to get FCM token from DataStore", e)

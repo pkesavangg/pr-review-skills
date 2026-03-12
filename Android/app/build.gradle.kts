@@ -12,7 +12,6 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.google.proto)
-  kotlin("kapt")
 }
 
 android {
@@ -42,12 +41,23 @@ android {
 
   buildTypes {
     debug {
+      buildConfigField(
+        "String",
+        "BASE_URL",
+        "\"https://api.weightgurus.com/v3/\"",
+      )
     }
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
+      )
+      buildConfigField(
+        "String",
+        "BASE_URL",
+        "\"https://api.weightgurus.com/v3/\"",
       )
     }
   }
@@ -125,7 +135,7 @@ dependencies {
 
   // Hilt
   implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
+  ksp(libs.hilt.android.compiler)
 
   // Retrofit
   implementation(libs.retrofit)
@@ -157,6 +167,9 @@ dependencies {
   implementation(libs.androidx.datastore.preferences.core)
   implementation(libs.gson)
 
+  // Security - EncryptedSharedPreferences
+  implementation(libs.androidx.security.crypto)
+
   // Protobuf dependencies
   implementation(libs.protobuf.javalite)
   implementation(libs.androidx.datastore)
@@ -184,16 +197,11 @@ dependencies {
   implementation(libs.lib.vico.compose.m3)
 
   // Gif Image
-  implementation(libs.coil.compose)       // For Jetpack Compose
+  implementation(libs.coil.compose) // For Jetpack Compose
   implementation(libs.coil.gif)
 
   // foundation-pullrefresh
   // implementation(libs.androidx.foundation.pullrefresh)
-}
-
-// Allow references to generated code
-kapt {
-  correctErrorTypes = true
 }
 
 protobuf {

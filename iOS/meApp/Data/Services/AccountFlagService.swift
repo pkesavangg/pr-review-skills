@@ -13,8 +13,8 @@ import Foundation
 final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     static let shared = AccountFlagService()
 
-    private let logger: LoggerServiceProtocol
-    private let appReviewService: AppReviewHandlerProtocol
+    @Injector private var logger: LoggerServiceProtocol
+    @Injector private var appReviewService: AppReviewHandlerProtocol
     private let apiRepo: AccountFlagRepositoryAPIProtocol
     private let tag = "AccountFlagService"
     
@@ -24,14 +24,8 @@ final class AccountFlagService: AccountFlagServiceProtocol, ObservableObject {
     /// Scale review event publisher for scale review flags
     let scaleReviewSubject = PassthroughSubject<ScaleReviewEvent, Never>()
     
-    init(
-        apiRepo: AccountFlagRepositoryAPIProtocol? = nil,
-        logger: LoggerServiceProtocol? = nil,
-        appReviewService: AppReviewHandlerProtocol? = nil
-    ) {
+    init(apiRepo: AccountFlagRepositoryAPIProtocol? = nil) {
         self.apiRepo = apiRepo ?? AccountFlagRepositoryAPI()
-        self.logger = logger ?? LoggerService.shared
-        self.appReviewService = appReviewService ?? AppReviewService.shared
     }
     
     /// Fetches account flags from the API

@@ -58,10 +58,11 @@ fun AppScaleImage(
           ).clip(RoundedCornerShape(borderRadius.xs)),
       contentAlignment = Alignment.Center,
     ) {
+      val context = androidx.compose.ui.platform.LocalContext.current
       Image(
         painter =
           painterResource(
-            id = ScaleUtility.scaleImageResource(sku),
+            id = ScaleUtility.scaleImageResource(context, sku),
           ),
         contentDescription = "$sku scale",
       )

@@ -24,8 +24,9 @@ struct HealthKitStoreTests {
             healthKitService: healthKit
         )
 
-        let updated = await waitUntil { store.isIntegrated && store.isOutOfSync }
-        #expect(updated == true)
+        await store.waitForLoadStatus()
+        #expect(store.isIntegrated == true)
+        #expect(store.isOutOfSync == true)
     }
 
     @Test("loadStatus keeps integration off when assigned to another account")
@@ -39,8 +40,8 @@ struct HealthKitStoreTests {
         )
         let (store, _, _, _, _, _, _) = makeSUT(accountService: account, integrationService: integration)
 
-        let updated = await waitUntil { integration.getStoredIntegrationDataCalls > 0 }
-        #expect(updated == true)
+        await store.waitForLoadStatus()
+        #expect(integration.getStoredIntegrationDataCalls == 1)
         #expect(store.isIntegrated == false)
     }
 
@@ -638,6 +639,13 @@ private func makeSUT(
     let notification = notificationService ?? MockNotificationHelperService()
     let logger = loggerService ?? MockLoggerService()
     let kv = kvStorage ?? MockKvStorageService()
+
+    DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+    DependencyContainer.shared.register(entry as EntryServiceProtocol)
+    DependencyContainer.shared.register(account as AccountServiceProtocol)
+    DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
+    DependencyContainer.shared.register(healthKit as HealthKitServiceProtocol)
+    DependencyContainer.shared.register(logger as LoggerServiceProtocol)
 
     let store = HealthKitStore(
         kvStorage: kv,

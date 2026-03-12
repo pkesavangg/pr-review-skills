@@ -12,11 +12,11 @@ import SwiftUI
 // MARK: - DisplayMetricsViewModel
 @MainActor
 final class DisplayMetricsViewModel: ObservableObject {
-    @Injector var notificationService: NotificationHelperServiceProtocol
-    @Injector var scaleService: ScaleServiceProtocol
-    @Injector var bluetoothService: BluetoothServiceProtocol
-    @Injector var logger: LoggerServiceProtocol
-    @Injector var accountService: AccountServiceProtocol
+    let notificationService: NotificationHelperServiceProtocol
+    let scaleService: ScaleServiceProtocol
+    let bluetoothService: BluetoothServiceProtocol
+    let logger: LoggerServiceProtocol
+    let accountService: AccountServiceProtocol
 
     // Store the device ID for safe refetching from MainActor context
     private let scaleId: PersistentIdentifier
@@ -83,11 +83,24 @@ final class DisplayMetricsViewModel: ObservableObject {
     private let isWeighOnlyModeEnabledByOthers: Bool
     private let tag = "DisplayMetricsViewModel"
 
-    init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
+    init(
+        scale: Device,
+        isWeighOnlyModeEnabledByOthers: Bool = false,
+        notificationService: NotificationHelperServiceProtocol? = nil,
+        scaleService: ScaleServiceProtocol? = nil,
+        bluetoothService: BluetoothServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil
+    ) {
         self.scaleId = scale.persistentModelID
         self.scaleIdString = scale.id
         self.cachedScale = scale
         self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
+        self.notificationService = notificationService ?? Self.resolveDependency(NotificationHelperServiceProtocol.self)
+        self.scaleService = scaleService ?? Self.resolveDependency(ScaleServiceProtocol.self)
+        self.bluetoothService = bluetoothService ?? Self.resolveDependency(BluetoothServiceProtocol.self)
+        self.logger = logger ?? Self.resolveDependency(LoggerServiceProtocol.self)
+        self.accountService = accountService ?? Self.resolveDependency(AccountServiceProtocol.self)
         setupInitialValues()
     }
     
@@ -413,5 +426,15 @@ final class DisplayMetricsViewModel: ObservableObject {
             notificationService.dismissLoader()
             notificationService.showToast(ToastModel(title: ToastStrings.error, message: ToastStrings.errorSavingDisplayMetrics))
         }
+    }
+}
+
+private extension DisplayMetricsViewModel {
+    static func resolveDependency<T>(_ type: T.Type) -> T {
+        guard let dependency = DependencyContainer.shared.resolve(type) else {
+            let keys = DependencyContainer.shared.dependencies.keys.sorted().joined(separator: ", ")
+            fatalError("Dependency \(type) is not registered in DependencyContainer. Registered keys: [\(keys)]")
+        }
+        return dependency
     }
 }

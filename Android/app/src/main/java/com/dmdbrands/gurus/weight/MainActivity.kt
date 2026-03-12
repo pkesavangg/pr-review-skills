@@ -161,11 +161,9 @@ class MainActivity : AppCompatActivity() {
         UserDataStore(applicationContext),
         FcmDataStore(applicationContext),
       )
-
-    val initialMode =
-      runBlocking {
-        appRepository.themeModeFlow.first() // blocks briefly, safe here
-      }
+    val initialMode = runBlocking {
+      appRepository.themeModeFlow.first()
+    }
     applyNightMode(initialMode)
   }
 

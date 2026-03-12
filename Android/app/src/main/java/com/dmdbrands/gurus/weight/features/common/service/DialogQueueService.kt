@@ -114,9 +114,9 @@ class DialogQueueService
          */
         private fun showNext() {
             if (dialogQueue.isNotEmpty()) {
-                val next = dialogQueue.peek()
+                val next = dialogQueue.peek() ?: return
                 scope.launch {
-                    delay(next!!.delayMillis)
+                    delay(next.delayMillis)
                     _currentDialog.value = next
                 }
             }

@@ -29,6 +29,7 @@ final class MockWifiPermissionsService: PermissionsServiceProtocol {
     }
 
     var permissionStates: [GGPermissionType: GGPermissionState] = [:]
+    private(set) var navigateToWifiSettingsCalls = 0
 
     func setPermissions(_ permissions: [GGPermissionType: GGPermissionState]) {
         self.permissions = permissions
@@ -52,6 +53,10 @@ final class MockWifiPermissionsService: PermissionsServiceProtocol {
 
     func getPermissionState(_ type: GGPermissionType) -> GGPermissionState? {
         permissionStates[type]
+    }
+
+    func navigateToWifiSettings() {
+        navigateToWifiSettingsCalls += 1
     }
 }
 

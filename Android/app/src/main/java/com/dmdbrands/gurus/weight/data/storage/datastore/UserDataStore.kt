@@ -129,7 +129,7 @@ class UserDataStore @Inject constructor(
 
     // Otherwise, update the existing account
     val updated = current.toBuilder().apply {
-      val existingAccount = current.accountsMap[accountId]!!
+      val existingAccount = requireNotNull(current.accountsMap[accountId]) { "Account not found for id: $accountId" }
 
       val updatedAccount = existingAccount.toBuilder()
         .setRefreshToken(refreshToken)
