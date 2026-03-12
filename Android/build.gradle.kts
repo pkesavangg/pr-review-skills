@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.android.test) apply false
+    alias(libs.plugins.baselineprofile) apply false
 }
 
 subprojects {
