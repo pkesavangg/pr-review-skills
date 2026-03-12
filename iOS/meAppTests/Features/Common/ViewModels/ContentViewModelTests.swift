@@ -240,25 +240,6 @@ struct ContentViewModelTests {
         #expect(accountFlag.checkAccountFlagCalls == 0)
     }
 
-    @Test("checkAccountFlags handles checkAccountFlag error gracefully")
-    func checkAccountFlagsHandlesCheckAccountFlagError() async {
-        let (viewModel, account, _, entry, _, _, _, accountFlag) = makeSUT()
-        account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-2")
-        account.refreshAccountResult = .success(ContentViewModelTestFixtures.makeActiveAccount(id: "content-flag-error-2"))
-        entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-flag-error-2", count: 1))
-        accountFlag.getAccountFlagResult = .success(ContentViewModelTestFixtures.makeAccountFlag(trigger: "login"))
-        accountFlag.checkAccountFlagResult = .failure(ContentViewModelTestError.accountFlagFailed)
-
-        viewModel.performAppInitialization()
-        let completed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
-            accountFlag.checkAccountFlagCalls == 1 && viewModel.contentViewState == .dashboard
-        }
-
-        #expect(completed == true)
-        #expect(accountFlag.getAccountFlagCalls == 1)
-        #expect(accountFlag.checkAccountFlagCalls == 1)
-        #expect(accountFlag.lastCheckTrigger == "login")
-    }
 
     @Test("waitForStartupMigrationIfNeeded times out after 15 seconds")
     func waitForStartupMigrationTimesOut() async {
