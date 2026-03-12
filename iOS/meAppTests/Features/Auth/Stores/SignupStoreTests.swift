@@ -542,6 +542,11 @@ private func makeSUT() -> (SignupStore, MockAccountService, MockNotificationHelp
 
     notificationService.dismissAllNotifications()
     let store = SignupStore()
+    // Prime injector-backed dependencies immediately to keep this store isolated
+    // from global container resets in concurrently running suites.
+    _ = store.accountService
+    _ = store.notificationService
+    _ = store.logger
     return (store, accountService, notificationService, logger)
 }
 
@@ -557,14 +562,14 @@ private func fillRequiredSignupFields(_ store: SignupStore) {
 
 @MainActor
 private func waitUntil(
-    timeoutIterations: Int = 200,
+    timeoutNanoseconds: UInt64 = 2_000_000_000,
+    pollNanoseconds: UInt64 = 10_000_000,
     condition: @MainActor () -> Bool
 ) async {
-    for _ in 0..<timeoutIterations {
-        if condition() {
-            return
-        }
-        await Task.yield()
+    let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+    while ContinuousClock.now < deadline {
+        if condition() { return }
+        try? await Task.sleep(nanoseconds: pollNanoseconds)
     }
 }
 

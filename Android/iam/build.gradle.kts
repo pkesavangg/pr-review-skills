@@ -13,7 +13,7 @@ plugins {
   alias(libs.plugins.google.proto)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.hilt)
-  kotlin("kapt")
+  alias(libs.plugins.ksp)
   `maven-publish`
 }
 
@@ -103,7 +103,7 @@ dependencies {
 
   // Hilt dependencies
   implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
+  ksp(libs.hilt.android.compiler)
   implementation(libs.hilt.navigation.compose)
 
   // ViewModel Compose
@@ -117,11 +117,6 @@ dependencies {
   androidTestImplementation(libs.androidx.ui.test.junit4)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
-}
-
-// Allow references to generated code
-kapt {
-  correctErrorTypes = true
 }
 
 protobuf {

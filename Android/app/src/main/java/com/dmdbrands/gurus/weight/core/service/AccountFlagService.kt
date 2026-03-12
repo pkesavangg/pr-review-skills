@@ -65,7 +65,7 @@ class AccountFlagService
           return false
         }
 
-        val flag = firstFlag!!
+        val flag = firstFlag ?: return false
         val flagType = flag.type.split(" ")[0]
         val flagTrigger = flag.trigger
         val flagId = flag.id

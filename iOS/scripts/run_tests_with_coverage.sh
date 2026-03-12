@@ -12,6 +12,7 @@ SCHEME="${SCHEME:-}"
 DESTINATION="${DESTINATION:-}"
 DEVICE_ID="${DEVICE_ID:-}"
 DEVICE_NAME="${DEVICE_NAME:-}"
+TEST_TYPE="${TEST_TYPE:-}"
 OUTPUT_PREFIX="coverage-report"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,6 +24,33 @@ EXPORT_SCRIPT="${IOS_ROOT}/scripts/export_coverage_reports.py"
 
 mkdir -p "${RESULT_DIR}"
 
+choose_test_type() {
+  if [[ -n "${TEST_TYPE}" ]]; then
+    if [[ "${TEST_TYPE}" != "unit" && "${TEST_TYPE}" != "ui" ]]; then
+      echo "Invalid TEST_TYPE '${TEST_TYPE}'. Must be 'unit' or 'ui'." >&2
+      exit 1
+    fi
+    return
+  fi
+
+  echo "Select test type:"
+  echo "  1) Unit tests"
+  echo "  2) UI tests"
+
+  local choice
+  read -r -p "Select [1-2] (default 1): " choice
+  choice="${choice:-1}"
+
+  case "${choice}" in
+    1) TEST_TYPE="unit" ;;
+    2) TEST_TYPE="ui" ;;
+    *)
+      echo "Invalid selection: ${choice}" >&2
+      exit 1
+      ;;
+  esac
+}
+
 list_test_schemes() {
   local list_json
   list_json="$(xcodebuild -list -json -project "${PROJECT_PATH}" 2>/dev/null || true)"
@@ -31,12 +59,13 @@ list_test_schemes() {
     exit 1
   fi
 
-  SCHEMES_JSON="${list_json}" python3 - <<'PY'
+  SCHEMES_JSON="${list_json}" TEST_TYPE="${TEST_TYPE}" python3 - <<'PY'
 import json
 import os
 import re
 
 raw = os.environ.get("SCHEMES_JSON", "")
+test_type = os.environ.get("TEST_TYPE", "unit")
 try:
     data = json.loads(raw)
 except Exception:
@@ -47,7 +76,11 @@ if not schemes:
     raise SystemExit(1)
 
 test_schemes = [s for s in schemes if "test" in s.lower()]
-chosen = test_schemes if test_schemes else schemes
+if test_type == "ui":
+    filtered = [s for s in test_schemes if "uitest" in s.lower()]
+else:
+    filtered = [s for s in test_schemes if "uitest" not in s.lower()]
+chosen = filtered if filtered else test_schemes
 
 seen = set()
 for name in chosen:
@@ -220,6 +253,7 @@ choose_destination() {
   DESTINATION="platform=${platform},id=${dest_id}"
 }
 
+choose_test_type
 choose_scheme
 
 set_report_dir_from_scheme() {
@@ -257,4 +291,5 @@ xcodebuild test \
 python3 "${EXPORT_SCRIPT}" \
   --xcresult "${RESULT_BUNDLE_PATH}" \
   --output-dir "${REPORT_DIR}" \
-  --output-prefix "${OUTPUT_PREFIX}"
+  --output-prefix "${OUTPUT_PREFIX}" \
+  --test-type "${TEST_TYPE}"

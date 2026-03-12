@@ -9,6 +9,25 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
+EXCLUDED_UI_SEGMENTS = {"Views", "ViewModifiers", "Modifiers", "Previews"}
+EXCLUDED_UI_SUFFIXES = (
+    "View.swift",
+    "Modifier.swift",
+    "Screen.swift",
+    "UIKitView.swift",
+    "Cell.swift",
+)
+
+
+def coverage_scope_label(test_type: str = "unit") -> str:
+    if test_type == "ui":
+        return "meApp/**/Views/**/*.swift, *View.swift, *Screen.swift, *Cell.swift (UI layer only)"
+    return "meApp/**/*.swift (excluding UI views/modifiers)"
+
+
+def is_ui_file(relative_path: str) -> bool:
+    return is_excluded_ui_file(relative_path)
+
 
 def run_command(cmd: List[str]) -> str:
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -65,7 +84,14 @@ def format_number(value: float) -> str:
     return f"{value:.2f}"
 
 
-def parse_report_data(report: dict, repo_root: Path) -> Tuple[List[Dict[str, float]], float, int, float]:
+def is_excluded_ui_file(relative_path: str) -> bool:
+    path = Path(relative_path)
+    if any(part in EXCLUDED_UI_SEGMENTS for part in path.parts):
+        return True
+    return path.name.endswith(EXCLUDED_UI_SUFFIXES)
+
+
+def parse_report_data(report: dict, repo_root: Path, test_type: str = "unit") -> Tuple[List[Dict[str, float]], float, int, float]:
     aggregated: Dict[str, Dict[str, float]] = {}
 
     for target in report.get("targets", []):
@@ -80,6 +106,12 @@ def parse_report_data(report: dict, repo_root: Path) -> Tuple[List[Dict[str, flo
                 continue
             if not relative_path.startswith("meApp/"):
                 continue
+            if test_type == "ui":
+                if not is_ui_file(relative_path):
+                    continue
+            else:
+                if is_excluded_ui_file(relative_path):
+                    continue
 
             executable_lines = float(file_entry.get("executableLines", 0) or 0)
             line_coverage = float(file_entry.get("lineCoverage", 0) or 0)
@@ -140,16 +172,19 @@ def write_markdown(
     total_covered: float,
     total_executable: int,
     total_percent: float,
+    test_type: str = "unit",
 ) -> None:
     generated_at = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    scope = coverage_scope_label(test_type)
+    report_title = "iOS UI Test Coverage Report" if test_type == "ui" else "iOS Unit Test Coverage Report"
 
     with out_path.open("w", encoding="utf-8") as file_handle:
-        file_handle.write("# iOS Unit Test Coverage Report\n\n")
+        file_handle.write(f"# {report_title}\n\n")
         file_handle.write(f"- Generated: {generated_at}\n")
         file_handle.write(f"- Source: `{xcresult_path}`\n")
-        file_handle.write(f"- Swift files included: {len(rows)} (`meApp/**/*.swift`)\n")
-        file_handle.write(f"- App-only covered lines (`meApp/**/*.swift`): {format_number(total_covered)}\n")
-        file_handle.write(f"- App-only executable lines (`meApp/**/*.swift`): {total_executable}\n")
+        file_handle.write(f"- Swift files included: {len(rows)} (`{scope}`)\n")
+        file_handle.write(f"- App-only covered lines (`{scope}`): {format_number(total_covered)}\n")
+        file_handle.write(f"- App-only executable lines (`{scope}`): {total_executable}\n")
         file_handle.write(f"- App-only coverage: **{format_percent(total_percent)}**\n\n")
 
         file_handle.write("## Per-File Coverage\n\n")
@@ -174,8 +209,11 @@ def write_html(
     total_covered: float,
     total_executable: int,
     total_percent: float,
+    test_type: str = "unit",
 ) -> None:
     generated_at = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    scope = coverage_scope_label(test_type)
+    report_title = "iOS UI Test Coverage Report" if test_type == "ui" else "iOS Unit Test Coverage Report"
     table_rows = []
     for row in rows:
         table_rows.append(
@@ -192,7 +230,7 @@ def write_html(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>iOS Coverage Report</title>
+  <title>{html.escape(report_title)}</title>
   <style>
     :root {{
       color-scheme: light;
@@ -260,12 +298,12 @@ def write_html(
 <body>
   <div class="container">
     <div class="card">
-      <h1>iOS Unit Test Coverage Report</h1>
+      <h1>{html.escape(report_title)}</h1>
       <p class="muted">Generated: {generated_at}</p>
       <p class="muted">Source: {html.escape(str(xcresult_path))}</p>
-      <p class="muted">Swift files included: {len(rows)} (meApp/**/*.swift)</p>
-      <p class="muted">App-only covered lines (meApp/**/*.swift): {format_number(total_covered)}</p>
-      <p class="muted">App-only executable lines (meApp/**/*.swift): {total_executable}</p>
+      <p class="muted">Swift files included: {len(rows)} ({html.escape(scope)})</p>
+      <p class="muted">App-only covered lines ({html.escape(scope)}): {format_number(total_covered)}</p>
+      <p class="muted">App-only executable lines ({html.escape(scope)}): {total_executable}</p>
       <p class="metric">App-only coverage: {format_percent(total_percent)}</p>
     </div>
     <div class="card">
@@ -309,8 +347,15 @@ def main() -> int:
         default="coverage-report",
         help="Base file name for output files (default: coverage-report).",
     )
+    parser.add_argument(
+        "--test-type",
+        choices=["unit", "ui"],
+        default="unit",
+        help="Type of tests: 'unit' excludes UI files, 'ui' includes only UI files (default: unit).",
+    )
 
     args = parser.parse_args()
+    test_type = args.test_type
 
     repo_root = Path(__file__).resolve().parent.parent
     output_dir = (repo_root / args.output_dir).resolve()
@@ -336,10 +381,10 @@ def main() -> int:
         print(str(error), file=sys.stderr)
         return 1
 
-    rows, total_covered, total_executable, total_percent = parse_report_data(report, repo_root)
+    rows, total_covered, total_executable, total_percent = parse_report_data(report, repo_root, test_type)
     if not rows:
         print(
-            "No Swift source coverage found under meApp/. Ensure code coverage is enabled and tests were run.",
+            "No Swift source coverage found under filtered meApp scope. Ensure coverage is enabled and tests were run.",
             file=sys.stderr,
         )
         return 1
@@ -356,6 +401,7 @@ def main() -> int:
         total_covered,
         total_executable,
         total_percent,
+        test_type,
     )
     write_html(
         rows,
@@ -364,12 +410,13 @@ def main() -> int:
         total_covered,
         total_executable,
         total_percent,
+        test_type,
     )
 
     print(f"Coverage CSV: {csv_path}")
     print(f"Coverage Markdown: {md_path}")
     print(f"Coverage HTML: {html_path}")
-    print(f"App-only coverage (meApp/**/*.swift): {format_percent(total_percent)}")
+    print(f"Coverage ({coverage_scope_label(test_type)}): {format_percent(total_percent)}")
 
     return 0
 

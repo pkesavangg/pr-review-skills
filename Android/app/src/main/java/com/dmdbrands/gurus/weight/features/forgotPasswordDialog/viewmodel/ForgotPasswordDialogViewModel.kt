@@ -94,7 +94,7 @@ constructor(
     viewModelScope.launch {
       try {
         accountService.resetPassword(email)
-        AppLog.i(TAG, "Password reset requested for email: $email")
+        AppLog.i(TAG, "Password reset requested")
         handleIntent(ForgotPasswordDialogIntent.Success)
       } catch (e: Exception) {
         handleIntent(ForgotPasswordDialogIntent.Error("Reset Password failed"))

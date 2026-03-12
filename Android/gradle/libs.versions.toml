@@ -1,6 +1,7 @@
 [versions]
 activityComposeVersion = "1.8.2"
 agp = "8.13.1"
+detekt = "1.23.7"
 cameraCore = "1.4.2"
 coil = "2.7.0"
 coreSplashscreen = "1.0.1"
@@ -44,6 +45,7 @@ browser = "1.8.0"
 ui = "1.8.3"
 vico = "3.0.3"
 workRuntimeKtx = "2.10.2"
+ktlint = "14.0.1"
 play-review = "2.0.2"
 uiTestJunit4Android = "1.8.3"
 foundationLayout = "1.8.3"
@@ -55,6 +57,7 @@ workRuntimeKtxVersion = "2.10.3"
 hiltCommon = "1.2.0"
 hiltWork = "1.2.0"
 material3 = "1.5.0-alpha06"
+securityCrypto = "1.1.0-alpha06"
 
 [libraries]
 vico-core = { module = "com.dmdbrands.lib:vico-core", version.ref = "vico" }
@@ -129,6 +132,7 @@ androidx-runtime-saveable = { group = "androidx.compose.runtime", name = "runtim
 work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtxVersion" }
 androidx-hilt-common = { group = "androidx.hilt", name = "hilt-common", version.ref = "hiltCommon" }
 androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 
 
 [plugins]
@@ -141,5 +145,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 android-library = { id = "com.android.library", version.ref = "agp" }
 google-service = { id = "com.google.gms.google-services", version.ref = "googleService" }
 google-proto = { id = "com.google.protobuf", version.ref = "protobuf" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
 

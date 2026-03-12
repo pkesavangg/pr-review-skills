@@ -60,25 +60,3 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func getStreak() async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
 }
-
-@MainActor
-final class TestNotificationHelperService: NotificationHelperService {
-    private(set) var showLoaderCalls = 0
-    private(set) var dismissLoaderCalls = 0
-    private(set) var showToastCalls = 0
-
-    override func showLoader(_ loader: LoaderModel) {
-        showLoaderCalls += 1
-        super.showLoader(loader)
-    }
-
-    override func dismissLoader() {
-        dismissLoaderCalls += 1
-        super.dismissLoader()
-    }
-
-    override func showToast(_ data: ToastModel) {
-        showToastCalls += 1
-        super.showToast(data)
-    }
-}

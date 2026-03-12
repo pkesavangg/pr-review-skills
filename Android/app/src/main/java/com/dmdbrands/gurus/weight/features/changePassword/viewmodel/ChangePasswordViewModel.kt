@@ -129,7 +129,7 @@ constructor(
         viewModelScope.launch {
             try {
                 accountService.resetPassword(email)
-                AppLog.i("resetPasswordForCurrentUser", "Password reset requested for email: $email")
+                AppLog.i("resetPasswordForCurrentUser", "Password reset requested")
             } catch (e: Exception) {
                 AppLog.e("resetPasswordForCurrentUser", "Reset Password failed", e)
             } finally {

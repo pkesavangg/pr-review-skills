@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
@@ -92,6 +93,7 @@ constructor(
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
   private val accountFlagService: IAccountFlagService,
+  private val tokenMigrationHelper: TokenMigrationHelper,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -131,9 +133,11 @@ constructor(
         AppLog.e("MainActivity", "Failed to cleanup old logs", e)
       }
 
-      // Load all tokens into TokenManager's in-memory map
+      // Migrate tokens from DataStore to EncryptedSharedPreferences (one-time)
+      // then load all tokens into TokenManager's in-memory map
       try {
         initEvents()
+        tokenMigrationHelper.migrateIfNeeded()
         tokenManager.loadAllTokens()
         tokenManager.getCurrentAccountID()
         AppLog.v(TAG, "Loaded all tokens into TokenManager")
@@ -205,11 +209,12 @@ constructor(
           ),
         )
       } else if (sku != null) {
-        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku!!)
+        val localSku = sku ?: return@launch
+        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
         // Pass original SKU to routes (not mapped), setup will save original SKU
         navigationService.navigateTo(
           AppRoute.ScaleSetup.LcbtScaleSetup(
-            sku!!,
+            localSku,
             discoveredBroadcastId,
             LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
             scaleInfo = scaleInfo,
@@ -619,14 +624,16 @@ constructor(
 
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
-          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale) {
+          val isOnAuthScreen = currentRoute is AppRoute.Auth
+          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale && !isOnAuthScreen) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
                   viewModelScope.launch {
                     val accountId = currentAccountId ?: return@launch
+                    val broadcastId = data.broadcastId ?: return@launch
                     dialogQueueService.showLoader("Loading...")
-                    val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
+                    val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
                     ggDeviceService.addCacheDevice(data.broadcastId, device)
                     ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                       viewModelScope.launch {
@@ -644,8 +651,8 @@ constructor(
                   }
                 },
                 onCancel = {
-                  if (data.broadcastId != null) {
-                    ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
+                  data.broadcastId?.let { broadcastId ->
+                    ggDeviceService.skipDevice(broadcastId, considerForSession = true)
                   }
                 },
               ),
@@ -656,13 +663,15 @@ constructor(
         GGScanResponseType.DEVICE_DUPLICATE_USER -> {
           try {
             val currentRoute = navigationService.getCurrentRoute()
-            if (currentRoute !is AppRoute.ScaleSetup) {
+            val isOnAuthScreen = currentRoute is AppRoute.Auth
+            if (currentRoute !is AppRoute.ScaleSetup && !isOnAuthScreen) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {
                     viewModelScope.launch {
                       val accountId = currentAccountId ?: return@launch
-                      val device = deviceService.getScaleByBroadcastId(data.broadcastId!!, accountId) ?: return@launch
+                      val broadcastId = data.broadcastId ?: return@launch
+                      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
                       val userList = suspendCoroutine { continuation ->
                         ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
                           continuation.resume(response.user)
@@ -686,8 +695,8 @@ constructor(
                     }
                   },
                   onCancel = {
-                    if (data.broadcastId != null) {
-                      ggDeviceService.skipDevice(data.broadcastId!!, considerForSession = true)
+                    data.broadcastId?.let { broadcastId ->
+                      ggDeviceService.skipDevice(broadcastId, considerForSession = true)
                     }
                   },
                 ),
@@ -794,17 +803,14 @@ constructor(
   private fun checkAndRequestNotificationPermission() {
     viewModelScope.launch {
       try {
-        val notificationAlertShown = if (currentAccountId != null) {
-          accountService.hasShownNotificationAlertForAccount(currentAccountId!!)
-        } else {
-          false
-        }
-        if (!notificationAlertShown && currentAccountId != null) {
-          accountService.setNotificationAlertShownForAccount(currentAccountId!!, true)
-          AppLog.d(TAG, "Stored notification alert setting for account: $currentAccountId")
+        val accountId = currentAccountId ?: return@launch
+        val notificationAlertShown = accountService.hasShownNotificationAlertForAccount(accountId)
+        if (!notificationAlertShown) {
+          accountService.setNotificationAlertShownForAccount(accountId, true)
+          AppLog.d(TAG, "Stored notification alert setting for account: $accountId")
           requestPermissions(GGPermissionType.NOTIFICATION)
         } else {
-          AppLog.d(TAG, "Notification alert already shown for account: $currentAccountId, skipping permission request")
+           AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check/request notification permission", e.toString())

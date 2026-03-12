@@ -129,10 +129,10 @@ class MetricCell: UICollectionViewCell {
         currentParentView = parentView
         
         // Determine if this item is removed using the new removal state
-        let itemIsRemoved = store.isMetricRemoved(item.label)
+        let itemIsRemoved = store.gridEditingManager.isMetricRemoved(item.label)
         isRemoved = itemIsRemoved
         
-        let displayValue = store.formattedMetricValue(for: (item.preLabel, item.value))
+        let displayValue = store.displayManager.formattedMetricValue(for: (item.preLabel, item.value))
 
         let metricCardView = MetricCardView(
             value: displayValue,
@@ -143,7 +143,7 @@ class MetricCell: UICollectionViewCell {
             isRemoved: itemIsRemoved,
             isSelected: store.state.ui.selectedMetricLabel == item.label,
             onToggleRemoval: {
-                store.toggleMetricRemoval(item.label)
+                store.gridEditingManager.toggleMetricRemoval(item.label)
             },
             onTap: {
                 // Only allow selection if not in edit mode
@@ -175,7 +175,7 @@ class MetricCell: UICollectionViewCell {
                     isEditMode: store.state.ui.isEditMode,
                     isRemoved: itemIsRemoved,
                     onToggleRemoval: {
-                        store.toggleMetricRemoval(item.label)
+                        store.gridEditingManager.toggleMetricRemoval(item.label)
                     },
                     isBeingDragged: store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped,
                     isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
@@ -184,7 +184,7 @@ class MetricCell: UICollectionViewCell {
                 )
         ) : AnyView(metricCardView)
 
-        overlayButtonAction = { store.toggleMetricRemoval(item.label) }
+        overlayButtonAction = { store.gridEditingManager.toggleMetricRemoval(item.label) }
         overlayButtonVisible = store.state.ui.isEditMode &&
             !(isBeingDragged || store.state.ui.draggingMetric?.id == item.id || isLongPressed || isTapped) &&
             !(store.state.ui.dropHoverId == item.id.uuidString)
@@ -522,7 +522,7 @@ class MetricCell: UICollectionViewCell {
             isLongPressed = true
             // Enter edit mode on long press if not already in edit mode
             if let store = currentStore, !store.state.ui.isEditMode {
-                store.toggleEditMode()
+                store.gridEditingManager.toggleEditMode()
             }
             // Reconfigure to hide overlay during long press
             if let item = representedItem, let store = currentStore {

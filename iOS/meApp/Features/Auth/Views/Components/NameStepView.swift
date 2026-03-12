@@ -40,6 +40,7 @@ struct NameStepView: View {
                         ),
                         value: $signupStore.signupForm.firstName.value,
                         focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.signupFirstNameField,
                         onCommit: {
                             signupStore.touchAndValidate(field: .firstName)
                             focusedField = .lastName

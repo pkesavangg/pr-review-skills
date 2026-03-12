@@ -6,8 +6,8 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,9 +32,9 @@ interface ITokenManager {
 
     fun isTokenExpired(): Boolean
 
-    fun getAccessToken(): String?
+    suspend fun getAccessToken(): String?
 
-    fun getRefreshToken(): String?
+    suspend fun getRefreshToken(): String?
 
     fun getTokenExpiresAt(): String?
 
@@ -56,6 +56,7 @@ class TokenManager
 @Inject
 constructor(
     private val userDataStore: UserDataStore,
+    private val secureTokenStore: ISecureTokenStore,
 ) : ITokenManager {
     companion object {
         private const val TAG = "TokenManager"
@@ -76,18 +77,22 @@ constructor(
     override var isOtherUserTokenRefreshed = false
         private set
 
-    // In-memory map for multi-account token management
-     override val accountTokens = mutableMapOf<String, Token>()
+    // In-memory map for multi-account token management (ConcurrentHashMap for thread safety)
+    override val accountTokens = ConcurrentHashMap<String, Token>()
 
     override suspend fun setTokens(token: Token) {
         AppLog.v(TAG, "Setting tokens for account: ${token.accountId}")
         accountTokens[token.accountId] = token
+        // Persist to encrypted storage
+        secureTokenStore.saveToken(token.accountId, token)
+        // Ensure UserDataStore account entry exists and is active
+        // (required for currentAccountIdFlow, themeMode, syncTimestamp)
         userDataStore.updateAccountTokens(
             accountId = token.accountId,
             isActive = token.isActive,
-            refreshToken = token.refreshToken ?: "",
-            accessToken = token.accessToken ?: "",
-            expiresAt = token.expiresAt ?: "",
+            refreshToken = "",
+            accessToken = "",
+            expiresAt = "",
         )
         _tokens.value = token
     }
@@ -102,6 +107,11 @@ constructor(
         _tokens.value = null
         _otherUserToken.value = null
         isOtherUserTokenRefreshed = false
+        // Clear from encrypted storage
+        val currentAccountId = userDataStore.currentAccountIdFlow.first()
+        if (currentAccountId != null) {
+            secureTokenStore.removeToken(currentAccountId)
+        }
         userDataStore.logoutCurrentAccount()
     }
 
@@ -135,41 +145,32 @@ constructor(
         } ?: true
     }
 
-    override fun getAccessToken(): String? {
-        val accessToken =
-            runBlocking {
-                userDataStore.currentAccountFlow.first()?.accessToken
-            }
-        return accessToken
+    override suspend fun getAccessToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        return accountId?.let { accountTokens[it]?.accessToken ?: secureTokenStore.getToken(it)?.accessToken }
     }
 
-    override fun getRefreshToken(): String? {
-        val refreshToken =
-            runBlocking {
-                userDataStore.currentAccountFlow.first()?.refreshToken
-            }
-        return refreshToken
+    override suspend fun getRefreshToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        return accountId?.let { accountTokens[it]?.refreshToken ?: secureTokenStore.getToken(it)?.refreshToken }
     }
 
     override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
   override suspend fun getAccessToken(accountId: String): String? {
-    AppLog.d("Accountrepo2", "Processing request for account: $accountId")
+    AppLog.d("Token manager", "Processing request for account: $accountId")
     return try {
       accountTokens[accountId]?.accessToken
-        ?: userDataStore.getData().accounts[accountId]?.accessToken
+        ?: secureTokenStore.getToken(accountId)?.accessToken
     } catch (e: Exception) {
-      // Log the error if needed
       AppLog.e("AccountRepo", "Error getting access token for accountId: $accountId", e)
       null
     }
   }
 
-
   override suspend fun getRefreshToken(accountId: String): String? {
-        // Prefer in-memory map for fast lookup
         return accountTokens[accountId]?.refreshToken
-            ?: userDataStore.getData().accounts[accountId]?.refreshToken
+            ?: secureTokenStore.getToken(accountId)?.refreshToken
     }
 
     override fun getAccountIdForToken(token: String): String? =
@@ -179,18 +180,11 @@ constructor(
             }?.key
 
     override suspend fun loadAllTokens() {
-        AppLog.v(TAG, "Loading all tokens from UserDataStore")
+        AppLog.v(TAG, "Loading all tokens from SecureTokenStore")
         accountTokens.clear()
-        val allAccounts = userDataStore.getData().accounts
-        allAccounts.forEach { (id, userAccount) ->
-            accountTokens[id] =
-                Token(
-                    accountId = id,
-                    isActive = userAccount.isActive,
-                    accessToken = userAccount.accessToken,
-                    refreshToken = userAccount.refreshToken,
-                    expiresAt = userAccount.expiresAt,
-                )
+        val allTokens = secureTokenStore.getAllTokens()
+        allTokens.forEach { (id, token) ->
+            accountTokens[id] = token
         }
     }
 
@@ -199,13 +193,14 @@ constructor(
   }
 
   override suspend fun getCurrentAcccountExpiresAt(): String? {
-    return userDataStore.currentAccountFlow.first()?.expiresAt
+    val accountId = userDataStore.currentAccountIdFlow.first() ?: return null
+    return accountTokens[accountId]?.expiresAt
+        ?: secureTokenStore.getToken(accountId)?.expiresAt
   }
 
   override suspend fun getAccountExpiresAt(accountId: String): String? {
-    // Prefer in-memory map for fast lookup
     return accountTokens[accountId]?.expiresAt
-        ?: userDataStore.getData().accounts[accountId]?.expiresAt
+        ?: secureTokenStore.getToken(accountId)?.expiresAt
   }
 
 }

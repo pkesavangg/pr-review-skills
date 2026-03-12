@@ -8,7 +8,7 @@
 import Foundation
 
 // MARK: - HTTP Error
-enum HTTPError: Error, LocalizedError {
+enum HTTPError: Error, LocalizedError, Equatable {
     case invalidURL
     case invalidResponse
     case decodingError
@@ -22,7 +22,7 @@ enum HTTPError: Error, LocalizedError {
     case noInternet
     case timeout
     case unknown(Error)
-    
+
     var errorDescription: String? {
         switch self {
         case .unauthorized:
@@ -53,7 +53,31 @@ enum HTTPError: Error, LocalizedError {
             return "Internal server error"
         }
     }
-    
+
+    static func == (lhs: HTTPError, rhs: HTTPError) -> Bool {
+        switch (lhs, rhs) {
+        case (.invalidURL, .invalidURL),
+             (.invalidResponse, .invalidResponse),
+             (.decodingError, .decodingError),
+             (.badRequest, .badRequest),
+             (.forbidden, .forbidden),
+             (.serverError, .serverError),
+             (.unauthorized, .unauthorized),
+             (.notFound, .notFound),
+             (.noInternet, .noInternet),
+             (.timeout, .timeout):
+            return true
+        case (.statusCode(let lhsCode), .statusCode(let rhsCode)):
+            return lhsCode == rhsCode
+        case (.apiError(let lhsMessage, let lhsCode), .apiError(let rhsMessage, let rhsCode)):
+            return lhsMessage == rhsMessage && lhsCode == rhsCode
+        case (.unknown(let lhsError), .unknown(let rhsError)):
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        default:
+            return false
+        }
+    }
+
     static func isNetworkError(_ error: Error) -> Bool {
         if let networkError = error as? HTTPError {
             switch networkError {
@@ -70,7 +94,7 @@ enum HTTPError: Error, LocalizedError {
         }
         return false
     }
-    
+
     static func from(status: HTTPStatusCode) -> HTTPError {
         switch status {
         case .unauthorized: return .unauthorized

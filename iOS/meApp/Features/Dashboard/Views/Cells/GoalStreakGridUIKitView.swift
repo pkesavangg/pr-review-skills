@@ -255,7 +255,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             active.reserveCapacity(streaks.count)
             removed.reserveCapacity(streaks.count)
             for streak in streaks {
-                if store.isStreakRemoved(streak.label) { removed.append(streak) } else { active.append(streak) }
+                if store.gridEditingManager.isStreakRemoved(streak.label) { removed.append(streak) } else { active.append(streak) }
             }
             return (active, removed)
         }
@@ -411,7 +411,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 case .goalCard:
                     return !store.state.ui.isGoalCardRemoved
                 case .streak(let item):
-                    return !store.isStreakRemoved(item.label)
+                    return !store.gridEditingManager.isStreakRemoved(item.label)
                 }
             }
             return activeStreaks.count
@@ -430,7 +430,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
             case .goalCard:
                 return store.state.ui.isGoalCardRemoved
             case .streak(let item):
-                return store.isStreakRemoved(item.label)
+                return store.gridEditingManager.isStreakRemoved(item.label)
             }
         }
         
@@ -441,7 +441,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 case .goalCard:
                     continue
                 case .streak(let item):
-                    if !store.isStreakRemoved(item.label) { count += 1 }
+                    if !store.gridEditingManager.isStreakRemoved(item.label) { count += 1 }
                 }
             }
             return count
@@ -550,7 +550,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 // If not in edit mode, enter edit mode on long press of a goal card or streak item,
                 // then immediately proceed to start the drag for the same item.
                 if !store.state.ui.isEditMode {
-                    store.toggleEditMode()
+                    store.gridEditingManager.toggleEditMode()
                 }
                 
                 prepareHapticsForDrag()
@@ -720,7 +720,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 )
                 cell.isWiggling = store.state.ui.isEditMode
                 cell.rowIndex = indexPath.item
-                cell.isRemoved = store.isStreakRemoved(item.label)
+                cell.isRemoved = store.gridEditingManager.isStreakRemoved(item.label)
                 return cell
             }
         }
@@ -849,7 +849,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                         switch widget {
                         case .goalCard: return nil
                         case .streak(let streakItem):
-                            return store.isStreakRemoved(streakItem.label) ? nil : streakItem.label
+                            return store.gridEditingManager.isStreakRemoved(streakItem.label) ? nil : streakItem.label
                         }
                     }.count
                     
@@ -1010,7 +1010,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                         switch widget {
                         case .goalCard: return nil
                         case .streak(let streakItem):
-                            return store.isStreakRemoved(streakItem.label) ? nil : streakItem.label
+                            return store.gridEditingManager.isStreakRemoved(streakItem.label) ? nil : streakItem.label
                         }
                     }.count
                     
@@ -1074,7 +1074,7 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
                 switch widget {
                 case .goalCard: return nil
                 case .streak(let streakItem):
-                    return store.isStreakRemoved(streakItem.label) ? nil : streakItem.label
+                    return store.gridEditingManager.isStreakRemoved(streakItem.label) ? nil : streakItem.label
                 }
             }
             let streakCount = allStreakLabels.count
