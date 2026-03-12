@@ -1097,8 +1097,8 @@ class SettingsStore: ObservableObject {
                 )
                 
                 // Refresh account to ensure latest state is available when user returns
-                try? await accountService.refreshAccount()
-                
+                _ = try? await accountService.refreshAccount()
+
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
                 

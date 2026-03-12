@@ -260,7 +260,8 @@ struct GraphDataPreparer {
         let raw: Double
         switch period {
         case .week, .month:
-            guard let latest = operations.last.map { convertWeight(Int($0.weight)) } else { return nil }
+            guard let last = operations.last else { return nil }
+            let latest = convertWeight(Int(last.weight))
             raw = latest - anchor
         case .year, .total:
             let weights = operations.map { convertWeight(Int($0.weight)) }

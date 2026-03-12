@@ -231,7 +231,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
                 // All progress metrics are removed
                 let goalCardPosition = 0
                 let isGoalCardRemoved = true
-                var streakGridOrder: [String] = []
+                let streakGridOrder: [String] = []
                 // Preserve saved streak order in edit mode; otherwise use default order
                 // This should be handled by the caller
                 let removedStreaks = Set(allStreaks.map { $0.label })
