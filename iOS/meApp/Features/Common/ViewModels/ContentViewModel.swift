@@ -34,6 +34,7 @@ final class ContentViewModel: ObservableObject {
     private(set) var initializationTask: Task<Void, Never>?
     private let tag = "ContentViewModel"
     private var lastHandledAccountSignature: AccountActivationSignature?
+    private var queuedAccountSignatureWhileInitializing: AccountActivationSignature?
 
     init(
         accountService: AccountServiceProtocol? = nil,
@@ -93,8 +94,14 @@ final class ContentViewModel: ObservableObject {
                 self.isLoggedIn = (account != nil)
 
                 // Avoid kicking off initialization from the publisher's initial emission
-                // while the view model is still in its startup state.
-                guard self.contentViewState != .initializing else { return }
+                // while the view model is still in its startup state. If initialization is
+                // already running, queue a follow-up pass so newer account metadata is not dropped.
+                guard self.contentViewState != .initializing else {
+                    if self.initializationTask != nil {
+                        self.queuedAccountSignatureWhileInitializing = signature
+                    }
+                    return
+                }
 
                 self.performAppInitialization()
             }
@@ -166,6 +173,11 @@ final class ContentViewModel: ObservableObject {
         if afterUpdate {
             await bluetoothService.startBluetoothOperations()
             logger.log(level: .info, tag: tag, message: "Bluetooth operations started after initialization")
+        }
+
+        if queuedAccountSignatureWhileInitializing != nil {
+            queuedAccountSignatureWhileInitializing = nil
+            performAppInitialization()
         }
     }
 

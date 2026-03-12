@@ -32,6 +32,7 @@ enum MetricInfoSheetDTOResolver {
 
 /// Wrapper that safely extracts DTO from Entry before displaying ScaleMetricsView.
 /// This ensures SwiftData properties are accessed on main actor within a ModelContext.
+@MainActor
 struct MetricInfoSheetWrapper: View {
     private struct ReloadTrigger: Equatable {
         let entryId: UUID
@@ -43,6 +44,7 @@ struct MetricInfoSheetWrapper: View {
     let selectedMetric: BodyMetric
     @ObservedObject var dashboardStore: DashboardStore
     @State private var entryDTO: BathScaleOperationDTO?
+    @State private var lastReloadTrigger: ReloadTrigger?
     private let dtoLoader: @Sendable () async -> BathScaleOperationDTO
 
     init(
@@ -68,8 +70,13 @@ struct MetricInfoSheetWrapper: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: reloadTrigger) {
-            await extractDTO()
+        .task {
+            await reloadIfNeeded(force: true)
+        }
+        .onReceive(dashboardStore.objectWillChange) { _ in
+            Task {
+                await reloadIfNeeded()
+            }
         }
     }
 
@@ -79,6 +86,13 @@ struct MetricInfoSheetWrapper: View {
             selectedPeriod: dashboardStore.state.graph.selectedPeriod,
             metricLabels: dashboardStore.state.metrics.metrics.map(\.label)
         )
+    }
+
+    private func reloadIfNeeded(force: Bool = false) async {
+        let trigger = reloadTrigger
+        guard force || trigger != lastReloadTrigger else { return }
+        lastReloadTrigger = trigger
+        await extractDTO()
     }
 
     private func extractDTO() async {
