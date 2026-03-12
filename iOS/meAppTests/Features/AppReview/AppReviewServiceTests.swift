@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import UIKit
 @testable import meApp
 
 private actor DelayRecorder {
@@ -196,20 +195,22 @@ struct AppReviewServiceTests {
     func defaultHandlersExecuteOnHostScene() async {
         let notification = MockNotificationHelperService()
         let logger = MockLoggerService()
+        var requestReviewCalls = 0
+
         let service = AppReviewService(
             logger: logger,
             notificationHelper: notification,
-            reviewPromptDelay: 0
+            reviewPromptDelay: 0,
+            hasActiveWindowScene: { true },
+            nativeReviewRequest: {
+                requestReviewCalls += 1
+            }
         )
 
         await service.triggerAppReview()
 
-        let hasActiveScene = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .contains { $0.activationState == .foregroundActive }
-
-        #expect(hasActiveScene == true)
         #expect(notification.dismissAllModalsCalls == 1)
+        #expect(requestReviewCalls == 1)
         #expect(logger.messages.contains { $0.contains("App review prompt triggered successfully") })
     }
 }

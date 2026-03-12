@@ -217,5 +217,12 @@ sealed class AppRoute : NavKey {
       val source: MetricInfoSource = MetricInfoSource.WEEK
     ) : Dashboard()
   }
+
+  /**
+   * Shown when the app detects a certificate pin mismatch — likely an outdated cert pin
+   * requiring an app update. See Android/CLAUDE.md for the rotation procedure.
+   */
+  @Serializable
+  data object ForceUpdate : AppRoute()
 }
 

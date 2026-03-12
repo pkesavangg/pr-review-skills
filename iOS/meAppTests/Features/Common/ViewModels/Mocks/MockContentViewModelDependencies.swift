@@ -102,7 +102,7 @@ final class MockContentViewModelFeedService: FeedServiceProtocol {
 }
 
 @MainActor
-final class MockContentViewModelScaleService: ScaleServiceProtocol {
+final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'MockContentViewModelScaleService' does not conform to protocol 'ScaleServiceProtocol'
     @Published var scales: [Device] = []
     var scalesPublisher: AnyPublisher<[Device], Never> { $scales.eraseToAnyPublisher() }
 
@@ -155,6 +155,16 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
         skipDuplicateCheck: Bool
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createBluetoothScale")
+    }
+
+    func createA6Scale(
+        device: Device,
+        sku: String?,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createA6Scale")
     }
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}

@@ -6,6 +6,7 @@ import Foundation
 final class MockScaleService: ScaleServiceProtocol {
     @Published var scales: [Device] = []
     var scalesPublisher: AnyPublisher<[Device], Never> { $scales.eraseToAnyPublisher() }
+    var attachedPreferences: [String: R4ScalePreference] = [:]
 
     var updateAllScalesStatusError: Error?
     var syncDevicesError: Error?
@@ -23,6 +24,7 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var syncDevicesCalls = 0
     private(set) var createDeviceCalls = 0
     private(set) var createBluetoothScaleCalls = 0
+    private(set) var createA6ScaleCalls = 0
     private(set) var createR4ScaleCalls = 0
     private(set) var deleteDeviceCalls = 0
     private(set) var pushLocalChangesToServerCalls = 0
@@ -36,9 +38,12 @@ final class MockScaleService: ScaleServiceProtocol {
     private(set) var lastUpdatedScalePreferenceDeviceId: String?
     private(set) var lastUpdatedScalePreferenceDTO: R4ScalePreferenceDTO?
     private(set) var lastCreatedDevice: Device?
+    private(set) var callSequence: [String] = []
     private(set) var lastCreatedBluetoothScale: Device?
+    private(set) var lastCreatedA6Scale: Device?
     private(set) var lastCreatedR4Scale: Device?
     private(set) var lastCreateR4ScaleSkipDuplicateCheck: Bool?
+    var createA6ScaleError: Error?
 
     func clearAllData() async {}
     func getDevices() async throws -> [Device] {
@@ -51,23 +56,28 @@ final class MockScaleService: ScaleServiceProtocol {
 
     func updateConnectedDevices(device: Any, isConnected: Bool) async {
         updateConnectedDevicesCalls += 1
+        callSequence.append("updateConnectedDevices")
     }
 
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {
         updateConnectedDeviceWifiStatusCalls += 1
+        callSequence.append("updateConnectedDeviceWifiStatus")
     }
 
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {
         updateConnectedDeviceWeightOnlyModeCalls += 1
+        callSequence.append("updateConnectedDeviceWeightOnlyMode")
     }
 
     func syncDevices(tempDevice: Device?) async throws {
         syncDevicesCalls += 1
+        callSequence.append("syncDevices")
         if let syncDevicesError { throw syncDevicesError }
     }
 
     func createDevice(_ device: Device, _ skipDuplicateCheck: Bool) async throws -> Device {
         createDeviceCalls += 1
+        callSequence.append("createDevice")
         lastCreatedDevice = device
         if let createDeviceError { throw createDeviceError }
         return device
@@ -90,6 +100,22 @@ final class MockScaleService: ScaleServiceProtocol {
         device.metaData = deviceMetadata
         device.bathScale = device.bathScale ?? BathScale(scaleType: ScaleSourceType.bluetooth.rawValue, bodyComp: false)
         lastCreatedBluetoothScale = device
+        return device
+    }
+
+    func createA6Scale(
+        device: Device,
+        sku: String?,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        createA6ScaleCalls += 1
+        if let createA6ScaleError { throw createA6ScaleError }
+        device.accountId = accountId
+        device.sku = sku
+        device.metaData = deviceMetadata
+        lastCreatedA6Scale = device
         return device
     }
 
@@ -168,12 +194,13 @@ final class MockScaleService: ScaleServiceProtocol {
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {
         updateAllScalesStatusCalls += 1
+        callSequence.append("updateAllScalesStatus")
         if let updateAllScalesStatusError { throw updateAllScalesStatusError }
     }
 
     func syncAllScalesWithRemote() async { syncAllScalesWithRemoteCalls += 1 }
     func pushLocalChangesToServer() async { pushLocalChangesToServerCalls += 1 }
     func getDevice(by deviceId: String) async throws -> Device? { scales.first { $0.id == deviceId } }
-    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { fetchAttachedPreferenceResult }
-    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { fetchAttachedPreferenceResult }
+    func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
+    func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { attachedPreferences[id] ?? fetchAttachedPreferenceResult }
 }

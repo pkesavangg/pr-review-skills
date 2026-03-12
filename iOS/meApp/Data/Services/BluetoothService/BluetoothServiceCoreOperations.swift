@@ -163,7 +163,7 @@ extension BluetoothService {
                 operationKey: "\(device.id):confirmPair"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
-                    await self.ggBleSDK.confirmPair(ggDevice)
+                    try await self.ggBleSDK.confirmPair(ggDevice)
                 }
             }
 
@@ -189,7 +189,7 @@ extension BluetoothService {
                 operationKey: "\(device.id):deleteUser"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
-                    await self.ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
+                    try await self.ggBleSDK.deleteUser(ggDevice, canDisconnect: disconnect)
                 }
             }
 
@@ -238,7 +238,7 @@ extension BluetoothService {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            let result = await ggBleSDK.getWifiList(ggDevice)
+            let result = try await ggBleSDK.getWifiList(ggDevice)
             return .success(result.wifi.map { WifiDetails(macAddress: $0.macAddress, ssid: $0.ssid, rssi: $0.rssi, password: $0.password) })
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -253,7 +253,7 @@ extension BluetoothService {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             let ggConfig = GGBTWifiConfig(ssid: config.ssid, password: config.password ?? "")
-            let ggResponse = await ggBleSDK.setupWifi(ggDevice, ggConfig)
+            let ggResponse = try await ggBleSDK.setupWifi(ggDevice, ggConfig)
             let response = WifiSetupResponse(wifiState: ggResponse.wifiState, errorCode: ggResponse.errorCode)
             return .success(response)
         } catch let error as BluetoothServiceError {
@@ -268,7 +268,7 @@ extension BluetoothService {
             guard let ggDevice = mapToGGBTDevice(on) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            ggBleSDK.cancelWifi(ggDevice)
+            try ggBleSDK.cancelWifi(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -281,7 +281,7 @@ extension BluetoothService {
         do {
             let ggDevice = mapToGGBTDevice(broadcastId)
             let ssid = try await withTimeout(seconds: 10) {
-                await self.ggBleSDK.getConnectedWifiSSID(ggDevice)
+                try await self.ggBleSDK.getConnectedWifiSSID(ggDevice)
             }
             return .success(ssid)
         } catch let error as BluetoothServiceError {
@@ -297,7 +297,7 @@ extension BluetoothService {
                 throw BluetoothServiceError.invalidBroadcastId
             }
             let mac = try await withTimeout(seconds: 10) {
-                await self.ggBleSDK.getWifiMacAddress(ggDevice)
+                try await self.ggBleSDK.getWifiMacAddress(ggDevice)
             }
             return .success(mac)
         } catch let error as BluetoothServiceError {
@@ -314,7 +314,7 @@ extension BluetoothService {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            ggBleSDK.startLiveMeasurement(ggDevice)
+            try ggBleSDK.startLiveMeasurement(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -329,7 +329,7 @@ extension BluetoothService {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            ggBleSDK.stopLiveMeasurement(ggDevice)
+            try ggBleSDK.stopLiveMeasurement(ggDevice)
             return .success(())
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -350,7 +350,7 @@ extension BluetoothService {
                     value: setting.value.toGGBTSettingValue()
                 )
             }
-            ggBleSDK.updateSetting(ggDevice, ggSettings)
+            try ggBleSDK.updateSetting(ggDevice, ggSettings)
             return .success(())
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -364,7 +364,7 @@ extension BluetoothService {
             guard let ggDevice = mapToGGBTDevice(device) else {
                 throw BluetoothServiceError.invalidBroadcastId
             }
-            ggBleSDK.startFirmwareUpdate(ggDevice, timestamp)
+            try ggBleSDK.startFirmwareUpdate(ggDevice, timestamp)
             let initialStatus = FirmwareUpdateStatus(progress: 0.0, isComplete: false)
             firmwareUpdateProgressSubject.send(initialStatus)
             return .success(())
@@ -389,7 +389,7 @@ extension BluetoothService {
                 case .all: return .ALL
                 }
             }()
-            _ = await ggBleSDK.clearData(ggDevice, sdkType)
+            _ = try await ggBleSDK.clearData(ggDevice, sdkType)
             return .success(())
         } catch let error as BluetoothServiceError {
             return .failure(error)
@@ -415,7 +415,7 @@ extension BluetoothService {
             guard let userProfile = await getProfileInfo(from: account) else {
                 throw BluetoothServiceError.noProfileInfo
             }
-            let success = await ggBleSDK.updateProfile(profile: userProfile)
+            let success = try await ggBleSDK.updateProfile(profile: userProfile)
             logger.log(level: .debug, tag: tag, message: "updateUserProfileForR4Scales completed: \(success)")
             return .success(success)
         } catch let error as BluetoothServiceError {
@@ -436,7 +436,7 @@ extension BluetoothService {
                 operationKey: "\(device.id):updateAccount"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
-                    await self.ggBleSDK.updateAccount(ggDevice)
+                    try await self.ggBleSDK.updateAccount(ggDevice)
                 }
             }
             return .success(UserCreationResponse(sdkType: result))
@@ -462,7 +462,7 @@ extension BluetoothService {
                 operationKey: "\(device.id):getUsers"
             ) { @MainActor in
                 try await self.withTimeout(seconds: 10) {
-                    await self.ggBleSDK.getUsers(ggDevice)
+                    try await self.ggBleSDK.getUsers(ggDevice)
                 }
             }
 

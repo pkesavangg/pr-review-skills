@@ -42,7 +42,7 @@ class PushNotificationService : FirebaseMessagingService() {
    * @param token The new FCM token.
    */
   override fun onNewToken(token: String) {
-    AppLog.v(TAG, "New FCM token: $token")
+    AppLog.v(TAG, "New FCM token received")
 
     // Update the token and device info
     CoroutineScope(Dispatchers.IO).launch {
@@ -65,7 +65,7 @@ class PushNotificationService : FirebaseMessagingService() {
 
       if (currentToken != newToken) {
         appRepository.setFcmToken(newToken)
-        AppLog.v(TAG, "FCM token updated: $newToken")
+        AppLog.v(TAG, "FCM token updated")
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to check/update FCM token", e)

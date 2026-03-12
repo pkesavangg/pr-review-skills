@@ -20,7 +20,7 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector var feedService: FeedServiceProtocol
     // Inject Bluetooth service to listen for new scale discovery events
     @Injector var bluetoothService: BluetoothServiceProtocol
-    // Inject GoalAlert service to handle goal alert navigation
+    // Inject GoalAlertService to handle goal alert navigation
     @Injector var goalAlertService: GoalAlertServiceProtocol
     // Publisher-driven sheet presentation for newly discovered scales
     @Published var discoveredScale: Device?

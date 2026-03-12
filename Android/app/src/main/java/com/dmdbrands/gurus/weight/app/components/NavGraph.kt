@@ -40,6 +40,7 @@ import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.screens.ScaleDisp
 import com.dmdbrands.gurus.weight.features.scaleMode.screens.ScaleModeScreen
 import com.dmdbrands.gurus.weight.features.settings.SettingsScreen
 import com.dmdbrands.gurus.weight.features.signup.SignupScreen
+import com.dmdbrands.gurus.weight.features.forceUpdate.ForceUpdateScreen
 import com.dmdbrands.gurus.weight.features.weightless.screen.WeightlessScreen
 
 /**
@@ -136,4 +137,8 @@ fun EntryProviderBuilder<NavKey>.feedMessagesEntries() {
   entry<AppRoute.Feed.FeedMessageSetting> { AppFeedMessagesSettingsScreen() }
   entry<AppRoute.Feed.FeedLanding> { FeedLandingScreen() }
   entry<AppRoute.Feed.FeedFAQ> { FeedFAQScreen() }
+}
+
+fun EntryProviderBuilder<NavKey>.forceUpdateEntries() {
+  entry<AppRoute.ForceUpdate> { ForceUpdateScreen() }
 }

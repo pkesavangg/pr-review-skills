@@ -130,15 +130,15 @@ constructor(
     password: String,
   ): Account? =
     try {
-      AppLog.d(TAG, "login() called for email: $email")
+      AppLog.d(TAG, "login() called")
       val isExistingAccount = getLoggedInAccounts().any { it.email == email }
       if (hasReachedMaxAccounts.first() && !isExistingAccount) {
-        AppLog.w(TAG, "Max accounts reached. Cannot login new account: $email")
+        AppLog.w(TAG, "Max accounts reached. Cannot login new account")
         throw MaxAccountsReachedException()
       }
       val savedAccount = accountRepository.login(email, password)
 
-      AppLog.d(TAG, "login() successful for email: $email")
+      AppLog.d(TAG, "login() successful")
       savedAccount
     } catch (e: HttpException) {
       val msg =
@@ -161,16 +161,16 @@ constructor(
    * @throws MaxAccountsReachedException if the maximum number of accounts is reached
    */
   override suspend fun signup(request: SignupRequest): Account? {
-    AppLog.d(TAG, "signup() called for email: ${request.email}")
+    AppLog.d(TAG, "signup() called")
     if (hasReachedMaxAccounts.first()) {
-      AppLog.w(TAG, "Max accounts reached. Cannot signup new account: ${request.email}")
+      AppLog.w(TAG, "Max accounts reached. Cannot signup new account")
       appNavigationService.emitAuthEvent(AuthState.Error("Maximum account limit reached"))
       throw MaxAccountsReachedException()
     }
     return try {
       val savedAccount = accountRepository.signup(request)
       appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
-      AppLog.d(TAG, "signup() successful for email: ${request.email}")
+      AppLog.d(TAG, "signup() successful")
       savedAccount
     } catch (e: Exception) {
       if (e is HttpException) {
@@ -650,7 +650,7 @@ constructor(
       accountRepository.getAccountFromAPI(account.id)
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
-      AppLog.d(TAG, "Successfully switched to account: ${account.email}")
+      AppLog.d(TAG, "Successfully switched account")
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
     }

@@ -12,15 +12,11 @@ import SwiftUI
 @MainActor
 final class A6ScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
-    @Injector private var notificationService: NotificationHelperServiceProtocol
-    /// Centralised permission handling service.
-    @Injector private var permissionsService: PermissionsService
-    /// Bluetooth service for device discovery
-    @Injector private var bluetoothService: BluetoothService
-    /// Scale service for scale operations
-    @Injector private var scaleService: ScaleService
-    /// Account service for account operations
-    @Injector private var accountService: AccountService
+    @Injector var notificationService: NotificationHelperServiceProtocol
+    @Injector var permissionsService: PermissionsServiceProtocol
+    @Injector var bluetoothService: BluetoothServiceProtocol
+    @Injector var scaleService: ScaleServiceProtocol
+    @Injector var accountService: AccountServiceProtocol
     
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -63,6 +59,8 @@ final class A6ScaleSetupStore: ObservableObject {
     private let tag = "A6ScaleSetupStore"
     private let scaleSetupStrings = ScaleSetupStrings.self
     private let timeoutConstants = AppConstants.TimeoutsAndRetention.self
+    private let pairingTimeoutNs: UInt64
+    private let connectionTransitionDelayNs: UInt64
     
     /// Convenience accessor building the views for each step.
     var stepViews: [AnyView] {
@@ -101,9 +99,13 @@ final class A6ScaleSetupStore: ObservableObject {
     }
     
     // MARK: - Lifecycle
-    init() {
-        // Observe permission updates so the footer button reacts instantly.
-        permissionsService.$permissions
+    init(
+        pairingTimeoutNs: UInt64? = nil,
+        connectionTransitionDelayNs: UInt64 = 2_000_000_000
+    ) {
+        self.pairingTimeoutNs = pairingTimeoutNs ?? UInt64(AppConstants.TimeoutsAndRetention.bluetoothTimeoutNs)
+        self.connectionTransitionDelayNs = connectionTransitionDelayNs
+        permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()
@@ -213,18 +215,16 @@ final class A6ScaleSetupStore: ObservableObject {
                 }
         }
         
-        /// Start a timer to handle the wake-up step timeout.
         stepTimerTask = Task { [weak self] in
-            guard let timeoutConstants = self?.timeoutConstants.bluetoothTimeoutNs else { return }
-            try? await Task.sleep(nanoseconds: UInt64(timeoutConstants))
-            await MainActor.run {
+            guard let timeout = self?.pairingTimeoutNs else { return }
+            try? await Task.sleep(nanoseconds: timeout)
+            await MainActor.run { [weak self] in
                 guard let self else { return }
-                // Still on wake-up step and nothing discovered → failure
                 if self.discoveredScale == nil && self.currentStep == .wakeUp {
                     self.moveToNextStep()
-                    Task { @MainActor in
+                    Task { @MainActor [weak self] in
                         try? await Task.sleep(nanoseconds: 250_000_000)
-                        self.connectionState = .failure
+                        self?.connectionState = .failure
                     }
                 }
             }
@@ -247,12 +247,14 @@ final class A6ScaleSetupStore: ObservableObject {
             self.pair()
         case .connectingBluetooth:
             self.connectionState = .loading
-            Task {
-                if discoveredScale != nil && discoveryEvent != nil {
+            Task { [weak self] in
+                guard let self else { return }
+                if self.discoveredScale != nil && self.discoveryEvent != nil {
                     await self.saveDiscoveredScale()
                     self.connectionState = .success
+                    let delay = self.connectionTransitionDelayNs
                     Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        try? await Task.sleep(nanoseconds: delay)
                         self.moveToNextStep()
                     }
                 }
@@ -471,19 +473,36 @@ final class A6ScaleSetupStore: ObservableObject {
         // Ensure SDK picks up updated unit on reconnect
         bluetoothService.syncDevices(scaleService.scales)
     }
-    // Cancel active Combine subscription before releasing it.
     deinit {
-        // Cancel active Combine subscription before releasing it.
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
-        
-        // Nil out discovery data so subsequent runs start fresh.
         discoveredScale = nil
         discoveryEvent = nil
-        
-        // Cancel any in-flight timeout task.
         stepTimerTask?.cancel()
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }
 }
+
+#if DEBUG
+extension A6ScaleSetupStore {
+    @MainActor
+    func testWarmInjectedDependencies() {
+        _ = (notificationService, permissionsService, bluetoothService, scaleService, accountService)
+    }
+
+    @MainActor
+    func testSetInternalState(
+        discoveredScale: Device? = nil,
+        discoveryEvent: DeviceDiscoveryEvent? = nil
+    ) {
+        self.discoveredScale = discoveredScale
+        self.discoveryEvent = discoveryEvent
+    }
+
+    @MainActor
+    func testSaveDiscoveredScale() async {
+        await saveDiscoveredScale()
+    }
+}
+#endif

@@ -2,8 +2,7 @@ plugins {
   alias(libs.plugins.android.library)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.hilt)
-  kotlin("kapt")
-    alias(libs.plugins.ksp)
+  alias(libs.plugins.ksp)
 }
 
 android {
@@ -48,10 +47,7 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.messaging.ktx)
 
-  // Hilt
+  // Hilt (KSP only — do not use kapt or Hilt generates duplicate classes)
   implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
-    // Hilt
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.android.compiler)
+  ksp(libs.hilt.android.compiler)
 }

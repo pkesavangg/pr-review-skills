@@ -8,6 +8,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     var saveEntryError: Error?
     var updateEntryError: Error?
     var deleteEntryError: Error?
+    var deleteAllEntriesError: Error?
     var fetchEntriesAsDTOError: Error?
     var fetchUnsyncedEntriesError: Error?
     var fetchLatestEntryError: Error?
@@ -61,6 +62,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     }
 
     func deleteAllEntries() async throws {
+        if let deleteAllEntriesError { throw deleteAllEntriesError }
         entries.removeAll()
     }
 

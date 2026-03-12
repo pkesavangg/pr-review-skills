@@ -179,7 +179,7 @@ extension BluetoothService {
                 self.setCanShowScaleDiscoveredModal(true)
             }
         }
-        ggBleSDK.skipDevice(broadcastId)
+        ggBleSDK.skipDevice(broadcastId, considerForSession)
         return .success(())
     }
 
@@ -189,7 +189,7 @@ extension BluetoothService {
         skipDevices = skipDevices.filter { !pairedIdsUpper.contains($0.uppercased()) }
 
         for id in skipDevices {
-            ggBleSDK.skipDevice(id)
+            ggBleSDK.skipDevice(id, true)
         }
     }
 }
