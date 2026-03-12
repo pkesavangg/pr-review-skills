@@ -58,10 +58,6 @@ fun CameraOverlayBox(modifier: Modifier = Modifier) {
 
             // Define visual styling constants
             val overlayColor = Color(0x802C2827).copy(alpha = 0.5f) // Dark semi-transparent overlay
-            val cornerColor = Color.White // White corner indicators
-            val cornerRadius = 16.dp.toPx() // Rounded corners for target area
-            val cornerStroke = 6.dp.toPx() // Thickness of corner indicators
-            val cornerLength = size.minDimension * 0.18f // Length of corner indicators
 
             // Draw the semi-transparent overlay covering the entire screen
             drawRoundRect(
@@ -78,84 +74,6 @@ fun CameraOverlayBox(modifier: Modifier = Modifier) {
                 blendMode = androidx.compose.ui.graphics.BlendMode.Clear,
             )
 
-            // Draw corner indicators for each corner of the target area
-            // Each corner consists of two perpendicular lines
-
-          // // Top-left corner - horizontal line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.topLeft,
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerLength, cornerStroke),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
-          // // Top-left corner - vertical line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.topLeft,
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerStroke, cornerLength),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
-          //
-          // // Top-right corner - horizontal line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.topRight - Offset(cornerLength, 0f),
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerLength, cornerStroke),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
-          // // Top-right corner - vertical line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.topRight - Offset(cornerStroke, 0f),
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerStroke, cornerLength),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
-          //
-          // // Bottom-left corner - vertical line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.bottomLeft - Offset(0f, cornerLength),
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerStroke, cornerLength),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
-          // // Bottom-left corner - horizontal line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.bottomLeft - Offset(0f, cornerStroke),
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerLength, cornerStroke),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
-          //
-          // // Bottom-right corner - horizontal line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.bottomRight - Offset(cornerLength, cornerStroke),
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerLength, cornerStroke),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
-          // // Bottom-right corner - vertical line
-          // drawRoundRect(
-          //     color = cornerColor,
-          //     topLeft = boxRect.bottomRight - Offset(cornerStroke, cornerLength),
-          //     size =
-          //         androidx.compose.ui.geometry
-          //             .Size(cornerStroke, cornerLength),
-          //     cornerRadius = CornerRadius(cornerStroke, cornerStroke),
-          // )
         }
 
       // Display overlay image within the scanning rectangle

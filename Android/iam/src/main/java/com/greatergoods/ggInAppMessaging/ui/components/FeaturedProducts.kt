@@ -87,7 +87,6 @@ private fun ProductsHorizontalScrollContainer(
 ) {
   LazyRow(
     horizontalArrangement = Arrangement.spacedBy(40.dp),
-    // contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
   ) {
     itemsIndexed(products) { index, product ->
       ProductCard(
@@ -120,12 +119,7 @@ private fun ProductCard(
     Box(
       modifier = Modifier
         .size(200.dp)
-        .clip(RoundedCornerShape(8.dp))
-        // .border(
-        //   width = 1.dp,
-        //   color = Color.Transparent, // White border for dark mode compatibility
-        //   shape = RoundedCornerShape(8.dp),
-        // ),
+        .clip(RoundedCornerShape(8.dp)),
     ) {
       AsyncImage(
         model = product.productImage,
