@@ -262,6 +262,7 @@ struct HealthKitStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT(healthKitService: healthKit)
 
         store.handlePrimaryAction(for: .permissionsNotAllowed)
+        await Task.yield()
         let updated = await waitUntil { store.activeState == .integrationFailed }
 
         #expect(updated == true)
@@ -274,6 +275,7 @@ struct HealthKitStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT(healthKitService: healthKit)
 
         store.handlePrimaryAction(for: .permissionsNotAllowed)
+        await Task.yield()
         let updated = await waitUntil { store.activeState == .userConflict }
 
         #expect(updated == true)
