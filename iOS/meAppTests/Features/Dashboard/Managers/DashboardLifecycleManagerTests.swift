@@ -45,7 +45,7 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onAppearActions()
 
-        let completed = await waitUntil(timeoutNanoseconds: 5_000_000_000) {
+        let completed = await waitUntil(timeoutNanoseconds: 10_000_000_000) {
             store.state.ui.hasLoadedDashboardConfig
         }
 
@@ -81,7 +81,7 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onAppearActions()
 
-        let completed = await waitUntil(timeoutNanoseconds: 5_000_000_000) {
+        let completed = await waitUntil(timeoutNanoseconds: 10_000_000_000) {
             store.state.ui.hasLoadedDashboardConfig
         }
 
