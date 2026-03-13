@@ -17,6 +17,12 @@ import java.io.IOException
 
 class DeviceInfoRepositoryTest {
 
+    companion object {
+        private const val FCM_TOKEN_DEFAULT = "fcm-token-abc"
+        private const val FCM_TOKEN_123 = "test-fcm-token-123"
+        private const val DEVICE_UUID = "device-uuid-123"
+    }
+
     @MockK(relaxUnitFun = true)
     private lateinit var deviceApi: IDeviceInfoAPI
 
@@ -103,12 +109,12 @@ class DeviceInfoRepositoryTest {
 
     @Test
     fun `updateDeviceInfo passes fcm token correctly`() = runTest {
-        val deviceInfo = buildDeviceInfo(fcmToken = "test-fcm-token-123")
+        val deviceInfo = buildDeviceInfo(fcmToken = FCM_TOKEN_123)
         coEvery { deviceApi.updateDeviceInfo(any()) } returns Response.success<Unit>(null)
 
         repository.updateDeviceInfo(deviceInfo)
 
-        coVerify { deviceApi.updateDeviceInfo(match { it.fcmToken == "test-fcm-token-123" }) }
+        coVerify { deviceApi.updateDeviceInfo(match { it.fcmToken == FCM_TOKEN_123 }) }
     }
 
     @Test
@@ -123,12 +129,12 @@ class DeviceInfoRepositoryTest {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private fun buildDeviceInfo(fcmToken: String? = "fcm-token-abc") = DeviceInfo(
+    private fun buildDeviceInfo(fcmToken: String? = FCM_TOKEN_DEFAULT) = DeviceInfo(
         appVersion = "1.0.0",
         deviceManufacturer = "Google",
         deviceOSName = "Android",
         deviceOSVersion = "14",
-        deviceUUID = "device-uuid-123",
+        deviceUUID = DEVICE_UUID,
         deviceModel = "Pixel 8",
         fcmToken = fcmToken,
     )
