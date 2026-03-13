@@ -80,7 +80,7 @@ constructor(
      AppLog.d("DashboardService", "Refreshing dashboard data from server for account: $accountId")
       val accountId = accountId ?: this.accountId ?: throw IllegalStateException("Account ID must be set")
       val account = accountRepository.getAccountFromAPI(accountId)
-      val dashboardType = DashboardType.entries.find { it.value == account.dashboardType }
+      val dashboardType = DashboardType.entries.find { it.value.equals(account.dashboardType, ignoreCase = true) }
         ?: DashboardType.DASHBOARD_4_METRICS
 
       // Get dashboard metrics from server (already in camelCase format)
