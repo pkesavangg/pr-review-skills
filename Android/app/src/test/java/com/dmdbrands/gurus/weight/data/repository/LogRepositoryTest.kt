@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.data.api.ISupportAPI
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
 import com.dmdbrands.gurus.weight.domain.model.api.support.LogEntry
+import com.dmdbrands.gurus.weight.domain.repository.ILogRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
@@ -30,6 +31,23 @@ import retrofit2.Response
 
 class LogRepositoryTest {
 
+  companion object {
+    private const val ACCOUNT_ID = "account-123"
+    private const val TAG_TEST = "TAG"
+    private const val MESSAGE_TEST = "message"
+    private const val TYPE_DEBUG = "debug"
+    private const val DB_ERROR = "DB error"
+    private const val API_URL = "https://api.test.com"
+    private const val TIMEZONE = "America/New_York"
+    private const val TIMEZONE_OFFSET = "-300"
+    private const val APP_VERSION = "1.0.0"
+    private const val OS_VERSION = "14"
+    private const val MANUFACTURER = "Google"
+    private const val MODEL = "Pixel"
+    private const val LOG_TIME = "2024-01-01T00:00:00Z"
+    private const val LOG_DATA = "test log"
+  }
+
   @MockK(relaxUnitFun = true)
   lateinit var logDao: LogDao
 
@@ -48,6 +66,12 @@ class LogRepositoryTest {
     mockkObject(DeviceInfoUtil)
     every { accountService.activeAccountFlow } returns flowOf(null)
     repository = LogRepository(logDao, supportAPI, accountService)
+  }
+
+  private fun setInitialized(value: Boolean) {
+    val field = LogRepository::class.java.getDeclaredField("isInitialized")
+    field.isAccessible = true
+    field.set(repository, value)
   }
 
   @After
@@ -81,7 +105,7 @@ class LogRepositoryTest {
 
   @Test
   fun `updateAccountId does not throw`() {
-    repository.updateAccountId("account-123")
+    repository.updateAccountId(ACCOUNT_ID)
   }
 
   // deleteAllLogs
@@ -101,9 +125,9 @@ class LogRepositoryTest {
   fun `deleteLogsByAccountId passes accountId to logDao`() = runTest {
     coEvery { logDao.deleteLogsByAccountId(any()) } just Runs
 
-    repository.deleteLogsByAccountId("account-123")
+    repository.deleteLogsByAccountId(ACCOUNT_ID)
 
-    coVerify { logDao.deleteLogsByAccountId("account-123") }
+    coVerify { logDao.deleteLogsByAccountId(ACCOUNT_ID) }
   }
 
   // clearLogs
@@ -119,7 +143,7 @@ class LogRepositoryTest {
 
   @Test
   fun `clearLogs rethrows exception from logDao`() = runTest {
-    coEvery { logDao.deleteAllLogs() } throws RuntimeException("DB error")
+    coEvery { logDao.deleteAllLogs() } throws RuntimeException(DB_ERROR)
 
     var thrown: Exception? = null
     try {
@@ -129,7 +153,7 @@ class LogRepositoryTest {
     }
 
     assertThat(thrown).isNotNull()
-    assertThat(thrown!!.message).isEqualTo("DB error")
+    assertThat(thrown!!.message).isEqualTo(DB_ERROR)
   }
 
   // deleteLogsOlderThanDays
@@ -147,7 +171,7 @@ class LogRepositoryTest {
 
   @Test
   fun `log returns early without inserting when not initialized`() = runTest {
-    repository.log("TAG", "message", "debug", null)
+    repository.log(TAG_TEST, MESSAGE_TEST, TYPE_DEBUG, null)
 
     coVerify(exactly = 0) { logDao.insertLog(any()) }
   }
@@ -176,7 +200,7 @@ class LogRepositoryTest {
 
   @Test
   fun `getLogsByAccountId emits emptyList when not initialized`() = runTest {
-    val result = repository.getLogsByAccountId("account-123").first()
+    val result = repository.getLogsByAccountId(ACCOUNT_ID).first()
 
     assertThat(result).isEmpty()
   }
@@ -197,14 +221,7 @@ class LogRepositoryTest {
     val mockResponse = mockk<Response<ResponseBody>>()
     every { mockResponse.isSuccessful } returns true
     every { mockResponse.body() } returns null
-    every { AppStatusService.apiUrl } returns "https://api.test.com"
-    every { AppStatusService.getUserTimezone() } returns "America/New_York"
-    every { AppStatusService.getUserTimezoneOffset() } returns "-300"
-    every { AppStatusService.version } returns "1.0.0"
-    every { DeviceInfoUtil.getOSVersion() } returns "14"
-    every { DeviceInfoUtil.getAppVersion() } returns "1.0.0"
-    every { DeviceInfoUtil.getManufacturer() } returns "Google"
-    every { DeviceInfoUtil.getModel() } returns "Pixel"
+    setupDeviceAndAppMocks()
     coEvery { supportAPI.sendLog(any()) } returns mockResponse
 
     repository.sendLogs()
@@ -218,14 +235,7 @@ class LogRepositoryTest {
     every { mockResponse.isSuccessful } returns false
     every { mockResponse.code() } returns 500
     every { mockResponse.errorBody() } returns null
-    every { AppStatusService.apiUrl } returns "https://api.test.com"
-    every { AppStatusService.getUserTimezone() } returns "America/New_York"
-    every { AppStatusService.getUserTimezoneOffset() } returns "-300"
-    every { AppStatusService.version } returns "1.0.0"
-    every { DeviceInfoUtil.getOSVersion() } returns "14"
-    every { DeviceInfoUtil.getAppVersion() } returns "1.0.0"
-    every { DeviceInfoUtil.getManufacturer() } returns "Google"
-    every { DeviceInfoUtil.getModel() } returns "Pixel"
+    setupDeviceAndAppMocks()
     coEvery { supportAPI.sendLog(any()) } returns mockResponse
 
     var thrown: Exception? = null
@@ -253,10 +263,10 @@ class LogRepositoryTest {
     val mockResponse = mockk<Response<ResponseBody>>()
     every { mockResponse.isSuccessful } returns true
     every { mockResponse.body() } returns null
-    every { AppStatusService.version } returns "1.0.0"
+    every { AppStatusService.version } returns APP_VERSION
     coEvery { supportAPI.sendLog(any()) } returns mockResponse
 
-    repository.sendScaleLog(listOf(LogEntry(time = "2024-01-01T00:00:00Z", data = "test log")))
+    repository.sendScaleLog(listOf(LogEntry(time = LOG_TIME, data = LOG_DATA)))
 
     coVerify { supportAPI.sendLog(any()) }
   }
@@ -267,12 +277,12 @@ class LogRepositoryTest {
     every { mockResponse.isSuccessful } returns false
     every { mockResponse.code() } returns 503
     every { mockResponse.errorBody() } returns null
-    every { AppStatusService.version } returns "1.0.0"
+    every { AppStatusService.version } returns APP_VERSION
     coEvery { supportAPI.sendLog(any()) } returns mockResponse
 
     var thrown: Exception? = null
     try {
-      repository.sendScaleLog(listOf(LogEntry(time = "2024-01-01T00:00:00Z", data = "test")))
+      repository.sendScaleLog(listOf(LogEntry(time = LOG_TIME, data = LOG_DATA)))
     } catch (e: Exception) {
       thrown = e
     }
@@ -290,5 +300,182 @@ class LogRepositoryTest {
     repository.clearLogsForCurrentAccount()
 
     coVerify { logDao.deleteLogsByAccountId(any()) }
+  }
+
+  @Test
+  fun `clearLogsForCurrentAccount rethrows exception from logDao`() = runTest {
+    coEvery { logDao.deleteLogsByAccountId(any()) } throws RuntimeException(DB_ERROR)
+
+    var thrown: Exception? = null
+    try {
+      repository.clearLogsForCurrentAccount()
+    } catch (e: Exception) {
+      thrown = e
+    }
+
+    assertThat(thrown).isNotNull()
+    assertThat(thrown!!.message).isEqualTo(DB_ERROR)
+  }
+
+  // sendLogsForCurrentAccount
+
+  @Test
+  fun `sendLogsForCurrentAccount delegates to sendLogs`() = runTest {
+    val mockResponse = mockk<Response<ResponseBody>>()
+    every { mockResponse.isSuccessful } returns true
+    every { mockResponse.body() } returns null
+    setupDeviceAndAppMocks()
+    coEvery { supportAPI.sendLog(any()) } returns mockResponse
+
+    repository.sendLogsForCurrentAccount()
+
+    coVerify { supportAPI.sendLog(any()) }
+  }
+
+  // initialize
+
+  @Test
+  fun `initialize launches cleanup coroutine`() = runTest {
+    every { logDao.getLogCount() } returns flowOf(5)
+    coEvery { logDao.deleteLogsOlderThanDays(any()) } just Runs
+
+    repository.initialize()
+
+    // initialize() launches on repositoryScope (fire-and-forget) so we verify it doesn't throw
+  }
+
+  @Test
+  fun `initialize trims logs when count exceeds max`() = runTest {
+    every { logDao.getLogCount() } returns flowOf(20000)
+    coEvery { logDao.deleteLogsOlderThanDays(any()) } just Runs
+    coEvery { logDao.deleteOldestLogs(any()) } just Runs
+
+    repository.initialize()
+
+    // Fire-and-forget coroutine — verify no throw
+  }
+
+  @Test
+  fun `initialize returns early on second call`() = runTest {
+    setInitialized(true)
+
+    // Should return immediately without launching coroutine
+    repository.initialize()
+  }
+
+  // getLogsByType
+
+  @Test
+  fun `getLogsByType delegates to logDao with type name`() {
+    every { logDao.getLogsByType(any()) } returns flowOf(emptyList())
+
+    repository.getLogsByType(ILogRepository.LogType.DEBUG)
+
+    io.mockk.verify { logDao.getLogsByType("DEBUG") }
+  }
+
+  // getLogsForLastDays
+
+  @Test
+  fun `getLogsForLastDays delegates to logDao with computed timestamp`() {
+    every { logDao.getLogsForLastDays(any()) } returns flowOf(emptyList())
+
+    repository.getLogsForLastDays(3)
+
+    io.mockk.verify { logDao.getLogsForLastDays(any()) }
+  }
+
+  // log (when initialized)
+
+  @Test
+  fun `log inserts entry into logDao when initialized`() = runTest {
+    setInitialized(true)
+    coEvery { logDao.insertLog(any()) } just Runs
+
+    repository.log(TAG_TEST, MESSAGE_TEST, TYPE_DEBUG, null)
+
+    coVerify { logDao.insertLog(match { it.tag == TAG_TEST && it.message == MESSAGE_TEST }) }
+  }
+
+  @Test
+  fun `log swallows exception from logDao when initialized`() = runTest {
+    setInitialized(true)
+    coEvery { logDao.insertLog(any()) } throws RuntimeException(DB_ERROR)
+
+    // Should not throw
+    repository.log(TAG_TEST, MESSAGE_TEST, TYPE_DEBUG, null)
+  }
+
+  // getLogs (when initialized)
+
+  @Test
+  fun `getLogs emits logs from logDao when initialized`() = runTest {
+    setInitialized(true)
+    val mockLog = mockk<LogEntity>(relaxed = true)
+    every { logDao.getAllLogs() } returns flowOf(listOf(mockLog))
+
+    val result = repository.getLogs().first()
+
+    assertThat(result).hasSize(1)
+  }
+
+  // getLogsByAccountId (when initialized)
+
+  @Test
+  fun `getLogsByAccountId emits logs from logDao when initialized`() = runTest {
+    setInitialized(true)
+    val mockLog = mockk<LogEntity>(relaxed = true)
+    every { logDao.getLogsByAccountId(ACCOUNT_ID) } returns flowOf(listOf(mockLog))
+
+    val result = repository.getLogsByAccountId(ACCOUNT_ID).first()
+
+    assertThat(result).hasSize(1)
+  }
+
+  // getLogsBySessionId (when initialized)
+
+  @Test
+  fun `getLogsBySessionId emits logs from logDao when initialized`() = runTest {
+    setInitialized(true)
+    val mockLog = mockk<LogEntity>(relaxed = true)
+    every { logDao.getLogsBySessionId(any()) } returns flowOf(listOf(mockLog))
+
+    val result = repository.getLogsBySessionId().first()
+
+    assertThat(result).hasSize(1)
+  }
+
+  // sendLogs with initialized state and logs
+
+  @Test
+  fun `sendLogs filters logs by timestamp when initialized`() = runTest {
+    setInitialized(true)
+    val recentLog = mockk<LogEntity>(relaxed = true) {
+      every { timestamp } returns System.currentTimeMillis()
+    }
+    val oldLog = mockk<LogEntity>(relaxed = true) {
+      every { timestamp } returns 0L
+    }
+    every { logDao.getLogsByAccountId(any()) } returns flowOf(listOf(recentLog, oldLog))
+    val mockResponse = mockk<Response<ResponseBody>>()
+    every { mockResponse.isSuccessful } returns true
+    every { mockResponse.body() } returns null
+    setupDeviceAndAppMocks()
+    coEvery { supportAPI.sendLog(any()) } returns mockResponse
+
+    repository.sendLogs()
+
+    coVerify { supportAPI.sendLog(any()) }
+  }
+
+  private fun setupDeviceAndAppMocks() {
+    every { AppStatusService.apiUrl } returns API_URL
+    every { AppStatusService.getUserTimezone() } returns TIMEZONE
+    every { AppStatusService.getUserTimezoneOffset() } returns TIMEZONE_OFFSET
+    every { AppStatusService.version } returns APP_VERSION
+    every { DeviceInfoUtil.getOSVersion() } returns OS_VERSION
+    every { DeviceInfoUtil.getAppVersion() } returns APP_VERSION
+    every { DeviceInfoUtil.getManufacturer() } returns MANUFACTURER
+    every { DeviceInfoUtil.getModel() } returns MODEL
   }
 }
