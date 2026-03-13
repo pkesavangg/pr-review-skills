@@ -14,6 +14,13 @@ import java.io.IOException
 
 class AccountFlagRepositoryTest {
 
+    companion object {
+        private const val FLAG_ID_1 = "flag-1"
+        private const val FLAG_ID_2 = "flag-2"
+        private const val FLAG_ID_ABC = "flag-abc"
+        private const val FLAG_ID_XYZ = "flag-xyz"
+    }
+
     @MockK(relaxUnitFun = true)
     private lateinit var accountFlagAPI: IAccountFlagAPI
 
@@ -30,19 +37,19 @@ class AccountFlagRepositoryTest {
     @Test
     fun `getAccountFlags returns mapped flags on success`() = runTest {
         val apiFlags = listOf(
-            AccountFlagResponse(id = "flag-1", type = "promo", trigger = "login", data = null),
-            AccountFlagResponse(id = "flag-2", type = "review", trigger = "entry", data = mapOf("key" to "value")),
+            AccountFlagResponse(id = FLAG_ID_1, type = "promo", trigger = "login", data = null),
+            AccountFlagResponse(id = FLAG_ID_2, type = "review", trigger = "entry", data = mapOf("key" to "value")),
         )
         coEvery { accountFlagAPI.getAccountFlags() } returns apiFlags
 
         val result = repository.getAccountFlags()
 
         assertThat(result).hasSize(2)
-        assertThat(result[0].id).isEqualTo("flag-1")
+        assertThat(result[0].id).isEqualTo(FLAG_ID_1)
         assertThat(result[0].type).isEqualTo("promo")
         assertThat(result[0].trigger).isEqualTo("login")
         assertThat(result[0].data).isNull()
-        assertThat(result[1].id).isEqualTo("flag-2")
+        assertThat(result[1].id).isEqualTo(FLAG_ID_2)
         assertThat(result[1].type).isEqualTo("review")
         assertThat(result[1].trigger).isEqualTo("entry")
     }
@@ -59,12 +66,12 @@ class AccountFlagRepositoryTest {
     @Test
     fun `getAccountFlags maps id field correctly`() = runTest {
         coEvery { accountFlagAPI.getAccountFlags() } returns listOf(
-            AccountFlagResponse(id = "flag-abc", type = "scale-review-ask", trigger = "login")
+            AccountFlagResponse(id = FLAG_ID_ABC, type = "scale-review-ask", trigger = "login")
         )
 
         val result = repository.getAccountFlags()
 
-        assertThat(result[0].id).isEqualTo("flag-abc")
+        assertThat(result[0].id).isEqualTo(FLAG_ID_ABC)
     }
 
     @Test
@@ -107,9 +114,9 @@ class AccountFlagRepositoryTest {
 
     @Test
     fun `deleteAccountFlag returns true on success`() = runTest {
-        coEvery { accountFlagAPI.deleteAccountFlag("flag-1") } returns true
+        coEvery { accountFlagAPI.deleteAccountFlag(FLAG_ID_1) } returns true
 
-        val result = repository.deleteAccountFlag("flag-1")
+        val result = repository.deleteAccountFlag(FLAG_ID_1)
 
         assertThat(result).isTrue()
     }
@@ -118,16 +125,16 @@ class AccountFlagRepositoryTest {
     fun `deleteAccountFlag calls api with correct flagId`() = runTest {
         coEvery { accountFlagAPI.deleteAccountFlag(any()) } returns true
 
-        repository.deleteAccountFlag("flag-xyz")
+        repository.deleteAccountFlag(FLAG_ID_XYZ)
 
-        coVerify { accountFlagAPI.deleteAccountFlag("flag-xyz") }
+        coVerify { accountFlagAPI.deleteAccountFlag(FLAG_ID_XYZ) }
     }
 
     @Test
     fun `deleteAccountFlag returns false when IOException thrown`() = runTest {
         coEvery { accountFlagAPI.deleteAccountFlag(any()) } throws IOException("No internet")
 
-        val result = repository.deleteAccountFlag("flag-1")
+        val result = repository.deleteAccountFlag(FLAG_ID_1)
 
         assertThat(result).isFalse()
     }
@@ -136,7 +143,7 @@ class AccountFlagRepositoryTest {
     fun `deleteAccountFlag returns false when RuntimeException thrown`() = runTest {
         coEvery { accountFlagAPI.deleteAccountFlag(any()) } throws RuntimeException("Unexpected error")
 
-        val result = repository.deleteAccountFlag("flag-1")
+        val result = repository.deleteAccountFlag(FLAG_ID_1)
 
         assertThat(result).isFalse()
     }
