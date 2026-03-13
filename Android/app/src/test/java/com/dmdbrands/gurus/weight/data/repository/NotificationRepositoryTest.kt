@@ -28,6 +28,13 @@ import org.junit.Test
 
 class NotificationRepositoryTest {
 
+  companion object {
+    private const val ACCOUNT_ID_1 = "acc-1"
+    private const val ACCOUNT_ID_2 = "acc-2"
+    private const val ACCOUNT_ID_MISSING = "acc-missing"
+    private const val API_ERROR = "API error"
+  }
+
   @MockK(relaxUnitFun = true)
   lateinit var notificationAPI: INotificationAPI
 
@@ -69,7 +76,7 @@ class NotificationRepositoryTest {
   @Test
   fun `updateNotificationSettingsInAPI propagates exception from API`() = runTest {
     val request = mockk<NotificationSettingsRequest>(relaxed = true)
-    coEvery { notificationAPI.updateNotificationSettings(any()) } throws RuntimeException("API error")
+    coEvery { notificationAPI.updateNotificationSettings(any()) } throws RuntimeException(API_ERROR)
 
     var thrown: Exception? = null
     try {
@@ -79,7 +86,7 @@ class NotificationRepositoryTest {
     }
 
     assertThat(thrown).isNotNull()
-    assertThat(thrown!!.message).isEqualTo("API error")
+    assertThat(thrown!!.message).isEqualTo(API_ERROR)
   }
 
   // updateNotificationSettingsInDB
@@ -87,21 +94,21 @@ class NotificationRepositoryTest {
   @Test
   fun `updateNotificationSettingsInDB calls accountDao with correct entity`() = runTest {
     val settings = NotificationSettingsEntity(
-      accountId = "acc-1",
+      accountId = ACCOUNT_ID_1,
       shouldSendEntryNotifications = true,
       shouldSendWeightInEntryNotifications = false,
       isSynced = true
     )
     coEvery { accountDao.updateNotificationSettings(any()) } just Runs
-    every { accountDao.getAccount("acc-1") } returns flowOf(mockAccountWithRelations)
+    every { accountDao.getAccount(ACCOUNT_ID_1) } returns flowOf(mockAccountWithRelations)
     every { AccountEntityMapper.toDomainFromAccountWithRelations(mockAccountWithRelations) } returns mockAccount
 
-    repository.updateNotificationSettingsInDB("acc-1", settings)
+    repository.updateNotificationSettingsInDB(ACCOUNT_ID_1, settings)
 
     coVerify {
       accountDao.updateNotificationSettings(
         match {
-          it.accountId == "acc-1" &&
+          it.accountId == ACCOUNT_ID_1 &&
             it.shouldSendEntryNotifications == true &&
             it.shouldSendWeightInEntryNotifications == false &&
             it.isSynced == true
@@ -113,16 +120,16 @@ class NotificationRepositoryTest {
   @Test
   fun `updateNotificationSettingsInDB returns mapped account from dao`() = runTest {
     val settings = NotificationSettingsEntity(
-      accountId = "acc-2",
+      accountId = ACCOUNT_ID_2,
       shouldSendEntryNotifications = false,
       shouldSendWeightInEntryNotifications = true,
       isSynced = false
     )
     coEvery { accountDao.updateNotificationSettings(any()) } just Runs
-    every { accountDao.getAccount("acc-2") } returns flowOf(mockAccountWithRelations)
+    every { accountDao.getAccount(ACCOUNT_ID_2) } returns flowOf(mockAccountWithRelations)
     every { AccountEntityMapper.toDomainFromAccountWithRelations(mockAccountWithRelations) } returns mockAccount
 
-    val result = repository.updateNotificationSettingsInDB("acc-2", settings)
+    val result = repository.updateNotificationSettingsInDB(ACCOUNT_ID_2, settings)
 
     assertThat(result).isEqualTo(mockAccount)
   }
@@ -130,17 +137,17 @@ class NotificationRepositoryTest {
   @Test
   fun `updateNotificationSettingsInDB throws when account not found after update`() = runTest {
     val settings = NotificationSettingsEntity(
-      accountId = "acc-missing",
+      accountId = ACCOUNT_ID_MISSING,
       shouldSendEntryNotifications = true,
       shouldSendWeightInEntryNotifications = true,
       isSynced = true
     )
     coEvery { accountDao.updateNotificationSettings(any()) } just Runs
-    every { accountDao.getAccount("acc-missing") } returns flowOf(null)
+    every { accountDao.getAccount(ACCOUNT_ID_MISSING) } returns flowOf(null)
 
     var thrown: Exception? = null
     try {
-      repository.updateNotificationSettingsInDB("acc-missing", settings)
+      repository.updateNotificationSettingsInDB(ACCOUNT_ID_MISSING, settings)
     } catch (e: Exception) {
       thrown = e
     }
