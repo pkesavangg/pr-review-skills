@@ -437,6 +437,8 @@ class AccountRepositoryTest {
         assertThat(result).isTrue()
         coVerify { accountDao.deactivateAllAccounts() }
         coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
+        coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
     }
 
     @Test
@@ -860,6 +862,8 @@ class AccountRepositoryTest {
         assertThat(result).isTrue()
         coVerify(exactly = 0) { accountDao.deactivateAllAccounts() }
         coVerify { accountDao.logoutAccount(TEST_ACCOUNT_ID) }
+        coVerify { accountDao.markAccountExpired(TEST_ACCOUNT_ID) }
+        coVerify { userDataStore.clearAccountTokens(TEST_ACCOUNT_ID) }
     }
 
     // -------------------------------------------------------------------------
