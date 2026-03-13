@@ -40,9 +40,9 @@ class DashboardRepositoryTest {
 
     @Test
     fun `getVisibleMetricKeys returns empty list when settings is null`() = runTest {
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(null)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(null)
 
-        val result = repository.getVisibleMetricKeys("account1").first()
+        val result = repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
         assertThat(result).isEmpty()
     }
@@ -53,9 +53,9 @@ class DashboardRepositoryTest {
             dashboardType = DashboardType.DASHBOARD_4_METRICS.value,
             metrics = listOf(MetricKeyConstants.BMI, MetricKeyConstants.BODY_FAT),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMetricKeys("account1").first()
+        val result = repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
         assertThat(result).containsExactly(MetricKey.BMI, MetricKey.BODY_FAT)
     }
@@ -67,9 +67,9 @@ class DashboardRepositoryTest {
             dashboardType = DashboardType.DASHBOARD_4_METRICS.value,
             metrics = listOf(MetricKeyConstants.BMI, MetricKeyConstants.BMR),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMetricKeys("account1").first()
+        val result = repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
         assertThat(result).containsExactly(MetricKey.BMI)
         assertThat(result).doesNotContain(MetricKey.BMR)
@@ -81,9 +81,9 @@ class DashboardRepositoryTest {
             dashboardType = DashboardType.DASHBOARD_12_METRICS.value,
             metrics = listOf(MetricKeyConstants.BMI, MetricKeyConstants.BMR, MetricKeyConstants.METABOLIC_AGE),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMetricKeys("account1").first()
+        val result = repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
         assertThat(result).containsExactly(MetricKey.BMI, MetricKey.BMR, MetricKey.METABOLIC_AGE)
     }
@@ -95,9 +95,9 @@ class DashboardRepositoryTest {
             dashboardType = "unknown_type",
             metrics = listOf(MetricKeyConstants.BMI, MetricKeyConstants.BMR),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMetricKeys("account1").first()
+        val result = repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
         // BMR not available in DASHBOARD_4_METRICS (the default)
         assertThat(result).containsExactly(MetricKey.BMI)
@@ -110,9 +110,9 @@ class DashboardRepositoryTest {
             dashboardType = DashboardType.DASHBOARD_4_METRICS.value,
             metrics = listOf(MetricKeyConstants.BMI, "invalidMetricKey"),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMetricKeys("account1").first()
+        val result = repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
         assertThat(result).containsExactly(MetricKey.BMI)
     }
@@ -123,27 +123,27 @@ class DashboardRepositoryTest {
             dashboardType = DashboardType.DASHBOARD_4_METRICS.value,
             metrics = emptyList(),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMetricKeys("account1").first()
+        val result = repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
         assertThat(result).isEmpty()
     }
 
     @Test
     fun `getVisibleMetricKeys passes accountId to dao`() = runTest {
-        repository.getVisibleMetricKeys("specific-account").first()
+        repository.getVisibleMetricKeys(ACCOUNT_ID).first()
 
-        coVerify { accountDao.getDashboardSettings("specific-account") }
+        coVerify { accountDao.getDashboardSettings(ACCOUNT_ID) }
     }
 
     // ── getVisibleMilestoneKeys ────────────────────────────────────────────────
 
     @Test
     fun `getVisibleMilestoneKeys returns empty list when settings is null`() = runTest {
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(null)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(null)
 
-        val result = repository.getVisibleMilestoneKeys("account1").first()
+        val result = repository.getVisibleMilestoneKeys(ACCOUNT_ID).first()
 
         assertThat(result).isEmpty()
     }
@@ -153,9 +153,9 @@ class DashboardRepositoryTest {
         val settings = buildDashboardSettings(
             milestones = listOf(ProgressKeyConstants.GOAL, ProgressKeyConstants.CURRENT_STREAK),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMilestoneKeys("account1").first()
+        val result = repository.getVisibleMilestoneKeys(ACCOUNT_ID).first()
 
         assertThat(result).containsExactly(MilestoneKey.TO_GOAL, MilestoneKey.CURRENT_STREAK)
     }
@@ -165,9 +165,9 @@ class DashboardRepositoryTest {
         val settings = buildDashboardSettings(
             milestones = listOf(ProgressKeyConstants.GOAL, "invalidMilestone"),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMilestoneKeys("account1").first()
+        val result = repository.getVisibleMilestoneKeys(ACCOUNT_ID).first()
 
         assertThat(result).containsExactly(MilestoneKey.TO_GOAL)
     }
@@ -184,9 +184,9 @@ class DashboardRepositoryTest {
             ProgressKeyConstants.TOTAL_CHANGE,
         )
         val settings = buildDashboardSettings(milestones = allMilestoneKeys)
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(settings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(settings)
 
-        val result = repository.getVisibleMilestoneKeys("account1").first()
+        val result = repository.getVisibleMilestoneKeys(ACCOUNT_ID).first()
 
         assertThat(result).hasSize(7)
         assertThat(result).containsAtLeast(MilestoneKey.TO_GOAL, MilestoneKey.CURRENT_STREAK)
@@ -199,17 +199,17 @@ class DashboardRepositoryTest {
         val existingSettings = buildDashboardSettings(
             milestones = listOf(ProgressKeyConstants.GOAL),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(existingSettings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(existingSettings)
 
         repository.updateVisibleMetricKeys(
-            "account1",
+            ACCOUNT_ID,
             listOf(MetricKey.BMI, MetricKey.BODY_FAT),
             DashboardType.DASHBOARD_4_METRICS,
         )
 
         coVerify {
             accountRepository.updateDashboardSettings(
-                accountId = "account1",
+                accountId = ACCOUNT_ID,
                 dashboardMetrics = match { it.contains(MetricKeyConstants.BMI) && it.contains(MetricKeyConstants.BODY_FAT) },
                 dashboardMilestones = any(),
                 dashboardType = DashboardType.DASHBOARD_4_METRICS,
@@ -222,17 +222,17 @@ class DashboardRepositoryTest {
         val existingSettings = buildDashboardSettings(
             milestones = listOf(ProgressKeyConstants.GOAL, ProgressKeyConstants.CURRENT_STREAK),
         )
-        every { accountDao.getDashboardSettings("account1") } returns flowOf(existingSettings)
+        every { accountDao.getDashboardSettings(ACCOUNT_ID) } returns flowOf(existingSettings)
 
         repository.updateVisibleMetricKeys(
-            "account1",
+            ACCOUNT_ID,
             listOf(MetricKey.BMI),
             DashboardType.DASHBOARD_4_METRICS,
         )
 
         coVerify {
             accountRepository.updateDashboardSettings(
-                accountId = "account1",
+                accountId = ACCOUNT_ID,
                 dashboardMetrics = any(),
                 dashboardMilestones = listOf(ProgressKeyConstants.GOAL, ProgressKeyConstants.CURRENT_STREAK),
                 dashboardType = any(),
@@ -245,13 +245,13 @@ class DashboardRepositoryTest {
     @Test
     fun `updateVisibleMilestoneKeys converts MilestoneKeys to camelCase and calls accountRepository`() = runTest {
         repository.updateVisibleMilestoneKeys(
-            "account1",
+            ACCOUNT_ID,
             listOf(MilestoneKey.TO_GOAL, MilestoneKey.CURRENT_STREAK),
         )
 
         coVerify {
             accountRepository.updateDashboardSettings(
-                accountId = "account1",
+                accountId = ACCOUNT_ID,
                 dashboardMetrics = any(),
                 dashboardMilestones = match {
                     it.contains(ProgressKeyConstants.GOAL) && it.contains(ProgressKeyConstants.CURRENT_STREAK)
@@ -265,7 +265,7 @@ class DashboardRepositoryTest {
 
     @Test
     fun `hasVisibleKeys always returns true`() = runTest {
-        val result = repository.hasVisibleKeys("account1")
+        val result = repository.hasVisibleKeys(ACCOUNT_ID)
         assertThat(result).isTrue()
     }
 
@@ -273,11 +273,11 @@ class DashboardRepositoryTest {
 
     @Test
     fun `resetVisibleMetricKeys for DASHBOARD_4_METRICS uses default 4 metrics`() = runTest {
-        repository.resetVisibleMetricKeys("account1", DashboardType.DASHBOARD_4_METRICS)
+        repository.resetVisibleMetricKeys(ACCOUNT_ID, DashboardType.DASHBOARD_4_METRICS)
 
         coVerify {
             accountRepository.updateDashboardSettings(
-                accountId = "account1",
+                accountId = ACCOUNT_ID,
                 dashboardMetrics = match { it.size == 4 },
                 dashboardMilestones = any(),
                 dashboardType = DashboardType.DASHBOARD_4_METRICS,
@@ -287,11 +287,11 @@ class DashboardRepositoryTest {
 
     @Test
     fun `resetVisibleMetricKeys for DASHBOARD_12_METRICS uses all 12 metrics`() = runTest {
-        repository.resetVisibleMetricKeys("account1", DashboardType.DASHBOARD_12_METRICS)
+        repository.resetVisibleMetricKeys(ACCOUNT_ID, DashboardType.DASHBOARD_12_METRICS)
 
         coVerify {
             accountRepository.updateDashboardSettings(
-                accountId = "account1",
+                accountId = ACCOUNT_ID,
                 dashboardMetrics = match { it.size == 12 },
                 dashboardMilestones = any(),
                 dashboardType = DashboardType.DASHBOARD_12_METRICS,
@@ -303,11 +303,11 @@ class DashboardRepositoryTest {
 
     @Test
     fun `resetVisibleMilestoneKeys calls updateVisibleMilestoneKeys with all default milestones`() = runTest {
-        repository.resetVisibleMilestoneKeys("account1")
+        repository.resetVisibleMilestoneKeys(ACCOUNT_ID)
 
         coVerify {
             accountRepository.updateDashboardSettings(
-                accountId = "account1",
+                accountId = ACCOUNT_ID,
                 dashboardMetrics = any(),
                 dashboardMilestones = match { it.size == 7 },
                 dashboardType = any(),
@@ -315,10 +315,62 @@ class DashboardRepositoryTest {
         }
     }
 
+    // ── resetVisibleKeys ───────────────────────────────────────────────────────
+
+    @Test
+    fun `resetVisibleKeys for DASHBOARD_4_METRICS uses default 4 metrics and all default milestones`() = runTest {
+        repository.resetVisibleKeys(ACCOUNT_ID, DashboardType.DASHBOARD_4_METRICS)
+
+        coVerify {
+            accountRepository.updateDashboardSettings(
+                accountId = ACCOUNT_ID,
+                dashboardMetrics = MetricKeyConstants.DEFAULT_4_METRICS,
+                dashboardMilestones = any(),
+                dashboardType = DashboardType.DASHBOARD_4_METRICS,
+            )
+        }
+    }
+
+    @Test
+    fun `resetVisibleKeys for DASHBOARD_12_METRICS uses all metric keys`() = runTest {
+        repository.resetVisibleKeys(ACCOUNT_ID, DashboardType.DASHBOARD_12_METRICS)
+
+        coVerify {
+            accountRepository.updateDashboardSettings(
+                accountId = ACCOUNT_ID,
+                dashboardMetrics = MetricKeyConstants.ALL_METRIC_KEYS,
+                dashboardMilestones = any(),
+                dashboardType = DashboardType.DASHBOARD_12_METRICS,
+            )
+        }
+    }
+
+    @Test
+    fun `updateVisibleMilestoneKeys with milestone key not in enum map uses lowercase fallback`() = runTest {
+        // MilestoneKey.LONGEST_STREAK mapped to "longestStreak" in ProgressKeyConstants
+        repository.updateVisibleMilestoneKeys(
+            ACCOUNT_ID,
+            listOf(MilestoneKey.LONGEST_STREAK),
+        )
+
+        coVerify {
+            accountRepository.updateDashboardSettings(
+                accountId = ACCOUNT_ID,
+                dashboardMetrics = any(),
+                dashboardMilestones = match { it.isNotEmpty() },
+                dashboardType = any(),
+            )
+        }
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
+    companion object {
+        private const val ACCOUNT_ID = "account1"
+    }
+
     private fun buildDashboardSettings(
-        accountId: String = "account1",
+        accountId: String = ACCOUNT_ID,
         dashboardType: String = DashboardType.DASHBOARD_4_METRICS.value,
         metrics: List<String> = emptyList(),
         milestones: List<String> = emptyList(),
