@@ -20,6 +20,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
 import io.mockk.mockkObject
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -27,6 +28,10 @@ import org.junit.Test
 import java.io.IOException
 
 class GoalRepositoryTest {
+
+    companion object {
+        private const val ACCOUNT_ID = "acc-123"
+    }
 
     @MockK
     lateinit var goalAPI: IGoalAPI
@@ -39,16 +44,14 @@ class GoalRepositoryTest {
 
     private lateinit var repository: GoalRepository
 
-    private val accountId = "acc-123"
-
     private val mockAccountEntity: AccountEntity = mockk(relaxed = true) {
-        every { id } returns accountId
+        every { id } returns ACCOUNT_ID
     }
     private val mockRoomAccount: RoomAccount = mockk(relaxed = true) {
         every { account } returns mockAccountEntity
     }
     private val mockDomainAccount: Account = mockk(relaxed = true) {
-        every { id } returns accountId
+        every { id } returns ACCOUNT_ID
     }
 
     @Before
@@ -78,7 +81,7 @@ class GoalRepositoryTest {
 
         coVerify {
             accountDao.updateGoalSettings(
-                match { it.accountId == accountId && it.goalType == "lose" && it.weight == 180f }
+                match { it.accountId == ACCOUNT_ID && it.goalType == "lose" && it.weight == 180f }
             )
         }
     }
@@ -114,7 +117,7 @@ class GoalRepositoryTest {
 
         assertThat(result).isEqualTo(mockDomainAccount)
         coVerify { goalAPI.updateGoal(goalData) }
-        coVerify { accountDao.updateGoalSettings(match { it.accountId == accountId && it.isSynced }) }
+        coVerify { accountDao.updateGoalSettings(match { it.accountId == ACCOUNT_ID && it.isSynced }) }
     }
 
     @Test
@@ -193,6 +196,17 @@ class GoalRepositoryTest {
         assertThat(result).isNull()
     }
 
+    @Test
+    fun `getCurrentGoal emits null when flow throws exception`() = runTest {
+        every { accountRepository.getActiveAccount() } returns flow {
+            throw RuntimeException("DB error")
+        }
+
+        val result = repository.getCurrentGoal().first()
+
+        assertThat(result).isNull()
+    }
+
     // -----------------------------------------------------------------------
     // calculateGoalPercent
     // -----------------------------------------------------------------------
@@ -215,6 +229,26 @@ class GoalRepositoryTest {
 
         // (180 - 160) / (200 - 160) = 0.5 → floor(50) = 50
         assertThat(result).isEqualTo(50)
+    }
+
+    @Test
+    fun `calculateGoalPercent for lose type clamps to 0 when weight exceeds initial`() {
+        // currentWeight > initialWeight → percent > 1 → result < 0 → clamp to 0
+        val goal = Goal(goalWeight = 160.0, initialWeight = 180.0, type = "lose")
+
+        val result = repository.calculateGoalPercent(goal, currentWeight = 190.0)
+
+        assertThat(result).isEqualTo(0)
+    }
+
+    @Test
+    fun `calculateGoalPercent for gain type clamps to 0 when weight below initial`() {
+        // currentWeight < initialWeight → percent < 0 → result < 0 → clamp to 0
+        val goal = Goal(goalWeight = 200.0, initialWeight = 160.0, type = "gain")
+
+        val result = repository.calculateGoalPercent(goal, currentWeight = 150.0)
+
+        assertThat(result).isEqualTo(0)
     }
 
     @Test
