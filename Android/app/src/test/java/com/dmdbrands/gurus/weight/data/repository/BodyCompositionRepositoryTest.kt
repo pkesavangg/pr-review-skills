@@ -27,6 +27,14 @@ import java.io.IOException
 
 class BodyCompositionRepositoryTest {
 
+    companion object {
+        private const val ACCOUNT_ID = "account1"
+        private const val ACCOUNT_ID_OLD = "old-account"
+        private const val ACCOUNT_ID_NEW = "new-account"
+        private const val ACCESS_TOKEN = "access-token"
+        private const val REFRESH_TOKEN = "refresh-token"
+    }
+
     @MockK(relaxUnitFun = true)
     private lateinit var accountDao: AccountDao
 
@@ -96,12 +104,12 @@ class BodyCompositionRepositoryTest {
             isSynced = false
         )
 
-        repository.updateBodyCompInDB("account1", inputEntity)
+        repository.updateBodyCompInDB(ACCOUNT_ID, inputEntity)
 
         coVerify {
             accountDao.updateWeightCompSettings(
                 WeightCompSettingsEntity(
-                    accountId = "account1",
+                    accountId = ACCOUNT_ID,
                     height = 180,
                     activityLevel = "normal",
                     weightUnit = "LB",
@@ -114,18 +122,18 @@ class BodyCompositionRepositoryTest {
     @Test
     fun `updateBodyCompInDB uses provided accountId regardless of entity accountId`() = runTest {
         val inputEntity = WeightCompSettingsEntity(
-            accountId = "old-account",
+            accountId = ACCOUNT_ID_OLD,
             height = 165,
             activityLevel = "athlete",
             weightUnit = "KG",
             isSynced = true
         )
 
-        repository.updateBodyCompInDB("new-account", inputEntity)
+        repository.updateBodyCompInDB(ACCOUNT_ID_NEW, inputEntity)
 
         coVerify {
             accountDao.updateWeightCompSettings(
-                match { it.accountId == "new-account" }
+                match { it.accountId == ACCOUNT_ID_NEW }
             )
         }
     }
@@ -133,7 +141,7 @@ class BodyCompositionRepositoryTest {
     @Test(expected = RuntimeException::class)
     fun `updateBodyCompInDB propagates exception from dao`() = runTest {
         val inputEntity = WeightCompSettingsEntity(
-            accountId = "account1",
+            accountId = ACCOUNT_ID,
             height = 180,
             activityLevel = "normal",
             weightUnit = "LB",
@@ -141,7 +149,7 @@ class BodyCompositionRepositoryTest {
         )
         coEvery { accountDao.updateWeightCompSettings(any()) } throws RuntimeException("DB error")
 
-        repository.updateBodyCompInDB("account1", inputEntity)
+        repository.updateBodyCompInDB(ACCOUNT_ID, inputEntity)
     }
 
     // ── getUnsyncedActiveBodyCompAccountFromDB ─────────────────────────────────
@@ -193,11 +201,11 @@ class BodyCompositionRepositoryTest {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private fun buildAccountResponse(): AccountResponse = AccountResponse(
-        accessToken = "access-token",
-        refreshToken = "refresh-token",
+        accessToken = ACCESS_TOKEN,
+        refreshToken = REFRESH_TOKEN,
         expiresAt = "2024-12-31",
         account = AccountInfo(
-            id = "account1",
+            id = ACCOUNT_ID,
             email = "user@example.com",
             firstName = "John",
             lastName = "Doe",
