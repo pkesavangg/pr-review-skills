@@ -23,6 +23,11 @@ import java.io.IOException
 
 class IntegrationRepositoryTest {
 
+    companion object {
+        private const val ACCOUNT_ID = "acc-123"
+        private const val PROVIDER_FITBIT = "fitbit"
+    }
+
     @MockK
     lateinit var accountRepository: IAccountRepository
 
@@ -40,9 +45,8 @@ class IntegrationRepositoryTest {
 
     private lateinit var repository: IntegrationRepository
 
-    private val accountId = "acc-123"
     private val mockDomainAccount: Account = mockk(relaxed = true) {
-        every { id } returns accountId
+        every { id } returns ACCOUNT_ID
     }
 
     @Before
@@ -63,23 +67,23 @@ class IntegrationRepositoryTest {
     @Test
     fun `getAccount returns AccountInfo from authAPI`() = runTest {
         val mockAccountInfo: AccountInfo = mockk(relaxed = true) {
-            every { id } returns accountId
+            every { id } returns ACCOUNT_ID
         }
-        coEvery { authAPI.getAccountWithToken(accountId) } returns mockAccountInfo
+        coEvery { authAPI.getAccountWithToken(ACCOUNT_ID) } returns mockAccountInfo
 
-        val result = repository.getAccount(accountId)
+        val result = repository.getAccount(ACCOUNT_ID)
 
         assertThat(result).isEqualTo(mockAccountInfo)
-        coVerify { authAPI.getAccountWithToken(accountId) }
+        coVerify { authAPI.getAccountWithToken(ACCOUNT_ID) }
     }
 
     @Test
     fun `getAccount rethrows exception when API fails`() = runTest {
-        coEvery { authAPI.getAccountWithToken(accountId) } throws IOException("Network error")
+        coEvery { authAPI.getAccountWithToken(ACCOUNT_ID) } throws IOException("Network error")
 
         var threw = false
         try {
-            repository.getAccount(accountId)
+            repository.getAccount(ACCOUNT_ID)
         } catch (e: IOException) {
             threw = true
         }
@@ -93,7 +97,7 @@ class IntegrationRepositoryTest {
 
     @Test
     fun `removeIntegration delegates to integrationAPI with correct args`() = runTest {
-        val provider = "fitbit"
+        val provider = PROVIDER_FITBIT
         val suggestion = mapOf("key" to "value")
         coEvery { integrationAPI.removeIntegration(provider, suggestion) } returns Unit
 
@@ -108,7 +112,7 @@ class IntegrationRepositoryTest {
 
         var threw = false
         try {
-            repository.removeIntegration("fitbit", emptyMap())
+            repository.removeIntegration(PROVIDER_FITBIT, emptyMap())
         } catch (e: IOException) {
             threw = true
         }
@@ -123,7 +127,7 @@ class IntegrationRepositoryTest {
     @Test
     fun `updateLocalAccount updates DAO and state flows on success`() = runTest {
         val mockAccountInfo: AccountInfo = mockk(relaxed = true) {
-            every { id } returns accountId
+            every { id } returns ACCOUNT_ID
             every { isFitbitOn } returns true
             every { isFitbitValid } returns true
             every { isHealthConnectOn } returns false
@@ -132,21 +136,21 @@ class IntegrationRepositoryTest {
             every { isMFPValid } returns false
         }
         every { accountRepository.getActiveAccount() } returns flowOf(mockDomainAccount)
-        coEvery { accountRepository.getAccountFromAPI(accountId) } returns mockAccountInfo
-        coEvery { healthConnectRepository.getAccountByID(accountId) } returns null
+        coEvery { accountRepository.getAccountFromAPI(ACCOUNT_ID) } returns mockAccountInfo
+        coEvery { healthConnectRepository.getAccountByID(ACCOUNT_ID) } returns null
         coEvery { accountDao.updateIntegrationsSettings(any()) } returns Unit
 
         repository.updateLocalAccount()
 
-        coVerify { accountRepository.getAccountFromAPI(accountId) }
-        coVerify { accountDao.updateIntegrationsSettings(match { it.accountId == accountId && it.isFitbitOn }) }
+        coVerify { accountRepository.getAccountFromAPI(ACCOUNT_ID) }
+        coVerify { accountDao.updateIntegrationsSettings(match { it.accountId == ACCOUNT_ID && it.isFitbitOn }) }
         assertThat(repository.integrationsFromServer.value.isFitbitOn).isTrue()
     }
 
     @Test
     fun `updateLocalAccount swallows exception when API fails`() = runTest {
         every { accountRepository.getActiveAccount() } returns flowOf(mockDomainAccount)
-        coEvery { accountRepository.getAccountFromAPI(accountId) } throws IOException("Network error")
+        coEvery { accountRepository.getAccountFromAPI(ACCOUNT_ID) } throws IOException("Network error")
 
         // Should not throw
         repository.updateLocalAccount()
@@ -174,7 +178,7 @@ class IntegrationRepositoryTest {
 
         coVerify {
             accountDao.updateIntegrationsSettings(
-                match { it.accountId == accountId && it.isHealthConnectOn && !it.isSynced }
+                match { it.accountId == ACCOUNT_ID && it.isHealthConnectOn && !it.isSynced }
             )
         }
         assertThat(repository.integrations.value?.isHealthConnectOn).isTrue()
