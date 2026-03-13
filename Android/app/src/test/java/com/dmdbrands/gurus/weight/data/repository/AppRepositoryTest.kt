@@ -8,12 +8,22 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 
 class AppRepositoryTest {
+
+    companion object {
+        private const val ACCOUNT_ID_1 = "account1"
+        private const val ACCOUNT_ID_2 = "account2"
+        private const val FCM_TOKEN = "test-fcm-token"
+        private const val FCM_TOKEN_NEW = "new-token"
+        private const val FCM_TOKEN_123 = "token-123"
+    }
 
     @MockK(relaxed = true)
     private lateinit var userDataStore: UserDataStore
@@ -27,6 +37,28 @@ class AppRepositoryTest {
     fun setUp() {
         MockKAnnotations.init(this)
         repository = AppRepository(userDataStore, fcmDataStore)
+    }
+
+    // ── themeModeFlow ──────────────────────────────────────────────────────────
+
+    @Test
+    fun `themeModeFlow delegates to userDataStore currentThemeModeFlow`() = runTest {
+        every { userDataStore.currentThemeModeFlow } returns flowOf(ThemeMode.DARK)
+
+        val flow = repository.themeModeFlow
+
+        assertThat(flow).isNotNull()
+    }
+
+    // ── fcmTokenFlow ───────────────────────────────────────────────────────────
+
+    @Test
+    fun `fcmTokenFlow delegates to fcmDataStore tokenFlow`() = runTest {
+        every { fcmDataStore.tokenFlow } returns flowOf(FCM_TOKEN)
+
+        val flow = repository.fcmTokenFlow
+
+        assertThat(flow).isNotNull()
     }
 
     // ── getThemeMode ───────────────────────────────────────────────────────────
@@ -62,16 +94,16 @@ class AppRepositoryTest {
 
     @Test
     fun `setThemeMode delegates to user data store with correct params`() = runTest {
-        repository.setThemeMode("account1", ThemeMode.DARK)
+        repository.setThemeMode(ACCOUNT_ID_1, ThemeMode.DARK)
 
-        coVerify { userDataStore.setThemeMode("account1", ThemeMode.DARK) }
+        coVerify { userDataStore.setThemeMode(ACCOUNT_ID_1, ThemeMode.DARK) }
     }
 
     @Test
     fun `setThemeMode passes light mode correctly`() = runTest {
-        repository.setThemeMode("account2", ThemeMode.LIGHT)
+        repository.setThemeMode(ACCOUNT_ID_2, ThemeMode.LIGHT)
 
-        coVerify { userDataStore.setThemeMode("account2", ThemeMode.LIGHT) }
+        coVerify { userDataStore.setThemeMode(ACCOUNT_ID_2, ThemeMode.LIGHT) }
     }
 
     // ── clearThemeMode ─────────────────────────────────────────────────────────
@@ -87,12 +119,12 @@ class AppRepositoryTest {
 
     @Test
     fun `getFcmToken returns token from data store`() = runTest {
-        val fcmToken = FcmToken.newBuilder().setToken("test-fcm-token").build()
+        val fcmToken = FcmToken.newBuilder().setToken(FCM_TOKEN).build()
         coEvery { fcmDataStore.getData() } returns fcmToken
 
         val result = repository.getFcmToken()
 
-        assertThat(result).isEqualTo("test-fcm-token")
+        assertThat(result).isEqualTo(FCM_TOKEN)
     }
 
     @Test
@@ -107,7 +139,7 @@ class AppRepositoryTest {
 
     @Test
     fun `getFcmToken calls fcm data store getData`() = runTest {
-        val fcmToken = FcmToken.newBuilder().setToken("token-123").build()
+        val fcmToken = FcmToken.newBuilder().setToken(FCM_TOKEN_123).build()
         coEvery { fcmDataStore.getData() } returns fcmToken
 
         repository.getFcmToken()
@@ -119,9 +151,9 @@ class AppRepositoryTest {
 
     @Test
     fun `setFcmToken delegates to fcm data store setToken`() = runTest {
-        repository.setFcmToken("new-token")
+        repository.setFcmToken(FCM_TOKEN_NEW)
 
-        coVerify { fcmDataStore.setToken("new-token") }
+        coVerify { fcmDataStore.setToken(FCM_TOKEN_NEW) }
     }
 
     // ── clearFcmToken ──────────────────────────────────────────────────────────
