@@ -21,6 +21,13 @@ import org.junit.Test
 
 class FeedRepositoryTest {
 
+  companion object {
+    private const val ACCOUNT_ID = "acc-123"
+    private const val FEED_POST_ID_1 = "post-1"
+    private const val FEED_POST_ID_2 = "post-2"
+    private const val OS_TYPE_ANDROID = "android"
+  }
+
   @MockK(relaxUnitFun = true)
   lateinit var feedAPI: IFeedAPI
 
@@ -36,7 +43,7 @@ class FeedRepositoryTest {
   @Before
   fun setUp() {
     MockKAnnotations.init(this)
-    every { mockAccount.id } returns "acc-123"
+    every { mockAccount.id } returns ACCOUNT_ID
     repository = FeedRepository(feedAPI, accountService)
   }
 
@@ -46,7 +53,7 @@ class FeedRepositoryTest {
   fun `fetchFeedItems returns list from API when account exists`() = runTest {
     val expected = listOf(feedItem1, feedItem2)
     coEvery { accountService.getCurrentAccount() } returns mockAccount
-    coEvery { feedAPI.fetchFeedItems("acc-123") } returns expected
+    coEvery { feedAPI.fetchFeedItems(ACCOUNT_ID) } returns expected
 
     val result = repository.fetchFeedItems()
 
@@ -56,11 +63,11 @@ class FeedRepositoryTest {
   @Test
   fun `fetchFeedItems passes correct accountId to API`() = runTest {
     coEvery { accountService.getCurrentAccount() } returns mockAccount
-    coEvery { feedAPI.fetchFeedItems("acc-123") } returns emptyList()
+    coEvery { feedAPI.fetchFeedItems(ACCOUNT_ID) } returns emptyList()
 
     repository.fetchFeedItems()
 
-    coVerify { feedAPI.fetchFeedItems("acc-123") }
+    coVerify { feedAPI.fetchFeedItems(ACCOUNT_ID) }
   }
 
   @Test
@@ -108,12 +115,12 @@ class FeedRepositoryTest {
 
   @Test
   fun `updateFeedItem calls API with correct parameters`() = runTest {
-    val feedAction = FeedAction(action = FeedActionType.click, osType = "android", meta = null)
+    val feedAction = FeedAction(action = FeedActionType.click, osType = OS_TYPE_ANDROID, meta = null)
     coEvery { accountService.getCurrentAccount() } returns mockAccount
 
-    repository.updateFeedItem("post-1", feedAction)
+    repository.updateFeedItem(FEED_POST_ID_1, feedAction)
 
-    coVerify { feedAPI.updateFeedItem("post-1", feedAction, "acc-123") }
+    coVerify { feedAPI.updateFeedItem(FEED_POST_ID_1, feedAction, ACCOUNT_ID) }
   }
 
   @Test
@@ -121,18 +128,18 @@ class FeedRepositoryTest {
     val feedAction = FeedAction(action = FeedActionType.read, osType = null, meta = null)
     coEvery { accountService.getCurrentAccount() } returns null
 
-    repository.updateFeedItem("post-1", feedAction)
+    repository.updateFeedItem(FEED_POST_ID_1, feedAction)
 
-    coVerify { feedAPI.updateFeedItem("post-1", feedAction, "") }
+    coVerify { feedAPI.updateFeedItem(FEED_POST_ID_1, feedAction, "") }
   }
 
   @Test
   fun `updateFeedItem swallows IOException silently`() = runTest {
-    val feedAction = FeedAction(action = FeedActionType.trigger, osType = "android", meta = null)
+    val feedAction = FeedAction(action = FeedActionType.trigger, osType = OS_TYPE_ANDROID, meta = null)
     coEvery { accountService.getCurrentAccount() } returns mockAccount
     coEvery { feedAPI.updateFeedItem(any(), any(), any()) } throws IOException("Network error")
 
-    repository.updateFeedItem("post-1", feedAction)
+    repository.updateFeedItem(FEED_POST_ID_1, feedAction)
   }
 
   @Test
@@ -140,17 +147,17 @@ class FeedRepositoryTest {
     val feedAction = FeedAction(action = FeedActionType.pageView, osType = null, meta = null)
     coEvery { accountService.getCurrentAccount() } throws RuntimeException("Service error")
 
-    repository.updateFeedItem("post-1", feedAction)
+    repository.updateFeedItem(FEED_POST_ID_1, feedAction)
   }
 
   @Test
   fun `updateFeedItem passes feedAction with meta to API`() = runTest {
     val meta = FeedActionMeta(variationId = 42)
-    val feedAction = FeedAction(action = FeedActionType.variationClick, osType = "android", meta = meta)
+    val feedAction = FeedAction(action = FeedActionType.variationClick, osType = OS_TYPE_ANDROID, meta = meta)
     coEvery { accountService.getCurrentAccount() } returns mockAccount
 
-    repository.updateFeedItem("post-2", feedAction)
+    repository.updateFeedItem(FEED_POST_ID_2, feedAction)
 
-    coVerify { feedAPI.updateFeedItem("post-2", feedAction, "acc-123") }
+    coVerify { feedAPI.updateFeedItem(FEED_POST_ID_2, feedAction, ACCOUNT_ID) }
   }
 }
