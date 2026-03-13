@@ -267,8 +267,6 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             )
             throw HTTPError.noInternet
         }
-        // Save current active account to restore if switching fails mid-process,
-        let previousActiveAccount = activeAccount
         do {
             logger.log(
                 level: .info,

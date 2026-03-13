@@ -481,33 +481,31 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter entryIds: Array of entry UUIDs to refetch.
     /// - Returns: Dictionary mapping entry IDs to their Entry objects (or nil if not found).
     func refetchEntriesOnMainActor(entryIds: [UUID]) async throws -> [UUID: Entry] {
-        return try await MainActor.run {
-            let mainContext = PersistenceController.shared.context
-            
-            // Return empty dictionary if no IDs provided
-            guard !entryIds.isEmpty else { return [:] }
-            
-            // Convert to Set for efficient membership checking
-            let entryIdsSet = Set(entryIds)
-            
-            // Use a single query with Set membership check for better performance
-            // SwiftData Predicate supports checking if a value is in a Set
-            let descriptor = FetchDescriptor<Entry>(
-                predicate: #Predicate<Entry> { entry in
-                    entryIdsSet.contains(entry.id)
-                }
-            )
-            
-            let entries = try mainContext.fetch(descriptor)
-            
-            // Map entries to dictionary by ID
-            var result: [UUID: Entry] = [:]
-            for entry in entries {
-                result[entry.id] = entry
+        let mainContext = PersistenceController.shared.context
+
+        // Return empty dictionary if no IDs provided
+        guard !entryIds.isEmpty else { return [:] }
+
+        // Convert to Set for efficient membership checking
+        let entryIdsSet = Set(entryIds)
+
+        // Use a single query with Set membership check for better performance
+        // SwiftData Predicate supports checking if a value is in a Set
+        let descriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate<Entry> { entry in
+                entryIdsSet.contains(entry.id)
             }
-            
-            return result
+        )
+
+        let entries = try mainContext.fetch(descriptor)
+
+        // Map entries to dictionary by ID
+        var result: [UUID: Entry] = [:]
+        for entry in entries {
+            result[entry.id] = entry
         }
+
+        return result
     }
     
     // MARK: - Data Extraction Helpers

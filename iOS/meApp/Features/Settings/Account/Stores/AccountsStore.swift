@@ -46,9 +46,9 @@ class AccountsStore: ObservableObject {
         injectedEntryService: EntryServiceProtocol? = nil,
         injectedLogger: LoggerServiceProtocol? = nil,
         injectedFeedService: FeedServiceProtocol? = nil,
-        networkMonitor: NetworkMonitoring = NetworkMonitor.shared
+        networkMonitor: NetworkMonitoring? = nil
     ) {
-        self.networkMonitor = networkMonitor
+        self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         if let injectedAccountService {
             self.accountService = injectedAccountService
         }
