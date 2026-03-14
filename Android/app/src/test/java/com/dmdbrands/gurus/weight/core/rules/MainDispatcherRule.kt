@@ -6,28 +6,31 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
-import org.junit.rules.TestWatcher
-import org.junit.runner.Description
+import org.junit.jupiter.api.extension.AfterEachCallback
+import org.junit.jupiter.api.extension.BeforeEachCallback
+import org.junit.jupiter.api.extension.ExtensionContext
 
 /**
- * A JUnit4 [TestWatcher] that swaps [Dispatchers.Main] with a [TestDispatcher] for the
+ * A JUnit 5/6 Extension that swaps [Dispatchers.Main] with a [TestDispatcher] for the
  * duration of each test, then restores the original dispatcher afterward.
  *
  * Usage:
  * ```
- * @get:Rule val mainDispatcherRule = MainDispatcherRule()
+ * @JvmField
+ * @RegisterExtension
+ * val mainDispatcherRule = MainDispatcherRule()
  * ```
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainDispatcherRule(
     val dispatcher: TestDispatcher = UnconfinedTestDispatcher(),
-) : TestWatcher() {
+) : BeforeEachCallback, AfterEachCallback {
 
-    override fun starting(description: Description) {
+    override fun beforeEach(context: ExtensionContext) {
         Dispatchers.setMain(dispatcher)
     }
 
-    override fun finished(description: Description) {
+    override fun afterEach(context: ExtensionContext) {
         Dispatchers.resetMain()
     }
 }

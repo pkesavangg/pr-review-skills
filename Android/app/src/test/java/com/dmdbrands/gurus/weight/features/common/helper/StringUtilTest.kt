@@ -4,7 +4,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorrupt
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.displayName
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.formatTimestamp
 import com.google.common.truth.Truth.assertThat
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 /**
  * Unit tests for [StringUtil].

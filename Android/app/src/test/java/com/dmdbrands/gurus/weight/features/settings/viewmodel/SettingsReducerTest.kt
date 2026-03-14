@@ -1,21 +1,21 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import com.google.common.truth.Truth.assertThat
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 /**
  * Unit tests for [SettingsReducer].
  *
  * The reducer is a pure function — no mocking or coroutines needed.
  * This serves as the project's primary smoke test verifying the test
- * infrastructure (Truth, JUnit 4) is wired up correctly.
+ * infrastructure (Truth, JUnit 6) is wired up correctly.
  */
 class SettingsReducerTest {
 
     private lateinit var reducer: SettingsReducer
 
-    @Before
+    @BeforeEach
     fun setUp() {
         reducer = SettingsReducer()
     }

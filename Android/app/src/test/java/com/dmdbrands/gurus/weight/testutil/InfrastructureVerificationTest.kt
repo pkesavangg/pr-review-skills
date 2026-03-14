@@ -4,9 +4,9 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.google.common.truth.Truth.assertThat
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 
 /**
  * Verifies that all three shared test utilities work correctly together:
@@ -20,12 +20,13 @@ import org.junit.Test
 class InfrastructureVerificationTest {
 
     // (1) MainDispatcherRule — sets Dispatchers.Main for the duration of each test
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var viewModel: CounterViewModel
 
-    @Before
+    @BeforeEach
     fun setUp() {
         // (2) initTestDependencies — fills BaseViewModel's @Inject lateinit var fields via reflection
         viewModel = CounterViewModel().initTestDependencies()
