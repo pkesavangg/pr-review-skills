@@ -11,8 +11,9 @@ import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
@@ -50,7 +51,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateTo emits NavigateTo with correct route`() = runTest {
+    fun `navigateTo emits NavigateTo with route only`() = runTest {
         service.navigationIntent.test {
             service.navigateTo(AppRoute.Main.Dashboard)
             val intent = awaitItem() as NavigationIntent.NavigateTo
@@ -131,7 +132,7 @@ class AppNavigationServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // replaceStack (single route) — emits ReplaceStack with listOf(route)
+    // replaceStack (single route) — wraps route in listOf()
     // -------------------------------------------------------------------------
 
     @Test
@@ -160,7 +161,7 @@ class AppNavigationServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // replaceStack (list of routes) — emits ReplaceStack with full route list
+    // replaceStack (list of routes) — passes route list directly
     // -------------------------------------------------------------------------
 
     @Test
@@ -234,25 +235,13 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `registerOnDeactivate emits RegisterOnDeactivate with correct route`() = runTest {
+    fun `registerOnDeactivate emits intent with same route and callback instance`() = runTest {
         val route = AppRoute.Main.Entry
         val callback: suspend () -> Boolean = { true }
         service.navigationIntent.test {
             service.registerOnDeactivate(route, callback)
             val intent = awaitItem() as NavigationIntent.RegisterOnDeactivate
             assertThat(intent.route).isEqualTo(route)
-            assertThat(intent.callback).isNotNull()
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `registerOnDeactivate callback is the same instance passed in`() = runTest {
-        val route = AppRoute.Main.Settings
-        val callback: suspend () -> Boolean = { false }
-        service.navigationIntent.test {
-            service.registerOnDeactivate(route, callback)
-            val intent = awaitItem() as NavigationIntent.RegisterOnDeactivate
             assertThat(intent.callback).isSameInstanceAs(callback)
             cancelAndIgnoreRemainingEvents()
         }
@@ -274,20 +263,19 @@ class AppNavigationServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // getCurrentRoute — uses CompletableDeferred to return current NavKey
+    // getCurrentRoute — suspends on CompletableDeferred, returns NavKey from
+    // the observer that completes the deferred inside the emitted intent
     // -------------------------------------------------------------------------
 
     @Test
     fun `getCurrentRoute returns NavKey when deferred is completed`() = runTest {
-        val expectedRoute = AppRoute.Main.Dashboard
         var result: NavKey? = null
-
         service.navigationIntent.test {
             val job = launch { result = service.getCurrentRoute() }
             val intent = awaitItem() as NavigationIntent.GetCurrentRoute
-            intent.response.complete(expectedRoute)
+            intent.response.complete(AppRoute.Main.Dashboard)
             job.join()
-            assertThat(result).isEqualTo(expectedRoute)
+            assertThat(result).isEqualTo(AppRoute.Main.Dashboard)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -305,29 +293,46 @@ class AppNavigationServiceTest {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // emitAuthEvent — emits each AuthState variant to authEvent SharedFlow
+    // -------------------------------------------------------------------------
+
     @Test
-    fun `getCurrentRoute emits GetCurrentRoute intent`() = runTest {
-        service.navigationIntent.test {
-            val job = launch { service.getCurrentRoute() }
-            val intent = awaitItem() as NavigationIntent.GetCurrentRoute
-            assertThat(intent.response).isInstanceOf(CompletableDeferred::class.java)
-            intent.response.complete(null) // complete to unblock getCurrentRoute
-            job.join()
+    fun `emitAuthEvent emits LoggedInFromLoading state`() = runTest {
+        val state = AuthState.LoggedInFromLoading(account = fakeAccount)
+        service.authEvent.test {
+            service.emitAuthEvent(state)
+            assertThat(awaitItem()).isEqualTo(state)
             cancelAndIgnoreRemainingEvents()
         }
     }
-
-    // -------------------------------------------------------------------------
-    // emitAuthEvent — emits AuthState to authEvent flow
-    // -------------------------------------------------------------------------
 
     @Test
     fun `emitAuthEvent emits LoggedOut state`() = runTest {
         val state = AuthState.LoggedOut(isActiveAccount = true, isLastAccount = false)
         service.authEvent.test {
             service.emitAuthEvent(state)
-            val emitted = awaitItem()
-            assertThat(emitted).isEqualTo(state)
+            assertThat(awaitItem()).isEqualTo(state)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `emitAuthEvent emits UnauthorizedLogout state`() = runTest {
+        val state = AuthState.UnauthorizedLogout(accountId = "account-1")
+        service.authEvent.test {
+            service.emitAuthEvent(state)
+            assertThat(awaitItem()).isEqualTo(state)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `emitAuthEvent emits AccountAdded state`() = runTest {
+        val state = AuthState.AccountAdded(account = fakeAccount)
+        service.authEvent.test {
+            service.emitAuthEvent(state)
+            assertThat(awaitItem()).isEqualTo(state)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -337,8 +342,26 @@ class AppNavigationServiceTest {
         val state = AuthState.AccountSwitched(account = fakeAccount, showToast = true)
         service.authEvent.test {
             service.emitAuthEvent(state)
-            val emitted = awaitItem()
-            assertThat(emitted).isEqualTo(state)
+            assertThat(awaitItem()).isEqualTo(state)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `emitAuthEvent emits ProfileUpdated state`() = runTest {
+        val state = AuthState.ProfileUpdated(account = fakeAccount)
+        service.authEvent.test {
+            service.emitAuthEvent(state)
+            assertThat(awaitItem()).isEqualTo(state)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `emitAuthEvent emits TokensUpdated state`() = runTest {
+        service.authEvent.test {
+            service.emitAuthEvent(AuthState.TokensUpdated)
+            assertThat(awaitItem()).isEqualTo(AuthState.TokensUpdated)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -348,18 +371,17 @@ class AppNavigationServiceTest {
         val state = AuthState.Error(message = "Something went wrong")
         service.authEvent.test {
             service.emitAuthEvent(state)
-            val emitted = awaitItem()
-            assertThat(emitted).isEqualTo(state)
+            assertThat(awaitItem()).isEqualTo(state)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `emitAuthEvent emits TokensUpdated state`() = runTest {
+    fun `emitAuthEvent emits AccountDeleted state`() = runTest {
+        val state = AuthState.AccountDeleted(isActiveAccount = true, message = "Deleted")
         service.authEvent.test {
-            service.emitAuthEvent(AuthState.TokensUpdated)
-            val emitted = awaitItem()
-            assertThat(emitted).isEqualTo(AuthState.TokensUpdated)
+            service.emitAuthEvent(state)
+            assertThat(awaitItem()).isEqualTo(state)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -368,9 +390,60 @@ class AppNavigationServiceTest {
     fun `emitAuthEvent emits NavigateToMyAccounts state`() = runTest {
         service.authEvent.test {
             service.emitAuthEvent(AuthState.NavigateToMyAccounts)
-            val emitted = awaitItem()
-            assertThat(emitted).isEqualTo(AuthState.NavigateToMyAccounts)
+            assertThat(awaitItem()).isEqualTo(AuthState.NavigateToMyAccounts)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `emitAuthEvent emits NavigateBackFromMyAccounts state`() = runTest {
+        service.authEvent.test {
+            service.emitAuthEvent(AuthState.NavigateBackFromMyAccounts)
+            assertThat(awaitItem()).isEqualTo(AuthState.NavigateBackFromMyAccounts)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // SharedFlow behavior — navigationIntent is a SharedFlow (not replay)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `navigationIntent delivers same event to multiple collectors`() = runTest {
+        var collector1Result: NavigationIntent? = null
+        var collector2Result: NavigationIntent? = null
+
+        // Launch collectors first so they subscribe before emission
+        val job1 = launch { collector1Result = service.navigationIntent.first() }
+        val job2 = launch { collector2Result = service.navigationIntent.first() }
+        advanceUntilIdle()
+
+        service.login()
+
+        job1.join()
+        job2.join()
+
+        assertThat(collector1Result).isEqualTo(NavigationIntent.Login)
+        assertThat(collector2Result).isEqualTo(NavigationIntent.Login)
+    }
+
+    @Test
+    fun `authEvent delivers same event to multiple collectors`() = runTest {
+        val state = AuthState.TokensUpdated
+        var collector1Result: AuthState? = null
+        var collector2Result: AuthState? = null
+
+        // Launch collectors first so they subscribe before emission
+        val job1 = launch { collector1Result = service.authEvent.first() }
+        val job2 = launch { collector2Result = service.authEvent.first() }
+        advanceUntilIdle()
+
+        service.emitAuthEvent(state)
+
+        job1.join()
+        job2.join()
+
+        assertThat(collector1Result).isEqualTo(state)
+        assertThat(collector2Result).isEqualTo(state)
     }
 }
