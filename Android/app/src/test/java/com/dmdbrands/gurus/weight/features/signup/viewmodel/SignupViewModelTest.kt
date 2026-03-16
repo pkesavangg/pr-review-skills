@@ -32,6 +32,21 @@ import org.junit.jupiter.api.extension.RegisterExtension
 @OptIn(ExperimentalCoroutinesApi::class)
 class SignupViewModelTest {
 
+    companion object {
+        private const val ERROR_NETWORK_FAILURE = "Network failure"
+        private const val ERROR_SOME = "some error"
+        private const val TEST_FIRST_NAME = "John"
+        private const val TEST_LAST_NAME = "Doe"
+        private const val TEST_SEX = "male"
+        private const val TEST_EMAIL = "john@example.com"
+        private const val TEST_PASSWORD = "password123"
+        private const val TEST_ZIPCODE = "12345"
+        private const val TEST_GOAL_TYPE = "lose"
+        private const val TEST_CURRENT_WEIGHT = "1800"
+        private const val TEST_GOAL_WEIGHT = "1600"
+        private const val TEST_TERMS_URL = "https://example.com/terms"
+    }
+
     @JvmField
     @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
@@ -218,14 +233,14 @@ class SignupViewModelTest {
 
     @Test
     fun `Error intent sets error message and clears isLoading`() {
-        viewModel.handleIntent(SignupIntent.Error("Network failure"))
-        assertThat(viewModel.state.value.error).isEqualTo("Network failure")
+        viewModel.handleIntent(SignupIntent.Error(ERROR_NETWORK_FAILURE))
+        assertThat(viewModel.state.value.error).isEqualTo(ERROR_NETWORK_FAILURE)
         assertThat(viewModel.state.value.isLoading).isFalse()
     }
 
     @Test
     fun `Success intent clears error and isLoading`() {
-        viewModel.handleIntent(SignupIntent.Error("some error"))
+        viewModel.handleIntent(SignupIntent.Error(ERROR_SOME))
         viewModel.handleIntent(SignupIntent.Success)
         assertThat(viewModel.state.value.error).isNull()
         assertThat(viewModel.state.value.isLoading).isFalse()
@@ -284,7 +299,7 @@ class SignupViewModelTest {
 
     @Test
     fun `OpenURL opens browser via customTabManager`() {
-        val url = "https://example.com/terms"
+        val url = TEST_TERMS_URL
         viewModel.handleIntent(SignupIntent.OpenURL(url))
         // OpenURL is handled via openInAppBrowser which uses customTabManager
         // The reducer passes through to state, verifying it doesn't crash
@@ -400,15 +415,15 @@ class SignupViewModelTest {
     private fun navigateToLastStepWithValidForm(skipGoal: Boolean = false) {
         val controls = viewModel.state.value.form.controls
         // NAME step — fill first and last name
-        controls.firstName.onValueChange("John")
-        controls.lastName.onValueChange("Doe")
+        controls.firstName.onValueChange(TEST_FIRST_NAME)
+        controls.lastName.onValueChange(TEST_LAST_NAME)
         viewModel.handleIntent(SignupIntent.Next) // → BIRTHDAY
 
         // BIRTHDAY step — already has default value
         viewModel.handleIntent(SignupIntent.Next) // → GENDER
 
         // GENDER step
-        controls.sex.onValueChange("male")
+        controls.sex.onValueChange(TEST_SEX)
         viewModel.handleIntent(SignupIntent.Next) // → HEIGHT
 
         // HEIGHT step — always valid
@@ -418,20 +433,20 @@ class SignupViewModelTest {
             viewModel.handleIntent(SignupIntent.Skip) // → EMAIL, sets goalSkipped
         } else {
             // GOAL step
-            controls.goalType.onValueChange("lose")
-            controls.currentWeight.onValueChange("1800") // 180.0 lbs
-            controls.goalWeight.onValueChange("1600") // 160.0 lbs
+            controls.goalType.onValueChange(TEST_GOAL_TYPE)
+            controls.currentWeight.onValueChange(TEST_CURRENT_WEIGHT) // 180.0 lbs
+            controls.goalWeight.onValueChange(TEST_GOAL_WEIGHT) // 160.0 lbs
             viewModel.handleIntent(SignupIntent.Next) // → EMAIL
         }
 
         // EMAIL step
-        controls.email.onValueChange("john@example.com")
+        controls.email.onValueChange(TEST_EMAIL)
         viewModel.handleIntent(SignupIntent.Next) // → PASSWORD
 
         // PASSWORD step
-        controls.password.onValueChange("password123")
-        controls.confirmPassword.onValueChange("password123")
-        controls.zipcode.onValueChange("12345")
+        controls.password.onValueChange(TEST_PASSWORD)
+        controls.confirmPassword.onValueChange(TEST_PASSWORD)
+        controls.zipcode.onValueChange(TEST_ZIPCODE)
         // Now on PASSWORD (last step) — next Next triggers submit
     }
 }
