@@ -40,6 +40,10 @@ android {
     }
   }
 
+  testOptions {
+    unitTests.isReturnDefaultValues = true
+  }
+
   buildTypes {
     debug {
       enableUnitTestCoverage = true
