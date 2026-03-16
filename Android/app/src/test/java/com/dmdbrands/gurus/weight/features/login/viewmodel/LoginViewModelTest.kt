@@ -64,6 +64,7 @@ class LoginViewModelTest {
         private const val ERROR_MESSAGE = "Login failed"
         private const val GENERIC_EXCEPTION_MESSAGE = "Network error"
         private const val TEST_URL = "https://example.com/help"
+        private const val NAV_ERROR = "nav error"
     }
 
     @BeforeEach
@@ -301,7 +302,7 @@ class LoginViewModelTest {
 
     @Test
     fun `OnBack does not crash when navigateBack throws`() = runTest {
-        coEvery { navigationService.navigateBack() } throws RuntimeException("nav error")
+        coEvery { navigationService.navigateBack() } throws RuntimeException(NAV_ERROR)
 
         viewModel.handleIntent(LoginIntent.OnBack)
         advanceUntilIdle()
