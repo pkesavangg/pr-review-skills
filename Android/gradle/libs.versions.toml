@@ -61,6 +61,7 @@ workRuntimeKtxVersion = "2.10.3"
 hiltCommon = "1.2.0"
 hiltWork = "1.2.0"
 material3 = "1.5.0-alpha06"
+securityCrypto = "1.1.0-alpha06"
 
 [libraries]
 vico-core = { module = "com.dmdbrands.lib:vico-core", version.ref = "vico" }
@@ -140,6 +141,7 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 
 
 [plugins]

@@ -56,6 +56,7 @@ class TokenManager
 @Inject
 constructor(
     private val userDataStore: UserDataStore,
+    private val secureTokenStore: ISecureTokenStore,
 ) : ITokenManager {
     companion object {
         private const val TAG = "TokenManager"
@@ -82,12 +83,16 @@ constructor(
     override suspend fun setTokens(token: Token) {
         AppLog.v(TAG, "Setting tokens for account: ${token.accountId}")
         accountTokens[token.accountId] = token
+        // Persist to encrypted storage
+        secureTokenStore.saveToken(token.accountId, token)
+        // Ensure UserDataStore account entry exists and is active
+        // (required for currentAccountIdFlow, themeMode, syncTimestamp)
         userDataStore.updateAccountTokens(
             accountId = token.accountId,
             isActive = token.isActive,
-            refreshToken = token.refreshToken ?: "",
-            accessToken = token.accessToken ?: "",
-            expiresAt = token.expiresAt ?: "",
+            refreshToken = "",
+            accessToken = "",
+            expiresAt = "",
         )
         _tokens.value = token
     }
@@ -102,6 +107,11 @@ constructor(
         _tokens.value = null
         _otherUserToken.value = null
         isOtherUserTokenRefreshed = false
+        // Clear from encrypted storage
+        val currentAccountId = userDataStore.currentAccountIdFlow.first()
+        if (currentAccountId != null) {
+            secureTokenStore.removeToken(currentAccountId)
+        }
         userDataStore.logoutCurrentAccount()
     }
 
@@ -135,11 +145,15 @@ constructor(
         } ?: true
     }
 
-    override suspend fun getAccessToken(): String? =
-        userDataStore.currentAccountFlow.first()?.accessToken
+    override suspend fun getAccessToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        return accountId?.let { accountTokens[it]?.accessToken ?: secureTokenStore.getToken(it)?.accessToken }
+    }
 
-    override suspend fun getRefreshToken(): String? =
-        userDataStore.currentAccountFlow.first()?.refreshToken
+    override suspend fun getRefreshToken(): String? {
+        val accountId = userDataStore.currentAccountIdFlow.first()
+        return accountId?.let { accountTokens[it]?.refreshToken ?: secureTokenStore.getToken(it)?.refreshToken }
+    }
 
     override fun getTokenExpiresAt(): String? = _tokens.value?.expiresAt
 
@@ -147,19 +161,16 @@ constructor(
     AppLog.d("Token manager", "Processing request for account: $accountId")
     return try {
       accountTokens[accountId]?.accessToken
-        ?: userDataStore.getData().accounts[accountId]?.accessToken
+        ?: secureTokenStore.getToken(accountId)?.accessToken
     } catch (e: Exception) {
-      // Log the error if needed
       AppLog.e("AccountRepo", "Error getting access token for accountId: $accountId", e)
       null
     }
   }
 
-
   override suspend fun getRefreshToken(accountId: String): String? {
-        // Prefer in-memory map for fast lookup
         return accountTokens[accountId]?.refreshToken
-            ?: userDataStore.getData().accounts[accountId]?.refreshToken
+            ?: secureTokenStore.getToken(accountId)?.refreshToken
     }
 
     override fun getAccountIdForToken(token: String): String? =
@@ -169,18 +180,11 @@ constructor(
             }?.key
 
     override suspend fun loadAllTokens() {
-        AppLog.v(TAG, "Loading all tokens from UserDataStore")
+        AppLog.v(TAG, "Loading all tokens from SecureTokenStore")
         accountTokens.clear()
-        val allAccounts = userDataStore.getData().accounts
-        allAccounts.forEach { (id, userAccount) ->
-            accountTokens[id] =
-                Token(
-                    accountId = id,
-                    isActive = userAccount.isActive,
-                    accessToken = userAccount.accessToken,
-                    refreshToken = userAccount.refreshToken,
-                    expiresAt = userAccount.expiresAt,
-                )
+        val allTokens = secureTokenStore.getAllTokens()
+        allTokens.forEach { (id, token) ->
+            accountTokens[id] = token
         }
     }
 
@@ -189,13 +193,14 @@ constructor(
   }
 
   override suspend fun getCurrentAcccountExpiresAt(): String? {
-    return userDataStore.currentAccountFlow.first()?.expiresAt
+    val accountId = userDataStore.currentAccountIdFlow.first() ?: return null
+    return accountTokens[accountId]?.expiresAt
+        ?: secureTokenStore.getToken(accountId)?.expiresAt
   }
 
   override suspend fun getAccountExpiresAt(accountId: String): String? {
-    // Prefer in-memory map for fast lookup
     return accountTokens[accountId]?.expiresAt
-        ?: userDataStore.getData().accounts[accountId]?.expiresAt
+        ?: secureTokenStore.getToken(accountId)?.expiresAt
   }
 
 }
