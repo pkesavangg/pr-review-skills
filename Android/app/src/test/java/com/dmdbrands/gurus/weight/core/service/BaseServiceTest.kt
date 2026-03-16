@@ -11,6 +11,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 import retrofit2.HttpException
@@ -35,7 +36,7 @@ class BaseServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // constructor — protected properties are accessible
+    // constructor — protected properties are accessible via subclass
     // -------------------------------------------------------------------------
 
     @Test
@@ -54,7 +55,7 @@ class BaseServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // isNetworkAvailable — delegates to connectivityObserver
+    // isNetworkAvailable — negates unAvailable from connectivity observer
     // -------------------------------------------------------------------------
 
     @Test
@@ -80,11 +81,7 @@ class BaseServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `requireNetworkAvailable runs block when network is available`() {
-        every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(
-            available = true,
-            unAvailable = false,
-        )
+    fun `requireNetworkAvailable runs block and not onError when online`() {
         var blockRan = false
         var errorRan = false
 
@@ -98,7 +95,7 @@ class BaseServiceTest {
     }
 
     @Test
-    fun `requireNetworkAvailable runs onError when network is unavailable`() {
+    fun `requireNetworkAvailable runs onError and not block when offline`() {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(
             available = false,
             unAvailable = true,
@@ -116,39 +113,20 @@ class BaseServiceTest {
     }
 
     @Test
-    fun `requireNetworkAvailable does not run block when offline`() {
-        every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(
-            available = false,
-            unAvailable = true,
-        )
-        var blockRan = false
-
-        service.exposedRequireNetworkAvailable(
-            onError = {},
-            block = { blockRan = true },
-        )
-
-        assertThat(blockRan).isFalse()
-    }
-
-    @Test
-    fun `requireNetworkAvailable does not run onError when online`() {
-        every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(
-            available = true,
-            unAvailable = false,
-        )
+    fun `requireNetworkAvailable uses default empty block when not provided`() {
         var errorRan = false
 
+        // Only provide onError — block defaults to {}
         service.exposedRequireNetworkAvailable(
             onError = { errorRan = true },
-            block = {},
         )
 
+        // Online, so default block runs (no-op), onError does not
         assertThat(errorRan).isFalse()
     }
 
     // -------------------------------------------------------------------------
-    // showNetworkErrorAndThrow — shows toast and throws
+    // showNetworkErrorAndThrow — shows toast then throws Exception
     // -------------------------------------------------------------------------
 
     @Test
@@ -169,15 +147,10 @@ class BaseServiceTest {
 
     @Test
     fun `showNetworkErrorAndThrow throws exception with correct message`() {
-        var thrownMessage: String? = null
-
-        try {
+        val exception = assertThrows(Exception::class.java) {
             service.exposedShowNetworkErrorAndThrow()
-        } catch (e: Exception) {
-            thrownMessage = e.message
         }
-
-        assertThat(thrownMessage).isEqualTo("No network connection available")
+        assertThat(exception.message).isEqualTo("No network connection available")
     }
 
     // -------------------------------------------------------------------------
@@ -196,16 +169,8 @@ class BaseServiceTest {
         assertThat(toastSlot.captured.action).isNull()
     }
 
-    @Test
-    fun `showNetworkError does not throw`() {
-        // Should complete without exception
-        service.exposedShowNetworkError()
-
-        verify { dialogQueueService.showToast(any()) }
-    }
-
     // -------------------------------------------------------------------------
-    // showSuccessToast — creates toast with title and message
+    // showSuccessToast — creates Toast with title, message, null action
     // -------------------------------------------------------------------------
 
     @Test
@@ -220,15 +185,8 @@ class BaseServiceTest {
         assertThat(toastSlot.captured.action).isNull()
     }
 
-    @Test
-    fun `showSuccessToast calls dialogQueueService showToast`() {
-        service.exposedShowSuccessToast("Title", "Message")
-
-        verify(exactly = 1) { dialogQueueService.showToast(any()) }
-    }
-
     // -------------------------------------------------------------------------
-    // showErrorToast — creates toast with nullable title + message
+    // showErrorToast — creates Toast with nullable title, message, null action
     // -------------------------------------------------------------------------
 
     @Test
@@ -244,7 +202,7 @@ class BaseServiceTest {
     }
 
     @Test
-    fun `showErrorToast creates toast with null title`() {
+    fun `showErrorToast creates toast with null title when title is null`() {
         val toastSlot = slot<Toast>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
@@ -255,14 +213,7 @@ class BaseServiceTest {
     }
 
     @Test
-    fun `showErrorToast calls dialogQueueService showToast`() {
-        service.exposedShowErrorToast(message = "Error occurred")
-
-        verify(exactly = 1) { dialogQueueService.showToast(any()) }
-    }
-
-    @Test
-    fun `showErrorToast with default title uses null`() {
+    fun `showErrorToast uses null title by default when title not provided`() {
         val toastSlot = slot<Toast>()
         every { dialogQueueService.showToast(capture(toastSlot)) } returns Unit
 
@@ -273,7 +224,7 @@ class BaseServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // checkInternetError — detects HttpException with code 0
+    // checkInternetError — returns true only for HttpException with code 0
     // -------------------------------------------------------------------------
 
     @Test
@@ -287,10 +238,8 @@ class BaseServiceTest {
     }
 
     @Test
-    fun `checkInternetError returns false for HttpException with non-zero code`() {
-        val response = Response.error<Any>(404, "".toResponseBody())
-        val httpException = HttpException(response)
-        assertThat(service.exposedCheckInternetError(httpException)).isFalse()
+    fun `checkInternetError returns false for IOException`() {
+        assertThat(service.exposedCheckInternetError(java.io.IOException("timeout"))).isFalse()
     }
 
     @Test
@@ -301,8 +250,15 @@ class BaseServiceTest {
     }
 
     @Test
-    fun `checkInternetError returns false for IOException`() {
-        assertThat(service.exposedCheckInternetError(java.io.IOException("timeout"))).isFalse()
+    fun `checkInternetError returns false for HttpException with code 404`() {
+        val response = Response.error<Any>(404, "".toResponseBody())
+        assertThat(service.exposedCheckInternetError(HttpException(response))).isFalse()
+    }
+
+    @Test
+    fun `checkInternetError returns false for HttpException with code 500`() {
+        val response = Response.error<Any>(500, "".toResponseBody())
+        assertThat(service.exposedCheckInternetError(HttpException(response))).isFalse()
     }
 }
 
