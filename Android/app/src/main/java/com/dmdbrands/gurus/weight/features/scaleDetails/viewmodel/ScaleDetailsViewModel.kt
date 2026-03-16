@@ -3,8 +3,8 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
-import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 class ScaleDetailsViewModel
 @AssistedInject
 constructor(
-  private var accountService: AccountService,
+  private val accountService: IAccountService,
   private val deviceService: IDeviceService,
   private val ggDeviceService: GGDeviceService,
   private val permissionService: GGPermissionService,
