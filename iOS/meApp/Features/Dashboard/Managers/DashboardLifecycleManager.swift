@@ -64,6 +64,13 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging {
         self.syncCoordinator = syncCoordinator
         self.editSessionManager = editSessionManager
         self.cacheManager = cacheManager
+
+        // Resolve DI-backed services once so async tasks launched later do not
+        // drift to a different container registration.
+        _ = accountService
+        _ = notificationService
+        _ = logger
+        _ = entryService
     }
 
     // MARK: - Dashboard Initialization
@@ -389,6 +396,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging {
         chartManager.clearAllCaches()
         stateProvider.state.ui.hasInitializedChart = false
         graphManager.state.isGraphReady = false
+        graphManager.state.clearSelection()
         stateProvider.state.graph.clearSelection()
 
         loadLatestEntryData()

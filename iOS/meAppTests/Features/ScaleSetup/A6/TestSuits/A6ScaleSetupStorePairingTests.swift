@@ -22,7 +22,7 @@ extension A6ScaleSetupStoreTests {
 
         @Test("new scale discovery moves to connectingBluetooth step")
         func newScaleDiscoveryMovesToConnecting() async {
-            let harness = A6ScaleSetupStoreTestFixtures.makeSUT()
+            let harness = A6ScaleSetupStoreTestFixtures.makeSUT(connectionTransitionDelayNs: 300_000_000)
             let store = harness.store
             A6ScaleSetupStoreTestFixtures.configureDefaultScale(store)
 

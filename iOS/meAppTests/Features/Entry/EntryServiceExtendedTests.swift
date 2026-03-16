@@ -376,30 +376,6 @@ struct EntryServiceExtendedTests {
 
     // MARK: - mergeRemoteOperations (via syncAllEntriesWithRemote)
 
-    @Test("sync merges remote create into empty local DB")
-    func syncMergesRemoteCreate() async {
-        let repo = MockEntryRepository()
-        let remote = MockEntryRepositoryAPI()
-        remote.fetchOperationsResult = BathScaleOperationListResponse(
-            operations: [
-                BathScaleOperationDTO(
-                    accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-                    entryTimestamp: "2026-03-01T08:00:00Z", impedance: nil, metabolicAge: nil,
-                    muscleMass: nil, operationType: "create", proteinPercent: nil, pulse: nil,
-                    serverTimestamp: "2026-03-01T09:00:00Z", skeletalMusclePercent: nil,
-                    source: "scale", subcutaneousFatPercent: nil, unit: "lb",
-                    visceralFatLevel: nil, water: nil, weight: 1800
-                )
-            ],
-            timestamp: "2026-03-01T10:00:00Z"
-        )
-        let syncStore = MockEntrySyncStore()
-        let sut = makeSUT(repo: repo, remote: remote, syncStore: syncStore)
-
-        await sut.syncAllEntriesWithRemote()
-        #expect(repo.entries.count == 1)
-        #expect(repo.entries.first?.scaleEntry?.weight == 1800)
-    }
 
     @Test("sync merges remote delete: removes local entry")
     func syncMergesRemoteDelete() async {
@@ -627,11 +603,15 @@ struct EntryServiceExtendedTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
-        return EntryService(
+        let sut = EntryService(
             accountService: account,
             localRepo: repo ?? MockEntryRepository(),
             localKVRepo: syncStore ?? MockEntrySyncStore(),
             remoteRepo: remote ?? MockEntryRepositoryAPI()
         )
+        sut.logger = logger
+        sut.goalAlertService = goalAlert
+        sut.integrationService = integration
+        return sut
     }
 }

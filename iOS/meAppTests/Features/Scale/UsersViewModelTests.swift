@@ -263,15 +263,23 @@ struct UsersViewModelTests {
         let (store, _, _, notification, _) = makeSUT(scale: scale, bluetooth: bluetooth)
         var onDeleteCalls = 0
 
+        await store.loadUsers()
+
+        #expect(store.isLoadingUsers == false)
+        #expect(bluetooth.getScaleUserListCalls >= 1)
+        #expect(store.deviceUsers.map(\.name) == ["Owner", "AfterDelete"])
+
         store.showDeleteUserAlert(for: makeUser(name: "Guest", token: "guest-token")) {
             onDeleteCalls += 1
         }
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil(timeoutNanoseconds: 3_000_000_000) {
             bluetooth.deleteUserByTokenCalls == 1 &&
+            bluetooth.getScaleUserListCalls >= 2 &&
             notification.dismissLoaderCalls >= 1 &&
-            notification.showToastCalls >= 1 &&
+            notification.toastData?.message == ToastStrings.userDeleted &&
             onDeleteCalls == 1
         }
 
@@ -288,6 +296,7 @@ struct UsersViewModelTests {
 
         store.showDeleteUserAlert(for: makeUser(name: "Guest", token: "guest-token")) {}
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil {
             bluetooth.deleteUserByTokenCalls == 1 &&
@@ -308,6 +317,7 @@ struct UsersViewModelTests {
             onDeleteCalls += 1
         }
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil {
             notification.dismissLoaderCalls == 1 && onDeleteCalls == 1
@@ -327,6 +337,7 @@ struct UsersViewModelTests {
             onDeleteCalls += 1
         }
         notification.alertData?.buttons.last?.action(nil as String?)
+        await Task.yield()
 
         let completed = await waitUntil {
             notification.dismissLoaderCalls == 1 && onDeleteCalls == 1
@@ -375,7 +386,7 @@ struct UsersViewModelTests {
         DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
         DependencyContainer.shared.register(logger as LoggerServiceProtocol)
 
-        let store = UsersViewModel(scale: scale, initialUsersList: initialUsersList)
+        let store = UsersViewModel(scale: scale, initialUsersList: initialUsersList, userDeletionDelayNanoseconds: 0)
         // Pin dependencies on the instance to avoid cross-suite DI races from global container mutation.
         store.notificationService = notification
         store.bluetoothService = bluetooth

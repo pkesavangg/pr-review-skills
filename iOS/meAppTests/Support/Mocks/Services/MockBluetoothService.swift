@@ -51,6 +51,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var getWifiListCalls = 0
     private(set) var setupWifiCalls = 0
     private(set) var cancelWifiCalls = 0
+    private(set) var reapplySkipDevicesExcludingPairedCalls = 0
     private(set) var startLiveMeasurementCalls = 0
     private(set) var stopLiveMeasurementCalls = 0
     private(set) var lastConnectedWifiSSIDBroadcastId: String?
@@ -93,7 +94,6 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     func stopScan() {}
     func startBluetoothOperations() async {}
     func disconnectConnectedScales() async { disconnectConnectedScalesCalls += 1 }
-    private(set) var reapplySkipDevicesExcludingPairedCalls = 0
     func reapplySkipDevicesExcludingPaired() { reapplySkipDevicesExcludingPairedCalls += 1 }
     func handleWeightOnlyModeAlertDismissed() { handleWeightOnlyModeAlertDismissedCalls += 1 }
     func clearDevices() {}

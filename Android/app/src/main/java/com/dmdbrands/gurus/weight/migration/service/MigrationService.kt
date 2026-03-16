@@ -2,7 +2,9 @@ package com.dmdbrands.gurus.weight.migration.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.IonicDatabaseHelper
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.migration.helper.CapacitorStorageHelper
@@ -273,12 +275,12 @@ class MigrationService @Inject constructor(
         return
       }
       val userDataStore = UserDataStore(context)
-      AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries ${timestampMap}")
+       AppLog.d(TAG, "Found ${timestampMap.size} timestampkey entries ${timestampMap}")
       timestampMap.forEach { (accountId, timestamp) ->
         if (accountId == activeAccountID ) {
           AppLog.d(TAG, "Updating sync timestamp for $accountId: $timestamp")
           userDataStore.updateSyncTimestamp(accountId, timestamp)
-          AppLog.d(TAG, "Migrated Sync timestamp updated for $accountId")
+         AppLog.d(TAG, "Migrated Sync timestamp updated for $accountId")
         }
       }
     } catch (e: Exception) {
@@ -376,7 +378,7 @@ class MigrationService @Inject constructor(
       // Save account and related data
       saveAccountAndSettings(context, ionicAccount, accountEntity, themeModeMap, lastSyncTimestamp)
       AppLog.d(TAG, "Account migration completed")
-      AppLog.i(TAG, "Account migration successful: ${accountEntity.email}, activeAccountId=${accountEntity.id}")
+      AppLog.i(TAG, "Account migration successful: activeAccountId=${accountEntity.id}")
       Pair(true, accountEntity.id)
     } catch (e: Exception) {
       AppLog.e(TAG, "Account migration failed: ${e.message}")
@@ -423,6 +425,20 @@ class MigrationService @Inject constructor(
       ionicAccount.expiresAt ?: "",
       true,
     )
+
+    // Also write tokens to EncryptedSharedPreferences
+    val secureTokenStore = SecureTokenStore(context)
+    secureTokenStore.saveToken(
+      accountEntity.id,
+      Token(
+        accountId = accountEntity.id,
+        isActive = true,
+        accessToken = ionicAccount.accessToken,
+        refreshToken = ionicAccount.refreshToken,
+        expiresAt = ionicAccount.expiresAt,
+      )
+    )
+
     userDataStore.setActiveAccount(accountEntity.id)
 
     // If account was not in themeModeMap, set sync timestamp here (addAccount already set it when key == accountEntity.id)
@@ -442,7 +458,7 @@ class MigrationService @Inject constructor(
     )
 
     // Dashboard metrics are now properly handled via DashboardSettingsEntity
-    AppLog.i(TAG, "Dashboard settings migrated successfully for ${accountEntity.email}")
+    AppLog.i(TAG, "Dashboard settings migrated successfully")
   }
 
   /**

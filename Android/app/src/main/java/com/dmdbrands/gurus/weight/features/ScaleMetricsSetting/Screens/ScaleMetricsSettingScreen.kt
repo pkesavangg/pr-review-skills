@@ -274,9 +274,7 @@ fun DisplayMetricsScreenPreview() {
         ScaleMetricKeys.WEEKLY_AVERAGE,
         ScaleMetricKeys.MONTHLY_AVERAGE,
       ),
-      onMetricsChanged = { enabledKeys ->
-        println("Enabled metrics: $enabledKeys")
-      },
+      onMetricsChanged = { _ -> },
       includeHeartRate = false,
     )
   }
