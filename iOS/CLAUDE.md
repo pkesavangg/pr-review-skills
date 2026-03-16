@@ -79,6 +79,16 @@ Theme/             # Design tokens, typography
 
 ---
 
+## Key Decisions
+
+- **Hybrid UIKit + SwiftUI:** `@main` App defers to `SceneDelegate` for window setup, allowing manual DI and lifecycle control before any SwiftUI view renders.
+- **Keychain for auth tokens:** Tokens moved from SwiftData `Account` model to Keychain via `KeychainService` for security compliance. The `Account` model retains `@Transient` token fields but they are no longer the source of truth.
+- **Two-tier service registration:** `ServiceRegistry` registers essential services (Logger, Keychain, Account, Bluetooth, etc.) at launch and session-scoped services (Feed, etc.) after login. Services unavailable before their tier registers.
+- **`@MainActor` convention for SwiftData:** All SwiftData CRUD runs on main actor. Cross-async-boundary access requires extracting primitives *before* the `await`.
+- **Physical device testing only:** Unit tests must run on a connected device, never a simulator. This is a hard project requirement.
+
+---
+
 ## Key Domain Models
 
 ### SwiftData (`Domain/Models/DB/`)
@@ -182,6 +192,23 @@ API base URL is read from `API_BASE_URL` in `Info.plist` via `AppEnvironment.api
 - **ggInAppMessagingPackage** — in-app messaging
 - **AppSyncPackage** — app sync
 - **gWifiScalePackage** — Wi-Fi scale support
+
+---
+
+## Gotchas & Pitfalls
+
+- **SwiftData models are NOT `Sendable`:** Never mark `@Model` classes as `Sendable` or pass them across actor boundaries. Extract primitives (e.g., `accountId`, `expiresAt`) before any `await`.
+- **DI double-registration required:** `DependencyContainer` must register both the concrete instance AND the protocol cast. Missing either causes `fatalError` at runtime:
+  ```swift
+  DependencyContainer.shared.register(accountService)
+  DependencyContainer.shared.register(accountService as AccountServiceProtocol)
+  ```
+- **`@Injector` fatal on missing dependency:** If a dependency isn't registered, `@Injector` crashes with `fatalError`. Check `ServiceRegistry` registration order and tier.
+- **Tokens are in Keychain, not `Account`:** Auth tokens migrated from SwiftData to Keychain. Migration flag: `tokensMigratedToKeychain`. Don't read tokens from the `Account` model.
+- **No nested vertical ScrollViews:** SwiftUI vertical scroll nesting breaks gesture handling. Let the parent handle scrolling.
+- **`DeviceDiscoveryEvent` is `@unchecked Sendable`:** Safe only because creation and consumption both happen on `@MainActor`. Do NOT send across actor boundaries.
+- **Scale sync must filter by `accountId`:** When matching unsynced devices, always filter by current account to avoid cross-account conflicts (same MAC/SKU on different accounts).
+- **`AccountMigrationService` is intentionally large:** All one-time migrations live in a single file for discoverability and auditability. Don't split it.
 
 ---
 
