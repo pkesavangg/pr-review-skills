@@ -1,11 +1,20 @@
 package com.dmdbrands.gurus.weight
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.navigation3.runtime.NavKey
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.common.components.MainBottomNav
 import com.dmdbrands.gurus.weight.features.dashboard.enum.BOTTOM_NAV_ITEMS
+import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
+import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.example.nav3integration.TopLevelBackStack
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -20,40 +29,85 @@ class MainBottomNavTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    @Test
-    fun testItemSelectionCallback() {
-        var selectedIndex = -1
-        var selectedLabel = ""
+    private fun createBackStack(): TopLevelBackStack<NavKey> =
+        TopLevelBackStack(
+            startKey = AppRoute.Home to AppRoute.Main.Dashboard,
+            loginKey = AppRoute.Init.Loading,
+        )
+
+    private fun setContent(
+        showAppsync: Boolean = false,
+        showUnreadFeedIndicator: Boolean = false,
+        badgeVisible: List<AppRoute> = emptyList(),
+        onOpenAppSync: () -> Unit = {},
+    ) {
+        val backStack = createBackStack()
         composeTestRule.setContent {
-            MainBottomNav(
-                showAppsync = false,
-                onOpenAppSync = {},
-            )
+            MeAppTheme {
+                CompositionLocalProvider(LocalNavBackStack provides backStack) {
+                    MainBottomNav(
+                        badgeVisible = badgeVisible,
+                        showAppsync = showAppsync,
+                        onOpenAppSync = onOpenAppSync,
+                        showUnreadFeedIndicator = showUnreadFeedIndicator,
+                    )
+                }
+            }
         }
-        composeTestRule.onNodeWithText(BOTTOM_NAV_ITEMS[1].label).performClick()
-        assert(selectedIndex == 1)
-        assert(selectedLabel == BOTTOM_NAV_ITEMS[1].label)
     }
 
     @Test
-    fun testBadgeDisplay() {
-        composeTestRule.setContent {
-            MainBottomNav(
-                showAppsync = false,
-                onOpenAppSync = {},
-            )
-        }
-        composeTestRule.onNodeWithText("3").assertIsDisplayed()
+    fun allNonAppsyncLabelsAreDisplayed() {
+        setContent(showAppsync = false)
+
+        BOTTOM_NAV_ITEMS
+            .filter { it.label != DashboardString.BottomNav.appsync }
+            .forEach { item ->
+                composeTestRule.onNodeWithText(item.label).assertIsDisplayed()
+            }
     }
 
     @Test
-    fun testSelectedItemLabelDisplayed() {
-        composeTestRule.setContent {
-            MainBottomNav(
-                showAppsync = false,
-                onOpenAppSync = {},
-            )
-        }
-        composeTestRule.onNodeWithText(BOTTOM_NAV_ITEMS[2].label).assertIsDisplayed()
+    fun appsyncLabelIsDisplayedWhenShowAppsyncTrue() {
+        setContent(showAppsync = true)
+
+        composeTestRule
+            .onNodeWithText(DashboardString.BottomNav.appsync)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun appsyncLabelIsHiddenWhenShowAppsyncFalse() {
+        setContent(showAppsync = false)
+
+        composeTestRule
+            .onNodeWithText(DashboardString.BottomNav.appsync)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun clickingAppsyncCallsOnOpenAppSync() {
+        var called = false
+        setContent(showAppsync = true, onOpenAppSync = { called = true })
+
+        composeTestRule
+            .onNodeWithText(DashboardString.BottomNav.appsync)
+            .performClick()
+
+        composeTestRule.waitForIdle()
+        assertTrue("onOpenAppSync should have been called", called)
+    }
+
+    @Test
+    fun clickingNonAppsyncItemDoesNotCallOnOpenAppSync() {
+        var called = false
+        setContent(showAppsync = false, onOpenAppSync = { called = true })
+
+        composeTestRule
+            .onNodeWithText(DashboardString.BottomNav.history)
+            .performClick()
+
+        composeTestRule.waitForIdle()
+        assertFalse("onOpenAppSync should not have been called", called)
     }
 }

@@ -237,7 +237,7 @@ tasks.withType<Test> {
 }
 
 // ---------------------------------------------------------------------------
-// JaCoCo coverage report: ./gradlew jacocoTestReport
+// JaCoCo coverage report: ./gradlew :app:jacocoTestReport
 // ---------------------------------------------------------------------------
 tasks.register<JacocoReport>("jacocoTestReport") {
   dependsOn("testDebugUnitTest")
@@ -270,6 +270,24 @@ tasks.register<JacocoReport>("jacocoTestReport") {
   )
 
   val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
+
+  doFirst {
+    require(kotlinClassDir.exists()) {
+      "JaCoCo class directory not found: $kotlinClassDir — run testDebugUnitTest first"
+    }
+    val execFiles = fileTree(layout.buildDirectory.get().asFile) {
+      include(
+        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+        "jacoco/testDebugUnitTest.exec",
+      )
+    }
+    require(execFiles.files.isNotEmpty()) {
+      "JaCoCo execution data not found in ${layout.buildDirectory.get().asFile}. " +
+        "Ensure enableUnitTestCoverage = true is set in the debug buildType " +
+        "and testDebugUnitTest ran successfully."
+    }
+  }
+
   classDirectories.setFrom(
     fileTree(kotlinClassDir) { exclude(jacocoExcludes) },
   )
