@@ -23,13 +23,13 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.google.common.truth.Truth.assertThat
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
-import io.mockk.Runs
 import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
@@ -73,13 +73,15 @@ class DeviceInfoServiceTest {
   private val mockLifecycleOwner: LifecycleOwner = mockk()
   private val mockLifecycle: Lifecycle = mockk()
 
+  /** Standard wait for IO collector to start after service construction. */
+  private val collectorStartDelayMs = 100L
+
   @Before
   fun setUp() {
-    // Static mocks
     mockkObject(DeviceInfoUtil)
     mockkObject(FcmTokenUtil)
     mockkObject(AppLog)
-    // DeviceInfoUtil stubs
+
     every { DeviceInfoUtil.getAppVersion() } returns "1.0.0"
     every { DeviceInfoUtil.getManufacturer() } returns "Google"
     every { DeviceInfoUtil.getOSName() } returns "Android"
@@ -87,14 +89,12 @@ class DeviceInfoServiceTest {
     every { DeviceInfoUtil.getDeviceUUID(any()) } returns "test-uuid-123"
     every { DeviceInfoUtil.getModel() } returns "Pixel 8"
 
-    // AppLog stubs (prevent Timber calls)
     every { AppLog.d(any(), any(), any<String>()) } just Runs
     every { AppLog.i(any(), any(), any<String>()) } just Runs
     every { AppLog.w(any(), any(), any<String>()) } just Runs
     every { AppLog.e(any(), any(), any<String>()) } just Runs
     every { AppLog.e(any(), any(), any<Throwable>()) } just Runs
 
-    // Default: online, with controlled flow
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
     every { connectivityObserver.observe() } returns networkFlow
   }
@@ -126,11 +126,11 @@ class DeviceInfoServiceTest {
   }
 
   // -------------------------------------------------------------------------
-  // getDeviceInfo
+  // getDeviceInfo — returns DeviceInfo populated from DeviceInfoUtil
   // -------------------------------------------------------------------------
 
   @Test
-  fun `getDeviceInfo returns DeviceInfo with all device util values`() {
+  fun `getDeviceInfo returns DeviceInfo with all correct fields`() {
     val service = createService()
 
     val deviceInfo = service.getDeviceInfo()
@@ -146,10 +146,14 @@ class DeviceInfoServiceTest {
   @Test
   fun `getDeviceInfo returns empty fcmToken initially`() {
     val service = createService()
+    assertThat(service.getDeviceInfo().fcmToken).isEmpty()
+  }
 
-    val deviceInfo = service.getDeviceInfo()
-
-    assertThat(deviceInfo.fcmToken).isEmpty()
+  @Test
+  fun `getDeviceInfo uses context for getDeviceUUID`() {
+    val service = createService()
+    service.getDeviceInfo()
+    verify { DeviceInfoUtil.getDeviceUUID(context) }
   }
 
   @Test
@@ -160,22 +164,12 @@ class DeviceInfoServiceTest {
     val service = createService()
 
     service.updateDeviceInfo()
-    val deviceInfo = service.getDeviceInfo()
 
-    assertThat(deviceInfo.fcmToken).isEqualTo("test-fcm-token")
-  }
-
-  @Test
-  fun `getDeviceInfo uses context for getDeviceUUID`() {
-    val service = createService()
-
-    service.getDeviceInfo()
-
-    verify { DeviceInfoUtil.getDeviceUUID(context) }
+    assertThat(service.getDeviceInfo().fcmToken).isEqualTo("test-fcm-token")
   }
 
   // -------------------------------------------------------------------------
-  // getFcmToken
+  // getFcmToken — reads from AppRepository DataStore
   // -------------------------------------------------------------------------
 
   @Test
@@ -183,9 +177,7 @@ class DeviceInfoServiceTest {
     coEvery { appRepository.getFcmToken() } returns "stored-token"
     val service = createService()
 
-    val token = service.getFcmToken()
-
-    assertThat(token).isEqualTo("stored-token")
+    assertThat(service.getFcmToken()).isEqualTo("stored-token")
   }
 
   @Test
@@ -193,9 +185,7 @@ class DeviceInfoServiceTest {
     coEvery { appRepository.getFcmToken() } throws RuntimeException("DataStore error")
     val service = createService()
 
-    val token = service.getFcmToken()
-
-    assertThat(token).isEmpty()
+    assertThat(service.getFcmToken()).isEmpty()
   }
 
   @Test
@@ -203,9 +193,7 @@ class DeviceInfoServiceTest {
     coEvery { appRepository.getFcmToken() } returns ""
     val service = createService()
 
-    val token = service.getFcmToken()
-
-    assertThat(token).isEmpty()
+    assertThat(service.getFcmToken()).isEmpty()
   }
 
   // -------------------------------------------------------------------------
@@ -213,8 +201,8 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateDeviceInfo fetches token and updates device info via repository`() = runTest {
-    coEvery { appRepository.getFcmToken() } returns "my-fcm-token"
+  fun `updateDeviceInfo constructs DeviceInfo with all correct fields and token`() = runTest {
+    coEvery { appRepository.getFcmToken() } returns "token-abc"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
     coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
     val service = createService()
@@ -223,8 +211,15 @@ class DeviceInfoServiceTest {
 
     val slot = slot<DeviceInfo>()
     coVerify { deviceInfoRepository.updateDeviceInfo(capture(slot)) }
-    assertThat(slot.captured.fcmToken).isEqualTo("my-fcm-token")
-    assertThat(slot.captured.appVersion).isEqualTo("1.0.0")
+    with(slot.captured) {
+      assertThat(appVersion).isEqualTo("1.0.0")
+      assertThat(deviceManufacturer).isEqualTo("Google")
+      assertThat(deviceOSName).isEqualTo("Android")
+      assertThat(deviceOSVersion).isEqualTo("14")
+      assertThat(deviceUUID).isEqualTo("test-uuid-123")
+      assertThat(deviceModel).isEqualTo("Pixel 8")
+      assertThat(fcmToken).isEqualTo("token-abc")
+    }
   }
 
   @Test
@@ -255,34 +250,12 @@ class DeviceInfoServiceTest {
     coVerify(exactly = 0) { accountRepository.updateAccount(any(), any()) }
   }
 
-  @Test
-  fun `updateDeviceInfo constructs DeviceInfo with correct fields`() = runTest {
-    coEvery { appRepository.getFcmToken() } returns "token-abc"
-    coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
-    coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
-    val service = createService()
-
-    service.updateDeviceInfo()
-
-    val slot = slot<DeviceInfo>()
-    coVerify { deviceInfoRepository.updateDeviceInfo(capture(slot)) }
-    with(slot.captured) {
-      assertThat(appVersion).isEqualTo("1.0.0")
-      assertThat(deviceManufacturer).isEqualTo("Google")
-      assertThat(deviceOSName).isEqualTo("Android")
-      assertThat(deviceOSVersion).isEqualTo("14")
-      assertThat(deviceUUID).isEqualTo("test-uuid-123")
-      assertThat(deviceModel).isEqualTo("Pixel 8")
-      assertThat(fcmToken).isEqualTo("token-abc")
-    }
-  }
-
   // -------------------------------------------------------------------------
-  // updateDeviceInfo — FCM token fallback
+  // updateDeviceInfo — FCM token fallback from Firebase
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateDeviceInfo fetches from Firebase when DataStore token is blank`() = runTest {
+  fun `updateDeviceInfo fetches from Firebase and persists when DataStore token is blank`() = runTest {
     coEvery { appRepository.getFcmToken() } returns ""
     coEvery { FcmTokenUtil.getCurrentToken() } returns "firebase-token"
     coEvery { appRepository.setFcmToken(any()) } just Runs
@@ -294,19 +267,6 @@ class DeviceInfoServiceTest {
 
     coVerify { FcmTokenUtil.getCurrentToken() }
     coVerify { appRepository.setFcmToken("firebase-token") }
-  }
-
-  @Test
-  fun `updateDeviceInfo uses Firebase token in DeviceInfo after fallback`() = runTest {
-    coEvery { appRepository.getFcmToken() } returns ""
-    coEvery { FcmTokenUtil.getCurrentToken() } returns "firebase-token"
-    coEvery { appRepository.setFcmToken(any()) } just Runs
-    coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
-    coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
-    val service = createService()
-
-    service.updateDeviceInfo()
-
     val slot = slot<DeviceInfo>()
     coVerify { deviceInfoRepository.updateDeviceInfo(capture(slot)) }
     assertThat(slot.captured.fcmToken).isEqualTo("firebase-token")
@@ -322,7 +282,6 @@ class DeviceInfoServiceTest {
 
     service.updateDeviceInfo()
 
-    // Should still call updateDeviceInfo with empty token
     val slot = slot<DeviceInfo>()
     coVerify { deviceInfoRepository.updateDeviceInfo(capture(slot)) }
     assertThat(slot.captured.fcmToken).isEmpty()
@@ -363,7 +322,6 @@ class DeviceInfoServiceTest {
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } throws RuntimeException("API error")
     val service = createService()
 
-    // Should not throw
     service.updateDeviceInfo()
   }
 
@@ -374,12 +332,11 @@ class DeviceInfoServiceTest {
     coEvery { accountRepository.getActiveAccount() } throws RuntimeException("DB error")
     val service = createService()
 
-    // Should not throw
     service.updateDeviceInfo()
   }
 
   // -------------------------------------------------------------------------
-  // updateLocalIntegrationInfo
+  // updateLocalIntegrationInfo — delegates to integrationRepository
   // -------------------------------------------------------------------------
 
   @Test
@@ -406,8 +363,6 @@ class DeviceInfoServiceTest {
 
   @Test
   fun `init does not show network error when app starts online`() {
-    every { connectivityObserver.getCurrentNetworkState() } returns onlineState
-
     createService()
 
     verify(exactly = 0) { dialogQueueService.showToast(any<Toast>()) }
@@ -419,8 +374,8 @@ class DeviceInfoServiceTest {
 
   @Test
   fun `network available triggers all four sync steps`() = runTest {
-    val service = createService()
-    Thread.sleep(100) // Let collector start on IO
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
     networkFlow.emit(onlineState)
 
@@ -432,8 +387,8 @@ class DeviceInfoServiceTest {
 
   @Test
   fun `network available does not show network error toast`() = runTest {
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
     networkFlow.emit(onlineState)
     Thread.sleep(500)
@@ -449,14 +404,12 @@ class DeviceInfoServiceTest {
   fun `network unavailable shows error after debounce when still offline and foreground`() = runTest {
     setupForegroundMock(Lifecycle.State.RESUMED)
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
-    // After construction, switch re-check to return offline
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     networkFlow.emit(offlineState)
 
-    // Wait for debounce (2000ms) + processing
     Thread.sleep(2500)
 
     verify(atLeast = 1) { dialogQueueService.showToast(any<Toast>()) }
@@ -466,20 +419,14 @@ class DeviceInfoServiceTest {
   fun `network unavailable does not show error when network recovers during debounce`() = runTest {
     setupForegroundMock(Lifecycle.State.RESUMED)
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
-    // Emit unavailable
     networkFlow.emit(offlineState)
-
-    // Before debounce ends, network recovers
     Thread.sleep(500)
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
-
-    // Wait for debounce to complete
     Thread.sleep(2500)
 
-    // No toast should be shown — getCurrentNetworkState returned available after debounce
     verify(exactly = 0) { dialogQueueService.showToast(any<Toast>()) }
   }
 
@@ -487,16 +434,13 @@ class DeviceInfoServiceTest {
   fun `network unavailable does not show error when app is in background`() = runTest {
     setupForegroundMock(Lifecycle.State.CREATED)
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
-    // Still unavailable after debounce but in background
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     networkFlow.emit(offlineState)
-
     Thread.sleep(2500)
 
-    // No toast — app is in background
     verify(exactly = 0) { dialogQueueService.showToast(any<Toast>()) }
   }
 
@@ -507,8 +451,8 @@ class DeviceInfoServiceTest {
   @Test
   fun `online sync continues when offlineSync fails`() = runTest {
     coEvery { offlineHandlerService.handleOfflineSync() } throws RuntimeException("offline sync error")
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
     networkFlow.emit(onlineState)
 
@@ -520,8 +464,8 @@ class DeviceInfoServiceTest {
   @Test
   fun `online sync continues when entrySync fails`() = runTest {
     coEvery { entryService.syncOperations() } throws RuntimeException("entry sync error")
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
     networkFlow.emit(onlineState)
 
@@ -533,8 +477,8 @@ class DeviceInfoServiceTest {
   @Test
   fun `online sync continues when healthConnect sync fails`() = runTest {
     coEvery { healthConnectRepository.syncIntegration() } throws RuntimeException("HC sync error")
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
     networkFlow.emit(onlineState)
 
@@ -546,8 +490,8 @@ class DeviceInfoServiceTest {
   @Test
   fun `online sync continues when integration update fails`() = runTest {
     coEvery { integrationRepository.updateLocalAccount() } throws RuntimeException("integration error")
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
     networkFlow.emit(onlineState)
 
@@ -557,47 +501,38 @@ class DeviceInfoServiceTest {
   }
 
   // -------------------------------------------------------------------------
-  // runOnlineSyncOnce — guard behavior
+  // runOnlineSyncOnce — guard behavior (AtomicBoolean prevents re-entry)
   // -------------------------------------------------------------------------
 
   @Test
   fun `sync guard prevents concurrent execution`() = runTest {
-    // Make offlineSync slow so the guard is held during second emission
     coEvery { offlineHandlerService.handleOfflineSync() } coAnswers {
       Thread.sleep(1000)
     }
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
-    // Emit available twice rapidly — second should be skipped
     networkFlow.emit(onlineState)
     Thread.sleep(50)
     networkFlow.emit(onlineState)
     Thread.sleep(2000)
 
-    // offlineHandlerService should only be called once due to guard
     coVerify(exactly = 1) { offlineHandlerService.handleOfflineSync() }
   }
 
   @Test
   fun `sync guard is released after completion allowing subsequent sync`() = runTest {
-    val service = createService()
-    Thread.sleep(100)
+    createService()
+    Thread.sleep(collectorStartDelayMs)
 
-    // First sync
     networkFlow.emit(onlineState)
-    Thread.sleep(500)
-
-    // Wait for first sync to complete and guard to release
     coVerify(timeout = 3000) { offlineHandlerService.handleOfflineSync() }
 
-    // Emit unavailable then available again to trigger a new distinct emission
+    // Emit unavailable then available to trigger a new distinct emission
     networkFlow.emit(offlineState)
-    Thread.sleep(100)
+    Thread.sleep(collectorStartDelayMs)
     networkFlow.emit(onlineState)
-    Thread.sleep(500)
 
-    // Should have been called twice total — guard was released
     coVerify(timeout = 3000, atLeast = 2) { offlineHandlerService.handleOfflineSync() }
   }
 }
