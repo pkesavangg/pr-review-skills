@@ -3,21 +3,26 @@ package com.dmdbrands.gurus.weight.core.service
 import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.google.common.truth.Truth.assertThat
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.Runs
+import io.mockk.mockkObject
 import io.mockk.slot
+import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -38,9 +43,11 @@ class AppSyncServiceTest {
 
     // --- Test fixtures ---
     private val fakeScaleEntry: ScaleEntry = mockk(relaxed = true)
+    private val fakeApiEntry: ScaleApiEntry = mockk(relaxed = true)
 
     @Before
     fun setUp() {
+        mockkObject(AppLog)
         service = AppSyncService(
             entryService = entryService,
             accountService = accountService,
@@ -49,8 +56,13 @@ class AppSyncServiceTest {
         )
     }
 
+    @After
+    fun tearDown() {
+        unmockkObject(AppLog)
+    }
+
     // -------------------------------------------------------------------------
-    // appSyncDataForEditing — initial state
+    // appSyncDataForEditing — initial state is null
     // -------------------------------------------------------------------------
 
     @Test
@@ -59,7 +71,7 @@ class AppSyncServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // appSyncData — initial state
+    // appSyncData — initial state is null
     // -------------------------------------------------------------------------
 
     @Test
@@ -78,16 +90,16 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `setAppSyncDataForEditing sets null clears state`() = runTest {
+    fun `setAppSyncDataForEditing with null clears state`() = runTest {
         service.setAppSyncDataForEditing(fakeScaleEntry)
         service.setAppSyncDataForEditing(null)
         assertThat(service.appSyncDataForEditing.value).isNull()
     }
 
     @Test
-    fun `setAppSyncDataForEditing emits value via StateFlow`() = runTest {
+    fun `setAppSyncDataForEditing emits values via StateFlow`() = runTest {
         service.appSyncDataForEditing.test {
-            assertThat(awaitItem()).isNull() // initial
+            assertThat(awaitItem()).isNull()
             service.setAppSyncDataForEditing(fakeScaleEntry)
             assertThat(awaitItem()).isEqualTo(fakeScaleEntry)
             cancelAndIgnoreRemainingEvents()
@@ -100,24 +112,21 @@ class AppSyncServiceTest {
 
     @Test
     fun `setAppSyncData updates state with ScaleApiEntry`() = runTest {
-        val fakeApiEntry = mockk<com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry>(relaxed = true)
         service.setAppSyncData(fakeApiEntry)
         assertThat(service.appSyncData.value).isEqualTo(fakeApiEntry)
     }
 
     @Test
-    fun `setAppSyncData sets null clears state`() = runTest {
-        val fakeApiEntry = mockk<com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry>(relaxed = true)
+    fun `setAppSyncData with null clears state`() = runTest {
         service.setAppSyncData(fakeApiEntry)
         service.setAppSyncData(null)
         assertThat(service.appSyncData.value).isNull()
     }
 
     @Test
-    fun `setAppSyncData emits value via StateFlow`() = runTest {
-        val fakeApiEntry = mockk<com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry>(relaxed = true)
+    fun `setAppSyncData emits values via StateFlow`() = runTest {
         service.appSyncData.test {
-            assertThat(awaitItem()).isNull() // initial
+            assertThat(awaitItem()).isNull()
             service.setAppSyncData(fakeApiEntry)
             assertThat(awaitItem()).isEqualTo(fakeApiEntry)
             cancelAndIgnoreRemainingEvents()
@@ -125,7 +134,7 @@ class AppSyncServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // handleEditAppSyncData — sets editing data and navigates
+    // handleEditAppSyncData — sets editing data and navigates to Entry
     // -------------------------------------------------------------------------
 
     @Test
@@ -141,8 +150,16 @@ class AppSyncServiceTest {
     }
 
     @Test
+    fun `handleEditAppSyncData does not show toast on success`() = runTest {
+        service.handleEditAppSyncData(fakeScaleEntry)
+        coVerify(exactly = 0) { dialogQueueService.showToast(any()) }
+    }
+
+    @Test
     fun `handleEditAppSyncData on navigation exception shows failure toast`() = runTest {
-        coEvery { appNavigationService.navigateTo(any<AppRoute>(), any<AppRoute>()) } throws RuntimeException("nav error")
+        coEvery {
+            appNavigationService.navigateTo(any<AppRoute>(), any<AppRoute>())
+        } throws RuntimeException("nav error")
 
         service.handleEditAppSyncData(fakeScaleEntry)
 
@@ -153,25 +170,18 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleEditAppSyncData on exception does not crash`() = runTest {
-        coEvery { appNavigationService.navigateTo(any<AppRoute>(), any<AppRoute>()) } throws RuntimeException("crash")
-
-        // Should not throw
-        service.handleEditAppSyncData(fakeScaleEntry)
-    }
-
-    @Test
-    fun `handleEditAppSyncData on exception still sets editing data`() = runTest {
-        coEvery { appNavigationService.navigateTo(any<AppRoute>(), any<AppRoute>()) } throws RuntimeException("fail")
+    fun `handleEditAppSyncData on exception still sets editing data before navigation`() = runTest {
+        coEvery {
+            appNavigationService.navigateTo(any<AppRoute>(), any<AppRoute>())
+        } throws RuntimeException("fail")
 
         service.handleEditAppSyncData(fakeScaleEntry)
 
-        // setAppSyncDataForEditing is called before navigateTo, so data should be set
         assertThat(service.appSyncDataForEditing.value).isEqualTo(fakeScaleEntry)
     }
 
     // -------------------------------------------------------------------------
-    // handleSaveAppSyncData — saves entry and shows toast
+    // handleSaveAppSyncData — saves entry, shows toast, clears editing data
     // -------------------------------------------------------------------------
 
     @Test
@@ -196,10 +206,9 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData clears editing data to null on success`() = runTest {
+    fun `handleSaveAppSyncData clears editing data on success`() = runTest {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } just Runs
 
-        // Pre-set editing data
         service.setAppSyncDataForEditing(fakeScaleEntry)
         assertThat(service.appSyncDataForEditing.value).isNotNull()
 
@@ -209,7 +218,7 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData on addEntry exception shows failure toast`() = runTest {
+    fun `handleSaveAppSyncData on addEntry exception shows failure toast with error message`() = runTest {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } throws RuntimeException("save error")
 
         service.handleSaveAppSyncData(fakeScaleEntry)
@@ -221,33 +230,12 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData on addEntry exception does not crash`() = runTest {
-        coEvery { entryService.addEntry(any<ScaleEntry>()) } throws RuntimeException("crash")
-
-        // Should not throw
-        service.handleSaveAppSyncData(fakeScaleEntry)
-    }
-
-    @Test
     fun `handleSaveAppSyncData on addEntry exception does not clear editing data`() = runTest {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } throws RuntimeException("fail")
 
         service.setAppSyncDataForEditing(fakeScaleEntry)
         service.handleSaveAppSyncData(fakeScaleEntry)
 
-        // Editing data should NOT be cleared because exception happened before setAppSyncDataForEditing(null)
         assertThat(service.appSyncDataForEditing.value).isEqualTo(fakeScaleEntry)
-    }
-
-    @Test
-    fun `handleSaveAppSyncData on exception toast contains error message`() = runTest {
-        val errorMsg = "network timeout"
-        coEvery { entryService.addEntry(any<ScaleEntry>()) } throws RuntimeException(errorMsg)
-
-        service.handleSaveAppSyncData(fakeScaleEntry)
-
-        val toastSlot = slot<Toast>()
-        coVerify { dialogQueueService.showToast(capture(toastSlot)) }
-        assertThat(toastSlot.captured.message).contains(errorMsg)
     }
 }
