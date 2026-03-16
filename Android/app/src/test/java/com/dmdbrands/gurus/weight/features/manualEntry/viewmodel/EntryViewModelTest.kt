@@ -37,6 +37,13 @@ import org.junit.jupiter.api.extension.RegisterExtension
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntryViewModelTest {
 
+    companion object {
+        private const val SUCCESS_TOAST_TITLE = "Success!"
+        private const val ERROR_TOAST_TITLE = "Error saving new entry!"
+        private const val NETWORK_ERROR = "Network error"
+        private const val TEST_HEIGHT = 1700
+    }
+
     @JvmField
     @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
@@ -160,7 +167,7 @@ class EntryViewModelTest {
     fun `Save shows success toast on success`() = runTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast> { it.title == "Success!" }) }
+        verify { dialogQueueService.showToast(match<Toast> { it.title == SUCCESS_TOAST_TITLE }) }
     }
 
     @Test
@@ -190,10 +197,10 @@ class EntryViewModelTest {
 
     @Test
     fun `Save shows error toast when addEntry throws`() = runTest {
-        coEvery { entryService.addEntry(entry = any()) } throws RuntimeException("Network error")
+        coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast> { it.title == "Error saving new entry!" }) }
+        verify { dialogQueueService.showToast(match<Toast> { it.title == ERROR_TOAST_TITLE }) }
     }
 
     @Test
@@ -346,7 +353,7 @@ class EntryViewModelTest {
     @Test
     fun `LoadAppSyncData creates form with scaleEntry data`() = runTest {
         val scaleEntry = TestFixtures.weightEntry
-        viewModel.handleIntent(EntryIntent.LoadAppSyncData(scaleEntry, height = 1700))
+        viewModel.handleIntent(EntryIntent.LoadAppSyncData(scaleEntry, height = TEST_HEIGHT))
         advanceUntilIdle()
         // The form should be updated with the scale entry weight
         val weight = viewModel.state.value.form.forms.weightDateTime.controls.weight.value
