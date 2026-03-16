@@ -1,0 +1,396 @@
+package com.dmdbrands.gurus.weight.features.settings.viewmodel
+
+import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
+import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.INotificationSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.IScaleSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.IUnitSettingsManager
+import com.dmdbrands.gurus.weight.testutil.TestFixtures
+import com.dmdbrands.gurus.weight.testutil.initTestDependencies
+import com.google.common.truth.Truth.assertThat
+import io.mockk.MockKAnnotations
+import io.mockk.coVerify
+import io.mockk.impl.annotations.MockK
+import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class SettingsViewModelTest {
+
+    @JvmField
+    @RegisterExtension
+    val mainDispatcherRule = MainDispatcherRule()
+
+    @MockK(relaxed = true)
+    lateinit var profileSettingsManager: IProfileSettingsManager
+
+    @MockK(relaxed = true)
+    lateinit var unitSettingsManager: IUnitSettingsManager
+
+    @MockK(relaxed = true)
+    lateinit var notificationSettingsManager: INotificationSettingsManager
+
+    @MockK(relaxed = true)
+    lateinit var scaleSettingsManager: IScaleSettingsManager
+
+    @MockK(relaxed = true)
+    lateinit var dataSettingsManager: IDataSettingsManager
+
+    private lateinit var navigationService: IAppNavigationService
+    private lateinit var dialogQueueService: IDialogQueueService
+    private lateinit var customTabManager: ICustomTabManager
+    private lateinit var viewModel: SettingsViewModel
+
+    @BeforeEach
+    fun setUp() {
+        MockKAnnotations.init(this)
+        navigationService = mockk(relaxed = true)
+        dialogQueueService = mockk(relaxed = true)
+        customTabManager = mockk(relaxed = true)
+        viewModel = SettingsViewModel(
+            profileSettingsManager = profileSettingsManager,
+            unitSettingsManager = unitSettingsManager,
+            notificationSettingsManager = notificationSettingsManager,
+            scaleSettingsManager = scaleSettingsManager,
+            dataSettingsManager = dataSettingsManager,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            customTabManager = customTabManager,
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Default State
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `initial state has default values`() {
+        val state = viewModel.state.value
+        assertThat(state.isLoading).isFalse()
+        assertThat(state.errorMessage).isNull()
+        assertThat(state.account).isNull()
+        assertThat(state.hasMultipleAccounts).isFalse()
+        assertThat(state.currentThemeMode).isEqualTo("System Settings")
+        assertThat(state.selectedMacAddress).isEqualTo("All")
+        assertThat(state.enableTestingFeatures).isFalse()
+        assertThat(state.unreadFeedCount).isEqualTo(0)
+        assertThat(state.showUnreadFeedIndication).isFalse()
+        assertThat(state.isExportEnabled).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // Init — Manager Delegation
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `init delegates to profileSettingsManager observeUserProfile`() {
+        verify { profileSettingsManager.observeUserProfile(any(), any()) }
+    }
+
+    @Test
+    fun `init delegates to dataSettingsManager loadCurrentThemeMode`() {
+        verify { dataSettingsManager.loadCurrentThemeMode(any(), any()) }
+    }
+
+    @Test
+    fun `init delegates to scaleSettingsManager loadMacAddressSettings`() {
+        verify { scaleSettingsManager.loadMacAddressSettings(any(), any()) }
+    }
+
+    @Test
+    fun `init delegates to notificationSettingsManager initFeedNotificationListener`() {
+        verify { notificationSettingsManager.initFeedNotificationListener(any(), any()) }
+    }
+
+    @Test
+    fun `init delegates to dataSettingsManager observeExportEnabled`() {
+        verify { dataSettingsManager.observeExportEnabled(any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Pure State Intents
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `LoadSettings sets isLoading to true`() {
+        viewModel.handleIntent(SettingsIntent.LoadSettings)
+        assertThat(viewModel.state.value.isLoading).isTrue()
+    }
+
+    @Test
+    fun `SetError sets errorMessage and clears isLoading`() {
+        viewModel.handleIntent(SettingsIntent.LoadSettings) // isLoading = true
+        viewModel.handleIntent(SettingsIntent.SetError("Network failure"))
+        assertThat(viewModel.state.value.errorMessage).isEqualTo("Network failure")
+        assertThat(viewModel.state.value.isLoading).isFalse()
+    }
+
+    @Test
+    fun `ClearError nullifies errorMessage`() {
+        viewModel.handleIntent(SettingsIntent.SetError("error"))
+        viewModel.handleIntent(SettingsIntent.ClearError)
+        assertThat(viewModel.state.value.errorMessage).isNull()
+    }
+
+    @Test
+    fun `UpdateAccount sets account and hasMultipleAccounts`() {
+        viewModel.handleIntent(SettingsIntent.UpdateAccount(TestFixtures.activeAccount, true))
+        assertThat(viewModel.state.value.account).isEqualTo(TestFixtures.activeAccount)
+        assertThat(viewModel.state.value.hasMultipleAccounts).isTrue()
+    }
+
+    @Test
+    fun `UpdateThemeMode updates currentThemeMode`() {
+        viewModel.handleIntent(SettingsIntent.UpdateThemeMode("Dark"))
+        assertThat(viewModel.state.value.currentThemeMode).isEqualTo("Dark")
+    }
+
+    @Test
+    fun `UpdateSelectedMacAddress updates selectedMacAddress`() {
+        viewModel.handleIntent(SettingsIntent.UpdateSelectedMacAddress("AA:BB:CC"))
+        assertThat(viewModel.state.value.selectedMacAddress).isEqualTo("AA:BB:CC")
+    }
+
+    @Test
+    fun `UpdateTestingFeatures toggles enableTestingFeatures`() {
+        viewModel.handleIntent(SettingsIntent.UpdateTestingFeatures(true))
+        assertThat(viewModel.state.value.enableTestingFeatures).isTrue()
+    }
+
+    @Test
+    fun `SetUnreadFeedCount updates unreadFeedCount`() {
+        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(5))
+        assertThat(viewModel.state.value.unreadFeedCount).isEqualTo(5)
+    }
+
+    @Test
+    fun `SetUnreadFeedCount with multiple calls reflects latest value`() {
+        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(3))
+        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(7))
+        assertThat(viewModel.state.value.unreadFeedCount).isEqualTo(7)
+    }
+
+    @Test
+    fun `SetShowUnreadFeedIndication updates flag`() {
+        viewModel.handleIntent(SettingsIntent.SetShowUnreadFeedIndication(true))
+        assertThat(viewModel.state.value.showUnreadFeedIndication).isTrue()
+    }
+
+    @Test
+    fun `SetExportEnabled updates isExportEnabled`() {
+        viewModel.handleIntent(SettingsIntent.SetExportEnabled(true))
+        assertThat(viewModel.state.value.isExportEnabled).isTrue()
+    }
+
+    // -------------------------------------------------------------------------
+    // Computed — currentNotificationStatus
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `currentNotificationStatus is Off when account is null`() {
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("Off")
+    }
+
+    @Test
+    fun `currentNotificationStatus is Off when notifications disabled`() {
+        val account = TestFixtures.activeAccount.copy(shouldSendEntryNotifications = false)
+        viewModel.handleIntent(SettingsIntent.UpdateAccount(account))
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("Off")
+    }
+
+    @Test
+    fun `currentNotificationStatus is On when entry notifications enabled`() {
+        val account = TestFixtures.activeAccount.copy(
+            shouldSendEntryNotifications = true,
+            shouldSendWeightInEntryNotifications = false,
+        )
+        viewModel.handleIntent(SettingsIntent.UpdateAccount(account))
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("On")
+    }
+
+    @Test
+    fun `currentNotificationStatus is On w Weight when both enabled`() {
+        val account = TestFixtures.activeAccount.copy(
+            shouldSendEntryNotifications = true,
+            shouldSendWeightInEntryNotifications = true,
+        )
+        viewModel.handleIntent(SettingsIntent.UpdateAccount(account))
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("On w/ Weight")
+    }
+
+    // -------------------------------------------------------------------------
+    // Navigation Intents
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OpenAddScales navigates to AddEditScales`() = runTest {
+        viewModel.handleIntent(SettingsIntent.OpenAddScales)
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.AddEditScales) }
+    }
+
+    @Test
+    fun `OpenHelp navigates to HelpScreen`() = runTest {
+        viewModel.handleIntent(SettingsIntent.OpenHelp)
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.HelpScreen) }
+    }
+
+    @Test
+    fun `SwitchAccount navigates to MyAccounts`() = runTest {
+        viewModel.handleIntent(SettingsIntent.SwitchAccount)
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts) }
+    }
+
+    @Test
+    fun `onSwitchAccountClick navigates to MyAccounts`() = runTest {
+        viewModel.onSwitchAccountClick()
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts) }
+    }
+
+    // -------------------------------------------------------------------------
+    // URL Opening Intents
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OpenPrivacyPolicy opens in-app browser`() {
+        viewModel.handleIntent(SettingsIntent.OpenPrivacyPolicy)
+        verify { customTabManager.openChromeTab(any()) }
+    }
+
+    @Test
+    fun `OpenTermsOfService opens in-app browser`() {
+        viewModel.handleIntent(SettingsIntent.OpenTermsOfService)
+        verify { customTabManager.openChromeTab(any()) }
+    }
+
+    @Test
+    fun `OpenGreaterGoodsWebsite opens in-app browser`() {
+        viewModel.handleIntent(SettingsIntent.OpenGreaterGoodsWebsite)
+        verify { customTabManager.openChromeTab(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Manager Delegation Intents
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Logout delegates to dataSettingsManager onLogOutClick`() {
+        viewModel.handleIntent(SettingsIntent.Logout)
+        verify { dataSettingsManager.onLogOutClick(any(), any(), isLogoutAll = false) }
+    }
+
+    @Test
+    fun `LogoutAllAccounts delegates to dataSettingsManager with isLogoutAll true`() {
+        viewModel.handleIntent(SettingsIntent.LogoutAllAccounts)
+        verify { dataSettingsManager.onLogOutClick(any(), any(), isLogoutAll = true) }
+    }
+
+    @Test
+    fun `ExportData delegates to dataSettingsManager onExportDataClick`() {
+        viewModel.handleIntent(SettingsIntent.ExportData)
+        verify { dataSettingsManager.onExportDataClick(any()) }
+    }
+
+    @Test
+    fun `DeleteAccount delegates to dataSettingsManager onDeleteAccount`() {
+        viewModel.handleIntent(SettingsIntent.DeleteAccount)
+        verify { dataSettingsManager.onDeleteAccount(any(), any()) }
+    }
+
+    @Test
+    fun `ConfirmDeleteAccount delegates to dataSettingsManager onConfirmDeleteAccount`() {
+        viewModel.handleIntent(SettingsIntent.ConfirmDeleteAccount)
+        verify { dataSettingsManager.onConfirmDeleteAccount(any()) }
+    }
+
+    @Test
+    fun `ShowBiologicalSexModal delegates to profileSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowBiologicalSexModal)
+        verify { profileSettingsManager.onBiologicalSexClick(any(), any()) }
+    }
+
+    @Test
+    fun `ShowActivityLevelModal delegates to profileSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowActivityLevelModal)
+        verify { profileSettingsManager.onActivityLevelClick(any(), any()) }
+    }
+
+    @Test
+    fun `ShowUnitTypeModal delegates to unitSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowUnitTypeModal)
+        verify { unitSettingsManager.onUnitTypeClick(any(), any()) }
+    }
+
+    @Test
+    fun `ShowNotificationsModal delegates to notificationSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowNotificationsModal)
+        verify { notificationSettingsManager.onNotificationsClick(any(), any()) }
+    }
+
+    @Test
+    fun `ShowHeightModal delegates to profileSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowHeightModal)
+        verify { profileSettingsManager.onHeightClick(any(), any()) }
+    }
+
+    @Test
+    fun `ShowWeightlessModal delegates to profileSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowWeightlessModal)
+        verify { profileSettingsManager.onShowWeightlessModal(any(), any()) }
+    }
+
+    @Test
+    fun `goalSettingModal delegates to profileSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.goalSettingModal)
+        verify { profileSettingsManager.onGoalSettingClick(any()) }
+    }
+
+    @Test
+    fun `ShowAppearanceModal delegates to dataSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowAppearanceModal)
+        verify { dataSettingsManager.onAppearanceClick(any(), any(), any()) }
+    }
+
+    @Test
+    fun `ToggleStreak delegates to profileSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ToggleStreak(true))
+        verify { profileSettingsManager.onStreakUpdate(any(), any(), isStreakOn = true) }
+    }
+
+    @Test
+    fun `ShowMacAddressFilterModal delegates to scaleSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.ShowMacAddressFilterModal)
+        verify { scaleSettingsManager.onMacAddressFilterClick(any(), any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Public methods
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onAccountSwitchInfoDismiss delegates to profileSettingsManager`() {
+        viewModel.onAccountSwitchInfoDismiss()
+        verify { profileSettingsManager.dismissAccountSwitchInfoModal() }
+    }
+
+    @Test
+    fun `getWeightlessDisplayText delegates to profileSettingsManager`() {
+        viewModel.getWeightlessDisplayText()
+        verify { profileSettingsManager.getWeightlessDisplayText(any()) }
+    }
+}
