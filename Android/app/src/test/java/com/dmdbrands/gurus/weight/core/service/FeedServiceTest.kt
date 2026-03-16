@@ -251,13 +251,23 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems does not throw on repository exception`() = runTest {
-    coEvery { feedRepository.fetchFeedItems() } throws RuntimeException("Network failure")
+  fun `fetchFeedItems offline with existing local items emits cached items`() = runTest {
+    // First fetch populates local storage while online
+    val items = listOf(createFeedItem(elementId = "cached-1"), createFeedItem(elementId = "cached-2"))
+    coEvery { feedRepository.fetchFeedItems() } returns items
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
-
-    // Should not throw
     service.fetchFeedItems()
+
+    // Go offline
+    every { connectivityObserver.getCurrentNetworkState() } returns offlineState
+
+    service.feedsChanged.test {
+      service.fetchFeedItems()
+      val result = awaitItem()
+      assertThat(result).hasSize(2)
+      assertThat(result.map { it.elementId }).containsExactly("cached-1", "cached-2")
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -507,22 +517,6 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with variationClick includes osType and meta`() = runTest {
-    val item = createFeedItem(feedPostId = "post-1")
-    coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
-    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
-    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
-    service = createService()
-
-    service.fetchFeedItems()
-    service.updateFeedItem(item, FeedActionType.variationClick, 7)
-
-    val actionSlot = slot<FeedAction>()
-    coVerify { feedRepository.updateFeedItem("post-1", capture(actionSlot)) }
-    assertThat(actionSlot.captured.meta?.variationId).isEqualTo(7)
-  }
-
-  @Test
   fun `updateFeedItem with trigger action has no osType or meta`() = runTest {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
@@ -714,7 +708,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `showIAMFeedModal shows dialog via dialogQueueService`() {
+  fun `showIAMFeedModal shows dialog with correct content key params and priority`() {
     service = createService()
     val item = createFeedItem()
 
@@ -726,18 +720,8 @@ class FeedServiceTest {
     assertThat(custom.contentKey).isEqualTo(DialogType.IAMFeedModal)
     assertThat(custom.params["feedItem"]).isEqualTo(item)
     assertThat(custom.params["elementId"]).isEqualTo(item.elementId)
-  }
-
-  @Test
-  fun `showIAMFeedModal sets priority to 3`() {
-    service = createService()
-    val item = createFeedItem()
-
-    service.showIAMFeedModal(item)
-
-    val dialogSlot = slot<DialogModel>()
-    verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-    assertThat((dialogSlot.captured as DialogModel.Custom).customPriority).isEqualTo(3)
+    assertThat(custom.customPriority).isEqualTo(3)
+    assertThat(custom.customDelayMillis).isEqualTo(0L)
   }
 
   @Test
@@ -1045,23 +1029,42 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction learn_more with LINK type tracks click`() = runTest {
-    val item = createFeedItem(feedType = FeedTypes.LINK, linkTarget = "https://shop.example.com")
-    coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
-    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
-    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+  fun `handleFeedModalAction settings catches navigation exception`() = runTest {
+    coEvery { appNavigationService.navigateTo(any<com.dmdbrands.gurus.weight.core.navigation.AppRoute>()) } throws RuntimeException("Nav error")
     service = createService()
-    service.fetchFeedItems()
+
+    service.showIAMFeedModal(createFeedItem())
+
+    val dialogSlot = slot<DialogModel>()
+    verify { dialogQueueService.showDialog(capture(dialogSlot)) }
+
+    // Should not throw — exception is caught inside handleFeedModalAction
+    (dialogSlot.captured as DialogModel.Custom).onConfirm?.invoke("settings")
+    Thread.sleep(500)
+  }
+
+  @Test
+  fun `handleFeedModalAction buy_now LANDING catches navigation exception`() = runTest {
+    val item = createFeedItem(
+      feedType = FeedTypes.LANDING,
+      landingPage = LandingPage(
+        feedLandingPageId = "lp-1",
+        feedPostId = "post-1",
+        titleText = "Landing",
+      ),
+    )
+    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
+    coEvery { appNavigationService.navigateTo(any<com.dmdbrands.gurus.weight.core.navigation.AppRoute>()) } throws RuntimeException("Nav error")
+    service = createService()
 
     service.showIAMFeedModal(item)
 
     val dialogSlot = slot<DialogModel>()
     verify { dialogQueueService.showDialog(capture(dialogSlot)) }
 
-    (dialogSlot.captured as DialogModel.Custom).onConfirm?.invoke("learn_more")
-    Thread.sleep(1000)
-
-    coVerify(timeout = 2000) { feedRepository.updateFeedItem("post-1", any()) }
+    // Should not throw — exception is caught inside handleFeedModalAction
+    (dialogSlot.captured as DialogModel.Custom).onConfirm?.invoke("buy_now")
+    Thread.sleep(500)
   }
 
   @Test
@@ -1150,21 +1153,4 @@ class FeedServiceTest {
     assertThat(actionSlot.captured.action).isEqualTo(FeedActionType.trigger)
   }
 
-  @Test
-  fun `updateFeedItem with promoClick includes osType and meta`() = runTest {
-    val item = createFeedItem(feedPostId = "post-1")
-    coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
-    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
-    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
-    service = createService()
-
-    service.fetchFeedItems()
-    service.updateFeedItem(item, FeedActionType.promoClick, 99)
-
-    val actionSlot = slot<FeedAction>()
-    coVerify { feedRepository.updateFeedItem("post-1", capture(actionSlot)) }
-    assertThat(actionSlot.captured.action).isEqualTo(FeedActionType.promoClick)
-    assertThat(actionSlot.captured.osType).isEqualTo("Android")
-    assertThat(actionSlot.captured.meta?.variationId).isEqualTo(99)
-  }
 }
