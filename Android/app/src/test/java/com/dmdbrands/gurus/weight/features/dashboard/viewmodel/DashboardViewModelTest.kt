@@ -73,6 +73,11 @@ class DashboardViewModelTest {
         private const val LATEST_WEIGHT = 80.5
         private const val SCROLL_TARGET = 123.45
         private const val PAGER_INDEX = 2
+        private const val ANCHOR_TIMESTAMP = 1700000000L
+        private const val PROGRESS_COUNT = 5
+        private const val PROGRESS_INIT_WEIGHT = 85.0
+        private const val WEIGHTLESS_WEIGHT = 150f
+        private const val TEST_ACCOUNT_12_ID = "test-12"
         private val TEST_DASHBOARD_KEY = DashboardKey.Metric(
             com.dmdbrands.gurus.weight.domain.enums.MetricKey.WEIGHT
         )
@@ -164,10 +169,9 @@ class DashboardViewModelTest {
 
     @Test
     fun `SetSelectedSegment with anchor sets scrollTarget`() {
-        val anchor = 1700000000L
-        viewModel.handleIntent(DashboardIntent.SetSelectedSegment(GraphSegment.YEAR, anchor))
+        viewModel.handleIntent(DashboardIntent.SetSelectedSegment(GraphSegment.YEAR, ANCHOR_TIMESTAMP))
         assertThat(viewModel.state.value.selectedSegment).isEqualTo(GraphSegment.YEAR)
-        assertThat(viewModel.state.value.scrollTarget).isEqualTo(anchor.toDouble())
+        assertThat(viewModel.state.value.scrollTarget).isEqualTo(ANCHOR_TIMESTAMP.toDouble())
     }
 
     // -------------------------------------------------------------------------
@@ -220,7 +224,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `SetProgress updates progress`() {
-        val progress = Progress(count = 5, initWt = 85.0)
+        val progress = Progress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
         viewModel.handleIntent(DashboardIntent.SetProgress(progress))
         assertThat(viewModel.state.value.progress).isEqualTo(progress)
     }
@@ -296,7 +300,7 @@ class DashboardViewModelTest {
 
     @Test
     fun `UpdateWeightLess updates weightless`() {
-        val weightless = Weightless(isWeightlessOn = true, weightlessWeight = 150f)
+        val weightless = Weightless(isWeightlessOn = true, weightlessWeight = WEIGHTLESS_WEIGHT)
         viewModel.handleIntent(DashboardIntent.UpdateWeightLess(weightless))
         assertThat(viewModel.state.value.weightless).isEqualTo(weightless)
     }
@@ -523,7 +527,7 @@ class DashboardViewModelTest {
     @Test
     fun `subscribeDashboardType updates to DASHBOARD_12_METRICS when account emits`() = runTest {
         val account12 = TestFixtures.anAccount(
-            id = "test-12",
+            id = TEST_ACCOUNT_12_ID,
             isActiveAccount = true,
             isLoggedIn = true,
         ).copy(dashboardType = DashboardType.DASHBOARD_12_METRICS.value)
