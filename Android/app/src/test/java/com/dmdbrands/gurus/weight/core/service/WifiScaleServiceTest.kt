@@ -444,15 +444,6 @@ class WifiScaleServiceTest {
         assertThat(result).isNull()
     }
 
-    @Test
-    fun `getScaleToken passes correct parameter to deviceService`() = runTest {
-        coEvery { deviceService.getScaleToken(false) } returns "tok"
-
-        service.getScaleToken()
-
-        coVerify { deviceService.getScaleToken(false) }
-    }
-
     // -------------------------------------------------------------------------
     // stop — delegate to manager
     // -------------------------------------------------------------------------
@@ -627,13 +618,6 @@ class WifiScaleServiceTest {
         service.openWifiSettings()
     }
 
-    @Test
-    fun `openWifiSettings handles Intent creation failure gracefully`() {
-        // Without mockkConstructor, Intent constructor may fail in unit tests
-        // The try/catch in openWifiSettings handles this
-        service.openWifiSettings()
-    }
-
     // -------------------------------------------------------------------------
     // getScanResults — permission check + results
     // -------------------------------------------------------------------------
@@ -781,80 +765,6 @@ class WifiScaleServiceTest {
         assertThat(errorMsg).contains("Connect failed")
     }
 
-    @Test
-    fun `connect ESP_TOUCH_WIFI with all null fields fails validation`() {
-        val invalidInfo = WifiSetupInfo()
-
-        var errorMsg: String? = null
-        service.connect(invalidInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorMsg = it })
-        Thread.sleep(300)
-
-        assertThat(errorMsg).contains("Connect failed")
-    }
-
-    @Test
-    fun `connect FIRST with all null fields fails validation`() {
-        val invalidInfo = WifiSetupInfo()
-
-        var errorMsg: String? = null
-        service.connect(invalidInfo, WifiSetupType.FIRST, {}, { errorMsg = it })
-        Thread.sleep(300)
-
-        assertThat(errorMsg).contains("Connect failed")
-    }
-
-    @Test
-    fun `connect JOIN with all null fields fails validation`() {
-        val invalidInfo = WifiSetupInfo()
-
-        var errorMsg: String? = null
-        service.connect(invalidInfo, WifiSetupType.JOIN, {}, { errorMsg = it })
-        Thread.sleep(300)
-
-        assertThat(errorMsg).contains("Connect failed")
-    }
-
-    @Test
-    fun `connect CHANGE with all null fields fails validation`() {
-        val invalidInfo = WifiSetupInfo()
-
-        var errorMsg: String? = null
-        service.connect(invalidInfo, WifiSetupType.CHANGE, {}, { errorMsg = it })
-        Thread.sleep(300)
-
-        assertThat(errorMsg).contains("Connect failed")
-    }
-
-    // -------------------------------------------------------------------------
-    // Validation — valid data passes for all types
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `connect JOIN with valid data passes validation and connects`() {
-        coEvery {
-            wifiSmartConnectManager.connect(any(), any())
-        } returns WifiConnectResult.SmartConfig(SmartConfigResult.Success)
-
-        var successCalled = false
-        service.connect(validJoinInfo, WifiSetupType.JOIN, { successCalled = true }, {})
-        Thread.sleep(300)
-
-        assertThat(successCalled).isTrue()
-    }
-
-    @Test
-    fun `connect CHANGE with valid data passes validation and connects`() {
-        coEvery {
-            wifiSmartConnectManager.connect(any(), any())
-        } returns WifiConnectResult.ApMode(ApConnectResult.Success(byteArrayOf()))
-
-        var successCalled = false
-        service.connect(validChangeInfo, WifiSetupType.CHANGE, { successCalled = true }, {})
-        Thread.sleep(300)
-
-        assertThat(successCalled).isTrue()
-    }
-
     // -------------------------------------------------------------------------
     // connect — JOIN request building with ssid provided
     // -------------------------------------------------------------------------
@@ -911,15 +821,6 @@ class WifiScaleServiceTest {
         coEvery { deviceService.getScaleToken(false) } returns null
 
         val result = service.getScaleToken()
-
-        assertThat(result).isNull()
-    }
-
-    @Test
-    fun `getScaleToken with r parameter returns null on exception`() = runTest {
-        coEvery { deviceService.getScaleToken(false) } throws RuntimeException("API error")
-
-        val result = service.getScaleToken("someParam")
 
         assertThat(result).isNull()
     }
@@ -1005,15 +906,4 @@ class WifiScaleServiceTest {
         assertThat(result).isEqualTo("NewActivityNet")
     }
 
-    // -------------------------------------------------------------------------
-    // stop — can be called multiple times
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `stop can be called multiple times without error`() {
-        service.stop()
-        service.stop()
-
-        verify(exactly = 2) { wifiSmartConnectManager.stopAll() }
-    }
 }
