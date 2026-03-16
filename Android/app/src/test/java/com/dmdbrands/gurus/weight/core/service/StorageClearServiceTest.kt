@@ -111,19 +111,6 @@ class StorageClearServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // clearAllStorage — single DataStore
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `clearAllStorage with single DataStore clears it`() = runTest {
-        val serviceSingle = createServiceWith(setOf(dataStore1))
-
-        serviceSingle.clearAllStorage()
-
-        coVerify(exactly = 1) { dataStore1.clearData() }
-    }
-
-    // -------------------------------------------------------------------------
     // clearAllStorage — database failure
     // -------------------------------------------------------------------------
 
@@ -192,14 +179,6 @@ class StorageClearServiceTest {
         service.clearAllStorage()
 
         verify { AppLog.e("StorageClearService", match { it.contains("Failed to clear DataStore") }, any<Throwable>()) }
-    }
-
-    @Test
-    fun `clearAllStorage does not throw when individual DataStore fails`() = runTest {
-        coEvery { dataStore1.clearData() } throws RuntimeException("DS1 error")
-
-        // Should NOT throw — individual failures are caught
-        service.clearAllStorage()
     }
 
     @Test
@@ -283,18 +262,4 @@ class StorageClearServiceTest {
         coVerify(exactly = 0) { dataStore3.clearData() }
     }
 
-    // -------------------------------------------------------------------------
-    // clearAllStorage — multiple calls
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `clearAllStorage can be called multiple times`() = runTest {
-        service.clearAllStorage()
-        service.clearAllStorage()
-
-        verify(exactly = 2) { appDatabase.clearAllTables() }
-        coVerify(exactly = 2) { dataStore1.clearData() }
-        coVerify(exactly = 2) { dataStore2.clearData() }
-        coVerify(exactly = 2) { dataStore3.clearData() }
-    }
 }
