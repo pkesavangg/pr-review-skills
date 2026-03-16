@@ -1,11 +1,11 @@
 ---
 name: unit-tests
-description: Generates comprehensive MockK unit tests for Android service and repository classes following the MeApp testing pattern. Use when given a source file path and asked to write unit tests for it.
+description: Generates comprehensive MockK unit tests for Android service, repository, ViewModel, and Reducer classes following the MeApp testing pattern. Use when given a source file path and asked to write unit tests for it.
 ---
 
 <objective>
-Read an Android service or repository class and generate a complete, passing unit test file following MeApp conventions:
-- JUnit 4 — NO JUnit 5 (`@Before`/`@After`, never `@BeforeEach`/`@AfterEach`)
+Read an Android service, repository, ViewModel, or Reducer class and generate a complete, passing unit test file following project conventions:
+- **JUnit version**: detect from `build.gradle.kts` / `libs.versions.toml` (see Step 0 below)
 - MockK for all mocking (no Mockito)
 - Truth for assertions (`assertThat`)
 - `runTest` for suspend functions
@@ -24,7 +24,8 @@ Read an Android service or repository class and generate a complete, passing uni
 <quick_start>
 1. Ask the user for the source file path if not provided in the arguments.
 2. Read the source file + its interface.
-3. For services: read `BaseService.kt` to understand inherited methods (`isNetworkAvailable`, `requireNetworkAvailable`, `showNetworkErrorAndThrow`, `showNetworkError`, `showSuccessToast`, `showErrorToast`, `checkInternetError`).
+3. **For services**: read `BaseService.kt` to understand inherited methods (`isNetworkAvailable`, `requireNetworkAvailable`, `showNetworkErrorAndThrow`, `showNetworkError`, `showSuccessToast`, `showErrorToast`, `checkInternetError`).
+   **For repositories**: skip `BaseService.kt`. Instead read DAO interfaces, API interfaces, DataStore, TokenManager, and entity/mapper classes.
 4. Read constructor dependency interfaces to know what methods to stub.
 5. Identify ALL public methods, their dependencies, branches, catch blocks, and flows.
 6. Cross-check method coverage completeness (Step 4) — every public method must have tests.
@@ -32,9 +33,73 @@ Read an Android service or repository class and generate a complete, passing uni
 8. Generate the test file into `app/src/test/java/...` mirroring the source package.
 9. Run tests → fix failures → re-run (iterative loop until green).
 10. Run JaCoCo coverage → check method-level LINE + BRANCH → add missing tests → re-run.
+
+> **Detect class type and load patterns**: Check the source file:
+> - Files in `core/service/` or `domain/services/` → **Service** — Read `.claude/skills/unit-tests/patterns/service.md`
+> - Files in `data/repository/` → **Repository** — Read `.claude/skills/unit-tests/patterns/repository.md`
+> - Files named `*Reducer.kt` implementing `IReducer` → **Reducer** — Read `.claude/skills/unit-tests/patterns/reducer.md`
+> - Files named `*ViewModel.kt` extending `BaseIntentViewModel` → **ViewModel** — Read `.claude/skills/unit-tests/patterns/reducer.md` AND `.claude/skills/unit-tests/patterns/viewmodel.md`
+> - For ViewModels: generate **ReducerTest first** (simpler), then **ViewModelTest** (side effects)
+>
+> **On-demand reference files** (Read only when needed):
+> - At Step 8 (coverage verification): Read `.claude/skills/unit-tests/reference/jacoco-coverage.md`
+> - If tests fail with unfamiliar errors: Read `.claude/skills/unit-tests/reference/troubleshooting.md`
+> - For advanced testing patterns (dispatchers, flow testing, anti-patterns): Read `.claude/skills/unit-tests/reference/android-testing-practices.md`
 </quick_start>
 
 <process>
+
+## Step 0: Detect testing framework and libraries
+
+Before writing any test, read `gradle/libs.versions.toml` and `app/build.gradle.kts` to detect the project's testing stack. This ensures the generated tests match the actual project dependencies.
+
+**Check for these in `libs.versions.toml` or `build.gradle.kts`:**
+
+```
+grep -i "junit" gradle/libs.versions.toml app/build.gradle.kts
+grep -i "mockk\|mockito\|turbine\|truth\|coroutines-test" gradle/libs.versions.toml
+```
+
+### JUnit 4 vs JUnit 5 compatibility
+
+| Aspect | JUnit 4 (MeApp current) | JUnit 5 |
+|---|---|---|
+| **Setup/teardown** | `@Before` / `@After` | `@BeforeEach` / `@AfterEach` |
+| **Test annotation** | `@org.junit.Test` | `@org.junit.jupiter.api.Test` |
+| **Assertions** | `org.junit.Assert.assertThrows` | `org.junit.jupiter.api.assertThrows` (Kotlin ext) |
+| **Rules** | `@get:Rule val rule = MainDispatcherRule()` | `@RegisterExtension val ext = MainDispatcherExtension()` |
+| **Test class lifecycle** | New instance per test (default) | New instance per test (default, configurable) |
+| **Exception testing** | `assertThrows(X::class.java) { runBlocking { } }` | `assertThrows<X> { runBlocking { } }` (reified) |
+| **Parameterized** | `@RunWith(Parameterized::class)` | `@ParameterizedTest` + `@ValueSource` / `@CsvSource` |
+
+### Mocking library detection
+
+| Library | Detect via | Import prefix |
+|---|---|---|
+| **MockK** | `mockk` in versions.toml | `io.mockk.*` |
+| **Mockito** | `mockito` in versions.toml | `org.mockito.*` / `org.mockito.kotlin.*` |
+
+### Assertion library detection
+
+| Library | Detect via | Usage |
+|---|---|---|
+| **Truth** | `truth` in versions.toml | `assertThat(x).isEqualTo(y)` |
+| **AssertJ** | `assertj` in versions.toml | `assertThat(x).isEqualTo(y)` (similar API, different import) |
+| **JUnit assertions** | Always available | `assertEquals(expected, actual)` |
+
+> **Rule**: Always match the project's existing test dependencies. Read `libs.versions.toml` first. If an existing test file exists in the same package, read it to follow the same import/pattern conventions.
+
+### MeApp current stack (as detected)
+
+| Library | Version | Config |
+|---|---|---|
+| JUnit | 4.13.2 | `testImplementation` |
+| MockK | 1.14.9 | `testImplementation` |
+| Truth | 1.4.5 | `testImplementation` |
+| Turbine | 1.2.1 | `testImplementation` |
+| coroutines-test | 1.10.2 | `testImplementation` |
+
+> If the project migrates to JUnit 5, update all `@Before`→`@BeforeEach`, `@After`→`@AfterEach`, `@Rule`→`@RegisterExtension`, and `org.junit.Test`→`org.junit.jupiter.api.Test` throughout this skill.
 
 ## Step 1: Read the source files
 
@@ -76,6 +141,8 @@ For each public method, list:
 Target: minimum 3–4 tests per non-trivial method; 2 per simple delegation method.
 
 ## Step 3: Write the test file
+
+> **IMPORTANT**: Before writing, Read the class-type-specific pattern file identified in `<quick_start>`. The pattern file contains essential patterns, code templates, and mocking rules for the detected class type.
 
 ### Complete import block
 
@@ -247,6 +314,8 @@ class {ServiceName}Test {
 
 > **`every` vs `coEvery` — CRITICAL**: Always use `coEvery` for `suspend` functions and `every` for non-suspend functions. Using `every` on a suspend function silently fails to stub it, causing `no answer found` errors at runtime. Similarly, use `coVerify` for suspend calls and `verify` for non-suspend calls.
 
+> **`coJustRun` — idiomatic Unit-returning suspend stubs**: Instead of `coEvery { mock.method() } just Runs`, prefer the cleaner `coJustRun { mock.method() }`. Both are equivalent; `coJustRun` is more concise and readable.
+
 ### Test fixture construction — complete constructors
 
 When creating test fixtures, you MUST include ALL required constructor parameters.
@@ -300,7 +369,7 @@ fun `login returns account when credentials are valid`() = runTest {
 }
 ```
 
-> Always use `service` (not `sut`) — consistent with the codebase convention.
+> Always use `service` or `repository` (not `sut`) — consistent with the codebase convention.
 
 ### Stub helpers — DRY rule
 
@@ -315,9 +384,19 @@ private fun stubLoginSuccess(account: Account = fakeAccount) {
 private fun stubLoginThrows(exception: Throwable) {
     coEvery { accountRepository.login(any(), any()) } throws exception
 }
+
+// returnsMany — different values on successive calls
+coEvery { api.fetchGoal(any()) } returnsMany listOf(goal1, goal2, goal3)
+// First call returns goal1, second returns goal2, third returns goal3
 ```
 
 > Stub helpers only share **Arrange** code — never Act or Assert steps.
+
+> **Stubbing order**: When multiple stubs match, **the last-defined stub wins**. Put general catch-all stubs first, specific overrides after:
+> ```kotlin
+> every { calc.add(any(), any()) } returns 0    // general
+> every { calc.add(1, 1) } returns 2            // specific override — must come AFTER
+> ```
 
 ### assertThrows — exception tests (CRITICAL: runBlocking wrapper)
 
@@ -381,87 +460,27 @@ coVerify {
 
 > Use `any<Type>()` when you only care about the subtype. Use `match<Type> { predicate }` when you need to verify specific field values inside the sealed class.
 
-### Network guard clause pattern
+**`withArg` — inline argument assertions (alternative to `slot` + `capture`)**:
 
-Every method with `requireNetworkAvailable()` must have an offline test:
-
-```kotlin
-@Test
-fun `deleteAccount throws when offline`() = runTest {
-    stubNetworkUnavailable()
-
-    assertThrows(Exception::class.java) {
-        runBlocking { service.deleteAccount(fakeAccount.id, isActiveAccount = true) }
-    }
-    coVerify(exactly = 0) { accountRepository.deleteAccount(any(), any()) }
-}
-```
-
-Methods that use `isNetworkAvailable()` (soft check, no throw) — test both paths:
+When you only need to assert argument values (not re-invoke a callback), `withArg` is simpler than `slot`:
 
 ```kotlin
-@Test
-fun `refreshAccount skips API call when offline`() = runTest {
-    stubNetworkUnavailable()
-
-    service.refreshAccount()
-
-    coVerify(exactly = 0) { accountRepository.getAccountFromAPI(any()) }
+// ✅ withArg — inline assertions, no slot variable needed
+coVerify {
+    dialogQueueService.enqueue(withArg<DialogModel.Confirm> { dialog ->
+        assertThat(dialog.title).isEqualTo("Goal Complete!")
+        assertThat(dialog.confirmText).isEqualTo("OK")
+    })
 }
+
+// ✅ slot — needed when you must invoke captured lambdas (e.g., dialog callbacks)
+val dialogSlot = slot<DialogModel>()
+every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
+// ... act ...
+(dialogSlot.captured as DialogModel.Confirm).onConfirm?.invoke()
 ```
 
-### Gating condition pattern
-
-Test methods that exit early based on state:
-
-```kotlin
-// Gate: account null — re-stub flow, re-create service
-@Test
-fun `changePassword returns false when no active account`() = runTest {
-    every { accountRepository.getActiveAccount() } returns flowOf(null)
-    service = createService()
-
-    val result = service.changePassword("old", "new")
-
-    assertThat(result).isFalse()
-    coVerify(exactly = 0) { accountRepository.updatePassword(any(), any(), any()) }
-}
-
-// Gate: empty/null string parameter
-@Test
-fun `handleUnauthorizedLogout returns null when accountId is empty`() = runTest {
-    val result = service.handleUnauthorizedLogout("")
-
-    assertThat(result).isNull()
-}
-```
-
-> **Important**: When changing a flow stub that the service collects at init, you MUST call `service = createService()` after re-stubbing.
-
-### HttpException error path pattern
-
-Test all HTTP error codes the service handles in catch blocks:
-
-```kotlin
-@Test
-fun `login returns null on HttpException 401`() = runTest {
-    coEvery { accountRepository.login(any(), any()) } throws httpException(401)
-
-    val result = service.login(fakeAccount.email, "wrong")
-
-    assertThat(result).isNull()
-    coVerify { appNavigationService.emitAuthEvent(any<AuthState.Error>()) }
-}
-
-@Test
-fun `login returns null on HttpException 0 (no internet)`() = runTest {
-    coEvery { accountRepository.login(any(), any()) } throws httpException(0)
-
-    val result = service.login(fakeAccount.email, "password")
-
-    assertThat(result).isNull()
-}
-```
+> Use `withArg` for assertion-only verification. Use `slot` + `capture` when you need to invoke callbacks or store the captured value for later use.
 
 ### Flow tests — Turbine
 
@@ -485,6 +504,13 @@ flow<Account> { throw IOException("network") }.test {
     assertThat(error.message).isEqualTo("network")
 }
 
+// Assert nothing was emitted — non-suspending, checks buffer immediately
+service.stateFlow.test {
+    skipItems(1)  // consume initial
+    expectNoEvents()  // ✅ asserts no further emissions buffered
+    cancelAndIgnoreRemainingEvents()
+}
+
 // StateFlow with rapid emissions — use expectMostRecentItem() to skip intermediates
 service.stateFlow.test {
     // skip initial value
@@ -496,51 +522,43 @@ service.stateFlow.test {
 }
 ```
 
-**Multi-flow testing — use `testIn(backgroundScope)`**:
-When testing multiple flows simultaneously, `test {}` blocks cannot be nested. Use `testIn`:
+**Multi-flow testing — use `turbineScope` (preferred) or `testIn(backgroundScope)`**:
+When testing multiple flows simultaneously, `test {}` blocks cannot be nested. Use `turbineScope` (preferred, better error diagnostics) or `testIn`:
 
 ```kotlin
+// ✅ PREFERRED — turbineScope manages lifecycle and provides named diagnostics
 @Test
 fun `active account and theme flows emit correct values`() = runTest {
-    val accountTurbine = service.activeAccountFlow.testIn(backgroundScope)
-    val themeTurbine = service.currentThemeModeFlow.testIn(backgroundScope)
+    turbineScope {
+        val accountTurbine = service.activeAccountFlow.testIn(backgroundScope, name = "account")
+        val themeTurbine = service.currentThemeModeFlow.testIn(backgroundScope, name = "theme")
 
-    assertThat(accountTurbine.awaitItem()).isEqualTo(fakeAccount)
-    assertThat(themeTurbine.awaitItem()).isEqualTo(ThemeMode.SYSTEM)
+        assertThat(accountTurbine.awaitItem()).isEqualTo(fakeAccount)
+        assertThat(themeTurbine.awaitItem()).isEqualTo(ThemeMode.SYSTEM)
 
-    accountTurbine.cancelAndIgnoreRemainingEvents()
-    themeTurbine.cancelAndIgnoreRemainingEvents()
+        accountTurbine.cancelAndIgnoreRemainingEvents()
+        themeTurbine.cancelAndIgnoreRemainingEvents()
+    }
+}
+
+// ✅ ALSO VALID — testIn inside a .test {} block (which provides turbineScope implicitly)
+@Test
+fun `flows emit correct values`() = runTest {
+    service.activeAccountFlow.test {
+        val themeTurbine = service.currentThemeModeFlow.testIn(backgroundScope)
+
+        assertThat(awaitItem()).isEqualTo(fakeAccount)  // from outer .test {}
+        assertThat(themeTurbine.awaitItem()).isEqualTo(ThemeMode.SYSTEM)
+
+        cancelAndIgnoreRemainingEvents()
+        themeTurbine.cancelAndIgnoreRemainingEvents()
+    }
 }
 ```
+
+> **Why `turbineScope`?** It validates that all turbines are properly terminated when the block exits. Named turbines (`name = "account"`) produce clearer error messages when tests fail. Requires Turbine 1.1.0+.
 
 > **Turbine timeout**: Default is 3 seconds (wall clock, ignores virtual time). If tests hang, the flow isn't emitting — check your stubs, not the timeout.
-
-### Dialog callback pattern
-
-```kotlin
-/** Capture the enqueued dialog for callback testing. */
-private fun captureDialog(): DialogModel {
-    val dialogSlot = slot<DialogModel>()
-    every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
-    return dialogSlot.captured
-}
-
-@Test
-fun `given dialog shown, when onConfirm invoked, then deletes account`() = runTest {
-    val dialogSlot = slot<DialogModel>()
-    every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
-    // Arrange to trigger dialog...
-    service.showDeleteConfirmation(fakeAccount.id)
-
-    val dialog = dialogSlot.captured as DialogModel.Confirm
-    dialog.onConfirm?.invoke()
-    advanceUntilIdle()
-
-    coVerify(exactly = 1) { accountRepository.deleteAccount(any()) }
-}
-```
-
-> **Why `advanceUntilIdle()`?** Callbacks may launch new coroutines. `advanceUntilIdle()` drains pending coroutines before verify.
 
 ### Virtual time control — NEVER use Thread.sleep()
 
@@ -575,38 +593,12 @@ fun `debounced search waits 500ms before calling API`() = runTest {
 
 > `advanceUntilIdle()` is the default choice. Use `advanceTimeBy()` only when you need to assert timing behavior.
 
-### Iteration side effects — per-item verification
+### `runTest` best practices (per official docs)
 
-```kotlin
-@Test
-fun `logoutAll resets notification for every account`() = runTest {
-    every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount, fakeAccount2))
-    service = createService()
-    coEvery { accountRepository.logoutAllAccounts() } returns true
-    coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
-
-    service.logoutAll()
-
-    coVerify { accountRepository.setNotificationAlertShownForAccount(fakeAccount.id, false) }
-    coVerify { accountRepository.setNotificationAlertShownForAccount(fakeAccount2.id, false) }
-}
-```
-
-### Max accounts / collection edge cases
-
-```kotlin
-@Test
-fun `login throws MaxAccountsReachedException when at max and email is new`() = runTest {
-    every { accountRepository.getLoggedInAccounts() } returns flowOf(
-        (1..10).map { fakeAccount.copy(id = "acc-$it", isActiveAccount = it == 1) }
-    )
-    service = createService()
-
-    assertThrows(MaxAccountsReachedException::class.java) {
-        runBlocking { service.login("brandnew@example.com", "password") }
-    }
-}
-```
+- `runTest` uses `StandardTestDispatcher` by default — new coroutines are **queued**, not executed eagerly. You must call `advanceUntilIdle()` to run them.
+- Use **one `runTest` per test method** via expression body: `fun myTest() = runTest { }`. Never call `runTest` twice in one test.
+- `runTest` automatically skips `delay()` calls (virtual time). Default timeout is 60 seconds (`dispatchTimeoutMs`).
+- Our `MainDispatcherRule` replaces `Dispatchers.Main` with `UnconfinedTestDispatcher` for simpler tests (eager execution, less boilerplate). This is a deliberate trade-off — `StandardTestDispatcher` is more production-like but requires explicit `advanceUntilIdle()` after every `launch`.
 
 ## Step 4: Verify method coverage completeness
 
@@ -679,6 +671,7 @@ cd Android && ./gradlew :app:testDebugUnitTest --tests "*.{ClassName}Test"
    - `assertThrows` not catching → add `runBlocking` wrapper for suspend functions
 3. Fix the test file
 4. Re-run. Repeat until `BUILD SUCCESSFUL`.
+5. If errors are unfamiliar, Read `.claude/skills/unit-tests/reference/troubleshooting.md` for the full error→fix table.
 
 ```bash
 # Step 7b: Generate JaCoCo coverage report
@@ -687,198 +680,38 @@ cd Android && ./gradlew :app:jacocoTestReport
 
 ## Step 8: Verify coverage — method-level LINE + BRANCH
 
-> **Why method-level?** Class-level coverage can show 85%+ while missing entire methods or branches. Always check per-method.
+> Read `.claude/skills/unit-tests/reference/jacoco-coverage.md` for the full Python coverage script, JaCoCo version pinning, and known Kotlin false positives table.
 
-```bash
-# Check BOTH line AND branch coverage per METHOD for the target class
-cd Android && python3 -c "
-import xml.etree.ElementTree as ET
-tree = ET.parse('app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml')
-for cls in tree.getroot().iter('class'):
-    name = cls.get('name', '')
-    if '{ClassName}' in name and '\$' not in name:
-        print(f'=== {name} ===')
-        # Class-level summary
-        for c in cls.findall('counter'):
-            t = c.get('type')
-            missed, covered = int(c.get('missed')), int(c.get('covered'))
-            total = missed + covered
-            pct = round(covered / total * 100) if total > 0 else 0
-            if t in ('LINE', 'BRANCH', 'METHOD'):
-                flag = ' *** BELOW 95% ***' if pct < 95 else ''
-                print(f'  {t}: {covered}/{total} = {pct}%{flag}')
-        # Per-method detail (shows which methods lack coverage)
-        print('  --- Per method ---')
-        for method in cls.findall('method'):
-            mname = method.get('name')
-            if mname in ('<init>', '<clinit>'): continue
-            for c in method.findall('counter'):
-                t = c.get('type')
-                if t == 'LINE':
-                    missed = int(c.get('missed'))
-                    if missed > 0:
-                        covered = int(c.get('covered'))
-                        print(f'    {mname}: {missed} lines MISSED (covered {covered})')
-                if t == 'BRANCH':
-                    missed = int(c.get('missed'))
-                    if missed > 0:
-                        covered = int(c.get('covered'))
-                        print(f'    {mname}: {missed} branches MISSED (covered {covered})')
-"
-```
-
-**If coverage is below 95%:**
-1. The script above shows EXACTLY which methods and branches are missed
-2. For missed lines in catch blocks → add exception tests targeting that specific catch
-3. For missed branches → check `if`/`when`/`else` paths — write tests for the untested path
-4. For missed dialog callbacks → add `slot<DialogModel>()` + `capture()` tests
-5. For missed iteration code → add tests with multi-item lists
-6. **Do NOT write artificial tests for unreachable dead code** — delete the dead code instead
-7. After adding tests, re-run Step 7a + 7b + 8 until both LINE and BRANCH are 95%+
+**Quick coverage check:**
+1. Run `./gradlew :app:jacocoTestReport` after tests pass
+2. Use the method-level coverage Python script from the reference file to check per-method LINE and BRANCH coverage
+3. If coverage is below 95%, add tests for the specific missed methods/branches identified by the script
+4. Re-run tests and coverage until both LINE and BRANCH are 95%+
 
 > **JaCoCo gotcha**: If coverage still shows 0% or stale data, run:
 > ```bash
 > cd Android && ./gradlew cleanTestDebugUnitTest :app:testDebugUnitTest --tests "*.{ClassName}Test" :app:jacocoTestReport
 > ```
 
-### JaCoCo version — pin to 0.8.14+ for accurate Kotlin coverage
-
-The project may use an older JaCoCo version bundled with Gradle/AGP. Older versions report **false-positive branch misses** for Kotlin constructs. If you see phantom branch misses, recommend adding to `app/build.gradle.kts`:
-
-```kotlin
-jacoco {
-    toolVersion = "0.8.14"  // or latest — fixes Kotlin coroutine/elvis/safe-call false positives
-}
-```
-
-**JaCoCo 0.8.14 fixes** (Kotlin-specific):
-- Coroutine state machine branches filtered out (no longer counted as missed)
-- Elvis operator following safe call operator filtered
-- Chained safe call operators filtered
-- Suspend lambdas with parameters filtered
-- Inline value class return branches filtered
-- Default arguments > 32 parameters filtered
-
-### Known JaCoCo/Kotlin false positives — do NOT write tests for these
-
-Some "missed branches" are compiler-generated bytecode artifacts, NOT real untested paths:
-
-| False positive | Explanation | Action |
-|---|---|---|
-| `when` exhaustiveness check | Kotlin compiler adds an unreachable `else` branch for sealed `when` | Ignore — cannot be tested |
-| Coroutine state machine | Suspend point creates synthetic branches for continuation resume | Ignore — JaCoCo 0.8.14 filters these |
-| Elvis + safe call chain | `foo?.bar ?: default` generates extra null-check branches | Ignore — JaCoCo 0.8.14 filters these |
-| `flow { emit() }` branches | Flow builder's suspension points create synthetic branches | Ignore — JaCoCo 0.8.14 filters these |
-| Data class `copy()`/`toString()` | Compiler-generated functions with many branches | Ignore if > 32 params, else test normally |
-
-> **Rule**: If the method-level script shows 1-2 missed branches in a method you've fully tested (all logical paths covered), it's likely a Kotlin compiler artifact. Do NOT write artificial tests — verify with the HTML report that the missed line is in compiler-generated code.
-
-## Step 9: Repository test pattern (when testing a repository)
-
-Repository tests differ from service tests:
-- No `BaseService` inheritance, no `connectivityObserver`/`dialogQueueService`/`appNavigationService`
-- Mock the Retrofit API interface and Room DAOs instead
-- Use `MockWebServer` for integration-level API tests (optional, advanced)
-- Focus on: API call mapping, response parsing, DAO interactions, error transformation
-
-```kotlin
-@OptIn(ExperimentalCoroutinesApi::class)
-class {RepositoryName}Test {
-
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
-
-    // Mock the API and DAO
-    private val api: {ApiInterface} = mockk()
-    private val dao: {DaoInterface} = mockk(relaxed = true)
-
-    private lateinit var repository: {RepositoryName}
-
-    @Before
-    fun setUp() {
-        repository = {RepositoryName}(api, dao)
-    }
-
-    @After
-    fun tearDown() {
-        clearAllMocks()
-    }
-
-    @Test
-    fun `getAccount returns mapped entity from API`() = runTest {
-        val apiResponse = // ...
-        coEvery { api.getAccount(any()) } returns apiResponse
-
-        val result = repository.getAccount("acc-1")
-
-        assertThat(result.id).isEqualTo("acc-1")
-        coVerify { api.getAccount("acc-1") }
-    }
-
-    @Test
-    fun `getAccount propagates HttpException from API`() = runTest {
-        coEvery { api.getAccount(any()) } throws HttpException(
-            mockk<Response<*>> {
-                every { code() } returns 404
-                every { message() } returns "Not Found"
-                every { errorBody() } returns null
-            }
-        )
-
-        assertThrows(HttpException::class.java) {
-            runBlocking { repository.getAccount("acc-1") }
-        }
-    }
-}
-```
-
-## Troubleshooting
-
-| Error | Fix |
-|---|---|
-| `no answer found for: {Mock}.method()` | Add stub: `coEvery { mock.method() } returns value` or use `mockk(relaxed = true)` |
-| `UncompletedCoroutinesError` | Add `cancelAndIgnoreRemainingEvents()` in Turbine `.test { }` block |
-| `advanceUntilIdle opt-in` | Add `@OptIn(ExperimentalCoroutinesApi::class)` on the class |
-| Coverage still 0% | Run `./gradlew cleanTestDebugUnitTest :app:jacocoTestReport` |
-| `Unresolved reference: Runs` | Import `io.mockk.Runs` AND `io.mockk.just` (both needed) |
-| `Unresolved reference: httpException` | Add the `httpException(code)` helper method to the test class |
-| `assertThrows` not catching suspend exception | Wrap in `runBlocking`: `assertThrows(X::class.java) { runBlocking { ... } }` |
-| `Unresolved reference: HttpException` | Import `retrofit2.HttpException` |
-| `Unresolved reference: Response` | Import `retrofit2.Response` |
-| `Unresolved reference: runBlocking` | Import `kotlinx.coroutines.runBlocking` |
-| `Unresolved reference: flow` | Import `kotlinx.coroutines.flow.flow` |
-| `Type mismatch: expected X got Unit` | Check if the mock returns the right type; suspend funs need `coEvery` not `every` |
-| Init block flow not collected | Stub the flow in `@Before` BEFORE calling `createService()` |
-| Test passes but coverage doesn't increase | Ensure JaCoCo XML is being regenerated: run `jacocoTestReport` after `testDebugUnitTest` |
-| `Thread.sleep` in tests | Replace with `advanceUntilIdle()` — never use real sleeps in unit tests |
-| Turbine test hangs/times out | Flow not emitting — check stubs. Add `cancelAndIgnoreRemainingEvents()` for infinite flows |
-| Phantom "missed branch" in fully-tested method | Likely Kotlin compiler artifact — upgrade JaCoCo to 0.8.14+ (see false positives section) |
-| `every` used for suspend function — silently fails | Use `coEvery` for suspend functions, `every` for non-suspend only |
-| Mock returns default instead of stubbed value | Verify `relaxed = true` isn't hiding a missing stub — prefer strict mocks or `relaxUnitFun = true` |
-
 </process>
 
 <success_criteria>
 unit-tests skill is complete when:
+
+**Universal (all class types):**
 - [ ] Test file compiles with no errors
 - [ ] `./gradlew :app:testDebugUnitTest --tests "*.{ClassName}Test"` reports BUILD SUCCESSFUL with 0 failures
 - [ ] `@OptIn(ExperimentalCoroutinesApi::class)` on the test class declaration
-- [ ] `@Before` / `@After` used — never `@BeforeEach` / `@AfterEach`
-- [ ] `clearAllMocks()` in `@After` (preferred over `unmockkAll()`)
+- [ ] Lifecycle annotations match project's JUnit version (`@Before`/`@After` for JUnit 4, `@BeforeEach`/`@AfterEach` for JUnit 5)
+- [ ] `clearAllMocks()` in teardown (preferred over `unmockkAll()`)
 - [ ] All public methods have at least one test
 - [ ] Suspend functions use `runTest`
 - [ ] `assertThrows` with suspend functions uses `runBlocking` wrapper
 - [ ] Flow methods use Turbine `.test { }` block
-- [ ] Network routing (online/offline) tested for every method with `requireNetworkAvailable()` or `isNetworkAvailable()`
-- [ ] Offline tests verify repository/API never called with `coVerify(exactly = 0)`
-- [ ] Every distinct `catch` block triggered by its own test
-- [ ] Every `when (e.code())` branch has one test per code + one for `else`
-- [ ] Dialog callbacks tested via `slot<DialogModel>()` + `capture()` where applicable
 - [ ] Shared `httpException(code)` helper used for all HTTP error tests
 - [ ] Shared stub helpers extract repeated `coEvery`/`every` blocks
 - [ ] Inline test fixtures (no FakeFactory class) — `private val` members with `.copy()` for variants
-- [ ] `service` naming used consistently (never `sut`)
-- [ ] Gating conditions tested (account null, empty string, isExpired, max accounts, etc.)
+- [ ] `service` or `repository` naming used consistently (never `sut`)
 - [ ] Typed matchers used for sealed class verification (`any<AuthState.Error>()`, `match<Type> { }`)
 - [ ] Method coverage checklist completed — every public method in the interface has tests
 - [ ] No Mockito imports — MockK only
@@ -890,4 +723,10 @@ unit-tests skill is complete when:
 - [ ] JaCoCo per-method LINE coverage 95%+ AND per-method BRANCH coverage 95%+
 - [ ] Coverage verified using method-level JaCoCo script (not just class-level)
 - [ ] Phantom branch misses from Kotlin compiler artifacts acknowledged, not force-tested
+
+**Class-type-specific criteria** — see the corresponding pattern file:
+- **Service**: `patterns/service.md` — network guards, gating conditions, dialog callbacks, iteration side effects
+- **Repository**: `patterns/repository.md` — DAO mocking, API chains, insert-or-update, catch-and-rethrow/swallow
+- **Reducer**: `patterns/reducer.md` — pure function, null returns, boolean toggles, state preservation
+- **ViewModel**: `patterns/viewmodel.md` — initial state, side effects, flow subscriptions, @Assisted, three test categories
 </success_criteria>
