@@ -23,98 +23,60 @@ class AppStatusServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // isDev — mirrors BuildConfig.DEBUG
+    // Constant properties — BuildConfig mirrors
     // -------------------------------------------------------------------------
 
     @Test
-    fun `isDev matches BuildConfig DEBUG`() {
+    fun `isDev returns BuildConfig DEBUG`() {
         assertThat(AppStatusService.isDev).isEqualTo(BuildConfig.DEBUG)
     }
 
-    // -------------------------------------------------------------------------
-    // version — mirrors BuildConfig.VERSION_NAME
-    // -------------------------------------------------------------------------
-
     @Test
-    fun `version matches BuildConfig VERSION_NAME`() {
+    fun `version returns BuildConfig VERSION_NAME`() {
         assertThat(AppStatusService.version).isEqualTo(BuildConfig.VERSION_NAME)
     }
 
     @Test
-    fun `version is not empty`() {
-        assertThat(AppStatusService.version).isNotEmpty()
-    }
-
-    // -------------------------------------------------------------------------
-    // apiUrl — mirrors BuildConfig.BASE_URL
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `apiUrl matches BuildConfig BASE_URL`() {
+    fun `apiUrl returns BuildConfig BASE_URL`() {
         assertThat(AppStatusService.apiUrl).isEqualTo(BuildConfig.BASE_URL)
     }
 
     @Test
-    fun `apiUrl is not empty`() {
-        assertThat(AppStatusService.apiUrl).isNotEmpty()
-    }
-
-    // -------------------------------------------------------------------------
-    // isNative — always true on Android
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `isNative is true`() {
-        assertThat(AppStatusService.isNative).isTrue()
-    }
-
-    // -------------------------------------------------------------------------
-    // isAndroid — always true
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `isAndroid is true`() {
-        assertThat(AppStatusService.isAndroid).isTrue()
-    }
-
-    // -------------------------------------------------------------------------
-    // isMetric — default false
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `isMetric is false by default`() {
-        assertThat(AppStatusService.isMetric).isFalse()
-    }
-
-    // -------------------------------------------------------------------------
-    // enableTestingFeatures — mirrors BuildConfig.DEBUG
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `enableTestingFeatures matches BuildConfig DEBUG`() {
+    fun `enableTestingFeatures returns BuildConfig DEBUG`() {
         assertThat(AppStatusService.enableTestingFeatures).isEqualTo(BuildConfig.DEBUG)
     }
 
-    // -------------------------------------------------------------------------
-    // showDownloadLogOption — mirrors BuildConfig.DEBUG
-    // -------------------------------------------------------------------------
-
     @Test
-    fun `showDownloadLogOption matches BuildConfig DEBUG`() {
+    fun `showDownloadLogOption returns BuildConfig DEBUG`() {
         assertThat(AppStatusService.showDownloadLogOption).isEqualTo(BuildConfig.DEBUG)
     }
 
     // -------------------------------------------------------------------------
-    // canShowRateAppItem — always true
+    // Constant properties — hardcoded values
     // -------------------------------------------------------------------------
 
     @Test
-    fun `canShowRateAppItem is true`() {
+    fun `isNative returns true`() {
+        assertThat(AppStatusService.isNative).isTrue()
+    }
+
+    @Test
+    fun `isAndroid returns true`() {
+        assertThat(AppStatusService.isAndroid).isTrue()
+    }
+
+    @Test
+    fun `isMetric returns false`() {
+        assertThat(AppStatusService.isMetric).isFalse()
+    }
+
+    @Test
+    fun `canShowRateAppItem returns true`() {
         assertThat(AppStatusService.canShowRateAppItem).isTrue()
     }
 
     // -------------------------------------------------------------------------
-    // getCurrentDateTime — formatted date string
+    // getCurrentDateTime — formatted date string "MMM dd, h:mm a"
     // -------------------------------------------------------------------------
 
     @Test
@@ -129,14 +91,16 @@ class AppStatusServiceTest {
         assertThat(result).matches("[A-Z][a-z]{2} \\d{2}, \\d{1,2}:\\d{2} [AaPp][Mm]")
     }
 
+    @Test
+    fun `getCurrentDateTime produces consistent format across timezones`() {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"))
+        val result = AppStatusService.getCurrentDateTime()
+        assertThat(result).matches("[A-Z][a-z]{2} \\d{2}, \\d{1,2}:\\d{2} [AaPp][Mm]")
+    }
+
     // -------------------------------------------------------------------------
     // getUserTimezone — system default timezone ID
     // -------------------------------------------------------------------------
-
-    @Test
-    fun `getUserTimezone returns non-empty string`() {
-        assertThat(AppStatusService.getUserTimezone()).isNotEmpty()
-    }
 
     @Test
     fun `getUserTimezone returns system default zone ID`() {
@@ -150,34 +114,33 @@ class AppStatusServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // getUserTimezoneOffset — positive and negative offset branches
+    // getUserTimezoneOffset — positive, negative, zero, and fractional offsets
     // -------------------------------------------------------------------------
-
-    @Test
-    fun `getUserTimezoneOffset returns non-empty string`() {
-        assertThat(AppStatusService.getUserTimezoneOffset()).isNotEmpty()
-    }
 
     @Test
     fun `getUserTimezoneOffset returns positive offset with plus prefix`() {
         // UTC+9 (Asia/Tokyo, no DST)
         TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"))
-        val result = AppStatusService.getUserTimezoneOffset()
-        assertThat(result).isEqualTo("+540")
+        assertThat(AppStatusService.getUserTimezoneOffset()).isEqualTo("+540")
     }
 
     @Test
     fun `getUserTimezoneOffset returns negative offset without plus prefix`() {
         // Etc/GMT+5 = UTC-5 (no DST)
         TimeZone.setDefault(TimeZone.getTimeZone("Etc/GMT+5"))
-        val result = AppStatusService.getUserTimezoneOffset()
-        assertThat(result).isEqualTo("-300")
+        assertThat(AppStatusService.getUserTimezoneOffset()).isEqualTo("-300")
     }
 
     @Test
     fun `getUserTimezoneOffset returns plus zero for UTC`() {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-        val result = AppStatusService.getUserTimezoneOffset()
-        assertThat(result).isEqualTo("+0")
+        assertThat(AppStatusService.getUserTimezoneOffset()).isEqualTo("+0")
+    }
+
+    @Test
+    fun `getUserTimezoneOffset handles half-hour offset timezone`() {
+        // Asia/Kolkata = UTC+5:30 → 330 minutes
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kolkata"))
+        assertThat(AppStatusService.getUserTimezoneOffset()).isEqualTo("+330")
     }
 }
