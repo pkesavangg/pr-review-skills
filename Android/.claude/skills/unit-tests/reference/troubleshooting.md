@@ -7,7 +7,7 @@
 | `advanceUntilIdle opt-in` | Add `@OptIn(ExperimentalCoroutinesApi::class)` on the class |
 | Coverage still 0% | Run `./gradlew cleanTestDebugUnitTest :app:jacocoTestReport` |
 | `Unresolved reference: Runs` | Import `io.mockk.Runs` AND `io.mockk.just` (both needed) |
-| `Unresolved reference: httpException` | Add the `httpException(code)` helper method to the test class |
+| `Unresolved reference: httpException` | Import `com.dmdbrands.gurus.weight.core.helpers.httpException` from shared TestHelpers |
 | `assertThrows` not catching suspend exception | Wrap in `runBlocking`: `assertThrows(X::class.java) { runBlocking { ... } }` |
 | `Unresolved reference: HttpException` | Import `retrofit2.HttpException` |
 | `Unresolved reference: Response` | Import `retrofit2.Response` |
@@ -16,7 +16,8 @@
 | `Type mismatch: expected X got Unit` | Check if the mock returns the right type; suspend funs need `coEvery` not `every` |
 | Init block flow not collected | Stub the flow in `@Before` BEFORE calling `createService()` |
 | Test passes but coverage doesn't increase | Ensure JaCoCo XML is being regenerated: run `jacocoTestReport` after `testDebugUnitTest` |
-| `Thread.sleep` in tests | Replace with `advanceUntilIdle()` — never use real sleeps in unit tests |
+| `Thread.sleep` in tests | Replace with `advanceUntilIdle()` — requires injecting `ioDispatcher` if service creates its own `CoroutineScope(Dispatchers.IO)` |
+| Hilt `CoroutineDispatcher cannot be provided` after adding `ioDispatcher` | A class injects the concrete service type instead of the interface — change to use `IFooService` |
 | Turbine test hangs/times out | Flow not emitting — check stubs. Add `cancelAndIgnoreRemainingEvents()` for infinite flows |
 | Phantom "missed branch" in fully-tested method | Likely Kotlin compiler artifact — upgrade JaCoCo to 0.8.14+ (see false positives section) |
 | `every` used for suspend function — silently fails | Use `coEvery` for suspend functions, `every` for non-suspend only |

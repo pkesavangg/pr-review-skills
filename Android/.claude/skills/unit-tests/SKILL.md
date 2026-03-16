@@ -32,7 +32,8 @@ Read an Android service, repository, ViewModel, or Reducer class and generate a 
 7. Verify ALL imports are present (Step 5) — especially exception types and domain models.
 8. Generate the test file into `app/src/test/java/...` mirroring the source package.
 9. Run tests → fix failures → re-run (iterative loop until green).
-10. Run JaCoCo coverage → check method-level LINE + BRANCH → add missing tests → re-run.
+10. Post-write review pass: dedup, input transformations, propagation boundaries, relaxed mock audit, DRY helpers.
+11. Run JaCoCo coverage → check method-level LINE + BRANCH → add missing tests → re-run.
 
 > **Detect class type and load patterns**: Check the source file:
 > - Files in `core/service/` or `domain/services/` → **Service** — Read `.claude/skills/unit-tests/patterns/service.md`
@@ -123,6 +124,60 @@ Key things to note while reading:
 - **Methods that iterate collections** → verify per-item side effects
 - **Flows collected at construction time** (in `init {}` blocks) → stub in `@Before` BEFORE `createService()`
 - **Methods that check `checkInternetError()`** → test with `httpException(0)` for no-internet case
+- **Services with hardcoded `Dispatchers.IO`** → must inject `ioDispatcher: CoroutineDispatcher` for testability (see dispatcher injection section below)
+
+### Shared test helpers — `TestHelpers.kt`
+
+Common helpers live in `app/src/test/java/com/dmdbrands/gurus/weight/core/helpers/TestHelpers.kt`. **Always import from here** instead of writing private copies:
+
+```kotlin
+import com.dmdbrands.gurus.weight.core.helpers.httpException
+import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
+import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
+```
+
+Available helpers:
+- `httpException(code: Int): HttpException` — creates a mocked `HttpException` with the given HTTP status code
+- `IConnectivityObserver.stubNetworkAvailable()` — extension function to stub network as available
+- `IConnectivityObserver.stubNetworkUnavailable()` — extension function to stub network as unavailable
+
+In the test class, delegate to the shared extensions:
+```kotlin
+private fun stubNetworkAvailable() = connectivityObserver.stubNetworkAvailable()
+private fun stubNetworkUnavailable() = connectivityObserver.stubNetworkUnavailable()
+```
+
+> **Do NOT write private `httpException()` or `stubNetwork*()` methods** in individual test files. Import from shared helpers.
+
+### Dispatcher injection — replacing `Thread.sleep()` with `advanceUntilIdle()`
+
+Services that create their own `CoroutineScope(SupervisorJob() + Dispatchers.IO)` are **not controlled** by the test dispatcher. This forces `Thread.sleep()` in tests — which is slow, flaky, and banned.
+
+**Fix**: Inject `ioDispatcher: CoroutineDispatcher = Dispatchers.IO` as a constructor parameter:
+
+```kotlin
+// Production code — injectable dispatcher with default
+class FooService @Inject constructor(
+    private val fooRepository: IFooRepository,
+    connectivityObserver: IConnectivityObserver,
+    dialogQueueService: IDialogQueueService,
+    appNavigationService: IAppNavigationService,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : BaseService(connectivityObserver, dialogQueueService, appNavigationService) {
+    private var scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+}
+
+// Test code — pass test dispatcher
+private fun createService() = FooService(
+    fooRepository,
+    connectivityObserver,
+    dialogQueueService,
+    appNavigationService,
+    ioDispatcher = mainDispatcherRule.dispatcher,
+)
+```
+
+> **Hilt note**: If the service's `@Inject constructor` is used by Hilt and Hilt can't resolve `CoroutineDispatcher`, check if any class injects the concrete service type instead of the interface. Fix those to use the interface (e.g., `IAccountService` not `AccountService`), since Hilt provides the interface via `@Provides` in `ServiceModule`.
 
 ## Step 2: Plan the test groups
 
@@ -152,8 +207,10 @@ Always include ALL of these. Add additional imports as needed for the specific s
 package com.dmdbrands.gurus.weight.core.service   // mirror source package
 
 import app.cash.turbine.test
+import com.dmdbrands.gurus.weight.core.helpers.httpException
+import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
+import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
-import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -179,11 +236,10 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import retrofit2.HttpException
-import retrofit2.Response
 // + domain model imports for the specific service
 ```
 
-> **CRITICAL**: Always import `kotlinx.coroutines.runBlocking` — needed for `assertThrows` with suspend functions. Always import `retrofit2.HttpException` and `retrofit2.Response` — needed for `httpException()` helper.
+> **CRITICAL**: Always import `kotlinx.coroutines.runBlocking` — needed for `assertThrows` with suspend functions. Always import `retrofit2.HttpException` — needed for `assertThrows(HttpException::class.java)`. Always import the shared helpers from `com.dmdbrands.gurus.weight.core.helpers.*`.
 
 ### Full file structure
 
@@ -249,38 +305,21 @@ class {ServiceName}Test {
         dialogQueueService,
         appNavigationService,
         // ... all constructor args in order
+        ioDispatcher = mainDispatcherRule.dispatcher, // if service has ioDispatcher param
     )
 
     // -------------------------------------------------------------------------
-    // Shared Helpers
+    // Shared Helpers (delegate to shared TestHelpers.kt)
     // -------------------------------------------------------------------------
 
-    /**
-     * Creates an HttpException with a mocked Response for the given HTTP status code.
-     * Used in all HTTP error path tests.
-     */
-    private fun httpException(code: Int): HttpException {
-        val response = mockk<Response<*>> {
-            every { code() } returns code
-            every { message() } returns "Mock HTTP error"
-            every { errorBody() } returns null
-        }
-        return HttpException(response)
-    }
+    // httpException(code) — imported from com.dmdbrands.gurus.weight.core.helpers.httpException
+    // No private copy needed — call httpException(401), httpException(500), etc. directly.
 
-    private fun stubNetworkAvailable() {
-        every {
-            connectivityObserver.getCurrentNetworkState()
-        } returns NetworkState(available = true, unAvailable = false)
-    }
+    // Network stubs delegate to shared extension functions
+    private fun stubNetworkAvailable() = connectivityObserver.stubNetworkAvailable()
+    private fun stubNetworkUnavailable() = connectivityObserver.stubNetworkUnavailable()
 
-    private fun stubNetworkUnavailable() {
-        every {
-            connectivityObserver.getCurrentNetworkState()
-        } returns NetworkState(available = false, unAvailable = true)
-    }
-
-    // Add more shared stub helpers here as needed:
+    // Add service-specific stub helpers here:
     // private fun stubLoginSuccess(account: Account = fakeAccount) { ... }
     // private fun stubLoginThrows(exception: Throwable) { ... }
 
@@ -570,11 +609,13 @@ service.subscribeAccount()
 Thread.sleep(300)
 assertThat(service.activeAccount.value).isEqualTo(fakeAccount)
 
-// ✅ CORRECT — instant, deterministic
+// ✅ CORRECT — instant, deterministic (requires ioDispatcher injection, see Step 1)
 service.subscribeAccount()
 advanceUntilIdle()   // drains ALL pending coroutines
 assertThat(service.activeAccount.value).isEqualTo(fakeAccount)
 ```
+
+> **Prerequisite**: `advanceUntilIdle()` only controls coroutines running on the test dispatcher. If the service creates `CoroutineScope(Dispatchers.IO)`, you MUST inject the dispatcher (see "Dispatcher injection" in Step 1) so the test dispatcher controls those coroutines.
 
 For methods with `delay()`, use `advanceTimeBy()` for precise control:
 
@@ -678,7 +719,74 @@ cd Android && ./gradlew :app:testDebugUnitTest --tests "*.{ClassName}Test"
 cd Android && ./gradlew :app:jacocoTestReport
 ```
 
-## Step 8: Verify coverage — method-level LINE + BRANCH
+## Step 8: Post-write review pass
+
+After all tests are green, do a **single review pass** over the entire test file. This catches issues that accumulate across incremental writing sessions.
+
+### 8a: Dedup pass
+Scan test names for similar wording. If two tests stub the same mock path and assert the same outcome, remove the weaker one (keep the one with more thorough verification).
+
+### 8b: Input transformation coverage
+For every method under test, check if inputs are `.trim()`'d, `.lowercase()`'d, mapped, or transformed before being passed to dependencies. Write a test asserting the **transformed** value reaches the dependency, not just the raw input.
+
+```kotlin
+// Source: val email = email.trim()
+// Test:
+@Test
+fun `resetPassword trims whitespace from email before calling repository`() = runTest {
+    coEvery { accountRepository.resetPassword("john@example.com") } returns mockResponse
+    service.resetPassword("  john@example.com  ")
+    coVerify { accountRepository.resetPassword("john@example.com") }
+}
+```
+
+### 8c: Propagation boundary coverage
+If a method only catches a **specific** exception type (e.g., `HttpException`), write a test proving that other exceptions **propagate uncaught**. The absence of a generic `catch` block IS the behavior under test.
+
+```kotlin
+// Source catches only HttpException — RuntimeException should propagate
+@Test
+fun `updateProfile propagates non-HttpException`() = runTest {
+    coEvery { accountRepository.updateProfile(any()) } throws RuntimeException("DB error")
+    assertThrows(RuntimeException::class.java) {
+        runBlocking { service.updateProfile(request, isFromProfile = false, showToast = true) }
+    }
+}
+```
+
+### 8d: Relaxed mock audit
+If a mock is declared `relaxed = true`, do NOT add `coEvery { ... } just Runs` stubs for Unit-returning suspend functions — the relaxed mock already handles them. Scan the file and remove all redundant stubs.
+
+### 8e: DRY pass
+Any setup pattern appearing **3+ times** should be extracted to a helper method. Common candidates:
+
+```kotlin
+// Before: appears 11 times
+every { accountRepository.getActiveAccount() } returns flowOf(null)
+service = createService()
+
+// After: extracted helper
+private fun withNoActiveAccount() {
+    every { accountRepository.getActiveAccount() } returns flowOf(null)
+    service = createService()
+}
+
+// Before: appears 15 times
+every { accountRepository.getLoggedInAccounts() } returns flowOf(listOf(fakeAccount, fakeAccount2))
+service = createService()
+
+// After: extracted helper
+private fun withAccounts(
+    active: Account? = fakeAccount,
+    loggedIn: List<Account> = listOfNotNull(active),
+) {
+    every { accountRepository.getActiveAccount() } returns flowOf(active)
+    every { accountRepository.getLoggedInAccounts() } returns flowOf(loggedIn)
+    service = createService()
+}
+```
+
+## Step 9: Verify coverage — method-level LINE + BRANCH
 
 > Read `.claude/skills/unit-tests/reference/jacoco-coverage.md` for the full Python coverage script, JaCoCo version pinning, and known Kotlin false positives table.
 
@@ -708,8 +816,10 @@ unit-tests skill is complete when:
 - [ ] Suspend functions use `runTest`
 - [ ] `assertThrows` with suspend functions uses `runBlocking` wrapper
 - [ ] Flow methods use Turbine `.test { }` block
-- [ ] Shared `httpException(code)` helper used for all HTTP error tests
+- [ ] Shared `httpException(code)` imported from `core.helpers.TestHelpers` — no private copy
+- [ ] Shared `stubNetworkAvailable/Unavailable` imported from `core.helpers.TestHelpers` — delegate via private methods
 - [ ] Shared stub helpers extract repeated `coEvery`/`every` blocks
+- [ ] Services with `CoroutineScope(Dispatchers.IO)` have `ioDispatcher` injected and test passes `mainDispatcherRule.dispatcher`
 - [ ] Inline test fixtures (no FakeFactory class) — `private val` members with `.copy()` for variants
 - [ ] `service` or `repository` naming used consistently (never `sut`)
 - [ ] Typed matchers used for sealed class verification (`any<AuthState.Error>()`, `match<Type> { }`)
@@ -720,6 +830,12 @@ unit-tests skill is complete when:
 - [ ] `coEvery`/`coVerify` used for suspend functions, `every`/`verify` for non-suspend
 - [ ] Turbine `awaitError()` used for error flow tests (not `assertThrows`)
 - [ ] Multi-flow tests use `testIn(backgroundScope)` not nested `.test {}` blocks
+- [ ] **Post-write review pass completed (Step 8)**:
+  - [ ] No duplicate tests (same mock setup + same assertion = duplicate)
+  - [ ] Input transformations tested (`.trim()`, `.lowercase()`, etc.)
+  - [ ] Exception propagation boundaries tested (if method only catches `HttpException`, test that `RuntimeException` propagates)
+  - [ ] No redundant stubs on `relaxed = true` mocks (Unit-returning suspend funs auto-return Unit)
+  - [ ] Repeated setup patterns (3+ occurrences) extracted to helper methods
 - [ ] JaCoCo per-method LINE coverage 95%+ AND per-method BRANCH coverage 95%+
 - [ ] Coverage verified using method-level JaCoCo script (not just class-level)
 - [ ] Phantom branch misses from Kotlin compiler artifacts acknowledged, not force-tested

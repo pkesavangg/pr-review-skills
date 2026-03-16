@@ -144,6 +144,18 @@ fun `login throws MaxAccountsReachedException when at max and email is new`() = 
 }
 ```
 
+## Dispatcher injection for services with `CoroutineScope`
+
+Services that create their own `CoroutineScope(SupervisorJob() + Dispatchers.IO)` (e.g., `AccountService.subscribeAccount()`) require dispatcher injection to make coroutines testable. See the "Dispatcher injection" section in the main `SKILL.md` for the full pattern.
+
+**Key steps when encountering `Dispatchers.IO` in a service:**
+1. Add `private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO` as the last constructor param
+2. Replace hardcoded `Dispatchers.IO` with `ioDispatcher` in the service
+3. In `createService()`, pass `ioDispatcher = mainDispatcherRule.dispatcher`
+4. Use `advanceUntilIdle()` instead of `Thread.sleep()` in tests
+
+**Hilt note**: If adding `ioDispatcher` causes Hilt compilation errors, check if any class injects the concrete service type instead of the interface. Fix those to use the interface.
+
 ## Service-specific success criteria
 
 - [ ] Network routing (online/offline) tested for every method with `requireNetworkAvailable()` or `isNetworkAvailable()`
@@ -153,3 +165,5 @@ fun `login throws MaxAccountsReachedException when at max and email is new`() = 
 - [ ] Dialog callbacks tested via `slot<DialogModel>()` + `capture()` where applicable
 - [ ] Gating conditions tested (account null, empty string, isExpired, max accounts, etc.)
 - [ ] Iteration side effects verified per-item for methods that loop over collections
+- [ ] Services with `CoroutineScope(Dispatchers.IO)` have injected dispatcher; no `Thread.sleep()` in tests
+- [ ] Shared helpers imported from `core.helpers.TestHelpers` — no private `httpException()` or `stubNetwork*()` copies
