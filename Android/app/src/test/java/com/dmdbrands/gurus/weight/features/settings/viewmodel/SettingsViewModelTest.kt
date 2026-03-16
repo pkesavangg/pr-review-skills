@@ -28,6 +28,20 @@ import org.junit.jupiter.api.extension.RegisterExtension
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
 
+    companion object {
+        private const val DEFAULT_THEME = "System Settings"
+        private const val DEFAULT_MAC = "All"
+        private const val ERROR_NETWORK = "Network failure"
+        private const val ERROR_GENERIC = "error"
+        private const val THEME_DARK = "Dark"
+        private const val TEST_MAC_ADDRESS = "AA:BB:CC"
+        private const val NOTIFICATION_OFF = "Off"
+        private const val NOTIFICATION_ON = "On"
+        private const val NOTIFICATION_ON_WEIGHT = "On w/ Weight"
+        private const val UNREAD_FEED_COUNT = 5
+        private const val UNREAD_FEED_COUNT_UPDATED = 7
+    }
+
     @JvmField
     @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
@@ -82,8 +96,8 @@ class SettingsViewModelTest {
         assertThat(state.errorMessage).isNull()
         assertThat(state.account).isNull()
         assertThat(state.hasMultipleAccounts).isFalse()
-        assertThat(state.currentThemeMode).isEqualTo("System Settings")
-        assertThat(state.selectedMacAddress).isEqualTo("All")
+        assertThat(state.currentThemeMode).isEqualTo(DEFAULT_THEME)
+        assertThat(state.selectedMacAddress).isEqualTo(DEFAULT_MAC)
         assertThat(state.enableTestingFeatures).isFalse()
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
@@ -132,14 +146,14 @@ class SettingsViewModelTest {
     @Test
     fun `SetError sets errorMessage and clears isLoading`() {
         viewModel.handleIntent(SettingsIntent.LoadSettings) // isLoading = true
-        viewModel.handleIntent(SettingsIntent.SetError("Network failure"))
-        assertThat(viewModel.state.value.errorMessage).isEqualTo("Network failure")
+        viewModel.handleIntent(SettingsIntent.SetError(ERROR_NETWORK))
+        assertThat(viewModel.state.value.errorMessage).isEqualTo(ERROR_NETWORK)
         assertThat(viewModel.state.value.isLoading).isFalse()
     }
 
     @Test
     fun `ClearError nullifies errorMessage`() {
-        viewModel.handleIntent(SettingsIntent.SetError("error"))
+        viewModel.handleIntent(SettingsIntent.SetError(ERROR_GENERIC))
         viewModel.handleIntent(SettingsIntent.ClearError)
         assertThat(viewModel.state.value.errorMessage).isNull()
     }
@@ -153,14 +167,14 @@ class SettingsViewModelTest {
 
     @Test
     fun `UpdateThemeMode updates currentThemeMode`() {
-        viewModel.handleIntent(SettingsIntent.UpdateThemeMode("Dark"))
-        assertThat(viewModel.state.value.currentThemeMode).isEqualTo("Dark")
+        viewModel.handleIntent(SettingsIntent.UpdateThemeMode(THEME_DARK))
+        assertThat(viewModel.state.value.currentThemeMode).isEqualTo(THEME_DARK)
     }
 
     @Test
     fun `UpdateSelectedMacAddress updates selectedMacAddress`() {
-        viewModel.handleIntent(SettingsIntent.UpdateSelectedMacAddress("AA:BB:CC"))
-        assertThat(viewModel.state.value.selectedMacAddress).isEqualTo("AA:BB:CC")
+        viewModel.handleIntent(SettingsIntent.UpdateSelectedMacAddress(TEST_MAC_ADDRESS))
+        assertThat(viewModel.state.value.selectedMacAddress).isEqualTo(TEST_MAC_ADDRESS)
     }
 
     @Test
@@ -171,15 +185,15 @@ class SettingsViewModelTest {
 
     @Test
     fun `SetUnreadFeedCount updates unreadFeedCount`() {
-        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(5))
-        assertThat(viewModel.state.value.unreadFeedCount).isEqualTo(5)
+        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(UNREAD_FEED_COUNT))
+        assertThat(viewModel.state.value.unreadFeedCount).isEqualTo(UNREAD_FEED_COUNT)
     }
 
     @Test
     fun `SetUnreadFeedCount with multiple calls reflects latest value`() {
-        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(3))
-        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(7))
-        assertThat(viewModel.state.value.unreadFeedCount).isEqualTo(7)
+        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(UNREAD_FEED_COUNT))
+        viewModel.handleIntent(SettingsIntent.SetUnreadFeedCount(UNREAD_FEED_COUNT_UPDATED))
+        assertThat(viewModel.state.value.unreadFeedCount).isEqualTo(UNREAD_FEED_COUNT_UPDATED)
     }
 
     @Test
@@ -200,14 +214,14 @@ class SettingsViewModelTest {
 
     @Test
     fun `currentNotificationStatus is Off when account is null`() {
-        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("Off")
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo(NOTIFICATION_OFF)
     }
 
     @Test
     fun `currentNotificationStatus is Off when notifications disabled`() {
         val account = TestFixtures.activeAccount.copy(shouldSendEntryNotifications = false)
         viewModel.handleIntent(SettingsIntent.UpdateAccount(account))
-        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("Off")
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo(NOTIFICATION_OFF)
     }
 
     @Test
@@ -217,7 +231,7 @@ class SettingsViewModelTest {
             shouldSendWeightInEntryNotifications = false,
         )
         viewModel.handleIntent(SettingsIntent.UpdateAccount(account))
-        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("On")
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo(NOTIFICATION_ON)
     }
 
     @Test
@@ -227,7 +241,7 @@ class SettingsViewModelTest {
             shouldSendWeightInEntryNotifications = true,
         )
         viewModel.handleIntent(SettingsIntent.UpdateAccount(account))
-        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo("On w/ Weight")
+        assertThat(viewModel.state.value.currentNotificationStatus).isEqualTo(NOTIFICATION_ON_WEIGHT)
     }
 
     // -------------------------------------------------------------------------
