@@ -31,6 +31,10 @@ import org.junit.jupiter.api.extension.RegisterExtension
 @OptIn(ExperimentalCoroutinesApi::class)
 class MyAccountsViewModelTest {
 
+    companion object {
+        private const val ERROR_FAIL = "fail"
+    }
+
     @JvmField
     @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
@@ -171,7 +175,7 @@ class MyAccountsViewModelTest {
 
     @Test
     fun `SelectAccount when switchAccount throws does not crash`() = runTest {
-        coEvery { accountService.switchAccount(any(), any()) } throws RuntimeException("fail")
+        coEvery { accountService.switchAccount(any(), any()) } throws RuntimeException(ERROR_FAIL)
 
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.secondaryAccount))
         advanceUntilIdle()
@@ -286,7 +290,7 @@ class MyAccountsViewModelTest {
 
     @Test
     fun `RequestRemoveAccount confirm dismisses loader on exception`() = runTest {
-        coEvery { accountService.logout(any(), any()) } throws RuntimeException("fail")
+        coEvery { accountService.logout(any(), any()) } throws RuntimeException(ERROR_FAIL)
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
