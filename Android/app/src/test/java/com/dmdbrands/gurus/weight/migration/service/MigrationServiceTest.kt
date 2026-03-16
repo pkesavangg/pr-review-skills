@@ -50,10 +50,11 @@ class MigrationServiceTest {
     every { email } returns "test@test.com"
   }
 
-  private fun mockScaleEntry(accountId: String = testAccountId): ScaleEntry = mockk {
-    every { entry } returns mockk {
+  private fun mockScaleEntry(accountId: String = testAccountId): ScaleEntry {
+    val entryEntity = mockk<com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity> {
       every { this@mockk.accountId } returns accountId
     }
+    return mockk { every { entry } returns entryEntity }
   }
 
   /** Creates a cursor mock that iterates through [count] rows then stops. */
@@ -1009,5 +1010,90 @@ class MigrationServiceTest {
 
     assertThat(result.isSuccess).isFalse()
     assertThat(result.errorMessage).isEqualTo("something went wrong")
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  Additional coverage — outer Throwable catch, empty account, entry table null/exception
+  // ══════════════════════════════════════════════════════════
+
+  @Test
+  fun `performIonicMigration catches outer Throwable when cleanupIonicDatabase throws`() = runTest {
+    stubAccountMigrationSuccess()
+    // migrateIonicDatabase succeeds → performIonicMigration calls cleanupIonicDatabase which throws
+    every { IonicDatabaseHelper.cleanupIonicDatabase(any()) } throws RuntimeException("cleanup boom")
+
+    val result = service.performIonicMigration(context)
+
+    assertThat(result).isInstanceOf(MigrationResult.Failure::class.java)
+    assertThat(result.errorMessage).contains("cleanup boom")
+  }
+
+  @Test
+  fun `account migration skipped when account JSON is empty string`() = runTest {
+    every { CapacitorStorageHelper.locateAndReadAccountFromCapacitorStorage(context) } returns ""
+
+    val result = service.performIonicMigration(context) as MigrationResult.Success
+
+    assertThat(result.accountMigrated).isFalse()
+  }
+
+  @Test
+  fun `entry table migration skips null entries from convertCursorToScaleEntry`() = runTest {
+    stubAccountMigrationSuccess()
+    stubDbOpen()
+
+    stubTableExists("entry", true)
+    stubTableExists("opStack", false)
+    stubTableExists("entry_metric", false)
+
+    val cursor = createCursorMock(3)
+    every { sqliteDb.rawQuery(match { it.contains("FROM entry e") }, any()) } returns cursor
+
+    val validEntry = mockScaleEntry()
+    var callCount = 0
+    every { IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = false) } answers {
+      callCount++
+      if (callCount == 2) null else validEntry
+    }
+    coEvery { migrationRepository.insertScaleEntries(any()) } answers { firstArg<List<ScaleEntry>>().size }
+
+    val result = service.performIonicMigration(context) as MigrationResult.Success
+
+    assertThat(result.migratedCount).isEqualTo(2)
+  }
+
+  @Test
+  fun `entry table conversion exception is caught and entry is skipped`() = runTest {
+    stubAccountMigrationSuccess()
+    stubDbOpen()
+
+    stubTableExists("entry", true)
+    stubTableExists("opStack", false)
+    stubTableExists("entry_metric", false)
+
+    val cursor = createCursorMock(3)
+    every { sqliteDb.rawQuery(match { it.contains("FROM entry e") }, any()) } returns cursor
+
+    val validEntry = mockScaleEntry()
+    var callCount = 0
+    every { IonicDataConverter.convertCursorToScaleEntry(cursor, isOpStack = false) } answers {
+      callCount++
+      if (callCount == 2) throw RuntimeException("bad row") else validEntry
+    }
+    coEvery { migrationRepository.insertScaleEntries(any()) } answers { firstArg<List<ScaleEntry>>().size }
+
+    val result = service.performIonicMigration(context) as MigrationResult.Success
+
+    assertThat(result.migratedCount).isEqualTo(2)
+  }
+
+  @Test
+  fun `saveAccountAndSettings uses forceUpdate true when account exists in UserDataStore`() = runTest {
+    stubAccountMigrationSuccess()
+    coEvery { anyConstructed<UserDataStore>().containsAccount(testAccountId) } returns true
+
+    service.performIonicMigration(context)
+
+    coVerify { anyConstructed<UserDataStore>().addAccount(testAccountId, any(), any(), any(), any(), any(), any(), true) }
   }
 }
