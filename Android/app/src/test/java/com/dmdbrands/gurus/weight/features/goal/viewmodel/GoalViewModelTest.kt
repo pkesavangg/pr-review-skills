@@ -487,4 +487,116 @@ class GoalViewModelTest {
 
         assertThat(viewModel.state.value.latestWeight).isNull()
     }
+
+    // -------------------------------------------------------------------------
+    // updateStateWithAccount — account loading paths
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `account with MAINTAIN goalType loads form in maintain mode`() = runTest {
+        val account = accountWithGoal(goalType = GoalType.MAINTAIN.value, goalWeight = 160.0)
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.account).isEqualTo(account)
+        assertThat(viewModel.state.value.form.controls.goalType.value).isEqualTo(GoalType.MAINTAIN.value)
+    }
+
+    @Test
+    fun `account with null goalType defaults to LOSE_GAIN`() = runTest {
+        val account = accountWithGoal(goalType = GoalType.LOSE_GAIN.value).copy(goalType = null)
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.form.controls.goalType.value).isEqualTo(GoalType.LOSE_GAIN.value)
+    }
+
+    @Test
+    fun `account with zero weights produces empty form fields`() = runTest {
+        val account = accountWithGoal(goalWeight = 0.0, initialWeight = 0.0)
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.form.controls.startingWeight.value).isEmpty()
+        assertThat(viewModel.state.value.form.controls.goalWeight.value).isEmpty()
+    }
+
+    @Test
+    fun `account with metric unit uses KG`() = runTest {
+        val account = accountWithGoal(weightUnit = WeightUnit.KG, goalWeight = 70.0, initialWeight = 80.0)
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.account?.weightUnit).isEqualTo(WeightUnit.KG)
+    }
+
+    // -------------------------------------------------------------------------
+    // Submit — MAINTAIN mode and updateR4Profile paths
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit in MAINTAIN mode uses latest weight as starting weight`() = runTest {
+        val account = accountWithGoal(goalType = GoalType.MAINTAIN.value, goalWeight = 160.0)
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+        viewModel.handleIntent(GoalIntent.UpdateLatestWeight(152.1))
+        coEvery { goalService.updateGoal(any(), any(), any(), any()) } returns mockk(relaxed = true)
+
+        viewModel.handleIntent(GoalIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { goalService.updateGoal(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `Submit calls goalService and dismisses loader`() = runTest {
+        val account = accountWithGoal()
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+        coEvery { goalService.updateGoal(any(), any(), any(), any()) } returns mockk(relaxed = true)
+
+        viewModel.handleIntent(GoalIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { goalService.updateGoal(any(), any(), any(), any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    // -------------------------------------------------------------------------
+    // calculateGoalPercentage — via account loading
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `account with lose goal and latest weight triggers percentage calculation`() = runTest {
+        val account = accountWithGoal(
+            goalType = GoalType.LOSE_GAIN.value,
+            goalWeight = 150.0,
+            initialWeight = 180.0,
+        )
+        every { goalService.getPercentComplete(any(), any()) } returns 50
+
+        viewModel = createViewModel()
+        viewModel.handleIntent(GoalIntent.UpdateLatestWeight(165.0))
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        verify { goalService.getPercentComplete(any(), any()) }
+    }
+
+    @Test
+    fun `account with maintain goal skips percentage calculation`() = runTest {
+        val account = accountWithGoal(goalType = GoalType.MAINTAIN.value)
+
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        verify(exactly = 0) { goalService.getPercentComplete(any(), any()) }
+    }
 }
