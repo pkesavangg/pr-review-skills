@@ -29,7 +29,7 @@ extension BluetoothService {
         do {
             let ggDevice = mapToGGBTDevice(broadcastId)
             try await withTimeout(seconds: 10) {
-                await self.ggBleSDK.confirmPair(ggDevice)
+                try await self.ggBleSDK.confirmPair(ggDevice)
             }
             logger.log(level: .info, tag: tag, message: "BPM device connected: \(broadcastId)")
             return .success(())
