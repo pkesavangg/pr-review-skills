@@ -271,3 +271,17 @@ For detailed test patterns, mock usage, and assertion examples → `meAppTests/d
 | Mock HTTP client | `meAppTests/Support/Mocks/Network/MockHTTPClient.swift` |
 | Unit test guide | `meAppTests/docs/UNIT_TESTING.md` |
 | Coverage guide | `docs/COVERAGE_REPORTING.md` |
+| Workflow orchestration | `.claude/orchestra.md` |
+
+---
+
+## Workflow Orchestration
+
+For end-to-end workflow sequences, skill composition, review pipelines, and task management protocols, follow the orchestration guide at `.claude/orchestra.md`. It defines:
+
+- **Workflow sequences** for common task types (full ticket SDLC, new feature, bug fix, refactoring, API endpoint, test coverage, etc.)
+- **Review pipeline** — the 5-step self-review sequence to run before every commit
+- **Subagent strategy** — when to use each agent (`api-change-planner`, `coverage-gap-finder`, `di-impact-finder`, `gen-mock-batch`)
+- **Verification checklist** — pre-commit quality gates
+- **Parallelization opportunities** — which skills can run concurrently
+- **Error recovery** — what to do when builds fail, tests fail, or plans go sideways
