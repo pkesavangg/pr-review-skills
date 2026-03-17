@@ -16,7 +16,7 @@ struct BloodPressureEntryView: View {
 
     var body: some View {
         VStack(spacing: .spacingLG) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: .spacingXS) {
                 // Systolic
                 MetricInputField(
                     config: TextInputConfig(
@@ -66,8 +66,16 @@ struct BloodPressureEntryView: View {
                 }
 
                 // Notes
-                notesField
-                    .padding(.top, .spacingXS)
+                NotesInputField(
+                    config: TextInputConfig(
+                        label: bpLang.notes,
+                        inputType: .notes,
+                        focusField: .notes
+                    ),
+                    value: $entryStore.bpForm.notes.value,
+                    focusedField: $focusedField
+                )
+                .padding(.top, .spacingXS)
 
                 // Date
                 Text(labels.date)
@@ -141,32 +149,6 @@ struct BloodPressureEntryView: View {
     /// Returns error if present, otherwise warning — displayed in the input's built-in message slot.
     private func bpMessage<T>(for control: FormControl<T>) -> String? {
         entryStore.getBPError(for: control) ?? entryStore.getBPWarning(for: control)
-    }
-
-    private var notesField: some View {
-        ZStack(alignment: .topLeading) {
-            TextEditor(text: $entryStore.bpForm.notes.value)
-                .font(.body1)
-                .foregroundColor(theme.textBody)
-                .scrollContentBackground(.hidden)
-                .padding(.horizontal, CGFloat.spacingXS)
-                .padding(.vertical, CGFloat.spacingXS)
-                .frame(minHeight: 100)
-                .background(theme.backgroundPrimary)
-                .cornerRadius(BorderRadius.sm)
-                .onTapGesture {
-                    focusedField = .notes
-                }
-
-            if entryStore.bpForm.notes.value.isEmpty {
-                Text(bpLang.notes)
-                    .fontOpenSans(.subHeading2)
-                    .foregroundColor(theme.textSubheading)
-                    .padding(.horizontal, CGFloat.spacingXS + 4)
-                    .padding(.vertical, CGFloat.spacingXS + 8)
-                    .allowsHitTesting(false)
-            }
-        }
     }
 
     private func dismissKeyboardAndUnfocus() {

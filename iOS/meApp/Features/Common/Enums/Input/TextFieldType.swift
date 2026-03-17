@@ -11,4 +11,5 @@ enum TextFieldType {
     case password
     case number
     case metric
+    case notes
 }
