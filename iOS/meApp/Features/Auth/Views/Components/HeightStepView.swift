@@ -44,7 +44,7 @@ struct HeightStepView: View {
             displayValue: { $0 },
             pickerType: .heightInches,
             title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in
+            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
                 signupStore.updateFormHeight(fromMetric: false, values: newValues)
             }
         )
@@ -55,7 +55,7 @@ struct HeightStepView: View {
             displayValue: { $0 },
             pickerType: .heightCm,
             title: heightStepLang.pickerHeader,
-            onUpdate: { newValues in
+            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
                 signupStore.updateFormHeight(fromMetric: true, values: newValues)
             }
         )

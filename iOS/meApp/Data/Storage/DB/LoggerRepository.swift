@@ -13,8 +13,8 @@ final class LoggerRepository: LoggerRepositoryProtocol {
     private let container: ModelContainer
     private let appLogger = AppLogger(tag: "LoggerRepository")
 
-    init(container: ModelContainer = PersistenceController.shared.container) {
-        self.container = container
+    init(container: ModelContainer? = nil) {
+        self.container = container ?? PersistenceController.shared.container
     }
 
     /// Executes work on a background `ModelContext` to avoid blocking the main actor.

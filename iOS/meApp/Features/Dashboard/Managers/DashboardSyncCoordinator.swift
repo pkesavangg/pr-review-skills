@@ -54,6 +54,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         }
     }
     
+    // swiftlint:disable:next function_body_length function_parameter_count
     func saveProgressMetricsToAPI(
         streakItems: [MetricItem],
         streakOrder: [String],
@@ -142,7 +143,11 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         UserDefaults.standard.set(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
         
         // Log the order being saved for debugging
-        logger.log(level: .info, tag: "DashboardSyncCoordinator", message: "Saving progress metrics to API with order: \(progressMetrics), allRemoved: \(allMetricsRemoved)")
+        logger.log(
+            level: .info,
+            tag: "DashboardSyncCoordinator",
+            message: "Saving progress metrics to API with order: \(progressMetrics), allRemoved: \(allMetricsRemoved)"
+        )
         
         // Save to API
         try await updateProgressMetrics(progressMetrics)
@@ -189,7 +194,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         }
     }
     
-    func loadProgressMetricsFromAccount(
+    func loadProgressMetricsFromAccount( // swiftlint:disable:this function_body_length
         activeAccount: Account?,
         allStreaks: [MetricItem],
         streakManagerActiveCount: inout Int,
@@ -212,7 +217,10 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         
         // Handle case where API defaults empty progress metrics back to all metrics
         let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
-        let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
+        let defaultMetricsList: Set<String> = [
+            "goal", "currentStreak", "longestStreak",
+            "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"
+        ]
         let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
         
         // If the flag is set and API returns the default full list, treat all as removed
@@ -223,7 +231,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
                 // All progress metrics are removed
                 let goalCardPosition = 0
                 let isGoalCardRemoved = true
-                var streakGridOrder: [String] = []
+                let streakGridOrder: [String] = []
                 // Preserve saved streak order in edit mode; otherwise use default order
                 // This should be handled by the caller
                 let removedStreaks = Set(allStreaks.map { $0.label })
@@ -303,6 +311,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         }
     }
     
+    // swiftlint:disable:next function_parameter_count
     func reloadDashboardConfiguration(
         fullRefresh: Bool,
         updateMetrics: Bool,

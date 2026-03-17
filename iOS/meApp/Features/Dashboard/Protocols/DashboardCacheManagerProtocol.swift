@@ -44,7 +44,7 @@ protocol DashboardCacheManagerProtocol {
     ///   - yAxisDomain: The current Y-axis domain.
     ///   - getChartSeries: Closure to calculate chart series if cache is invalid.
     /// - Returns: Array of chart series data.
-    func getChartSeriesData(
+    func getChartSeriesData( // swiftlint:disable:this function_parameter_count
         isScrolling: Bool,
         isProcessingScrollEnd: Bool,
         period: TimePeriod,

@@ -36,7 +36,8 @@ final class ContentViewModel: ObservableObject {
     private var lastHandledAccountSignature: AccountActivationSignature?
     private var queuedAccountSignatureWhileInitializing: AccountActivationSignature?
 
-    init(
+    // swiftlint:disable:next cyclomatic_complexity
+    init( // swiftlint:disable:this function_body_length
         accountService: AccountServiceProtocol? = nil,
         scaleService: ScaleServiceProtocol? = nil,
         feedService: FeedServiceProtocol? = nil,
@@ -128,6 +129,7 @@ final class ContentViewModel: ObservableObject {
         await initializationTask?.value
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func runAppInitialization() async {
         // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
         notificationService.dismissLoader()

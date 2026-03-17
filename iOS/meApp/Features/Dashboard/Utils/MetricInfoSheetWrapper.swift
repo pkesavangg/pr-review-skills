@@ -45,13 +45,13 @@ struct MetricInfoSheetWrapper: View {
     @ObservedObject var dashboardStore: DashboardStore
     @State private var entryDTO: BathScaleOperationDTO?
     @State private var lastReloadTrigger: ReloadTrigger?
-    private let dtoLoader: @Sendable () async -> BathScaleOperationDTO
+    private let dtoLoader: () async -> BathScaleOperationDTO
 
     init(
         entry: Entry,
         selectedMetric: BodyMetric,
         dashboardStore: DashboardStore,
-        dtoLoader: (@Sendable () async -> BathScaleOperationDTO)? = nil
+        dtoLoader: (() async -> BathScaleOperationDTO)? = nil
     ) {
         self.entry = entry
         self.selectedMetric = selectedMetric

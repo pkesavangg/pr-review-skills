@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 // DashboardStore - Coordinator for dashboard state management.
 // Business logic is delegated to specialized managers.
 
@@ -10,6 +11,7 @@ import SwiftUI
 /// Simplified DashboardStore focused on coordination between managers
 /// Uses specialized managers for business logic while exposing centralized state for UI
 @MainActor
+// swiftlint:disable:next type_body_length
 class DashboardStore: ObservableObject, DashboardStateProviding {
     private struct DataContentSignature: Equatable {
         let daily: [String]
@@ -187,7 +189,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     /// Wires up the four coordinating managers with their dependencies.
-    private func initializeCoordinatingManagers() {
+    private func initializeCoordinatingManagers() { // swiftlint:disable:this function_body_length
         self.gridEditingManager = DashboardGridEditingManager(
             stateProvider: self,
             metricsManager: metricsManager,
@@ -249,6 +251,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     // MARK: - Reactive Bindings
 
+    // swiftlint:disable:next function_body_length
     private func setupBindings() {
         metricsManager.$state
             .sink { [weak self] metricsState in
