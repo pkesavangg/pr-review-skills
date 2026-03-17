@@ -50,6 +50,8 @@ final class PersistenceController {
                 BathScaleMetric.self,
                 DeviceMetaData.self,
                 BathScaleEntry.self,
+                BpmEntry.self,
+                BpmMetric.self,
                 LogEntry.self,
                 WeightCompSettings.self,
                 GoalSettings.self,
