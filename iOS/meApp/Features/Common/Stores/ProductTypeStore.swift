@@ -42,7 +42,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     ]
 
     private var cancellables = Set<AnyCancellable>()
-    private var hasRestoredPersistedSelection = false
+    private var restoredForAccountId: String?
     private let tag = "ProductTypeStore"
 
     // MARK: - Singleton
@@ -53,15 +53,23 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         // Uncomment once real device registration is in place:
         // subscribeToChanges()
 
-        // Try restoring immediately (works if account is already loaded)
-        restorePersistedSelection()
+        // ProductTypeStore is created inside registerSessionServices(), which is called
+        // from AccountService's $activeAccount sink (fires on willSet). At this point the
+        // property hasn't been stored yet, so both a direct read and the publisher's
+        // initial value are nil. Deferring to the next run-loop iteration ensures
+        // activeAccount is fully set.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let accountId = self.accountService.activeAccount?.accountId else { return }
+            self.restorePersistedSelection(for: accountId)
+        }
 
-        // Also observe account changes — restores selection when account becomes available after launch
+        // Handle future account switches (e.g. multi-account)
         accountService.activeAccountPublisher
-            .compactMap { $0 }
-            .first()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.restorePersistedSelection() }
+            .compactMap { $0?.accountId }
+            .removeDuplicates()
+            .sink { [weak self] accountId in
+                self?.restorePersistedSelection(for: accountId)
+            }
             .store(in: &cancellables)
     }
 
@@ -98,11 +106,10 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         kvStorage.setValue(item.id, forKey: key)
     }
 
-    private func restorePersistedSelection() {
-        guard !hasRestoredPersistedSelection else { return }
-        guard let accountId = accountService.activeAccount?.accountId else { return }
+    private func restorePersistedSelection(for accountId: String) {
+        guard restoredForAccountId != accountId else { return }
+        restoredForAccountId = accountId
 
-        hasRestoredPersistedSelection = true
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
         guard let savedId = kvStorage.getValue(forKey: key) as? String,
               let match = availableItems.first(where: { $0.id == savedId }) else { return }
@@ -155,9 +162,10 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
         availableItems = items
 
-        // Restore persisted selection on first rebuild
-        if !hasRestoredPersistedSelection {
-            restorePersistedSelection()
+        // Restore persisted selection on first rebuild for this account
+        if let accountId = accountService.activeAccount?.accountId,
+           restoredForAccountId != accountId {
+            restorePersistedSelection(for: accountId)
         }
 
         // If the current selection is no longer valid, fall back to the first item
