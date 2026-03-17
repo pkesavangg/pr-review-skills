@@ -21,6 +21,7 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { Empty().eraseToAnyPublisher() }
+    var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { Empty().eraseToAnyPublisher() }
 
     var getDeviceLogsResult: Result<DeviceLogs, BluetoothServiceError> = .success(DeviceLogs(logs: []))
     private(set) var getDeviceLogsCalls = 0
@@ -42,6 +43,9 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     func pauseSmartScan() {}
     func resumeSmartScan(clearOnlyPairing: Bool) {}
     func scanForPairing() {}
+    func scanForBpm() {}
+    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .success(()) }
     func syncDevices(_ devices: [Device]) {}
     func addNewDevice(_ device: Device, metaData: DeviceMetaData?, _ skipDuplicateCheck: Bool?) async -> Result<Device, BluetoothServiceError> { .failure(.notImplemented) }

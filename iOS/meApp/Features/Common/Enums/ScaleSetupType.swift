@@ -5,7 +5,7 @@
 //  Created by Kesavan Panchabakesan on 23/06/25.
 //
 
-/// Enumeration representing the underlying connectivity/setup mechanism for a scale.
+/// Enumeration representing the underlying connectivity/setup mechanism for a device.
 enum ScaleSetupType: String {
     case bluetooth
     case wifi
@@ -13,4 +13,5 @@ enum ScaleSetupType: String {
     case lcbt
     case espTouchWifi
     case btWifiR4
+    case bpm
 }

@@ -57,9 +57,11 @@ struct ScaleManualListRowView: View {
             return "AppSync"
         case .btWifiR4:
             return "BtWifi"
+        case .bpm:
+            return "BPM"
         }
     }
-    
+
     private func iconName(for type: ScaleSetupType) -> String {
         switch type {
         case .bluetooth, .lcbt:
@@ -70,6 +72,8 @@ struct ScaleManualListRowView: View {
             return AppAssets.appSync
         case .btWifiR4:
             return AppAssets.btWifi
+        case .bpm:
+            return AppAssets.bluetooth
         }
     }
 }
