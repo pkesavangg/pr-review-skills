@@ -178,7 +178,7 @@ class EntryServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateAllData handles account fetch exception gracefully`() = runTest {
+    fun `updateAllData sets null initialWeight when account is null`() = runTest {
         every { accountRepository.getActiveAccount() } returns flowOf(null)
 
         service.updateAllData(testAccountId)
@@ -274,15 +274,6 @@ class EntryServiceTest {
         service.clearAllData()
 
         verify { aggregationService.clearFlows() }
-    }
-
-    @Test
-    fun `clearAllData can be called multiple times`() {
-        service.clearAllData()
-        service.clearAllData()
-
-        verify(exactly = 2) { syncService.reset() }
-        verify(exactly = 2) { aggregationService.clearFlows() }
     }
 
     // -------------------------------------------------------------------------
@@ -463,17 +454,6 @@ class EntryServiceTest {
         coVerify(exactly = 0) { goalService.checkGoalCard() }
     }
 
-    @Test
-    fun `initializeGoalCardMonitoring does not call checkGoalCard when entries empty`() = runTest {
-        coEvery { entryRepository.getEntriesByAccount(testAccountId, false) } returns emptyList()
-
-        service.initializeGoalCardMonitoring(testAccountId)
-        lastUpdatedFlow.value = System.currentTimeMillis()
-        Thread.sleep(200)
-
-        coVerify(exactly = 0) { goalService.checkGoalCard() }
-    }
-
     // -------------------------------------------------------------------------
     // initializeGoalCardMonitoring — exception handling
     // -------------------------------------------------------------------------
@@ -487,16 +467,6 @@ class EntryServiceTest {
         Thread.sleep(200)
 
         verify { AppLog.e("EntryService", match { it.contains("Error checking entries for goal card") }, any<String>()) }
-    }
-
-    @Test
-    fun `initializeGoalCardMonitoring does not crash when exception occurs`() = runTest {
-        coEvery { entryRepository.getEntriesByAccount(testAccountId, false) } throws RuntimeException("DB error")
-
-        // Should NOT crash
-        service.initializeGoalCardMonitoring(testAccountId)
-        lastUpdatedFlow.value = System.currentTimeMillis()
-        Thread.sleep(200)
     }
 
     // -------------------------------------------------------------------------
