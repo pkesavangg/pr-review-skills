@@ -17,8 +17,13 @@ final class EntryStore: ObservableObject {
     private let alertLang = AlertStrings.ManualEntryExitAlert.self
     private let loaderLang = LoaderStrings.self
 
+    // Manual Entry type toggle
+    @Published var isManualEntryEnabled: Bool = true
+    @Published var selectedEntryType: ManualEntryType = .weight
+
     // Form & UI state
     @Published var manualEntryForm = ManualEntryForm()
+    @Published var bpForm = BloodPressureEntryForm()
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
     @Published var showMetrics = false
@@ -380,6 +385,21 @@ final class EntryStore: ObservableObject {
         setupBmiObservers()
         updateWeightValidators()
         setupDateTimeObservers()
+    }
+
+    func getBPError<T>(for control: FormControl<T>) -> String? {
+        bpForm.getError(for: control)
+    }
+
+    func getBPWarning<T>(for control: FormControl<T>) -> String? {
+        bpForm.getWarning(for: control)
+    }
+
+    @MainActor func resetBPForm() {
+        bpForm = BloodPressureEntryForm()
+        bpForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     func showExitAlert(onConfirm: @escaping () -> Void, onCancel: (() -> Void)? = nil) {

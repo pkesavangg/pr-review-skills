@@ -31,6 +31,10 @@ enum FocusField: Hashable {
     case skeletalMuscles
     case bmr
     case metabolicAge
+    case systolic
+    case diastolic
+    case pulse
+    case notes
     case none
     case modelNumber
     case scaleName
