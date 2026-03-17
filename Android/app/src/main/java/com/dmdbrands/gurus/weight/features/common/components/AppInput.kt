@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -255,7 +254,6 @@ fun <T> InputFieldBase(
     val currentOnFocus by rememberUpdatedState(onFocus)
     val currentOnBlur by rememberUpdatedState(onBlur)
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    remember { MutableInteractionSource() }
 
     val isError = formControl?.error?.type != null && (formControl.dirty || formControl.touched)
     val focusManager = LocalFocusManager.current
