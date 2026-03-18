@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,7 +33,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
-import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
@@ -40,15 +40,14 @@ import javax.inject.Singleton
  * Handles login, logout, account switching, and token management.
  */
 @Singleton
-class AccountService
-@Inject
-constructor(
+class AccountService(
   private val accountRepository: IAccountRepository,
   private val offlineHandlerService: IOfflineHandlerService,
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
@@ -56,7 +55,7 @@ constructor(
     private const val TAG = "AccountService"
   }
 
-  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
   // region Public Properties
 
@@ -93,7 +92,7 @@ constructor(
 
   override fun subscribeAccount() {
     repositoryScope.cancel()
-    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     repositoryScope.launch {
       accountRepository.getActiveAccount().collect {
         _activeAccount.value = it
