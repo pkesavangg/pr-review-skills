@@ -172,8 +172,11 @@ final class HistoryStore: ObservableObject {
     
     // MARK: - Handle export
     func handleExport() {
+        let title = isBloodPressureMode
+            ? HistoryListStrings.downloadBPHistory
+            : alertLang.CsvExportAlert.title
         let alert = AlertModel(
-            title: alertLang.CsvExportAlert.title,
+            title: title,
             message: alertLang.CsvExportAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in

@@ -40,9 +40,9 @@ struct HistoryListScreen: View {
                             AppIconView(icon: AppAssets.export)
                                 .foregroundColor(theme.statusIconPrimary)
                                 .frame(width: 24, height: 24)
-                                .opacity(store.isEmptyState || store.isBloodPressureMode ? 0.5 : 1.0)
+                                .opacity(store.isEmptyState ? 0.5 : 1.0)
                           }
-                          .disabled(store.isEmptyState || store.isBloodPressureMode)
+                          .disabled(store.isEmptyState)
                       )
                   },
                   onTitleTap: productTypeStore.availableItems.count > 1 ? {
