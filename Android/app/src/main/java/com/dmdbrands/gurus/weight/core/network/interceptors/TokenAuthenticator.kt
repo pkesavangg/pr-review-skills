@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
@@ -34,7 +35,8 @@ class TokenAuthenticator @Inject constructor(
     private val tokenManager: ITokenManager,
     private val refreshTokenAPI: RefreshTokenAPI,
     private val userDataStore: UserDataStore,
-    private val appNavigationService: IAppNavigationService
+    private val appNavigationService: IAppNavigationService,
+    private val crashReportingService: ICrashReportingService,
 ) : Authenticator {
     companion object {
         private const val TAG = "TokenAuthenticator"
@@ -103,6 +105,7 @@ class TokenAuthenticator @Inject constructor(
 
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
+                crashReportingService.recordException(e, "token_refresh_failure")
                 // At this point, we know it's the current account (non-active accounts are skipped earlier)
                 // For current account, logout and return null to fail the request
               logoutUser(accountId, isCurrentAccount(accountId))

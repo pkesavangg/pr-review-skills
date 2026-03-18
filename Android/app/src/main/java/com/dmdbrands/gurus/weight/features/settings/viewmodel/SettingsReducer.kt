@@ -84,6 +84,8 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
   object DeleteAccount : SettingsIntent
   object ConfirmDeleteAccount : SettingsIntent
+  object TriggerTestCrash : SettingsIntent
+  object TriggerTestNonFatal : SettingsIntent
 }
 
 /**

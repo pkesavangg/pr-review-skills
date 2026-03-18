@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.initialization
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.ILogger
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +17,7 @@ class AppInitializer
     @Inject
     constructor(
         private val logger: ILogger,
+        private val crashReportingService: ICrashReportingService,
     ) {
         private val initializationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private var isInitialized = false
@@ -26,7 +28,7 @@ class AppInitializer
             initializationScope.launch {
                 try {
                     initializeLogging()
-                    // Add other initialization methods here
+                    initializeCrashReporting()
                     isInitialized = true
                 } catch (e: Exception) {
                     AppLog.e("AppInitializer", "Failed to initialize app", e)
@@ -55,9 +57,12 @@ class AppInitializer
             }
         }
 
-        // Add other initialization methods here
-        // Example:
-        // private suspend fun initializeAnalytics() { ... }
-        // private suspend fun initializeCrashReporting() { ... }
-        // private suspend fun initializeDatabase() { ... }
+        private fun initializeCrashReporting() {
+            try {
+                crashReportingService.initialize()
+                AppLog.d("AppInitializer", "Crash reporting initialized successfully")
+            } catch (e: Exception) {
+                AppLog.e("AppInitializer", "Failed to initialize crash reporting", e)
+            }
+        }
     }

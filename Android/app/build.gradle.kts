@@ -5,6 +5,7 @@ import java.util.Date
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.google.service)
+  alias(libs.plugins.firebase.crashlytics.plugin)
   alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   id("kotlin-parcelize")
@@ -50,6 +51,9 @@ android {
     release {
       isMinifyEnabled = true
       isShrinkResources = true
+      configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+        mappingFileUploadEnabled = true
+      }
       proguardFiles(
         getDefaultProguardFile("proguard-android-optimize.txt"),
         "proguard-rules.pro",
@@ -161,6 +165,8 @@ dependencies {
   // When using the BoM, you don't specify versions in Firebase library dependencies
   // Add the dependency for the Firebase SDK for Google Analytics
   implementation(libs.firebase.analytics)
+  // Firebase Crashlytics
+  implementation(libs.firebase.crashlytics)
 
   // Datastore
   implementation(libs.androidx.datastore)
