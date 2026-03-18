@@ -36,6 +36,11 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Initialization
     init(initialState: StreakState = StreakState(), skipInitialSetup: Bool = false) {
         self.state = initialState
+        // Cache DI-backed services during construction so later async refreshes
+        // continue using the intended dependencies for this store instance.
+        _ = entryService
+        _ = logger
+        _ = accountService
         if !skipInitialSetup {
             setupInitialStreakItems()
         }

@@ -98,7 +98,6 @@ android {
 }
 
 dependencies {
-  implementation(libs.kotlin.reflect)
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
@@ -120,7 +119,7 @@ dependencies {
   implementation(libs.androidx.foundation.layout)
   implementation(libs.androidx.runtime.saveable)
   implementation(libs.androidx.appcompat)
-  implementation(libs.work.runtime.ktx)
+  implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
   // Unit test dependencies
@@ -171,14 +170,11 @@ dependencies {
   // Add the dependency for the Firebase SDK for Google Analytics
   implementation(libs.firebase.analytics)
 
-  // Datastore
-  implementation(libs.androidx.datastore)
-  implementation(libs.androidx.datastore.preferences.core)
-  implementation(libs.gson)
+  // Security - EncryptedSharedPreferences
+  implementation(libs.androidx.security.crypto)
 
   // Protobuf dependencies
   implementation(libs.protobuf.javalite)
-  implementation(libs.androidx.datastore)
 
   // Timber
   implementation(libs.timber)
@@ -237,7 +233,7 @@ tasks.withType<Test> {
 }
 
 // ---------------------------------------------------------------------------
-// JaCoCo coverage report: ./gradlew jacocoTestReport
+// JaCoCo coverage report: ./gradlew :app:jacocoTestReport
 // ---------------------------------------------------------------------------
 tasks.register<JacocoReport>("jacocoTestReport") {
   dependsOn("testDebugUnitTest")
@@ -270,6 +266,24 @@ tasks.register<JacocoReport>("jacocoTestReport") {
   )
 
   val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
+
+  doFirst {
+    require(kotlinClassDir.exists()) {
+      "JaCoCo class directory not found: $kotlinClassDir — run testDebugUnitTest first"
+    }
+    val execFiles = fileTree(layout.buildDirectory.get().asFile) {
+      include(
+        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+        "jacoco/testDebugUnitTest.exec",
+      )
+    }
+    require(execFiles.files.isNotEmpty()) {
+      "JaCoCo execution data not found in ${layout.buildDirectory.get().asFile}. " +
+        "Ensure enableUnitTestCoverage = true is set in the debug buildType " +
+        "and testDebugUnitTest ran successfully."
+    }
+  }
+
   classDirectories.setFrom(
     fileTree(kotlinClassDir) { exclude(jacocoExcludes) },
   )

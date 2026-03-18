@@ -1,5 +1,4 @@
 import Foundation
-import GGBluetoothSwiftPackage
 @testable import meApp
 
 @MainActor
@@ -11,24 +10,24 @@ final class MockBLEDiscoveryManager: BLEDiscoveryManaging {
     private(set) var scanForPairingCalls = 0
     private(set) var lastResumeClearOnlyPairing: Bool?
 
-    func stopScan(using sdk: GGBluetoothSwiftPackage) {
+    func stopScan(using sdk: BluetoothSDKClient) {
         stopScanCalls += 1
     }
 
-    func clearDevices(using sdk: GGBluetoothSwiftPackage) {
+    func clearDevices(using sdk: BluetoothSDKClient) {
         clearDevicesCalls += 1
     }
 
-    func pauseScan(using sdk: GGBluetoothSwiftPackage) {
+    func pauseScan(using sdk: BluetoothSDKClient) {
         pauseScanCalls += 1
     }
 
-    func resumeScan(using sdk: GGBluetoothSwiftPackage, clearOnlyPairing: Bool) {
+    func resumeScan(using sdk: BluetoothSDKClient, clearOnlyPairing: Bool) {
         resumeScanCalls += 1
         lastResumeClearOnlyPairing = clearOnlyPairing
     }
 
-    func scanForPairing(using sdk: GGBluetoothSwiftPackage) {
+    func scanForPairing(using sdk: BluetoothSDKClient) {
         scanForPairingCalls += 1
     }
 }

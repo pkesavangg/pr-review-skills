@@ -43,12 +43,12 @@ opt_in_rules:
   - vertical_parameter_alignment_on_call      # Align parameters vertically in function calls
 
 # ============================================
-# Force Operations - Set as Warnings
-# Force operations are dangerous (can crash) - warn instead of error
+# Force Operations - Set as Errors (HIPAA)
+# Force operations can crash and expose PHI in crash logs - must be errors
 # ============================================
-force_cast: warning        # Warn on force cast (as!) - use optional cast (as?) instead
-force_try: warning         # Warn on force try (try!) - use do/catch or try? instead
-force_unwrapping: warning  # Warn on force unwrap (!) - use guard/if let instead
+force_cast: error          # Error on force cast (as!) - use optional cast (as?) instead
+force_try: error           # Error on force try (try!) - use do/catch or try? instead
+force_unwrapping: error    # Error on force unwrap (!) - use guard/if let instead
 
 # ============================================
 # Code Style Rules
@@ -158,3 +158,34 @@ reporter: "xcode"                  # Format output for Xcode (shows inline in ed
 
 # Check for SwiftLint updates
 check_for_updates: true            # Check if newer SwiftLint version is available
+
+# ============================================
+# Custom Rules — HIPAA Security Compliance
+# Prevent unsafe logging, storage, and credential practices
+# ============================================
+custom_rules:
+  no_print_or_nslog:
+    name: "No print() or NSLog()"
+    regex: '\bprint\s*\(|NSLog\s*\('
+    match_kinds:
+      - identifier
+    message: "Use LoggerService instead of print()/NSLog() — HIPAA compliance"
+    severity: error
+
+  no_direct_userdefaults:
+    name: "No direct UserDefaults access"
+    regex: 'UserDefaults'
+    match_kinds:
+      - identifier
+      - typeidentifier
+    message: "Use KvStorageService or KeychainService instead of direct UserDefaults — HIPAA compliance"
+    severity: error
+    excluded:
+      - "meApp/Core/Services/KvStorageService.swift"
+      - "meApp/Data/Services/AccountMigrationService.swift"
+
+  no_hardcoded_credentials:
+    name: "No hardcoded credentials"
+    regex: '(?i)(apiKey|apiSecret|secretKey|privateKey|accessKey|accessToken|authToken|bearerToken|clientSecret)\s*[:=]\s*"[^"]+"'
+    message: "Do not hardcode credentials in source code — HIPAA compliance"
+    severity: error

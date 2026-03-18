@@ -108,7 +108,11 @@ final class KeychainService: KeychainServiceProtocol, @unchecked Sendable {
         let status = keychainAccess.delete(query)
         if status != errSecSuccess && status != errSecItemNotFound {
             Task { @MainActor in
-                self.resolvedLogger.log(level: .error, tag: self.tag, message: "Keychain deleteItem failed: accountKey=\(accountKey), status=\(status)")
+                self.resolvedLogger.log(
+                    level: .error,
+                    tag: self.tag,
+                    message: "Keychain deleteItem failed: accountKey=\(accountKey), status=\(status)"
+                )
             }
         }
     }

@@ -10,7 +10,7 @@ Run these from the root of the Android project (`/Android`):
 ./gradlew testDebugUnitTest
 
 # 2. Generate JaCoCo HTML + XML coverage reports
-./gradlew jacocoTestReport
+./gradlew :app:jacocoTestReport
 
 # 3. Confirm the project still builds cleanly
 ./gradlew assembleDebug
@@ -30,10 +30,10 @@ All versions are managed in `gradle/libs.versions.toml`.
 | Library | Version | Purpose |
 |---|---|---|
 | `junit:junit` | 4.13.2 | Test runner and lifecycle annotations |
-| `io.mockk:mockk` | 1.13.17 | Kotlin-first mocking library |
-| `app.cash.turbine:turbine` | 1.2.0 | Testing Kotlin Flow emissions |
+| `io.mockk:mockk` | 1.14.9 | Kotlin-first mocking library |
+| `app.cash.turbine:turbine` | 1.2.1 | Testing Kotlin Flow emissions |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-test` | 1.10.2 | Test dispatcher for coroutine-based code |
-| `com.google.truth:truth` | 1.4.4 | Fluent assertion library |
+| `com.google.truth:truth` | 1.4.5 | Fluent assertion library |
 | `com.squareup.okhttp3:mockwebserver` | 4.12.0 | Local HTTP server for API response parsing tests |
 
 Declared in `app/build.gradle.kts`:
@@ -85,7 +85,7 @@ Instrumented tests (requiring a device/emulator) live under `src/androidTest/`:
 
 ```
 app/src/androidTest/java/com/dmdbrands/gurus/weight/
-└── MainBottomNavTest.kt    ← Compose UI tests (needs device/emulator)
+└── (instrumented tests go here — needs device/emulator)
 ```
 
 **Rule:** pure logic (reducers, use cases, mappers, utilities) → `src/test/`. Anything that needs an Android context or Compose → `src/androidTest/`.
@@ -310,7 +310,7 @@ Run it directly:
 ./gradlew :app:testDebugUnitTest --tests "*.SettingsReducerTest"
 ```
 
-Expected output: **12 tests, 0 failures, 0 errors.**
+Expected output: **all tests pass, 0 failures, 0 errors.**
 
 ---
 

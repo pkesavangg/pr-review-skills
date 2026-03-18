@@ -33,12 +33,6 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 
-// TODO: A new folder 'screens' will be created under 'settings' for MyAccountsScreen, MaxAccountsReachedDialog, and RemoveAccountDialog.
-// TODO: MyAccountsScreen and related dialogs/popups will be implemented in a new 'screens' folder under 'settings'.
-// This follows the feature-based structure and keeps My Accounts logic modular and maintainable.
-// TODO: Navigation to MyAccountsScreen will be added to the settings list.
-// MyAccountsScreen will be implemented in a new file under 'screens'.
-
 @Composable
 fun SettingsScreen() {
   val viewmodel: SettingsViewModel = hiltViewModel()

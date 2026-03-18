@@ -9,7 +9,7 @@ struct GraphDataPreparer {
     // MARK: - Chart Series Entry Point
 
     /// Builds weight + optional metric series. Pass `yAxisDomain` for scroll-consistent normalization.
-    func buildChartSeries(
+    func buildChartSeries( // swiftlint:disable:this function_parameter_count
         from operations: [BathScaleWeightSummary],
         selectedMetric: String?,
         isWeightlessMode: Bool,
@@ -99,7 +99,7 @@ struct GraphDataPreparer {
 
     /// Normalizes metric series using an explicit Y-axis domain for scroll consistency.
     /// Using the same ops set as the Y-axis domain ensures metric lines stay in-bounds.
-    func buildNormalizedMetricSeriesWithDomain(
+    func buildNormalizedMetricSeriesWithDomain( // swiftlint:disable:this function_parameter_count
         for metric: String,
         from allOperations: [BathScaleWeightSummary],
         visibleOperations: [BathScaleWeightSummary],
@@ -144,7 +144,7 @@ struct GraphDataPreparer {
 
     /// Interpolates display weight at `date` using monotone cubic (Fritsch–Carlson) Hermite spline.
     /// Returns `nil` when operations are empty or result is non-finite.
-    func interpolatedDisplayWeight(
+    func interpolatedDisplayWeight( // swiftlint:disable:this function_parameter_count
         at date: Date,
         from operations: [BathScaleWeightSummary],
         isWeightlessMode: Bool,
@@ -195,6 +195,7 @@ struct GraphDataPreparer {
 
     // MARK: - Metric Value Extraction
 
+    // swiftlint:disable:next cyclomatic_complexity
     func metricValue(for label: String, from summary: BathScaleWeightSummary) -> Double? {
         switch label {
         case DashboardStrings.bmi:          return summary.bmi
@@ -259,7 +260,8 @@ struct GraphDataPreparer {
         let raw: Double
         switch period {
         case .week, .month:
-            guard let latest = operations.last.map({ convertWeight(Int($0.weight)) }) else { return nil }
+            guard let last = operations.last else { return nil }
+            let latest = convertWeight(Int(last.weight))
             raw = latest - anchor
         case .year, .total:
             let weights = operations.map { convertWeight(Int($0.weight)) }
@@ -284,6 +286,7 @@ struct GraphDataPreparer {
         return (avg * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
 
+    // swiftlint:disable:next function_parameter_count
     func interpolatedAverageForVisibleRange(
         from allOperations: [BathScaleWeightSummary],
         period: TimePeriod,
@@ -308,8 +311,12 @@ struct GraphDataPreparer {
 
         let weights = validSamples.compactMap {
             interpolatedDisplayWeight(
-                at: $0, from: allOperations, isWeightlessMode: isWeightlessMode,
-                anchorWeight: anchorWeight, convertWeight: convertWeight, period: period
+                at: $0,
+                from: allOperations,
+                isWeightlessMode: isWeightlessMode,
+                anchorWeight: anchorWeight,
+                convertWeight: convertWeight,
+                period: period
             )
         }
         guard !weights.isEmpty else { return nil }
@@ -379,13 +386,13 @@ struct GraphDataPreparer {
         guard !operations.isEmpty else { return [] }
         let right = scrollPosition.addingTimeInterval(visibleDomainLength)
 
-        let prev = binarySearchLast(in: operations, where: { $0.date <= scrollPosition })
+        let prev = binarySearchLast(in: operations) { $0.date <= scrollPosition }
                     .map { operations[$0] }
-                    ?? binarySearchLast(in: operations, where: { $0.date < right }).map { operations[$0] }
+                    ?? binarySearchLast(in: operations) { $0.date < right }.map { operations[$0] }
 
-        let next = binarySearchFirst(in: operations, where: { $0.date >= right })
+        let next = binarySearchFirst(in: operations) { $0.date >= right }
                     .map { operations[$0] }
-                    ?? binarySearchFirst(in: operations, where: { $0.date > scrollPosition }).map { operations[$0] }
+                    ?? binarySearchFirst(in: operations) { $0.date > scrollPosition }.map { operations[$0] }
 
         var result: [BathScaleWeightSummary] = []
         if let prevOp = prev { result.append(prevOp) }
@@ -497,7 +504,12 @@ struct GraphDataPreparer {
 
         // Endpoint tangents (one-sided Fritsch–Carlson)
         tangents[0]         = endpointTangent(h0: xs[1] - xs[0], h1: xs[2] - xs[1], m0: slopes[0], m1: slopes[1])
-        tangents[count - 1] = endpointTangent(h0: xs[count - 1] - xs[count - 2], h1: xs[count - 2] - xs[count - 3], m0: slopes[count - 2], m1: slopes[count - 3])
+        tangents[count - 1] = endpointTangent(
+            h0: xs[count - 1] - xs[count - 2],
+            h1: xs[count - 2] - xs[count - 3],
+            m0: slopes[count - 2],
+            m1: slopes[count - 3]
+        )
         return tangents
     }
 
@@ -508,6 +520,7 @@ struct GraphDataPreparer {
         return tangent
     }
 
+    // swiftlint:disable:next function_parameter_count
     private func hermiteEval(xVal: Double, x0: Double, x1: Double, y0: Double, y1: Double, m0: Double, m1: Double) -> Double {
         let step = x1 - x0
         let normalized = (xVal - x0) / step
