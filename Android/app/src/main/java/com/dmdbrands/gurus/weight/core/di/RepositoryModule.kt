@@ -58,6 +58,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
 @Module
@@ -98,8 +99,9 @@ object RepositoryModule {
       accountDao: AccountDao,
       accountRepository: IAccountRepository,
       userAPI: IAuthAPI,
-      healthConnectRepository: IHealthConnectRepository
-    ): IIntegrationRepository = IntegrationRepository(accountRepository, userAPI, integrationAPI, accountDao,healthConnectRepository)
+      healthConnectRepository: IHealthConnectRepository,
+      @ApplicationScope appScope: CoroutineScope,
+    ): IIntegrationRepository = IntegrationRepository(accountRepository, userAPI, integrationAPI, accountDao, healthConnectRepository, appScope)
 
     @Provides
     @Singleton
@@ -123,7 +125,8 @@ object RepositoryModule {
       logDao: LogDao,
       supportAPI: ISupportAPI,
       accountService: IAccountService,
-    ): ILogRepository = LogRepository(logDao, supportAPI, accountService)
+      @ApplicationScope appScope: CoroutineScope,
+    ): ILogRepository = LogRepository(logDao, supportAPI, accountService, appScope)
 
     @Provides
     @Singleton

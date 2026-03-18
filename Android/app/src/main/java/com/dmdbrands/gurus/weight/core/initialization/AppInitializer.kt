@@ -1,10 +1,9 @@
 package com.dmdbrands.gurus.weight.core.initialization
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.ILogger
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,14 +15,14 @@ class AppInitializer
     @Inject
     constructor(
         private val logger: ILogger,
+        @ApplicationScope private val appScope: CoroutineScope,
     ) {
-        private val initializationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private var isInitialized = false
 
         fun initialize() {
             if (isInitialized) return
 
-            initializationScope.launch {
+            appScope.launch {
                 try {
                     initializeLogging()
                     // Add other initialization methods here

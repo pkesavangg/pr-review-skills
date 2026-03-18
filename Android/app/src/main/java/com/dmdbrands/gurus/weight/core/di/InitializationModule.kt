@@ -6,6 +6,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
 @Module
@@ -15,9 +16,10 @@ object InitializationModule {
     @Singleton
     fun provideAppInitializer(
         logRepository: ILogger,
-        // Add other dependencies here
+        @ApplicationScope appScope: CoroutineScope,
     ): AppInitializer =
         AppInitializer(
             logRepository,
+            appScope,
         )
 }
