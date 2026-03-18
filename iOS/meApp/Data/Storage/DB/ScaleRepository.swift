@@ -90,7 +90,7 @@ final class ScaleRepository: ScaleRepositoryProtocol {
     /// - Throws: An error if a device with the same ID already exists.
     func createScale(_ scale: Device) async throws -> Device {
         // Check for duplicate ID before inserting
-        if let existingDevice = try? await getDevice(scale.id), existingDevice != nil {
+        if (try? await getDevice(scale.id)) != nil {
             throw NSError(
                 domain: "ScaleRepository",
                 code: 409,

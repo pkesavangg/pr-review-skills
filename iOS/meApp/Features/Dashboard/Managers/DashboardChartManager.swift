@@ -124,7 +124,7 @@ final class DashboardChartManager: DashboardChartManaging {
             }
         }
 
-        let previousYAxisDomain = stateProvider.state.graph.cachedYAxisDomain
+        let previousYAxisDomain = graphManager.state.cachedYAxisDomain ?? stateProvider.state.graph.cachedYAxisDomain
         graphManager.calculateAndCacheYAxisDomain(
             from: operationsForYAxis,
             goalWeight: getGoalWeightForDisplay(),
@@ -134,7 +134,11 @@ final class DashboardChartManager: DashboardChartManaging {
             chartHeight: stateProvider.state.graph.chartHeight
         )
 
-        if let newYAxisDomain = stateProvider.state.graph.cachedYAxisDomain,
+        // Keep store state aligned with the graph manager immediately so cache invalidation
+        // sees the freshly computed domain in the same update pass.
+        stateProvider.state.graph = graphManager.state
+
+        if let newYAxisDomain = graphManager.state.cachedYAxisDomain,
            let previousDomain = previousYAxisDomain,
            newYAxisDomain != previousDomain {
             cacheManager.invalidateChartSeriesCache()

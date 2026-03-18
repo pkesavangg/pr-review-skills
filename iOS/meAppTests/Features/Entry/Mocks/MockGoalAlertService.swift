@@ -10,6 +10,7 @@ final class MockGoalAlertService: GoalAlertServiceProtocol {
     var checkSetGoalCardError: Error?
 
     private(set) var showGoalMetMessageCalls = 0
+    private(set) var checkPendingGoalAlertsCalls = 0
     private(set) var checkSetGoalCardCalls = 0
     private(set) var lastGoalMetWeight: Double?
     private(set) var lastEntryCount: Int?

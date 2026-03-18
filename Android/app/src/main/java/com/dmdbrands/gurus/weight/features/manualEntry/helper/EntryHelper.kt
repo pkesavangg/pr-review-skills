@@ -42,23 +42,22 @@ object EntryHelper {
 
   fun FormControl<String>.toIntSafe(default: Int = 0): Int = this.value.toIntOrNull() ?: default
 
-  fun EntryForm.toScaleEntry(weightMode: WeightUnit): ScaleEntry {
+  fun EntryForm.toScaleEntry(weightMode: WeightUnit, accountId: String): ScaleEntry {
     val entryEntity =
       EntryEntity(
         id = 0L, // Let Room auto-generate
-        accountId = "TODO", // Replace with actual user/account ID
+        accountId = accountId,
         entryTimestamp =
           DateTimeConverter.timestampToIso(
             weightDateTime.controls.dateTime.value
               .getTimestamp(),
           ),
-        // Assuming DateTimeValue has .timestamp: Long
         serverTimestamp = null,
         opTimestamp = null,
-        unit = weightMode, // or whatever is relevant
-        operationType = OperationType.CREATE.name, // or appropriate value
-        deviceType = "scale", // or from context
-        deviceId = "TODO", // from current device
+        unit = weightMode,
+        operationType = OperationType.CREATE.name,
+        deviceType = "manual",
+        deviceId = "manual",
         attempts = 0,
         isSynced = false,
       )

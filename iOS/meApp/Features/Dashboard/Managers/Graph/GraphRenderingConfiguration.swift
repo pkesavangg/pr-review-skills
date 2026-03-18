@@ -342,6 +342,7 @@ struct GraphRenderingConfiguration {
         }
     }
 
+    // swiftlint:disable:next function_parameter_count cyclomatic_complexity
     private func axisRange(
         period: TimePeriod,
         minDate: Date,
@@ -388,9 +389,13 @@ struct GraphRenderingConfiguration {
             let visibleStart = max(adjMin, scrollPosition.addingTimeInterval(-domainLength / 2 - buffer))
             let now = Date()
             let visibleEnd: Date
-            if adjMax > now { visibleEnd = min(adjMax, scrollEnd) }
-            else if adjMax < now.addingTimeInterval(-domainLength * 3) { visibleEnd = max(now, scrollEnd) }
-            else { visibleEnd = min(now, scrollEnd) }
+            if adjMax > now {
+                visibleEnd = min(adjMax, scrollEnd)
+            } else if adjMax < now.addingTimeInterval(-domainLength * 3) {
+                visibleEnd = max(now, scrollEnd)
+            } else {
+                visibleEnd = min(now, scrollEnd)
+            }
             return (visibleStart, visibleEnd)
         }
     }

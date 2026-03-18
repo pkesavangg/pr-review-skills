@@ -39,6 +39,7 @@ public protocol AppReviewHandlerProtocol {
 }
 
 /// Protocol for handling scale review actions triggered by account flags
+@MainActor
 public protocol ScaleReviewHandlerProtocol {
     /// Emits a scale review event with the provided parameters
     /// - Parameters:

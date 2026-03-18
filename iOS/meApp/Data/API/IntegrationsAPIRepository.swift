@@ -16,8 +16,8 @@ import Foundation
 final class IntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
 
-    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
-        self.httpClient = httpClient
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
 
     func removeIntegration(accountId: String, provider: IntegrationType) async throws {

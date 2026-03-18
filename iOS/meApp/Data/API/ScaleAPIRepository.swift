@@ -8,8 +8,8 @@ import Foundation
 final class ScaleAPIRepository: ScaleRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
 
-    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
-        self.httpClient = httpClient
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
 
     func listScales() async throws -> [ScaleDTO] {
