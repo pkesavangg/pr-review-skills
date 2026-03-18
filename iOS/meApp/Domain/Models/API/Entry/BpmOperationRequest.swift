@@ -7,7 +7,6 @@ struct BpmOperationRequest: Codable {
     let pulse: Double?
     let meanArterial: String?
     let note: String?
-    let irregularHb: Bool?
     let source: String?
     let unit: String?
     let entryTimestamp: String?
