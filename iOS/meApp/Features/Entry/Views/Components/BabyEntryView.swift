@@ -18,7 +18,7 @@ struct BabyEntryView: View {
         VStack(spacing: .spacingLG) {
             VStack(alignment: .leading, spacing: .spacingXS) {
                 // Pounds & Ounces side by side with combined error
-                VStack(alignment: .leading, spacing: .spacingXS) {
+                VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: .spacingSM) {
                         MetricInputField(
                             config: TextInputConfig(
@@ -39,8 +39,8 @@ struct BabyEntryView: View {
                                 label: babyLang.ounces,
                                 inputType: .metric,
                                 focusField: .ounces,
-                                maxLength: 2,
-                                allowWholeNumbers: true
+                                maxLength: 3,
+                                clearZeroValue: true
                             ),
                             value: $entryStore.babyForm.ounces.value,
                             focusedField: $focusedField
@@ -54,6 +54,7 @@ struct BabyEntryView: View {
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.textError)
                             .padding(.leading, .spacingSM)
+                            .padding(.top, -20)
                     }
                 }
 
@@ -64,7 +65,8 @@ struct BabyEntryView: View {
                         inputType: .metric,
                         errorMessage: entryStore.babyLengthError,
                         focusField: .inches,
-                        maxLength: 3
+                        maxLength: 3,
+                        clearZeroValue: true
                     ),
                     value: $entryStore.babyForm.inches.value,
                     focusedField: $focusedField

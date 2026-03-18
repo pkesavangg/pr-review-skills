@@ -22,6 +22,7 @@ struct ManualEntryStrings {
     static let inches = "inches"
 
     // Baby validation error messages
+    static let required = "Required."
     static let invalidWeight = "Please enter a valid weight."
     static let invalidLength = "Please enter a valid length."
 

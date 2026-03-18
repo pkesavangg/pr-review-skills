@@ -8,7 +8,7 @@ import Foundation
 
 class BabyEntryForm: ObservableForm {
     var pounds = FormControl("", validators: [.required, .minValue(), .maxLimit(999.0)])
-    var ounces = FormControl("", validators: [.minValue(), .maxLimit(15.0)])
+    var ounces = FormControl("", validators: [.minValue(), .maxLimit(15.9)])
     var inches = FormControl("", validators: [.minValue(), .maxLimit(99.9)])
     var notes = FormControl("")
 
@@ -30,11 +30,15 @@ class BabyEntryForm: ObservableForm {
     }
 
     /// Combined validation error for pounds and ounces fields.
-    /// Matches Baby app behavior: shows error when pounds has a value AND either field is invalid.
     var weightError: String? {
-        guard !pounds.value.isEmpty else { return nil }
         guard pounds.isDirty || ounces.isDirty else { return nil }
 
+        // Required: pounds was touched then cleared
+        if pounds.isDirty && pounds.value.isEmpty {
+            return babyLang.required
+        }
+
+        // Value validity (e.g. ounces > 15.9)
         if pounds.isInvalid || ounces.isInvalid {
             return babyLang.invalidWeight
         }
@@ -42,10 +46,15 @@ class BabyEntryForm: ObservableForm {
     }
 
     /// Validation error for inches field.
-    /// Matches Baby app behavior: shows error when field has a value AND is invalid.
     var lengthError: String? {
-        guard !inches.value.isEmpty, inches.isDirty else { return nil }
+        guard inches.isDirty else { return nil }
 
+        // Required: inches was touched then cleared
+        if inches.value.isEmpty {
+            return babyLang.required
+        }
+
+        // Value validity (e.g. inches > 99.9)
         if inches.isInvalid {
             return babyLang.invalidLength
         }
