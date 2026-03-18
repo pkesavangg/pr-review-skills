@@ -6,38 +6,37 @@ import Testing
 @MainActor
 struct BpmModelTests {
 
-    // MARK: - BpmEntry Tests
+    // MARK: - BathScaleEntry BPM Fields Tests
 
-    @Test("BpmEntry: init sets all properties")
-    func bpmEntryInitSetsAllProperties() {
-        let entry = BpmEntry(
+    @Test("BathScaleEntry: init sets BPM properties")
+    func bathScaleEntryInitSetsBpmProperties() {
+        let entry = BathScaleEntry(
+            source: "manual",
             systolic: 120,
             diastolic: 80,
-            pulse: 72,
             meanArterial: "93.3",
             note: "Morning reading"
         )
 
         #expect(entry.systolic == 120)
         #expect(entry.diastolic == 80)
-        #expect(entry.pulse == 72)
         #expect(entry.meanArterial == "93.3")
         #expect(entry.note == "Morning reading")
+        #expect(entry.source == "manual")
     }
 
-    @Test("BpmEntry: init defaults all properties to nil")
-    func bpmEntryInitDefaultsToNil() {
-        let entry = BpmEntry()
+    @Test("BathScaleEntry: BPM fields default to nil")
+    func bathScaleEntryBpmFieldsDefaultToNil() {
+        let entry = BathScaleEntry()
 
         #expect(entry.systolic == nil)
         #expect(entry.diastolic == nil)
-        #expect(entry.pulse == nil)
         #expect(entry.meanArterial == nil)
         #expect(entry.note == nil)
     }
 
-    @Test("BpmEntry: convenience init from DTO maps values correctly")
-    func bpmEntryInitFromDTO() {
+    @Test("BathScaleEntry: convenience init from BpmOperationDTO maps values correctly")
+    func bathScaleEntryInitFromBpmDTO() {
         let dto = BpmOperationDTO(
             accountId: "acct-1",
             systolic: 130.0,
@@ -45,7 +44,6 @@ struct BpmModelTests {
             pulse: 68.0,
             meanArterial: "100.0",
             note: "Post-exercise",
-            irregularHb: false,
             source: "manual",
             unit: "mmHg",
             entryTimestamp: "2026-03-01T08:00:00Z",
@@ -53,17 +51,17 @@ struct BpmModelTests {
             serverTimestamp: nil
         )
 
-        let entry = BpmEntry(from: dto)
+        let entry = BathScaleEntry(from: dto)
 
         #expect(entry.systolic == 130)
         #expect(entry.diastolic == 85)
-        #expect(entry.pulse == 68)
         #expect(entry.meanArterial == "100.0")
         #expect(entry.note == "Post-exercise")
+        #expect(entry.source == "manual")
     }
 
-    @Test("BpmEntry: convenience init from DTO handles nil values")
-    func bpmEntryInitFromDTOHandlesNils() {
+    @Test("BathScaleEntry: convenience init from BpmOperationDTO handles nil values")
+    func bathScaleEntryInitFromBpmDTOHandlesNils() {
         let dto = BpmOperationDTO(
             accountId: nil,
             systolic: nil,
@@ -71,7 +69,7 @@ struct BpmModelTests {
             pulse: nil,
             meanArterial: nil,
             note: nil,
-            irregularHb: nil,
+
             source: nil,
             unit: nil,
             entryTimestamp: nil,
@@ -79,41 +77,19 @@ struct BpmModelTests {
             serverTimestamp: nil
         )
 
-        let entry = BpmEntry(from: dto)
+        let entry = BathScaleEntry(from: dto)
 
         #expect(entry.systolic == nil)
         #expect(entry.diastolic == nil)
-        #expect(entry.pulse == nil)
         #expect(entry.meanArterial == nil)
         #expect(entry.note == nil)
+        #expect(entry.source == nil)
     }
 
-    // MARK: - BpmMetric Tests
+    // MARK: - BathScaleMetric BPM Fields Tests
 
-    @Test("BpmMetric: init sets all properties")
-    func bpmMetricInitSetsAllProperties() {
-        let metric = BpmMetric(
-            irregularHb: true,
-            source: "device",
-            unit: "mmHg"
-        )
-
-        #expect(metric.irregularHb == true)
-        #expect(metric.source == "device")
-        #expect(metric.unit == "mmHg")
-    }
-
-    @Test("BpmMetric: init defaults all properties to nil")
-    func bpmMetricInitDefaultsToNil() {
-        let metric = BpmMetric()
-
-        #expect(metric.irregularHb == nil)
-        #expect(metric.source == nil)
-        #expect(metric.unit == nil)
-    }
-
-    @Test("BpmMetric: convenience init from DTO maps values correctly")
-    func bpmMetricInitFromDTO() {
+    @Test("BathScaleMetric: convenience init from BpmOperationDTO maps pulse and unit")
+    func bathScaleMetricInitFromBpmDTO() {
         let dto = BpmOperationDTO(
             accountId: "acct-1",
             systolic: 120.0,
@@ -121,7 +97,7 @@ struct BpmModelTests {
             pulse: 72.0,
             meanArterial: nil,
             note: nil,
-            irregularHb: true,
+
             source: "manual",
             unit: "mmHg",
             entryTimestamp: "2026-03-01T08:00:00Z",
@@ -129,10 +105,9 @@ struct BpmModelTests {
             serverTimestamp: nil
         )
 
-        let metric = BpmMetric(from: dto)
+        let metric = BathScaleMetric(from: dto)
 
-        #expect(metric.irregularHb == true)
-        #expect(metric.source == "manual")
+        #expect(metric.pulse == 72)
         #expect(metric.unit == "mmHg")
     }
 
@@ -147,7 +122,7 @@ struct BpmModelTests {
             pulse: 72.0,
             meanArterial: nil,
             note: nil,
-            irregularHb: nil,
+
             source: nil,
             unit: nil,
             entryTimestamp: "2026-03-01T08:00:00Z",
@@ -167,7 +142,7 @@ struct BpmModelTests {
             pulse: nil,
             meanArterial: nil,
             note: nil,
-            irregularHb: nil,
+
             source: nil,
             unit: nil,
             entryTimestamp: "2026-03-01T08:00:00Z",
@@ -187,7 +162,6 @@ struct BpmModelTests {
             pulse: 68.0,
             meanArterial: "100.0",
             note: "Test",
-            irregularHb: true,
             source: "manual",
             unit: "mmHg",
             entryTimestamp: "2026-03-01T08:00:00Z",
@@ -204,7 +178,6 @@ struct BpmModelTests {
         #expect(copied.pulse == 68.0)
         #expect(copied.meanArterial == "100.0")
         #expect(copied.note == "Test")
-        #expect(copied.irregularHb == true)
         #expect(copied.source == "manual")
         #expect(copied.unit == "mmHg")
         #expect(copied.operationType == "create")
@@ -220,7 +193,6 @@ struct BpmModelTests {
             pulse: 72.0,
             meanArterial: "93.3",
             note: "Morning",
-            irregularHb: false,
             source: "device",
             unit: "mmHg",
             entryTimestamp: "2026-03-01T08:00:00Z",
@@ -236,7 +208,6 @@ struct BpmModelTests {
         #expect(request.pulse == 72.0)
         #expect(request.meanArterial == "93.3")
         #expect(request.note == "Morning")
-        #expect(request.irregularHb == false)
         #expect(request.source == "device")
         #expect(request.unit == "mmHg")
         #expect(request.entryTimestamp == "2026-03-01T08:00:00Z")
@@ -245,7 +216,7 @@ struct BpmModelTests {
 
     // MARK: - Entry + BPM Relationship Tests
 
-    @Test("Entry: init from BpmOperationDTO sets deviceType to bpm")
+    @Test("Entry: init from BpmOperationDTO sets deviceType to bpm and uses scaleEntry")
     func entryInitFromBpmDTO() {
         let dto = BpmOperationDTO(
             accountId: "acct-1",
@@ -254,7 +225,6 @@ struct BpmModelTests {
             pulse: 72.0,
             meanArterial: "93.3",
             note: "Test",
-            irregularHb: false,
             source: "manual",
             unit: "mmHg",
             entryTimestamp: "2026-03-01T08:00:00Z",
@@ -270,16 +240,15 @@ struct BpmModelTests {
         #expect(entry.operationType == "create")
         #expect(entry.serverTimestamp == "2026-03-01T08:00:01Z")
         #expect(entry.isSynced == true)
-        #expect(entry.bpmEntry != nil)
-        #expect(entry.bpmEntry?.systolic == 120)
-        #expect(entry.bpmEntry?.diastolic == 80)
-        #expect(entry.bpmEntry?.pulse == 72)
-        #expect(entry.bpmEntry?.meanArterial == "93.3")
-        #expect(entry.bpmEntry?.note == "Test")
-        #expect(entry.bpmEntryMetric != nil)
-        #expect(entry.bpmEntryMetric?.irregularHb == false)
-        #expect(entry.bpmEntryMetric?.source == "manual")
-        #expect(entry.bpmEntryMetric?.unit == "mmHg")
+        #expect(entry.scaleEntry != nil)
+        #expect(entry.scaleEntry?.systolic == 120)
+        #expect(entry.scaleEntry?.diastolic == 80)
+        #expect(entry.scaleEntry?.meanArterial == "93.3")
+        #expect(entry.scaleEntry?.note == "Test")
+        #expect(entry.scaleEntry?.source == "manual")
+        #expect(entry.scaleEntryMetric != nil)
+        #expect(entry.scaleEntryMetric?.pulse == 72)
+        #expect(entry.scaleEntryMetric?.unit == "mmHg")
     }
 
     @Test("Entry: toBpmOperationDTO round-trips data correctly")
@@ -291,7 +260,7 @@ struct BpmModelTests {
             pulse: 68.0,
             meanArterial: "100.0",
             note: "Evening",
-            irregularHb: true,
+
             source: "device",
             unit: "mmHg",
             entryTimestamp: "2026-03-01T20:00:00Z",
@@ -308,38 +277,21 @@ struct BpmModelTests {
         #expect(result.pulse == 68.0)
         #expect(result.meanArterial == "100.0")
         #expect(result.note == "Evening")
-        #expect(result.irregularHb == true)
         #expect(result.source == "device")
         #expect(result.unit == "mmHg")
         #expect(result.entryTimestamp == "2026-03-01T20:00:00Z")
         #expect(result.operationType == "create")
     }
 
-    @Test("Entry: bpmEntry relationship is nil by default for scale entries")
-    func entryBpmRelationshipNilForScale() {
+    @Test("Entry: scaleEntry is nil by default")
+    func entryScaleEntryNilByDefault() {
         let entry = Entry(
             entryTimestamp: "2026-03-01T08:00:00Z",
             accountId: "acct-1",
             operationType: "create"
         )
 
-        #expect(entry.bpmEntry == nil)
-        #expect(entry.bpmEntryMetric == nil)
-    }
-
-    @Test("Entry: scale and bpm relationships are independent")
-    func entryScaleAndBpmRelationshipsIndependent() {
-        let entry = Entry(
-            entryTimestamp: "2026-03-01T08:00:00Z",
-            accountId: "acct-1",
-            operationType: "create",
-            deviceType: "bpm"
-        )
-
-        entry.bpmEntry = BpmEntry(systolic: 120, diastolic: 80, pulse: 72)
-        entry.scaleEntry = BathScaleEntry(weight: 1800)
-
-        #expect(entry.bpmEntry?.systolic == 120)
-        #expect(entry.scaleEntry?.weight == 1800)
+        #expect(entry.scaleEntry == nil)
+        #expect(entry.scaleEntryMetric == nil)
     }
 }

@@ -40,8 +40,6 @@ final class Entry {
     var isFailedToSync: Bool
     @Relationship var scaleEntry: BathScaleEntry?
     @Relationship var scaleEntryMetric: BathScaleMetric?
-    @Relationship var bpmEntry: BpmEntry?
-    @Relationship var bpmEntryMetric: BpmMetric?
 
     init(id: UUID = UUID(),
          entryTimestamp: String,
@@ -92,21 +90,20 @@ final class Entry {
         self.isSynced = isSynced
         self.attempts = 0
         self.isFailedToSync = false
-        self.bpmEntry = BpmEntry(from: dto)
-        self.bpmEntryMetric = BpmMetric(from: dto)
+        self.scaleEntry = BathScaleEntry(from: dto)
+        self.scaleEntryMetric = BathScaleMetric(from: dto)
     }
 
     func toBpmOperationDTO() -> BpmOperationDTO {
         return BpmOperationDTO(
             accountId: self.accountId,
-            systolic: self.bpmEntry?.systolic.map { Double($0) },
-            diastolic: self.bpmEntry?.diastolic.map { Double($0) },
-            pulse: self.bpmEntry?.pulse.map { Double($0) },
-            meanArterial: self.bpmEntry?.meanArterial,
-            note: self.bpmEntry?.note,
-            irregularHb: self.bpmEntryMetric?.irregularHb,
-            source: self.bpmEntryMetric?.source,
-            unit: self.bpmEntryMetric?.unit,
+            systolic: self.scaleEntry?.systolic.map { Double($0) },
+            diastolic: self.scaleEntry?.diastolic.map { Double($0) },
+            pulse: self.scaleEntryMetric?.pulse.map { Double($0) },
+            meanArterial: self.scaleEntry?.meanArterial,
+            note: self.scaleEntry?.note,
+            source: self.scaleEntry?.source,
+            unit: self.scaleEntryMetric?.unit,
             entryTimestamp: self.entryTimestamp,
             operationType: self.operationType,
             serverTimestamp: self.serverTimestamp
