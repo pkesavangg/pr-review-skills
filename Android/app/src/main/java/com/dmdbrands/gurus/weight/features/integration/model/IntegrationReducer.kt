@@ -2,14 +2,19 @@ package com.dmdbrands.gurus.weight.features.integration.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationProvider
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * State for Integration screen, including UI state and data.
  * @property integrations List of all integrations with their connection status.
  * @property selectedIntegrationForDisconnect The integration selected for disconnection.
  */
+@Stable
 data class IntegrationState(
-  val integrations: List<IntegrationItem> = emptyList(),
+  val integrations: ImmutableList<IntegrationItem> = persistentListOf(),
   val selectedIntegrationForDisconnect: IntegrationItem? = null,
 ) : IReducer.State
 
@@ -111,11 +116,11 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
           IntegrationProvider.getAllProviders().map { provider ->
             IntegrationItem.fromProvider(provider)
           }
-        state.copy(integrations = allIntegrations)
+        state.copy(integrations = allIntegrations.toImmutableList())
       }
 
       is IntegrationIntent.SetIntegrations -> {
-        state.copy(integrations = intent.integrations)
+        state.copy(integrations = intent.integrations.toImmutableList())
       }
 
       is IntegrationIntent.AddIntegration -> {
@@ -155,7 +160,7 @@ class IntegrationReducer : IReducer<IntegrationState, IntegrationIntent> {
               integration
             }
           }
-        state.copy(integrations = updatedIntegrations)
+        state.copy(integrations = updatedIntegrations.toImmutableList())
       }
 
       is IntegrationIntent.NavigateToHealthConnect ->{

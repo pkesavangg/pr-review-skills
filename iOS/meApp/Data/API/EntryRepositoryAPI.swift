@@ -4,8 +4,8 @@ import Foundation
 final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
 
-    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
-        self.httpClient = httpClient
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
 
     func syncOperation(operation: BathScaleOperationDTO) async throws {

@@ -56,7 +56,6 @@ fun DashboardScreen() {
   val viewmodel: DashboardViewModel = hiltViewModel()
   val state by viewmodel.state.collectAsState()
 
-  rememberCoroutineScope()
   val lifecycleOwner = LocalLifecycleOwner.current
   DisposableEffect(lifecycleOwner) {
     val observer = LifecycleEventObserver { _, event ->
@@ -85,7 +84,6 @@ private fun DashboardScreenContent(
   handleIntent: (DashboardIntent) -> Unit
 ) {
   val scrollState = rememberScrollState()
-  rememberCoroutineScope()
   val navBackStack = LocalNavBackStack.current
   var inEditMode by remember { mutableStateOf(false) }
   var currentVisibleMetrics by remember(state.visibleKeys) {

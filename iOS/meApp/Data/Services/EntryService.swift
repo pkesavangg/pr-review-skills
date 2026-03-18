@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import SwiftData
@@ -7,7 +8,8 @@ import SwiftData
  This service intentionally aggregates all entry-related operations to keep the entry management flow discoverable and auditable in a single place. Splitting across multiple types would add indirection and risk during critical data operations.
  */
 @MainActor
-final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:disable:this type_body_length file_length
+// swiftlint:disable:next type_body_length
+final class EntryService: EntryServiceProtocol, ObservableObject {
     @Injector var logger: LoggerServiceProtocol
     @Injector var goalAlertService: GoalAlertServiceProtocol
     @Injector var integrationService: IntegrationServiceProtocol
@@ -1442,4 +1444,4 @@ final class EntryService: EntryServiceProtocol, ObservableObject { // swiftlint:
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
     }
-} // swiftlint:disable:this type_body_length file_length
+}

@@ -10,7 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,7 +23,7 @@ fun CustomTabScreen(
     viewModel: CustomTabViewModel = hiltViewModel(),
     urlToOpen: String,
 ) {
-    val navigationState by viewModel.chromeTabState.collectAsState()
+    val navigationState by viewModel.chromeTabState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(navigationState) {

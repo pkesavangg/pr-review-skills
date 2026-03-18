@@ -108,7 +108,7 @@ constructor(
 
     }
     val signupData: SignupData = stateValue.form.getValuesAsType()
-    AppLog.d(TAG, "Signup data: $signupData")
+    AppLog.d(TAG, "Signup data validated")
     viewModelScope.launch {
       try {
         val isMetric = signupData.useMetric

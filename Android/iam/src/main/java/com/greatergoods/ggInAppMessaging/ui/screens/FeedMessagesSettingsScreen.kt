@@ -13,7 +13,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +36,7 @@ fun FeedMessagesSettingsScreen(
   modifier: Modifier = Modifier
 ) {
   val viewModel: FeedMessagesViewModel = hiltViewModel()
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   // Load settings when screen is first displayed
   LaunchedEffect(Unit) {
@@ -134,7 +134,6 @@ private fun SettingRow(
     Switch(
       checked = isEnabled,
       onCheckedChange = onToggle,
-      // modifier = Modifier.height(56.dp),
       colors = SwitchDefaults.colors(
         checkedThumbColor = IamTheme.colors.primaryBackground,
         checkedTrackColor = IamTheme.colors.primaryAction,
