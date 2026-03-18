@@ -726,35 +726,6 @@ struct ScaleRepositoryTests {
         #expect(scales.first?.broadcastIdString == "BC-123")
     }
 
-//    @Test("replaceAllDevicesForAccount preserves connection status when matching")
-//    func replaceAllDevicesForAccountPreservesConnectionStatus() async throws {
-//        let sut = makeSUT()
-//        // Create synced device with connection status
-//        let syncedDevice = ScaleTestFixtures.makeDevice(
-//            id: "synced-1",
-//            accountId: "acct-1",
-//            broadcastIdString: "BC-123",
-//            isSynced: true
-//        )
-//        syncedDevice.isSynced = true
-//        syncedDevice.isConnected = true
-//        syncedDevice.isWifiConfigured = true
-//        sut.context.insert(syncedDevice)
-//        if let pref = syncedDevice.r4ScalePreference { sut.context.insert(pref) }
-//        if let bath = syncedDevice.bathScale { sut.context.insert(bath) }
-//        try sut.context.save()
-//
-//        let serverDevice = ScaleTestFixtures.makeScaleDTO(
-//            id: "synced-1",
-//            broadcastIdString: "BC-123",
-//            broadcastId: nil  // Set to nil to avoid overwriting broadcastIdString
-//        )
-//        try await sut.replaceAllDevicesForAccount("acct-1", with: [serverDevice], preserveUnsynced: [])
-//
-//        let fetched = try await sut.getDevice("synced-1")
-//        #expect(fetched?.isConnected == true)
-//        #expect(fetched?.isWifiConfigured == true)
-//    }
 
     @Test("replaceAllDevicesForAccount updates device with new ID when matching")
     func replaceAllDevicesForAccountUpdatesWithNewId() async throws {

@@ -3,7 +3,14 @@ import Foundation
 
 @MainActor
 final class MockLoggerService: LoggerServiceProtocol {
+    struct LoggedEntry: Equatable {
+        let level: LogLevel
+        let tag: String
+        let message: String
+    }
+
     private(set) var messages: [String] = []
+    private(set) var entries: [LoggedEntry] = []
 
     func getAllLogs() async throws -> [LogEntry] { [] }
     func getCurrentSessionLogs() async throws -> [LogEntry] { [] }
@@ -19,6 +26,7 @@ final class MockLoggerService: LoggerServiceProtocol {
         line: UInt,
         accountId: String?
     ) {
+        entries.append(LoggedEntry(level: level, tag: tag, message: message))
         messages.append("[\(tag)] \(message)")
     }
 

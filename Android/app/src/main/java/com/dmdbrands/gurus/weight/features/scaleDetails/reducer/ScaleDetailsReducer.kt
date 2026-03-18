@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.scaleDetails.strings.ScaleNameDialogS
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import androidx.compose.runtime.Stable
 
 /**
  * Controls for Scale Name Dialog form.
@@ -36,6 +37,7 @@ data class ScaleNameDialogFormControls(
 /**
  * State for ScaleDetailsScreen.
  */
+@Stable
 data class ScaleDetailsState(
   val scale: Device? = null,
   val scaleNameForm: FormGroup<ScaleNameDialogFormControls>,

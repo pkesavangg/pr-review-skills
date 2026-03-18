@@ -1,7 +1,7 @@
 plugins {
   alias(libs.plugins.android.library)
   alias(libs.plugins.kotlin.android)
-  kotlin("kapt")
+  alias(libs.plugins.hilt)
   alias(libs.plugins.ksp)
 }
 
@@ -35,16 +35,11 @@ android {
 }
 
 dependencies {
-
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
-
   implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
   implementation(libs.hilt.android)
-  kapt(libs.hilt.android.compiler)
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.android.compiler)
+  ksp(libs.hilt.android.compiler)
 
   testImplementation(libs.junit)
   androidTestImplementation(libs.androidx.junit)

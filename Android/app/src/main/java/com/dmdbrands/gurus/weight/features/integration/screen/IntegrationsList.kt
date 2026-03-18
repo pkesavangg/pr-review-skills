@@ -19,6 +19,8 @@ import com.dmdbrands.gurus.weight.features.integration.model.IntegrationIntent
 import com.dmdbrands.gurus.weight.features.integration.model.IntegrationItem
 import com.dmdbrands.gurus.weight.features.integration.model.IntegrationState
 import com.dmdbrands.gurus.weight.resources.AppIcons
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -41,7 +43,7 @@ fun IntegrationList(
         .clip(RoundedCornerShape(spacing.sm)),
   ) {
     // All Integrations Section
-    itemsIndexed(state.integrations) { index, integration ->
+    itemsIndexed(state.integrations, key = { _, integration -> integration.provider }) { index, integration ->
       IntegrationListItem(
         integration = integration,
         onToggle = {
@@ -73,7 +75,7 @@ fun IntegrationListPreview() {
         IntegrationList(
           state =
             IntegrationState(
-              integrations = emptyList(),
+              integrations = persistentListOf(),
             ),
           handleIntent = {},
         )
@@ -83,7 +85,7 @@ fun IntegrationListPreview() {
           state =
             IntegrationState(
               integrations =
-                listOf(
+                persistentListOf(
                   IntegrationItem(
                     provider = IntegrationProvider.Fitbit,
                     name = "Fitbit",
@@ -100,7 +102,7 @@ fun IntegrationListPreview() {
           state =
             IntegrationState(
               integrations =
-                listOf(
+                persistentListOf(
                   IntegrationItem(
                     provider = IntegrationProvider.Fitbit,
                     name = "Fitbit",

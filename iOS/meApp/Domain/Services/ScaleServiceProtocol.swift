@@ -59,6 +59,14 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
         skipDuplicateCheck: Bool
     ) async throws -> Device
 
+    func createA6Scale(
+        device: Device,
+        sku: String?,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device
+
     /// Updates the status of a scale.
     /// - Parameters:
     ///   - scales: The scales to update.

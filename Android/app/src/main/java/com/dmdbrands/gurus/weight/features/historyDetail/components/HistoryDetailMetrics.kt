@@ -109,7 +109,6 @@ private fun AnimatedMetricItem(
   isVisible: Boolean,
 ) {
   val alpha = remember { Animatable(0f) }
-  rememberCoroutineScope()
 
   LaunchedEffect(isVisible) {
     if (isVisible) {

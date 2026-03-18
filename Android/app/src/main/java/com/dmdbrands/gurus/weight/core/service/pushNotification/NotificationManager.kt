@@ -50,7 +50,6 @@ class NotificationManager(
         appScope.launch {
           appRepository.setFcmToken(token)
         }
-        // TODO: Here, you can handle the token as needed (e.g., send it to your server)
       },
       onError = { exception ->
         AppLog.e("NotificationManager", "Fetching FCM token failed", exception.toString())

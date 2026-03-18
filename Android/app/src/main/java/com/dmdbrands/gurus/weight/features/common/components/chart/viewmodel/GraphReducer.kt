@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Reducer for the graph state, handling intents to update the graph state.
@@ -12,7 +13,7 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
     )
 
     is GraphIntent.UpdateData -> state.copy(
-      data = intent.data,
+      data = intent.data.toImmutableList(),
     )
 
     is GraphIntent.SetSecondaryKey -> state.copy(
@@ -20,7 +21,7 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
     )
 
     is GraphIntent.UpdateTarget -> state.copy(
-      target = intent.target,
+      target = intent.target.toImmutableList(),
     )
 
     is GraphIntent.UpdatePrimaryYStep -> state.copy(primaryYStep = intent.step)

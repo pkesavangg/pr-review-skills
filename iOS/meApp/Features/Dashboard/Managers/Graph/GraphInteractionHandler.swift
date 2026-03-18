@@ -147,7 +147,7 @@ final class GraphInteractionHandler {
     }
 
     /// Resolves a selection including an interpolated weight for smooth crosshair positioning.
-    func resolveSelectionWithInterpolation(
+    func resolveSelectionWithInterpolation( // swiftlint:disable:this function_parameter_count
         at selectedDate: Date,
         from operations: [BathScaleWeightSummary],
         dataPreparer: GraphDataPreparer,

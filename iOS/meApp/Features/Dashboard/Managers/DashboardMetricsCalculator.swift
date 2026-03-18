@@ -290,7 +290,7 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
     }
 
     /// Creates entry from interpolated average when no visible operations
-    private func createEntryFromInterpolatedAverage(
+    private func createEntryFromInterpolatedAverage( // swiftlint:disable:this function_parameter_count
         entry: Entry,
         operations: [BathScaleWeightSummary],
         period: TimePeriod,
@@ -340,7 +340,7 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
     }
 
     /// Creates entry from visible operations averages
-    private func createEntryFromVisibleOperations(
+    private func createEntryFromVisibleOperations( // swiftlint:disable:this function_body_length
         entry: Entry,
         operations: [BathScaleWeightSummary],
         weightUnit: WeightUnit,

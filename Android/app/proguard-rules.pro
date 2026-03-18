@@ -20,12 +20,6 @@
 -keepclassmembers class kotlin.Metadata {
     public <methods>;
 }
--keep class kotlin.reflect.** { *; }
--keep class kotlin.reflect.jvm.internal.** { *; }
--dontwarn kotlin.reflect.jvm.internal.**
-
-# Keep Kotlin property intrinsics for KProperty1 reflection (used by GraphUtil)
--keep class kotlin.jvm.internal.** { *; }
 
 # Kotlin coroutines
 -keepclassmembers class kotlinx.coroutines.** {
@@ -206,13 +200,6 @@
 -keep class com.dmdbrands.gurus.weight.features.common.model.** { *; }
 -keep class com.dmdbrands.gurus.weight.domain.model.common.** { *; }
 
-# PeriodBodyScaleSummary: properties accessed via KProperty1 reflection in GraphUtil
-# Must preserve member names so KProperty1.get() resolves correctly
--keepclassmembers class com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary {
-    <fields>;
-    <methods>;
-}
--keepnames class com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary { *; }
 
 # ----------------------------------------------------------------------------
 # FormControl reflection: FormGroup/MultiFormGroup use javaClass.declaredFields
@@ -224,16 +211,14 @@
 }
 
 # ----------------------------------------------------------------------------
-# Graph/Chart helper classes (uses KProperty1 reflection)
+# Graph/Chart helper classes
 # ----------------------------------------------------------------------------
 -keep class com.dmdbrands.gurus.weight.features.common.helper.graph.** { *; }
 -keep class com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper { *; }
 
 # ----------------------------------------------------------------------------
-# SegmentButtonGroup uses KProperty1.get() on data class properties
+# SegmentButtonGroup data classes
 # ----------------------------------------------------------------------------
--keepclassmembers class com.dmdbrands.gurus.weight.features.common.components.SegmentButtonData { <fields>; }
--keepclassmembers class com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoKey { <fields>; }
 
 # ----------------------------------------------------------------------------
 # GG Bluetooth library (external AAR)
@@ -301,3 +286,10 @@
     public static void d(...);
     public static void v(...);
 }
+
+# ----------------------------------------------------------------------------
+# EncryptedSharedPreferences / security-crypto (Tink)
+# Required because Tink classes must not be obfuscated (release builds have isMinifyEnabled = true)
+# ----------------------------------------------------------------------------
+-keep class com.google.crypto.tink.** { *; }
+-dontwarn com.google.crypto.tink.**
