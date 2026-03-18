@@ -61,7 +61,11 @@ playServicesLocation = "21.3.0"
 hiltCommon = "1.2.0"
 hiltWork = "1.2.0"
 material3 = "1.5.0-alpha06"
-securityCrypto = "1.0.0"
+securityCrypto = "1.1.0-alpha06"
+baselineprofile = "1.3.4"
+uiautomator = "2.3.0"
+benchmarkMacroJunit4 = "1.3.3"
+profileinstaller = "1.4.1"
 
 [libraries]
 vico-core = { module = "com.dmdbrands.lib:vico-core", version.ref = "vico" }
@@ -142,6 +146,9 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
+androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
 
 [plugins]
@@ -156,5 +163,7 @@ google-service = { id = "com.google.gms.google-services", version.ref = "googleS
 google-proto = { id = "com.google.protobuf", version.ref = "protobuf" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 
 

@@ -12,6 +12,7 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.google.proto)
+  alias(libs.plugins.baselineprofile)
   id("jacoco")
 }
 
@@ -193,6 +194,11 @@ dependencies {
   implementation(project(":iam"))
 
   // implementation(project(":ggBluetoothLibrary"))
+
+  // Baseline Profiles
+  implementation(libs.androidx.profileinstaller)
+  baselineProfile(project(":benchmark"))
+
   // Play Store Review
   implementation(libs.play.review)
   implementation(libs.play.review.ktx)
