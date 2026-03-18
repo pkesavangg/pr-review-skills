@@ -18,9 +18,11 @@ object InitializationModule {
     fun provideAppInitializer(
         logRepository: ILogger,
         crashReportingService: ICrashReportingService,
+         @ApplicationScope appScope: CoroutineScope,
     ): AppInitializer =
         AppInitializer(
             logRepository,
             crashReportingService,
+            appScope,
         )
 }
