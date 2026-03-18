@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetail
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @Composable
@@ -35,7 +36,7 @@ fun HistoryDetailScreen(monthKey: String) {
             factory.create(monthKey)
         },
     )
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing = state.isLoading
 
     HistoryDetailScreenContent(
@@ -177,7 +178,7 @@ fun HistoryDetailScreenPreview() {
             state =
                 HistoryDetailState(
                     month = "Dec 2022",
-                    historyItems = sampleItems,
+                    historyItems = sampleItems.toImmutableList(),
                 ),
             isRefreshing = false,
             onRefresh = {},

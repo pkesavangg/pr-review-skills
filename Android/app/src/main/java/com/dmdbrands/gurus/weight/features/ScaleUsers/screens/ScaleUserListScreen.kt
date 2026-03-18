@@ -4,7 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun ScaleUserListScreen(scaleId: String) {
@@ -33,7 +34,7 @@ fun ScaleUserListScreen(scaleId: String) {
     hiltViewModel<ScaleUserListViewModel, ScaleUserListViewModel.Factory>(
       creationCallback = { factory -> factory.create(scaleId) },
     )
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   BackHandler {
     viewModel.handleIntent(ScaleUserListIntent.Back)
@@ -104,7 +105,7 @@ fun ScaleUserListScreenContent(
 @Composable
 fun ScaleUserListScreenPreview() {
   val dummyState = ScaleUserListState(
-    scaleUserList = listOf(
+    scaleUserList = persistentListOf(
       GGBTUser(
         name = "Poongs",
         token = "424443432323424324",

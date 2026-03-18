@@ -178,9 +178,13 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         convertWeight: @escaping (Int) -> Double
     ) -> [GraphSeries] {
         dataPreparer.buildChartSeries(
-            from: operations, selectedMetric: selectedMetric,
-            isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight,
-            convertWeight: convertWeight, yAxisDomain: nil, period: state.selectedPeriod
+            from: operations,
+            selectedMetric: selectedMetric,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertWeight: convertWeight,
+            yAxisDomain: nil,
+            period: state.selectedPeriod
         )
     }
 
@@ -209,15 +213,27 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             opsForYAxis = combined.isEmpty ? allOperations : combined
         }
         let series = dataPreparer.buildChartSeries(
-            from: allOperations, selectedMetric: selectedMetric,
-            isWeightlessMode: isWeightlessMode, anchorWeight: anchorWeight,
-            convertWeight: convertWeight, yAxisDomain: yAxisDomain,
-            visibleOperations: visibleOperations, operationsForYAxis: opsForYAxis,
+            from: allOperations,
+            selectedMetric: selectedMetric,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertWeight: convertWeight,
+            yAxisDomain: yAxisDomain,
+            visibleOperations: visibleOperations,
+            operationsForYAxis: opsForYAxis,
             period: state.selectedPeriod
         )
-        cacheChartSeries(series, count: allOperations.count, domain: yAxisDomain, metric: selectedMetric)
-        logger.log(level: .debug, tag: "DashboardGraphManager",
-                   message: "Generated chart: \(series.count) pts, metric: \(selectedMetric ?? "none")")
+        cacheChartSeries(
+            series,
+            count: allOperations.count,
+            domain: yAxisDomain,
+            metric: selectedMetric
+        )
+        logger.log(
+            level: .debug,
+            tag: "DashboardGraphManager",
+            message: "Generated chart: \(series.count) pts, metric: \(selectedMetric ?? "none")"
+        )
         return series
     }
 
@@ -225,28 +241,42 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // swiftlint:disable:next function_parameter_count
     func getYAxisScale(
-        from operations: [BathScaleWeightSummary], goalWeight: Double?,
-        isWeightlessMode: Bool, anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat
+        from operations: [BathScaleWeightSummary],
+        goalWeight: Double?,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double,
+        chartHeight: CGFloat
     ) -> YAxisScale {
         let scale = YAxisCalculator.calculateYAxis(
-            operations: operations, goalWeight: goalWeight, isWeightlessMode: isWeightlessMode,
-            anchorWeight: anchorWeight, convertStoredWeightToDisplay: convertWeight,
-            chartHeight: chartHeight, lastScale: lastYAxisScale
+            operations: operations,
+            goalWeight: goalWeight,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertStoredWeightToDisplay: convertWeight,
+            chartHeight: chartHeight,
+            lastScale: lastYAxisScale
         )
         lastYAxisScale = scale
         return scale
     }
 
-// swiftlint:disable:next function_parameter_count
+    // swiftlint:disable:next function_parameter_count
     func calculateAndCacheYAxisDomain(
-        from operations: [BathScaleWeightSummary], goalWeight: Double?,
-        isWeightlessMode: Bool, anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double, chartHeight: CGFloat
+        from operations: [BathScaleWeightSummary],
+        goalWeight: Double?,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double,
+        chartHeight: CGFloat
     ) {
         let scale = getYAxisScale(
-            from: operations, goalWeight: goalWeight, isWeightlessMode: isWeightlessMode,
-            anchorWeight: anchorWeight, convertWeight: convertWeight, chartHeight: chartHeight
+            from: operations,
+            goalWeight: goalWeight,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertWeight: convertWeight,
+            chartHeight: chartHeight
         )
         guard state.cachedYAxisDomain != scale.domain || state.cachedYAxisTicks != scale.ticks else { return }
         state.cachedYAxisDomain = scale.domain
@@ -257,7 +287,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func getVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         interaction.visibleOperations(
-            from: operations, scrollPosition: state.xScrollPosition,
+            from: operations,
+            scrollPosition: state.xScrollPosition,
             period: state.selectedPeriod,
             visibleDomainLength: visibleDomainLength(for: state.selectedPeriod),
             dataPreparer: dataPreparer
@@ -266,14 +297,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     func getStrictVisibleOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         dataPreparer.strictlyVisibleOperations(
-            from: operations, scrollPosition: state.xScrollPosition,
+            from: operations,
+            scrollPosition: state.xScrollPosition,
             visibleDomainLength: visibleDomainLength(for: state.selectedPeriod)
         )
     }
 
     func getBracketingOperations(from operations: [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         dataPreparer.bracketingOperations(
-            from: operations, scrollPosition: state.xScrollPosition,
+            from: operations,
+            scrollPosition: state.xScrollPosition,
             visibleDomainLength: visibleDomainLength(for: state.selectedPeriod)
         )
     }
@@ -285,24 +318,52 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         let bounds: (min: Date, max: Date)? = operations.first.flatMap { firstOp in
             operations.last.map { (min: firstOp.date, max: $0.date) }
         }
-        updateScrollPosition(to: calculateOptimalScrollPosition(for: state.selectedPeriod, from: operations, cachedBounds: bounds))
+        updateScrollPosition(
+            to: calculateOptimalScrollPosition(
+                for: state.selectedPeriod,
+                from: operations,
+                cachedBounds: bounds
+            )
+        )
     }
 
     // MARK: - X-Axis & Scroll Math
 
-    func generateVisibleXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary], scrollPosition: Date) -> [Date] {
-        interaction.xAxisValues(for: period, from: operations, scrollPosition: scrollPosition, renderConfig: renderConfig)
+    func generateVisibleXAxisValues(
+        for period: TimePeriod,
+        from operations: [BathScaleWeightSummary],
+        scrollPosition: Date
+    ) -> [Date] {
+        interaction.xAxisValues(
+            for: period,
+            from: operations,
+            scrollPosition: scrollPosition,
+            renderConfig: renderConfig
+        )
     }
 
     func calculateOptimalScrollPosition(
-        for period: TimePeriod, from operations: [BathScaleWeightSummary],
-        anchorDate: Date? = nil, showingLatest: Bool = true, cachedBounds: (min: Date, max: Date)? = nil
+        for period: TimePeriod,
+        from operations: [BathScaleWeightSummary],
+        anchorDate: Date? = nil,
+        showingLatest: Bool = true,
+        cachedBounds: (min: Date, max: Date)? = nil
     ) -> Date {
-        renderConfig.optimalScrollPosition(for: period, from: operations, anchorDate: anchorDate,
-                                           showingLatest: showingLatest, cachedBounds: cachedBounds)
+        renderConfig.optimalScrollPosition(
+            for: period,
+            from: operations,
+            anchorDate: anchorDate,
+            showingLatest: showingLatest,
+            cachedBounds: cachedBounds
+        )
     }
 
-    func clampScrollPosition(_ position: Date, for period: TimePeriod, minDate: Date, maxDate: Date) -> Date {
+    func clampScrollPosition(
+        _ position: Date,
+        for period: TimePeriod,
+        minDate: Date,
+        maxDate: Date
+    ) -> Date {
         renderConfig.clampScrollPosition(position, for: period, minDate: minDate, maxDate: maxDate)
     }
 
@@ -312,34 +373,68 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // MARK: - Interpolation & Stats
 
-    func interpolatedDisplayWeight(at date: Date, from operations: [BathScaleWeightSummary],
-                                   isWeightlessMode: Bool, anchorWeight: Double?,
-                                   convertWeight: @escaping (Int) -> Double) -> Double? {
-        dataPreparer.interpolatedDisplayWeight(at: date, from: operations, isWeightlessMode: isWeightlessMode,
-                                               anchorWeight: anchorWeight, convertWeight: convertWeight, period: state.selectedPeriod)
-    }
-
-    func calculateInterpolatedAverageForVisibleRange(
-        from allOperations: [BathScaleWeightSummary], period: TimePeriod,
-        isWeightlessMode: Bool, anchorWeight: Double?,
-        convertWeight: @escaping (Int) -> Double, labelRange: DateInterval? = nil
+    func interpolatedDisplayWeight(
+        at date: Date,
+        from operations: [BathScaleWeightSummary],
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double
     ) -> Double? {
-        dataPreparer.interpolatedAverageForVisibleRange(
-            from: allOperations, period: period, isWeightlessMode: isWeightlessMode,
-            anchorWeight: anchorWeight, convertWeight: convertWeight,
-            labelRange: labelRange, sampleDates: generateSampleDatesForVisibleRange(for: period)
+        dataPreparer.interpolatedDisplayWeight(
+            at: date,
+            from: operations,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertWeight: convertWeight,
+            period: state.selectedPeriod
         )
     }
 
-    func getCurrentAverageWeight(from operations: [BathScaleWeightSummary], isWeightlessMode: Bool,
-                                  anchorWeight: Double?, convertWeight: @escaping (Int) -> Double) -> Double {
-        dataPreparer.averageWeight(for: operations, isWeightlessMode: isWeightlessMode,
-                                   anchorWeight: anchorWeight, convertWeight: convertWeight)
+    func calculateInterpolatedAverageForVisibleRange(
+        from allOperations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double,
+        labelRange: DateInterval? = nil
+    ) -> Double? {
+        dataPreparer.interpolatedAverageForVisibleRange(
+            from: allOperations,
+            period: period,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertWeight: convertWeight,
+            labelRange: labelRange,
+            sampleDates: generateSampleDatesForVisibleRange(for: period)
+        )
     }
 
-    func calculateWeightlessDisplay(_ operations: [BathScaleWeightSummary], anchorWeight: Double?,
-                                     period: TimePeriod, convertWeight: @escaping (Int) -> Double) -> Double? {
-        dataPreparer.weightlessDisplay(for: operations, anchorWeight: anchorWeight, period: period, convertWeight: convertWeight)
+    func getCurrentAverageWeight(
+        from operations: [BathScaleWeightSummary],
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: @escaping (Int) -> Double
+    ) -> Double {
+        dataPreparer.averageWeight(
+            for: operations,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertWeight: convertWeight
+        )
+    }
+
+    func calculateWeightlessDisplay(
+        _ operations: [BathScaleWeightSummary],
+        anchorWeight: Double?,
+        period: TimePeriod,
+        convertWeight: @escaping (Int) -> Double
+    ) -> Double? {
+        dataPreparer.weightlessDisplay(
+            for: operations,
+            anchorWeight: anchorWeight,
+            period: period,
+            convertWeight: convertWeight
+        )
     }
 
     // MARK: - Metric Helpers
@@ -390,10 +485,17 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
     // MARK: - Performance Helpers
 
-    func getChartOperationsWithBuffer(from allOperations: [BathScaleWeightSummary],
-                                       scrollPosition: Date, period: TimePeriod) -> [BathScaleWeightSummary] {
-        dataPreparer.windowedOperations(from: allOperations, scrollPosition: scrollPosition,
-                                         period: period, visibleDomainLength: visibleDomainLength(for: period))
+    func getChartOperationsWithBuffer(
+        from allOperations: [BathScaleWeightSummary],
+        scrollPosition: Date,
+        period: TimePeriod
+    ) -> [BathScaleWeightSummary] {
+        dataPreparer.windowedOperations(
+            from: allOperations,
+            scrollPosition: scrollPosition,
+            period: period,
+            visibleDomainLength: visibleDomainLength(for: period)
+        )
     }
 
     // MARK: - Trigger Helpers
@@ -404,10 +506,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         state.dataChangeTrigger += 1; triggerUpdate()
     }
 
-    func updateMetricsForCurrentView(selectedPoint: BathScaleWeightSummary?,
-                                      visibleOperations: [BathScaleWeightSummary],
-                                      updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void,
-                                      resetMetrics: @escaping () -> Void) {
+    func updateMetricsForCurrentView(
+        selectedPoint: BathScaleWeightSummary?,
+        visibleOperations: [BathScaleWeightSummary],
+        updateMetrics: @escaping (BathScaleWeightSummary) async throws -> Void,
+        resetMetrics: @escaping () -> Void
+    ) {
         if let point = selectedPoint { Task { try? await updateMetrics(point) } } else { resetMetrics() }
     }
 

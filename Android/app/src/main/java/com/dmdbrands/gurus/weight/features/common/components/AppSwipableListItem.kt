@@ -123,15 +123,6 @@ private fun rememberSwipeableState(
           SwipeAnchors.Center at 0f
           SwipeAnchors.End at screenSizePx
         },
-      // TODO: Need to handle this
-      // positionalThreshold = { positionalThreshold * it },
-      // velocityThreshold = { velocityThreshold },
-      // snapAnimationSpec =
-      //     spring(
-      //         dampingRatio = Spring.DampingRatioLowBouncy,
-      //         stiffness = Spring.StiffnessMedium,
-      //     ),
-      // decayAnimationSpec = exponentialDecay(),
     )
   }
 }

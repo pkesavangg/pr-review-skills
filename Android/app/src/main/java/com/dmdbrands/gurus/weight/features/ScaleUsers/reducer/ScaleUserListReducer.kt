@@ -7,6 +7,10 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Controls for Scale Username form.
@@ -15,7 +19,7 @@ data class ScaleUsernameFormControls(
   val username: FormControl<String>,
 ) {
   companion object {
-    fun create(userList: List<GGBTUser> = emptyList()) = ScaleUsernameFormControls(
+    fun create(userList: List<GGBTUser> = persistentListOf()) = ScaleUsernameFormControls(
       username = FormControl.create(
         initialValue = "",
         validators = listOf(
@@ -40,9 +44,10 @@ data class ScaleUsernameFormControls(
 /**
  * State for ScaleUserListScreen.
  */
+@Stable
 data class ScaleUserListState(
   val scale: Device? = null,
-  val scaleUserList: List<GGBTUser> = emptyList(),
+  val scaleUserList: ImmutableList<GGBTUser> = persistentListOf(),
   val isLoading: Boolean = false,
   val hasSetUsername: Boolean = false,
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
@@ -94,7 +99,7 @@ class ScaleUserListReducer : IReducer<ScaleUserListState, ScaleUserListIntent> {
 
       is ScaleUserListIntent.SetUserList -> {
         state.copy(
-          scaleUserList = intent.userList,
+          scaleUserList = intent.userList.toImmutableList(),
           isLoading = false,
         )
       }

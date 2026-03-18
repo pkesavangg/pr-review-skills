@@ -243,9 +243,13 @@ struct HealthKitStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT(accountService: account, healthKitService: healthKit, kvStorage: kv)
 
         store.handlePrimaryAction(for: .permissionsNotAllowed)
-        let updated = await waitUntil { store.activeState == .integrationComplete }
-
         let key = KvStorageKeys.scopedHealthKitModalKey(.hasShownFirstTimeConnectScreenBase, accountId: "hk-4")
+        let updated = await waitUntil(timeoutNanoseconds: 5_000_000_000) {
+            store.activeState == .integrationComplete &&
+                (kv.getValue(forKey: key) as? Bool) == true &&
+                healthKit.integrateCalls == [true]
+        }
+
         #expect(updated == true)
         #expect(kv.getValue(forKey: key) as? Bool == true)
         #expect(healthKit.integrateCalls == [true])
@@ -258,6 +262,7 @@ struct HealthKitStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT(healthKitService: healthKit)
 
         store.handlePrimaryAction(for: .permissionsNotAllowed)
+        await Task.yield()
         let updated = await waitUntil { store.activeState == .integrationFailed }
 
         #expect(updated == true)
@@ -270,6 +275,7 @@ struct HealthKitStoreTests {
         let (store, _, _, _, _, _, _) = makeSUT(healthKitService: healthKit)
 
         store.handlePrimaryAction(for: .permissionsNotAllowed)
+        await Task.yield()
         let updated = await waitUntil { store.activeState == .userConflict }
 
         #expect(updated == true)

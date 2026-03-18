@@ -11,12 +11,12 @@ import Foundation
 final class IntegrationRepository: IntegrationRepositoryProtocol {
     // MARK: - Properties
     
-    private let kvStorage: KvStorageService
+    private let kvStorage: KvStorageServiceProtocol
     private let logger = LoggerService.shared
-        
+
     // MARK: - Initialization
-    
-    init(kvStorage: KvStorageService = .shared) {
+
+    init(kvStorage: KvStorageServiceProtocol = KvStorageService.shared) {
         self.kvStorage = kvStorage
     }
     

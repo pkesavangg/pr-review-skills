@@ -523,7 +523,7 @@ extension BtWifiScaleSetupStore {
         do {
             let apiRepo = AccountRepositoryAPI()
             _ = try await apiRepo.patchDashboardType(.dashboard12)
-            try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
+            _ = try await accountService.refreshAccount(accountId: accountService.activeAccount?.accountId)
         } catch {
             LoggerService.shared.log(
                 level: .error,

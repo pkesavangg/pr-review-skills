@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.google.common.truth.Truth.assertThat
 import org.junit.Before
 import org.junit.Test
@@ -14,6 +16,19 @@ import org.junit.Test
 class SettingsReducerTest {
 
     private lateinit var reducer: SettingsReducer
+
+    private val fakeAccount = Account(
+        id = "acc-1",
+        firstName = "John",
+        lastName = "Doe",
+        dob = "1990-01-01",
+        email = "john@example.com",
+        gender = "male",
+        zipcode = "12345",
+        weightUnit = WeightUnit.LB,
+        height = 1750,
+        activityLevel = "normal",
+    )
 
     @Before
     fun setUp() {
@@ -135,5 +150,71 @@ class SettingsReducerTest {
         val state = SettingsState(account = null)
 
         assertThat(state.currentNotificationStatus).isEqualTo("Off")
+    }
+
+    @Test
+    fun `UpdateAccount sets account and hasMultipleAccounts`() {
+        val state = SettingsState()
+
+        val result = reducer.reduce(state, SettingsIntent.UpdateAccount(fakeAccount, hasMultipleAccounts = true))
+
+        assertThat(result?.account).isEqualTo(fakeAccount)
+        assertThat(result?.hasMultipleAccounts).isTrue()
+    }
+
+    @Test
+    fun `UpdateAccount with null account clears account`() {
+        val state = SettingsState(account = fakeAccount, hasMultipleAccounts = true)
+
+        val result = reducer.reduce(state, SettingsIntent.UpdateAccount(null, hasMultipleAccounts = false))
+
+        assertThat(result?.account).isNull()
+        assertThat(result?.hasMultipleAccounts).isFalse()
+    }
+
+    @Test
+    fun `currentNotificationStatus is On when shouldSendEntryNotifications is true`() {
+        val account = fakeAccount.copy(shouldSendEntryNotifications = true, shouldSendWeightInEntryNotifications = false)
+        val state = SettingsState(account = account)
+
+        assertThat(state.currentNotificationStatus).isEqualTo("On")
+    }
+
+    @Test
+    fun `currentNotificationStatus is On w Weight when both notification flags are true`() {
+        val account = fakeAccount.copy(shouldSendEntryNotifications = true, shouldSendWeightInEntryNotifications = true)
+        val state = SettingsState(account = account)
+
+        assertThat(state.currentNotificationStatus).isEqualTo("On w/ Weight")
+    }
+
+    @Test
+    fun `currentNotificationStatus is Off when entry is false but weight is true`() {
+        val account = fakeAccount.copy(shouldSendEntryNotifications = false, shouldSendWeightInEntryNotifications = true)
+        val state = SettingsState(account = account)
+
+        assertThat(state.currentNotificationStatus).isEqualTo("Off")
+    }
+
+    @Test
+    fun `currentNotificationStatus is Off when notification flags are null`() {
+        val account = fakeAccount.copy(shouldSendEntryNotifications = null, shouldSendWeightInEntryNotifications = null)
+        val state = SettingsState(account = account)
+
+        assertThat(state.currentNotificationStatus).isEqualTo("Off")
+    }
+
+    @Test
+    fun `side-effect and modal intents return null`() {
+        val state = SettingsState()
+
+        assertThat(reducer.reduce(state, SettingsIntent.ExportData)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.LogoutAllAccounts)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.DeleteAccount)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.ConfirmDeleteAccount)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.OpenTermsOfService)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.OpenHelp)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.ShowBiologicalSexModal)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.ShowNotificationsModal)).isNull()
     }
 }

@@ -16,6 +16,10 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * UI state for the graph component, holding all chart-related state variables.
@@ -48,10 +52,11 @@ import java.util.Calendar
  * @property graphLines Primary graph lines data.
  * @property secondaryGraphLines Secondary graph lines data.
  */
+@Stable
 data class GraphState(
   val weightUnit: WeightUnit = WeightUnit.KG,
-  val data: List<PeriodBodyScaleSummary> = emptyList(),
-  val target: List<PeriodBodyScaleSummary> = emptyList(),
+  val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
+  val target: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val secondaryKey: DashboardKey? = null,
   val primaryYAxis: CartesianRangeValues? = null,
   val secondaryYAxis: CartesianRangeValues? = null,

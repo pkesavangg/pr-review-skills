@@ -248,38 +248,6 @@ constructor(
   }
 
   /**
-   * Saves the dashboard metrics configuration.
-   *
-   * @param visibleMetrics List of visible metrics to save.
-   */
-  private fun saveDashboardMetrics(visibleMetrics: List<Stat>) {
-    viewModelScope.launch {
-      try {
-        val metricKeys = visibleMetrics.mapNotNull { stat ->
-          when (stat.key) {
-            is DashboardKey.Metric -> stat.key.key
-            is DashboardKey.Milestone -> null
-          }
-        }
-
-        dashboardService.updateVisibleMetricKeys(keys = metricKeys)
-
-        dialogQueueService.showToast(
-          Toast(
-            message = "Dashboard metrics saved successfully",
-          ),
-        )
-      } catch (exception: Exception) {
-        dialogQueueService.showToast(
-          Toast(
-            message = "Failed to save dashboard metrics",
-          ),
-        )
-      }
-    }
-  }
-
-  /**
    * Handles pager state changes and updates the selected segment accordingly.
    *
    * @param pagerState The new pager state index.
