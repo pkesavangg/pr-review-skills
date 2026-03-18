@@ -7,7 +7,6 @@ struct BpmOperationDTO: Codable, Sendable {
     let pulse: Double?
     let meanArterial: String?
     let note: String?
-    let irregularHb: Bool?
     let source: String?
     let unit: String?
     let entryTimestamp: String?
@@ -31,7 +30,6 @@ extension BpmOperationDTO: Identifiable {
             pulse: pulse,
             meanArterial: meanArterial,
             note: note,
-            irregularHb: irregularHb,
             source: source,
             unit: unit,
             entryTimestamp: newTimestamp,
@@ -50,7 +48,6 @@ extension BpmOperationDTO {
             pulse: self.pulse,
             meanArterial: self.meanArterial,
             note: self.note,
-            irregularHb: self.irregularHb,
             source: self.source,
             unit: self.unit,
             entryTimestamp: self.entryTimestamp,

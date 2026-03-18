@@ -17,6 +17,7 @@ final class HistoryStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
+    @Injector var productTypeStore: ProductTypeStoreProtocol
     
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -77,6 +78,17 @@ final class HistoryStore: ObservableObject {
                         }
                     }
                 }
+            }
+            .store(in: &cancellables)
+
+        // Reload history when the user switches product type in the header dropdown
+        productTypeStore.selectedItemPublisher
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.hasLoadedMonths = false
+                self.loadMonths()
             }
             .store(in: &cancellables)
     }
