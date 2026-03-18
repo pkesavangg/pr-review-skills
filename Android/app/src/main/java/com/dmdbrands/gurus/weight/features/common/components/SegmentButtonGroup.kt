@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import java.util.Locale
-import kotlin.reflect.KProperty1
 
 /**
  * Represents the different sizes available for segment buttons.
@@ -166,7 +165,7 @@ fun <T> SegmentButtonGroup(
   modifier: Modifier = Modifier,
   data: List<T>,
   selectedData: T,
-  key: KProperty1<T, String>,
+  key: (T) -> String,
   contentPadding: PaddingValues = PaddingValues(0.dp),
   size: SegmentButtonSize = SegmentButtonSize.Small,
   type: SegmentButtonType = SegmentButtonType.Single,
@@ -184,8 +183,8 @@ fun <T> SegmentButtonGroup(
 
   LaunchedEffect(selectedData) {
     if (data.isNotEmpty() && type == SegmentButtonType.Scrollable) {
-      val selectedKey = key.get(selectedData)
-      val selectedIndex = data.indexOfFirst { key.get(it) == selectedKey }
+      val selectedKey = key(selectedData)
+      val selectedIndex = data.indexOfFirst { key(it) == selectedKey }
 
       if (selectedIndex >= 0) {
         listState.animateScrollToItemCenter(selectedIndex)
@@ -205,7 +204,7 @@ fun <T> SegmentButtonGroup(
       data.forEach { item ->
         SegmentButtonItem(
           item = item,
-          isSelected = key.get(selectedData) == key.get(item),
+          isSelected = key(selectedData) == key(item),
           key = key,
           textStyle = textStyle,
           horizontalPadding = horizontalPadding,
@@ -226,11 +225,11 @@ fun <T> SegmentButtonGroup(
     ) {
       items(
         items = data,
-        key = { item -> key.get(item) }, // Use stable keys for better performance
+        key = { item -> key(item) }, // Use stable keys for better performance
       ) { item ->
         SegmentButtonItem(
           item = item,
-          isSelected = key.get(selectedData) == key.get(item),
+          isSelected = key(selectedData) == key(item),
           key = key,
           textStyle = textStyle,
           horizontalPadding = horizontalPadding,
@@ -251,7 +250,7 @@ fun <T> SegmentButtonGroup(
 private fun <T> SegmentButtonItem(
   item: T,
   isSelected: Boolean,
-  key: KProperty1<T, String>,
+  key: (T) -> String,
   textStyle: TextStyle,
   horizontalPadding: Dp,
   cornerRadius: Dp,
@@ -291,7 +290,7 @@ private fun <T> SegmentButtonItem(
         ),
     ) {
       Text(
-        text = key.get(item).uppercase(Locale.getDefault()),
+        text = key(item).uppercase(Locale.getDefault()),
         style = textStyle,
         color = if (isSelected) colors.activeContentColor else colors.inactiveContentColor,
         maxLines = maxLines,

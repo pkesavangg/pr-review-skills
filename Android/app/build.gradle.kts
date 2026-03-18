@@ -96,7 +96,6 @@ android {
 }
 
 dependencies {
-  implementation(libs.kotlin.reflect)
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
@@ -118,7 +117,7 @@ dependencies {
   implementation(libs.androidx.foundation.layout)
   implementation(libs.androidx.runtime.saveable)
   implementation(libs.androidx.appcompat)
-  implementation(libs.work.runtime.ktx)
+  implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
   testImplementation(libs.junit)
@@ -162,17 +161,11 @@ dependencies {
   // Add the dependency for the Firebase SDK for Google Analytics
   implementation(libs.firebase.analytics)
 
-  // Datastore
-  implementation(libs.androidx.datastore)
-  implementation(libs.androidx.datastore.preferences.core)
-  implementation(libs.gson)
-
   // Security - EncryptedSharedPreferences
   implementation(libs.androidx.security.crypto)
 
   // Protobuf dependencies
   implementation(libs.protobuf.javalite)
-  implementation(libs.androidx.datastore)
 
   // Timber
   implementation(libs.timber)
