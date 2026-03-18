@@ -539,7 +539,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount returns true when online and API call succeeds`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(fakeAccount.id) } returns fakeAccountInfo
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -570,7 +569,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount falls back to local DB on UnknownHostException`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.net.UnknownHostException("host not found")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -581,7 +579,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount falls back to local DB on InterruptedIOException`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.io.InterruptedIOException("timeout")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -592,7 +589,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount falls back to local DB on SocketTimeoutException`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.net.SocketTimeoutException("timeout")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -603,7 +599,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount falls back to local DB on IOException`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(any()) } throws java.io.IOException("network")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -614,7 +609,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount marks account expired and returns false on HttpException 401`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(any()) } throws httpException(401)
         coEvery { accountRepository.markAccountExpired(any()) } just Runs
         coEvery { accountRepository.clearAccountTokens(any()) } just Runs
@@ -628,7 +622,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount falls back to local DB on HttpException 500`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(any()) } throws httpException(500)
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
@@ -639,7 +632,6 @@ class AccountServiceTest {
 
     @Test
     fun `checkLoginStatusForActiveAccount falls back to local DB on general exception`() = runTest {
-
         coEvery { accountRepository.getAccountFromAPI(any()) } throws RuntimeException("unexpected")
         coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
 
