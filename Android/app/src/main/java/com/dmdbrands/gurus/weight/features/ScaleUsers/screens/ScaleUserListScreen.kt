@@ -4,7 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,7 +34,7 @@ fun ScaleUserListScreen(scaleId: String) {
     hiltViewModel<ScaleUserListViewModel, ScaleUserListViewModel.Factory>(
       creationCallback = { factory -> factory.create(scaleId) },
     )
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   BackHandler {
     viewModel.handleIntent(ScaleUserListIntent.Back)

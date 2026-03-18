@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -28,7 +28,7 @@ import kotlinx.collections.immutable.persistentListOf
 @Composable
 fun IntegrationScreen() {
     val viewmodel: IntegrationViewModel = hiltViewModel()
-    val state by viewmodel.state.collectAsState()
+    val state by viewmodel.state.collectAsStateWithLifecycle()
 
   LaunchedEffect(Unit) {
     //check it can removable or not
