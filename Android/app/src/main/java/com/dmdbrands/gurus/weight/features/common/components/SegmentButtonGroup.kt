@@ -99,7 +99,6 @@ object SegmentButtonDefaults {
       SegmentButtonSize.Small -> 0.dp
       SegmentButtonSize.Medium -> 80.dp
       SegmentButtonSize.Large -> 100.dp
-      // TODO: Need to update after UX answered
     }
 
   /**
@@ -133,7 +132,7 @@ object SegmentButtonDefaults {
   /**
    * Returns the corner radius for the segment button container.
    */
-  fun cornerRadius(): Dp = 8.dp // TODO: use design token for radius after pr merge
+  fun cornerRadius(): Dp = 8.dp
 
   @Composable
   fun colors(): SegmentedButtonColors =
@@ -144,7 +143,6 @@ object SegmentButtonDefaults {
       inactiveBorderColor = Color.Transparent,
       activeContentColor = MeTheme.colorScheme.inverseAction,
       inactiveContentColor = MeTheme.colorScheme.secondaryAction,
-      // Todo: Update proper name after UX answered
     )
 }
 

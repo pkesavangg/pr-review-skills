@@ -60,15 +60,11 @@ class NotificationHandler(
             sageChannels += channel
         }
         val notificationChannel =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                NotificationChannel(
-                    channel.channelConfig.id,
-                    channel.channelConfig.name,
-                    channel.channelConfig.importance,
-                )
-            } else {
-                TODO("VERSION.SDK_INT < O")
-            }
+            NotificationChannel(
+                channel.channelConfig.id,
+                channel.channelConfig.name,
+                channel.channelConfig.importance,
+            )
         notificationChannel.description = channel.channelConfig.description
         notificationManager.createNotificationChannel(notificationChannel)
     }
