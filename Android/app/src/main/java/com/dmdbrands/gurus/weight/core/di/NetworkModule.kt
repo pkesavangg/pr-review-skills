@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.qualifiers.RefreshClient
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import dagger.Module
@@ -132,9 +133,10 @@ object NetworkModule {
         tokenManager: ITokenManager,
         refreshTokenAPI: RefreshTokenAPI,
         userDataStore: UserDataStore,
-        navigationService: IAppNavigationService
+        navigationService: IAppNavigationService,
+        crashReportingService: ICrashReportingService,
     ): TokenAuthenticator {
-        return TokenAuthenticator(tokenManager, refreshTokenAPI, userDataStore, navigationService)
+        return TokenAuthenticator(tokenManager, refreshTokenAPI, userDataStore, navigationService, crashReportingService)
     }
 
     @Provides

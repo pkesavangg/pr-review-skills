@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.features.common.model.SettingColorType
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItem
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItemType
 import com.dmdbrands.gurus.weight.features.settings.components.UserProfileSection
+import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
@@ -259,8 +260,8 @@ fun SettingsScreenContent(
       if (state.enableTestingFeatures) {
         SettingsSection(
           title = "Developer Options",
-          items =
-            listOf(
+          items = buildList {
+            add(
               SettingsItem(
                 title = "0412 Scale Filter",
                 type = SettingsItemType.Dropdown(state.selectedMacAddress),
@@ -268,7 +269,29 @@ fun SettingsScreenContent(
                   handleIntent(SettingsIntent.ShowMacAddressFilterModal)
                 },
               ),
-            ),
+            )
+            if (BuildConfig.DEBUG) {
+              add(
+                SettingsItem(
+                  title = "Test Crash (Fatal)",
+                  type = SettingsItemType.None,
+                  color = SettingColorType.Danger,
+                  onClick = {
+                    handleIntent(SettingsIntent.TriggerTestCrash)
+                  },
+                ),
+              )
+              add(
+                SettingsItem(
+                  title = "Test Crash (Non-Fatal)",
+                  type = SettingsItemType.None,
+                  onClick = {
+                    handleIntent(SettingsIntent.TriggerTestNonFatal)
+                  },
+                ),
+              )
+            }
+          },
         )
       }
 

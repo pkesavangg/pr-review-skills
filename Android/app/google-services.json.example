@@ -1,27 +1,27 @@
 {
   "project_info": {
-    "project_number": "334405500352",
-    "firebase_url": "https://weight-gurus.firebaseio.com",
-    "project_id": "weight-gurus",
-    "storage_bucket": "weight-gurus.appspot.com"
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "firebase_url": "https://YOUR_PROJECT_ID.firebaseio.com",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_PROJECT_ID.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:334405500352:android:d328f9dc36697eed",
+        "mobilesdk_app_id": "YOUR_MOBILESDK_APP_ID",
         "android_client_info": {
           "package_name": "com.dmdbrands.gurus.weight"
         }
       },
       "oauth_client": [
         {
-          "client_id": "334405500352-igq65um4tiknp3g8pqftkp82m392pi9u.apps.googleusercontent.com",
+          "client_id": "YOUR_OAUTH_CLIENT_ID",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCo0ozf_y-s2GMkbIELetc-7gAfhNGFjvU"
+          "current_key": "YOUR_API_KEY"
         }
       ],
       "services": {
