@@ -66,7 +66,7 @@ struct BloodPressureEntryView: View {
                 }
 
                 // Notes
-                NotesInputField(
+                AppInputField(
                     config: TextInputConfig(
                         label: bpLang.notes,
                         inputType: .notes,
