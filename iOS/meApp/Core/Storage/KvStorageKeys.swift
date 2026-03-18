@@ -46,7 +46,11 @@ public enum KvStorageKeys: String {
     /// Feed last triggered at timestamp key suffix (per account)
     case feedLastTriggeredAt
     case setAGoalCardViewed
-    
+
+    // MARK: - Product Type Selection
+    /// Selected product type key suffix (per account)
+    case selectedProductType
+
     // MARK: - FCM Token Key
     /// FCM token storage key (device-scoped, not account-scoped)
     case fcmToken = "fcmToken"
@@ -119,6 +123,13 @@ public enum KvStorageKeys: String {
         return "\(accountId)_\(Self.setAGoalCardViewed.rawValue)"
     }
     
+    /// Creates an account-scoped key for selected product type
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for selected product type storage
+    public static func selectedProductTypeKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.selectedProductType.rawValue)"
+    }
+
     /// Creates an account-scoped key for FCM token storage
     /// - Parameter accountId: The account identifier
     /// - Returns: The full key for FCM token storage
