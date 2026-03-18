@@ -32,6 +32,8 @@ final class Entry {
     var deviceType: String
     /// Whether entry is synced online
     var isSynced: Bool
+    /// FK to Baby.id — non-nil only when deviceType == "babyScale"
+    var babyId: String?
     /// Number of attempts to sync the entry
     var attempts: Int
     /// Whether entry is failed to sync
@@ -48,7 +50,8 @@ final class Entry {
          opTimestamp: String? = nil,
          serverTimestamp: String? = nil,
          deviceType: String = "scale",
-         isSynced: Bool = false) {
+         isSynced: Bool = false,
+         babyId: String? = nil) {
         self.id = id
         self.entryTimestamp = entryTimestamp
         self.accountId = accountId
@@ -57,6 +60,7 @@ final class Entry {
         self.serverTimestamp = serverTimestamp
         self.deviceType = deviceType
         self.isSynced = isSynced
+        self.babyId = babyId
         self.attempts = 0
         self.isFailedToSync = false
     }
@@ -70,6 +74,7 @@ final class Entry {
             self.serverTimestamp = dto.serverTimestamp
             self.deviceType = DeviceType.scale.rawValue
             self.isSynced = isSynced
+            self.babyId = nil
             self.attempts = 0
             self.isFailedToSync = false
             self.scaleEntry = BathScaleEntry(from: dto)

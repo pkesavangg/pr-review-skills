@@ -59,7 +59,8 @@ final class PersistenceController {
                 NotificationSettings.self,
                 StreaksSettings.self,
                 WeightlessSettings.self,
-                DashboardSettings.self
+                DashboardSettings.self,
+                Baby.self
             ]
         )
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
