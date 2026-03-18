@@ -38,35 +38,33 @@ struct BPHistoryEntryItem: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Pressure value
-                VStack(spacing: 2) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(pressureText)
-                        .fontOpenSans(.heading3)
+                        .fontOpenSans(.heading5)
                         .foregroundColor(pressureColor)
 
                     Text(HistoryListStrings.mmhg)
                         .fontOpenSans(.body3)
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Pulse value
-                VStack(spacing: 2) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("\(entry.pulse)")
-                        .fontOpenSans(.heading3)
+                        .fontOpenSans(.heading5)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
 
                     Text(HistoryListStrings.pulse)
                         .fontOpenSans(.body3)
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Expansion chevron (only if notes exist)
-                if entry.notes != nil {
-                    AppIconView(icon: AppAssets.chevronDown)
-                        .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                }
+                // Expansion chevron
+                AppIconView(icon: AppAssets.chevronDown)
+                    .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
@@ -94,7 +92,6 @@ struct BPHistoryEntryItem: View {
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            guard entry.notes != nil else { return }
             onTap()
         }
     }
