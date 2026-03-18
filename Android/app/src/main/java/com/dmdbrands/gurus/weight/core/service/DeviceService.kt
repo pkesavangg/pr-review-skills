@@ -172,7 +172,7 @@ constructor(
    * @param accountId The account ID to set
    */
   override suspend fun setAccountId(accountId: String) {
-    AppLog.d(tag, "Setting account ID: $accountId")
+   AppLog.d(tag, "Setting account ID: $accountId")
     currentAccountId = accountId
     syncDevices()
     fetchScales(accountId)

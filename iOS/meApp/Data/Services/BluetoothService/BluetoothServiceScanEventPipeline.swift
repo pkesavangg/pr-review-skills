@@ -45,7 +45,7 @@ extension BluetoothService {
             bid = entry.broadcastIdString
         }
         if let bid = bid, blockedBroadcastIds.contains(bid) {
-            ggBleSDK.skipDevice(bid)
+            ggBleSDK.skipDevice(bid, true)
             return
         }
         guard let responseType = data.type else { return }
@@ -311,15 +311,11 @@ extension BluetoothService {
     }
 
     private func updateWeightOnlyModeStatus(deviceDetails: GGDeviceDetails, deviceInfo: DeviceInfo) async {
-        guard let broadcastId = deviceDetails.broadcastId else {
-            logger.log(level: .error, tag: tag, message: "Cannot update weight-only mode status: missing broadcast ID")
+        guard let resolvedScale = resolveScaleForWeightOnlyMode(deviceDetails) else {
             return
         }
-
-        guard let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }) else {
-            logger.log(level: .error, tag: tag, message: "Scale not found for broadcast ID: \(broadcastId)")
-            return
-        }
+        let scale = resolvedScale.scale
+        let broadcastId = resolvedScale.broadcastId
 
         try? await Task.sleep(nanoseconds: 200_000_000)
 
@@ -352,15 +348,10 @@ extension BluetoothService {
     }
 
     private func updateWeightOnlyModeStatusFromDeviceDetails(_ deviceDetails: GGDeviceDetails) async {
-        guard let broadcastId = deviceDetails.broadcastId else {
-            logger.log(level: .error, tag: tag, message: "Cannot update weight-only mode status: missing broadcast ID")
+        guard let resolvedScale = resolveScaleForWeightOnlyMode(deviceDetails) else {
             return
         }
-
-        guard let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }) else {
-            logger.log(level: .error, tag: tag, message: "Scale not found for broadcast ID: \(broadcastId)")
-            return
-        }
+        let scale = resolvedScale.scale
 
         let deviceInfoResult = await getDeviceInfo(for: scale, skipConnectionCheck: true)
         switch deviceInfoResult {
@@ -373,13 +364,11 @@ extension BluetoothService {
     }
 
     private func clearWeightOnlyModeStatusOnDisconnect(_ deviceDetails: GGDeviceDetails) async {
-        guard let broadcastId = deviceDetails.broadcastId else {
+        guard let resolvedScale = resolveScaleForWeightOnlyMode(deviceDetails) else {
             return
         }
-
-        guard let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }) else {
-            return
-        }
+        let scale = resolvedScale.scale
+        let broadcastId = resolvedScale.broadcastId
 
         scale.isWeighOnlyModeEnabledByOthers = false
 
@@ -389,6 +378,29 @@ extension BluetoothService {
         )
 
         logger.log(level: .debug, tag: tag, message: "Cleared weight-only mode status for disconnected scale \(broadcastId)")
+    }
+
+    private func resolveScaleForWeightOnlyMode(_ deviceDetails: GGDeviceDetails) -> (scale: Device, broadcastId: String)? {
+        let candidateIds = [deviceDetails.broadcastIdString, deviceDetails.broadcastId]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard !candidateIds.isEmpty else {
+            logger.log(level: .error, tag: tag, message: "Cannot update weight-only mode status: missing broadcast ID")
+            return nil
+        }
+
+        guard let scale = bluetoothScales.first(where: { scale in
+            guard let storedBroadcastId = scale.broadcastIdString else {
+                return false
+            }
+            return candidateIds.contains(storedBroadcastId)
+        }) else {
+            logger.log(level: .error, tag: tag, message: "Scale not found for broadcast ID candidates: \(candidateIds.joined(separator: ", "))")
+            return nil
+        }
+
+        return (scale, scale.broadcastIdString ?? candidateIds[0])
     }
 }
 // swiftlint:enable cyclomatic_complexity

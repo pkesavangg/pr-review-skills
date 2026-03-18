@@ -1,158 +1,303 @@
-//
-//  EntryRepositoryLocalTests.swift
-//  meAppTests
-//
-
 import Foundation
 import Testing
-
 @testable import meApp
 
 @Suite(.serialized)
 @MainActor
 struct EntryRepositoryLocalTests {
 
-    private let expectedKeyPrefix = "entry_last_sync_timestamp"
+    // MARK: - setLastSyncTimestamp (Save)
 
-    // MARK: - makeSUT
+    @Test("setLastSyncTimestamp saves timestamp for account")
+    func setTimestampSavesValue() async throws {
+        let kv = MockKvStorageService()
+        let sut = makeSUT(kv: kv)
 
-    private func makeSUT(kv: KvStorageServiceProtocol? = nil) -> (sut: EntryRepositoryLocal, kv: MockKvStorageService) {
-        let kvStore = kv as? MockKvStorageService ?? MockKvStorageService()
-        let sut = EntryRepositoryLocal(kv: kvStore)
-        return (sut, kvStore)
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "2026-03-01T08:00:00Z")
+
+        let stored = kv.getValue(forKey: "entry_last_sync_timestamp-acct-1") as? String
+        #expect(stored == "2026-03-01T08:00:00Z")
     }
 
-    // MARK: - getLastSyncTimestamp
+    @Test("setLastSyncTimestamp constructs key with correct prefix and accountId")
+    func setTimestampKeyFormat() async throws {
+        let kv = MockKvStorageService()
+        let sut = makeSUT(kv: kv)
 
-    @Test("getLastSyncTimestamp returns nil when key not set")
-    func getLastSyncTimestamp_notSet_returnsNil() async throws {
-        let (sut, _) = makeSUT()
+        try await sut.setLastSyncTimestamp(accountId: "user-42", timestamp: "ts-1")
+
+        #expect(kv.getAllKeys() == ["entry_last_sync_timestamp-user-42"])
+    }
+
+    // MARK: - getLastSyncTimestamp (Read)
+
+    @Test("getLastSyncTimestamp returns saved timestamp")
+    func getTimestampReturnsSavedValue() async throws {
+        let kv = MockKvStorageService()
+        let sut = makeSUT(kv: kv)
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "2026-03-01T08:00:00Z")
+
+        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
+
+        #expect(result == "2026-03-01T08:00:00Z")
+    }
+
+    @Test("getLastSyncTimestamp returns nil when no timestamp exists")
+    func getTimestampReturnsNilForMissing() async throws {
+        let sut = makeSUT()
+
+        let result = try await sut.getLastSyncTimestamp(accountId: "nonexistent")
+
+        #expect(result == nil)
+    }
+
+    @Test("getLastSyncTimestamp returns nil when stored value is non-string type")
+    func getTimestampReturnsNilForNonString() async throws {
+        let kv = MockKvStorageService()
+        // Manually insert a non-string value at the expected key
+        kv.setValue(12345, forKey: "entry_last_sync_timestamp-acct-1")
+        let sut = makeSUT(kv: kv)
+
+        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
+
+        #expect(result == nil)
+    }
+
+    // MARK: - clearLastSyncTimestamp (Clear)
+
+    @Test("clearLastSyncTimestamp removes stored timestamp")
+    func clearTimestampRemovesValue() async throws {
+        let kv = MockKvStorageService()
+        let sut = makeSUT(kv: kv)
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "2026-03-01T08:00:00Z")
+
+        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
+
         let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
         #expect(result == nil)
     }
 
-    @Test("getLastSyncTimestamp returns stored value after setLastSyncTimestamp")
-    func getLastSyncTimestamp_afterSet_returnsValue() async throws {
-        let (sut, _) = makeSUT()
-        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "2025-01-15T10:00:00Z")
-        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
-        #expect(result == "2025-01-15T10:00:00Z")
-    }
+    @Test("clearLastSyncTimestamp is safe when no timestamp exists")
+    func clearTimestampNoopForMissing() async throws {
+        let sut = makeSUT()
 
-    @Test("getLastSyncTimestamp returns nil for different account when one is set")
-    func getLastSyncTimestamp_differentAccount_returnsNil() async throws {
-        let (sut, _) = makeSUT()
-        try await sut.setLastSyncTimestamp(accountId: "acct-A", timestamp: "ts-A")
-        let result = try await sut.getLastSyncTimestamp(accountId: "acct-B")
+        try await sut.clearLastSyncTimestamp(accountId: "nonexistent")
+
+        let result = try await sut.getLastSyncTimestamp(accountId: "nonexistent")
         #expect(result == nil)
     }
 
-    @Test("getLastSyncTimestamp key is scoped per accountId")
-    func getLastSyncTimestamp_keyScopedPerAccount() async throws {
-        let (sut, kv) = makeSUT()
+    @Test("clearLastSyncTimestamp only removes target account key")
+    func clearTimestampDoesNotAffectOtherAccounts() async throws {
+        let kv = MockKvStorageService()
+        let sut = makeSUT(kv: kv)
         try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts-1")
         try await sut.setLastSyncTimestamp(accountId: "acct-2", timestamp: "ts-2")
-        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == "ts-1")
+
+        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
+
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == nil)
         #expect(try await sut.getLastSyncTimestamp(accountId: "acct-2") == "ts-2")
-        #expect(kv.getValue(forKey: "\(expectedKeyPrefix)-acct-1") as? String == "ts-1")
-        #expect(kv.getValue(forKey: "\(expectedKeyPrefix)-acct-2") as? String == "ts-2")
     }
 
-    // MARK: - setLastSyncTimestamp
+    // MARK: - Account Scoping
 
-    @Test("setLastSyncTimestamp persists string pass-through")
-    func setLastSyncTimestamp_persistsValue() async throws {
-        let (sut, kv) = makeSUT()
-        let timestamp = "2025-03-09T12:34:56Z"
-        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: timestamp)
-        #expect(kv.getValue(forKey: "\(expectedKeyPrefix)-acct-1") as? String == timestamp)
+    @Test("timestamps are isolated per account")
+    func timestampsIsolatedPerAccount() async throws {
+        let sut = makeSUT()
+
+        try await sut.setLastSyncTimestamp(accountId: "acct-A", timestamp: "ts-A")
+        try await sut.setLastSyncTimestamp(accountId: "acct-B", timestamp: "ts-B")
+
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-A") == "ts-A")
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-B") == "ts-B")
     }
 
-    @Test("setLastSyncTimestamp repeated set overwrites previous value")
-    func setLastSyncTimestamp_repeatedSet_overwrites() async throws {
-        let (sut, _) = makeSUT()
+    @Test("setting timestamp for one account does not affect another")
+    func setTimestampDoesNotCrossContaminate() async throws {
+        let sut = makeSUT()
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "original")
+
+        try await sut.setLastSyncTimestamp(accountId: "acct-2", timestamp: "different")
+
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == "original")
+    }
+
+    @Test("different accounts produce different storage keys")
+    func differentAccountsDifferentKeys() async throws {
+        let kv = MockKvStorageService()
+        let sut = makeSUT(kv: kv)
+
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts-1")
+        try await sut.setLastSyncTimestamp(accountId: "acct-2", timestamp: "ts-2")
+
+        let keys = kv.getAllKeys().sorted()
+        #expect(keys == ["entry_last_sync_timestamp-acct-1", "entry_last_sync_timestamp-acct-2"])
+    }
+
+    // MARK: - Overwrite Behavior
+
+    @Test("setting new timestamp overwrites previous value")
+    func setTimestampOverwritesPrevious() async throws {
+        let sut = makeSUT()
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "old-ts")
+
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "new-ts")
+
+        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
+        #expect(result == "new-ts")
+    }
+
+    @Test("overwrite does not create duplicate keys")
+    func overwriteNoDuplicateKeys() async throws {
+        let kv = MockKvStorageService()
+        let sut = makeSUT(kv: kv)
         try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "first")
         try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "second")
-        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
-        #expect(result == "second")
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "third")
+
+        #expect(kv.getAllKeys().count == 1)
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == "third")
     }
 
-    @Test("setLastSyncTimestamp empty string is stored and retrieved")
-    func setLastSyncTimestamp_emptyString_storedAndRetrieved() async throws {
-        let (sut, _) = makeSUT()
+    // MARK: - Re-run Safety (Repeated Operations)
+
+    @Test("repeated set-get cycles produce consistent results")
+    func repeatedSetGetConsistent() async throws {
+        let sut = makeSUT()
+
+        for i in 1...10 {
+            let ts = "2026-03-\(String(format: "%02d", i))T00:00:00Z"
+            try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: ts)
+            let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
+            #expect(result == ts)
+        }
+    }
+
+    @Test("set after clear restores value correctly")
+    func setAfterClearRestoresValue() async throws {
+        let sut = makeSUT()
+
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts-1")
+        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == nil)
+
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts-2")
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == "ts-2")
+    }
+
+    @Test("clear is idempotent")
+    func clearIdempotent() async throws {
+        let sut = makeSUT()
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts-1")
+
+        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
+        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
+        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
+
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == nil)
+    }
+
+    // MARK: - Edge Cases
+
+    @Test("handles empty accountId string")
+    func emptyAccountId() async throws {
+        let sut = makeSUT()
+
+        try await sut.setLastSyncTimestamp(accountId: "", timestamp: "ts-empty")
+        let result = try await sut.getLastSyncTimestamp(accountId: "")
+
+        #expect(result == "ts-empty")
+    }
+
+    @Test("handles empty timestamp string")
+    func emptyTimestamp() async throws {
+        let sut = makeSUT()
+
         try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "")
         let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
-        #expect(result?.isEmpty == true)
+
+        #expect(result == "")
     }
 
-    // MARK: - clearLastSyncTimestamp
+    @Test("handles accountId with special characters")
+    func specialCharacterAccountId() async throws {
+        let sut = makeSUT()
+        let specialId = "user@domain.com/123"
 
-    @Test("clearLastSyncTimestamp after clear get returns nil")
-    func clearLastSyncTimestamp_afterClear_getReturnsNil() async throws {
-        let (sut, _) = makeSUT()
-        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts")
-        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
-        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
-        #expect(result == nil)
+        try await sut.setLastSyncTimestamp(accountId: specialId, timestamp: "ts-special")
+        let result = try await sut.getLastSyncTimestamp(accountId: specialId)
+
+        #expect(result == "ts-special")
     }
 
-    @Test("clearLastSyncTimestamp only clears requested account")
-    func clearLastSyncTimestamp_clearsOnlyRequestedAccount() async throws {
-        let (sut, _) = makeSUT()
-        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts-1")
-        try await sut.setLastSyncTimestamp(accountId: "acct-2", timestamp: "ts-2")
-        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
-        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == nil)
-        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-2") == "ts-2")
-    }
+    @Test("handles very long timestamp string")
+    func longTimestamp() async throws {
+        let sut = makeSUT()
+        let longTs = String(repeating: "2026-01-01T00:00:00Z ", count: 100)
 
-    @Test("clearLastSyncTimestamp repeated clear is idempotent")
-    func clearLastSyncTimestamp_repeatedClear_idempotent() async throws {
-        let (sut, _) = makeSUT()
-        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts")
-        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
-        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
-        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
-        #expect(result == nil)
-    }
-
-    @Test("clearLastSyncTimestamp on never-set account does not throw")
-    func clearLastSyncTimestamp_neverSet_doesNotThrow() async throws {
-        let (sut, _) = makeSUT()
-        try await sut.clearLastSyncTimestamp(accountId: "acct-none")
-        let result = try await sut.getLastSyncTimestamp(accountId: "acct-none")
-        #expect(result == nil)
-    }
-
-    // MARK: - CRUD flow and consistency
-
-    @Test("full CRUD flow set get clear get is consistent")
-    func fullCrudFlow_consistent() async throws {
-        let (sut, _) = makeSUT()
-        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == nil)
-        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "2025-01-01T00:00:00Z")
-        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == "2025-01-01T00:00:00Z")
-        try await sut.clearLastSyncTimestamp(accountId: "acct-1")
-        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == nil)
-    }
-
-    @Test("multiple accounts isolated and non-destructive")
-    func multipleAccounts_isolatedAndNonDestructive() async throws {
-        let (sut, _) = makeSUT()
-        try await sut.setLastSyncTimestamp(accountId: "a1", timestamp: "t1")
-        try await sut.setLastSyncTimestamp(accountId: "a2", timestamp: "t2")
-        try await sut.setLastSyncTimestamp(accountId: "a1", timestamp: "t1-updated")
-        try await sut.clearLastSyncTimestamp(accountId: "a2")
-        #expect(try await sut.getLastSyncTimestamp(accountId: "a1") == "t1-updated")
-        #expect(try await sut.getLastSyncTimestamp(accountId: "a2") == nil)
-    }
-
-    @Test("timestamp payload long string is stored and retrieved consistently")
-    func timestampPayload_longString_consistent() async throws {
-        let (sut, _) = makeSUT()
-        let longTs = String(repeating: "2025-03-09T12:00:00.000Z", count: 5)
         try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: longTs)
         let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
+
         #expect(result == longTs)
+    }
+
+    // MARK: - Multiple Accounts Lifecycle
+
+    @Test("full lifecycle across multiple accounts")
+    func multiAccountLifecycle() async throws {
+        let sut = makeSUT()
+        let accounts = ["acct-1", "acct-2", "acct-3"]
+
+        // Set timestamps for all accounts
+        for (i, acct) in accounts.enumerated() {
+            try await sut.setLastSyncTimestamp(accountId: acct, timestamp: "ts-\(i)")
+        }
+
+        // Verify all stored
+        for (i, acct) in accounts.enumerated() {
+            #expect(try await sut.getLastSyncTimestamp(accountId: acct) == "ts-\(i)")
+        }
+
+        // Clear middle account
+        try await sut.clearLastSyncTimestamp(accountId: "acct-2")
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == "ts-0")
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-2") == nil)
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-3") == "ts-2")
+
+        // Update first account
+        try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "ts-updated")
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-1") == "ts-updated")
+        #expect(try await sut.getLastSyncTimestamp(accountId: "acct-3") == "ts-2")
+    }
+
+    // MARK: - Persistence Failure Handling (Type Safety)
+
+    @Test("getValue returns nil when backing store has wrong type for key")
+    func wrongTypeInBackingStore() async throws {
+        let kv = MockKvStorageService()
+        kv.setValue(["array", "value"], forKey: "entry_last_sync_timestamp-acct-1")
+        let sut = makeSUT(kv: kv)
+
+        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
+
+        #expect(result == nil)
+    }
+
+    @Test("getValue returns nil when backing store has boolean for key")
+    func booleanInBackingStore() async throws {
+        let kv = MockKvStorageService()
+        kv.setValue(true, forKey: "entry_last_sync_timestamp-acct-1")
+        let sut = makeSUT(kv: kv)
+
+        let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
+
+        #expect(result == nil)
+    }
+
+    // MARK: - Helpers
+
+    private func makeSUT(kv: KvStorageServiceProtocol = MockKvStorageService()) -> EntryRepositoryLocal {
+        EntryRepositoryLocal(kv: kv)
     }
 }

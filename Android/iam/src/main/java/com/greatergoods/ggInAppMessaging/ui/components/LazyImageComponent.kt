@@ -168,40 +168,6 @@ private fun LoadingIndicator(
   }
 }
 
-// @Composable
-// fun AsyncImageWithFallback(
-//   model: Any?,
-//   contentDescription: String?,
-//   modifier: Modifier = Modifier,
-//   contentScale: ContentScale = ContentScale.Crop,
-//   onSuccess: (() -> Unit)? = null,
-//   onError: (() -> Unit)? = null
-// ) {
-//   AsyncImage(
-//     model = model,
-//     contentDescription = contentDescription,
-//     modifier = modifier,
-//     contentScale = contentScale,
-//     placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
-//     error = painterResource(id = AppIcons.Iam.placeholderImage),
-//     onState = { state ->
-//       when (state) {
-//         is AsyncImagePainter.State.Success -> {
-//           onSuccess?.invoke()
-//         }
-//
-//         is AsyncImagePainter.State.Error -> {
-//           onError?.invoke()
-//         }
-//
-//         else -> {
-//           // Loading state
-//         }
-//       }
-//     },
-//   )
-// }
-
 @Preview(showBackground = true)
 @Composable
 private fun LazyImageComponentPreview() {

@@ -72,10 +72,13 @@ struct TokenManagerTests {
         mock.getActiveTokensResult = .success(active)
         let sut = TokenManager(accountService: mock)
 
-        async let first = sut.refreshToken(accountId: "acc-1")
-        async let second = sut.refreshToken(accountId: "acc-1")
-        let firstResult = try await first
-        let secondResult = try await second
+        let firstTask = Task { try await sut.refreshToken(accountId: "acc-1") }
+        let firstStarted = await waitUntil { mock.refreshTokensCalls == 1 }
+        #expect(firstStarted == true)
+
+        let secondTask = Task { try await sut.refreshToken(accountId: "acc-1") }
+        let firstResult = try await firstTask.value
+        let secondResult = try await secondTask.value
 
         let returnedTokens = [firstResult, secondResult]
         #expect(returnedTokens.contains(refreshed))
@@ -202,14 +205,23 @@ struct TokenManagerTests {
 
         async let first = sut.refreshToken(accountId: "acc-1")
         async let second = sut.refreshToken(accountId: "acc-1")
-        _ = try? await first
 
-        do {
-            _ = try await second
-            Issue.record("Expected waiting request to throw when getActiveTokens fails")
-        } catch {
-            #expect(error as? TokenManagerTestError == .serviceFailed)
+        // Task scheduling doesn't guarantee which call enters the actor first,
+        // so collect both results and assert one succeeds and one fails.
+        let firstResult: Result<Tokens, Error>
+        do { firstResult = .success(try await first) } catch { firstResult = .failure(error) }
+        let secondResult: Result<Tokens, Error>
+        do { secondResult = .success(try await second) } catch { secondResult = .failure(error) }
+
+        let successes = [firstResult, secondResult].compactMap { try? $0.get() }
+        let failures: [Error] = [firstResult, secondResult].compactMap {
+            guard case .failure(let e) = $0 else { return nil }
+            return e
         }
+
+        #expect(successes == [refreshed])
+        #expect(failures.count == 1)
+        #expect(failures.first as? TokenManagerTestError == .serviceFailed)
     }
 
     // MARK: - Helpers
@@ -234,5 +246,17 @@ struct TokenManagerTests {
 
     private func isoString(secondsFromNow: Int) -> String {
         DateTimeTools.isoFormatter(useUTC: true).string(from: Date().addingTimeInterval(TimeInterval(secondsFromNow)))
+    }
+
+    private func waitUntil(
+        timeoutNanoseconds: UInt64 = 1_000_000_000,
+        pollNanoseconds: UInt64 = 10_000_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+        while !condition() && ContinuousClock.now < deadline {
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+        return condition()
     }
 }

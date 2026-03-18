@@ -105,7 +105,6 @@ fun FeedMessagesScreen(
                                         LinkOpener.openInCustomTab(
                                             context = context,
                                             url = item.linkTarget,
-                                            // toolbarColor = android.graphics.Color.parseColor("#1976D2"), // Material Blue
                                             showTitle = true,
                                         )
                                     }
@@ -158,73 +157,6 @@ fun SectionHeader(
             onClick = onSettingsClick,
             modifier = Modifier.size(24.dp).align(Alignment.CenterVertically),
         )
-    }
-}
-
-@Composable
-private fun LoadingContent() {
-    // Use a Box with fillMaxSize to center the column vertically
-    androidx.compose.foundation.layout.Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-          .fillMaxWidth()
-          .fillMaxHeight()
-          .background(color = IamTheme.colors.primaryBackground),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 32.dp),
-        ) {
-            // Loading Message
-            Text(
-                text = "Loading deals...",
-                style = MaterialTheme.typography.bodyLarge,
-                color = IamTheme.colors.textBody,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ErrorContent(
-    error: String,
-    onRetry: () -> Unit
-) {
-    // Use a Box with fillMaxSize to center the column vertically
-    androidx.compose.foundation.layout.Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-          .fillMaxWidth()
-          .fillMaxHeight()
-          .background(color = IamTheme.colors.primaryBackground),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 32.dp),
-        ) {
-            // Error Message
-            Text(
-                text = error,
-                style = MaterialTheme.typography.bodyLarge,
-                color = IamTheme.colors.textBody,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Retry Button
-            androidx.compose.material3.TextButton(
-                onClick = onRetry,
-            ) {
-                Text(
-                    text = "Retry",
-                    color = IamTheme.colors.wgPrimary,
-                )
-            }
-        }
     }
 }
 
