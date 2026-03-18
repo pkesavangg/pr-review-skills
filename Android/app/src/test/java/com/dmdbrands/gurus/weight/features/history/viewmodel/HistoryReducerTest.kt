@@ -3,8 +3,8 @@ package com.dmdbrands.gurus.weight.features.history.viewmodel
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 /**
  * Unit tests for [HistoryReducer].
@@ -25,7 +25,7 @@ class HistoryReducerTest {
     private val itemA: HistoryMonth = mockk(relaxed = true)
     private val itemB: HistoryMonth = mockk(relaxed = true)
 
-    @Before
+    @BeforeEach
     fun setUp() {
         reducer = HistoryReducer()
     }

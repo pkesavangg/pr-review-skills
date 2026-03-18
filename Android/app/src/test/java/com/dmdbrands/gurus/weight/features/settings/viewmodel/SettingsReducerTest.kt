@@ -3,34 +3,21 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.google.common.truth.Truth.assertThat
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 /**
  * Unit tests for [SettingsReducer].
  *
  * The reducer is a pure function — no mocking or coroutines needed.
  * This serves as the project's primary smoke test verifying the test
- * infrastructure (Truth, JUnit 4) is wired up correctly.
+ * infrastructure (Truth, JUnit 6) is wired up correctly.
  */
 class SettingsReducerTest {
 
     private lateinit var reducer: SettingsReducer
 
-    private val fakeAccount = Account(
-        id = "acc-1",
-        firstName = "John",
-        lastName = "Doe",
-        dob = "1990-01-01",
-        email = "john@example.com",
-        gender = "male",
-        zipcode = "12345",
-        weightUnit = WeightUnit.LB,
-        height = 1750,
-        activityLevel = "normal",
-    )
-
-    @Before
+    @BeforeEach
     fun setUp() {
         reducer = SettingsReducer()
     }

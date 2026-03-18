@@ -4,11 +4,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorrupt
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.displayName
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.formatTimestamp
 import com.google.common.truth.Truth.assertThat
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
-import java.util.Locale
-import java.util.TimeZone
+import org.junit.jupiter.api.Test
 
 /**
  * Unit tests for [StringUtil].

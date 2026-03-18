@@ -40,7 +40,7 @@ Declared in `app/build.gradle.kts`:
 
 ```kotlin
 // Unit test dependencies
-testImplementation(libs.junit)
+testImplementation(libs.junit.jupiter)
 testImplementation(libs.mockk)
 testImplementation(libs.kotlinx.coroutines.test)
 testImplementation(libs.turbine)

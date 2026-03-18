@@ -132,7 +132,8 @@ dependencies {
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
   // Unit test dependencies
-  testImplementation(libs.junit)
+  testImplementation(libs.junit.jupiter)
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
   testImplementation(libs.mockk)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.turbine)
@@ -239,6 +240,7 @@ protobuf {
 // Preload ByteBuddy agent at JVM startup so MockK doesn't load it dynamically.
 // Fixes "A Java agent has been loaded dynamically" warning on JDK 17+.
 tasks.withType<Test> {
+  useJUnitPlatform()
   doFirst {
     val agentJar = classpath.find { it.name.contains("byte-buddy-agent") }
     if (agentJar != null) {
