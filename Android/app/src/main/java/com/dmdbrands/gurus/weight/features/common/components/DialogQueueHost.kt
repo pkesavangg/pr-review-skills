@@ -5,7 +5,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.DialogProperties
@@ -37,9 +37,9 @@ fun DialogQueueHost(
     )? = null,
 ) {
     val snackBarHostState = remember { SnackbarHostState() }
-    val currentDialog by dialogQueueViewModel.currentDialog.collectAsState()
-    val currentToast by dialogQueueViewModel.currentToast.collectAsState()
-    val loader by dialogQueueViewModel.loader.collectAsState()
+    val currentDialog by dialogQueueViewModel.currentDialog.collectAsStateWithLifecycle()
+    val currentToast by dialogQueueViewModel.currentToast.collectAsStateWithLifecycle()
+    val loader by dialogQueueViewModel.loader.collectAsStateWithLifecycle()
 
     currentToast?.let { dialog ->
         ToastHandler(hostState = snackBarHostState, toast = dialog) {

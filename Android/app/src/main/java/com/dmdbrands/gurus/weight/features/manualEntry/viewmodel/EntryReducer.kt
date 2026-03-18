@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import java.util.Calendar
+import androidx.compose.runtime.Stable
 
 /**
  * Form controls for weight and date/time (always present)
@@ -188,6 +189,7 @@ data class EntryForm(
   }
 }
 
+@Stable
 data class EntryState(
   val form: MultiFormGroup<EntryForm>,
   val weightMode: WeightUnit = WeightUnit.LB,

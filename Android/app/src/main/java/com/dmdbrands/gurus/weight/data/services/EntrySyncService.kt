@@ -15,8 +15,6 @@ import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IEntrySyncService
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,11 +30,10 @@ class EntrySyncService(
     private val goalService: IGoalService,
     private val healthConnectService: IHealthConnectService,
     private val healthConnectRepository: IHealthConnectRepository,
+    private val appScope: CoroutineScope,
 ) : IEntrySyncService {
 
     private val TAG = "EntrySyncService"
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
         private const val GOAL_ALERT_DELAY_MS = 3000L
@@ -155,7 +152,7 @@ class EntrySyncService(
             // 8. Handle goal alerts
             if (lastValidOperation != null && lastValidOperation is ScaleEntry) {
                 val operationWeight = lastValidOperation.scale.scaleEntry.weight
-                serviceScope.launch {
+                appScope.launch {
                     try {
                         delay(GOAL_ALERT_DELAY_MS)
                         goalService.showGoalCompletionAlert(operationWeight * WEIGHT_CONVERSION_FACTOR)

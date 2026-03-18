@@ -2,7 +2,9 @@ package com.dmdbrands.gurus.weight.features.integration.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
+import androidx.compose.runtime.Stable
 
+@Stable
 data class HealthConnectUiState(
   val healthConnectSetupState: HealthConnectSetup = HealthConnectSetup.NONE,
   val currentSlide: Int = 0,

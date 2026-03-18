@@ -13,13 +13,13 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -47,11 +47,10 @@ constructor(
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   @ApplicationContext private val context: Context,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceService {
   private val tag = "DeviceService"
 
-  // Internal scope for launching long-lived jobs
-  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private var fetchJob: Job? = null
 
   private val _connectionStatusMap = MutableStateFlow<Map<String, BLEStatus>>(emptyMap())
@@ -135,7 +134,7 @@ constructor(
     // Cancel any previous fetch operation
     fetchJob?.cancel()
 
-    fetchJob = repositoryScope.launch {
+    fetchJob = appScope.launch {
       deviceRepository.getDevices(resolvedAccountId).collect { devices ->
         val updatedDevices = devices.map { device ->
           val connectionStatus = _connectionStatusMap.value[device.device?.macAddress] ?: BLEStatus.DISCONNECTED

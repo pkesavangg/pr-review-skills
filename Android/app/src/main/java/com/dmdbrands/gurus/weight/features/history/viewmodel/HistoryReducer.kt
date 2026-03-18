@@ -2,14 +2,19 @@ package com.dmdbrands.gurus.weight.features.history.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * UI state for the history feature, holding loading state, error, and data.
  */
+@Stable
 data class HistoryState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val historyItems: List<HistoryMonth> = emptyList(), // Replace Any with your model
+    val historyItems: ImmutableList<HistoryMonth> = persistentListOf(), // Replace Any with your model
 ) : IReducer.State
 
 /**
@@ -54,7 +59,7 @@ class HistoryReducer : IReducer<HistoryState, HistoryIntent> {
             is HistoryIntent.Loading -> state.copy(isLoading = intent.isLoading)
             is HistoryIntent.SetHistoryItems ->
                 state.copy(
-                    historyItems = intent.items,
+                    historyItems = intent.items.toImmutableList(),
                     isLoading = false,
                     errorMessage = null,
                 )
