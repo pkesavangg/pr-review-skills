@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun ScaleUserListScreen(scaleId: String) {
@@ -104,7 +105,7 @@ fun ScaleUserListScreenContent(
 @Composable
 fun ScaleUserListScreenPreview() {
   val dummyState = ScaleUserListState(
-    scaleUserList = listOf(
+    scaleUserList = persistentListOf(
       GGBTUser(
         name = "Poongs",
         token = "424443432323424324",

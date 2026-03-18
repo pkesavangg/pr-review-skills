@@ -88,7 +88,7 @@ private fun ProductsHorizontalScrollContainer(
   LazyRow(
     horizontalArrangement = Arrangement.spacedBy(40.dp),
   ) {
-    itemsIndexed(products) { index, product ->
+    itemsIndexed(products, key = { index, _ -> index }) { index, product ->
       ProductCard(
         product = product,
         productIndex = index,

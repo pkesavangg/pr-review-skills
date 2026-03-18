@@ -128,7 +128,7 @@ fun WifiSelection(
           )
         }
 
-        itemsIndexed(availableNetworks) { index, wifi ->
+        itemsIndexed(availableNetworks, key = { _, wifi -> wifi.ssid }) { index, wifi ->
           WifiItem(
             ssid = wifi.ssid,
             isConfigured = false,

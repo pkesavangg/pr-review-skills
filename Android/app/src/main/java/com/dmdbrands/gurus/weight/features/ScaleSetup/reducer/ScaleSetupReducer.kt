@@ -5,7 +5,12 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.ScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
+@Stable
 data class SetupState<T>(
   val step: T,
   val connectionState: ConnectionState = ConnectionState.Loading
@@ -24,7 +29,7 @@ sealed interface BaseState<Step : ScaleSetupStep, S : BaseState<Step, S>> : IRed
     get() = scaleSetupState.setupState.step == scaleSetupState.steps.last()
   val isFirstStep: Boolean
     get() = scaleSetupState.setupState.step == scaleSetupState.steps.first()
-  val steps: List<Step>
+  val steps: ImmutableList<Step>
     get() = scaleSetupState.steps
   val step: Step
     get() = scaleSetupState.setupState.step
@@ -45,9 +50,10 @@ sealed interface BaseState<Step : ScaleSetupStep, S : BaseState<Step, S>> : IRed
     get() = scaleSetupState.permissions
 }
 
+@Stable
 data class ScaleSetupState<T>(
   val setupState: SetupState<T>,
-  val steps: List<T>,
+  val steps: ImmutableList<T>,
   val sku: String = "",
   val scaleInfo: ScaleInfo? = null,
   val permissions: GGPermissionStatusMap = mutableMapOf(),
@@ -72,6 +78,7 @@ sealed interface ScaleSetupIntent : IReducer.Intent {
 
   data class SetNewStep<Step : ScaleSetupStep>(val step: Step) : ScaleSetupIntent
 
+  @Stable
   data class AlterConnectionState(
     val connectionState: ConnectionState
   ) : ScaleSetupIntent
@@ -123,7 +130,7 @@ open class ScaleSetupReducer<
 
         baseState.copy(
           setupState = SetupState(step),
-          steps = updatedSteps,
+          steps = updatedSteps.toImmutableList(),
         )
       }
 

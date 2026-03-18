@@ -35,6 +35,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * MultiAccountLandingScreen displays the app logo, subtitle, and a scrollable list of up to 5 accounts, with an Add Account button.
@@ -183,7 +184,7 @@ fun MultiAccountLandingScreenPreview() {
                         dashboardType = null,
                         dashboardMetrics = null,
                     ),
-                ),
+                ).toImmutableList(),
             ),
             {},
         )

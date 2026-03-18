@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
+import androidx.compose.runtime.Stable
 
 /**
  * Controls for Forgot Password Dialog form.
@@ -33,6 +34,7 @@ data class ForgotPasswordDialogFormControls(
  * @property error Error message to display, if any.
  * @property isSuccess Whether the password reset email was sent successfully.
  */
+@Stable
 data class ForgotPasswordDialogState(
     val form: FormGroup<ForgotPasswordDialogFormControls>,
     val isLoading: Boolean = false,

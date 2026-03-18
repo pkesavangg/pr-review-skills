@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.features.history.viewmodel.HistoryViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @Composable
@@ -119,7 +120,7 @@ fun HistoryScreenPreview() {
         ),
       )
     HistoryScreenContent(
-      state = HistoryState(historyItems = sampleItems),
+      state = HistoryState(historyItems = sampleItems.toImmutableList()),
       isRefreshing = false,
       onRefresh = {},
       handleIntent = {},
