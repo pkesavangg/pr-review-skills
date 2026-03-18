@@ -221,12 +221,6 @@ class HealthConnectRepository @Inject constructor(
       AppLog.e(tag, "Failed to set integration for account $accountId: ${e.message}")
 
     }
-    try {
-      //TODO:Need to call update local account
-    }
-    catch (e: Exception){
-
-    }
   }
 
   /**

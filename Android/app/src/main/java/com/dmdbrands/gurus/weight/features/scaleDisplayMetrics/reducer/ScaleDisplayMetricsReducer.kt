@@ -2,13 +2,18 @@ package com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * State for ScaleDisplayMetricsScreen.
  */
+@Stable
 data class ScaleDisplayMetricsState(
   val scale: Device? = null,
-  val enabledMetrics: List<String> = emptyList(),
+  val enabledMetrics: ImmutableList<String> = persistentListOf(),
   val hasUpdated: Boolean = false,
 ) : IReducer.State
 
@@ -44,7 +49,7 @@ class ScaleDisplayMetricsReducer : IReducer<ScaleDisplayMetricsState, ScaleDispl
         val displayMetrics = intent.scale.preferences?.displayMetrics ?: emptyList()
         state.copy(
           scale = intent.scale,
-          enabledMetrics = displayMetrics,
+          enabledMetrics = displayMetrics.toImmutableList(),
           hasUpdated = false,
         )
       }
@@ -53,7 +58,7 @@ class ScaleDisplayMetricsReducer : IReducer<ScaleDisplayMetricsState, ScaleDispl
         val originalMetrics = state.scale?.preferences?.displayMetrics ?: emptyList()
         val hasChanges = intent.enabledMetrics != originalMetrics
         state.copy(
-          enabledMetrics = intent.enabledMetrics,
+          enabledMetrics = intent.enabledMetrics.toImmutableList(),
           hasUpdated = hasChanges,
         )
       }

@@ -4,6 +4,19 @@ orbs:
   macos: circleci/macos@2.0.0
 
 jobs:
+  gitleaks:
+    macos:
+      xcode: "16.0.0"
+    resource_class: macos.m1.medium.gen1
+    steps:
+      - checkout
+      - run:
+          name: Install Gitleaks
+          command: brew install gitleaks
+      - run:
+          name: Secrets scan (Gitleaks)
+          command: gitleaks detect --no-banner
+
   build:
     macos:
       xcode: "16.0.0"
@@ -109,8 +122,34 @@ jobs:
   #             CODE_SIGNING_ALLOWED=NO \
   #             ENABLE_USER_SCRIPT_SANDBOXING=NO
 
+  build-android:
+    docker:
+      - image: cimg/android:2024.11.1
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+      - run:
+          name: Build Android debug APK
+          working_directory: Android
+          command: ./gradlew assembleDebug
+      - run:
+          name: Run Android unit tests
+          working_directory: Android
+          command: ./gradlew test
+
 workflows:
   version: 2
   build:
     jobs:
+      - gitleaks
       - build
+      - build-android

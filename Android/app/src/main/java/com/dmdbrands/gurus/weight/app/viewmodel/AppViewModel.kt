@@ -284,6 +284,22 @@ constructor(
             }
           }
 
+          is AuthState.EncryptionFailure -> {
+            // Encryption failure affects all accounts (shared encrypted file).
+            // Reuse existing logout alert pattern — force re-login.
+            viewModelScope.launch {
+              val activeAccount = accountService.getCurrentAccount()
+              val username = activeAccount?.firstName ?: ""
+              // Log out all accounts since encrypted storage is shared
+              accountService.logoutAll()
+              stopScan()
+              navigationService.replaceStack(route = AppRoute.Auth.Landing)
+              if (username.isNotEmpty()) {
+                dialogUtility.showAccountLoggedOutAlert(username)
+              }
+            }
+          }
+
           is AuthState.AccountAdded -> {
           }
 
@@ -633,28 +649,37 @@ constructor(
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
           val isOnAuthScreen = currentRoute is AppRoute.Auth
-          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale && !isOnAuthScreen) {
+          if (currentRoute !is AppRoute.ScaleSetup && isKnownScale && !isOnAuthScreen) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
                   viewModelScope.launch {
-                    val accountId = currentAccountId ?: return@launch
-                    val broadcastId = data.broadcastId ?: return@launch
-                    dialogQueueService.showLoader("Loading...")
-                    val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
-                    ggDeviceService.addCacheDevice(data.broadcastId, device)
-                    ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
-                      viewModelScope.launch {
-                        dialogQueueService.dismissLoader()
-                        navigationService.navigateTo(
-                          AppRoute.ScaleSetup.BtWifiScaleSetup(
-                            sku = data.getSKU(),
-                            initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
-                            broadcastId = data.broadcastId,
-                            userList = response.user,
-                          ),
-                        )
+                    try {
+                      val accountId = currentAccountId ?: return@launch
+                      val broadcastId = data.broadcastId ?: return@launch
+                      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
+                      if (device == null) {
+                        AppLog.w(TAG, "DEVICE_MEMORY_FULL: scale not found for broadcastId=$broadcastId")
+                        return@launch
                       }
+                      dialogQueueService.showLoader("Loading...")
+                      ggDeviceService.addCacheDevice(data.broadcastId, device)
+                      ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                        viewModelScope.launch {
+                          dialogQueueService.dismissLoader()
+                          navigationService.navigateTo(
+                            AppRoute.ScaleSetup.BtWifiScaleSetup(
+                              sku = data.getSKU(),
+                              initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
+                              broadcastId = data.broadcastId,
+                              userList = response.user,
+                            ),
+                          )
+                        }
+                      }
+                    } catch (e: Exception) {
+                      AppLog.e(TAG, "DEVICE_MEMORY_FULL: error handling max user alert", e)
+                      dialogQueueService.dismissLoader()
                     }
                   }
                 },

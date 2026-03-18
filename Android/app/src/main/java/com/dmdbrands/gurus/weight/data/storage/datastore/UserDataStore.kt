@@ -106,6 +106,11 @@ class UserDataStore @Inject constructor(
    * @param expiresAt The expiration timestamp for the access token.
    * @param isActive Whether the account is active.
    */
+  @Deprecated(
+    message = "Use SecureTokenStore for token storage and updateAccount() for account fields. " +
+      "Tokens must not be stored in plain DataStore.",
+    replaceWith = ReplaceWith("updateAccount(accountId, isActive = isActive)")
+  )
   suspend fun updateAccountTokens(
     accountId: String,
     refreshToken: String,
@@ -240,7 +245,20 @@ class UserDataStore @Inject constructor(
   ) {
     val current = getData()
     val existingAccount = current.accountsMap[accountId]
-      ?: throw IllegalStateException("No account found with ID $accountId")
+
+    // If the account does not exist yet, create it with the provided values
+    if (existingAccount == null) {
+      addAccount(
+        accountId = accountId,
+        isActive = isActive ?: false,
+        syncTimestamp = syncTimestamp ?: "",
+        refreshToken = refreshToken ?: "",
+        accessToken = accessToken ?: "",
+        expiresAt = expiresAt ?: "",
+        themeMode = themeMode ?: ThemeMode.SYSTEM,
+      )
+      return
+    }
 
     val updated = current.toBuilder().apply {
       val accountBuilder = existingAccount.toBuilder()

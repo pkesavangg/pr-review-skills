@@ -129,7 +129,6 @@ Text(
             // Stack buttons vertically when text is too long
             Column(
               modifier = Modifier.fillMaxWidth(),
-              // verticalArrangement = Arrangement.spacedBy(0.dp),
               horizontalAlignment = Alignment.End,
             ) {
               if (secondaryAction != null) {

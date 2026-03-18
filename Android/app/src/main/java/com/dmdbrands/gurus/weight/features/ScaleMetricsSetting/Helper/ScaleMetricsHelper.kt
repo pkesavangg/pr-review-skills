@@ -10,6 +10,8 @@ import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.otherScaleM
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.model.scaleMetrics
 import com.dmdbrands.library.ggbluetooth.enums.TimeFormat
 import com.greatergoods.ggbluetoothsdk.external.Utils
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import java.util.UUID
 
 /**
@@ -17,8 +19,8 @@ import java.util.UUID
  */
 object ScaleMetricsHelper {
 
-  fun getAllMetrics(): List<String> {
-    return listOf(
+  fun getAllMetrics(): ImmutableList<String> {
+    return persistentListOf(
       ScaleMetricKeys.BMI,
       ScaleMetricKeys.BODY_FAT_PERCENT,
       ScaleMetricKeys.MUSCLE_PERCENT,

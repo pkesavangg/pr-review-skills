@@ -140,7 +140,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
         
         // Preserve saved streak order in edit mode; otherwise use default order
         let allMetricsRemoved = progressMetrics.isEmpty
-        UserDefaults.standard.set(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
+        KvStorageService.shared.setValue(allMetricsRemoved, forKey: Self.allProgressMetricsRemovedKey)
         
         // Log the order being saved for debugging
         logger.log(
@@ -216,7 +216,7 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
             : progressMetricsString.split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
         
         // Handle case where API defaults empty progress metrics back to all metrics
-        let allMetricsRemovedFlag = UserDefaults.standard.bool(forKey: Self.allProgressMetricsRemovedKey)
+        let allMetricsRemovedFlag = KvStorageService.shared.getValue(forKey: Self.allProgressMetricsRemovedKey) as? Bool ?? false
         let defaultMetricsList: Set<String> = [
             "goal", "currentStreak", "longestStreak",
             "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"

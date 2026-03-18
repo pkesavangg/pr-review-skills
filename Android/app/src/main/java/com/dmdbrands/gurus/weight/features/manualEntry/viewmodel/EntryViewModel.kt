@@ -249,9 +249,10 @@ constructor(
       message = DashboardString.Loader.save,
     )
     viewModelScope.launch {
+      val accountId = accountService.activeAccountFlow.first()?.id ?: return@launch
       val scaleEntry =
         _state.value.form.forms
-          .toScaleEntry(_state.value.weightMode)
+          .toScaleEntry(_state.value.weightMode, accountId)
       try {
         entryService.addEntry(entry = scaleEntry)
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)

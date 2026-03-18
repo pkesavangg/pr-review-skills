@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +51,7 @@ fun LcbtScaleSetupScreen(
     hiltViewModel<LcbtBLESetupViewModel, LcbtBLESetupViewModel.Factory> { factory ->
       factory.create(setupInit)
     }
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
   LcbtScaleSetupScreenContent(
     state = state,
     sku = sku,

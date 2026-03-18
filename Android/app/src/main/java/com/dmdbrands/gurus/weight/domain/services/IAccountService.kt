@@ -244,6 +244,14 @@ sealed class AuthState {
     val accountId: String,
   ) : AuthState()
 
+  /**
+   * Emitted when EncryptedSharedPreferences fails (MasterKey creation failure,
+   * key invalidation after lock screen change, etc.). Forces re-login for all accounts.
+   */
+  data class EncryptionFailure(
+    val accountId: String?,
+  ) : AuthState()
+
   data class AccountAdded(
     val account: Account,
   ) : AuthState()
