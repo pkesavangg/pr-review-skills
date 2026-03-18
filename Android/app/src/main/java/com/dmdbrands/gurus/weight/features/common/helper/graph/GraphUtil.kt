@@ -26,7 +26,6 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.reflect.KProperty1
 
 val dateTimeRangeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy ")
 val yearFormatter = DateTimeFormatter.ofPattern("yyyy")
@@ -87,7 +86,7 @@ object GraphUtil {
     return GraphLine(
       name = metricKey.name,
       points = this.mapNotNull { summary ->
-        val value = (prop.get(summary) as? Number)?.toFloat()
+        val value = (prop(summary) as? Number)?.toFloat()
         if (value == null || value == 0f) return@mapNotNull null
         value.let {
           GraphPoint(
@@ -109,19 +108,19 @@ object GraphUtil {
     GraphSegment.TOTAL -> MetricInfoSource.TOTAL
   }
 
-  private val metricKeyPropertyMap: Map<MetricKey, KProperty1<PeriodBodyScaleSummary, *>> = mapOf(
-    MetricKey.BMI to PeriodBodyScaleSummary::bmi,
-    MetricKey.BODY_FAT to PeriodBodyScaleSummary::bodyFat,
-    MetricKey.MUSCLE_MASS to PeriodBodyScaleSummary::muscleMass,
-    MetricKey.BODY_WATER to PeriodBodyScaleSummary::water,
-    MetricKey.HEART_RATE to PeriodBodyScaleSummary::pulse,
-    MetricKey.BONE_MASS to PeriodBodyScaleSummary::boneMass,
-    MetricKey.VISCERAL_FAT to PeriodBodyScaleSummary::visceralFatLevel,
-    MetricKey.SUBCUTANEOUS_FAT to PeriodBodyScaleSummary::subcutaneousFatPercent,
-    MetricKey.PROTEIN to PeriodBodyScaleSummary::proteinPercent,
-    MetricKey.SKELETAL_MUSCLE to PeriodBodyScaleSummary::skeletalMusclePercent,
-    MetricKey.BMR to PeriodBodyScaleSummary::bmr,
-    MetricKey.METABOLIC_AGE to PeriodBodyScaleSummary::metabolicAge,
+  private val metricKeyPropertyMap: Map<MetricKey, (PeriodBodyScaleSummary) -> Any?> = mapOf(
+    MetricKey.BMI to { it.bmi },
+    MetricKey.BODY_FAT to { it.bodyFat },
+    MetricKey.MUSCLE_MASS to { it.muscleMass },
+    MetricKey.BODY_WATER to { it.water },
+    MetricKey.HEART_RATE to { it.pulse },
+    MetricKey.BONE_MASS to { it.boneMass },
+    MetricKey.VISCERAL_FAT to { it.visceralFatLevel },
+    MetricKey.SUBCUTANEOUS_FAT to { it.subcutaneousFatPercent },
+    MetricKey.PROTEIN to { it.proteinPercent },
+    MetricKey.SKELETAL_MUSCLE to { it.skeletalMusclePercent },
+    MetricKey.BMR to { it.bmr },
+    MetricKey.METABOLIC_AGE to { it.metabolicAge },
   )
 
   /**

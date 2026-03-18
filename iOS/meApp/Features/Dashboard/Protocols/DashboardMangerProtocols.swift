@@ -150,6 +150,7 @@ protocol DashboardDateRangeManagerProtocol {
         start: Date,
         end: Date
     ) -> [BathScaleWeightSummary]
+    // swiftlint:disable:next function_parameter_count
     func getOperationsForLabelDateRange(
         period: TimePeriod,
         xScrollPosition: Date,
@@ -179,6 +180,7 @@ protocol DashboardSyncCoordinatorProtocol {
         onError: @MainActor @escaping (Error) -> Void
     )
     
+    // swiftlint:disable:next function_parameter_count
     func saveProgressMetricsToAPI(
         streakItems: [MetricItem],
         streakOrder: [String],
@@ -208,6 +210,7 @@ protocol DashboardSyncCoordinatorProtocol {
         onMetricsLoaded: () -> Void
     ) async
     
+    // swiftlint:disable:next function_parameter_count
     func reloadDashboardConfiguration(
         fullRefresh: Bool,
         updateMetrics: Bool,

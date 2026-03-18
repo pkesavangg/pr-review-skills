@@ -243,10 +243,12 @@ final class DashboardDateRangeManager: DashboardDateRangeManagerProtocol {
         case .week:
             // Find the most recent Sunday (start of week), then end at Saturday
             let startOfDay = calendar.startOfDay(for: today)
-            let sundayStart = calendar.nextDate(after: startOfDay,
-                                               matching: DateComponents(weekday: 1),
-                                               matchingPolicy: .nextTime,
-                                               direction: .backward) ?? startOfDay
+            let sundayStart = calendar.nextDate(
+                after: startOfDay,
+                matching: DateComponents(weekday: 1),
+                matchingPolicy: .nextTime,
+                direction: .backward
+            ) ?? startOfDay
             guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: sundayStart) else {
                 return DateTimeTools.formatter("MMM d, yyyy").string(from: today)
             }
@@ -359,7 +361,8 @@ final class DashboardDateRangeManager: DashboardDateRangeManagerProtocol {
         return Array(operations[startIndex...endIndex])
     }
     
-    func getOperationsForLabelDateRange(
+    // swiftlint:disable:next function_parameter_count
+    func getOperationsForLabelDateRange( // swiftlint:disable:this function_body_length
         period: TimePeriod,
         xScrollPosition: Date,
         visibleDomainLength: (TimePeriod) -> TimeInterval,

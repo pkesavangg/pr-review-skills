@@ -846,6 +846,14 @@ final class WifiScaleSetupStore: ObservableObject {
         }
         
         while Date().timeIntervalSince(startDate) < timeout {
+            if self.wifiStatus?.bssid?.isEmpty ?? true {
+                let latestStatus = await wifiScaleService.getConnectedWifiInfo()
+                if let ssid = latestStatus.ssid, !ssid.isEmpty {
+                    KvStorageService.shared.setCodable(latestStatus, forKey: ssidTempKey)
+                }
+                self.wifiStatus = latestStatus
+            }
+
             if let bssid = self.wifiStatus?.bssid, !bssid.isEmpty {
                 // Normalize segments to two-character hex values.
                 let formatted = bssid

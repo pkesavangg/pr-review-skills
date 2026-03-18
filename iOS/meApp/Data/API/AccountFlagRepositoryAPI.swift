@@ -13,8 +13,8 @@ final class AccountFlagRepositoryAPI: AccountFlagRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
     private let tag = "AccountFlagRepositoryAPI"
 
-    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
-        self.httpClient = httpClient
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
     
     /// Fetches account flags for the current user from the API

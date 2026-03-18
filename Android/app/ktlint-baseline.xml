@@ -2131,36 +2131,6 @@
         <error line="51" column="1" source="standard:indent" />
         <error line="52" column="1" source="standard:indent" />
     </file>
-    <file name="src/main/java/com/dmdbrands/gurus/weight/core/network/interceptors/ResponseInterceptor.kt">
-        <error line="14" column="1" source="standard:indent" />
-        <error line="15" column="1" source="standard:indent" />
-        <error line="15" column="13" source="standard:class-signature" />
-        <error line="15" column="68" source="standard:class-signature" />
-        <error line="23" column="1" source="standard:indent" />
-        <error line="24" column="1" source="standard:indent" />
-        <error line="25" column="1" source="standard:indent" />
-        <error line="26" column="1" source="standard:indent" />
-        <error line="27" column="1" source="standard:indent" />
-        <error line="28" column="1" source="standard:indent" />
-        <error line="29" column="1" source="standard:indent" />
-        <error line="31" column="1" source="standard:indent" />
-        <error line="32" column="1" source="standard:indent" />
-        <error line="33" column="1" source="standard:indent" />
-        <error line="34" column="1" source="standard:indent" />
-        <error line="36" column="1" source="standard:indent" />
-        <error line="37" column="1" source="standard:indent" />
-        <error line="38" column="1" source="standard:indent" />
-        <error line="39" column="1" source="standard:indent" />
-        <error line="41" column="1" source="standard:indent" />
-        <error line="42" column="1" source="standard:indent" />
-        <error line="43" column="1" source="standard:indent" />
-        <error line="44" column="1" source="standard:indent" />
-        <error line="46" column="1" source="standard:indent" />
-        <error line="47" column="1" source="standard:indent" />
-        <error line="48" column="1" source="standard:indent" />
-        <error line="49" column="1" source="standard:indent" />
-        <error line="51" column="1" source="standard:indent" />
-    </file>
     <file name="src/main/java/com/dmdbrands/gurus/weight/core/network/interceptors/TokenAuthenticator.kt">
         <error line="30" column="25" source="standard:annotation" />
         <error line="30" column="33" source="standard:annotation" />

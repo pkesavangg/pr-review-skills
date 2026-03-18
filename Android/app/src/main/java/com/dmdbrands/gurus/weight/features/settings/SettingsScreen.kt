@@ -9,7 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.features.common.model.SettingColorType
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItem
 import com.dmdbrands.gurus.weight.features.common.model.SettingsItemType
 import com.dmdbrands.gurus.weight.features.settings.components.UserProfileSection
+import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
@@ -33,16 +34,10 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 
-// TODO: A new folder 'screens' will be created under 'settings' for MyAccountsScreen, MaxAccountsReachedDialog, and RemoveAccountDialog.
-// TODO: MyAccountsScreen and related dialogs/popups will be implemented in a new 'screens' folder under 'settings'.
-// This follows the feature-based structure and keeps My Accounts logic modular and maintainable.
-// TODO: Navigation to MyAccountsScreen will be added to the settings list.
-// MyAccountsScreen will be implemented in a new file under 'screens'.
-
 @Composable
 fun SettingsScreen() {
   val viewmodel: SettingsViewModel = hiltViewModel()
-  val state by viewmodel.state.collectAsState()
+  val state by viewmodel.state.collectAsStateWithLifecycle()
   SettingsScreenContent(state, viewmodel::handleIntent, viewmodel)
 }
 
@@ -265,8 +260,8 @@ fun SettingsScreenContent(
       if (state.enableTestingFeatures) {
         SettingsSection(
           title = "Developer Options",
-          items =
-            listOf(
+          items = buildList {
+            add(
               SettingsItem(
                 title = "0412 Scale Filter",
                 type = SettingsItemType.Dropdown(state.selectedMacAddress),
@@ -274,7 +269,29 @@ fun SettingsScreenContent(
                   handleIntent(SettingsIntent.ShowMacAddressFilterModal)
                 },
               ),
-            ),
+            )
+            if (BuildConfig.DEBUG) {
+              add(
+                SettingsItem(
+                  title = "Test Crash (Fatal)",
+                  type = SettingsItemType.None,
+                  color = SettingColorType.Danger,
+                  onClick = {
+                    handleIntent(SettingsIntent.TriggerTestCrash)
+                  },
+                ),
+              )
+              add(
+                SettingsItem(
+                  title = "Test Crash (Non-Fatal)",
+                  type = SettingsItemType.None,
+                  onClick = {
+                    handleIntent(SettingsIntent.TriggerTestNonFatal)
+                  },
+                ),
+              )
+            }
+          },
         )
       }
 

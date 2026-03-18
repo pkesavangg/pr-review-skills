@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationMessages
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
+import androidx.compose.runtime.Stable
 
 /**
  * Controls for Change Password form.
@@ -160,6 +161,7 @@ data class ChangePasswordFormControls(
  * @property isLoading Whether the change password process is ongoing.
  * @property error Error message to display, if any.
  */
+@Stable
 data class ChangePasswordState(
     val form: FormGroup<ChangePasswordFormControls>,
     val isLoading: Boolean = false,
