@@ -39,7 +39,6 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
-import android.webkit.WebViewClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,7 +132,7 @@ fun WebViewScreen(
                 modifier = Modifier.fillMaxSize(),
                 update = { view ->
                     view.webViewClient =
-                        object : WebViewClient() {
+                        object : SafeWebViewClient() {
                             override fun onPageStarted(
                                 view: WebView?,
                                 url: String?,

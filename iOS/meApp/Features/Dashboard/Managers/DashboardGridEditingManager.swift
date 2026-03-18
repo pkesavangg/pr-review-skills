@@ -56,7 +56,7 @@ final class DashboardGridEditingManager: DashboardGridEditingManaging {
 
     // MARK: - Progress Metrics Loading
 
-    func loadProgressMetricsFromAccount() async {
+    func loadProgressMetricsFromAccount() async { // swiftlint:disable:this function_body_length
         guard let stateProvider else { return }
 
         guard let account = (stateProvider as? DashboardStore)?.accountService.activeAccount else {
@@ -74,7 +74,10 @@ final class DashboardGridEditingManager: DashboardGridEditingManaging {
             : progressMetricsString.split(separator: ",").map { String($0) }.filter { !$0.isEmpty }
 
         let allMetricsRemovedFlag = cacheManager.getBool(forKey: Self.allProgressMetricsRemovedKey)
-        let defaultMetricsList: Set<String> = ["goal", "currentStreak", "longestStreak", "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"]
+        let defaultMetricsList: Set<String> = [
+            "goal", "currentStreak", "longestStreak",
+            "weeklyChange", "monthlyChange", "yearlyChange", "totalChange"
+        ]
         let isDefaultFullList = Set(progressMetrics) == defaultMetricsList && progressMetrics.count == defaultMetricsList.count
 
         let shouldTreatAsAllRemoved = allMetricsRemovedFlag && (progressMetrics.isEmpty || isDefaultFullList)
@@ -585,7 +588,8 @@ final class DashboardGridEditingManager: DashboardGridEditingManaging {
             logger.log(
                 level: .error,
                 tag: "DashboardGridEditingManager",
-                message: "Failed to map visible metrics to actual indices during move. sourceMetricId=\(sourceMetric.id), destinationMetricId=\(destinationMetric.id)"
+                message: "Failed to map visible metrics to actual indices during move. " +
+                    "sourceMetricId=\(sourceMetric.id), destinationMetricId=\(destinationMetric.id)"
             )
             return
         }

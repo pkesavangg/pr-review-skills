@@ -1,14 +1,17 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.reducer
 
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtScaleSetupStep
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * State for BtScaleSetupScreen.
  */
+@Stable
 data class BtScaleSetupState(
   override val scaleSetupState: ScaleSetupState<BtScaleSetupStep> = ScaleSetupState(
     setupState = SetupState(BtScaleSetupStep.SCALE_INFO),
-    steps = listOf(
+    steps = persistentListOf(
       BtScaleSetupStep.SCALE_INFO,
       BtScaleSetupStep.PERMISSIONS,
       BtScaleSetupStep.SELECT_USER,

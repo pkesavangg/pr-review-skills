@@ -181,7 +181,7 @@ class HealthConnect(
                 val recordType = getRecordKClass(type)
                 if (recordType != null) {
                     healthConnectClient.deleteRecords(
-                        recordType.kotlin,
+                        recordType,
                         timeRangeFilter =
                             TimeRangeFilter.Companion
                                 .between(start, end),
@@ -203,7 +203,7 @@ class HealthConnect(
                 val recordType = getRecordKClass(entry.type)
                 if (recordType != null) {
                     healthConnectClient.deleteRecords(
-                        recordType.kotlin,
+                        recordType,
                         timeRangeFilter =
                             TimeRangeFilter.between(
                                 entry.timeStamp.minusSeconds(1),
@@ -393,7 +393,7 @@ class HealthConnect(
     private fun buildPermissionSet(options: HealthConnectOptions): Set<String> {
         val writePermissions = options.writeTypes.mapNotNull { dataType ->
             getRecordKClass(dataType)?.let { recordClass ->
-                HealthPermission.getWritePermission(recordClass.kotlin)
+                HealthPermission.getWritePermission(recordClass)
             }
         }
         return writePermissions.toSet()
@@ -410,17 +410,17 @@ class HealthConnect(
     /**
      * Get the Record class for a Health Connect Record type from DataType.
      */
-    private fun getRecordKClass(type: DataType): Class<out Record>? =
+    private fun getRecordKClass(type: DataType): KClass<out Record>? =
         when (type) {
-            DataType.BasalMetabolicRate -> BasalMetabolicRateRecord::class.java
-            DataType.BloodPressure -> BloodPressureRecord::class.java
-            DataType.RestingHeartRate -> RestingHeartRateRecord::class.java
-            DataType.BodyFat -> BodyFatRecord::class.java
-            DataType.BodyWaterMass -> BodyWaterMassRecord::class.java
-            DataType.BoneMass -> BoneMassRecord::class.java
-            DataType.Height -> HeightRecord::class.java
-            DataType.LeanBodyMass -> LeanBodyMassRecord::class.java
-            DataType.Weight -> WeightRecord::class.java
+            DataType.BasalMetabolicRate -> BasalMetabolicRateRecord::class
+            DataType.BloodPressure -> BloodPressureRecord::class
+            DataType.RestingHeartRate -> RestingHeartRateRecord::class
+            DataType.BodyFat -> BodyFatRecord::class
+            DataType.BodyWaterMass -> BodyWaterMassRecord::class
+            DataType.BoneMass -> BoneMassRecord::class
+            DataType.Height -> HeightRecord::class
+            DataType.LeanBodyMass -> LeanBodyMassRecord::class
+            DataType.Weight -> WeightRecord::class
         }
 
     /**

@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.features.common.components.LoaderStyle
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Loader
 import com.dmdbrands.gurus.weight.features.common.model.Toast
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -21,7 +22,9 @@ import javax.inject.Inject
  */
 class DialogQueueService
     @Inject
-    constructor() : IDialogQueueService {
+    constructor(
+        @ApplicationScope private val appScope: CoroutineScope,
+    ) : IDialogQueueService {
         private val dialogQueue: PriorityQueue<DialogModel> = PriorityQueue()
         private val _currentDialog = MutableStateFlow<DialogModel?>(null)
         override val currentDialog: StateFlow<DialogModel?> = _currentDialog.asStateFlow()
@@ -31,7 +34,7 @@ class DialogQueueService
 
         private val _loader = MutableStateFlow<Loader?>(null)
         override val loader: StateFlow<Loader?> = _loader.asStateFlow()
-        private val scope = CoroutineScope(Dispatchers.Main)
+        private val scope = appScope
 
         /**
          * Enqueue a dialog. If no dialog is showing, show immediately.

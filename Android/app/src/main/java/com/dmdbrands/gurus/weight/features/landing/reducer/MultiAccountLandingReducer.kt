@@ -2,12 +2,17 @@ package com.dmdbrands.gurus.weight.features.landing.reducer
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * State for MultiAccountLandingScreen.
  */
+@Stable
 data class MultiAccountLandingState(
-    val accounts: List<Account> = emptyList(),
+    val accounts: ImmutableList<Account> = persistentListOf(),
     val hasReachedMaxAccounts: Boolean = false,
     val accountToRemove: Account? = null,
 ) : IReducer.State
@@ -36,7 +41,7 @@ class MultiAccountLandingReducer : IReducer<MultiAccountLandingState, MultiAccou
     ): MultiAccountLandingState? =
         when (intent) {
             is MultiAccountLandingIntent.SetAccounts ->
-                state.copy(accounts = intent.accounts, hasReachedMaxAccounts = intent.hasReachedMaxAccounts)
+                state.copy(accounts = intent.accounts.toImmutableList(), hasReachedMaxAccounts = intent.hasReachedMaxAccounts)
 
             is MultiAccountLandingIntent.SelectAccount -> state // No state change, handled in ViewModel
             is MultiAccountLandingIntent.Login -> state

@@ -8,6 +8,10 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * UI state for the dashboard, holding loading state and entry summaries.
@@ -19,9 +23,10 @@ import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
  * @property pagerState Current pager state for horizontal graph navigation.
  * @property dashboardType Current dashboard type (4 or 12 metrics).
  */
+@Stable
 data class DashboardState(
-  val visibleKeys: List<DashboardKey> = emptyList(),
-  val data: List<PeriodBodyScaleSummary> = emptyList(),
+  val visibleKeys: ImmutableList<DashboardKey> = persistentListOf(),
+  val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
   val latestWeight: Double? = null,
   val progress: Progress = Progress(),
   val isProgressUpdating: Boolean = false,
@@ -62,6 +67,7 @@ sealed interface DashboardIntent : IReducer.Intent {
   data class SetSelectedStat(val stat: Stat?) : DashboardIntent
 
   data class SetData(val data: List<PeriodBodyScaleSummary>) : DashboardIntent
+  @Stable
   data class SetPagerState(val pagerState: Int) : DashboardIntent
   data class SetScrollTarget(val scrollTarget: Double?) : DashboardIntent
 
@@ -82,7 +88,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
   override fun reduce(state: DashboardState, intent: DashboardIntent): DashboardState? = when (intent) {
     is DashboardIntent.UpdateIsRefreshing -> state.copy(isRefreshing = intent.isRefreshing)
     is DashboardIntent.UpdateIsEmpty -> state.copy(isEmpty = intent.isEmpty)
-    is DashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys)
+    is DashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys.toImmutableList())
     is DashboardIntent.SetProgress -> state.copy(progress = intent.progress)
     is DashboardIntent.SetProgressUpdating -> state.copy(isProgressUpdating = intent.isUpdating)
     is DashboardIntent.SetSelectedSegment -> if (intent.segment == state.selectedSegment) {
@@ -96,7 +102,7 @@ class DashboardReducer : IReducer<DashboardState, DashboardIntent> {
 
     is DashboardIntent.SetIsChartConsuming -> state.copy(isConsuming = intent.isConsuming)
     is DashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
-    is DashboardIntent.SetData -> state.copy(data = intent.data)
+    is DashboardIntent.SetData -> state.copy(data = intent.data.toImmutableList())
     is DashboardIntent.SetPagerState -> state.copy(pagerState = intent.pagerState)
     is DashboardIntent.SetScrollTarget -> state.copy(scrollTarget = intent.scrollTarget)
     is DashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)

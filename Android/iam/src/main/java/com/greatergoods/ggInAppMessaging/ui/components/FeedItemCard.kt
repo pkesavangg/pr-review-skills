@@ -57,7 +57,6 @@ fun FeedItemCard(
     Row(
       modifier = Modifier
         .fillMaxWidth(),
-      // horizontalArrangement = Arrangement.spacedBy(24.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       // Image container (160dp width, 230dp height)
