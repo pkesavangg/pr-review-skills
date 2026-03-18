@@ -14,6 +14,10 @@ plugins {
   alias(libs.plugins.google.proto)
 }
 
+ksp {
+  arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
   namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
