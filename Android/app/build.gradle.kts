@@ -12,6 +12,7 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.google.proto)
+  id("jacoco")
 }
 
 android {
@@ -41,6 +42,7 @@ android {
 
   buildTypes {
     debug {
+      enableUnitTestCoverage = true
       buildConfigField(
         "String",
         "BASE_URL",
@@ -121,7 +123,14 @@ dependencies {
   implementation(libs.work.runtime.ktx)
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
+  // Unit test dependencies
   testImplementation(libs.junit)
+  testImplementation(libs.mockk)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.turbine)
+  testImplementation(libs.truth)
+  testImplementation(libs.mockwebserver)
+  // Instrumented test dependencies
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -166,6 +175,9 @@ dependencies {
   implementation(libs.androidx.datastore)
   implementation(libs.androidx.datastore.preferences.core)
   implementation(libs.gson)
+
+  // Security - EncryptedSharedPreferences
+  implementation(libs.androidx.security.crypto)
 
   // Protobuf dependencies
   implementation(libs.protobuf.javalite)
@@ -214,4 +226,85 @@ protobuf {
       }
     }
   }
+}
+
+// Preload ByteBuddy agent at JVM startup so MockK doesn't load it dynamically.
+// Fixes "A Java agent has been loaded dynamically" warning on JDK 17+.
+tasks.withType<Test> {
+  doFirst {
+    val agentJar = classpath.find { it.name.contains("byte-buddy-agent") }
+    if (agentJar != null) {
+      jvmArgs("-javaagent:$agentJar")
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// JaCoCo coverage report: ./gradlew :app:jacocoTestReport
+// ---------------------------------------------------------------------------
+tasks.register<JacocoReport>("jacocoTestReport") {
+  dependsOn("testDebugUnitTest")
+
+  reports {
+    html.required.set(true)
+    xml.required.set(true)
+  }
+
+  // Patterns that match generated / framework code — excluded from coverage
+  val jacocoExcludes = listOf(
+    // Android build-generated
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    // Hilt-generated
+    "**/hilt_aggregated_deps/**",
+    "**/*_HiltComponents*",
+    "**/*_HiltModules*",
+    "**/Hilt_*",
+    "**/*_MembersInjector*",
+    "**/*_Factory*",
+    // Room-generated (DAO implementations, DB impl)
+    "**/*_Impl*",
+    // Compose compiler–generated
+    "**/*ComposableSingletons*",
+    // Protobuf-generated
+    "**/*OuterClass*",
+  )
+
+  val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
+
+  doFirst {
+    require(kotlinClassDir.exists()) {
+      "JaCoCo class directory not found: $kotlinClassDir — run testDebugUnitTest first"
+    }
+    val execFiles = fileTree(layout.buildDirectory.get().asFile) {
+      include(
+        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+        "jacoco/testDebugUnitTest.exec",
+      )
+    }
+    require(execFiles.files.isNotEmpty()) {
+      "JaCoCo execution data not found in ${layout.buildDirectory.get().asFile}. " +
+        "Ensure enableUnitTestCoverage = true is set in the debug buildType " +
+        "and testDebugUnitTest ran successfully."
+    }
+  }
+
+  classDirectories.setFrom(
+    fileTree(kotlinClassDir) { exclude(jacocoExcludes) },
+  )
+
+  sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+
+  executionData.setFrom(
+    fileTree(layout.buildDirectory.get().asFile) {
+      include(
+        // AGP 8.x location when enableUnitTestCoverage = true
+        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+        // Fallback for older AGP / legacy jacoco plugin
+        "jacoco/testDebugUnitTest.exec",
+      )
+    },
+  )
 }

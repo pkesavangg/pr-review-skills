@@ -134,7 +134,6 @@ private fun SettingRow(
     Switch(
       checked = isEnabled,
       onCheckedChange = onToggle,
-      // modifier = Modifier.height(56.dp),
       colors = SwitchDefaults.colors(
         checkedThumbColor = IamTheme.colors.primaryBackground,
         checkedTrackColor = IamTheme.colors.primaryAction,

@@ -9,6 +9,11 @@ import UserNotifications
 
 @MainActor
 final class ContentViewModel: ObservableObject {
+    private struct AccountActivationSignature: Equatable {
+        let accountId: String?
+        let lastActiveTime: String?
+    }
+
     @Published var isLoggedIn: Bool = false
     @Published var currentAccount: Account?
     /// Represents the current screen that should be visible in `ContentView`.
@@ -28,8 +33,11 @@ final class ContentViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private(set) var initializationTask: Task<Void, Never>?
     private let tag = "ContentViewModel"
+    private var lastHandledAccountSignature: AccountActivationSignature?
+    private var queuedAccountSignatureWhileInitializing: AccountActivationSignature?
 
-    init(
+    // swiftlint:disable:next cyclomatic_complexity
+    init( // swiftlint:disable:this function_body_length
         accountService: AccountServiceProtocol? = nil,
         scaleService: ScaleServiceProtocol? = nil,
         feedService: FeedServiceProtocol? = nil,
@@ -65,22 +73,36 @@ final class ContentViewModel: ObservableObject {
         }
 
         self.accountService.activeAccountPublisher
-        // Treat re-logins of the *same* account as a new value so that the
-        // loading flow gets a chance to run again. Comparing both the
-        // accountId *and* lastActiveTime ensures that we still suppress
-        // redundant emissions (e.g. when tokens refresh) while allowing a
-        // fresh login to pass through.
-            .removeDuplicates { lhs, rhs in
-                lhs?.accountId == rhs?.accountId &&
-                    lhs?.lastActiveTime == rhs?.lastActiveTime
-            }
             .sink { [weak self] account in
                 guard let self else { return }
+
+                let signature = AccountActivationSignature(
+                    accountId: account?.accountId,
+                    lastActiveTime: account?.lastActiveTime
+                )
+
+                // Suppress duplicate emissions for the same logical account/login event,
+                // but allow the same account to retrigger initialization when
+                // `lastActiveTime` changes.
+                if self.lastHandledAccountSignature == signature {
+                    self.currentAccount = account
+                    self.isLoggedIn = (account != nil)
+                    return
+                }
+
+                self.lastHandledAccountSignature = signature
                 self.currentAccount = account
                 self.isLoggedIn = (account != nil)
 
-                // Prevent recursive calls while an initialisation cycle is already running
-                guard self.contentViewState != .initializing else { return }
+                // Avoid kicking off initialization from the publisher's initial emission
+                // while the view model is still in its startup state. If initialization is
+                // already running, queue a follow-up pass so newer account metadata is not dropped.
+                guard self.contentViewState != .initializing else {
+                    if self.initializationTask != nil {
+                        self.queuedAccountSignatureWhileInitializing = signature
+                    }
+                    return
+                }
 
                 self.performAppInitialization()
             }
@@ -107,6 +129,7 @@ final class ContentViewModel: ObservableObject {
         await initializationTask?.value
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func runAppInitialization() async {
         // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
         notificationService.dismissLoader()
@@ -152,6 +175,11 @@ final class ContentViewModel: ObservableObject {
         if afterUpdate {
             await bluetoothService.startBluetoothOperations()
             logger.log(level: .info, tag: tag, message: "Bluetooth operations started after initialization")
+        }
+
+        if queuedAccountSignatureWhileInitializing != nil {
+            queuedAccountSignatureWhileInitializing = nil
+            performAppInitialization()
         }
     }
 

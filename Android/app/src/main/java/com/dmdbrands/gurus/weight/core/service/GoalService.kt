@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,7 @@ constructor(
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
   private val deviceService: IDeviceService,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
@@ -66,7 +68,7 @@ constructor(
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
   private var account: Account? = null
   init {
-    CoroutineScope(Dispatchers.IO).launch {
+    CoroutineScope(ioDispatcher).launch {
       accountRepository.getActiveAccount().collect {
         if (it != null) {
           account = it
@@ -92,7 +94,6 @@ constructor(
   ): Account? {
     return try {
       AppLog.d(TAG, "Updating goal: type=$goalType, goalWeight=$goalWeight, initialWeight=$initialWeight")
-      null
       val goalData =
         GoalData(
           goalWeight = goalWeight,
@@ -236,33 +237,6 @@ constructor(
     }
   }
 
-  private suspend fun handleGoalLeave(updateGoal: Boolean) {
-    if (updateGoal) {
-      val currentGoal = getCurrentGoal().first() ?: return
-      val fromUnit = account?.weightUnit ?: WeightUnit.LB
-      val convertedGoalWeight =
-        convertTenthsBetweenUnits(
-          weightTenths = account?.goalWeight ?: 0.0,
-          fromUnit = fromUnit,
-          toUnit = WeightUnit.LB,
-        )
-      val convertedInitialWeight =
-        convertTenthsBetweenUnits(
-          weightTenths = account?.initialWeight ?: 0.0,
-          fromUnit = fromUnit,
-          toUnit = WeightUnit.LB,
-        )
-
-      // Update goal with met status
-      updateGoal(
-        goalWeight = convertedGoalWeight,
-        initialWeight = convertedInitialWeight,
-        goalType = currentGoal.type,
-        wasMet = true,
-      )
-    }
-  }
-
   /**
    * Creates a goal for a newly created account during signup.
    * Converts display weights to stored format and determines the correct goal type.
@@ -394,15 +368,7 @@ constructor(
    * Gets the current goal immediately without suspension.
    * @return Current goal or null
    */
-  override fun getCurrentGoalSync(): Goal? {
-    return try {
-      val currentGoal = _goalStatusFlow.value
-      currentGoal
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error getting current goal synchronously", e)
-      null
-    }
-  }
+  override fun getCurrentGoalSync(): Goal? = _goalStatusFlow.value
 
 
   /**
@@ -464,9 +430,6 @@ constructor(
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
-            handleGoalLeave(updateGoal = false)
-          }
         },
       ),
     )

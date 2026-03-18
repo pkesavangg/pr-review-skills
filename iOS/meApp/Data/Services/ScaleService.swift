@@ -925,7 +925,7 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// Fetches fresh server state and replaces local storage with it.
     /// This implements the "replace-all" policy for clean state management.
     /// Preserves any unsynced local devices to avoid losing local changes.
-    private func pullServerStateAndReplace( // swiftlint:disable:this cyclomatic_complexity function_body_length
+    private func pullServerStateAndReplace(
         accountId: String
     ) async {
         do {

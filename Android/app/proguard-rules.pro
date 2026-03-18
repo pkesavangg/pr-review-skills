@@ -285,3 +285,26 @@
 -dontwarn afu.org.checkerframework.**
 -dontwarn com.google.errorprone.annotations.**
 -dontwarn javax.annotation.concurrent.**
+
+# ----------------------------------------------------------------------------
+# Strip debug/verbose log calls in release builds
+# ----------------------------------------------------------------------------
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+}
+-assumenosideeffects class timber.log.Timber {
+    public static void d(...);
+    public static void v(...);
+}
+-assumenosideeffects class com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog {
+    public static void d(...);
+    public static void v(...);
+}
+
+# ----------------------------------------------------------------------------
+# EncryptedSharedPreferences / security-crypto (Tink)
+# Required because Tink classes must not be obfuscated (release builds have isMinifyEnabled = true)
+# ----------------------------------------------------------------------------
+-keep class com.google.crypto.tink.** { *; }
+-dontwarn com.google.crypto.tink.**

@@ -442,29 +442,6 @@ object AppPermissionsHelper {
   }
 
   /**
-   * Returns custom permission descriptions for SKU 0384.
-   */
-  private fun getCustomDescriptionsForSku0384(
-    permissionType: String,
-    defaultEnabled: String,
-    defaultDisabled: String,
-    wifiName: String? = null
-  ): Pair<String, String> {
-    return when (permissionType) {
-      GGPermissionType.WIFI_SWITCH -> {
-        val enabledDesc = if (wifiName != null && wifiName.isNotEmpty()) {
-          "${AppPermissionsScreenStrings.EnabledWifiDescription} + $wifiName"
-        } else {
-          AppPermissionsScreenStrings.EnabledWifiDescription
-        }
-        enabledDesc to AppPermissionsScreenStrings.DisabledWifiDescription
-      }
-
-      else -> defaultEnabled to defaultDisabled
-    }
-  }
-
-  /**
    * Gets the required permission sets based on paired scales.
    * This determines which permissions are required for the current setup.
    * Based on the Angular implementation in permissions.service.ts

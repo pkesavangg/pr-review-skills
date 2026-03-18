@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.di
 
+import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.data.api.EntryApi
 import com.dmdbrands.gurus.weight.data.api.IAccountFlagAPI
@@ -84,10 +85,11 @@ object RepositoryModule {
       accountDao: AccountDao,
       userDataStore: UserDataStore,
       tokenManager: ITokenManager,
+      secureTokenStore: ISecureTokenStore,
       authAPI: IAuthAPI,
       userAPI: IUserAPI,
     ): IAccountRepository =
-      AccountRepository(accountDao, userDataStore, tokenManager, authAPI, userAPI)
+      AccountRepository(accountDao, userDataStore, tokenManager, secureTokenStore, authAPI, userAPI)
 
     @Provides
     @Singleton

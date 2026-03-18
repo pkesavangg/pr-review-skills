@@ -127,7 +127,7 @@ final class HTTPClient: HTTPClientProtocol {
     
     // MARK: - Request Execution
     /// Performs the actual network request and handles response decoding.
-    private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T {
+    private func performRequest<T: Decodable>(_ request: URLRequest) async throws -> T { // swiftlint:disable:this cyclomatic_complexity
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await requestExecutor(request)

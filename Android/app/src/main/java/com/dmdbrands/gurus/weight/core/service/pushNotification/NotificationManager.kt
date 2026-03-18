@@ -46,7 +46,7 @@ class NotificationManager(
   private fun fetchFCMToken() {
     notificationService.fetchFCMToken(
       onSuccess = { token ->
-        AppLog.v("NotificationManager", "FCM Token: $token")
+        AppLog.v("NotificationManager", "FCM Token received")
         CoroutineScope(IO).launch {
           appRepository.setFcmToken(token)
         }

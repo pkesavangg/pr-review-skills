@@ -262,20 +262,18 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
         return dateRangeManager.labelForMonthGridlines(
             xScrollPosition: graphManager.state.xScrollPosition,
             visibleDomainLength: graphManager.visibleDomainLength(for: .month),
-            continuousOperations: getContinuousOperations(),
-            formatDateRange: { min, max, period in
-                graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
-            }
-        )
+            continuousOperations: getContinuousOperations()
+        ) { min, max, period in
+            graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
+        }
     }
 
     private func labelForWeekGridlines() -> String {
         return dateRangeManager.labelForWeekGridlines(
-            xScrollPosition: graphManager.state.xScrollPosition,
-            formatDateRange: { min, max, period in
-                graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
-            }
-        )
+            xScrollPosition: graphManager.state.xScrollPosition
+        ) { min, max, period in
+            graphManager.formatDateRange(minDate: min, maxDate: max, for: period)
+        }
     }
 
     private func getFullyContainedMonthInterval() -> DateInterval? {
