@@ -12,7 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
@@ -40,7 +40,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun MeApp() {
   val appViewModel: AppViewModel = hiltViewModel()
-  val uiState by appViewModel.state.collectAsState()
+  val uiState by appViewModel.state.collectAsStateWithLifecycle()
 
   // Keep navigation stack stable - don't let it be affected by theme changes
   val topLevelBackStack =

@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MyAccountsScreen() {
   val viewmodel: MyAccountsViewModel = hiltViewModel()
-  val state by viewmodel.state.collectAsState()
+  val state by viewmodel.state.collectAsStateWithLifecycle()
   MyAccountsScreenContent(
     state = state,
     handleIntent = viewmodel::handleIntent,
