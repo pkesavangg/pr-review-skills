@@ -12,7 +12,6 @@ import com.dmdbrands.gurus.weight.core.network.TokenManager
 import com.dmdbrands.gurus.weight.core.network.interceptors.AuthTokenInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.BaseUrlInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.NetworkInterceptor
-import com.dmdbrands.gurus.weight.core.network.interceptors.ResponseInterceptor
 import com.dmdbrands.gurus.weight.core.network.interceptors.TokenAuthenticator
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.qualifiers.RefreshClient
@@ -105,16 +104,6 @@ object NetworkModule {
         refreshTokenAPI: RefreshTokenAPI,
     ): AuthTokenInterceptor =
         AuthTokenInterceptor(tokenManager, refreshTokenAPI)
-
-    /**
-     * Provides a response interceptor for OkHttp.
-     */
-    @Provides
-    @Singleton
-    fun provideResponseInterceptor(appNavigationService: IAppNavigationService): ResponseInterceptor =
-        ResponseInterceptor(
-            appNavigationService,
-        )
 
     /**
      * Provides a basic OkHttpClient for token refresh (no authenticator).
