@@ -188,6 +188,30 @@ jobs:
             print('\nAll dependencies are pinned.')
             "
 
+  build-android:
+    docker:
+      - image: cimg/android:2024.11.1
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+      - run:
+          name: Build Android debug APK
+          working_directory: Android
+          command: ./gradlew assembleDebug
+      - run:
+          name: Run Android unit tests
+          working_directory: Android
+          command: ./gradlew test
+
 workflows:
   version: 2
   build-and-test:
@@ -200,3 +224,4 @@ workflows:
       #     requires:
       #       - build
       - dependency-audit
+      - build-android

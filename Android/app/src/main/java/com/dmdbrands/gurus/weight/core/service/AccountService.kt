@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
@@ -12,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.toAccountInfo
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -19,10 +21,9 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,9 +31,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import android.os.Bundle
 import retrofit2.HttpException
 import java.io.IOException
-import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
@@ -40,15 +41,15 @@ import javax.inject.Singleton
  * Handles login, logout, account switching, and token management.
  */
 @Singleton
-class AccountService
-@Inject
-constructor(
+class AccountService(
   private val accountRepository: IAccountRepository,
   private val offlineHandlerService: IOfflineHandlerService,
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
+  private val analyticsService: IAnalyticsService,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
@@ -56,7 +57,7 @@ constructor(
     private const val TAG = "AccountService"
   }
 
-  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
   // region Public Properties
 
@@ -93,7 +94,7 @@ constructor(
 
   override fun subscribeAccount() {
     repositoryScope.cancel()
-    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     repositoryScope.launch {
       accountRepository.getActiveAccount().collect {
         _activeAccount.value = it
@@ -138,6 +139,7 @@ constructor(
       }
       val savedAccount = accountRepository.login(email, password)
 
+      analyticsService.logEvent(IAnalyticsService.Events.LOGIN_SUCCESS)
       AppLog.d(TAG, "login() successful")
       savedAccount
     } catch (e: HttpException) {
@@ -149,6 +151,10 @@ constructor(
           else -> LoginError.MessageGeneric
         }
       showErrorToast(title = LoginError.Header, message = msg)
+      analyticsService.logEvent(
+        IAnalyticsService.Events.LOGIN_FAILURE,
+        Bundle().apply { putString(IAnalyticsService.Params.ERROR_TYPE, "http_${e.code()}") },
+      )
       AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
@@ -170,6 +176,7 @@ constructor(
     return try {
       val savedAccount = accountRepository.signup(request)
       appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
+      analyticsService.logEvent(IAnalyticsService.Events.SIGNUP_COMPLETED)
       AppLog.d(TAG, "signup() successful")
       savedAccount
     } catch (e: Exception) {
@@ -200,7 +207,7 @@ constructor(
    * @param email The email address to reset the password for
    */
   override suspend fun resetPassword(email: String) {
-    AppLog.d(TAG, "resetPassword() called for email: $email")
+    AppLog.d(TAG, "resetPassword() called")
     try {
       AppLog.d(TAG, "Checking network availability for resetPassword()")
       val email = email.trim()
@@ -651,6 +658,7 @@ constructor(
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
       AppLog.d(TAG, "Successfully switched account")
+      analyticsService.logEvent(IAnalyticsService.Events.ACCOUNT_SWITCHED)
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
     }

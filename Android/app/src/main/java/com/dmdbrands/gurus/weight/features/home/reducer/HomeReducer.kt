@@ -3,10 +3,12 @@ package com.dmdbrands.gurus.weight.features.home.reducer
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import android.app.Activity
+import androidx.compose.runtime.Stable
 
 /**
  * State for HomeScreen.
  */
+@Stable
 data class HomeState(
   val showAppsync: Boolean = false,
   val isAppSyncPermissionsEnabled: Boolean = false,

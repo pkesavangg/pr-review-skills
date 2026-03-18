@@ -8,7 +8,6 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.greatergoods.notification.NotificationService
 import com.greatergoods.notification.model.BuilderConfig
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import android.content.Context
 import android.widget.Toast
@@ -24,7 +23,8 @@ class NotificationManager(
   private val context: Context,
   private val notificationService: NotificationService,
   private val appRepository: IAppRepository,
-  private val entryService: IEntryService
+  private val entryService: IEntryService,
+  private val appScope: CoroutineScope,
 ) {
 
   /**
@@ -46,11 +46,10 @@ class NotificationManager(
   private fun fetchFCMToken() {
     notificationService.fetchFCMToken(
       onSuccess = { token ->
-        AppLog.v("NotificationManager", "FCM Token received")
-        CoroutineScope(IO).launch {
+        AppLog.v("NotificationManager", "FCM Token: $token")
+        appScope.launch {
           appRepository.setFcmToken(token)
         }
-        // TODO: Here, you can handle the token as needed (e.g., send it to your server)
       },
       onError = { exception ->
         AppLog.e("NotificationManager", "Fetching FCM token failed", exception.toString())

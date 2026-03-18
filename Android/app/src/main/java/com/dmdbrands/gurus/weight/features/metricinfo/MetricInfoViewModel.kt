@@ -181,7 +181,7 @@ class MetricInfoViewModel @AssistedInject constructor(
       try {
         val activeAccount = accountRepository.getActiveAccount().first()
         val dashboardType = activeAccount?.dashboardType?.let { type ->
-          DashboardType.entries.find { it.value == type }
+          DashboardType.entries.find { it.value.equals(type, ignoreCase = true) }
         } ?: DashboardType.DASHBOARD_12_METRICS
 
         AppLog.d("MetricInfoViewModel", "Loaded dashboard type: ${dashboardType.value}")

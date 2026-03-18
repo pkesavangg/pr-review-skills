@@ -10,8 +10,8 @@ import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
 import com.dmdbrands.gurus.weight.features.integration.model.Integrations
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,12 +26,13 @@ class IntegrationRepository @Inject constructor(
   private val authAPI: IAuthAPI,
   private val integrationAPI: IIntegrationAPI,
   private val accountDao: AccountDao,
-  private val healthConnectRepository: IHealthConnectRepository
+  private val healthConnectRepository: IHealthConnectRepository,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : IIntegrationRepository {
   private var integration: Integrations? = null
 
   init {
-    CoroutineScope(Dispatchers.IO).launch {
+    appScope.launch {
       accountRepository.getActiveAccount().collect { account ->
         if (account != null) {
           // Get Health Connect integration status from DataStore (similar to Angular's getHealthConnectIntegrationStatus)

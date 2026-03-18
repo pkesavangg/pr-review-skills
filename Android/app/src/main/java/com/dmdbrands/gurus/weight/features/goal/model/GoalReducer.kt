@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
+import androidx.compose.runtime.Stable
 
 /**
  * Controls for Goal form.
@@ -141,6 +142,7 @@ data class GoalFormControls(
  * @property account The current account with all goal information and weight conversions via AccountHelper.
  * @property latestWeight The latest weight reading for milestone display.
  */
+@Stable
 data class GoalState(
   val form: FormGroup<GoalFormControls>,
   val isLoading: Boolean = false,

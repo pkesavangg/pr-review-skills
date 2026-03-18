@@ -88,9 +88,17 @@ tags = ["phi", "mrn", "hipaa"]
     # Android Firebase config — tracked in git, contains public client-side identifiers
     '''google-services\.json''',
 
-    # Unit/UI test fixtures contain fake tokens and mock credentials
+    # iOS unit/UI test fixtures contain fake tokens and mock credentials
     '''meAppTests/''',
     '''meAppUITests/''',
+
+    # Android unit/instrumented test fixtures contain fake tokens and mock credentials
+    '''Android/app/src/test/''',
+    '''Android/app/src/androidTest/''',
+
+    # Android source files with false positives (UI string constants, mock preview data)
+    '''features/ScaleUsers/screens/ScaleUserListScreen\.kt''',
+    '''features/settings/strings/SettingsScreenStrings\.kt''',
 
     # CircleCI config references env var names ($GOOGLESERVICE_INFO_BASE64), not actual secrets
     '''\.circleci/config\.yml''',

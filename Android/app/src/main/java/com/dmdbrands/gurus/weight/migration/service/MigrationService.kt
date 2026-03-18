@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.migration.service
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.IonicDatabaseHelper
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.core.network.EncryptionUnavailableException
 import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
@@ -404,39 +405,39 @@ class MigrationService @Inject constructor(
     themeModeMap.forEach { (key, value) ->
       val themeMode = value.toThemeMode()
       val syncTs = if (key == accountEntity.id && !lastSyncTimestamp.isNullOrBlank()) lastSyncTimestamp else ""
-      val refreshToken = if (key == accountEntity.id) ionicAccount.refreshToken else ""
-      val accessToken = if (key == accountEntity.id) ionicAccount.accessToken else ""
 
       AppLog.d(TAG, "Theme mode for $key: $value")
       userDataStore.addAccount(
         key,
-        refreshToken = refreshToken ?: "",
-        accessToken = accessToken ?: "",
+        refreshToken = "",
+        accessToken = "",
         themeMode = themeMode,
         syncTimestamp = syncTs,
         forceUpdate = userDataStore.containsAccount(key),
       )
     }
 
-    userDataStore.updateAccountTokens(
-      accountEntity.id,
-      ionicAccount.refreshToken ?: "",
-      ionicAccount.accessToken ?: "",
-      ionicAccount.expiresAt ?: "",
-      true,
-    )
-
-    // Also write tokens to EncryptedSharedPreferences
-    val secureTokenStore = SecureTokenStore(context)
-    secureTokenStore.saveToken(
-      accountEntity.id,
-      Token(
-        accountId = accountEntity.id,
-        isActive = true,
-        accessToken = ionicAccount.accessToken,
-        refreshToken = ionicAccount.refreshToken,
-        expiresAt = ionicAccount.expiresAt,
+    // Write tokens to EncryptedSharedPreferences only (not DataStore)
+    try {
+      val secureTokenStore = SecureTokenStore(context)
+      secureTokenStore.saveToken(
+        accountEntity.id,
+        Token(
+          accountId = accountEntity.id,
+          isActive = true,
+          accessToken = ionicAccount.accessToken,
+          refreshToken = ionicAccount.refreshToken,
+          expiresAt = ionicAccount.expiresAt,
+        )
       )
+    } catch (e: EncryptionUnavailableException) {
+      AppLog.e(TAG, "Failed to save token to encrypted storage during Ionic migration", e.toString())
+      // Token will be unavailable — user will be forced to re-login after migration
+    }
+    // Update DataStore account entry (isActive flag only, no token fields)
+    userDataStore.updateAccount(
+      accountId = accountEntity.id,
+      isActive = true,
     )
 
     userDataStore.setActiveAccount(accountEntity.id)

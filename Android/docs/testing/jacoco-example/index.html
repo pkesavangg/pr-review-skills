@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JaCoCo Coverage Report — MeApp Android</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; background: #f8f8f8; color: #333; }
+
+  /* ── TOP HEADER ─────────────────────────────────────────────── */
+  .header {
+    background: #1c1c1c;
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header img { width: 32px; height: 32px; }
+  .header h1 { font-size: 18px; font-weight: bold; }
+  .header .sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .breadcrumb {
+    background: #2e2e2e;
+    color: #ccc;
+    padding: 7px 20px;
+    font-size: 12px;
+  }
+  .breadcrumb a { color: #7ec8e3; text-decoration: none; }
+  .breadcrumb a:hover { text-decoration: underline; }
+
+  /* ── TABS ────────────────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #ddd;
+    padding: 0 20px;
+    gap: 4px;
+    margin-top: 0;
+  }
+  .tab {
+    padding: 10px 18px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+    font-size: 13px;
+    border-radius: 4px 4px 0 0;
+    color: #555;
+    position: relative;
+    top: 2px;
+  }
+  .tab.active {
+    background: #fff;
+    border-color: #ddd;
+    color: #000;
+    font-weight: bold;
+    top: 2px;
+    border-bottom: 2px solid #fff;
+  }
+  .tab:hover:not(.active) { background: #f0f0f0; }
+
+  /* ── VIEW PANELS ─────────────────────────────────────────────── */
+  .view { display: none; padding: 20px; }
+  .view.active { display: block; }
+
+  /* ── SUMMARY BAR ─────────────────────────────────────────────── */
+  .summary-bar {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+  .summary-item { text-align: center; }
+  .summary-item .label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .summary-item .value { font-size: 22px; font-weight: bold; }
+  .summary-item .value.good { color: #2e8b57; }
+  .summary-item .value.warn { color: #e6a817; }
+  .summary-item .value.bad  { color: #c0392b; }
+  .summary-item .total { font-size: 11px; color: #aaa; }
+
+  /* ── PROGRESS BARS ───────────────────────────────────────────── */
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar-outer {
+    width: 120px; height: 12px;
+    background: #e74c3c;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-inner { height: 100%; background: #2e8b57; border-radius: 3px 0 0 3px; }
+
+  /* ── TABLE ───────────────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; border: 1px solid #ddd; }
+  thead tr { background: #1c1c1c; color: #fff; }
+  thead th { padding: 10px 12px; text-align: left; font-size: 12px; font-weight: bold; white-space: nowrap; }
+  thead th.right { text-align: right; }
+  tbody tr:nth-child(even) { background: #f9f9f9; }
+  tbody tr:hover { background: #eef6ff; }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid #eee; font-size: 12px; }
+  tbody td.right { text-align: right; }
+  tbody td a { color: #2563eb; text-decoration: none; }
+  tbody td a:hover { text-decoration: underline; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+  }
+  .badge.green { background: #2e8b57; }
+  .badge.yellow { background: #e6a817; }
+  .badge.red    { background: #c0392b; }
+  .badge.grey   { background: #888; }
+
+  /* ── SOURCE VIEW ─────────────────────────────────────────────── */
+  .source-header {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .source-header h3 { font-size: 15px; color: #1c1c1c; }
+  .source-header .pkg { font-size: 11px; color: #888; margin-top: 2px; }
+  .source-metrics { display: flex; gap: 16px; flex-wrap: wrap; }
+  .source-metrics .m { text-align: center; }
+  .source-metrics .m .mv { font-size: 17px; font-weight: bold; }
+  .source-metrics .m .ml { font-size: 10px; color: #888; }
+  .source-metrics .m .mv.g { color: #2e8b57; }
+  .source-metrics .m .mv.y { color: #e6a817; }
+  .source-metrics .m .mv.r { color: #c0392b; }
+
+  .code-table { width: 100%; border-collapse: collapse; font-family: 'Courier New', monospace; font-size: 12px; background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .code-table tr td:first-child { width: 50px; text-align: right; padding: 1px 10px 1px 6px; color: #999; background: #f5f5f5; border-right: 1px solid #ddd; user-select: none; font-size: 11px; }
+  .code-table tr td:last-child { padding: 1px 12px; white-space: pre; }
+
+  /* line colours */
+  .cov-full  td:last-child { background: #ccffcc; }   /* green  — fully covered */
+  .cov-part  td:last-child { background: #ffffcc; }   /* yellow — branch missing */
+  .cov-none  td:last-child { background: #ffcccc; }   /* red    — never executed */
+  .cov-skip  td:last-child { background: #fff;    }   /* white  — not instrumented (blank/brace) */
+
+  /* branch diamond */
+  .diamond { display: inline-block; width: 10px; height: 10px; transform: rotate(45deg); margin-right: 4px; vertical-align: middle; border: 1px solid #aaa; }
+  .diamond.full { background: #2e8b57; border-color: #2e8b57; }
+  .diamond.part { background: #e6a817; border-color: #e6a817; }
+  .diamond.none { background: #c0392b; border-color: #c0392b; }
+
+  /* ── LEGEND ──────────────────────────────────────────────────── */
+  .legend {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: 12px;
+  }
+  .legend h4 { margin-bottom: 10px; font-size: 13px; }
+  .legend-grid { display: flex; gap: 24px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 28px; height: 14px; border-radius: 3px; border: 1px solid #ccc; }
+  .swatch.green  { background: #ccffcc; }
+  .swatch.yellow { background: #ffffcc; }
+  .swatch.red    { background: #ffcccc; }
+  .swatch.white  { background: #fff; }
+
+  /* ── FOOTER ──────────────────────────────────────────────────── */
+  .footer { text-align: center; padding: 16px; font-size: 11px; color: #aaa; margin-top: 20px; }
+
+  /* info callout */
+  .info-box {
+    background: #e8f4fd;
+    border-left: 4px solid #2563eb;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: #1a3a5c;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  HEADER                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div>
+    <div style="font-size:22px;">📊</div>
+  </div>
+  <div>
+    <h1>JaCoCo Coverage Report</h1>
+    <div class="sub">MeApp Android &nbsp;·&nbsp; Generated: 2026-03-10 14:32:07 &nbsp;·&nbsp; JaCoCo 0.8.12</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  TABS                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="tabs">
+  <div class="tab active" onclick="showView('overview')">📁 Project Overview</div>
+  <div class="tab" onclick="showView('package')">📦 Package Breakdown</div>
+  <div class="tab" onclick="showView('nameutils')">🟢 NameUtils.kt (100%)</div>
+  <div class="tab" onclick="showView('tokenmanager')">🟡 TokenManager.kt (48%)</div>
+  <div class="tab" onclick="showView('interceptor')">🔴 AuthTokenInterceptor.kt (0%)</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  VIEW 1 — PROJECT OVERVIEW                                     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-overview" class="view active">
+  <div class="info-box">
+    <strong>📌 How to read this report:</strong> This is the top-level view. It shows every package in the project.
+    Click a package name to drill down into individual classes. Click a class to see your source code
+    highlighted green (tested), yellow (partially tested), or red (never tested).
+  </div>
+
+  <!-- Summary numbers -->
+  <div class="summary-bar">
+    <div class="summary-item">
+      <div class="label">Overall Coverage</div>
+      <div class="value warn">43%</div>
+      <div class="total">of all instructions</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">Instructions</div>
+      <div class="value warn">43%</div>
+      <div class="total">1,847 / 4,320 covered</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">Branches</div>
+      <div class="value bad">31%</div>
+      <div class="total">124 / 400 covered</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">Lines</div>
+      <div class="value warn">45%</div>
+      <div class="total">612 / 1,360 covered</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">Methods</div>
+      <div class="value warn">50%</div>
+      <div class="total">280 / 560 covered</div>
+    </div>
+    <div class="summary-item">
+      <div class="label">Classes</div>
+      <div class="value warn">52%</div>
+      <div class="total">44 / 84 covered</div>
+    </div>
+  </div>
+
+  <!-- Package table -->
+  <table>
+    <thead>
+      <tr>
+        <th>Package</th>
+        <th class="right">Line Coverage</th>
+        <th class="right">Instructions</th>
+        <th class="right">Branches</th>
+        <th class="right">Methods</th>
+        <th class="right">Classes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#">core/shared/utilities</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>89%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:89%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge green">89%</span> 214/240</td>
+        <td class="right"><span class="badge green">82%</span> 28/34</td>
+        <td class="right">95% 19/20</td>
+        <td class="right">100% 5/5</td>
+      </tr>
+      <tr>
+        <td><a href="#">core/network</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>48%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:48%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge yellow">48%</span> 192/400</td>
+        <td class="right"><span class="badge yellow">35%</span> 21/60</td>
+        <td class="right">52% 26/50</td>
+        <td class="right">60% 6/10</td>
+      </tr>
+      <tr>
+        <td><a href="#">domain/model/storage/entry</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>72%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:72%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge green">72%</span> 180/250</td>
+        <td class="right"><span class="badge yellow">65%</span> 26/40</td>
+        <td class="right">75% 30/40</td>
+        <td class="right">83% 5/6</td>
+      </tr>
+      <tr>
+        <td><a href="#">data/repository</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>22%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:22%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge red">22%</span> 88/400</td>
+        <td class="right"><span class="badge red">15%</span> 12/80</td>
+        <td class="right">24% 24/100</td>
+        <td class="right">40% 6/15</td>
+      </tr>
+      <tr>
+        <td><a href="#">features/auth</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>8%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:8%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge red">8%</span> 48/600</td>
+        <td class="right"><span class="badge red">5%</span> 4/80</td>
+        <td class="right">9% 8/90</td>
+        <td class="right">15% 3/20</td>
+      </tr>
+      <tr>
+        <td><a href="#">features/dashboard</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>0%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:0%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge red">0%</span> 0/520</td>
+        <td class="right"><span class="badge red">0%</span> 0/70</td>
+        <td class="right">0% 0/80</td>
+        <td class="right">0% 0/18</td>
+      </tr>
+      <tr>
+        <td><a href="#">domain/enums</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>100%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:100%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge green">100%</span> 80/80</td>
+        <td class="right"><span class="badge grey">n/a</span></td>
+        <td class="right">100% 40/40</td>
+        <td class="right">100% 8/8</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  VIEW 2 — PACKAGE BREAKDOWN                                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-package" class="view">
+  <div class="breadcrumb">
+    <a href="#" onclick="showView('overview')">Report</a> › core/shared/utilities
+  </div>
+
+  <div class="info-box">
+    <strong>📌 Package view:</strong> You drilled into <code>core/shared/utilities</code>.
+    Now you see individual <strong>classes</strong>. Click any class name to see its source code
+    highlighted line-by-line. Notice <strong>NameUtils</strong> is 100% green, <strong>TokenManager</strong>
+    is partial, and <strong>AuthTokenInterceptor</strong> is 0% — never touched by any test.
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Class</th>
+        <th class="right">Line Coverage</th>
+        <th class="right">Instructions</th>
+        <th class="right">Branches</th>
+        <th class="right">Methods</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#" onclick="showView('nameutils')">NameUtils</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>100%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:100%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge green">100%</span> 24/24</td>
+        <td class="right"><span class="badge green">100%</span> 4/4</td>
+        <td class="right">100% 3/3</td>
+      </tr>
+      <tr>
+        <td><a href="#" onclick="showView('tokenmanager')">TokenManager</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>48%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:48%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge yellow">48%</span> 96/200</td>
+        <td class="right"><span class="badge yellow">33%</span> 8/24</td>
+        <td class="right">50% 6/12</td>
+      </tr>
+      <tr>
+        <td><a href="#" onclick="showView('interceptor')">AuthTokenInterceptor</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>0%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:0%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge red">0%</span> 0/80</td>
+        <td class="right"><span class="badge red">0%</span> 0/10</td>
+        <td class="right">0% 0/5</td>
+      </tr>
+      <tr>
+        <td><a href="#">DateTimeUtil</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>61%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:61%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge yellow">61%</span> 80/130</td>
+        <td class="right"><span class="badge yellow">50%</span> 10/20</td>
+        <td class="right">67% 8/12</td>
+      </tr>
+      <tr>
+        <td><a href="#">ConversionTools</a></td>
+        <td class="right">
+          <div class="bar-wrap" style="justify-content:flex-end;">
+            <span>35%</span>
+            <div class="bar-outer"><div class="bar-inner" style="width:35%"></div></div>
+          </div>
+        </td>
+        <td class="right"><span class="badge red">35%</span> 42/120</td>
+        <td class="right"><span class="badge red">20%</span> 4/20</td>
+        <td class="right">33% 4/12</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  VIEW 3 — NameUtils.kt  (100% covered) ─ ALL GREEN            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-nameutils" class="view">
+  <div class="breadcrumb">
+    <a href="#" onclick="showView('overview')">Report</a> ›
+    <a href="#" onclick="showView('package')">core/shared/utilities</a> ›
+    NameUtils.kt
+  </div>
+
+  <div class="source-header">
+    <div>
+      <h3>NameUtils.kt</h3>
+      <div class="pkg">com.dmdbrands.gurus.weight.core.shared.utilities</div>
+    </div>
+    <div class="source-metrics">
+      <div class="m"><div class="mv g">100%</div><div class="ml">Instructions</div></div>
+      <div class="m"><div class="mv g">100%</div><div class="ml">Branches</div></div>
+      <div class="m"><div class="mv g">100%</div><div class="ml">Lines</div></div>
+      <div class="m"><div class="mv g">100%</div><div class="ml">Methods</div></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h4>Legend</h4>
+    <div class="legend-grid">
+      <div class="legend-item"><div class="swatch green"></div> Fully covered — tests ran this line through ALL branches</div>
+      <div class="legend-item"><div class="swatch yellow"></div> Partially covered — line ran but not all branches taken</div>
+      <div class="legend-item"><div class="swatch red"></div> Not covered — no test ever reached this line</div>
+      <div class="legend-item"><div class="swatch white"></div> Not instrumented — blank lines, comments, braces</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>✅ Perfect score!</strong> Every line is green — all 3 tests in <code>NameUtilsTest.kt</code>
+    together covered every possible code path: the short-name path, the exactly-20-char path,
+    and the truncation path. The branch diamond on line 10 is fully green — both <code>true</code>
+    and <code>false</code> sides of the <code>if</code> were tested.
+  </div>
+
+  <table class="code-table">
+    <tr class="cov-skip"><td>1</td><td>package com.dmdbrands.gurus.weight.core.shared.utilities</td></tr>
+    <tr class="cov-skip"><td>2</td><td></td></tr>
+    <tr class="cov-skip"><td>3</td><td>/**</td></tr>
+    <tr class="cov-skip"><td>4</td><td> * Utilities for sanitising user-visible name strings.</td></tr>
+    <tr class="cov-skip"><td>5</td><td> */</td></tr>
+    <tr class="cov-skip"><td>6</td><td>object NameUtils {</td></tr>
+    <tr class="cov-skip"><td>7</td><td></td></tr>
+    <tr class="cov-skip"><td>8</td><td>    private const val MAX_SDK_NAME_LENGTH = 20</td></tr>
+    <tr class="cov-skip"><td>9</td><td></td></tr>
+    <tr class="cov-full"><td>10</td><td>    fun trimNameForSDK(name: String): String {</td></tr>
+    <tr class="cov-full"><td>11</td><td>        <span class="diamond full" title="Branch covered: both true and false paths taken"></span>if (name.length &lt;= MAX_SDK_NAME_LENGTH) {</td></tr>
+    <tr class="cov-full"><td>12</td><td>            return name</td></tr>
+    <tr class="cov-skip"><td>13</td><td>        }</td></tr>
+    <tr class="cov-full"><td>14</td><td>        return name.take(MAX_SDK_NAME_LENGTH)</td></tr>
+    <tr class="cov-skip"><td>15</td><td>    }</td></tr>
+    <tr class="cov-skip"><td>16</td><td></td></tr>
+    <tr class="cov-full"><td>17</td><td>    fun formatFullName(firstName: String, lastName: String): String {</td></tr>
+    <tr class="cov-full"><td>18</td><td>        <span class="diamond full" title="Branch covered: both true and false paths taken"></span>if (firstName.isBlank()) return lastName.trim()</td></tr>
+    <tr class="cov-full"><td>19</td><td>        <span class="diamond full" title="Branch covered: both true and false paths taken"></span>if (lastName.isBlank())  return firstName.trim()</td></tr>
+    <tr class="cov-full"><td>20</td><td>        return "${firstName.trim()} ${lastName.trim()}"</td></tr>
+    <tr class="cov-skip"><td>21</td><td>    }</td></tr>
+    <tr class="cov-skip"><td>22</td><td>}</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  VIEW 4 — TokenManager.kt  (48%) ─ GREEN + YELLOW + RED       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-tokenmanager" class="view">
+  <div class="breadcrumb">
+    <a href="#" onclick="showView('overview')">Report</a> ›
+    <a href="#" onclick="showView('package')">core/shared/utilities</a> ›
+    TokenManager.kt
+  </div>
+
+  <div class="source-header">
+    <div>
+      <h3>TokenManager.kt</h3>
+      <div class="pkg">com.dmdbrands.gurus.weight.core.network</div>
+    </div>
+    <div class="source-metrics">
+      <div class="m"><div class="mv y">48%</div><div class="ml">Instructions</div></div>
+      <div class="m"><div class="mv y">33%</div><div class="ml">Branches</div></div>
+      <div class="m"><div class="mv y">48%</div><div class="ml">Lines</div></div>
+      <div class="m"><div class="mv y">50%</div><div class="ml">Methods</div></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h4>Legend</h4>
+    <div class="legend-grid">
+      <div class="legend-item"><div class="swatch green"></div> Fully covered</div>
+      <div class="legend-item"><div class="swatch yellow"></div> Partially covered — branch missing</div>
+      <div class="legend-item"><div class="swatch red"></div> Not covered — no test reached this</div>
+      <div class="legend-item"><div class="swatch white"></div> Not instrumented</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>⚠️ Partial coverage.</strong> The basic token read path is covered (green).
+    But the <strong>refresh token flow</strong> and <strong>error handling</strong> branches
+    were never triggered by any test. The yellow diamond on line 18 means the <code>if</code>
+    ran but only the <em>token exists</em> branch was ever taken — the <em>token is null</em>
+    branch (lines 19–21) was never tested. Everything in <code>refreshToken()</code> is red.
+  </div>
+
+  <table class="code-table">
+    <tr class="cov-skip"><td>1</td><td>package com.dmdbrands.gurus.weight.core.network</td></tr>
+    <tr class="cov-skip"><td>2</td><td></td></tr>
+    <tr class="cov-skip"><td>3</td><td>import javax.inject.Inject</td></tr>
+    <tr class="cov-skip"><td>4</td><td>import javax.inject.Singleton</td></tr>
+    <tr class="cov-skip"><td>5</td><td></td></tr>
+    <tr class="cov-skip"><td>6</td><td>@Singleton</td></tr>
+    <tr class="cov-skip"><td>7</td><td>class TokenManager @Inject constructor(</td></tr>
+    <tr class="cov-skip"><td>8</td><td>    private val userDataStore: UserDataStore</td></tr>
+    <tr class="cov-skip"><td>9</td><td>) {</td></tr>
+    <tr class="cov-skip"><td>10</td><td></td></tr>
+    <tr class="cov-full"><td>11</td><td>    suspend fun getAccessToken(): String? {</td></tr>
+    <tr class="cov-full"><td>12</td><td>        return userDataStore.accessToken.first()</td></tr>
+    <tr class="cov-skip"><td>13</td><td>    }</td></tr>
+    <tr class="cov-skip"><td>14</td><td></td></tr>
+    <tr class="cov-full"><td>15</td><td>    suspend fun saveTokens(accessToken: String, refreshToken: String) {</td></tr>
+    <tr class="cov-full"><td>16</td><td>        userDataStore.saveAccessToken(accessToken)</td></tr>
+    <tr class="cov-full"><td>17</td><td>        userDataStore.saveRefreshToken(refreshToken)</td></tr>
+    <tr class="cov-skip"><td>18</td><td>    }</td></tr>
+    <tr class="cov-skip"><td>19</td><td></td></tr>
+    <tr class="cov-part"><td>20</td><td>    suspend fun isTokenValid(): Boolean {</td></tr>
+    <tr class="cov-part"><td>21</td><td>        <span class="diamond part" title="Branch partially covered: only true branch tested (token != null). The null/empty branch on lines 22-23 was never hit."></span>val token = userDataStore.accessToken.first()</td></tr>
+    <tr class="cov-full"><td>22</td><td>        <span class="diamond full"></span>if (token.isNullOrEmpty()) {</td></tr>
+    <tr class="cov-none"><td>23</td><td>            return false          <span style="color:#c0392b;font-size:11px;">// ← never tested! Write a test with no token saved</span></td></tr>
+    <tr class="cov-skip"><td>24</td><td>        }</td></tr>
+    <tr class="cov-full"><td>25</td><td>        return token.length > 10</td></tr>
+    <tr class="cov-skip"><td>26</td><td>    }</td></tr>
+    <tr class="cov-skip"><td>27</td><td></td></tr>
+    <tr class="cov-none"><td>28</td><td>    suspend fun refreshToken(): Result&lt;Unit&gt; {   <span style="color:#c0392b;font-size:11px;">// ← entire method untested!</span></td></tr>
+    <tr class="cov-none"><td>29</td><td>        return try {</td></tr>
+    <tr class="cov-none"><td>30</td><td>            val refresh = userDataStore.refreshToken.first()</td></tr>
+    <tr class="cov-none"><td>31</td><td>            <span class="diamond none" title="Branch not covered: if-else never reached"></span>if (refresh.isNullOrEmpty()) {</td></tr>
+    <tr class="cov-none"><td>32</td><td>                return Result.failure(IllegalStateException("No refresh token"))</td></tr>
+    <tr class="cov-skip"><td>33</td><td>            }</td></tr>
+    <tr class="cov-none"><td>34</td><td>            // ... call refresh API ...</td></tr>
+    <tr class="cov-none"><td>35</td><td>            Result.success(Unit)</td></tr>
+    <tr class="cov-none"><td>36</td><td>        } catch (e: Exception) {</td></tr>
+    <tr class="cov-none"><td>37</td><td>            Result.failure(e)</td></tr>
+    <tr class="cov-skip"><td>38</td><td>        }</td></tr>
+    <tr class="cov-skip"><td>39</td><td>    }</td></tr>
+    <tr class="cov-skip"><td>40</td><td>}</td></tr>
+  </table>
+
+  <div style="margin-top:16px; padding:14px 18px; background:#fff8e1; border:1px solid #f0c040; border-radius:6px; font-size:12px;">
+    <strong>💡 What to fix:</strong><br><br>
+    1. Write a test: <code>isTokenValid()</code> when token is <code>null</code> → should return <code>false</code> (line 23)<br>
+    2. Write a test: <code>refreshToken()</code> happy path → successful API call<br>
+    3. Write a test: <code>refreshToken()</code> when no refresh token → <code>Result.failure</code><br>
+    4. Write a test: <code>refreshToken()</code> when exception thrown → <code>Result.failure(e)</code>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  VIEW 5 — AuthTokenInterceptor.kt (0%) ─ ALL RED              -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="view-interceptor" class="view">
+  <div class="breadcrumb">
+    <a href="#" onclick="showView('overview')">Report</a> ›
+    <a href="#" onclick="showView('package')">core/shared/utilities</a> ›
+    AuthTokenInterceptor.kt
+  </div>
+
+  <div class="source-header">
+    <div>
+      <h3>AuthTokenInterceptor.kt</h3>
+      <div class="pkg">com.dmdbrands.gurus.weight.core.network.interceptors</div>
+    </div>
+    <div class="source-metrics">
+      <div class="m"><div class="mv r">0%</div><div class="ml">Instructions</div></div>
+      <div class="m"><div class="mv r">0%</div><div class="ml">Branches</div></div>
+      <div class="m"><div class="mv r">0%</div><div class="ml">Lines</div></div>
+      <div class="m"><div class="mv r">0%</div><div class="ml">Methods</div></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h4>Legend</h4>
+    <div class="legend-grid">
+      <div class="legend-item"><div class="swatch green"></div> Fully covered</div>
+      <div class="legend-item"><div class="swatch yellow"></div> Partially covered</div>
+      <div class="legend-item"><div class="swatch red"></div> Not covered — no test reached this</div>
+      <div class="legend-item"><div class="swatch white"></div> Not instrumented</div>
+    </div>
+  </div>
+
+  <div class="info-box" style="background:#fdecea; border-left-color:#c0392b; color:#7b2020;">
+    <strong>❌ Zero coverage.</strong> Not a single line of this class was ever executed by any test.
+    This is a critical network interceptor that adds auth tokens to every HTTP request — yet it has
+    no tests at all. If someone accidentally breaks the token injection, the app would silently fail
+    all authenticated API calls with no test catching it.
+  </div>
+
+  <table class="code-table">
+    <tr class="cov-skip"><td>1</td><td>package com.dmdbrands.gurus.weight.core.network.interceptors</td></tr>
+    <tr class="cov-skip"><td>2</td><td></td></tr>
+    <tr class="cov-skip"><td>3</td><td>import okhttp3.Interceptor</td></tr>
+    <tr class="cov-skip"><td>4</td><td>import okhttp3.Response</td></tr>
+    <tr class="cov-skip"><td>5</td><td>import javax.inject.Inject</td></tr>
+    <tr class="cov-skip"><td>6</td><td></td></tr>
+    <tr class="cov-skip"><td>7</td><td>class AuthTokenInterceptor @Inject constructor(</td></tr>
+    <tr class="cov-skip"><td>8</td><td>    private val tokenManager: TokenManager</td></tr>
+    <tr class="cov-skip"><td>9</td><td>) : Interceptor {</td></tr>
+    <tr class="cov-skip"><td>10</td><td></td></tr>
+    <tr class="cov-none"><td>11</td><td>    override fun intercept(chain: Interceptor.Chain): Response {</td></tr>
+    <tr class="cov-none"><td>12</td><td>        val originalRequest = chain.request()</td></tr>
+    <tr class="cov-none"><td>13</td><td>        <span class="diamond none"></span>val token = runBlocking { tokenManager.getAccessToken() }</td></tr>
+    <tr class="cov-none"><td>14</td><td>        <span class="diamond none" title="Branch not covered"></span>if (token == null) {</td></tr>
+    <tr class="cov-none"><td>15</td><td>            return chain.proceed(originalRequest)  <span style="color:#c0392b;font-size:11px;">← never tested</span></td></tr>
+    <tr class="cov-skip"><td>16</td><td>        }</td></tr>
+    <tr class="cov-none"><td>17</td><td>        val authenticatedRequest = originalRequest.newBuilder()</td></tr>
+    <tr class="cov-none"><td>18</td><td>            .header("Authorization", "Bearer $token")</td></tr>
+    <tr class="cov-none"><td>19</td><td>            .build()                                 <span style="color:#c0392b;font-size:11px;">← never tested</span></td></tr>
+    <tr class="cov-none"><td>20</td><td>        return chain.proceed(authenticatedRequest)</td></tr>
+    <tr class="cov-skip"><td>21</td><td>    }</td></tr>
+    <tr class="cov-skip"><td>22</td><td>}</td></tr>
+  </table>
+
+  <div style="margin-top:16px; padding:14px 18px; background:#fdecea; border:1px solid #e9a0a0; border-radius:6px; font-size:12px;">
+    <strong>💡 What to write:</strong><br><br>
+    <code>// Test 1 — token present → Authorization header added</code><br>
+    <code>val mockChain = mockk&lt;Interceptor.Chain&gt;()</code><br>
+    <code>coEvery { tokenManager.getAccessToken() } returns "abc123"</code><br>
+    <code>every { mockChain.request() } returns Request.Builder().url("https://api.example.com").build()</code><br>
+    <code>every { mockChain.proceed(any()) } returns mockk()</code><br>
+    <code>interceptor.intercept(mockChain)</code><br>
+    <code>verify { mockChain.proceed(match { it.header("Authorization") == "Bearer abc123" }) }</code><br><br>
+    <code>// Test 2 — token null → request proceeds without Authorization header</code>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  FOOTER                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="footer">
+  Generated by <strong>JaCoCo 0.8.12</strong> &nbsp;·&nbsp;
+  Run command: <code>./gradlew jacocoTestReport</code> &nbsp;·&nbsp;
+  Report location: <code>app/build/reports/jacoco/jacocoTestReport/html/index.html</code>
+</div>
+
+<script>
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    const tabs = { overview: 0, package: 1, nameutils: 2, tokenmanager: 3, interceptor: 4 };
+    document.querySelectorAll('.tab')[tabs[name]].classList.add('active');
+    window.scrollTo(0, 0);
+  }
+</script>
+
+</body>
+</html>
