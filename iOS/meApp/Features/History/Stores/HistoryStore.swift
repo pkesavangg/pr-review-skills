@@ -31,7 +31,18 @@ final class HistoryStore: ObservableObject {
     
     // MARK: - Metric Info State
     @Published private(set) var selectedMetric: BodyMetric?
-    
+
+    // MARK: - Blood Pressure State
+    @Published private(set) var bpMonths: [BPHistoryMonth] = []
+    @Published private(set) var bpEntries: [BPHistoryEntry] = []
+    @Published private(set) var selectedBPMonth: BPHistoryMonth?
+    @Published var expandedBPEntries: Set<String> = []
+
+    /// Whether the current product type selection is blood pressure.
+    var isBloodPressureMode: Bool {
+        productTypeStore.selectedItem == .myBloodPressure
+    }
+
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
     
@@ -179,6 +190,20 @@ final class HistoryStore: ObservableObject {
     
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
+
+        // Blood pressure mode uses dummy data — no service call needed
+        if isBloodPressureMode {
+            monthsLoadTask = Task { [weak self] in
+                guard let self else { return }
+                let result = BPDummyDataGenerator.generateMonths()
+                self.bpMonths = result
+                self.isEmptyState = result.isEmpty
+                self.monthsLoadTask = nil
+            }
+            await monthsLoadTask?.value
+            return
+        }
+
         monthsLoadTask = Task { [weak self] in
             guard let self else { return }
             if canShowLoader { self.notificationService.showLoader(LoaderModel(text: loaderLang.loading)) }
@@ -186,7 +211,7 @@ final class HistoryStore: ObservableObject {
                 if canShowLoader { self.notificationService.dismissLoader() }
                 self.monthsLoadTask = nil
             }
-            
+
             do {
                 let result = try await self.entryService.getMonthsAll()
                 self.months = result
@@ -259,6 +284,19 @@ final class HistoryStore: ObservableObject {
         }
     }
     
+    // MARK: - Blood Pressure API
+
+    /// User tapped a BP month row.
+    func selectBPMonth(_ month: BPHistoryMonth) {
+        selectedBPMonth = month
+        bpEntries = BPDummyDataGenerator.generateEntries(for: month.id)
+    }
+
+    func resetSelectedBPMonth() {
+        selectedBPMonth = nil
+        bpEntries = []
+    }
+
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()

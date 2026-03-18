@@ -15,4 +15,11 @@ enum HistoryListStrings {
     static let change = "change"
     static let emptyState = "No history data yet"
     static let retry = "Retry"
+
+    // Blood Pressure
+    static let avgPressure = "avg pressure"
+    static let avgPulse = "avg pulse"
+    static let mmhg = "mmhg"
+    static let pulse = "pulse"
+    static let notes = "Notes"
 }

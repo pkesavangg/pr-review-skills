@@ -40,9 +40,9 @@ struct HistoryListScreen: View {
                             AppIconView(icon: AppAssets.export)
                                 .foregroundColor(theme.statusIconPrimary)
                                 .frame(width: 24, height: 24)
-                                .opacity(store.isEmptyState ? 0.5 : 1.0)
+                                .opacity(store.isEmptyState || store.isBloodPressureMode ? 0.5 : 1.0)
                           }
-                          .disabled(store.isEmptyState)
+                          .disabled(store.isEmptyState || store.isBloodPressureMode)
                       )
                   },
                   onTitleTap: productTypeStore.availableItems.count > 1 ? {
@@ -97,6 +97,15 @@ struct HistoryListScreen: View {
 
     @ViewBuilder
     private var content: some View {
+        if store.isBloodPressureMode {
+            bpContent
+        } else {
+            weightContent
+        }
+    }
+
+    @ViewBuilder
+    private var weightContent: some View {
         ScrollView(showsIndicators: !store.isEmptyState) {
             if store.isEmptyState {
                 ZStack {
@@ -119,13 +128,10 @@ struct HistoryListScreen: View {
                                 isNavigating = true
                                 store.setSelectedMonth(selectedMonth: month)
                                 router.navigate(to: .historyMonthList(month: month))
-                                
-                                // Cancel any existing navigation task
+
                                 navigationTask?.cancel()
-                                
-                                // Reset navigation flag after a short delay
                                 navigationTask = Task {
-                                    try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+                                    try? await Task.sleep(nanoseconds: 500_000_000)
                                     await MainActor.run {
                                         isNavigating = false
                                     }
@@ -139,6 +145,45 @@ struct HistoryListScreen: View {
         .refreshable {
             Task {
                 await store.refreshAllEntries()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var bpContent: some View {
+        ScrollView(showsIndicators: !store.bpMonths.isEmpty) {
+            if store.bpMonths.isEmpty {
+                ZStack {
+                    Spacer().containerRelativeFrame([.horizontal, .vertical])
+                    VStack {
+                        NoEntryView {
+                            tabViewModel.pendingSettingsNavigation = .addEditScales
+                            tabViewModel.selectedTab = .settings
+                            tabViewModel.settingsNavigationSourceTab = .history
+                        }
+                    }
+                }
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(store.bpMonths) { month in
+                        BPMonthSummaryItem(month: month)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                guard !isNavigating else { return }
+                                isNavigating = true
+                                router.navigate(to: .bpHistoryMonthList(month: month))
+
+                                navigationTask?.cancel()
+                                navigationTask = Task {
+                                    try? await Task.sleep(nanoseconds: 500_000_000)
+                                    await MainActor.run {
+                                        isNavigating = false
+                                    }
+                                }
+                            }
+                            .background(theme.backgroundSecondary)
+                    }
+                }
             }
         }
     }
