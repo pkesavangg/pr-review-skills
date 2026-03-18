@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.signup.model
 
+import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -13,6 +14,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.we
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -81,7 +84,10 @@ data class SignupFormControls(
               listOf(
                 FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH, customMessage = SignupStrings.Error.maxName),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Name.MAX_LENGTH,
+                  customMessage = SignupStrings.Error.maxName,
+                ),
               ),
             ),
           lastName =
@@ -90,7 +96,10 @@ data class SignupFormControls(
               listOf(
                 FormValidations.required(SignupStrings.Error.blank),
                 FormValidations.noWhiteSpace(),
-                FormValidations.maxLength(AppValidatorConfig.Name.MAX_LENGTH,customMessage = SignupStrings.Error.maxName),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Name.MAX_LENGTH,
+                  customMessage = SignupStrings.Error.maxName,
+                ),
               ),
             ),
           email =
@@ -98,8 +107,11 @@ data class SignupFormControls(
               signupData.email,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-          FormValidations.email(),
-          FormValidations.maxLength(AppValidatorConfig.Email.MAX_LENGTH, customMessage = LoginStrings.Errors.maxLengthEmail),
+                FormValidations.email(),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Email.MAX_LENGTH,
+                  customMessage = LoginStrings.Errors.maxLengthEmail,
+                ),
               ),
             ),
           password =
@@ -107,8 +119,17 @@ data class SignupFormControls(
               signupData.password,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "password", customMessage = LoginStrings.Errors.passwordlen, allowSpaces = true),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword, allowSpaces = true),
+                FormValidations.minLength(
+                  AppValidatorConfig.Password.MIN_LENGTH,
+                  "password",
+                  customMessage = LoginStrings.Errors.passwordlen,
+                  allowSpaces = true,
+                ),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Password.MAX_LENGTH,
+                  customMessage = LoginStrings.Errors.maxLengthPassword,
+                  allowSpaces = true,
+                ),
               ),
             ),
           confirmPassword =
@@ -116,8 +137,17 @@ data class SignupFormControls(
               signupData.confirmPassword,
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
-                FormValidations.minLength(AppValidatorConfig.Password.MIN_LENGTH, "confirmPassword",customMessage = LoginStrings.Errors.passwordlen, allowSpaces = true),
-                FormValidations.maxLength(AppValidatorConfig.Password.MAX_LENGTH,customMessage = LoginStrings.Errors.maxLengthPassword, allowSpaces = true),
+                FormValidations.minLength(
+                  AppValidatorConfig.Password.MIN_LENGTH,
+                  "confirmPassword",
+                  customMessage = LoginStrings.Errors.passwordlen,
+                  allowSpaces = true,
+                ),
+                FormValidations.maxLength(
+                  AppValidatorConfig.Password.MAX_LENGTH,
+                  customMessage = LoginStrings.Errors.maxLengthPassword,
+                  allowSpaces = true,
+                ),
               ),
             ),
           zipcode =
@@ -126,7 +156,10 @@ data class SignupFormControls(
               listOf(
                 FormValidations.required(LoginStrings.Errors.emailBlank),
                 FormValidations.noWhiteSpace(),
-              FormValidations.maxLength(AppValidatorConfig.ZipCode.MAX_LENGTH,customMessage = SignupStrings.Error.maxZipcode),
+                FormValidations.maxLength(
+                  AppValidatorConfig.ZipCode.MAX_LENGTH,
+                  customMessage = SignupStrings.Error.maxZipcode,
+                ),
               ),
             ),
           birthday =
@@ -181,8 +214,8 @@ data class SignupFormControls(
       controls.goalWeight.addValidator(
         FormValidations.weightMatchValidator(
           currentWeightControl = controls.currentWeight,
-          goalTypeControl = controls.goalType
-        )
+          goalTypeControl = controls.goalType,
+        ),
       )
 
       // Add password matching validation only to confirm password field
@@ -207,7 +240,8 @@ data class SignupFormControls(
       controls.currentWeight.onValueChangeListener { _, _ ->
         val goalType = controls.goalType.value
         if ((goalType == GoalType.LOSE.value || goalType == GoalType.GAIN.value || goalType == GoalType.LOSE_GAIN.value) &&
-            controls.goalWeight.value.isNotEmpty()) {
+          controls.goalWeight.value.isNotEmpty()
+        ) {
           controls.goalWeight.validate()
         }
       }
@@ -301,6 +335,7 @@ data class SignupFormControls(
  * @property error Error message to display, if any.
  * @property goalSkipped Whether the goal step was skipped.
  */
+@Stable
 data class SignupState(
   val form: FormGroup<SignupFormControls>,
   val currentStep: SignupStep = SignupStep.NAME,
@@ -308,7 +343,7 @@ data class SignupState(
   val error: String? = null,
   val goalSkipped: Boolean = false,
 ) : IReducer.State {
-  val steps: List<SignupStep> = SignupStep.entries
+  val steps: ImmutableList<SignupStep> = SignupStep.entries.toPersistentList()
   val currentStepIndex: Int get() = steps.indexOf(currentStep)
   val isFirstStep: Boolean get() = currentStepIndex == 0
   val isLastStep: Boolean get() = currentStepIndex == steps.size - 1
@@ -439,7 +474,7 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
   ): SignupState =
     when (intent) {
       is SignupIntent.Next -> {
-        if(!state.isLastStep){
+        if (!state.isLastStep) {
           val updatedState =
             if (state.currentStep == SignupStep.GOAL) {
               state.copy(goalSkipped = false)
@@ -452,7 +487,7 @@ class SignupReducer : IReducer<SignupState, SignupIntent> {
           val newStep = updatedState.steps[nextIndex]
           updatedState.copy(
             currentStep = newStep,
-            error = null
+            error = null,
           )
         } else {
           state.copy(isLoading = false, error = null)

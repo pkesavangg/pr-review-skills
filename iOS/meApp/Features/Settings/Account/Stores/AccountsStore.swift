@@ -39,15 +39,16 @@ class AccountsStore: ObservableObject {
     private let tag = "AccountsStore"
     var cancellables: Set<AnyCancellable> = []
 
+    // swiftlint:disable:next function_body_length
     init(
         injectedAccountService: AccountServiceProtocol? = nil,
         injectedNotificationService: NotificationHelperServiceProtocol? = nil,
         injectedEntryService: EntryServiceProtocol? = nil,
         injectedLogger: LoggerServiceProtocol? = nil,
         injectedFeedService: FeedServiceProtocol? = nil,
-        networkMonitor: NetworkMonitoring = NetworkMonitor.shared
+        networkMonitor: NetworkMonitoring? = nil
     ) {
-        self.networkMonitor = networkMonitor
+        self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         if let injectedAccountService {
             self.accountService = injectedAccountService
         }

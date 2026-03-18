@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.repository
 
+import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.network.utility.HttpErrorResponse
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -61,6 +62,7 @@ constructor(
   private val accountDao: AccountDao,
   private val userDataStore: UserDataStore,
   private val tokenManager: ITokenManager,
+  private val secureTokenStore: ISecureTokenStore,
   private val authAPI: IAuthAPI,
   private val userAPI: IUserAPI,
 ) : IAccountRepository {
@@ -77,7 +79,7 @@ constructor(
     email: String,
     password: String,
   ): Account {
-    AppLog.d(TAG, "login API call for email: $email")
+    AppLog.d(TAG, "login API call")
     return try {
       val loginResponse = authAPI.login(LoginRequest(email, password))
       val account = addAccountFromLoginResponse(loginResponse)
@@ -93,11 +95,11 @@ constructor(
    * Signs up via API and returns LoginResponse.
    */
   override suspend fun signup(request: SignupRequest): Account {
-    AppLog.d(TAG, "signup API call for email: ${request.email}")
+    AppLog.d(TAG, "signup API call")
     return try {
       val loginResponse = authAPI.createAccount(request)
       val account = addAccountFromLoginResponse(loginResponse)
-      AppLog.i(TAG, "signup API call succeeded, account: ${account.id}")
+       AppLog.i(TAG, "signup API call succeeded, account: ${account.id}")
       account
     } catch (e: Exception) {
       AppLog.e(TAG, "signup API call failed", e)
@@ -190,13 +192,13 @@ constructor(
    * Requests password reset via API and returns true if successful.
    */
   override suspend fun resetPassword(email: String): Response<Unit> {
-    AppLog.d(TAG, "resetPassword API call for email: $email")
+    AppLog.d(TAG, "resetPassword API call")
     return try {
       val response = authAPI.requestPasswordReset(PasswordResetRequest(email))
-      AppLog.i(TAG, "resetPassword API call succeeded for email: $email")
+      AppLog.i(TAG, "resetPassword API call succeeded")
       response
     } catch (e: Exception) {
-      AppLog.e(TAG, "resetPassword API call failed for email: $email", e)
+      AppLog.e(TAG, "resetPassword API call failed", e)
       throw e
     }
   }
@@ -682,6 +684,7 @@ constructor(
    * Clears the tokens for the given account ID.
    */
   override suspend fun clearAccountTokens(accountId: String) {
+    secureTokenStore.removeToken(accountId)
     userDataStore.clearAccountTokens(accountId)
   }
 
@@ -690,6 +693,7 @@ constructor(
    */
   override suspend fun removeAccount(accountId: String) {
     try {
+      secureTokenStore.removeToken(accountId)
       userDataStore.clearAccountTokens(accountId)
     } catch (e: Exception) {
       AppLog.d(TAG, "Failed to clear account tokens")
@@ -709,6 +713,7 @@ constructor(
       }
 
       // Clear all tokens and local data
+      secureTokenStore.removeToken(accountID)
       userDataStore.clearAccountTokens(accountID)
       tokenManager.clearTokens()
       AppLog.d(TAG, "Account deleted in local data")

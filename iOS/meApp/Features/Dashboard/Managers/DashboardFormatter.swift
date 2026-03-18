@@ -67,6 +67,7 @@ final class DashboardFormatter: DashboardFormatterProtocol {
         }
     }
     
+    // swiftlint:disable:next function_parameter_count
     func formatMetricInfoDateLabel(
         entryDate: Date?,
         isFromHistory: Bool,

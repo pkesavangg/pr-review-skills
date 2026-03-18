@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.integration.viewmodel.IntegrationView
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.persistentListOf
 
 /**
  * Integration screen composable. Displays available and connected integrations, handles user interactions.
@@ -27,7 +28,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun IntegrationScreen() {
     val viewmodel: IntegrationViewModel = hiltViewModel()
-    val state by viewmodel.state.collectAsState()
+    val state by viewmodel.state.collectAsStateWithLifecycle()
 
   LaunchedEffect(Unit) {
     //check it can removable or not
@@ -70,7 +71,7 @@ private fun IntegrationContent(
 fun IntegrationScreenPreview() {
     MeAppTheme {
         val dummyState = IntegrationState(
-            integrations = emptyList(),
+            integrations = persistentListOf(),
         )
         IntegrationContent(
             state = dummyState,

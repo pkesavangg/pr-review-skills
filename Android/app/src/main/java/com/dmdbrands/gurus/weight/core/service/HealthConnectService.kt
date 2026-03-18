@@ -32,9 +32,9 @@ import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
 import com.greatergoods.libs.healthconnect.model.HealthConnectData
 import com.greatergoods.libs.healthconnect.model.HealthConnectOptions
 import com.greatergoods.libs.healthconnect.model.HealthConnectResult
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,14 +62,13 @@ class HealthConnectService @Inject constructor(
   appNavigationService: IAppNavigationService,
   private val entryRepository: IEntryRepository, // Add entry repository for fetching entries
   private val integrationRepository: IIntegrationRepository, // Inject IntegrationRepository for integrations flow
-  // Inject IntegrationService for API calls
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IHealthConnectService {
 
   // Core Health Connect components
   private lateinit var healthConnect: HealthConnect
   private lateinit var currentActivity: Activity
   private var currentIntegrations: Integrations? = null
-  private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   // Service state
   private val tag = "HealthConnectService"
@@ -113,7 +112,7 @@ class HealthConnectService @Inject constructor(
 
   init {
 
-    repositoryScope.launch {
+    appScope.launch {
       AppLog.d(tag, "Health connect service gets initialised")
       accountRepository.getActiveAccount().collect { it ->
         currentAccountId = it?.id
@@ -743,7 +742,7 @@ class HealthConnectService @Inject constructor(
   }
 
   private fun onConfirmMultiDevice(accountId: String){
-    CoroutineScope(SupervisorJob() + Dispatchers.Main).launch  {
+    appScope.launch(Dispatchers.Main) {
       appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
       appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
       healthConnectRepository.updateOutOfSync(accountId, false)
@@ -752,7 +751,7 @@ class HealthConnectService @Inject constructor(
   }
 
   private fun onCancelMultiDevice(accountId: String){
-    CoroutineScope(SupervisorJob() + Dispatchers.Main).launch  {
+    appScope.launch(Dispatchers.Main) {
       healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
       healthConnectRepository.updateOutOfSync(accountId, true)
       healthConnectRepository.updateModalState(accountId, true)
@@ -821,7 +820,7 @@ class HealthConnectService @Inject constructor(
         cancelText = HealthConnectStrings.ActionButtons.cancel,
         onConfirm = {
           dialogQueueService.showLoader(HealthConnectStrings.Loader.loading)
-          CoroutineScope(Dispatchers.IO).launch {
+          appScope.launch {
             syncAllData()
             dialogQueueService.dismissCurrent()
             dialogQueueService.dismissLoader()
@@ -876,7 +875,7 @@ class HealthConnectService @Inject constructor(
                     DialogModel.Custom(
                       contentKey = DialogType.FinishConnect,
                       onConfirm = {
-                        CoroutineScope(Dispatchers.IO).launch {
+                        appScope.launch {
                           appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
                           appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
                           dialogQueueService.dismissCurrent()
@@ -1011,7 +1010,7 @@ class HealthConnectService @Inject constructor(
               params =
                 mapOf(
                   "secondaryAction" to {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    appScope.launch {
                       dialogQueueService.showLoader(HealthConnectStrings.Loader.removing)
                       removeHealthConnectIntegration()
                       healthConnectRepository.updateOutOfSync(accountId, true)
@@ -1023,7 +1022,7 @@ class HealthConnectService @Inject constructor(
                 ),
               onConfirm = {
                 dialogQueueService.dismissCurrent()
-                CoroutineScope(Dispatchers.IO).launch {
+                appScope.launch {
                   openHealthConnect()
                   healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
                   // On confirm, you may want to reset out-of-sync state if permissions are restored
@@ -1033,7 +1032,7 @@ class HealthConnectService @Inject constructor(
                 }
               },
               onDismiss = {
-                CoroutineScope(Dispatchers.IO).launch {
+                appScope.launch {
                   healthConnectRepository.setHealthConnectIntegrationStatus(accountId, true)
                   healthConnectRepository.updateOutOfSync(accountId, true)
                   healthConnectRepository.updateModalState(accountId, true)
@@ -1077,14 +1076,14 @@ class HealthConnectService @Inject constructor(
               DialogModel.Custom(
                 contentKey = DialogType.FinishConnect,
                 onConfirm = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
                     appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
                     dialogQueueService.dismissCurrent()
                   }
                 },
                 onDismiss = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     healthConnectRepository.updateAlertSeen(accountId, true)
                     dialogQueueService.dismissCurrent()
                   }
@@ -1102,7 +1101,7 @@ class HealthConnectService @Inject constructor(
               DialogModel.Custom(
                 contentKey = DialogType.FinishConnect,
                 onConfirm = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     healthConnectRepository.setOpen(accountId, false)
                     appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
                     appNavigationService.navigateTo(AppRoute.Integration.HealthConnect)
@@ -1110,7 +1109,7 @@ class HealthConnectService @Inject constructor(
                   }
                 },
                 onDismiss = {
-                  CoroutineScope(Dispatchers.IO).launch {
+                  appScope.launch {
                     healthConnectRepository.setOpen(accountId, false)
                   }
                   dialogQueueService.dismissCurrent()

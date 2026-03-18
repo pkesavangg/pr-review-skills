@@ -147,3 +147,33 @@ companion object { private const val TAG = "FooViewModel" }
 AppLog.d(TAG, "message")
 AppLog.e(TAG, "error", exception)
 ```
+
+## Analytics Events
+
+Use `IAnalyticsService` for Firebase Analytics event tracking. Inject via Hilt and call `logEvent()`.
+
+**Naming conventions:**
+- Event names: `snake_case`, max 40 characters (e.g., `weight_entry_created`)
+- Parameter names: `snake_case`, max 36 characters (e.g., `error_type`)
+- **No PII** in event parameters — no emails, names, or account IDs
+- Constants defined in `IAnalyticsService.Events` and `IAnalyticsService.Params`
+
+**Current events:**
+
+| Event | Trigger | Parameters |
+|-------|---------|------------|
+| `weight_entry_created` | Entry saved (manual or scale) | — |
+| `manual_entry_created` | Manual entry saved from form | — |
+| `scale_connected` | BLE/WiFi scale connects | `scale_type` |
+| `account_switched` | User switches active account | — |
+| `login_success` | Login succeeds | — |
+| `login_failure` | Login fails | `error_type` |
+| `signup_completed` | New user completes signup | — |
+
+```kotlin
+analyticsService.logEvent(IAnalyticsService.Events.LOGIN_SUCCESS)
+analyticsService.logEvent(
+    IAnalyticsService.Events.LOGIN_FAILURE,
+    Bundle().apply { putString(IAnalyticsService.Params.ERROR_TYPE, "http_401") },
+)
+```

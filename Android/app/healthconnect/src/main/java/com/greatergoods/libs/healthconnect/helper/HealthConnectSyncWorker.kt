@@ -13,7 +13,6 @@ class HealthConnectSyncWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
-        // TODO: Implement background sync logic
         return Result.success()
     }
 }

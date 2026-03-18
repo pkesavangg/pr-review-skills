@@ -461,7 +461,7 @@ constructor(
       try {
         val token = wifiScaleService.getScaleToken()
         scaleToken = token
-        AppLog.d(TAG, "getScaleToken - token retrieved: $token")
+        AppLog.d(TAG, "getScaleToken - token retrieved successfully")
       } catch (e: Exception) {
         AppLog.e(TAG, "getScaleToken - Error getting scale token", e)
       }

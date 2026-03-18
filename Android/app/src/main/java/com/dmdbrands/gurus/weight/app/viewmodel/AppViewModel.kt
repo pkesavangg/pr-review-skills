@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
@@ -25,6 +26,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -92,6 +94,8 @@ constructor(
   private val feedService: IFeedService,
   private val ggInAppMessagingService: GGInAppMessagingService,
   private val accountFlagService: IAccountFlagService,
+  private val tokenMigrationHelper: TokenMigrationHelper,
+  private val analyticsService: IAnalyticsService,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -131,9 +135,11 @@ constructor(
         AppLog.e("MainActivity", "Failed to cleanup old logs", e)
       }
 
-      // Load all tokens into TokenManager's in-memory map
+      // Migrate tokens from DataStore to EncryptedSharedPreferences (one-time)
+      // then load all tokens into TokenManager's in-memory map
       try {
         initEvents()
+        tokenMigrationHelper.migrateIfNeeded()
         tokenManager.loadAllTokens()
         tokenManager.getCurrentAccountID()
         AppLog.v(TAG, "Loaded all tokens into TokenManager")
@@ -274,6 +280,22 @@ constructor(
                 stopScan()
                 navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
                 dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
+              }
+            }
+          }
+
+          is AuthState.EncryptionFailure -> {
+            // Encryption failure affects all accounts (shared encrypted file).
+            // Reuse existing logout alert pattern — force re-login.
+            viewModelScope.launch {
+              val activeAccount = accountService.getCurrentAccount()
+              val username = activeAccount?.firstName ?: ""
+              // Log out all accounts since encrypted storage is shared
+              accountService.logoutAll()
+              stopScan()
+              navigationService.replaceStack(route = AppRoute.Auth.Landing)
+              if (username.isNotEmpty()) {
+                dialogUtility.showAccountLoggedOutAlert(username)
               }
             }
           }
@@ -587,6 +609,12 @@ constructor(
 
         GGScanResponseType.DEVICE_CONNECTED -> {
           AppLog.d(TAG, "Device connected ${data.broadcastId}")
+          analyticsService.logEvent(
+            IAnalyticsService.Events.SCALE_CONNECTED,
+            android.os.Bundle().apply {
+              putString(IAnalyticsService.Params.SCALE_TYPE, data.broadcastId ?: "unknown")
+            },
+          )
           onDeviceUpdate(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,
@@ -621,28 +649,37 @@ constructor(
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
           val isOnAuthScreen = currentRoute is AppRoute.Auth
-          if (currentRoute !is AppRoute.ScaleSetup && !isKnownScale && !isOnAuthScreen) {
+          if (currentRoute !is AppRoute.ScaleSetup && isKnownScale && !isOnAuthScreen) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
                   viewModelScope.launch {
-                    val accountId = currentAccountId ?: return@launch
-                    val broadcastId = data.broadcastId ?: return@launch
-                    dialogQueueService.showLoader("Loading...")
-                    val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
-                    ggDeviceService.addCacheDevice(data.broadcastId, device)
-                    ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
-                      viewModelScope.launch {
-                        dialogQueueService.dismissLoader()
-                        navigationService.navigateTo(
-                          AppRoute.ScaleSetup.BtWifiScaleSetup(
-                            sku = data.getSKU(),
-                            initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
-                            broadcastId = data.broadcastId,
-                            userList = response.user,
-                          ),
-                        )
+                    try {
+                      val accountId = currentAccountId ?: return@launch
+                      val broadcastId = data.broadcastId ?: return@launch
+                      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
+                      if (device == null) {
+                        AppLog.w(TAG, "DEVICE_MEMORY_FULL: scale not found for broadcastId=$broadcastId")
+                        return@launch
                       }
+                      dialogQueueService.showLoader("Loading...")
+                      ggDeviceService.addCacheDevice(data.broadcastId, device)
+                      ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                        viewModelScope.launch {
+                          dialogQueueService.dismissLoader()
+                          navigationService.navigateTo(
+                            AppRoute.ScaleSetup.BtWifiScaleSetup(
+                              sku = data.getSKU(),
+                              initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
+                              broadcastId = data.broadcastId,
+                              userList = response.user,
+                            ),
+                          )
+                        }
+                      }
+                    } catch (e: Exception) {
+                      AppLog.e(TAG, "DEVICE_MEMORY_FULL: error handling max user alert", e)
+                      dialogQueueService.dismissLoader()
                     }
                   }
                 },
@@ -806,7 +843,7 @@ constructor(
           AppLog.d(TAG, "Stored notification alert setting for account: $accountId")
           requestPermissions(GGPermissionType.NOTIFICATION)
         } else {
-          AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
+           AppLog.d(TAG, "Notification alert already shown for account: $accountId, skipping permission request")
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to check/request notification permission", e.toString())

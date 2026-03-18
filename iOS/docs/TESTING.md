@@ -23,6 +23,13 @@ This file is the high-level testing entrypoint for `meApp`.
 - Style: Arrange / Act / Assert with protocol-based mocks.
 - Isolation: reset shared DI state per suite (`TestDependencyContainer.reset()`).
 - Runtime: fast, deterministic, no real backend dependency.
+- **All tests must run on a connected physical device — never use a simulator.**
+
+Find the connected device ID first:
+```bash
+xcodebuild -project iOS/meApp.xcodeproj -scheme meAppTests -showdestinations 2>&1 \
+  | grep "platform:iOS," | grep -v Simulator | head -1
+```
 
 Run:
 ```bash
@@ -30,7 +37,7 @@ xcodebuild test \
   -project iOS/meApp.xcodeproj \
   -scheme meAppTests \
   -configuration Dev \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+  -destination 'id={DEVICE_ID}'
 ```
 
 ## UI Tests (Basic)
@@ -39,6 +46,13 @@ xcodebuild test \
 - Style: launch app with scenario flags and interact through accessibility IDs.
 - DI model: app startup overrides protocol dependencies for deterministic scenarios.
 - Runtime: slower than unit tests, but verifies real navigation/rendering flows.
+- **All tests must run on a connected physical device — never use a simulator.**
+
+Find the connected device ID first:
+```bash
+xcodebuild -project iOS/meApp.xcodeproj -scheme meAppUITests -showdestinations 2>&1 \
+  | grep "platform:iOS," | grep -v Simulator | head -1
+```
 
 Run:
 ```bash
@@ -46,7 +60,7 @@ xcodebuild test \
   -project iOS/meApp.xcodeproj \
   -scheme meAppUITests \
   -configuration Dev \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+  -destination 'id={DEVICE_ID}'
 ```
 
 ## Testing Principles

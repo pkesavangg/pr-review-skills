@@ -208,6 +208,16 @@ final class MockPushScaleService: ScaleServiceProtocol {
         throw UnexpectedCallError.methodCalled("createBluetoothScale")
     }
 
+    func createA6Scale(
+        device: Device,
+        sku: String?,
+        accountId: String,
+        deviceMetadata: DeviceMetaData?,
+        skipDuplicateCheck: Bool
+    ) async throws -> Device {
+        throw UnexpectedCallError.methodCalled("createA6Scale")
+    }
+
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
     func pushLocalChangesToServer() async {}

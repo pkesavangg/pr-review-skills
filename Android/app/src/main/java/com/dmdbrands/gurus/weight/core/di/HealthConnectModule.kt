@@ -14,6 +14,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 import android.content.Context
 
@@ -38,6 +39,7 @@ object HealthConnectModule {
     appNavigationService: IAppNavigationService,
     entryRepository: IEntryRepository,
     connectivityObserver: IConnectivityObserver,
+    @ApplicationScope appScope: CoroutineScope,
   ): IHealthConnectService = HealthConnectService(
     context,
     healthConnectRepository,
@@ -47,5 +49,6 @@ object HealthConnectModule {
     appNavigationService,
     entryRepository,
     integrationRepository,
+    appScope,
   )
 }

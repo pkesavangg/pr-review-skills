@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 ///
 ///  BluetoothScaleSetupStore.swift
 ///  meApp
@@ -13,6 +14,7 @@ import SwiftUI
 
 /// Store responsible for orchestrating the Bluetooth (A3) scale-setup multi-step flow.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class BluetoothScaleSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperServiceProtocol
@@ -682,7 +684,7 @@ final class BluetoothScaleSetupStore: ObservableObject {
         // Reset saved flag
         isScaleSaved = false
     }
-} // swiftlint:disable:this file_length
+}
 
 #if DEBUG
 extension BluetoothScaleSetupStore {
