@@ -26,6 +26,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -94,6 +95,7 @@ constructor(
   private val ggInAppMessagingService: GGInAppMessagingService,
   private val accountFlagService: IAccountFlagService,
   private val tokenMigrationHelper: TokenMigrationHelper,
+  private val analyticsService: IAnalyticsService,
 ) : BaseIntentViewModel<AppState, AppIntent>(
   reducer = AppReducer(),
 ) {
@@ -607,6 +609,12 @@ constructor(
 
         GGScanResponseType.DEVICE_CONNECTED -> {
           AppLog.d(TAG, "Device connected ${data.broadcastId}")
+          analyticsService.logEvent(
+            IAnalyticsService.Events.SCALE_CONNECTED,
+            android.os.Bundle().apply {
+              putString(IAnalyticsService.Params.SCALE_TYPE, data.broadcastId ?: "unknown")
+            },
+          )
           onDeviceUpdate(
             deviceDetail = data,
             connectionStatus = BLEStatus.CONNECTED,

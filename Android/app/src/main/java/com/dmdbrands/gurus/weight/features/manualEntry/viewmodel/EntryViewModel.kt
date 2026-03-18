@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
@@ -39,6 +40,7 @@ constructor(
   private val accountService: IAccountService,
   private val appSyncService: IAppSyncService,
   private val deviceService: IDeviceService,
+  private val analyticsService: IAnalyticsService,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
   reducer = EntryReducer(),
 ) {
@@ -253,6 +255,7 @@ constructor(
           .toScaleEntry(_state.value.weightMode, accountId)
       try {
         entryService.addEntry(entry = scaleEntry)
+        analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
 
         // Clear AppSync data after successful save
         appSyncService.setAppSyncDataForEditing(null)

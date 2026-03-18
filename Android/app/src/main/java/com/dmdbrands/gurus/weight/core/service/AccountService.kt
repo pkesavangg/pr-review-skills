@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.toAccountInfo
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import android.os.Bundle
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Singleton
@@ -46,6 +48,7 @@ class AccountService(
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
+  private val analyticsService: IAnalyticsService,
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
@@ -136,6 +139,7 @@ class AccountService(
       }
       val savedAccount = accountRepository.login(email, password)
 
+      analyticsService.logEvent(IAnalyticsService.Events.LOGIN_SUCCESS)
       AppLog.d(TAG, "login() successful")
       savedAccount
     } catch (e: HttpException) {
@@ -147,6 +151,10 @@ class AccountService(
           else -> LoginError.MessageGeneric
         }
       showErrorToast(title = LoginError.Header, message = msg)
+      analyticsService.logEvent(
+        IAnalyticsService.Events.LOGIN_FAILURE,
+        Bundle().apply { putString(IAnalyticsService.Params.ERROR_TYPE, "http_${e.code()}") },
+      )
       AppLog.e(TAG, "Login failed", e)
       appNavigationService.emitAuthEvent(AuthState.Error(e.message ?: "Login failed"))
       null
@@ -168,6 +176,7 @@ class AccountService(
     return try {
       val savedAccount = accountRepository.signup(request)
       appNavigationService.emitAuthEvent(AuthState.AccountAdded(savedAccount))
+      analyticsService.logEvent(IAnalyticsService.Events.SIGNUP_COMPLETED)
       AppLog.d(TAG, "signup() successful")
       savedAccount
     } catch (e: Exception) {
@@ -649,6 +658,7 @@ class AccountService(
       // Switch to the account using the repository method
       accountRepository.switchToAccount(account.id)
       AppLog.d(TAG, "Successfully switched account")
+      analyticsService.logEvent(IAnalyticsService.Events.ACCOUNT_SWITCHED)
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
     }

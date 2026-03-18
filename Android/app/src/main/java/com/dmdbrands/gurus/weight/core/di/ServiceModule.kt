@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.di
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.AccountFlagService
 import com.dmdbrands.gurus.weight.core.service.AccountService
+import com.dmdbrands.gurus.weight.core.service.AnalyticsService
 import com.dmdbrands.gurus.weight.core.service.CrashReportingService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
@@ -56,6 +57,7 @@ import com.dmdbrands.gurus.weight.domain.repository.INotificationRepository
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
@@ -79,6 +81,7 @@ import com.dmdbrands.gurus.weight.features.feed.shared.SelectedFeedItemHolder
 import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
 import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
 import com.greatergoods.notification.NotificationService as GGNotificationService
+import com.google.firebase.analytics.FirebaseAnalytics
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -108,6 +111,7 @@ object ServiceModule {
       appNavigationService: IAppNavigationService,
       storageClearService: StorageClearService,
       offlineHandlerService: IOfflineHandlerService,
+      analyticsService: IAnalyticsService,
       @ApplicationScope appScope: CoroutineScope,
     ): IAccountService =
       AccountService(
@@ -117,6 +121,7 @@ object ServiceModule {
         dialogQueueService,
         appNavigationService,
         storageClearService,
+        analyticsService,
         appScope,
       )
 
@@ -245,7 +250,8 @@ object ServiceModule {
   @Singleton
   fun provideEntryCrudService(
     syncService: IEntrySyncService,
-  ): IEntryCrudService = EntryCrudService(syncService)
+    analyticsService: IAnalyticsService,
+  ): IEntryCrudService = EntryCrudService(syncService, analyticsService)
 
   @Provides
   @Singleton
@@ -543,6 +549,18 @@ object ServiceModule {
     accountFlagRepository: IAccountFlagRepository,
     appReviewManager: com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager,
   ): IAccountFlagService = AccountFlagService(context, accountFlagRepository, appReviewManager)
+
+  @Provides
+  @Singleton
+  fun provideFirebaseAnalytics(
+    @ApplicationContext context: Context,
+  ): FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
+
+  @Provides
+  @Singleton
+  fun provideAnalyticsService(
+    analyticsService: AnalyticsService,
+  ): IAnalyticsService = analyticsService
 
   @Provides
   @Singleton
