@@ -35,6 +35,9 @@ enum FocusField: Hashable {
     case diastolic
     case pulse
     case notes
+    case pounds
+    case ounces
+    case inches
     case none
     case modelNumber
     case scaleName

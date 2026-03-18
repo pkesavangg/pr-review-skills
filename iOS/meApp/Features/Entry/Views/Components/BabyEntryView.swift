@@ -1,0 +1,176 @@
+//
+//  BabyEntryView.swift
+//  meApp
+//
+
+import SwiftUI
+
+struct BabyEntryView: View {
+    @Environment(\.appTheme) private var theme
+    @ObservedObject var entryStore: EntryStore
+    @Binding var focusedField: FocusField?
+
+    private let babyLang = ManualEntryStrings.self
+    private let labels = InputFieldLabels.self
+    private let commonLang = CommonStrings.self
+
+    var body: some View {
+        VStack(spacing: .spacingLG) {
+            VStack(alignment: .leading, spacing: .spacingXS) {
+                // Pounds & Ounces side by side with combined error
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    HStack(spacing: .spacingSM) {
+                        MetricInputField(
+                            config: TextInputConfig(
+                                label: babyLang.pounds,
+                                inputType: .metric,
+                                focusField: .pounds,
+                                maxLength: 3,
+                                allowWholeNumbers: true
+                            ),
+                            value: $entryStore.babyForm.pounds.value,
+                            focusedField: $focusedField
+                        ) {
+                            focusedField = .ounces
+                        }
+
+                        MetricInputField(
+                            config: TextInputConfig(
+                                label: babyLang.ounces,
+                                inputType: .metric,
+                                focusField: .ounces,
+                                maxLength: 2,
+                                allowWholeNumbers: true
+                            ),
+                            value: $entryStore.babyForm.ounces.value,
+                            focusedField: $focusedField
+                        ) {
+                            focusedField = .inches
+                        }
+                    }
+
+                    if let weightError = entryStore.babyWeightError {
+                        Text(weightError)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textError)
+                            .padding(.leading, .spacingSM)
+                    }
+                }
+
+                // Inches full width
+                MetricInputField(
+                    config: TextInputConfig(
+                        label: babyLang.inches,
+                        inputType: .metric,
+                        errorMessage: entryStore.babyLengthError,
+                        focusField: .inches,
+                        maxLength: 3
+                    ),
+                    value: $entryStore.babyForm.inches.value,
+                    focusedField: $focusedField
+                ) {
+                    focusedField = .notes
+                }
+
+                // Notes
+                NotesInputField(
+                    config: TextInputConfig(
+                        label: babyLang.notes,
+                        inputType: .notes,
+                        focusField: .notes
+                    ),
+                    value: $entryStore.babyForm.notes.value,
+                    focusedField: $focusedField
+                )
+                .padding(.top, .spacingXS)
+
+                // Date heading
+                Text(labels.date)
+                    .fontOpenSans(.heading4)
+                    .foregroundColor(theme.textHeading)
+                    .padding(.top, .spacingSM)
+
+                HStack(spacing: .spacingSM) {
+                    DateLabelView(
+                        date: entryStore.babyForm.date.value,
+                        isSelected: entryStore.showDatePicker
+                    ) {
+                        toggleDatePicker()
+                    }
+                    TimeLabelView(
+                        time: entryStore.babyForm.time.value,
+                        isSelected: entryStore.showTimePicker
+                    ) {
+                        toggleTimePicker()
+                    }
+                }
+                .padding(.top, .spacingXS)
+
+                DatePickerView(
+                    isPresented: $entryStore.showDatePicker,
+                    date: $entryStore.babyForm.date.value,
+                    startDate: Date(timeIntervalSince1970: 946684800),
+                    endDate: Date()
+                )
+                .onChange(of: entryStore.showDatePicker) { _, isPresented in
+                    if isPresented {
+                        dismissKeyboardAndUnfocus()
+                        if entryStore.showTimePicker { entryStore.showTimePicker = false }
+                    }
+                }
+
+                TimePickerView(
+                    isPresented: $entryStore.showTimePicker,
+                    time: $entryStore.babyForm.time.value,
+                    selectedDate: entryStore.babyForm.date.value,
+                    endTime: entryStore.maxSelectableTime
+                )
+                .onChange(of: entryStore.showTimePicker) { _, isPresented in
+                    if isPresented {
+                        dismissKeyboardAndUnfocus()
+                        if entryStore.showDatePicker { entryStore.showDatePicker = false }
+                    }
+                }
+            }
+
+            // Save button
+            ButtonView(
+                text: commonLang.save,
+                type: .filledPrimary,
+                size: .large,
+                isDisabled: !entryStore.babyForm.isValid || entryStore.isSaving
+            ) {
+                Task {
+                    focusedField = nil
+                    entryStore.notificationService.showToast(
+                        ToastModel(title: ToastStrings.success, message: ToastStrings.entryAdded)
+                    )
+                    entryStore.resetBabyForm()
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func dismissKeyboardAndUnfocus() {
+        focusedField = nil
+        hideKeyboard()
+    }
+
+    private func toggleDatePicker() {
+        dismissKeyboardAndUnfocus()
+        withAnimation {
+            entryStore.showDatePicker.toggle()
+        }
+        if entryStore.showTimePicker { entryStore.showTimePicker = false }
+    }
+
+    private func toggleTimePicker() {
+        dismissKeyboardAndUnfocus()
+        withAnimation {
+            entryStore.showTimePicker.toggle()
+        }
+        if entryStore.showDatePicker { entryStore.showDatePicker = false }
+    }
+}

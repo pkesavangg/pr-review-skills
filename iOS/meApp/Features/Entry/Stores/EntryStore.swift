@@ -24,6 +24,7 @@ final class EntryStore: ObservableObject {
     // Form & UI state
     @Published var manualEntryForm = ManualEntryForm()
     @Published var bpForm = BloodPressureEntryForm()
+    @Published var babyForm = BabyEntryForm()
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
     @Published var showMetrics = false
@@ -398,6 +399,25 @@ final class EntryStore: ObservableObject {
     @MainActor func resetBPForm() {
         bpForm = BloodPressureEntryForm()
         bpForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+    }
+
+    func getBabyError<T>(for control: FormControl<T>) -> String? {
+        babyForm.getError(for: control)
+    }
+
+    var babyWeightError: String? {
+        babyForm.weightError
+    }
+
+    var babyLengthError: String? {
+        babyForm.lengthError
+    }
+
+    @MainActor func resetBabyForm() {
+        babyForm = BabyEntryForm()
+        babyForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }

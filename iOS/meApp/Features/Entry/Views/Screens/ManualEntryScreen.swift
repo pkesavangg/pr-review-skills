@@ -48,8 +48,16 @@ struct ManualEntryScreen: View {
             }
 
             ScrollView(.vertical) {
-                // Body: switch between weight entry and BP entry
-                if entryStore.isManualEntryEnabled && entryStore.selectedEntryType == .bloodPressure {
+                // Body: switch between entry types
+                if entryStore.isManualEntryEnabled && entryStore.selectedEntryType == .baby {
+                    BabyEntryView(
+                        entryStore: entryStore,
+                        focusedField: $focusedField
+                    )
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.vertical, .spacingLG)
+                    .padding(.bottom, keyboard.currentHeight)
+                } else if entryStore.isManualEntryEnabled && entryStore.selectedEntryType == .bloodPressure {
                     BloodPressureEntryView(
                         entryStore: entryStore,
                         focusedField: $focusedField

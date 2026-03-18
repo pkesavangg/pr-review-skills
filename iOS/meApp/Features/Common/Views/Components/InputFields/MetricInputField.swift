@@ -49,8 +49,8 @@ struct MetricInputField: View {
             onCommit: onCommit,
             onEditingChanged: onEditingChanged
         )
-        .onChange(of: displayValue) { _, newValue in
-            handleValueChange(newValue)
+        .onChange(of: displayValue) { oldValue, newValue in
+            handleValueChange(oldValue: oldValue, newValue: newValue)
         }
         .onChange(of: value) { oldValue, newValue in
             if oldValue != newValue {
@@ -88,31 +88,33 @@ struct MetricInputField: View {
         }
     }
     
-    private func handleValueChange(_ newValue: String) {
+    private func handleValueChange(oldValue: String, newValue: String) {
         // If user has entered text for the first time, we're no longer in initial state
         if !newValue.isEmpty && isInitialState {
             isInitialState = false
         }
-        
+
         // Allow empty values
         if newValue.isEmpty {
             displayValue = ""
             value = ""
             return
         }
-        
+
         let formatted = formatter.formatInput(newValue)
-        
+
         // Check if the new value is valid (doesn't exceed max)
-        guard formatter.shouldUpdateValue(from: displayValue, to: newValue) else {
+        guard formatter.shouldUpdateValue(from: oldValue, to: newValue) else {
+            // Revert displayValue to prevent unlimited text growth
+            displayValue = oldValue
             return
         }
-        
+
         // Update display value if it changed
         if displayValue != formatted {
             displayValue = formatted
         }
-        
+
         // Only update bound value if it's different
         if value != formatted {
             value = formatted
