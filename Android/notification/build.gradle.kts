@@ -32,7 +32,6 @@ android {
 }
 
 dependencies {
-
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.appcompat)
   testImplementation(libs.junit)
@@ -43,11 +42,10 @@ dependencies {
   implementation(libs.timber)
 
   // Firebase
-  // Import the Firebase BoM
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.messaging.ktx)
 
-  // Hilt
+  // Hilt (KSP only — do not use kapt or Hilt generates duplicate classes)
   implementation(libs.hilt.android)
   ksp(libs.hilt.android.compiler)
 }

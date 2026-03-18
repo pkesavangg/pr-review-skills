@@ -39,7 +39,6 @@ import kotlinx.coroutines.launch
 fun MyAccountsScreen() {
   val viewmodel: MyAccountsViewModel = hiltViewModel()
   val state by viewmodel.state.collectAsStateWithLifecycle()
-  rememberCoroutineScope()
   MyAccountsScreenContent(
     state = state,
     handleIntent = viewmodel::handleIntent,

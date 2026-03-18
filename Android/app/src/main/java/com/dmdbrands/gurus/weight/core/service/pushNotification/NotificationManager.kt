@@ -46,11 +46,10 @@ class NotificationManager(
   private fun fetchFCMToken() {
     notificationService.fetchFCMToken(
       onSuccess = { token ->
-        AppLog.v("NotificationManager", "FCM Token: $token")
+        AppLog.v("NotificationManager", "FCM Token received")
         CoroutineScope(IO).launch {
           appRepository.setFcmToken(token)
         }
-        // TODO: Here, you can handle the token as needed (e.g., send it to your server)
       },
       onError = { exception ->
         AppLog.e("NotificationManager", "Fetching FCM token failed", exception.toString())

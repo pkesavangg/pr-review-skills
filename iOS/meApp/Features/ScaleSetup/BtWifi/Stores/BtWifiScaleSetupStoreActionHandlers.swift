@@ -128,7 +128,7 @@ extension BtWifiScaleSetupStore {
             if let savedScale = savedScale {
                 Task.detached(priority: .userInitiated) { [weak self] in
                     guard let self else { return }
-                    await self.bluetoothService.stopLiveMeasurement(for: savedScale)
+                    _ = await self.bluetoothService.stopLiveMeasurement(for: savedScale)
                 }
             }
             scaleSetupError = .none

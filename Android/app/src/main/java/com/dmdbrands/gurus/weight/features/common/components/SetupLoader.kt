@@ -185,31 +185,3 @@ private fun PreviewSetupLoaderLoading() {
     }
   }
 }
-
-// @PreviewTheme
-// @Composable
-// private fun PreviewSetupLoaderSuccess() {
-//   MeAppTheme {
-//     Column(
-//       modifier = Modifier.fillMaxWidth(),
-//       horizontalAlignment = Alignment.CenterHorizontally,
-//       verticalArrangement = Arrangement.spacedBy(spacing.xl),
-//     ) {
-//       SetupLoader(connectionState = ConnectionState.Success)
-//     }
-//   }
-// }
-
-// @PreviewTheme
-// @Composable
-// private fun PreviewSetupLoaderError() {
-//   MeAppTheme {
-//     Column(
-//       modifier = Modifier.fillMaxWidth(),
-//       horizontalAlignment = Alignment.CenterHorizontally,
-//       verticalArrangement = Arrangement.spacedBy(spacing.xl),
-//     ) {
-//       SetupLoader(connectionState = ConnectionState.Failed.Error)
-//     }
-//   }
-// }

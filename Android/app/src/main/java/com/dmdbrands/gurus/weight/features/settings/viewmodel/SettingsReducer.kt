@@ -3,8 +3,6 @@ package com.dmdbrands.gurus.weight.features.settings.viewmodel
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 
-// TODO: MyAccountsReducer and related state/intent may be implemented for MyAccountsScreen if needed, following the same pattern.
-
 /**
  * UI state for the settings feature, holding loading state and errors.
  *
