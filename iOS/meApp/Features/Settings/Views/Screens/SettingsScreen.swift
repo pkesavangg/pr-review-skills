@@ -86,7 +86,7 @@ struct SettingsScreen: View {
             options: [AppearanceMode.allCases],
             displayValue: { $0.rawValue },
             title: settingsLang.appearance,
-            onUpdate: { vals in
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
                 if let mode = vals.first {
                     Theme.shared.appearanceMode = mode
                 }
@@ -99,13 +99,13 @@ struct SettingsScreen: View {
             options: [NotificationPreference.allCases],
             displayValue: { $0.title },
             title: settingsLang.notifications,
-            onUpdate: { vals in
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
                 if let pref = vals.first {
                     settingsStore.updateNotificationPreference(pref)
                 }
             }
         )
-        
+
         // Height picker sheets
         .pickerSheet(
             isPresented: $settingsStore.showHeightInchesPicker,
@@ -114,7 +114,7 @@ struct SettingsScreen: View {
             displayValue: { $0 },
             pickerType: .heightInches,
             title: settingsLang.height,
-            onUpdate: { newValues in
+            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
                 settingsStore.updateHeight(fromMetric: false, values: newValues)
             }
         )
@@ -125,7 +125,7 @@ struct SettingsScreen: View {
             displayValue: { $0 },
             pickerType: .heightCm,
             title: settingsLang.height,
-            onUpdate: { newValues in
+            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
                 settingsStore.updateHeight(fromMetric: true, values: newValues)
             }
         )
@@ -135,7 +135,7 @@ struct SettingsScreen: View {
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
             title: settingsLang.biologicalSex,
-            onUpdate: { vals in
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
                 if let sex = vals.first {
                     settingsStore.updateGender(sex)
                 }
@@ -150,7 +150,7 @@ struct SettingsScreen: View {
                 unit == .kg ? CommonStrings.unitKgCm : CommonStrings.pickerLbs
             },
             title: settingsLang.unitType,
-            onUpdate: { vals in
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
                 if let unit = vals.first {
                     settingsStore.updateWeightUnit(unit)
                 }
@@ -163,7 +163,7 @@ struct SettingsScreen: View {
             options: [[ActivityLevel.normal, ActivityLevel.athlete]],
             displayValue: { $0.rawValue.capitalized },
             title: settingsLang.activityLevel,
-            onUpdate: { vals in
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
                 if let level = vals.first {
                     settingsStore.updateActivityLevel(level)
                 }

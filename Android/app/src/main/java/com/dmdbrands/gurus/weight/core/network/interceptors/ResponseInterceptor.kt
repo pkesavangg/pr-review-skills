@@ -29,17 +29,14 @@ constructor(private val appNavigationService: IAppNavigationService) : Intercept
             }
 
             HttpURLConnection.HTTP_FORBIDDEN -> {
-                // TODO: Handle forbidden response
                 response
             }
 
             HttpURLConnection.HTTP_BAD_REQUEST -> {
-                // TODO: Handle bad request response
                 response
             }
 
             HttpURLConnection.HTTP_INTERNAL_ERROR -> {
-                // TODO: Handle internal server error response
                 response
             }
 

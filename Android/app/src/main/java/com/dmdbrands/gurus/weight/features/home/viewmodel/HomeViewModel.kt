@@ -36,7 +36,6 @@ import com.greatergoods.blewrapper.GGPermissionService
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
 import com.greatergoods.libs.appsync.model.AppSyncResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -126,7 +125,7 @@ constructor(
   }
 
   fun enableSessionImpedence(device: Device) {
-    CoroutineScope(Dispatchers.IO).launch {
+    viewModelScope.launch(Dispatchers.IO) {
       ggDeviceService.updateSettings(
         device.toGGBTDevice(),
         GGBTSetting(

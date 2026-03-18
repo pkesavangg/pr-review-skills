@@ -4,8 +4,8 @@ import Foundation
 final class PushNotificationRepositoryAPI: PushNotificationRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
 
-    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
-        self.httpClient = httpClient
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
 
     func updateDeviceInfo(_ info: DeviceInfoRequest) async throws {

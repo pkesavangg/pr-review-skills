@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
@@ -19,10 +20,9 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
-import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
@@ -40,15 +39,14 @@ import javax.inject.Singleton
  * Handles login, logout, account switching, and token management.
  */
 @Singleton
-class AccountService
-@Inject
-constructor(
+class AccountService(
   private val accountRepository: IAccountRepository,
   private val offlineHandlerService: IOfflineHandlerService,
   connectivityObserver: IConnectivityObserver,
   dialogQueueService: IDialogQueueService,
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
@@ -56,7 +54,7 @@ constructor(
     private const val TAG = "AccountService"
   }
 
-  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private var repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
   // region Public Properties
 
@@ -93,7 +91,7 @@ constructor(
 
   override fun subscribeAccount() {
     repositoryScope.cancel()
-    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
     repositoryScope.launch {
       accountRepository.getActiveAccount().collect {
         _activeAccount.value = it
@@ -200,7 +198,7 @@ constructor(
    * @param email The email address to reset the password for
    */
   override suspend fun resetPassword(email: String) {
-    AppLog.d(TAG, "resetPassword() called for email: $email")
+    AppLog.d(TAG, "resetPassword() called")
     try {
       AppLog.d(TAG, "Checking network availability for resetPassword()")
       val email = email.trim()

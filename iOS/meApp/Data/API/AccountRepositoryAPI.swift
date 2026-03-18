@@ -4,8 +4,8 @@ import Foundation
 final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
     private let httpClient: HTTPClientProtocol
 
-    init(httpClient: HTTPClientProtocol = HTTPClient.shared) {
-        self.httpClient = httpClient
+    init(httpClient: HTTPClientProtocol? = nil) {
+        self.httpClient = httpClient ?? HTTPClient.shared
     }
 
     func createAccount(email: String, password: String, profile: Profile) async throws -> AccountResponse {

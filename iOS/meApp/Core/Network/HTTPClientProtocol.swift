@@ -11,6 +11,7 @@ protocol HTTPClientProtocol: AnyObject {
         accountId: String?
     ) async throws -> T
 
+    // swiftlint:disable:next function_parameter_count
     func send<T: Encodable, R: Decodable>(
         _ endpoint: Endpoint,
         method: HTTPMethod,

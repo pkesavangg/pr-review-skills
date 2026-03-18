@@ -17,18 +17,18 @@ import SwiftUI
 final class GoalAlertService: GoalAlertServiceProtocol, ObservableObject {
     static let shared = GoalAlertService()
     init(
-        notificationService: NotificationHelperServiceProtocol = NotificationHelperService.shared,
-        accountService: AccountServiceProtocol = AccountService.shared,
-        bluetoothService: BluetoothServiceProtocol = BluetoothService.shared,
-        logger: LoggerServiceProtocol = LoggerService.shared,
-        kv: KvStorageServiceProtocol = KvStorageService.shared,
+        notificationService: NotificationHelperServiceProtocol? = nil,
+        accountService: AccountServiceProtocol? = nil,
+        bluetoothService: BluetoothServiceProtocol? = nil,
+        logger: LoggerServiceProtocol? = nil,
+        kv: KvStorageServiceProtocol? = nil,
         setGoalModalDelay: TimeInterval = 3.0
     ) {
-        self.notificationService = notificationService
-        self.accountService = accountService
-        self.bluetoothService = bluetoothService
-        self.logger = logger
-        self.kv = kv
+        self.notificationService = notificationService ?? NotificationHelperService.shared
+        self.accountService = accountService ?? AccountService.shared
+        self.bluetoothService = bluetoothService ?? BluetoothService.shared
+        self.logger = logger ?? LoggerService.shared
+        self.kv = kv ?? KvStorageService.shared
         self.setGoalModalDelay = setGoalModalDelay
     }
 

@@ -464,7 +464,7 @@ struct YAxisCalculator {
         let rough = max(range / Double(targetTickCount - 1), 0.0001)
         let magnitude = pow(10.0, floor(log10(rough)))
         let normalized = rough / magnitude
-        let nice = niceNumbers.first(where: { $0 >= normalized }) ?? niceNumbers.last ?? 1.0
+        let nice = niceNumbers.first { $0 >= normalized } ?? niceNumbers.last ?? 1.0
         return Swift.max(nice * magnitude, 1.0)
     }
 
@@ -475,7 +475,7 @@ struct YAxisCalculator {
         let magnitude = pow(10.0, floor(log10(thresholdValue)))
         let normalized = thresholdValue / magnitude
         let reversedNice = niceNumbers.sorted(by: >)
-        let candidate = reversedNice.first(where: { $0 <= normalized }) ?? 1.0
+        let candidate = reversedNice.first { $0 <= normalized } ?? 1.0
         return Swift.max(candidate * magnitude, 1.0)
     }
 }
