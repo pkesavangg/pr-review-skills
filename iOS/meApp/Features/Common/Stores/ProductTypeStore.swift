@@ -112,7 +112,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
         let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
         guard let savedId = kvStorage.getValue(forKey: key) as? String,
-              let match = availableItems.first(where: { $0.id == savedId }) else { return }
+            let match = availableItems.first(where: { $0.id == savedId }) else { return }
         selectedItem = match
     }
 
@@ -146,15 +146,10 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
             items.append(.myBloodPressure)
         }
 
-        // 3. Individual babies — shown ONLY when a babyScale device is registered.
-        let hasBabyScaleDevice = devices.contains {
-            $0.deviceType == DeviceType.babyScale.rawValue
-        }
-        if hasBabyScaleDevice {
-            for baby in babies {
-                let profile = BabyProfile(id: baby.id, name: baby.name, deviceId: baby.deviceId)
-                items.append(.baby(profile: profile))
-            }
+        // 3. Individual babies — listed whenever baby profiles exist.
+        for baby in babies {
+            let profile = BabyProfile(id: baby.id, name: baby.name, deviceId: baby.deviceId)
+            items.append(.baby(profile: profile))
         }
 
         // Fallback: always show at least "My Weight"
@@ -164,7 +159,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
         // Restore persisted selection on first rebuild for this account
         if let accountId = accountService.activeAccount?.accountId,
-           restoredForAccountId != accountId {
+            restoredForAccountId != accountId {
             restorePersistedSelection(for: accountId)
         }
 
