@@ -13,8 +13,10 @@ struct HistoryListScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var router = Router<HistoryRoute>()
     @StateObject private var store = HistoryStore()
+    @ObservedObject private var productTypeStore = ProductTypeStore.shared
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
-    
+    @State private var isProductTypeSelectorPresented = false
+
     // iOS 17 fix: Prevent duplicate lifecycle calls
     @State private var hasAppeared = false
     @State private var lastTabCheck: BottomTab?
@@ -27,7 +29,9 @@ struct HistoryListScreen: View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
               NavbarHeaderView<EmptyView, AnyView>(
-                  title: HistoryListStrings.title,
+                  title: productTypeStore.availableItems.count > 1
+                      ? productTypeStore.selectedItem.historyTitle
+                      : HistoryListStrings.title,
                   trailingContent: {
                       AnyView(
                           Button {
@@ -41,9 +45,20 @@ struct HistoryListScreen: View {
                           .disabled(store.isEmptyState)
                       )
                   },
-                  canShowBorder: true
+                  onTitleTap: productTypeStore.availableItems.count > 1 ? {
+                      isProductTypeSelectorPresented = true
+                  } : nil,
+                  canShowBorder: true,
+                  canShowTitleChevron: productTypeStore.availableItems.count > 1
               )
               .background(theme.backgroundPrimary)
+              .sheet(isPresented: $isProductTypeSelectorPresented) {
+                  ProductTypeSelectorSheet(
+                      store: productTypeStore,
+                      isPresented: $isProductTypeSelectorPresented,
+                      title: ProductTypeStrings.myHistory
+                  )
+              }
 
               content
                   .background(theme.backgroundSecondary)

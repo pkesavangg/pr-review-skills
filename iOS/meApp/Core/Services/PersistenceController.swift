@@ -50,8 +50,6 @@ final class PersistenceController {
                 BathScaleMetric.self,
                 DeviceMetaData.self,
                 BathScaleEntry.self,
-                BpmEntry.self,
-                BpmMetric.self,
                 LogEntry.self,
                 WeightCompSettings.self,
                 GoalSettings.self,
@@ -59,7 +57,8 @@ final class PersistenceController {
                 NotificationSettings.self,
                 StreaksSettings.self,
                 WeightlessSettings.self,
-                DashboardSettings.self
+                DashboardSettings.self,
+                Baby.self
             ]
         )
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
