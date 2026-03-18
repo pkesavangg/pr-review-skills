@@ -97,7 +97,9 @@ struct HistoryListScreen: View {
 
     @ViewBuilder
     private var content: some View {
-        if store.isBloodPressureMode {
+        if store.isBabyMode {
+            babyContent
+        } else if store.isBloodPressureMode {
             bpContent
         } else {
             weightContent
@@ -182,6 +184,49 @@ struct HistoryListScreen: View {
                                 }
                             }
                             .background(theme.backgroundSecondary)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var babyContent: some View {
+        ScrollView(showsIndicators: !store.babyWeeks.isEmpty) {
+            if store.babyWeeks.isEmpty {
+                ZStack {
+                    Spacer().containerRelativeFrame([.horizontal, .vertical])
+                    VStack {
+                        NoEntryView {
+                            tabViewModel.pendingSettingsNavigation = .addEditScales
+                            tabViewModel.selectedTab = .settings
+                            tabViewModel.settingsNavigationSourceTab = .history
+                        }
+                    }
+                }
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(store.babyWeeks) { week in
+                        BabyWeekHeaderView(weekNumber: week.weekNumber)
+
+                        ForEach(week.days) { day in
+                            BabyDaySummaryItem(day: day)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    guard !isNavigating else { return }
+                                    isNavigating = true
+                                    router.navigate(to: .babyHistoryDayList(day: day))
+
+                                    navigationTask?.cancel()
+                                    navigationTask = Task {
+                                        try? await Task.sleep(nanoseconds: 500_000_000)
+                                        await MainActor.run {
+                                            isNavigating = false
+                                        }
+                                    }
+                                }
+                                .background(theme.backgroundSecondary)
+                        }
                     }
                 }
             }
