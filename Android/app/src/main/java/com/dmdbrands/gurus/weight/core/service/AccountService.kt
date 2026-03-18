@@ -200,7 +200,7 @@ constructor(
    * @param email The email address to reset the password for
    */
   override suspend fun resetPassword(email: String) {
-    AppLog.d(TAG, "resetPassword() called for email: $email")
+    AppLog.d(TAG, "resetPassword() called")
     try {
       AppLog.d(TAG, "Checking network availability for resetPassword()")
       val email = email.trim()

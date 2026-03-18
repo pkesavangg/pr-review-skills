@@ -317,7 +317,7 @@ class ScalePairingManager(
             )
             ggDeviceService.deleteAccount(minimalDevice) {}
         } catch (e: Exception) {
-            AppLog.e(TAG, "Error deleting user with token: $token", e)
+            AppLog.e(TAG, "Error deleting user from scale", e)
         }
     }
 
