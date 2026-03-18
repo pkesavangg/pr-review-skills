@@ -61,8 +61,9 @@ struct ManualEntryScreen: View {
             }
             
             ScrollView(.vertical) {
-                // Body: switch between entry types
-                if entryStore.isManualEntryEnabled && entryStore.selectedEntryType == .baby {
+                // Body: switch between entry types based on product selection
+                switch productTypeStore.selectedItem {
+                case .baby:
                     BabyEntryView(
                         entryStore: entryStore,
                         focusedField: $focusedField
@@ -70,7 +71,7 @@ struct ManualEntryScreen: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingLG)
                     .padding(.bottom, keyboard.currentHeight)
-                } else if entryStore.isManualEntryEnabled && entryStore.selectedEntryType == .bloodPressure {
+                case .myBloodPressure:
                     BloodPressureEntryView(
                         entryStore: entryStore,
                         focusedField: $focusedField
@@ -78,7 +79,7 @@ struct ManualEntryScreen: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingLG)
                     .padding(.bottom, keyboard.currentHeight)
-                } else {
+                case .myWeight:
                     weightEntryContent
                 }
             }

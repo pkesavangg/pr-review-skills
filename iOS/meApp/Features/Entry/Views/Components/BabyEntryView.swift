@@ -75,7 +75,7 @@ struct BabyEntryView: View {
                 }
 
                 // Notes
-                NotesInputField(
+                AppInputField(
                     config: TextInputConfig(
                         label: babyLang.notes,
                         inputType: .notes,
