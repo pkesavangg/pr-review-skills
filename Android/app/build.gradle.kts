@@ -16,6 +16,10 @@ plugins {
   id("jacoco")
 }
 
+ksp {
+  arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
   namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
