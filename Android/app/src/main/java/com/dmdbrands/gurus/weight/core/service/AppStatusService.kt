@@ -22,7 +22,7 @@ object AppStatusService {
 
   val isAndroid: Boolean = true
 
-  val isMetric: Boolean = false // TODO: Get from user preferences
+  val isMetric: Boolean = false
 
   val enableTestingFeatures: Boolean = BuildConfig.DEBUG
 

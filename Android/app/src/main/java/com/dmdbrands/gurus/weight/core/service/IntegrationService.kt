@@ -13,10 +13,10 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.integration.model.IntegrationItem
 import com.dmdbrands.gurus.weight.features.integration.strings.IntegrationStrings
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,13 +38,12 @@ class IntegrationService @Inject constructor(
   private val accountService: IAccountService,
   private val integrationRepository: IIntegrationRepository,
   private val healthConnectRepository: IHealthConnectRepository,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IIntegrationService {
   companion object {
     private const val TAG = "IntegrationService"
   }
 
-  // Coroutine scope for background operations
-  private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val _integrationState = MutableStateFlow(
     IntegrationItem(
       provider = IntegrationProvider.Fitbit,
@@ -59,7 +58,7 @@ class IntegrationService @Inject constructor(
 
   init {
     // Subscribe to checkIntegrations flow from AccountService
-    serviceScope.launch {
+    appScope.launch {
       accountService.checkIntegrations.collectLatest { shouldCheck ->
         if (shouldCheck) {
           AppLog.d(TAG, "Received checkIntegrations signal, checking for inactive integrations")
@@ -140,7 +139,7 @@ class IntegrationService @Inject constructor(
    */
   override suspend fun connectIntegration(provider: IntegrationProvider, accountId: String): String? {
     return try {
-      AppLog.d(TAG, "Connecting to integration: $provider for account: $accountId")
+      AppLog.d(TAG, "Connecting to integration: $provider")
       if (provider.requiresOAuth()) {
         val oAuthUrl = provider.getOAuthUrl(accountId)
         if (oAuthUrl != null) {
@@ -354,7 +353,7 @@ class IntegrationService @Inject constructor(
         confirmText = disableButtonText,
         cancelText = IntegrationStrings.openIntegrations,
         onConfirm = {
-          CoroutineScope(Dispatchers.IO).launch {
+          appScope.launch {
             try {
               AppLog.d(TAG, "Disabling ${inactiveProviders.size} inactive integrations")
               for (provider in inactiveProviders) {
@@ -383,7 +382,7 @@ class IntegrationService @Inject constructor(
   }
 
   private fun openIntegrationList() {
-    CoroutineScope(Dispatchers.IO).launch {
+    appScope.launch {
       appNavigationService.navigateTo(AppRoute.Integration.IntegrationList)
     }
   }

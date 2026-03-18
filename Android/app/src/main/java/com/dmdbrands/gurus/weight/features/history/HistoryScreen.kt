@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -25,12 +25,13 @@ import com.dmdbrands.gurus.weight.features.history.viewmodel.HistoryViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @Composable
 fun HistoryScreen() {
   val viewModel: HistoryViewModel = hiltViewModel()
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
   val isRefreshing = state.isLoading
   HistoryScreenContent(
     state = state,
@@ -119,7 +120,7 @@ fun HistoryScreenPreview() {
         ),
       )
     HistoryScreenContent(
-      state = HistoryState(historyItems = sampleItems),
+      state = HistoryState(historyItems = sampleItems.toImmutableList()),
       isRefreshing = false,
       onRefresh = {},
       handleIntent = {},

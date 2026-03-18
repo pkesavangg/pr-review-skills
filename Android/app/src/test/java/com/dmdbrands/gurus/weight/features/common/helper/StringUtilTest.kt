@@ -16,6 +16,23 @@ import org.junit.jupiter.api.Test
  */
 class StringUtilTest {
 
+    private lateinit var originalLocale: Locale
+    private lateinit var originalTimeZone: TimeZone
+
+    @Before
+    fun setUp() {
+        originalLocale = Locale.getDefault()
+        originalTimeZone = TimeZone.getDefault()
+        Locale.setDefault(Locale.US)
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+    }
+
+    @After
+    fun tearDown() {
+        Locale.setDefault(originalLocale)
+        TimeZone.setDefault(originalTimeZone)
+    }
+
     // -------------------------------------------------------------------------
     // displayName — replaces underscores with spaces
     // -------------------------------------------------------------------------
@@ -54,19 +71,16 @@ class StringUtilTest {
 
     @Test
     fun `formatTimestamp converts Unix epoch zero to January 01, 1970`() {
-        // 0 seconds since epoch = January 1, 1970 (UTC / system default locale)
         val result = 0L.formatTimestamp()
 
-        // The function uses Locale.getDefault(), so we check the year is present
-        // rather than asserting the exact locale-sensitive string.
-        assertThat(result).contains("1970")
+        assertThat(result).isEqualTo("January 01, 1970")
     }
 
     @Test
-    fun `formatTimestamp produces a non-empty string for any positive timestamp`() {
-        val result = 1_700_000_000L.formatTimestamp() // Nov 14, 2023
+    fun `formatTimestamp converts known timestamp to November 14, 2023`() {
+        val result = 1_700_000_000L.formatTimestamp()
 
-        assertThat(result).isNotEmpty()
+        assertThat(result).isEqualTo("November 14, 2023")
     }
 
     // -------------------------------------------------------------------------

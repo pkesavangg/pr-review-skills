@@ -556,14 +556,14 @@ final class BtWifiScaleSetupStore: ObservableObject {
         wifiSetupManager: WifiSetupManaging = WifiSetupManager(),
         setupCoordinator: ScaleSetupCoordinating = ScaleSetupCoordinator(),
         setupValidationService: SetupValidationServicing = SetupValidationService(),
-        networkMonitor: NetworkMonitoring = NetworkMonitor.shared,
+        networkMonitor: NetworkMonitoring? = nil,
         dashboardStoreFactory: @escaping @MainActor () -> DashboardStore = { DashboardStore() }
     ) {
         self.bluetoothSetupManager = bluetoothSetupManager
         self.wifiSetupManager = wifiSetupManager
         self.setupCoordinator = setupCoordinator
         self.setupValidationService = setupValidationService
-        self.networkMonitor = networkMonitor
+        self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         self.makeDashboardStore = dashboardStoreFactory
 
         // Cache the first name from active account
@@ -578,7 +578,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
             }
             .store(in: &cancellables)
         
-        networkMonitor.isConnectedPublisher
+        self.networkMonitor.isConnectedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateNextEnabled()

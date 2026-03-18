@@ -15,10 +15,8 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryAggregationService
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +24,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.YearMonth
@@ -37,11 +34,12 @@ class EntryAggregationService(
     private val entryRepository: IEntryRepository,
     private val accountRepository: IAccountRepository,
     goalRepository: IGoalRepository,
+    private val appScope: CoroutineScope,
 ) : IEntryAggregationService {
 
     private val TAG = "EntryAggregationService"
 
-    private var serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val activeJobs = mutableListOf<Job>()
 
     private var accountId: String? = null
     private var initialWeight: Double? = null
@@ -104,7 +102,8 @@ class EntryAggregationService(
             },
             _progressCacheVersion.asStateFlow(),
             accountRepository.getActiveAccount().map { it?.initialWeight }.distinctUntilChanged(),
-        ) { inputs, _, initialWeight ->
+            accountRepository.getActiveAccount(),
+        ) { inputs, _, initialWeight, account ->
             if (accountId == null) {
                 Progress()
             } else {
@@ -123,7 +122,6 @@ class EntryAggregationService(
                     val converted = convertWeight(oldestEntryWeightLb, WeightUnit.LB, unit)
                     if (weightless?.isWeightlessOn == true) converted - weightless.weightlessWeight else converted
                 }
-                val account = accountRepository.getActiveAccount().first()
                 val goal = weightSettings.goal?.copy(
                     goalWeight = processWeight(weightSettings.goal.goalWeight, unit, weightless),
                     account = account,
@@ -153,17 +151,18 @@ class EntryAggregationService(
     }
 
     override fun startDataCollection(accountId: String) {
-        serviceScope.launch { updateLatestEntry(accountId) } // also triggers updateProgressCache reactively
-        serviceScope.launch { updateLast7Days(accountId) }
-        serviceScope.launch { updateLast30Days(accountId) }
-        serviceScope.launch { updateMonthYear(accountId) }
-        serviceScope.launch { updateMonthlyBodyScaleAveragesWithJoin() }
-        serviceScope.launch { updateDaywiseBodyScaleAveragesWithJoin() }
-        serviceScope.launch { updateMonthlyAverage(accountId) }
+        activeJobs += appScope.launch { updateLatestEntry(accountId) } // also triggers updateProgressCache reactively
+        activeJobs += appScope.launch { updateLast7Days(accountId) }
+        activeJobs += appScope.launch { updateLast30Days(accountId) }
+        activeJobs += appScope.launch { updateMonthYear(accountId) }
+        activeJobs += appScope.launch { updateMonthlyBodyScaleAveragesWithJoin() }
+        activeJobs += appScope.launch { updateDaywiseBodyScaleAveragesWithJoin() }
+        activeJobs += appScope.launch { updateMonthlyAverage(accountId) }
     }
 
     override fun clearFlows() {
-        serviceScope.cancel()
+        activeJobs.forEach { it.cancel() }
+        activeJobs.clear()
         _latestEntry.value = null
         _last7Days.value = emptyList()
         _last30Days.value = emptyList()
@@ -179,7 +178,6 @@ class EntryAggregationService(
         _progressCacheVersion.value = 0
         accountId = null
         initialWeight = null
-        serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
     override suspend fun refreshEntryData() {
@@ -217,7 +215,7 @@ class EntryAggregationService(
         try {
             entryRepository.getLatestEntry(accountId).collect { latest ->
                 _latestEntry.value = latest
-                serviceScope.launch { updateProgressCache(accountId) }
+                appScope.launch { updateProgressCache(accountId) }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e

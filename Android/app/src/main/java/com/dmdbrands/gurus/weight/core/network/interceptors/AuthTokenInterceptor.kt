@@ -17,9 +17,9 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 import java.net.SocketTimeoutException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.time.ZoneOffset
 import javax.inject.Inject
 
 /**
@@ -41,7 +41,8 @@ class AuthTokenInterceptor @Inject constructor(
   // Ensures only one proactive refresh runs at a time across concurrent requests
   private val proactiveRefreshMutex = Mutex()
 
-  private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+  private val dateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
   override fun intercept(chain: Interceptor.Chain): Response {
     val request = chain.request()
@@ -120,9 +121,9 @@ class AuthTokenInterceptor @Inject constructor(
    */
   private fun isTokenExpired(expiresAt: String): Boolean {
     return try {
-      val tokenExpires = dateFormat.parse(expiresAt) ?: return true
-      val currentTime = Date()
-      val timeUntilExpiry = tokenExpires.time - currentTime.time
+      val tokenExpires = Instant.from(dateFormatter.parse(expiresAt))
+      val currentTime = Instant.now()
+      val timeUntilExpiry = tokenExpires.toEpochMilli() - currentTime.toEpochMilli()
       AppLog.v(TAG, "Token expires at: $expiresAt ($timeUntilExpiry ms until expiry)")
 
       val isExpired = timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_MS

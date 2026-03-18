@@ -11,8 +11,8 @@ import com.google.firebase.messaging.RemoteMessage
 import com.greatergoods.notification.NotificationService
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import android.app.PendingIntent
@@ -37,15 +37,19 @@ class PushNotificationService : FirebaseMessagingService() {
   @Inject
   lateinit var appRepository: IAppRepository
 
+  @Inject
+  @ApplicationScope
+  lateinit var appScope: CoroutineScope
+
   /**
    * Called when a new FCM token is generated. Override to handle token updates.
    * @param token The new FCM token.
    */
   override fun onNewToken(token: String) {
-    AppLog.v(TAG, "New FCM token: $token")
+    AppLog.v(TAG, "New FCM token received")
 
     // Update the token and device info
-    CoroutineScope(Dispatchers.IO).launch {
+    appScope.launch {
       try {
         updateFcmToken(token)
       } catch (e: Exception) {
@@ -65,7 +69,7 @@ class PushNotificationService : FirebaseMessagingService() {
 
       if (currentToken != newToken) {
         appRepository.setFcmToken(newToken)
-        AppLog.v(TAG, "FCM token updated: $newToken")
+        AppLog.v(TAG, "FCM token updated")
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to check/update FCM token", e)
@@ -102,7 +106,7 @@ class PushNotificationService : FirebaseMessagingService() {
       pendingIntent,
     )
 
-    CoroutineScope(Dispatchers.IO).launch {
+    appScope.launch {
       AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
     }
   }

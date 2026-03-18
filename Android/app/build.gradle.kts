@@ -12,6 +12,7 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
   alias(libs.plugins.google.proto)
+  alias(libs.plugins.baselineprofile)
   id("jacoco")
 }
 
@@ -40,16 +41,21 @@ android {
     }
   }
 
+  testOptions {
+    unitTests.isReturnDefaultValues = true
+  }
+
   buildTypes {
     debug {
       enableUnitTestCoverage = true
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"https://api.weightgurus.com/v3/\"",
+        "\"http://ec2-54-161-28-150.compute-1.amazonaws.com:3005/\"",
       )
+      buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
-    release {
+release {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
@@ -61,6 +67,7 @@ android {
         "BASE_URL",
         "\"https://api.weightgurus.com/v3/\"",
       )
+      buildConfigField("Boolean", "ENABLE_ANALYTICS", "true")
     }
   }
   packaging {
@@ -98,16 +105,17 @@ android {
 }
 
 dependencies {
-  implementation(libs.kotlin.reflect)
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
   implementation(libs.kotlinx.serialization.core)
+  implementation(libs.kotlinx.collections.immutable)
   implementation(libs.androidx.hilt.navigation.fragment)
   implementation(libs.androidx.core.splashscreen)
   // Existing dependencies
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
+  implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.process)
   implementation(libs.androidx.activity.compose)
   implementation(platform(libs.androidx.compose.bom))
@@ -120,7 +128,7 @@ dependencies {
   implementation(libs.androidx.foundation.layout)
   implementation(libs.androidx.runtime.saveable)
   implementation(libs.androidx.appcompat)
-  implementation(libs.work.runtime.ktx)
+  implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
   // Unit test dependencies
@@ -138,6 +146,7 @@ dependencies {
   androidTestImplementation(libs.androidx.ui.test.junit4)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
+  debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
   implementation(libs.hilt.navigation.compose)
 
   // browser
@@ -172,14 +181,11 @@ dependencies {
   // Add the dependency for the Firebase SDK for Google Analytics
   implementation(libs.firebase.analytics)
 
-  // Datastore
-  implementation(libs.androidx.datastore)
-  implementation(libs.androidx.datastore.preferences.core)
-  implementation(libs.gson)
+  // Security - EncryptedSharedPreferences
+  implementation(libs.androidx.security.crypto)
 
   // Protobuf dependencies
   implementation(libs.protobuf.javalite)
-  implementation(libs.androidx.datastore)
 
   // Timber
   implementation(libs.timber)
@@ -193,6 +199,11 @@ dependencies {
   implementation(project(":iam"))
 
   // implementation(project(":ggBluetoothLibrary"))
+
+  // Baseline Profiles
+  implementation(libs.androidx.profileinstaller)
+  baselineProfile(project(":benchmark"))
+
   // Play Store Review
   implementation(libs.play.review)
   implementation(libs.play.review.ktx)
@@ -239,7 +250,7 @@ tasks.withType<Test> {
 }
 
 // ---------------------------------------------------------------------------
-// JaCoCo coverage report: ./gradlew jacocoTestReport
+// JaCoCo coverage report: ./gradlew :app:jacocoTestReport
 // ---------------------------------------------------------------------------
 tasks.register<JacocoReport>("jacocoTestReport") {
   dependsOn("testDebugUnitTest")
@@ -272,6 +283,24 @@ tasks.register<JacocoReport>("jacocoTestReport") {
   )
 
   val kotlinClassDir = layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile
+
+  doFirst {
+    require(kotlinClassDir.exists()) {
+      "JaCoCo class directory not found: $kotlinClassDir — run testDebugUnitTest first"
+    }
+    val execFiles = fileTree(layout.buildDirectory.get().asFile) {
+      include(
+        "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+        "jacoco/testDebugUnitTest.exec",
+      )
+    }
+    require(execFiles.files.isNotEmpty()) {
+      "JaCoCo execution data not found in ${layout.buildDirectory.get().asFile}. " +
+        "Ensure enableUnitTestCoverage = true is set in the debug buildType " +
+        "and testDebugUnitTest ran successfully."
+    }
+  }
+
   classDirectories.setFrom(
     fileTree(kotlinClassDir) { exclude(jacocoExcludes) },
   )

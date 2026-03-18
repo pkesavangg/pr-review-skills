@@ -3,10 +3,31 @@ import Foundation
 
 @MainActor
 final class MockDashboardFormatter: DashboardFormatterProtocol {
-    func formatYAxisTickLabel(_ weight: Double) -> String { "\(weight)" }
-    func roundedGoalWeight(_ weight: Double) -> Double { weight }
-    func formatChartDate(_ date: Date, period: TimePeriod) -> String { "mock-date" }
-    func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String { "mock-single" }
+    var yAxisTickLabelResult: String?
+    var roundedGoalWeightResult: Double?
+    var chartDateResult: String = "mock-date"
+    var metricInfoSingleDateResult: String = "mock-single"
+    var metricInfoDateLabelResult: String = "mock-label"
+    var parsedEntryDate: Date?
+    var dashboardEntryResult = true
+    var formattedMetricValueResult: String?
+    private(set) var lastMetricInfoDateLabelArgs: (
+        entryDate: Date?,
+        isFromHistory: Bool,
+        period: TimePeriod,
+        selectedPointDate: Date?,
+        crosshairDate: Date?,
+        weightLabel: String
+    )?
+    private(set) var lastChartDatePeriod: TimePeriod?
+
+    func formatYAxisTickLabel(_ weight: Double) -> String { yAxisTickLabelResult ?? "\(weight)" }
+    func roundedGoalWeight(_ weight: Double) -> Double { roundedGoalWeightResult ?? weight }
+    func formatChartDate(_ date: Date, period: TimePeriod) -> String {
+        lastChartDatePeriod = period
+        return chartDateResult
+    }
+    func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String { metricInfoSingleDateResult }
     func formatMetricInfoDateLabel(
         entryDate: Date?,
         isFromHistory: Bool,
@@ -14,10 +35,22 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         selectedPointDate: Date?,
         crosshairDate: Date?,
         weightLabel: String
-    ) -> String { "mock-label" }
-    func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? { nil }
-    func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool { true }
-    func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String { metric.value }
+    ) -> String {
+        lastMetricInfoDateLabelArgs = (
+            entryDate: entryDate,
+            isFromHistory: isFromHistory,
+            period: period,
+            selectedPointDate: selectedPointDate,
+            crosshairDate: crosshairDate,
+            weightLabel: weightLabel
+        )
+        return metricInfoDateLabelResult
+    }
+    func parseEntryDate(from entryDTO: BathScaleOperationDTO) -> Date? { parsedEntryDate }
+    func isDashboardEntry(_ entryDTO: BathScaleOperationDTO) -> Bool { dashboardEntryResult }
+    func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String {
+        formattedMetricValueResult ?? metric.value
+    }
     func composeMetricInfoLabel(prefix: String, dateText: String) -> String { "\(prefix) \(dateText)" }
     func selectionPrefix(for period: TimePeriod) -> String { "Avg" }
 }
@@ -27,7 +60,23 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
     private(set) var invalidateContinuousOpsCalls = 0
     private(set) var invalidateChartSeriesCalls = 0
     private(set) var clearAllCachesCalls = 0
+    private(set) var getVisibleOperationsCalls = 0
+    private(set) var getChartSeriesDataCalls = 0
+    private(set) var getLabelDateRangeOperationsCalls = 0
+    private(set) var lastVisibleIsScrolling: Bool?
+    private(set) var lastChartSeriesRequest: (
+        isScrolling: Bool,
+        isProcessingScrollEnd: Bool,
+        period: TimePeriod,
+        selectedMetric: String?,
+        operationsCount: Int,
+        yAxisDomain: ClosedRange<Double>?
+    )?
+    private(set) var lastLabelDateRangeRequest: (period: TimePeriod, scrollPosition: Date?)?
     private var boolCache: [String: Bool] = [:]
+    var visibleOperationsOverride: [BathScaleWeightSummary]?
+    var chartSeriesOverride: [GraphSeries]?
+    var labelDateRangeOverride: DateRangeOperationsResult?
 
     func getContinuousOperations(for period: TimePeriod, getOperations: () -> [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
         getOperations()
@@ -38,11 +87,22 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
     }
 
     func getVisibleOperations(isScrolling: Bool, getVisibleOperations: () -> [BathScaleWeightSummary]) -> [BathScaleWeightSummary] {
-        getVisibleOperations()
+        getVisibleOperationsCalls += 1
+        lastVisibleIsScrolling = isScrolling
+        return visibleOperationsOverride ?? getVisibleOperations()
     }
 
     func getChartSeriesData(isScrolling: Bool, isProcessingScrollEnd: Bool, period: TimePeriod, selectedMetric: String?, operationsCount: Int, yAxisDomain: ClosedRange<Double>?, getChartSeries: () -> [GraphSeries]) -> [GraphSeries] {
-        getChartSeries()
+        getChartSeriesDataCalls += 1
+        lastChartSeriesRequest = (
+            isScrolling: isScrolling,
+            isProcessingScrollEnd: isProcessingScrollEnd,
+            period: period,
+            selectedMetric: selectedMetric,
+            operationsCount: operationsCount,
+            yAxisDomain: yAxisDomain
+        )
+        return chartSeriesOverride ?? getChartSeries()
     }
 
     func invalidateChartSeriesCache() {
@@ -50,12 +110,9 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
     }
 
     func getLabelDateRangeOperations(period: TimePeriod, scrollPosition: Date?, getOperations: () -> DateRangeOperationsResult) -> DateRangeOperationsResult {
-        DateRangeOperationsResult(
-            operations: [],
-            cachedPeriod: period,
-            cachedScrollPos: scrollPosition ?? Date(),
-            cachedOps: []
-        )
+        getLabelDateRangeOperationsCalls += 1
+        lastLabelDateRangeRequest = (period: period, scrollPosition: scrollPosition)
+        return labelDateRangeOverride ?? getOperations()
     }
 
     func getBool(forKey key: String) -> Bool {
@@ -69,4 +126,37 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
     func clearAllCaches() {
         clearAllCachesCalls += 1
     }
+}
+
+@MainActor
+final class MockDashboardDisplayManager: DashboardDisplayManaging {
+    private(set) var updateMetricsForCurrentViewCalls = 0
+    private(set) var updateMetricsWithVisibleRegionAverageCalls = 0
+    private(set) var resetMetricsToLatestEntryCalls = 0
+    var displayWeight: Double?
+    var weightLabel: String = ""
+    var weightDisplayLabel: String = ""
+    var displayUnitText: String = ""
+    var activeMonthInterval: DateInterval?
+    var operationsForLabelDateRange: [BathScaleWeightSummary] = []
+
+    func getCurrentAverageWeight() -> Double { 0 }
+    func updateVisibleDataAfterScroll() {}
+    func getOperationsForLabelDateRange() -> [BathScaleWeightSummary] { operationsForLabelDateRange }
+    func formatWeightDisplayText(_ weight: Double?) -> String { weight.map { String($0) } ?? "0.0" }
+    func formatYAxisTickLabel(_ weight: Double) -> String { String(weight) }
+    func formatChartDate(_ date: Date) -> String { "mock-date" }
+    func roundedGoalWeight(_ weight: Double) -> Double { weight }
+    func formattedMetricValue(for metric: (preLabel: String?, value: String)) -> String { metric.value }
+    func createEntryForMetricInfo(metricLabel: String?) -> Entry {
+        Entry(entryTimestamp: DateTimeTools.getCurrentDatetimeIsoString(), accountId: "dashboard", operationType: OperationType.create.rawValue)
+    }
+    func createEntryForMetricInfoAsync(metricLabel: String?) async -> Entry { createEntryForMetricInfo(metricLabel: metricLabel) }
+    func metricInfoDateLabel(for entryDTO: BathScaleOperationDTO) -> String { "mock-label" }
+    func allowedMetricsForMetricInfo() -> [BodyMetric] { [.weight] }
+    func validateMetricInfoSelection(_ current: BodyMetric) -> BodyMetric { current }
+    func getBodyMetric(for metricLabel: String) -> BodyMetric { .weight }
+    func updateMetricsForCurrentView() { updateMetricsForCurrentViewCalls += 1 }
+    func updateMetricsWithVisibleRegionAverage() { updateMetricsWithVisibleRegionAverageCalls += 1 }
+    func resetMetricsToLatestEntry() { resetMetricsToLatestEntryCalls += 1 }
 }

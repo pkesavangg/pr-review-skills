@@ -44,16 +44,27 @@ final class TotalSectionViewModel: BaseSectionViewModel {
     
     /// Full date range for X-axis domain
     override var dateRange: ClosedRange<Date> {
-        // Use cached bounds for O(1) lookup instead of O(n) map + min/max
-        guard let store = dashboardStore,
-              let bounds = store.dataManager.getDateBounds(for: timePeriod) else {
+        guard let store = dashboardStore else {
             // Empty-state: provide a non-zero domain so leading/trailing baselines render
             // Center around current scroll position to keep UX consistent with other sections
             let center = scrollPosition
             let halfWindow: TimeInterval = 24 * 60 * 60 // 1 day
             return center.addingTimeInterval(-halfWindow)...center.addingTimeInterval(halfWindow)
         }
-        
+
+        let bounds: (min: Date, max: Date)
+        if let cachedBounds = store.dataManager.getDateBounds(for: timePeriod) {
+            bounds = cachedBounds
+        } else {
+            let operations = store.continuousOperations
+            guard let minDate = operations.first?.date, let maxDate = operations.last?.date else {
+                let center = scrollPosition
+                let halfWindow: TimeInterval = 24 * 60 * 60
+                return center.addingTimeInterval(-halfWindow)...center.addingTimeInterval(halfWindow)
+            }
+            bounds = (minDate, maxDate)
+        }
+
         let minDate = bounds.min
         let maxDate = bounds.max
         let calendar = Calendar.current
