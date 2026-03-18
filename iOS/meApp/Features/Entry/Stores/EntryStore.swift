@@ -10,6 +10,7 @@ final class EntryStore: ObservableObject {
     @Injector var entryService: EntryServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var scaleService: ScaleServiceProtocol
+    @Injector var productTypeStore: ProductTypeStoreProtocol
 
     // Strings
     private let toastLang = ToastStrings.self
@@ -70,6 +71,18 @@ final class EntryStore: ObservableObject {
         setupBmiObservers()
         updateWeightValidators()
         setupDateTimeObservers()
+        subscribeToProductTypeChanges()
+    }
+
+    private func subscribeToProductTypeChanges() {
+        productTypeStore.selectedItemPublisher
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newItem in
+                self?.logger.log(level: .info, tag: self?.tag ?? "EntryStore",
+                                 message: "Product type changed to \(newItem.displayName)")
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public helpers

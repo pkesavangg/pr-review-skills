@@ -102,12 +102,20 @@ class ServiceRegistry {
         let scale = ScaleService.shared
         DependencyContainer.shared.register(scale)
         DependencyContainer.shared.register(scale as ScaleServiceProtocol)
+
+        let baby = BabyService.shared
+        DependencyContainer.shared.register(baby)
+        DependencyContainer.shared.register(baby as BabyServiceProtocol)
     }
 
     /// Registers services needed after login
     @MainActor func registerSessionServices() {
         DependencyContainer.shared.register(FeedService.shared)
         DependencyContainer.shared.register(FeedService.shared as FeedServiceProtocol)
+
+        let productTypeStore = ProductTypeStore.shared
+        DependencyContainer.shared.register(productTypeStore)
+        DependencyContainer.shared.register(productTypeStore as ProductTypeStoreProtocol)
     }
 
     /// Deregisters essential services (called during deinit or app shutdown)
@@ -153,6 +161,8 @@ class ServiceRegistry {
     nonisolated func deregisterSessionServices() {
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedService.self))
         DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: FeedServiceProtocol.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ProductTypeStore.self))
+        DependencyContainer.shared.dependencies.removeValue(forKey: String(describing: ProductTypeStoreProtocol.self))
     }
 
     deinit {
