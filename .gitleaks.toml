@@ -1,0 +1,37 @@
+# ==============================================
+# Gitleaks Configuration — meApp
+# Scans staged files for secrets before each commit
+# ==============================================
+
+title = "meApp Gitleaks Config"
+
+# Extend the default Gitleaks ruleset (~150 built-in secret detection rules)
+# Without this, a custom config replaces ALL rules with nothing
+[extend]
+  useDefault = true
+
+[allowlist]
+  description = "Project-wide allowlist for known safe patterns"
+
+  # ── Paths to skip (regex matched against file paths) ──
+  # Only allowlist files that are actually tracked in git.
+  # Files in .gitignore (GoogleService-Info.plist, DerivedData/, Package.resolved)
+  # are never staged, so they don't need allowlisting here.
+  paths = [
+    # Android Firebase config — tracked in git, contains public client-side identifiers
+    '''google-services\.json''',
+
+    # Unit/UI test fixtures contain fake tokens and mock credentials
+    '''meAppTests/''',
+    '''meAppUITests/''',
+
+    # CircleCI config references env var names ($GOOGLESERVICE_INFO_BASE64), not actual secrets
+    '''\.circleci/config\.yml''',
+  ]
+
+  # ── Regex patterns to ignore globally ──
+  regexes = [
+    # Public OAuth client IDs (embedded in authorization URLs, visible to users)
+    '''client_id=23TH5Z''',
+    '''client_id=weightguru''',
+  ]
