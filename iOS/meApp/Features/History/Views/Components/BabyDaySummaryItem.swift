@@ -51,6 +51,8 @@ struct BabyDaySummaryItem: View {
                     Text(weightText)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.subHeading2)

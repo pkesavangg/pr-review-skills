@@ -46,6 +46,8 @@ struct BabyHistoryEntryItem: View {
                     Text(weightText)
                         .fontOpenSans(.heading5)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
