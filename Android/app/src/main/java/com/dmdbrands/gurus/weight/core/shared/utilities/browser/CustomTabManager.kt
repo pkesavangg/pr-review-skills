@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.shared.utilities.browser
 import androidx.browser.customtabs.CustomTabsCallback
 import androidx.core.net.toUri
 import com.dmdbrands.gurus.weight.core.shared.utilities.webview.WebViewLauncher
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -35,6 +36,7 @@ class CustomTabManager
     @Inject
     constructor(
         private val context: Context,
+        @ApplicationScope private val appScope: CoroutineScope,
     ) : ICustomTabManager {
         private var navigationEvent = MutableStateFlow<ChromeTabState?>(null)
         private val packageResolver = CustomTabPackageResolver(context)
@@ -128,7 +130,7 @@ class CustomTabManager
         }
 
         override fun openChromeTab(url: String) {
-            CoroutineScope(Dispatchers.IO).launch {
+            appScope.launch {
                 val isBound = bindService()
                 delay(300)
                 if (isBound) {

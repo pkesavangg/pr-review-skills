@@ -15,6 +15,10 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.models.GGWifiInfo
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Controls for WiFi-Password form.
@@ -67,10 +71,11 @@ data class ScaleUsernameFormControls(
 /**
  * State for BtWifiScaleSetupScreen.
  */
+@Stable
 data class BtWifiScaleSetupState(
   val currentStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
   val sku: String = "0412",
-  val steps: List<BtWifiSetupStep> = listOf(
+  val steps: ImmutableList<BtWifiSetupStep> = persistentListOf(
     BtWifiSetupStep.SCALE_INFO,
     BtWifiSetupStep.PERMISSIONS,
     BtWifiSetupStep.WAKEUP,
@@ -87,7 +92,7 @@ data class BtWifiScaleSetupState(
     BtWifiSetupStep.SETUP_FINISHED,
   ),
   val nextButtonText: String = ScaleSetupStrings.SetupButtons.Next,
-  val wifiList: List<GGWifiInfo> = emptyList(),
+  val wifiList: ImmutableList<GGWifiInfo> = persistentListOf(),
   val connectedSSID: String? = "",
   val isLoading: Boolean = false,
   val errorCode: String? = null,
@@ -98,18 +103,18 @@ data class BtWifiScaleSetupState(
   val canProceedToNext: Boolean = true,
   val wifiPasswordForm: WifiPasswordFormControls = WifiPasswordFormControls.create(),
   val usernameForm: ScaleUsernameFormControls = ScaleUsernameFormControls.create(),
-  val dashboardKeys: List<DashboardKey> = listOf(),
+  val dashboardKeys: ImmutableList<DashboardKey> = persistentListOf(),
   val goalProgress: Progress = Progress(),
   val duplicateUser: GGBTUser? = null,
-  val duplicateUserList: List<GGBTUser> = listOf(),
-  val userList: List<GGBTUser> = listOf(),
+  val duplicateUserList: ImmutableList<GGBTUser> = persistentListOf(),
+  val userList: ImmutableList<GGBTUser> = persistentListOf(),
   val permissions: GGPermissionStatusMap = mutableMapOf(),
   // Scale mode preferences - similar to Angular component's setModePreference logic
   val isAllBodyMetrics: Boolean = true, // Default to metrics mode (ScaleModeEnum.metrics)
   val isHeartRateOn: Boolean = false, // Default heart rate off
   val hasSavedSettings: Boolean = false, // Track if any customization settings have been saved
   val visitedCustomizeSteps: Set<CustomizeSettings> = emptySet(), // Preserve visited steps when returning from UPDATE_SETTINGS Try again
-  val scaleMetrics: List<String> = ScaleMetricsHelper.getAllMetrics(),
+  val scaleMetrics: ImmutableList<String> = ScaleMetricsHelper.getAllMetrics().toImmutableList(),
   val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO, // Track the initial step for button visibility logic
   val latestWeight: Double? = null, // Latest weight from entry service
 ) : IReducer.State {
@@ -160,6 +165,7 @@ sealed interface BtWifiScaleSetupIntent : IReducer.Intent {
     val text: String,
   ) : BtWifiScaleSetupIntent
 
+  @Stable
   data class SetStepConnectionState(
     val step: BtWifiSetupStep,
     val connectionState: ConnectionState,
@@ -241,12 +247,12 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
   ): BtWifiScaleSetupState? =
     when (intent) {
       is BtWifiScaleSetupIntent.SetConnectedSSID -> state.copy(connectedSSID = intent.ssid)
-      is BtWifiScaleSetupIntent.SetUserList -> state.copy(userList = intent.userList)
+      is BtWifiScaleSetupIntent.SetUserList -> state.copy(userList = intent.userList.toImmutableList())
       is BtWifiScaleSetupIntent.SetDuplicateUser -> state.copy(duplicateUser = intent.duplicateUser)
-      is BtWifiScaleSetupIntent.SetDuplicateUserList -> state.copy(duplicateUserList = intent.duplicateUserList)
-      is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys)
+      is BtWifiScaleSetupIntent.SetDuplicateUserList -> state.copy(duplicateUserList = intent.duplicateUserList.toImmutableList())
+      is BtWifiScaleSetupIntent.SetDashboardKeys -> state.copy(dashboardKeys = intent.dashboardKeys.toImmutableList())
       is BtWifiScaleSetupIntent.SetGoalProgress -> state.copy(goalProgress = intent.progress)
-      is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList)
+      is BtWifiScaleSetupIntent.SetWifiList -> state.copy(wifiList = intent.wifiList.toImmutableList())
       is BtWifiScaleSetupIntent.SetScaleSku -> state.copy(sku = intent.sku)
       is BtWifiScaleSetupIntent.SetCurrentStep -> state.copy(
         currentStep = intent.step,
@@ -298,7 +304,7 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       )
       is BtWifiScaleSetupIntent.SetHasSavedSettings -> state.copy(hasSavedSettings = intent.hasSavedSettings)
       is BtWifiScaleSetupIntent.SetVisitedCustomizeSteps -> state.copy(visitedCustomizeSteps = intent.steps)
-      is BtWifiScaleSetupIntent.SetScaleMetrics -> state.copy(scaleMetrics = intent.scaleMetrics)
+      is BtWifiScaleSetupIntent.SetScaleMetrics -> state.copy(scaleMetrics = intent.scaleMetrics.toImmutableList())
       is BtWifiScaleSetupIntent.SetInitialStep -> state.copy(initialStep = intent.initialStep)
       is BtWifiScaleSetupIntent.UpdateUsernameForm -> state.copy(
         usernameForm = ScaleUsernameFormControls.create().copy(

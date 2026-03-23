@@ -22,7 +22,7 @@ fun HistoryList(
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
-        items(items) { item ->
+        items(items, key = { item -> item.entryTimestamp ?: item.hashCode() }) { item ->
             HistoryItem(item = item, onClick = { onItemClick(item) })
             HorizontalDivider(
                 thickness = MeTheme.spacing.x6s,

@@ -1,0 +1,133 @@
+# ==============================================
+# Gitleaks Configuration — meApp
+# Secrets detection rules for CI pipeline
+#
+# Reference: SDLC Policy Section 5.6
+# CI Gate: Block on ANY finding
+# ==============================================
+
+title = "meApp Gitleaks Config"
+
+# Extend the default Gitleaks ruleset (~150 built-in secret detection rules)
+[extend]
+  useDefault = true
+
+# Additional custom rules for healthcare/Me.Health specific patterns
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = '''(?i)(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}'''
+tags = ["aws", "key"]
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Key"
+regex = '''(?i)aws(.{0,20})?(?-i)['\"][0-9a-zA-Z\/+]{40}['\"]'''
+tags = ["aws", "secret"]
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api[_-]?key|apikey|api[_-]?secret)[\s:=]+['\"]?[a-zA-Z0-9_\-]{20,}['\"]?'''
+tags = ["api", "key"]
+
+[[rules]]
+id = "generic-secret"
+description = "Generic Secret"
+regex = '''(?i)(secret|password|passwd|pwd|token|auth[_-]?token|access[_-]?token|bearer)[\s:=]+['\"][^'\"]{8,}['\"]'''
+tags = ["secret"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA|EC|DSA|OPENSSH|PGP) PRIVATE KEY-----'''
+tags = ["key", "private"]
+
+[[rules]]
+id = "jwt-token"
+description = "JWT Token"
+regex = '''eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*'''
+tags = ["jwt", "token"]
+
+[[rules]]
+id = "database-connection-string"
+description = "Database Connection String"
+regex = '''(?i)(mongodb|postgres|mysql|redis|amqp):\/\/[^\s'"]+'''
+tags = ["database", "connection"]
+
+[[rules]]
+id = "slack-webhook"
+description = "Slack Webhook URL"
+regex = '''https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[a-zA-Z0-9]+'''
+tags = ["slack", "webhook"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''gh[pousr]_[A-Za-z0-9_]{36,}'''
+tags = ["github", "token"]
+
+[[rules]]
+id = "hipaa-phi-ssn"
+description = "Potential SSN (PHI)"
+regex = '''\b\d{3}-\d{2}-\d{4}\b'''
+tags = ["phi", "ssn", "hipaa"]
+
+[[rules]]
+id = "hipaa-phi-mrn"
+description = "Potential Medical Record Number"
+regex = '''(?i)(mrn|medical[_-]?record[_-]?number|patient[_-]?id)[\s:=]+['\"]?\d{6,}['\"]?'''
+tags = ["phi", "mrn", "hipaa"]
+
+# Allowlist patterns (false positives)
+[allowlist]
+  description = "Project-wide allowlist for known safe patterns"
+
+  # Paths to skip (regex matched against file paths)
+  paths = [
+    # Android Firebase config — tracked in git, contains public client-side identifiers
+    '''google-services\.json''',
+
+    # iOS unit/UI test fixtures contain fake tokens and mock credentials
+    '''meAppTests/''',
+    '''meAppUITests/''',
+
+    # Android unit/instrumented test fixtures contain fake tokens and mock credentials
+    '''Android/app/src/test/''',
+    '''Android/app/src/androidTest/''',
+
+    # Android source files with false positives (UI string constants, mock preview data)
+    '''features/ScaleUsers/screens/ScaleUserListScreen\.kt''',
+    '''features/settings/strings/SettingsScreenStrings\.kt''',
+
+    # CircleCI config references env var names ($GOOGLESERVICE_INFO_BASE64), not actual secrets
+    '''\.circleci/config\.yml''',
+
+    # Lock files and generated content
+    '''\.lock$''',
+    '''package-lock\.json$''',
+    '''\.min\.js$''',
+    '''\.min\.css$''',
+    '''__snapshots__''',
+    '''\.md$''',
+    '''CHANGELOG''',
+  ]
+
+  # Regex patterns to ignore globally
+  regexes = [
+    # Public OAuth client IDs (embedded in authorization URLs, visible to users)
+    '''client_id=23TH5Z''',
+    '''client_id=weightguru''',
+
+    # Test file patterns that often contain fake secrets
+    '''example''',
+    '''sample''',
+    '''fake''',
+    '''dummy''',
+    '''placeholder''',
+    '''xxx+''',
+    '''your[_-]?api[_-]?key''',
+    '''your[_-]?secret''',
+    '''<[^>]+>''',
+    '''\$\{[^}]+\}''',
+  ]

@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
+import androidx.compose.runtime.Stable
 
 /**
  * Controls for Profile form.
@@ -76,6 +77,7 @@ data class ProfileFormControls(
  * @property isLoading Whether the profile update process is ongoing.
  * @property error Error message to display, if any.
  */
+@Stable
 data class ProfileState(
     val form: FormGroup<ProfileFormControls>,
     val isLoading: Boolean = false,

@@ -4,6 +4,8 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.BuildConfig
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.INotificationSettingsManager
@@ -23,6 +25,7 @@ constructor(
   private val notificationSettingsManager: INotificationSettingsManager,
   private val scaleSettingsManager: IScaleSettingsManager,
   private val dataSettingsManager: IDataSettingsManager,
+  private val crashReportingService: ICrashReportingService,
 ) : BaseIntentViewModel<SettingsState, SettingsIntent>(
   SettingsReducer(),
 ) {
@@ -135,6 +138,28 @@ constructor(
 
       SettingsIntent.ShowMacAddressFilterModal -> {
         scaleSettingsManager.onMacAddressFilterClick(viewModelScope, ::currentState, ::dispatchIntent)
+      }
+
+      SettingsIntent.TriggerTestCrash -> {
+        if (BuildConfig.DEBUG) {
+          AppLog.w(TAG, "Triggering test crash for Crashlytics verification")
+          throw RuntimeException("Crashlytics test crash")
+        }
+      }
+
+      SettingsIntent.TriggerTestNonFatal -> {
+        if (BuildConfig.DEBUG) {
+          val exception = RuntimeException("Crashlytics test non-fatal exception")
+          crashReportingService.recordException(exception, "test_non_fatal")
+          AppLog.d(TAG, "Non-fatal test exception recorded to Crashlytics")
+          dialogQueueService.showToast(
+            com.dmdbrands.gurus.weight.features.common.model.Toast(
+              title = null,
+              message = "Non-fatal exception recorded",
+              action = null,
+            ),
+          )
+        }
       }
 
       else -> {}
