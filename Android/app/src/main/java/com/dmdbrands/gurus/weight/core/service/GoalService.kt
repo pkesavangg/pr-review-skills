@@ -50,8 +50,9 @@ constructor(
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
   private val deviceService: IDeviceService,
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
   private val TAG = "GoalService"
   private var isShowingAlert = false
 

@@ -23,7 +23,10 @@ import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,7 +52,7 @@ class AccountService(
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
   private val analyticsService: IAnalyticsService,
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
@@ -57,6 +60,7 @@ class AccountService(
     private const val TAG = "AccountService"
   }
 
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
   private var repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 
   // region Public Properties

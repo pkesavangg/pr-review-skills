@@ -14,6 +14,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Always run `./gradlew assembleDebug` after making changes to verify the build succeeds before considering a task done.
 
+## Pre-commit Hooks (Lefthook)
+
+Pre-commit hooks enforce code quality before every commit. Setup:
+
+```bash
+# Install tools (macOS)
+brew install lefthook detekt
+
+# Activate hooks (run from repo root, one-time setup)
+cd /path/to/meApp && lefthook install
+```
+
+**What runs on commit:**
+- **Detekt CLI** — static analysis on staged `.kt` files (<10s)
+- **Gitleaks** — secrets detection on all staged files (warns if not installed)
+- **JIRA ticket** — validates commit message contains `MA-XXXX`
+
+To bypass in emergencies: `git commit --no-verify`
+
 ## Modules
 
 | Module | Purpose |

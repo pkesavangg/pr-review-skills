@@ -1,0 +1,49 @@
+# Lefthook configuration — managed pre-commit and commit-msg hooks
+# Install: brew install lefthook detekt && lefthook install
+# Docs: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    detekt:
+      glob: "**/*.kt"
+      run: >
+        detekt
+        --input {staged_files}
+        --config Android/config/detekt/detekt.yml
+        --baseline Android/config/detekt/detekt-baseline.xml
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        Detekt violations found.
+        Run: cd Android && ./gradlew detektBaseline (to update baseline for pre-existing issues)
+        Or fix the violations in your code.
+
+    gitleaks:
+      run: |
+        if command -v gitleaks &>/dev/null; then
+          gitleaks protect --staged --no-banner --verbose
+        else
+          echo "Warning: Gitleaks not installed — skipping secrets scan (brew install gitleaks)"
+        fi
+      skip:
+        - merge
+        - rebase
+      fail_text: "Secrets detected in staged files. Remove them before committing."
+
+commit-msg:
+  commands:
+    jira-ticket:
+      run: |
+        MSG=$(cat {1})
+        if echo "$MSG" | head -1 | grep -qE "^(Merge|fixup!|squash!|Revert) "; then
+          exit 0
+        fi
+        if ! echo "$MSG" | grep -qE "MA-[0-9]+"; then
+          echo ""
+          echo "Commit message must include a JIRA ticket reference (e.g. MA-1234)"
+          echo "   Your message: $(head -1 {1})"
+          echo "   To bypass: git commit --no-verify"
+          exit 1
+        fi
