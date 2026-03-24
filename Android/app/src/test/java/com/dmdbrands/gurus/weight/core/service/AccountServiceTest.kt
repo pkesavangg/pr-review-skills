@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -29,6 +30,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -73,7 +75,7 @@ class AccountServiceTest {
     private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
     private val appNavigationService: IAppNavigationService = mockk(relaxed = true)
     private val storageClearService: StorageClearService = mockk(relaxed = true)
-
+    private val analyticsService: IAnalyticsService = mockk(relaxed = true)
     private lateinit var service: AccountService
 
     // --- Test Fixtures ---
@@ -185,8 +187,6 @@ class AccountServiceTest {
 
     private fun stubNetworkAvailable() = connectivityObserver.stubNetworkAvailable()
     private fun stubNetworkUnavailable() = connectivityObserver.stubNetworkUnavailable()
-    private fun goOnline() = stubNetworkAvailable()
-    private fun goOffline() = stubNetworkUnavailable()
 
     /** Re-stubs active account to null and recreates service. */
     private fun withNoActiveAccount() {
