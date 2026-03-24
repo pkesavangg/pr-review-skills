@@ -67,12 +67,12 @@ class GoalServiceTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
-    private val goalRepository: IGoalRepository = mockk()
+    private val goalRepository: IGoalRepository = mockk(relaxed = true)
     private val connectivityObserver: IConnectivityObserver = mockk()
     private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
     private val appNavigationService: IAppNavigationService = mockk(relaxed = true)
     private val goalAlertDataStore: GoalAlertDataStore = mockk(relaxed = true)
-    private val accountRepository: IAccountRepository = mockk()
+    private val accountRepository: IAccountRepository = mockk(relaxed = true)
     private val deviceService: IDeviceService = mockk(relaxed = true)
 
     private lateinit var service: GoalService

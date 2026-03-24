@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
