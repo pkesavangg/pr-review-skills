@@ -224,6 +224,9 @@ struct MyScalesScreen: View {
                         case .espTouchWifi, .wifi:
                             WifiScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
+                        case .babyScale:
+                            BabyScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
                         }
                     }
                     }
