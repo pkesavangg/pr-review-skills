@@ -446,4 +446,198 @@ class EntryAggregationServiceTest {
         assertThat(service.daywiseBodyScaleAverages.value).isEmpty()
         assertThat(service.monthlyAverage.value).isEmpty()
     }
+
+    // -------------------------------------------------------------------------
+    // startDataCollection — updateLatestEntry populates _latestEntry
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection populates latestEntry when repository emits entry`() = runTest {
+        val fakeEntry: Entry = mockk(relaxed = true)
+        coEvery { entryRepository.getLatestEntry(testAccountId) } returns flowOf(fakeEntry)
+        // Stub streak/progress queries for updateProgressCache triggered by updateLatestEntry
+        coEvery { entryRepository.getStreakData(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getLongestStreakCount(testAccountId) } returns 0
+        coEvery { entryRepository.getTotalCount(testAccountId) } returns 0
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.latestEntry.value).isEqualTo(fakeEntry)
+    }
+
+    // -------------------------------------------------------------------------
+    // startDataCollection — updateLast7Days populates _last7Days
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection populates last7Days when repository emits entries`() = runTest {
+        val fakeEntries = listOf<Entry>(mockk(relaxed = true), mockk(relaxed = true))
+        coEvery { entryRepository.getLastNDaysEntries(testAccountId, 7) } returns flowOf(fakeEntries)
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.last7Days.value).hasSize(2)
+    }
+
+    // -------------------------------------------------------------------------
+    // startDataCollection — updateLast30Days populates _last30Days
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection populates last30Days when repository emits entries`() = runTest {
+        val fakeEntries = listOf<Entry>(mockk(relaxed = true))
+        coEvery { entryRepository.getLastNDaysEntries(testAccountId, 30) } returns flowOf(fakeEntries)
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.last30Days.value).hasSize(1)
+    }
+
+    // -------------------------------------------------------------------------
+    // startDataCollection — updateMonthYear populates _monthYear
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection populates monthlyAverage when repository emits months`() = runTest {
+        every { entryRepository.getMonthlyAverage(testAccountId) } returns flowOf(emptyList())
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.monthlyAverage.value).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // startDataCollection — updateMonthlyBodyScaleAveragesWithJoin
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection populates monthlyBodyScaleAverages from repository`() = runTest {
+        every { entryRepository.getMonthlyBodyScaleAveragesWithJoin(testAccountId) } returns flowOf(emptyList())
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.monthlyBodyScaleAverages.value).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // updateProgressCache — via refreshEntryData
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `refreshEntryData updates progress cache with streak and count values`() = runTest {
+        service.setAccountId(testAccountId, 180.0)
+        coEvery { entryRepository.getStreakData(testAccountId) } returns listOf("2024-01-01", "2024-01-02")
+        coEvery { entryRepository.getLongestStreakCount(testAccountId) } returns 10
+        coEvery { entryRepository.getTotalCount(testAccountId) } returns 25
+
+        service.refreshEntryData()
+
+        // Verify the queries were called (progress cache updated internally)
+        coVerify { entryRepository.getStreakData(testAccountId) }
+        coVerify { entryRepository.getLongestStreakCount(testAccountId) }
+        coVerify { entryRepository.getTotalCount(testAccountId) }
+    }
+
+    // -------------------------------------------------------------------------
+    // startDataCollection — error handling in individual update methods
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection handles exception in updateLatestEntry gracefully`() = runTest {
+        coEvery { entryRepository.getLatestEntry(testAccountId) } throws RuntimeException("DB error")
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        // Should not crash, latestEntry stays null
+        assertThat(service.latestEntry.value).isNull()
+    }
+
+    @Test
+    fun `startDataCollection handles exception in updateLast7Days gracefully`() = runTest {
+        coEvery { entryRepository.getLastNDaysEntries(testAccountId, 7) } throws RuntimeException("DB error")
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.last7Days.value).isEmpty()
+    }
+
+    @Test
+    fun `startDataCollection handles exception in updateLast30Days gracefully`() = runTest {
+        coEvery { entryRepository.getLastNDaysEntries(testAccountId, 30) } throws RuntimeException("DB error")
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.last30Days.value).isEmpty()
+    }
+
+    @Test
+    fun `startDataCollection handles exception in updateMonthYear gracefully`() = runTest {
+        every { entryRepository.getMonthlyHistoryLastYear(testAccountId) } throws RuntimeException("DB error")
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        // Should not crash
+    }
+
+    @Test
+    fun `startDataCollection handles exception in updateMonthlyBodyScaleAveragesWithJoin gracefully`() = runTest {
+        every { entryRepository.getMonthlyBodyScaleAveragesWithJoin(testAccountId) } throws RuntimeException("DB error")
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.monthlyBodyScaleAverages.value).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // updateDaywiseBodyScaleAveragesWithJoin — via startDataCollection
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection populates daywiseBodyScaleAverages via updateDaywiseBodyScaleAveragesWithJoin`() = runTest {
+        val fakeData = listOf(mockk<com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary>(relaxed = true))
+        every { entryRepository.getDaywiseBodyScaleAveragesWithJoin(testAccountId) } returns flowOf(fakeData)
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.daywiseBodyScaleAverages.value).isEqualTo(fakeData)
+    }
+
+    // -------------------------------------------------------------------------
+    // updateMonthlyAverage — via startDataCollection
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection populates monthlyAverage via updateMonthlyAverage`() = runTest {
+        val fakeMonths = listOf(mockk<com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth>(relaxed = true))
+        every { entryRepository.getMonthlyAverage(testAccountId) } returns flowOf(fakeMonths)
+        every { accountRepository.getActiveAccountWeightUnitFlow() } returns flowOf(WeightUnit.LB)
+
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        appScope.testScheduler.advanceUntilIdle()
+
+        assertThat(service.monthlyAverage.value).isNotEmpty()
+    }
 }

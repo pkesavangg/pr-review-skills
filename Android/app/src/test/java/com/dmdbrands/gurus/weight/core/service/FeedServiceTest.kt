@@ -1322,4 +1322,162 @@ class FeedServiceTest {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // buildFeedAction — variationClick and promoClick include meta
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `updateFeedItem with variationClick includes osType and meta`() = runTest {
+    val item = createFeedItem(feedPostId = "post-1")
+    coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
+    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.fetchFeedItems()
+    service.updateFeedItem(item, FeedActionType.variationClick, 99)
+
+    val actionSlot = slot<FeedAction>()
+    coVerify { feedRepository.updateFeedItem("post-1", capture(actionSlot)) }
+    assertThat(actionSlot.captured.osType).isEqualTo("Android")
+    assertThat(actionSlot.captured.meta).isNotNull()
+    assertThat(actionSlot.captured.meta?.variationId).isEqualTo(99)
+  }
+
+  @Test
+  fun `updateFeedItem with promoClick includes osType and meta`() = runTest {
+    val item = createFeedItem(feedPostId = "post-1")
+    coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
+    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.fetchFeedItems()
+    service.updateFeedItem(item, FeedActionType.promoClick, null)
+
+    val actionSlot = slot<FeedAction>()
+    coVerify { feedRepository.updateFeedItem("post-1", capture(actionSlot)) }
+    assertThat(actionSlot.captured.osType).isEqualTo("Android")
+    assertThat(actionSlot.captured.meta).isNotNull()
+  }
+
+  @Test
+  fun `updateFeedItem with click action has no osType or meta`() = runTest {
+    val item = createFeedItem(feedPostId = "post-1")
+    coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
+    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.fetchFeedItems()
+    service.updateFeedItem(item, FeedActionType.click, null)
+
+    val actionSlot = slot<FeedAction>()
+    coVerify { feedRepository.updateFeedItem("post-1", capture(actionSlot)) }
+    assertThat(actionSlot.captured.osType).isNull()
+    assertThat(actionSlot.captured.meta).isNull()
+  }
+
+  // -------------------------------------------------------------------------
+  // updateNotificationBadge — additional badge tests
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `notification badge updates when fetching offline items`() = runTest {
+    every { connectivityObserver.getCurrentNetworkState() } returns offlineState
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
+      showPopupMessage = true,
+      showNotificationBadge = true,
+    )
+    service = createService()
+
+    service.notificationBadgeUpdated.test {
+      service.fetchFeedItems()
+      assertThat(awaitItem()).isFalse() // no items yet, so badge false
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // generateDynamicMockFeedItems — tested via setMockFeedItems
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `setMockFeedItems generates items with unique elementIds`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      val elementIds = items.map { it.elementId }
+      assertThat(elementIds.distinct().size).isEqualTo(elementIds.size)
+    }
+  }
+
+  @Test
+  fun `setMockFeedItems does not generate items when local storage is populated`() = runTest {
+    val existingItems = listOf(createFeedItem(elementId = "existing-1"))
+    coEvery { feedRepository.fetchFeedItems() } returns existingItems
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    // Populate local storage first
+    service.fetchFeedItems()
+
+    // setMockFeedItems should skip generation
+    service.setMockFeedItems()
+    Thread.sleep(500)
+
+    // Local items should still be the existing ones
+    val count = service.getUnreadFeedCount()
+    assertThat(count).isEqualTo(1)
+  }
+
+  // -------------------------------------------------------------------------
+  // createDynamicLandingPage — tested via setMockFeedItems landing items
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `setMockFeedItems landing items have non-null landing page with products`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      val landingItems = items.filter { it.feedType == FeedTypes.LANDING }
+      landingItems.forEach { item ->
+        assertThat(item.landingPage).isNotNull()
+        assertThat(item.landingPage?.featuredProduct).isNotEmpty()
+        assertThat(item.landingPage?.promoCode).isNotEmpty()
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // convertStringToFeedActionType — edge cases
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `init block handles unknown action type by defaulting to click`() = runTest {
+    val item = createFeedItem(elementId = "e1")
+    coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
+    coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.fetchFeedItems()
+    Thread.sleep(200)
+
+    // Emit feed update with unknown action type
+    sendUpdateFeedFlow.emit(FeedUpdateEvent(feedItem = item, actionType = "unknownAction"))
+    Thread.sleep(500)
+
+    val actionSlot = slot<FeedAction>()
+    coVerify(timeout = 2000) { feedRepository.updateFeedItem(any(), capture(actionSlot)) }
+    assertThat(actionSlot.captured.action).isEqualTo(FeedActionType.click)
+  }
+
 }

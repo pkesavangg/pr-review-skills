@@ -763,6 +763,42 @@ class ExportServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // buildScaleLogEntries — additional edge cases
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `sendScaleLog with single device log having single line produces two entries`() = runTest {
+        val singleLineLog = GGDeviceLog(macAddress = "AB:CD:EF", log = "SingleLine")
+        stubDeviceLogsCompleted(listOf(singleLineLog))
+        val logSlot = slot<List<LogEntry>>()
+        coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
+
+        service.sendScaleLog("broadcast-123")
+
+        val entries = logSlot.captured
+        // 1 mac header + 1 line
+        assertThat(entries).hasSize(2)
+        assertThat(entries[0].data).isEqualTo("Mac Address: AB:CD:EF")
+        assertThat(entries[1].data).isEqualTo("SingleLine")
+    }
+
+    @Test
+    fun `sendScaleLog with device log having trailing newline includes empty last line`() = runTest {
+        val trailingNewline = GGDeviceLog(macAddress = "AB:CD:EF", log = "Line1\n")
+        stubDeviceLogsCompleted(listOf(trailingNewline))
+        val logSlot = slot<List<LogEntry>>()
+        coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
+
+        service.sendScaleLog("broadcast-123")
+
+        val entries = logSlot.captured
+        // 1 mac header + 2 lines ("Line1" and "")
+        assertThat(entries).hasSize(3)
+        assertThat(entries[1].data).isEqualTo("Line1")
+        assertThat(entries[2].data).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
     // showExportSuccessToast — indirectly tested via exportCsvWithPrompt
     // -------------------------------------------------------------------------
 

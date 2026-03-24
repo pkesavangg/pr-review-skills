@@ -290,4 +290,97 @@ class EntrySyncServiceTest {
     fun `service implements IEntrySyncService`() {
         assertThat(service).isInstanceOf(com.dmdbrands.gurus.weight.domain.services.IEntrySyncService::class.java)
     }
+
+    // -------------------------------------------------------------------------
+    // tryLocalIntegration — via syncOperations with CREATE newEntries
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `syncOperations calls Health Connect checkIntegrated when entry is CREATE`() = runTest {
+        val apiResponse = OperationsResponse(
+            operations = emptyList(),
+            timestamp = "2024-01-02T00:00:00Z",
+        )
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns apiResponse
+        coEvery { healthConnectService.checkIntegrated() } returns false
+
+        every { fakeScaleEntry.entry } returns mockk(relaxed = true) {
+            every { entryTimestamp } returns "2024-01-01T12:00:00Z"
+            every { accountId } returns testAccountId
+            every { operationType } returns "CREATE"
+        }
+        every { fakeScaleEntry.updateEntry(any()) } returns fakeScaleEntry
+        every { fakeScaleEntry.toScaleApiEntry() } returns fakeScaleApiEntry
+
+        service.syncOperations(testAccountId, newEntries = listOf(fakeScaleEntry))
+
+        coVerify { healthConnectService.checkIntegrated() }
+    }
+
+    @Test
+    fun `syncOperations skips Health Connect sync when not integrated`() = runTest {
+        val apiResponse = OperationsResponse(
+            operations = emptyList(),
+            timestamp = "2024-01-02T00:00:00Z",
+        )
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns apiResponse
+        coEvery { healthConnectService.checkIntegrated() } returns false
+
+        every { fakeScaleEntry.entry } returns mockk(relaxed = true) {
+            every { entryTimestamp } returns "2024-01-01T12:00:00Z"
+            every { accountId } returns testAccountId
+            every { operationType } returns "CREATE"
+        }
+        every { fakeScaleEntry.updateEntry(any()) } returns fakeScaleEntry
+        every { fakeScaleEntry.toScaleApiEntry() } returns fakeScaleApiEntry
+
+        service.syncOperations(testAccountId, newEntries = listOf(fakeScaleEntry))
+
+        coVerify { healthConnectService.checkIntegrated() }
+        coVerify(exactly = 0) { healthConnectService.syncData(any()) }
+    }
+
+    @Test
+    fun `syncOperations does not call tryLocalIntegration for DELETE operations`() = runTest {
+        val apiResponse = OperationsResponse(
+            operations = emptyList(),
+            timestamp = "2024-01-02T00:00:00Z",
+        )
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns apiResponse
+
+        every { fakeScaleEntry.entry } returns mockk(relaxed = true) {
+            every { entryTimestamp } returns "2024-01-01T12:00:00Z"
+            every { accountId } returns testAccountId
+            every { operationType } returns "DELETE"
+        }
+        every { fakeScaleEntry.updateEntry(any()) } returns fakeScaleEntry
+        every { fakeScaleEntry.toScaleApiEntry() } returns fakeScaleApiEntry
+
+        service.syncOperations(testAccountId, newEntries = listOf(fakeScaleEntry))
+
+        coVerify(exactly = 0) { healthConnectService.checkIntegrated() }
+    }
+
+    @Test
+    fun `syncOperations handles tryLocalIntegration exception gracefully`() = runTest {
+        val apiResponse = OperationsResponse(
+            operations = emptyList(),
+            timestamp = "2024-01-02T00:00:00Z",
+        )
+        coEvery { entryRepository.getOperationsFromAPI(any()) } returns apiResponse
+        coEvery { healthConnectService.checkIntegrated() } throws RuntimeException("HC error")
+
+        every { fakeScaleEntry.entry } returns mockk(relaxed = true) {
+            every { entryTimestamp } returns "2024-01-01T12:00:00Z"
+            every { accountId } returns testAccountId
+            every { operationType } returns "CREATE"
+        }
+        every { fakeScaleEntry.updateEntry(any()) } returns fakeScaleEntry
+        every { fakeScaleEntry.toScaleApiEntry() } returns fakeScaleApiEntry
+
+        // Should not crash
+        service.syncOperations(testAccountId, newEntries = listOf(fakeScaleEntry))
+
+        assertThat(service.isUpdating.value).isFalse()
+    }
 }

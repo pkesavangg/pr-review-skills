@@ -907,4 +907,79 @@ class WifiScaleServiceTest {
         assertThat(result).isEqualTo("NewActivityNet")
     }
 
+    // -------------------------------------------------------------------------
+    // validateSetupData — all valid cases pass through connect without error
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `connect FIRST with all required fields does not call onError`() {
+        val info = WifiSetupInfo(ssid = "net", password = "pw", userNumber = 1, token = "tok")
+        coEvery {
+            wifiSmartConnectManager.connect(any(), any())
+        } returns WifiConnectResult.SmartConfig(SmartConfigResult.Success)
+
+        var errorCalled = false
+        service.connect(info, WifiSetupType.FIRST, {}, { errorCalled = true })
+        Thread.sleep(300)
+
+        assertThat(errorCalled).isFalse()
+    }
+
+    @Test
+    fun `connect JOIN with userNumber and token does not call onError`() {
+        val info = WifiSetupInfo(userNumber = 1, token = "tok")
+        coEvery {
+            wifiSmartConnectManager.connect(any(), any())
+        } returns WifiConnectResult.SmartConfig(SmartConfigResult.Success)
+
+        var errorCalled = false
+        service.connect(info, WifiSetupType.JOIN, {}, { errorCalled = true })
+        Thread.sleep(300)
+
+        assertThat(errorCalled).isFalse()
+    }
+
+    @Test
+    fun `connect CHANGE with ssid does not call onError`() {
+        val info = WifiSetupInfo(ssid = "net")
+        coEvery {
+            wifiSmartConnectManager.connect(any(), any())
+        } returns WifiConnectResult.ApMode(ApConnectResult.Success(byteArrayOf()))
+
+        var errorCalled = false
+        service.connect(info, WifiSetupType.CHANGE, {}, { errorCalled = true })
+        Thread.sleep(300)
+
+        assertThat(errorCalled).isFalse()
+    }
+
+    @Test
+    fun `connect ESP_TOUCH_WIFI with all four required fields does not call onError`() {
+        val info = WifiSetupInfo(ssid = "s", bssid = "b", userNumber = 1, token = "t")
+        coEvery {
+            wifiSmartConnectManager.connect(any(), any())
+        } returns WifiConnectResult.Esptouch(EsptouchResult.Success("d", "m"))
+
+        var errorCalled = false
+        service.connect(info, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorCalled = true })
+        Thread.sleep(300)
+
+        assertThat(errorCalled).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // validateSetupDataOrThrow — error message format
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `connect validation error message contains the setup type name`() {
+        val info = WifiSetupInfo() // empty — fails all validations
+
+        var errorMsg: String? = null
+        service.connect(info, WifiSetupType.FIRST, {}, { errorMsg = it })
+        Thread.sleep(300)
+
+        assertThat(errorMsg).contains("first")
+    }
+
 }
