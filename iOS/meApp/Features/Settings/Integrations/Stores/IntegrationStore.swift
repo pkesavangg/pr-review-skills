@@ -21,6 +21,7 @@ class IntegrationStore: ObservableObject {
     @Injector private var notificationService: NotificationHelperServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
     @Injector private var integrationsService: IntegrationServiceProtocol
+    @Injector private var productTypeStore: ProductTypeStoreProtocol
 
     var cancellables: Set<AnyCancellable> = []
     @Published var accountID = ""
@@ -46,10 +47,8 @@ class IntegrationStore: ObservableObject {
     }
 
     /// List of integrations to display.
-    @Published var integrations: [IntegrationItem] = [
-        .init(type: .fitbit, isSelected: false),
-        .init(type: .myFitnessPal, isSelected: false)
-    ]
+    /// Fitbit and MyFitnessPal are only shown for weight scale users.
+    @Published var integrations: [IntegrationItem] = []
 
     // Tracks the integration operation awaiting confirmation from the API.
     private var pendingAction: PendingIntegrationAction?
@@ -92,13 +91,17 @@ class IntegrationStore: ObservableObject {
     /// `isSelected: false`.
     /// - Parameter account: The latest account value (optional when stream emits nil).
     private func applyAccountState(_ account: Account?) {
-        let fitbitOn = account?.integrationSettings?.isFitbitOn ?? false
-        let mfpOn = account?.integrationSettings?.isMfpOn ?? false
         accountID = account?.accountId ?? ""
-        integrations = [
-            .init(type: .fitbit, isSelected: fitbitOn),
-            .init(type: .myFitnessPal, isSelected: mfpOn)
-        ]
+
+        // Fitbit and MyFitnessPal are only relevant for weight scale users
+        var items: [IntegrationItem] = []
+        if productTypeStore.availableItems.contains(.myWeight) {
+            let fitbitOn = account?.integrationSettings?.isFitbitOn ?? false
+            let mfpOn = account?.integrationSettings?.isMfpOn ?? false
+            items.append(.init(type: .fitbit, isSelected: fitbitOn))
+            items.append(.init(type: .myFitnessPal, isSelected: mfpOn))
+        }
+        integrations = items
     }
 
     /// Updates the currently selected integration ensuring only one item is selected at a time.
