@@ -685,4 +685,115 @@ class ExportServiceTest {
             assertThat(entry.time).isEmpty()
         }
     }
+
+    // -------------------------------------------------------------------------
+    // getUtcOffset — indirectly tested via exportCsvToEmail
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `getUtcOffset returns value within valid UTC offset range`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        val offsetSlot = slot<Int>()
+        coEvery { exportAPI.exportCsvDashboard4(capture(offsetSlot)) } returns Unit
+
+        service.exportCsvToEmail()
+
+        // UTC offset in minutes should be between -720 (-12h) and 840 (+14h)
+        val offset = offsetSlot.captured
+        assertThat(offset).isAtLeast(-720)
+        assertThat(offset).isAtMost(840)
+    }
+
+    @Test
+    fun `getUtcOffset is consistent across consecutive calls`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        val offsets = mutableListOf<Int>()
+        coEvery { exportAPI.exportCsvDashboard4(capture(offsets)) } returns Unit
+
+        service.exportCsvToEmail()
+        service.exportCsvToEmail()
+
+        assertThat(offsets).hasSize(2)
+        assertThat(offsets[0]).isEqualTo(offsets[1])
+    }
+
+    // -------------------------------------------------------------------------
+    // isDashboard12 — indirectly tested via exportCsvToEmail
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `isDashboard12 returns false for null dashboardType`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = null))
+        stubExportDashboard4()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard4(any()) }
+        coVerify(exactly = 0) { exportAPI.exportCsvDashboard12(any()) }
+    }
+
+    @Test
+    fun `isDashboard12 returns true for exact dashboard_12_metrics string`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = "dashboard_12_metrics"))
+        stubExportDashboard12()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard12(any()) }
+    }
+
+    @Test
+    fun `isDashboard12 matches case-insensitively for mixed case`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = "Dashboard_12_Metrics"))
+        stubExportDashboard12()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard12(any()) }
+    }
+
+    @Test
+    fun `isDashboard12 returns false for empty dashboardType`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = ""))
+        stubExportDashboard4()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard4(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // showExportSuccessToast — indirectly tested via exportCsvWithPrompt
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `showExportSuccessToast shows toast with ExportStrings SuccessMessage`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        stubExportDashboard4()
+
+        service.exportCsvWithPrompt()
+
+        verify {
+            dialogQueueService.showToast(match<Toast> {
+                it.message == ExportStrings.SuccessMessage
+            })
+        }
+    }
+
+    @Test
+    fun `showExportSuccessToast is not called when export throws`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
+
+        try {
+            service.exportCsvWithPrompt()
+        } catch (_: HttpException) { }
+
+        // Verify the success toast was NOT shown, only the error toast
+        verify(exactly = 0) {
+            dialogQueueService.showToast(match<Toast> {
+                it.message == ExportStrings.SuccessMessage
+            })
+        }
+    }
 }

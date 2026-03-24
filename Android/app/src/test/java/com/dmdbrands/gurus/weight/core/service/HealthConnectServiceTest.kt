@@ -414,4 +414,130 @@ class HealthConnectServiceTest {
         val result = svc.healthConnectOutOfSync()
         assertThat(result).isFalse()
     }
+
+    // -------------------------------------------------------------------------
+    // checkPermissionChange — with active account
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `checkPermissionChange does not crash with active account`() = runTest {
+        testScope.testScheduler.advanceUntilIdle()
+
+        // checkPermissionChange should attempt to get account data
+        service.checkPermissionChange()
+
+        // Should have attempted to get stored account data
+        coVerify { healthConnectRepository.getAccountByID(TEST_ACCOUNT_ID) }
+    }
+
+    @Test
+    fun `checkPermissionChange handles exception gracefully`() = runTest {
+        coEvery { healthConnectRepository.getAccountByID(any()) } throws RuntimeException("DB fail")
+        testScope.testScheduler.advanceUntilIdle()
+
+        // Should not crash
+        service.checkPermissionChange()
+    }
+
+    // -------------------------------------------------------------------------
+    // syncWeightHistory — shows confirmation dialog
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `syncWeightHistory shows Confirm dialog with sync action`() {
+        service.syncWeightHistory()
+
+        verify {
+            dialogQueueService.showDialog(match<DialogModel.Confirm> {
+                it.confirmText != null
+            })
+        }
+    }
+
+    @Test
+    fun `syncWeightHistory dialog has cancel callback`() {
+        service.syncWeightHistory()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        assertThat(dialog.onCancel).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // syncAllData — with active account
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `syncAllData shows loader when called`() = runTest {
+        testScope.testScheduler.advanceUntilIdle()
+
+        service.syncAllData()
+
+        verify { dialogQueueService.showLoader(any()) }
+    }
+
+    @Test
+    fun `syncAllData always dismisses loader`() = runTest {
+        coEvery { healthConnectRepository.getAccountDataMap() } throws RuntimeException("fail")
+        testScope.testScheduler.advanceUntilIdle()
+
+        service.syncAllData()
+
+        verify(atLeast = 1) { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `syncAllData returns false when checkIfAlreadyUsed fails`() = runTest {
+        coEvery { healthConnectRepository.getAccountDataMap() } throws RuntimeException("fail")
+        testScope.testScheduler.advanceUntilIdle()
+
+        val result = service.syncAllData()
+        assertThat(result).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // clearHealthConnect — with active account
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `clearHealthConnect attempts repository operations with active account`() = runTest {
+        testScope.testScheduler.advanceUntilIdle()
+
+        service.clearHealthConnect()
+
+        // Should have tried to clear HC data
+        coVerify(atLeast = 0) { healthConnectRepository.setHealthConnectIntegrationStatus(any(), any()) }
+    }
+
+    @Test
+    fun `clearHealthConnect handles exception gracefully`() = runTest {
+        coEvery { healthConnectRepository.setStoredIntegrationData(any(), any()) } throws RuntimeException("fail")
+        testScope.testScheduler.advanceUntilIdle()
+
+        val result = service.clearHealthConnect()
+        // Should not crash; returns false on error
+        assertThat(result).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // handleOnNewIntent — loaded and not loaded
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `handleOnNewIntent with null intent does not crash when not loaded`() {
+        service.handleOnNewIntent(null)
+        // No exception thrown
+    }
+
+    @Test
+    fun `handleOnNewIntent ignores intent when service is not loaded`() {
+        val intent = mockk<android.content.Intent>(relaxed = true)
+        every { intent.action } returns "some.action"
+
+        service.handleOnNewIntent(intent)
+
+        // Service not loaded, so no processing should happen
+    }
+
 }

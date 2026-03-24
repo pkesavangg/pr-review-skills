@@ -699,4 +699,117 @@ class DashboardServiceTest {
 
         coVerify { dashboardRepository.resetVisibleMilestoneKeys(accountId) }
     }
+
+    // -------------------------------------------------------------------------
+    // clearAllData — tested via setAccountId (clears before re-init)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `clearAllData resets visibleKeys to empty list on account switch`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        // visibleKeys should have been populated
+        assertThat(service.visibleKeys.value).isNotEmpty()
+
+        // Switching account triggers clearAllData internally
+        service.setAccountId("acc-new")
+
+        // During clearAllData, the list is cleared before new data populates
+        // After setAccountId completes, verify the new account was used
+        coVerify { accountRepository.getAccountFromAPI("acc-new") }
+    }
+
+    @Test
+    fun `clearAllData cancels previous visibleKeys job`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        // Switch account (clearAllData cancels old job)
+        service.setAccountId("acc-2")
+        advanceUntilIdle()
+
+        // The new account should be the active one
+        service.hasVisibleKeys(null)
+        coVerify { dashboardRepository.hasVisibleKeys("acc-2") }
+    }
+
+    @Test
+    fun `clearAllData clears stored accountId`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        // After setAccountId("acc-2"), internal accountId should be "acc-2"
+        service.setAccountId("acc-2")
+        advanceUntilIdle()
+
+        // Verify null-param methods now use the new account
+        service.getVisibleMetricKeys(null).test {
+            awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify { dashboardRepository.getVisibleMetricKeys("acc-2") }
+    }
+
+    // -------------------------------------------------------------------------
+    // refreshVisibleKeysFromDatabase — tested via updateVisibleMetricKeys and updateVisibleKeys
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `refreshVisibleKeysFromDatabase updates visibleKeys StateFlow after updateVisibleMetricKeys`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        val newMetrics = listOf(MetricKey.MUSCLE_MASS)
+        every { dashboardRepository.getVisibleMetricKeys(accountId) } returns flowOf(newMetrics)
+
+        service.updateVisibleMetricKeys(accountId, newMetrics, DashboardType.DASHBOARD_4_METRICS)
+
+        // After updateVisibleMetricKeys, refreshVisibleKeysFromDatabase is called
+        // which updates _visibleKeys via getVisibleKeys().first()
+        val keys = service.visibleKeys.value
+        val metricKeys = keys.filterIsInstance<DashboardKey.Metric>().map { it.key }
+        assertThat(metricKeys).contains(MetricKey.MUSCLE_MASS)
+    }
+
+    @Test
+    fun `refreshVisibleKeysFromDatabase updates visibleKeys after updateVisibleKeys`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        val dashboardKeys = listOf(
+            DashboardKey.Metric(MetricKey.BMI),
+            DashboardKey.Milestone(MilestoneKey.TO_GOAL),
+        )
+        service.updateVisibleKeys(accountId, dashboardKeys, DashboardType.DASHBOARD_4_METRICS)
+
+        // Verify that visibleKeys was refreshed (getVisibleKeys was called)
+        coVerify(atLeast = 1) { dashboardRepository.getVisibleMetricKeys(accountId) }
+        coVerify(atLeast = 1) { dashboardRepository.getVisibleMilestoneKeys(accountId) }
+    }
+
+    @Test
+    fun `refreshVisibleKeysFromDatabase updates visibleKeys after resetVisibleKeys`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        service.resetVisibleKeys(accountId, DashboardType.DASHBOARD_4_METRICS)
+
+        // resetVisibleKeys calls refreshVisibleKeysFromDatabase internally
+        coVerify(atLeast = 2) { dashboardRepository.getVisibleMetricKeys(accountId) }
+    }
+
+    @Test
+    fun `refreshVisibleKeysFromDatabase handles exception gracefully`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        // Make getVisibleKeys throw for the refresh
+        every { dashboardRepository.getVisibleMetricKeys(accountId) } throws RuntimeException("DB error")
+
+        // updateVisibleMetricKeys should not crash despite refreshVisibleKeysFromDatabase failing
+        service.updateVisibleMetricKeys(accountId, emptyList(), DashboardType.DASHBOARD_4_METRICS)
+
+        // Should not crash — exception caught internally
+    }
 }

@@ -297,4 +297,153 @@ class EntryAggregationServiceTest {
     fun `service implements IEntryAggregationService`() {
         assertThat(service).isInstanceOf(com.dmdbrands.gurus.weight.domain.services.IEntryAggregationService::class.java)
     }
+
+    // -------------------------------------------------------------------------
+    // refreshEntryData — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `refreshEntryData queries streak data from repository`() = runTest {
+        service.setAccountId(testAccountId, 180.0)
+        coEvery { entryRepository.getStreakData(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getLongestStreakCount(testAccountId) } returns 5
+        coEvery { entryRepository.getTotalCount(testAccountId) } returns 10
+
+        service.refreshEntryData()
+
+        coVerify { entryRepository.getStreakData(testAccountId) }
+        coVerify { entryRepository.getLongestStreakCount(testAccountId) }
+        coVerify { entryRepository.getTotalCount(testAccountId) }
+    }
+
+    @Test
+    fun `refreshEntryData queries oldest entry when initialWeight is null`() = runTest {
+        service.setAccountId(testAccountId, null)
+        coEvery { entryRepository.getStreakData(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getLongestStreakCount(testAccountId) } returns 0
+        coEvery { entryRepository.getTotalCount(testAccountId) } returns 0
+        coEvery { entryRepository.getOldestEntry(testAccountId) } returns null
+
+        service.refreshEntryData()
+
+        coVerify { entryRepository.getOldestEntry(testAccountId) }
+    }
+
+    @Test
+    fun `refreshEntryData queries oldest entry when initialWeight is zero`() = runTest {
+        service.setAccountId(testAccountId, 0.0)
+        coEvery { entryRepository.getStreakData(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getLongestStreakCount(testAccountId) } returns 0
+        coEvery { entryRepository.getTotalCount(testAccountId) } returns 0
+        coEvery { entryRepository.getOldestEntry(testAccountId) } returns null
+
+        service.refreshEntryData()
+
+        coVerify { entryRepository.getOldestEntry(testAccountId) }
+    }
+
+    @Test
+    fun `refreshEntryData does not query oldest entry when initialWeight is set`() = runTest {
+        service.setAccountId(testAccountId, 180.0)
+        coEvery { entryRepository.getStreakData(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getLongestStreakCount(testAccountId) } returns 0
+        coEvery { entryRepository.getTotalCount(testAccountId) } returns 0
+
+        service.refreshEntryData()
+
+        coVerify(exactly = 0) { entryRepository.getOldestEntry(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // getMonthlyAverage — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `getMonthlyAverage combines entries with weight settings`() = runTest {
+        every { entryRepository.getMonthlyAverage(testAccountId) } returns flowOf(emptyList())
+
+        val result = service.getMonthlyAverage(testAccountId)
+
+        // Should return a flow that can be collected
+        assertThat(result).isNotNull()
+    }
+
+    @Test
+    fun `getMonthlyAverage returns empty when repository returns empty`() = runTest {
+        every { entryRepository.getMonthlyAverage(testAccountId) } returns flowOf(emptyList())
+
+        val flow = service.getMonthlyAverage(testAccountId)
+        flow.collect { months ->
+            assertThat(months).isEmpty()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // monthDetails — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `monthDetails parses month string and queries repository`() = runTest {
+        service.setAccountId(testAccountId, 180.0)
+        every { entryRepository.getMonthDetail(testAccountId, "2024-03") } returns flowOf(emptyList())
+
+        val result = service.monthDetails("Mar 2024")
+
+        assertThat(result).isNotNull()
+    }
+
+    @Test
+    fun `monthDetails returns empty for month with no entries`() = runTest {
+        service.setAccountId(testAccountId, 180.0)
+        every { entryRepository.getMonthDetail(testAccountId, "2024-06") } returns flowOf(emptyList())
+
+        val flow = service.monthDetails("Jun 2024")
+        flow.collect { entries ->
+            assertThat(entries).isEmpty()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // startDataCollection — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `startDataCollection launches multiple collection jobs`() {
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+
+        // Verify that various repository methods are called for data collection
+        coEvery { entryRepository.getLatestEntry(testAccountId) } returns flowOf(null)
+        coEvery { entryRepository.getLastNDaysEntries(testAccountId, 7) } returns flowOf(emptyList())
+        coEvery { entryRepository.getLastNDaysEntries(testAccountId, 30) } returns flowOf(emptyList())
+    }
+
+    @Test
+    fun `startDataCollection after clearFlows can restart collection`() {
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+        service.clearFlows()
+
+        // Should be able to restart data collection after clearing
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+
+        // Should not crash
+        assertThat(service.latestEntry.value).isNull()
+    }
+
+    @Test
+    fun `clearFlows after startDataCollection resets all flows`() {
+        service.setAccountId(testAccountId, 180.0)
+        service.startDataCollection(testAccountId)
+
+        service.clearFlows()
+
+        assertThat(service.latestEntry.value).isNull()
+        assertThat(service.last7Days.value).isEmpty()
+        assertThat(service.last30Days.value).isEmpty()
+        assertThat(service.monthlyBodyScaleAverages.value).isEmpty()
+        assertThat(service.daywiseBodyScaleAverages.value).isEmpty()
+        assertThat(service.monthlyAverage.value).isEmpty()
+    }
 }

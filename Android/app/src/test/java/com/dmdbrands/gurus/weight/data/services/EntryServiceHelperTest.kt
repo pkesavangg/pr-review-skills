@@ -439,6 +439,112 @@ class EntryServiceHelperTest {
         return fmt.format(cal.time)
     }
 
+    // -------------------------------------------------------------------------
+    // toDayMillis — tested indirectly via computeLongestStreakFromDates
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `toDayMillis consecutive dates differ by 1`() {
+        // If toDayMillis works, consecutive dates should produce a streak of 2
+        val dates = listOf("2024-06-15", "2024-06-16")
+        val result = EntryServiceHelper.computeLongestStreakFromDates(dates)
+        assertThat(result).isEqualTo(2)
+    }
+
+    @Test
+    fun `toDayMillis non-consecutive dates differ by more than 1`() {
+        // Dates 2 days apart should not form a streak
+        val dates = listOf("2024-06-15", "2024-06-17")
+        val result = EntryServiceHelper.computeLongestStreakFromDates(dates)
+        assertThat(result).isEqualTo(1)
+    }
+
+    @Test
+    fun `toDayMillis handles month boundary correctly`() {
+        // Jan 31 to Feb 1 is consecutive
+        val dates = listOf("2024-01-31", "2024-02-01")
+        val result = EntryServiceHelper.computeLongestStreakFromDates(dates)
+        assertThat(result).isEqualTo(2)
+    }
+
+    @Test
+    fun `toDayMillis handles year boundary correctly`() {
+        // Dec 31 to Jan 1 is consecutive
+        val dates = listOf("2023-12-31", "2024-01-01")
+        val result = EntryServiceHelper.computeLongestStreakFromDates(dates)
+        assertThat(result).isEqualTo(2)
+    }
+
+    // -------------------------------------------------------------------------
+    // datesAreSame — tested indirectly via computeCurrentStreakFromDates
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `datesAreSame returns true for same day entries via current streak`() {
+        // Two entries for today should only count as 1 streak day
+        val today = todayString()
+        val result = EntryServiceHelper.computeCurrentStreakFromDates(listOf(today, today))
+        assertThat(result).isEqualTo(1)
+    }
+
+    @Test
+    fun `datesAreSame differentiates same month different days`() {
+        // Today vs 3 days ago should not match
+        val today = todayString()
+        val threeDaysAgo = dayOffsetString(-3)
+        val result = EntryServiceHelper.computeCurrentStreakFromDates(listOf(today, threeDaysAgo))
+        assertThat(result).isEqualTo(1)
+    }
+
+    @Test
+    fun `datesAreSame differentiates same day different year`() {
+        // Even if month and day match, different year should not be same
+        val result = EntryServiceHelper.computeCurrentStreakFromDates(
+            listOf(todayString(), "2020-01-01")
+        )
+        assertThat(result).isAtMost(1)
+    }
+
+    // -------------------------------------------------------------------------
+    // addOne — tested indirectly via computeCurrentStreakFromDates
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `addOne increments score for each consecutive day`() {
+        val today = todayString()
+        val yesterday = dayOffsetString(-1)
+        val twoDaysAgo = dayOffsetString(-2)
+        val threeDaysAgo = dayOffsetString(-3)
+        val fourDaysAgo = dayOffsetString(-4)
+        val result = EntryServiceHelper.computeCurrentStreakFromDates(
+            listOf(today, yesterday, twoDaysAgo, threeDaysAgo, fourDaysAgo)
+        )
+        assertThat(result).isEqualTo(5)
+    }
+
+    @Test
+    fun `addOne advances dateToCheck backwards by 1 day`() {
+        // If addOne didn't advance the date, it would only count 1
+        val yesterday = dayOffsetString(-1)
+        val twoDaysAgo = dayOffsetString(-2)
+        val result = EntryServiceHelper.computeCurrentStreakFromDates(
+            listOf(yesterday, twoDaysAgo)
+        )
+        assertThat(result).isEqualTo(2)
+    }
+
+    @Test
+    fun `addOne stops incrementing when gap is found`() {
+        val today = todayString()
+        val yesterday = dayOffsetString(-1)
+        // Gap: skip -2
+        val threeDaysAgo = dayOffsetString(-3)
+        val result = EntryServiceHelper.computeCurrentStreakFromDates(
+            listOf(today, yesterday, threeDaysAgo)
+        )
+        assertThat(result).isEqualTo(2) // stops at gap
+    }
+
     private fun createMockEntry(
         id: Long = 0,
         operationType: String = "CREATE",

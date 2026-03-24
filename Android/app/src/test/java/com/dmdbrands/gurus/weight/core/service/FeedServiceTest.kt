@@ -1155,4 +1155,171 @@ class FeedServiceTest {
     assertThat(actionSlot.captured.action).isEqualTo(FeedActionType.trigger)
   }
 
+  // -------------------------------------------------------------------------
+  // mergeFeedItemsWithLocalStorage — additional coverage
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `mergeFeedItemsWithLocalStorage updates all fields from backend`() = runTest {
+    val initial = createFeedItem(elementId = "e1", isUnread = true, trigger = "login")
+    coEvery { feedRepository.fetchFeedItems() } returns listOf(initial)
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+    service.fetchFeedItems()
+
+    // Second fetch with updated fields
+    val updated = createFeedItem(
+      elementId = "e1",
+      isUnread = false,
+      trigger = null,
+      feedType = FeedTypes.LANDING,
+      linkTarget = "https://updated.com",
+    )
+    coEvery { feedRepository.fetchFeedItems() } returns listOf(updated)
+
+    service.feedsChanged.test {
+      service.fetchFeedItems()
+      val items = awaitItem()
+      val merged = items.first { it.elementId == "e1" }
+      assertThat(merged.isUnread).isFalse()
+      assertThat(merged.trigger).isNull()
+      assertThat(merged.feedType).isEqualTo(FeedTypes.LANDING)
+      assertThat(merged.linkTarget).isEqualTo("https://updated.com")
+    }
+  }
+
+  @Test
+  fun `mergeFeedItemsWithLocalStorage deduplicates by elementId`() = runTest {
+    val items = listOf(
+      createFeedItem(elementId = "e1"),
+      createFeedItem(elementId = "e1"),
+    )
+    coEvery { feedRepository.fetchFeedItems() } returns items
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.fetchFeedItems()
+      val result = awaitItem()
+      assertThat(result.map { it.elementId }.distinct()).hasSize(1)
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // generateDynamicMockFeedItems — via setMockFeedItems
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `setMockFeedItems generates items with alternating read-unread status`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      // First item (index 0) should be unread, second (index 1) should be read
+      if (items.size >= 2) {
+        assertThat(items[0].isUnread).isTrue()
+        assertThat(items[1].isUnread).isFalse()
+      }
+    }
+  }
+
+  @Test
+  fun `setMockFeedItems generates items with unique element IDs`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      val elementIds = items.map { it.elementId }
+      assertThat(elementIds).containsNoDuplicates()
+    }
+  }
+
+  @Test
+  fun `setMockFeedItems generates items with LANDING type having landingPage`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      // Items with LANDING type should have a landingPage
+      items.filter { it.feedType == FeedTypes.LANDING }.forEach { item ->
+        assertThat(item.landingPage).isNotNull()
+      }
+      // Items with LINK type should not have a landingPage
+      items.filter { it.feedType == FeedTypes.LINK }.forEach { item ->
+        assertThat(item.landingPage).isNull()
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // createDynamicLandingPage — via setMockFeedItems
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `setMockFeedItems landing page has promo code`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      val landingItems = items.filter { it.feedType == FeedTypes.LANDING }
+      landingItems.forEach { item ->
+        val lp = item.landingPage
+        assertThat(lp).isNotNull()
+        assertThat(lp?.promoCode).isNotNull()
+        assertThat(lp?.promoCode?.length).isEqualTo(8)
+      }
+    }
+  }
+
+  @Test
+  fun `setMockFeedItems landing page has featured products`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      val landingItems = items.filter { it.feedType == FeedTypes.LANDING }
+      landingItems.forEach { item ->
+        val lp = item.landingPage
+        assertThat(lp?.featuredProduct).isNotNull()
+        assertThat(lp?.featuredProduct).isNotEmpty()
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // generateRandomPromoCode — via setMockFeedItems landing page
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `setMockFeedItems promo codes contain only uppercase letters and digits`() = runTest {
+    coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
+    service = createService()
+
+    service.feedsChanged.test {
+      service.setMockFeedItems()
+      Thread.sleep(500)
+      val items = awaitItem()
+      val landingItems = items.filter { it.feedType == FeedTypes.LANDING }
+      landingItems.forEach { item ->
+        val promoCode = item.landingPage?.promoCode ?: return@forEach
+        assertThat(promoCode).matches("[A-Z0-9]+")
+      }
+    }
+  }
+
 }

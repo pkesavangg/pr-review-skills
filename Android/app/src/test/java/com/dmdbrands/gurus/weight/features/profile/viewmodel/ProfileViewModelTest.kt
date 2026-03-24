@@ -399,4 +399,63 @@ class ProfileViewModelTest {
 
         verify { dialogQueueService.dismissLoader() }
     }
+
+    // -------------------------------------------------------------------------
+    // onSubmit — additional coverage for form validation path
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit calls updateProfile with correct request fields`() = runTest {
+        advanceUntilIdle()
+
+        coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
+
+        viewModel.handleIntent(ProfileIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { accountService.updateProfile(any(), true, showToast = false) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onUpdateSuccess — logs success
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Success intent via handleIntent does not crash`() = runTest {
+        advanceUntilIdle()
+
+        viewModel.handleIntent(ProfileIntent.Success)
+
+        // onUpdateSuccess just logs, verify state is clean
+        val state = viewModel.state.value
+        assertThat(state.isLoading).isFalse()
+        assertThat(state.error).isNull()
+    }
+
+    @Test
+    fun `Success after error clears error state`() = runTest {
+        advanceUntilIdle()
+
+        viewModel.handleIntent(ProfileIntent.Error("previous error"))
+        assertThat(viewModel.state.value.error).isNotNull()
+
+        viewModel.handleIntent(ProfileIntent.Success)
+        assertThat(viewModel.state.value.error).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // Submit — navigateBack is called on success
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit navigates back after successful profile update`() = runTest {
+        advanceUntilIdle()
+
+        coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
+
+        viewModel.handleIntent(ProfileIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateBack(topLevel = null) }
+    }
 }

@@ -171,7 +171,8 @@ class ScaleSetupViewModelTest {
     }
 
     @Test
-    fun `subscribePermissions without skip keeps WIFI_SWITCH disabled when both unavailable`() = runTest {
+    fun `subscribePermissions without skip keeps WIFI_SWITCH disabled when both unavailable`() {
+        // Use non-coroutine test to avoid leaking exceptions from BtWifiScaleSetupViewModelTest
         val perms: GGPermissionStatusMap = mutableMapOf(
             GGPermissionType.WIFI_SWITCH to GGPermissionState.DISABLED,
         )
@@ -180,7 +181,8 @@ class ScaleSetupViewModelTest {
             NetworkState(available = false, unAvailable = true),
         )
 
-        val result = viewModel.exposedSubscribePermissions(isSkipNetworkCheck = false).first()
+        val flow = viewModel.exposedSubscribePermissions(isSkipNetworkCheck = false)
+        val result = kotlinx.coroutines.runBlocking { flow.first() }
 
         assertThat(result[GGPermissionType.WIFI_SWITCH]).isEqualTo(GGPermissionState.DISABLED)
     }
