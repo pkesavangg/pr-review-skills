@@ -387,10 +387,11 @@ struct EntryServiceExtendedTests {
             operations: [
                 BathScaleOperationDTO(
                     accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-                    entryTimestamp: "2026-03-01T08:00:00Z", impedance: nil, metabolicAge: nil,
+                    entryTimestamp: "2026-03-01T08:00:00Z", entryType: nil, impedance: nil, metabolicAge: nil,
                     muscleMass: nil, operationType: "delete", proteinPercent: nil, pulse: nil,
                     serverTimestamp: "b", skeletalMusclePercent: nil,
-                    source: nil, subcutaneousFatPercent: nil, unit: nil,
+                    source: nil, subcutaneousFatPercent: nil,
+                    systolic: nil, diastolic: nil, meanArterial: nil, unit: nil,
                     visceralFatLevel: nil, water: nil, weight: nil
                 )
             ],
