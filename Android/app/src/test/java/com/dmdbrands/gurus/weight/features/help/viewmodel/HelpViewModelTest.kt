@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.features.help.model.HelpIntent
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
@@ -172,6 +173,50 @@ class HelpViewModelTest {
     fun `onOpenDebugMenu navigates to DebugMenu route`() = runTest {
         viewModel.onOpenDebugMenu()
         advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.DebugMenu) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onError — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Error intent via handleIntent sets error and does not crash`() {
+        viewModel.handleIntent(HelpIntent.Error(ERROR_MESSAGE))
+
+        val state = viewModel.state.value
+        assertThat(state.error).isEqualTo(ERROR_MESSAGE)
+    }
+
+    @Test
+    fun `Error intent logs error message without side effects`() {
+        // onError only calls AppLog.e, no dialog or navigation
+        viewModel.handleIntent(HelpIntent.Error("Test error for logging"))
+
+        // Verify no dialog or navigation was triggered
+        verify(exactly = 0) { dialogQueueService.enqueue(any()) }
+        verify(exactly = 0) { dialogQueueService.showLoader(any()) }
+    }
+
+    @Test
+    fun `Error with empty message is handled`() {
+        viewModel.handleIntent(HelpIntent.Error(""))
+
+        assertThat(viewModel.state.value.error).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // OpenDebugMenu — exception handling
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OpenDebugMenu does not crash when navigation throws`() = runTest {
+        coEvery { navigationService.navigateTo(any()) } throws RuntimeException("nav error")
+
+        viewModel.handleIntent(HelpIntent.OpenDebugMenu)
+        advanceUntilIdle()
+
+        // Should not propagate exception
         coVerify { navigationService.navigateTo(AppRoute.AccountSettings.DebugMenu) }
     }
 }

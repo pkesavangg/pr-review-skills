@@ -368,4 +368,121 @@ class IntegrationViewModelTest {
         )
         assertThat(viewModel.state.value.integrations).isNotEmpty()
     }
+
+    // -------------------------------------------------------------------------
+    // connectHealthConnectIntegration — additional status scenarios
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `connectHealthConnectIntegration with UPDATE_REQUIRED navigates to health connect`() {
+        coEvery { healthConnectService.healthConnectStatus() } returns HealthConnectStatus.UPDATE_REQUIRED
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.NavigateToHealthConnect)
+        advanceScheduler()
+        coVerify { navigationService.navigateTo(any()) }
+    }
+
+    @Test
+    fun `connectHealthConnectIntegration handles exception gracefully`() {
+        coEvery { healthConnectService.healthConnectStatus() } throws RuntimeException("fail")
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.NavigateToHealthConnect)
+        advanceScheduler()
+        // Should not crash
+        assertThat(viewModel.state.value).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // showHealthConnectInstallAlert — tested via NavigateToHealthConnect with INSTALL_REQUIRED
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `showHealthConnectInstallAlert dialog has download and cancel buttons`() {
+        coEvery { healthConnectService.healthConnectStatus() } returns HealthConnectStatus.INSTALL_REQUIRED
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.NavigateToHealthConnect)
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        assertThat(dialog.confirmText).isNotNull()
+        assertThat(dialog.cancelText).isNotNull()
+    }
+
+    @Test
+    fun `showHealthConnectInstallAlert onConfirm calls openHealthConnect`() {
+        coEvery { healthConnectService.healthConnectStatus() } returns HealthConnectStatus.INSTALL_REQUIRED
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.NavigateToHealthConnect)
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        dialog.onConfirm?.invoke()
+        advanceScheduler()
+
+        coVerify { healthConnectService.openHealthConnect() }
+    }
+
+    // -------------------------------------------------------------------------
+    // confirmRemoveIntegration — tested via RemoveHealthConnectIntegration
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `confirmRemoveIntegration shows dialog with remove button`() {
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.RemoveHealthConnectIntegration)
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        assertThat(dialog.confirmText).isNotNull()
+    }
+
+    @Test
+    fun `confirmRemoveIntegration onConfirm calls removeHealthConnectIntegration`() {
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.RemoveHealthConnectIntegration)
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        dialog.onConfirm?.invoke()
+        advanceScheduler()
+
+        coVerify { healthConnectService.removeHealthConnectIntegration() }
+    }
+
+    @Test
+    fun `confirmRemoveIntegration onCancel dismisses dialog`() {
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.RemoveHealthConnectIntegration)
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        dialog.onCancel?.invoke()
+
+        verify { dialogQueueService.dismissCurrent() }
+    }
+
+    @Test
+    fun `confirmRemoveIntegration shows loader during removal`() {
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.RemoveHealthConnectIntegration)
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        dialog.onConfirm?.invoke()
+        advanceScheduler()
+
+        verify { dialogQueueService.showLoader(any()) }
+    }
 }

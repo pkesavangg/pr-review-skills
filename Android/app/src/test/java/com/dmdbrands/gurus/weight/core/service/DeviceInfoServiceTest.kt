@@ -7,6 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.FcmTokenUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -118,6 +119,7 @@ class DeviceInfoServiceTest {
     healthConnectRepository = healthConnectRepository,
     integrationRepository = integrationRepository,
     entryService = entryService,
+    appScope = TestScope(mainDispatcherRule.dispatcher),
   )
 
   @After
@@ -529,6 +531,74 @@ class DeviceInfoServiceTest {
     coVerify(timeout = 3000) { offlineHandlerService.handleOfflineSync() }
 
     // Emit unavailable then available to trigger a new distinct emission
+    networkFlow.emit(offlineState)
+    Thread.sleep(collectorStartDelayMs)
+    networkFlow.emit(onlineState)
+
+    coVerify(timeout = 3000, atLeast = 2) { offlineHandlerService.handleOfflineSync() }
+  }
+
+  // -------------------------------------------------------------------------
+  // isAppInForeground — requires ProcessLifecycleOwner (Android framework)
+  // Cannot be unit tested directly because ProcessLifecycleOwner.get()
+  // requires an actual Android process lifecycle. It is tested indirectly
+  // via the startNetworkMonitoring debounce tests above that mock
+  // ProcessLifecycleOwner and verify foreground/background gating.
+  // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+  // startNetworkMonitoring — additional initial state tests
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `startNetworkMonitoring called during init observes connectivity flow`() {
+    createService()
+
+    // observe() should have been called during init
+    verify { connectivityObserver.observe() }
+  }
+
+  @Test
+  fun `startNetworkMonitoring checks initial network state during init`() {
+    createService()
+
+    verify { connectivityObserver.getCurrentNetworkState() }
+  }
+
+  // -------------------------------------------------------------------------
+  // runOnlineSyncOnce — all four sync steps called in order
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `runOnlineSyncOnce completes successfully when all steps succeed`() = runTest {
+    createService()
+    Thread.sleep(collectorStartDelayMs)
+
+    networkFlow.emit(onlineState)
+
+    coVerify(timeout = 3000) { offlineHandlerService.handleOfflineSync() }
+    coVerify(timeout = 3000) { entryService.syncOperations() }
+    coVerify(timeout = 3000) { healthConnectRepository.syncIntegration() }
+    coVerify(timeout = 3000) { integrationRepository.updateLocalAccount() }
+  }
+
+  @Test
+  fun `runOnlineSyncOnce releases guard even when all steps fail`() = runTest {
+    coEvery { offlineHandlerService.handleOfflineSync() } throws RuntimeException("err1")
+    coEvery { entryService.syncOperations() } throws RuntimeException("err2")
+    coEvery { healthConnectRepository.syncIntegration() } throws RuntimeException("err3")
+    coEvery { integrationRepository.updateLocalAccount() } throws RuntimeException("err4")
+
+    createService()
+    Thread.sleep(collectorStartDelayMs)
+
+    networkFlow.emit(onlineState)
+    coVerify(timeout = 3000) { offlineHandlerService.handleOfflineSync() }
+
+    // Wait for first sync to complete (guard released in finally)
+    Thread.sleep(1000)
+
+    // Second emission should trigger another sync (guard released)
     networkFlow.emit(offlineState)
     Thread.sleep(collectorStartDelayMs)
     networkFlow.emit(onlineState)

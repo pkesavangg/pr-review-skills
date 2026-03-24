@@ -446,4 +446,34 @@ class AppNavigationServiceTest {
         assertThat(collector1Result).isEqualTo(state)
         assertThat(collector2Result).isEqualTo(state)
     }
+
+    // -------------------------------------------------------------------------
+    // emitNavigationIntent — tested via navigateTo which delegates to it
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `navigateTo emits intent via emitNavigationIntent to the shared flow`() = runTest {
+        var collected: NavigationIntent? = null
+        val job = launch { collected = service.navigationIntent.first() }
+        advanceUntilIdle()
+
+        service.navigateTo(AppRoute.Main.History)
+
+        job.join()
+        assertThat(collected).isInstanceOf(NavigationIntent.NavigateTo::class.java)
+        assertThat((collected as NavigationIntent.NavigateTo).route).isEqualTo(AppRoute.Main.History)
+    }
+
+    @Test
+    fun `multiple navigateTo calls emit multiple intents sequentially`() = runTest {
+        service.navigationIntent.test {
+            service.navigateTo(AppRoute.Main.Dashboard)
+            assertThat((awaitItem() as NavigationIntent.NavigateTo).route).isEqualTo(AppRoute.Main.Dashboard)
+
+            service.navigateTo(AppRoute.Main.Settings)
+            assertThat((awaitItem() as NavigationIntent.NavigateTo).route).isEqualTo(AppRoute.Main.Settings)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

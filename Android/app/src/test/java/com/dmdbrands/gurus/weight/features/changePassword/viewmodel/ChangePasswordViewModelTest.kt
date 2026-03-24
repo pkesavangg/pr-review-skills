@@ -249,4 +249,92 @@ class ChangePasswordViewModelTest {
 
         coVerify { navigationService.navigateBack(null) }
     }
+
+    // -------------------------------------------------------------------------
+    // onSubmit — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit with invalid form dismisses loader without calling changePassword`() = runTest {
+        // Touch and dirty the controls with invalid values so validation actually fails
+        // (untouched/undirty controls pass validation by design)
+        viewModel.state.value.form.controls.currentPassword.onValueChange("ab")  // too short
+        viewModel.state.value.form.controls.newPassword.onValueChange("ab")      // too short
+        viewModel.state.value.form.controls.confirmPassword.onValueChange("ab")  // too short
+
+        viewModel.handleIntent(ChangePasswordIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { accountService.changePassword(any(), any()) }
+        verify { dialogQueueService.showLoader(any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `Submit calls changePassword with correct passwords from form`() = runTest {
+        fillValidForm()
+        coEvery { accountService.changePassword(CURRENT_PASSWORD, NEW_PASSWORD) } returns true
+
+        viewModel.handleIntent(ChangePasswordIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { accountService.changePassword(CURRENT_PASSWORD, NEW_PASSWORD) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onSuccess — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Success navigates back with null argument`() = runTest {
+        viewModel.handleIntent(ChangePasswordIntent.Success)
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateBack(null) }
+    }
+
+    // -------------------------------------------------------------------------
+    // resetPasswordForCurrentUser — triggered via OpenForgotPasswordModal confirm
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `resetPasswordForCurrentUser shows and dismisses loader`() = runTest {
+        val mockAccount: Account = io.mockk.mockk(relaxed = true) {
+            io.mockk.every { email } returns TEST_EMAIL
+        }
+        coEvery { accountService.getCurrentAccount() } returns mockAccount
+        coEvery { accountService.resetPassword(any()) } returns Unit
+
+        viewModel.handleIntent(ChangePasswordIntent.OpenForgotPasswordModal)
+        advanceUntilIdle()
+
+        val dialogSlot = slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        val confirm = dialogSlot.captured as DialogModel.Confirm
+        confirm.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showLoader(any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `resetPasswordForCurrentUser dismisses loader when resetPassword throws`() = runTest {
+        val mockAccount: Account = io.mockk.mockk(relaxed = true) {
+            io.mockk.every { email } returns TEST_EMAIL
+        }
+        coEvery { accountService.getCurrentAccount() } returns mockAccount
+        coEvery { accountService.resetPassword(any()) } throws RuntimeException("Network error")
+
+        viewModel.handleIntent(ChangePasswordIntent.OpenForgotPasswordModal)
+        advanceUntilIdle()
+
+        val dialogSlot = slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        val confirm = dialogSlot.captured as DialogModel.Confirm
+        confirm.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        verify { dialogQueueService.dismissLoader() }
+    }
 }

@@ -299,4 +299,36 @@ class FeedLandingViewModelTest {
 
         assertThat(viewModel.state.value.feedItem).isNull()
     }
+
+    // -------------------------------------------------------------------------
+    // navigateToFAQ — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `navigateToFAQ public method navigates to FeedFAQ route`() = runTest {
+        viewModel.navigateToFAQ()
+        advanceUntilIdle()
+
+        coVerify { appNavigationService.navigateTo(AppRoute.Feed.FeedFAQ) }
+    }
+
+    @Test
+    fun `navigateToFAQ via intent sets lastAction`() = runTest {
+        viewModel.handleIntent(FeedLandingIntent.OpenFAQ)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.lastAction).isEqualTo("FAQ clicked")
+    }
+
+    // -------------------------------------------------------------------------
+    // navigateBack — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OnBackPress navigates back via appNavigationService`() = runTest {
+        viewModel.handleIntent(FeedLandingIntent.OnBackPress)
+        advanceUntilIdle()
+
+        coVerify { appNavigationService.navigateBack() }
+    }
 }

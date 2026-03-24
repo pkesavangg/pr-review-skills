@@ -351,4 +351,96 @@ class MyAccountsViewModelTest {
         advanceUntilIdle()
         coVerify { accountService.emitNavigateBackFromMyAccounts() }
     }
+
+    // -------------------------------------------------------------------------
+    // goToLogin — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `LoginToAccount with non-null account passes email to Login route`() = runTest {
+        val account = TestFixtures.secondaryAccount
+        viewModel.handleIntent(MyAccountsIntent.LoginToAccount(account))
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateTo(AppRoute.Auth.Login(account.email)) }
+    }
+
+    @Test
+    fun `LoginToAccount checks max accounts before navigating`() = runTest {
+        // Set max accounts reached
+        viewModel.handleIntent(MyAccountsIntent.SetAccounts(emptyList(), true))
+
+        viewModel.handleIntent(MyAccountsIntent.LoginToAccount(TestFixtures.secondaryAccount))
+        advanceUntilIdle()
+
+        // Should show alert instead of navigating
+        verify { dialogUtility.showMaxAccountAlert(isFromLanding = false, onDismiss = any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // goToSignUp — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `CreateAccount navigates to Signup route`() = runTest {
+        viewModel.handleIntent(MyAccountsIntent.CreateAccount)
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateTo(AppRoute.Auth.Signup) }
+    }
+
+    @Test
+    fun `CreateAccount checks max accounts before navigating`() = runTest {
+        viewModel.handleIntent(MyAccountsIntent.SetAccounts(emptyList(), true))
+
+        viewModel.handleIntent(MyAccountsIntent.CreateAccount)
+        advanceUntilIdle()
+
+        verify { dialogUtility.showMaxAccountAlert(isFromLanding = false, onDismiss = any()) }
+        coVerify(exactly = 0) { navigationService.navigateTo(AppRoute.Auth.Signup) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onAccountSelect — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SelectAccount with active account is no-op`() = runTest {
+        viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.activeAccount))
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { accountService.switchAccount(any(), any()) }
+        coVerify(exactly = 0) { navigationService.reInitialize() }
+    }
+
+    @Test
+    fun `SelectAccount with inactive account calls switchAccount with showLoader true`() = runTest {
+        coEvery { accountService.switchAccount(any(), any()) } returns true
+
+        viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.secondaryAccount))
+        advanceUntilIdle()
+
+        coVerify { accountService.switchAccount(TestFixtures.secondaryAccount, true) }
+    }
+
+    // -------------------------------------------------------------------------
+    // showRemoveAccountDialog — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `RequestRemoveAccount shows dialog with account name in title`() {
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(MyAccountsIntent.RequestRemoveAccount(TestFixtures.secondaryAccount))
+
+        val dialog = dialogSlot.captured
+        assertThat(dialog.title).contains(TestFixtures.secondaryAccount.firstName)
+    }
+
+    @Test
+    fun `RequestRemoveAccount sets accountToRemove in state via reducer`() {
+        viewModel.handleIntent(MyAccountsIntent.RequestRemoveAccount(TestFixtures.secondaryAccount))
+        assertThat(viewModel.state.value.accountToRemove).isEqualTo(TestFixtures.secondaryAccount)
+    }
 }

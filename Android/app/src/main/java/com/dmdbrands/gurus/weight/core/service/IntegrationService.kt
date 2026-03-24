@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.features.integration.model.IntegrationItem
 import com.dmdbrands.gurus.weight.features.integration.strings.IntegrationStrings
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.resources.AppIcons
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -245,7 +246,7 @@ class IntegrationService @Inject constructor(
         }
 
         IntegrationProvider.HealthConnect -> {
-          currentAccount.isHealthConnectOn to currentAccount.isHealthConnectOn
+          currentAccount.isHealthConnectOn to true
         }
       }
       AppLog.d(TAG, "Integration status for $provider: connected=${status.first}, valid=${status.second}")

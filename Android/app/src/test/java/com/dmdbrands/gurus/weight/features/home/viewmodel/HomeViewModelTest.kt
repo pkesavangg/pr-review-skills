@@ -306,4 +306,161 @@ class HomeViewModelTest {
 
         assertThat(viewModel.state.value.showUnreadFeedIndicator).isFalse()
     }
+
+    // -------------------------------------------------------------------------
+    // checkHealthConnectPermission — exercised via init
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `init calls healthConnectService checkHealthConnectPermissionDisabled`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coVerify { healthConnectService.checkHealthConnectPermissionDisabled() }
+    }
+
+    @Test
+    fun `checkHealthConnectPermission does not crash when service throws`() = runTest {
+        coEvery { healthConnectService.checkHealthConnectPermissionDisabled() } throws RuntimeException("fail")
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Should not crash — exception is caught internally
+        coVerify { healthConnectService.checkHealthConnectPermissionDisabled() }
+    }
+
+    // -------------------------------------------------------------------------
+    // observeAppSyncStatus — exercised via init
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `observeAppSyncStatus subscribes to pairedScales flow`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // pairedScales flow is observed in init
+        verify { deviceService.pairedScales }
+    }
+
+    @Test
+    fun `observeAppSyncStatus sets showAppsync false with empty scales`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.showAppsync).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // observePermissions — exercised via init
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `observePermissions subscribes to permissionCallBackFlow`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        verify { ggPermissionService.permissionCallBackFlow }
+    }
+
+    @Test
+    fun `observePermissions handles non-Map type without crash`() = runTest {
+        every { ggPermissionService.permissionCallBackFlow } returns MutableStateFlow(mutableMapOf<String, String>())
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Should not crash — non-Map types are ignored
+        assertThat(viewModel.state.value.isAppSyncPermissionsEnabled).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // Init — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `init sets account id on ggInAppMessagingService`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coVerify { ggInAppMessagingService.setAccountId(any()) }
+    }
+
+    @Test
+    fun `init checks feed modal trigger`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coVerify { feedService.checkAndTriggerFeedModal() }
+    }
+
+    @Test
+    fun `init checks account flags when feed modal is not triggered`() = runTest {
+        coEvery { feedService.checkAndTriggerFeedModal() } returns false
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        coVerify { accountFlagService.getAccountFlag() }
+    }
+
+    @Test
+    fun `init skips account flag check when feed modal is triggered`() = runTest {
+        coEvery { feedService.checkAndTriggerFeedModal() } returns true
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // checkAccountFlags is only called when isModalTriggered is false
+        coVerify(exactly = 0) { accountFlagService.checkAccountFlag(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // subscribeToWeightOnlyModeAlertDismissed
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `subscribeToWeightOnlyModeAlertDismissed updates state from deviceService`() = runTest {
+        val alertFlow = MutableStateFlow(false)
+        every { deviceService.isWeightOnlyModeAlertShown } returns alertFlow
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        alertFlow.value = true
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isWeightOnlyModeDismissed).isTrue()
+    }
+
+    // -------------------------------------------------------------------------
+    // enableSessionImpedence
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `enableSessionImpedence calls ggDeviceService updateSettings`() = runTest {
+        val device: com.dmdbrands.gurus.weight.domain.model.storage.Device = mockk(relaxed = true)
+        viewModel.enableSessionImpedence(device)
+        advanceUntilIdle()
+
+        // enableSessionImpedence launches on Dispatchers.IO which is not replaced by the test dispatcher,
+        // so use coVerify with a timeout to allow the IO coroutine to complete
+        coVerify(timeout = 1000) { ggDeviceService.updateSettings(any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // HandleAppSyncResult — additional edge cases
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `HandleAppSyncResult with null weight and not manual is no-op`() = runTest {
+        val result = AppSyncResult(weight = null, fat = null, muscle = null, water = null, mode = null, manual = false, canceled = false)
+        viewModel.handleIntent(HomeIntent.HandleAppSyncResult(result))
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { navigationService.navigateTo(any(), any()) }
+        verify(exactly = 0) { dialogUtility.showEntrySyncPopup(any(), any(), any(), any()) }
+    }
 }

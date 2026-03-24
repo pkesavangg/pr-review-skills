@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -13,14 +14,12 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
-import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -50,7 +49,7 @@ constructor(
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
   private val deviceService: IDeviceService,
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
@@ -69,7 +68,7 @@ constructor(
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
   private var account: Account? = null
   init {
-    CoroutineScope(ioDispatcher).launch {
+    appScope.launch {
       accountRepository.getActiveAccount().collect {
         if (it != null) {
           account = it

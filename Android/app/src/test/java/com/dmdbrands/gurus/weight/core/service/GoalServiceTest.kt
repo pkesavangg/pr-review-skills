@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import app.cash.turbine.test
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
@@ -14,6 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
@@ -29,6 +31,7 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkObject
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -130,7 +133,7 @@ class GoalServiceTest {
         goalAlertDataStore = goalAlertDataStore,
         accountRepository = accountRepository,
         deviceService = deviceService,
-        ioDispatcher = mainDispatcherRule.dispatcher,
+        appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------
@@ -1234,5 +1237,48 @@ class GoalServiceTest {
                 )
             )
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // showSetGoalPopup — tested via checkGoalCard, verifying dialog type
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `checkGoalCard enqueues Custom dialog with SetGoalPopup content key`() = runTest {
+        val accountWithNoGoal = fakeAccount.copy(goalType = null)
+        every { accountRepository.getActiveAccount() } returns flowOf(accountWithNoGoal)
+        coEvery { goalAlertDataStore.getGoalCardValue(accountWithNoGoal.id) } returns null
+        every { deviceService.isSetupInProgress() } returns false
+
+        val dialogSlot = slot<DialogModel>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
+
+        service.checkGoalCard()
+
+        val custom = dialogSlot.captured as DialogModel.Custom
+        assertThat(custom.contentKey).isEqualTo(com.dmdbrands.gurus.weight.features.common.components.DialogType.SetGoalPopup)
+        assertThat(custom.dismissOnBackPress).isTrue()
+    }
+
+    @Test
+    fun `checkGoalCard popup onSetGoal navigates to goal screen`() = runTest {
+        val accountWithNoGoal = fakeAccount.copy(goalType = null)
+        every { accountRepository.getActiveAccount() } returns flowOf(accountWithNoGoal)
+        coEvery { goalAlertDataStore.getGoalCardValue(accountWithNoGoal.id) } returns null
+        every { deviceService.isSetupInProgress() } returns false
+
+        val dialogSlot = slot<DialogModel>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
+
+        service.checkGoalCard()
+
+        val custom = dialogSlot.captured as DialogModel.Custom
+        // Invoke the onSetGoal callback
+        val onSetGoal = custom.params?.get("onSetGoal") as? (() -> Unit)
+        onSetGoal?.invoke()
+        advanceUntilIdle()
+
+        coVerify(timeout = 2000) { appNavigationService.navigateTo(any()) }
+        verify { dialogQueueService.dismissCurrent() }
     }
 }

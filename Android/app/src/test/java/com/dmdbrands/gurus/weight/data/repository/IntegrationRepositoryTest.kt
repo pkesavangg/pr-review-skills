@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
+import kotlinx.coroutines.test.TestScope
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -56,7 +57,8 @@ class IntegrationRepositoryTest {
         every { accountRepository.getActiveAccount() } returns flowOf(mockDomainAccount)
         coEvery { healthConnectRepository.getAccountByID(any()) } returns null
         repository = IntegrationRepository(
-            accountRepository, authAPI, integrationAPI, accountDao, healthConnectRepository
+            accountRepository, authAPI, integrationAPI, accountDao, healthConnectRepository,
+            appScope = TestScope(),
         )
     }
 

@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.repository.ILogRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
+import kotlinx.coroutines.test.TestScope
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -65,7 +66,7 @@ class LogRepositoryTest {
     mockkObject(AppStatusService)
     mockkObject(DeviceInfoUtil)
     every { accountService.activeAccountFlow } returns flowOf(null)
-    repository = LogRepository(logDao, supportAPI, accountService)
+    repository = LogRepository(logDao, supportAPI, accountService, TestScope())
   }
 
   private fun setInitialized(value: Boolean) {

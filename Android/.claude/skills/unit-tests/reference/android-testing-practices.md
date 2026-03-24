@@ -279,6 +279,150 @@ coEvery { api.fetchGoal(any()) } coAnswers {
 coEvery { api.fetchGoal(any()) } returnsMany listOf(goal1, goal2, goal3)
 ```
 
+## Instrumented testing (androidTest/) — official patterns
+
+### When to use instrumented tests vs unit tests
+
+| Test type | Location | Use for | Speed |
+|---|---|---|---|
+| **Unit test** | `test/` | Services, repositories, ViewModels, reducers | Fast (JVM) |
+| **Instrumented test** | `androidTest/` | DAOs, Compose UI, integration, migrations | Slower (device/emulator) |
+
+> **Rule**: If the class needs `android.content.Context`, `Room.inMemoryDatabaseBuilder()`, or the Compose rendering pipeline, it's an instrumented test. Everything else is a unit test.
+
+### MeApp instrumented test dependencies
+
+| Library | Version | Catalog key | Purpose |
+|---|---|---|---|
+| `androidx.test.ext:junit` | 1.1.5 | `junitVersion` | `AndroidJUnit4` runner |
+| `androidx.test.espresso:espresso-core` | 3.5.0 | `espressoCore` | View matchers (transitive) |
+| `androidx.compose.ui:ui-test-junit4` | via BOM | `composeUITest` | Compose test DSL |
+| `androidx.compose.ui:ui-test-manifest` | via BOM | — | Test activity for `createComposeRule()` |
+| `androidx.room:room-testing` | 2.7.2 | `roomRuntime` | `MigrationTestHelper` |
+| `com.google.truth:truth` | 1.4.5 | `truth` | Fluent assertions |
+
+> **Version pinning**: `junitVersion` and `espressoCore` are pinned to match `compose-ui-test` transitive deps. Don't upgrade independently.
+
+### Test runner
+
+```kotlin
+// app/build.gradle.kts
+defaultConfig {
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+}
+```
+
+### Test size annotations (for CI filtering)
+
+| Annotation | Meaning | Use for |
+|---|---|---|
+| `@SmallTest` | Unit-level, no I/O | TypeConverter tests |
+| `@MediumTest` | Integration, local I/O | DAO tests |
+| `@LargeTest` | End-to-end, network/UI | Full Compose UI flows |
+
+Filter by size: `./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.size=medium`
+
+### Room DAO testing — in-memory database pattern
+
+```kotlin
+@RunWith(AndroidJUnit4::class)
+class FooDaoTest {
+    private lateinit var db: AppDatabase
+    private lateinit var fooDao: FooDao
+
+    @Before
+    fun createDb() {
+        db = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+        ).allowMainThreadQueries().build()
+        fooDao = db.fooDao()
+    }
+
+    @After
+    fun closeDb() { db.close() }
+
+    @Test
+    fun insertAndQuery() = runTest {
+        fooDao.insert(entity)
+        assertThat(fooDao.get(entity.id)).isEqualTo(entity)
+    }
+}
+```
+
+> **MeApp convention**: Extend `BaseDaoTest` instead of writing this boilerplate — it provides the DB + all 4 DAOs.
+
+### Room migration testing
+
+```kotlin
+@get:Rule
+val migrationTestHelper = MigrationTestHelper(
+    InstrumentationRegistry.getInstrumentation(),
+    AppDatabase::class.java,
+)
+
+@Test
+fun migrate1To2() {
+    migrationTestHelper.createDatabase(TEST_DB, 1)
+    migrationTestHelper.runMigrationsAndValidate(TEST_DB, 2, true, MIGRATION_1_2)
+}
+```
+
+> MeApp currently uses version 1 with `fallbackToDestructiveMigration()`. Migration tests become critical when schema changes are introduced.
+
+### Compose UI testing essentials
+
+**Two rules:**
+- `createComposeRule()` — standalone, no Activity; best for isolated composable tests
+- `createAndroidComposeRule<Activity>()` — with Activity; needed for Hilt or real ViewModel
+
+**Key APIs:**
+- Finders: `onNodeWithText()`, `onNodeWithTag()`, `onNodeWithContentDescription()`
+- Actions: `performClick()`, `performTextInput()`, `performScrollTo()`
+- Assertions: `assertIsDisplayed()`, `assertDoesNotExist()`, `assertIsEnabled()`
+
+**Synchronization:**
+- Compose tests auto-sync with recomposition
+- Use `waitForIdle()` for animations
+- Use `waitUntil { }` for external async conditions
+- Use `mainClock.advanceTimeBy()` for virtual clock
+
+### Hilt testing (for future use)
+
+When needed (screens with injected ViewModels), add:
+
+```kotlin
+// Dependencies
+androidTestImplementation("com.google.dagger:hilt-android-testing:2.56.2")
+kspAndroidTest("com.google.dagger:hilt-android-compiler:2.56.2")
+
+// Custom runner
+class HiltTestRunner : AndroidJUnitRunner() {
+    override fun newApplication(cl: ClassLoader?, name: String?, context: Context?): Application {
+        return super.newApplication(cl, HiltTestApplication::class.java.name, context)
+    }
+}
+
+// Test class
+@HiltAndroidTest
+class MyScreenTest {
+    @get:Rule(order = 0) val hiltRule = HiltAndroidRule(this)
+    @get:Rule(order = 1) val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @BindValue @JvmField
+    val fakeService: IAccountService = FakeAccountService()
+
+    @Before fun setup() { hiltRule.inject() }
+}
+```
+
+> **Rule ordering is critical**: Hilt (order=0) must run before Compose (order=1).
+
+### Test report locations
+
+- HTML: `app/build/reports/androidTests/connected/debug/index.html`
+- XML: `app/build/outputs/androidTest-results/connected/debug/`
+
 ## Anti-patterns to avoid (from official docs)
 
 | Anti-Pattern | Why It's Bad | Do Instead |

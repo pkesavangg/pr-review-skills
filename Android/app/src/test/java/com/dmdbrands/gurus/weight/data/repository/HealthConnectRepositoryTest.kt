@@ -5,6 +5,9 @@ import com.dmdbrands.gurus.weight.data.api.HealthConnectSyncEntry
 import com.dmdbrands.gurus.weight.data.api.IHealthConnectAPI
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectData
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
+import com.dmdbrands.gurus.weight.data.storage.datastore.ProtoIntegratedDeviceInfo
+import com.dmdbrands.gurus.weight.data.storage.datastore.ProtoIntegrationData
+import com.dmdbrands.gurus.weight.data.storage.datastore.ProtoIntegrationOperationType
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegratedDeviceInfo
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationData
 import com.dmdbrands.gurus.weight.domain.model.integrations.IntegrationOperationType
@@ -574,6 +577,159 @@ class HealthConnectRepositoryTest {
         } catch (e: RuntimeException) {
             assertThat(e.message).isEqualTo("DataStore error")
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // toDomain (ProtoIntegratedDeviceInfo) — exercised through removeServerHcIntegration
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun `removeServerHcIntegration converts PROTO_SAVE to domain SAVE via toDomain`() = runTest {
+        val protoScopes = ProtoIntegrationData.newBuilder()
+            .setDeviceId(DEVICE_ID)
+            .addAllScopes(listOf("read:weight", "write:weight"))
+            .build()
+        val protoIntegrationInfo = ProtoIntegratedDeviceInfo.newBuilder()
+            .setOperationType(ProtoIntegrationOperationType.PROTO_SAVE)
+            .setScopes(protoScopes)
+            .build()
+        val dataWithProto: HealthConnectData = HealthConnectData.newBuilder()
+            .setIntegrated(true)
+            .setIntegrationInfo(protoIntegrationInfo)
+            .addAllGrantedPermission(listOf("read:weight"))
+            .build()
+
+        every { accountRepository.getActiveAccount() } returns flowOf(mockAccount)
+        coEvery { healthConnectDataStore.getHealthConnectData(ACCOUNT_ID) } returns dataWithProto
+        coEvery { healthConnectAPI.removeIntegration(DEVICE_ID) } returns Unit
+        coEvery { healthConnectDataStore.setIntegrationInfo(any(), any()) } returns Unit
+
+        repository.removeServerHcIntegration(DEVICE_ID)
+
+        coVerify { healthConnectAPI.removeIntegration(DEVICE_ID) }
+        coVerify {
+            healthConnectDataStore.setIntegrationInfo(eq(ACCOUNT_ID), match {
+                it.operationType == IntegrationOperationType.REMOVE.value &&
+                    it.isCurrentDeviceDeleted
+            })
+        }
+    }
+
+    @Test
+    fun `removeServerHcIntegration converts PROTO_REMOVE to domain REMOVE via toDomain`() = runTest {
+        val protoScopes = ProtoIntegrationData.newBuilder()
+            .setDeviceId(DEVICE_ID)
+            .addAllScopes(listOf("read:weight"))
+            .build()
+        val protoIntegrationInfo = ProtoIntegratedDeviceInfo.newBuilder()
+            .setOperationType(ProtoIntegrationOperationType.PROTO_REMOVE)
+            .setScopes(protoScopes)
+            .build()
+        val dataWithProto: HealthConnectData = HealthConnectData.newBuilder()
+            .setIntegrated(false)
+            .setIntegrationInfo(protoIntegrationInfo)
+            .addAllGrantedPermission(listOf("read:weight"))
+            .build()
+
+        every { accountRepository.getActiveAccount() } returns flowOf(mockAccount)
+        coEvery { healthConnectDataStore.getHealthConnectData(ACCOUNT_ID) } returns dataWithProto
+        coEvery { healthConnectAPI.removeIntegration(DEVICE_ID) } returns Unit
+        coEvery { healthConnectDataStore.setIntegrationInfo(any(), any()) } returns Unit
+
+        repository.removeServerHcIntegration(DEVICE_ID)
+
+        coVerify { healthConnectAPI.removeIntegration(DEVICE_ID) }
+        coVerify {
+            healthConnectDataStore.setIntegrationInfo(eq(ACCOUNT_ID), match {
+                it.operationType == IntegrationOperationType.REMOVE.value &&
+                    it.isCurrentDeviceDeleted
+            })
+        }
+    }
+
+    @Test
+    fun `removeServerHcIntegration on API failure stores REMOVE with isCurrentDeviceDeleted false`() = runTest {
+        val protoScopes = ProtoIntegrationData.newBuilder()
+            .setDeviceId(DEVICE_ID)
+            .addAllScopes(listOf("read:weight"))
+            .build()
+        val protoIntegrationInfo = ProtoIntegratedDeviceInfo.newBuilder()
+            .setOperationType(ProtoIntegrationOperationType.PROTO_SAVE)
+            .setScopes(protoScopes)
+            .build()
+        val dataWithProto: HealthConnectData = HealthConnectData.newBuilder()
+            .setIntegrated(true)
+            .setIntegrationInfo(protoIntegrationInfo)
+            .addAllGrantedPermission(listOf("read:weight"))
+            .build()
+
+        every { accountRepository.getActiveAccount() } returns flowOf(mockAccount)
+        coEvery { healthConnectDataStore.getHealthConnectData(ACCOUNT_ID) } returns dataWithProto
+        coEvery { healthConnectAPI.removeIntegration(any()) } throws IOException("Network error")
+        coEvery { healthConnectDataStore.setIntegrationInfo(any(), any()) } returns Unit
+
+        repository.removeServerHcIntegration(DEVICE_ID)
+
+        coVerify {
+            healthConnectDataStore.setIntegrationInfo(eq(ACCOUNT_ID), match {
+                it.operationType == IntegrationOperationType.REMOVE.value &&
+                    !it.isCurrentDeviceDeleted
+            })
+        }
+    }
+
+    @Test
+    fun `getStoredIntegrationData with real proto SAVE converts operationType correctly`() = runTest {
+        val protoScopes = ProtoIntegrationData.newBuilder()
+            .setDeviceId(DEVICE_ID)
+            .addAllScopes(listOf("read:weight", "write:weight"))
+            .build()
+        val protoIntegrationInfo = ProtoIntegratedDeviceInfo.newBuilder()
+            .setOperationType(ProtoIntegrationOperationType.PROTO_SAVE)
+            .setScopes(protoScopes)
+            .build()
+        val dataWithProto: HealthConnectData = HealthConnectData.newBuilder()
+            .setIntegrated(true)
+            .setIntegrationInfo(protoIntegrationInfo)
+            .addAllGrantedPermission(listOf("read:weight", "write:weight"))
+            .build()
+
+        coEvery { healthConnectDataStore.getHealthConnectData(ACCOUNT_ID) } returns dataWithProto
+
+        val result = repository.getStoredIntegrationData(ACCOUNT_ID)
+
+        assertThat(result).isNotNull()
+        assertThat(result?.operationType).isEqualTo(IntegrationOperationType.SAVE.value)
+        assertThat(result?.scopes?.deviceId).isEqualTo(DEVICE_ID)
+        assertThat(result?.scopes?.preferences?.scopes).containsExactly("read:weight", "write:weight")
+    }
+
+    @Test
+    fun `getStoredIntegrationData with real proto REMOVE converts operationType correctly`() = runTest {
+        val protoScopes = ProtoIntegrationData.newBuilder()
+            .setDeviceId(DEVICE_ID)
+            .addAllScopes(listOf("read:weight"))
+            .build()
+        val protoIntegrationInfo = ProtoIntegratedDeviceInfo.newBuilder()
+            .setOperationType(ProtoIntegrationOperationType.PROTO_REMOVE)
+            .setScopes(protoScopes)
+            .build()
+        val dataWithProto: HealthConnectData = HealthConnectData.newBuilder()
+            .setIntegrated(false)
+            .setIntegrationInfo(protoIntegrationInfo)
+            .addAllGrantedPermission(listOf("read:weight"))
+            .build()
+
+        coEvery { healthConnectDataStore.getHealthConnectData(ACCOUNT_ID) } returns dataWithProto
+
+        val result = repository.getStoredIntegrationData(ACCOUNT_ID)
+
+        assertThat(result).isNotNull()
+        assertThat(result?.operationType).isEqualTo(IntegrationOperationType.REMOVE.value)
     }
 
     // -----------------------------------------------------------------------

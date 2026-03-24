@@ -4,12 +4,12 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.AccountFlagService
 import com.dmdbrands.gurus.weight.core.service.AccountService
 import com.dmdbrands.gurus.weight.core.service.AnalyticsService
-import com.dmdbrands.gurus.weight.core.service.CrashReportingService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.service.AppSyncService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.BodyCompositionService
+import com.dmdbrands.gurus.weight.core.service.CrashReportingService
 import com.dmdbrands.gurus.weight.core.service.DashboardService
 import com.dmdbrands.gurus.weight.core.service.DeviceInfoService
 import com.dmdbrands.gurus.weight.core.service.DeviceService
@@ -58,9 +58,9 @@ import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountFlagService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
-import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryAggregationService
@@ -78,10 +78,10 @@ import com.dmdbrands.gurus.weight.domain.services.IUserSettingsService
 import com.dmdbrands.gurus.weight.features.common.service.DialogQueueService
 import com.dmdbrands.gurus.weight.features.common.service.DialogUtility
 import com.dmdbrands.gurus.weight.features.feed.shared.SelectedFeedItemHolder
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.greatergoods.ggInAppMessaging.core.service.GGInAppMessagingService
 import com.greatergoods.lib.wificonnect.WifiSmartConnectManager
 import com.greatergoods.notification.NotificationService as GGNotificationService
-import com.google.firebase.analytics.FirebaseAnalytics
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
