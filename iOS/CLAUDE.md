@@ -313,6 +313,7 @@ When the user describes a task in natural language, match it to the appropriate 
 | "concurrency issue", "async bug" | `.claude/skills/swift-concurrency.md` |
 | "SwiftData issue" | `.claude/skills/swiftdata.md` |
 | "config change", "environment change" | `.claude/skills/config-change.md` |
+| "fix lint", "run swiftlint", "lint fix", "swiftlint errors", "clean up lint" | `.claude/skills/swiftlint.md` |
 | "add accessibility to X", "make this screen accessible", "VoiceOver support" | `.claude/skills/add-accessibility.md` |
 | "add preview for X", "scaffold preview", "create #Preview" | `.claude/skills/add-preview.md` |
 

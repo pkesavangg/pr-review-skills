@@ -294,6 +294,7 @@ Before marking any task complete, confirm:
 |-------|---------|
 | `/self-review` | Run all 5 specialist reviews |
 | `/review-lint` | SwiftLint and style check |
+| `/swiftlint` | Run SwiftLint with auto-fix, then manually fix remaining violations |
 | `/review-regression` | Breaking change detection |
 | `/review-security` | Security audit |
 | `/review-issue-fix` | Jira acceptance criteria check |
