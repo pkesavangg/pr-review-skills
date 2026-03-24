@@ -95,10 +95,38 @@ final class <ScreenName>UITests: XCTestCase {
 
 ---
 
-### 5 — Output
+### 5 — Check Feature-Wide UI Test Coverage
+
+Before scaffolding, check if the entire feature has **any** UI test coverage:
+
+```bash
+find meAppUITests -type f -name "*.swift" | xargs grep -l "{Feature}" 2>/dev/null
+```
+
+If the feature has **zero UI test files**, flag it prominently:
+
+```
+⚠️ Feature "{Feature}" has NO UI test coverage at all.
+This is the first UI test file for this feature.
+
+Screens in this feature that also need UI tests:
+```
+
+Then list all screens in the feature:
+```bash
+find meApp/Features/{Feature} -name "*Screen.swift" -type f
+```
+
+For each screen found, note whether it has a corresponding UI test file. This helps the user plan full feature UI coverage rather than just one screen at a time.
+
+---
+
+### 6 — Output
 
 1. Write the scaffolded file to: `meAppUITests/Features/<Feature>/<ScreenName>UITests.swift`
 2. Report the file path
 3. List accessibility identifiers that need to be added to the source screen
 4. Coverage target: ≥ 85% for UI test files (per `verify-tests.md`)
 5. Reminder: these are stubs — fill in real interactions and assertions before running
+6. If first UI test for the feature: list all other screens in the feature that still need UI tests
+7. Recommend: run `/add-accessibility` on the target screen first if accessibility identifiers are missing
