@@ -11,14 +11,15 @@ import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DialogQueueServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var service: DialogQueueService
@@ -52,7 +53,7 @@ class DialogQueueServiceTest {
     private val testToast = Toast(message = "Test toast")
     private val testToastWithTitle = Toast(message = "Toast message", title = "Toast title")
 
-    @Before
+    @BeforeEach
     fun setUp() {
         service = DialogQueueService(CoroutineScope(mainDispatcherRule.dispatcher))
     }

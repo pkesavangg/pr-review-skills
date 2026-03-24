@@ -28,6 +28,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -137,7 +138,7 @@ class IntegrationServiceTest {
     accountService = accountService,
     integrationRepository = integrationRepository,
     healthConnectRepository = healthConnectRepository,
-    ioDispatcher = mainDispatcherRule.dispatcher,
+    appScope = CoroutineScope(mainDispatcherRule.dispatcher),
   )
 
   // --- Shared Helpers ---
