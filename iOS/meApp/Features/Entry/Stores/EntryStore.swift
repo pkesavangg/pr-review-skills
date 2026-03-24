@@ -74,8 +74,11 @@ final class EntryStore: ObservableObject {
             .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newItem in
-                self?.logger.log(level: .info, tag: self?.tag ?? "EntryStore",
-                                 message: "Product type changed to \(newItem.displayName)")
+                self?.logger.log(
+                      level: .info,
+                      tag: self?.tag ?? "EntryStore",
+                      message: "Product type changed to \(newItem.displayName)"
+                  )
             }
             .store(in: &cancellables)
     }

@@ -14,6 +14,7 @@ struct DashboardScreen: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.scenePhase) private var scenePhase
     @StateObject var store = DashboardStore()
+    @ObservedObject private var productTypeStore = ProductTypeStore.shared
     let lang = DashboardStrings.self
     @State private var selectedEntry: Entry?
     @State private var selectedMetric: BodyMetric?
@@ -21,6 +22,7 @@ struct DashboardScreen: View {
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
     @State private var suppressOutsideCancel = false
     @State private var metricInfoEntry: Entry?
+    @State private var isProductTypeSelectorPresented = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -37,7 +39,7 @@ struct DashboardScreen: View {
             await store.lifecycleManager.refreshAll()
         }
         .onAppear(perform: store.lifecycleManager.onAppearActions)
-        .ignoresSafeArea(.all)
+        .edgesIgnoringSafeArea(.bottom)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
@@ -120,7 +122,24 @@ struct DashboardScreen: View {
     }
     
     private func navbarHeader() -> some View {
-        NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false).zIndex(100)
+        NavbarHeaderView<EmptyView, EmptyView>(
+            title: productTypeStore.availableItems.count > 1
+                ? productTypeStore.selectedItem.dashboardTitle
+                : nil,
+            onTitleTap: productTypeStore.availableItems.count > 1 ? {
+                isProductTypeSelectorPresented = true
+            } : nil,
+            canShowBorder: false,
+            canShowTitleChevron: productTypeStore.availableItems.count > 1
+        )
+        .sheet(isPresented: $isProductTypeSelectorPresented) {
+            ProductTypeSelectorSheet(
+                store: productTypeStore,
+                isPresented: $isProductTypeSelectorPresented,
+                title: ProductTypeStrings.myDashboard
+            )
+        }
+        .zIndex(100)
     }
     
     private func dashboardScroll() -> some View {
