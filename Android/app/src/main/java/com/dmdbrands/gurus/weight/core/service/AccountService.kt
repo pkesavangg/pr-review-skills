@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
-import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
@@ -21,9 +20,11 @@ import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings.Error.LoginError
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import com.dmdbrands.gurus.weight.proto.ThemeMode
-import kotlinx.coroutines.CoroutineDispatcher
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,10 +32,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import android.os.Bundle
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Singleton
+import android.os.Bundle
 
 /**
  * Service for managing account authentication and session state.
@@ -49,7 +50,7 @@ class AccountService(
   appNavigationService: IAppNavigationService,
   private val storageClearService: StorageClearService,
   private val analyticsService: IAnalyticsService,
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService),
   IAccountService {
   companion object {
@@ -57,7 +58,7 @@ class AccountService(
     private const val TAG = "AccountService"
   }
 
-  private var repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+  private var repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   // region Public Properties
 
@@ -94,7 +95,7 @@ class AccountService(
 
   override fun subscribeAccount() {
     repositoryScope.cancel()
-    repositoryScope = CoroutineScope(SupervisorJob() + ioDispatcher)
+    repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     repositoryScope.launch {
       accountRepository.getActiveAccount().collect {
         _activeAccount.value = it
@@ -320,7 +321,7 @@ class AccountService(
             else -> ToastStrings.Error.UpdateProfileError.MessageGeneric
           }
           val header = when (e.code()) {
-             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
+            HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR -> ToastStrings.Error.UpdateProfileError.Header
             HttpErrorConfig.ResponseCode.UNAUTHORIZED -> ToastStrings.Error.UpdateProfileError.errorUpdatingProfileHeader
 
             else -> ToastStrings.Error.UpdateProfileError.HeaderGeneric
@@ -370,19 +371,22 @@ class AccountService(
       accountRepository.syncAccountSettingsWithServer(accountInfo, isOnline = true)
       AppLog.d(TAG, "Active account login status check successful")
       true
-    } catch (e: java.net.UnknownHostException){
-      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}" )
+    } catch (e: java.net.UnknownHostException) {
+      AppLog.w(TAG, "UnknownHostException failure during login status check, falling back to local DB ${e.toString()}")
       checkActiveAccountLocalValidity()
-    }
-    catch (e: java.io.InterruptedIOException){
-      AppLog.w(TAG, "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}" )
+    } catch (e: java.io.InterruptedIOException) {
+      AppLog.w(
+        TAG,
+        "InterruptedIOException failure during login status check, falling back to local DB ${e.toString()}",
+      )
       checkActiveAccountLocalValidity()
-    }
-    catch (e: java.net.SocketTimeoutException) {
-      AppLog.w(TAG, "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}" )
+    } catch (e: java.net.SocketTimeoutException) {
+      AppLog.w(
+        TAG,
+        "SocketTimeoutException failure during login status check, falling back to local DB ${e.toString()}",
+      )
       checkActiveAccountLocalValidity()
-    }
-    catch (e: IOException) {
+    } catch (e: IOException) {
       AppLog.w(TAG, "Network failure during login status check, falling back to local DB ${e.toString()}")
       checkActiveAccountLocalValidity()
     } catch (e: HttpException) {
@@ -483,7 +487,11 @@ class AccountService(
               AppLog.d(TAG, "Account ${account.id} login status check successful")
             } catch (e: IOException) {
               // Network failure - don't mark account as expired, just log and continue
-              AppLog.w(TAG, "Network failure while checking account ${account.id}, skipping (not marking as expired)", e.toString())
+              AppLog.w(
+                TAG,
+                "Network failure while checking account ${account.id}, skipping (not marking as expired)",
+                e.toString(),
+              )
             } catch (e: HttpException) {
               // Only mark as expired on 401 Unauthorized errors
               if (e.code() == HttpErrorConfig.ResponseCode.UNAUTHORIZED) {
@@ -497,9 +505,15 @@ class AccountService(
             } catch (e: java.net.UnknownHostException) {
               AppLog.w(TAG, "UnknownHostException failure during logged accounts check ${e.toString()}")
             } catch (e: java.io.InterruptedIOException) {
-              AppLog.w(TAG, "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}")
+              AppLog.w(
+                TAG,
+                "InterruptedIOException failure during logged accounts check, falling back to local DB ${e.toString()}",
+              )
             } catch (e: java.net.SocketTimeoutException) {
-              AppLog.w(TAG, "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}")
+              AppLog.w(
+                TAG,
+                "SocketTimeoutException failure during logged accounts check, falling back to local DB ${e.toString()}",
+              )
             } catch (e: Exception) {
               // Other exceptions - log but don't mark as expired
               AppLog.e(TAG, "Account ${account.id} login status check failed (not marking as expired)", e)
@@ -565,7 +579,7 @@ class AccountService(
     fcmToken: String?,
   ): Boolean =
     try {
-      if (!isNetworkAvailable()){
+      if (!isNetworkAvailable()) {
         showNoNetworkErrorToast()
       }
       AppLog.v(TAG, "logout() called for accountId: $accountId")
@@ -574,7 +588,12 @@ class AccountService(
       val result = accountRepository.logoutAccount(accountId, fcmToken, isActiveAccount)
       accountRepository.setNotificationAlertShownForAccount(accountId, false)
       AppLog.d(TAG, "Logout successful")
-      appNavigationService.emitAuthEvent(AuthState.LoggedOut(isActiveAccount = isActiveAccount, isLastAccount = wasLastAccount))
+      appNavigationService.emitAuthEvent(
+        AuthState.LoggedOut(
+          isActiveAccount = isActiveAccount,
+          isLastAccount = wasLastAccount,
+        ),
+      )
       result
     } catch (e: Exception) {
       AppLog.e(TAG, "Logout failed", e)
@@ -589,7 +608,7 @@ class AccountService(
   override suspend fun logoutAll(): Boolean =
     try {
       AppLog.d(TAG, "logoutAll() called")
-      if (!isNetworkAvailable()){
+      if (!isNetworkAvailable()) {
         showNoNetworkErrorToast()
       }
       // Get all logged-in accounts before logging out to reset their notification alert settings
@@ -661,23 +680,19 @@ class AccountService(
       analyticsService.logEvent(IAnalyticsService.Events.ACCOUNT_SWITCHED)
       appNavigationService.emitAuthEvent(AuthState.AccountSwitched(account, showToast))
       true
-    }
-    catch (e: java.net.UnknownHostException){
+    } catch (e: java.net.UnknownHostException) {
       AppLog.w(TAG, "UnknownHostException failure during account switch ${e.toString()}")
       showNetworkErrorAndThrow()
       false
-    }
-    catch (e: java.io.InterruptedIOException){
+    } catch (e: java.io.InterruptedIOException) {
       AppLog.w(TAG, "InterruptedIOException failure failure during account switch ${e.toString()}")
       showNetworkErrorAndThrow()
       false
-    }
-    catch (e: java.net.SocketTimeoutException) {
+    } catch (e: java.net.SocketTimeoutException) {
       AppLog.w(TAG, "SocketTimeoutException e.toString() ${e.toString()}")
       showNetworkErrorAndThrow()
       false
-    }
-    catch (e: IOException) {
+    } catch (e: IOException) {
       // Network failed during API call - check if account is valid locally
       AppLog.w(TAG, "Network failed during account switch, checking local validity", e.toString())
       val localAccount = getLoggedInAccounts().find { it.id == account.id }
@@ -700,8 +715,7 @@ class AccountService(
       // Optional: handle unexpected exceptions
       AppLog.e(TAG, "Unexpected error while switching account", e)
       false
-    }
-    finally {
+    } finally {
       dialogQueueService.dismissLoader()
     }
   }
@@ -855,7 +869,7 @@ class AccountService(
     AppLog.d(TAG, "Emitted NavigateBackFromMyAccounts event")
   }
 
-  private fun showNoNetworkErrorToast(){
+  private fun showNoNetworkErrorToast() {
     dialogQueueService.showToast(
       Toast(
         title = null,

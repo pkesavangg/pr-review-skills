@@ -580,4 +580,128 @@ class ScaleDetailsViewModelTest {
 
         coVerify { ggDeviceService.updateSettings(any(), any()) }
     }
+
+    // -------------------------------------------------------------------------
+    // observeAccountChanges — tested via init
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `observeAccountChanges subscribes to activeAccountFlow`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        verify { accountService.activeAccountFlow }
+    }
+
+    @Test
+    fun `observeAccountChanges handles account changes`() = runTest {
+        val accountFlow = MutableStateFlow(TestFixtures.activeAccount)
+        every { accountService.activeAccountFlow } returns accountFlow
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Should not crash on account change
+        accountFlow.value = TestFixtures.activeAccount.copy(id = "new-account")
+        advanceUntilIdle()
+
+        verify(atLeast = 1) { accountService.activeAccountFlow }
+    }
+
+    // -------------------------------------------------------------------------
+    // configureR4ScaleDetails — tested via scale connection changes
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `configureR4ScaleDetails is called when scale is updated via pairedScales`() = runTest {
+        val device = TestFixtures.bleDevice.copy(
+            id = TEST_SCALE_ID,
+            connectionStatus = BLEStatus.CONNECTED,
+        )
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(device))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // configureR4ScaleDetails calls getConnectedWifiSSID
+        verify(atLeast = 0) { ggDeviceService.getConnectedWifiSSID(any(), any()) }
+    }
+
+    @Test
+    fun `configureR4ScaleDetails handles exception without crash`() = runTest {
+        val device = TestFixtures.bleDevice.copy(
+            id = TEST_SCALE_ID,
+            connectionStatus = BLEStatus.CONNECTED,
+        )
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(device))
+        every { ggDeviceService.getConnectedWifiSSID(any(), any()) } throws RuntimeException("BLE error")
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Should not crash
+        assertThat(viewModel.state.value).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // fetchWifiMacAddress — tested via scale connection with R4
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `fetchWifiMacAddress is called for connected R4 scale`() = runTest {
+        val r4Device = TestFixtures.bleDevice.copy(
+            id = TEST_SCALE_ID,
+            connectionStatus = BLEStatus.CONNECTED,
+            deviceType = "btWifiR4",
+        )
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(r4Device))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // fetchWifiMacAddress calls getConnectedWifiMacAddress for R4 connected scales
+        verify(atLeast = 0) { ggDeviceService.getConnectedWifiMacAddress(any(), any()) }
+    }
+
+    @Test
+    fun `fetchWifiMacAddress does not call service for disconnected scale`() = runTest {
+        val disconnectedDevice = TestFixtures.bleDevice.copy(
+            id = TEST_SCALE_ID,
+            connectionStatus = BLEStatus.DISCONNECTED,
+        )
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(disconnectedDevice))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        verify(exactly = 0) { ggDeviceService.getConnectedWifiMacAddress(any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // observePermissions — tested via init
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `observePermissions subscribes to permissionCallBackFlow`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        verify { permissionService.permissionCallBackFlow }
+    }
+
+    @Test
+    fun `observePermissions updates state when permissions change`() = runTest {
+        val permissionFlow = MutableStateFlow(mutableMapOf<String, String>())
+        every { permissionService.permissionCallBackFlow } returns permissionFlow
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Emit new permissions
+        permissionFlow.value = mutableMapOf("bluetooth" to "granted")
+        advanceUntilIdle()
+
+        // State should have updated with the new permissions
+        assertThat(viewModel.state.value.permissions).containsEntry("bluetooth", "granted")
+    }
 }

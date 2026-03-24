@@ -639,4 +639,131 @@ class DashboardViewModelTest {
 
         coVerify(exactly = 0) { healthConnectService.healthConnectOutOfSync() }
     }
+
+    // -------------------------------------------------------------------------
+    // initLoadData — sets initial dashboard type, visible keys, and weightless
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `initLoadData sets dashboard type from active account with 12 metrics`() = runTest {
+        val account12 = TestFixtures.anAccount(
+            id = TEST_ACCOUNT_12_ID,
+            isActiveAccount = true,
+            isLoggedIn = true,
+        ).copy(dashboardType = DashboardType.DASHBOARD_12_METRICS.value)
+        every { accountService.activeAccount } returns MutableStateFlow(account12)
+
+        viewModel = DashboardViewModel(
+            entryService = entryService,
+            accountService = accountService,
+            appNavigationService = appNavigationService,
+            dashboardService = dashboardService,
+            healthConnectService = healthConnectService,
+            goalService = goalService,
+        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.dashboardType).isEqualTo(DashboardType.DASHBOARD_12_METRICS)
+    }
+
+    @Test
+    fun `initLoadData sets visible keys from dashboardService`() = runTest {
+        val keys = listOf(TEST_DASHBOARD_KEY)
+        every { dashboardService.visibleKeys } returns MutableStateFlow(keys)
+
+        viewModel = DashboardViewModel(
+            entryService = entryService,
+            accountService = accountService,
+            appNavigationService = appNavigationService,
+            dashboardService = dashboardService,
+            healthConnectService = healthConnectService,
+            goalService = goalService,
+        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.visibleKeys).isEqualTo(keys)
+    }
+
+    // -------------------------------------------------------------------------
+    // Flow Subscriptions — subscribeWeightLess
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `subscribeWeightLess updates weightless when account flow emits`() = runTest {
+        val accountFlow = MutableStateFlow<Account?>(TestFixtures.activeAccount)
+        every { accountService.activeAccountFlow } returns accountFlow
+
+        viewModel = DashboardViewModel(
+            entryService = entryService,
+            accountService = accountService,
+            appNavigationService = appNavigationService,
+            dashboardService = dashboardService,
+            healthConnectService = healthConnectService,
+            goalService = goalService,
+        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        advanceUntilIdle()
+
+        val accountWithWeightless = TestFixtures.anAccount(
+            isActiveAccount = true,
+            isLoggedIn = true,
+        ).copy(isWeightlessOn = true, weightlessWeight = WEIGHTLESS_WEIGHT)
+        accountFlow.value = accountWithWeightless
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.weightless).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // Flow Subscriptions — subscribeProgress
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `subscribeProgress updates progress from entryService flow`() = runTest {
+        val progress = Progress(count = PROGRESS_COUNT, initWt = PROGRESS_INIT_WEIGHT)
+        every { entryService.progress } returns flowOf(progress)
+
+        viewModel = DashboardViewModel(
+            entryService = entryService,
+            accountService = accountService,
+            appNavigationService = appNavigationService,
+            dashboardService = dashboardService,
+            healthConnectService = healthConnectService,
+            goalService = goalService,
+        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.progress).isEqualTo(progress)
+    }
+
+    // -------------------------------------------------------------------------
+    // Flow Subscriptions — subscribeProgressUpdating
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `subscribeProgressUpdating updates isProgressUpdating from entryService flow`() = runTest {
+        every { entryService.isUpdating } returns MutableStateFlow(true)
+
+        viewModel = DashboardViewModel(
+            entryService = entryService,
+            accountService = accountService,
+            appNavigationService = appNavigationService,
+            dashboardService = dashboardService,
+            healthConnectService = healthConnectService,
+            goalService = goalService,
+        ).initTestDependencies(navigationService = navigationService, dialogQueueService = dialogQueueService)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isProgressUpdating).isTrue()
+    }
+
+    // -------------------------------------------------------------------------
+    // navigateTo
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `navigateTo calls navigationService with given route`() = runTest {
+        viewModel.navigateTo(AppRoute.AccountSettings.HelpScreen)
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.HelpScreen) }
+    }
 }

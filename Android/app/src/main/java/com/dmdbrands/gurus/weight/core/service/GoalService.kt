@@ -20,7 +20,6 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -50,7 +49,7 @@ constructor(
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
   private val deviceService: IDeviceService,
-  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
@@ -69,7 +68,7 @@ constructor(
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
   private var account: Account? = null
   init {
-    CoroutineScope(ioDispatcher).launch {
+    appScope.launch {
       accountRepository.getActiveAccount().collect {
         if (it != null) {
           account = it

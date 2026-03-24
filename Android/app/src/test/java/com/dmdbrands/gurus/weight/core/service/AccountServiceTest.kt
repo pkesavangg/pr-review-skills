@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import app.cash.turbine.test
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.helpers.httpException
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
@@ -174,7 +175,8 @@ class AccountServiceTest {
         dialogQueueService,
         appNavigationService,
         storageClearService,
-        ioDispatcher = mainDispatcherRule.dispatcher,
+        analyticsService = mockk(relaxed = true),
+        appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------
@@ -2046,5 +2048,66 @@ class AccountServiceTest {
         coVerify(exactly = 0) { accountRepository.getAccountFromAPI(expired.id) }
         coVerify(exactly = 1) { accountRepository.getAccountFromAPI(valid.id) }
         coVerify(exactly = 1) { accountRepository.updateAccountInfo(valid.id, validInfo) }
+    }
+
+    // -------------------------------------------------------------------------
+    // checkActiveAccountLocalValidity — offline sync with isOnline=false
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `checkActiveAccountLocalValidity syncs to DB with isOnline false when offline`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
+
+        val result = service.checkLoginStatusForActiveAccount()
+
+        assertThat(result).isTrue()
+        coVerify { accountRepository.syncAccountSettingsWithServer(any(), isOnline = false) }
+    }
+
+    // -------------------------------------------------------------------------
+    // handleAccountValidationError — non-401 shows generic error toast
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `switchAccount on HttpException 403 shows generic error toast without marking expired`() = runTest {
+        coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws httpException(403)
+
+        val result = service.switchAccount(fakeAccount2)
+
+        assertThat(result).isFalse()
+        verify { dialogQueueService.showToast(any()) }
+        coVerify(exactly = 0) { accountRepository.markAccountExpired(any()) }
+        coVerify(exactly = 0) { accountRepository.removeAccount(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // showNoNetworkErrorToast — tested via logout and logoutAll offline paths
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `logout offline shows no-network toast with correct message structure`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.logoutAccount(any(), any(), any()) } returns true
+        coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
+
+        service.logout(fakeAccount.id, fcmToken = null)
+
+        verify {
+            dialogQueueService.showToast(match<com.dmdbrands.gurus.weight.features.common.model.Toast> {
+                it.title == null && it.action == null
+            })
+        }
+    }
+
+    @Test
+    fun `logoutAll offline shows no-network toast`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.logoutAllAccounts() } returns true
+        coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
+
+        service.logoutAll()
+
+        verify(atLeast = 1) { dialogQueueService.showToast(any()) }
     }
 }

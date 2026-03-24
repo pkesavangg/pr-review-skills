@@ -429,4 +429,113 @@ class WeightlessViewModelTest {
         assertThat(viewModel.state.value.isLoading).isFalse()
         assertThat(viewModel.state.value.error).isNull()
     }
+
+    // -------------------------------------------------------------------------
+    // updateStateWithAccount — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateStateWithAccount with weightless on and weight populates form`() = runTest {
+        viewModel = createViewModel()
+        val account = accountWithWeightless(
+            isWeightlessOn = true,
+            weightlessWeight = 150.0f,
+            weightUnit = WeightUnit.LB,
+        )
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isWeightlessOn).isTrue()
+        assertThat(viewModel.state.value.form.controls.weightlessWeight.value).isNotEmpty()
+    }
+
+    @Test
+    fun `updateStateWithAccount with weightless off uses default weight`() = runTest {
+        viewModel = createViewModel()
+        val account = accountWithWeightless(
+            isWeightlessOn = false,
+            weightlessWeight = null,
+        )
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isWeightlessOn).isFalse()
+        assertThat(viewModel.state.value.hasToggleChanged).isFalse()
+    }
+
+    @Test
+    fun `updateStateWithAccount with KG unit sets isMetric true`() = runTest {
+        viewModel = createViewModel()
+        val account = accountWithWeightless(weightUnit = WeightUnit.KG)
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isMetric).isTrue()
+        assertThat(viewModel.state.value.weightUnit).isEqualTo(WeightUnit.KG)
+    }
+
+    @Test
+    fun `updateStateWithAccount resets hasToggleChanged to false`() = runTest {
+        viewModel = createViewModel()
+        viewModel.handleIntent(WeightlessIntent.ToggleWeightless) // hasToggleChanged = true
+        assertThat(viewModel.state.value.hasToggleChanged).isTrue()
+
+        val account = accountWithWeightless()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.hasToggleChanged).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // onSubmit — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit with weightless on calls toggleWeightlessSetting with correct params`() = runTest {
+        viewModel = createViewModel()
+        val account = accountWithWeightless(isWeightlessOn = true, weightlessWeight = 150.0f)
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        viewModel.handleIntent(WeightlessIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify {
+            userSettingsService.toggleWeightlessSetting(
+                isWeightlessOn = true,
+                weightlessWeight = any(),
+            )
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // onSuccess — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Success shows toast with correct title and message`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(WeightlessIntent.Success)
+        advanceUntilIdle()
+
+        verify {
+            dialogQueueService.showToast(match<Toast> {
+                it.title == SUCCESS_TITLE && it.message == SUCCESS_MESSAGE && it.action == null
+            })
+        }
+    }
+
+    @Test
+    fun `Success navigates back with null topLevel`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(WeightlessIntent.Success)
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateBack(null) }
+    }
 }

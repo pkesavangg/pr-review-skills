@@ -262,4 +262,44 @@ class StorageClearServiceTest {
         coVerify(exactly = 0) { dataStore3.clearData() }
     }
 
+    // -------------------------------------------------------------------------
+    // clearAllStorage — constructor with Context-dependent path
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `clearAllStorage invoked on service constructed with different Context still clears all datastores`() = runTest {
+        val anotherContext: Context = mockk(relaxed = true)
+        val serviceWithDifferentContext = StorageClearService(
+            context = anotherContext,
+            appDatabase = appDatabase,
+            dataStores = setOf(dataStore1, dataStore2),
+            navigationService = navigationService,
+        )
+
+        serviceWithDifferentContext.clearAllStorage()
+
+        verify(exactly = 1) { appDatabase.clearAllTables() }
+        coVerify(exactly = 1) { dataStore1.clearData() }
+        coVerify(exactly = 1) { dataStore2.clearData() }
+    }
+
+    @Test
+    fun `clearAllStorage with single DataStore clears that store`() = runTest {
+        val singleStoreService = createServiceWith(setOf(dataStore1))
+
+        singleStoreService.clearAllStorage()
+
+        verify(exactly = 1) { appDatabase.clearAllTables() }
+        coVerify(exactly = 1) { dataStore1.clearData() }
+        coVerify(exactly = 0) { dataStore2.clearData() }
+        coVerify(exactly = 0) { dataStore3.clearData() }
+    }
+
+    @Test
+    fun `clearAllStorage logs correct DataStore count`() = runTest {
+        service.clearAllStorage()
+
+        verify { AppLog.i("StorageClearService", match { it.contains("3 instances") }) }
+    }
+
 }

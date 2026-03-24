@@ -78,6 +78,7 @@ class SettingsViewModelTest {
             notificationSettingsManager = notificationSettingsManager,
             scaleSettingsManager = scaleSettingsManager,
             dataSettingsManager = dataSettingsManager,
+            crashReportingService = mockk(relaxed = true),
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -406,5 +407,61 @@ class SettingsViewModelTest {
     fun `getWeightlessDisplayText delegates to profileSettingsManager`() {
         viewModel.getWeightlessDisplayText()
         verify { profileSettingsManager.getWeightlessDisplayText(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // provideInitialState — verified through state defaults
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `provideInitialState returns SettingsState with default values`() {
+        // provideInitialState is called during construction; verify its output
+        val state = viewModel.state.value
+        assertThat(state).isNotNull()
+        assertThat(state.isLoading).isFalse()
+        assertThat(state.errorMessage).isNull()
+        assertThat(state.account).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // currentState and dispatchIntent — exercised via Logout and LogoutAllAccounts
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Logout passes currentState provider to dataSettingsManager`() {
+        // Logout delegates with stateProvider = ::currentState
+        viewModel.handleIntent(SettingsIntent.Logout)
+        verify {
+            dataSettingsManager.onLogOutClick(
+                scope = any(),
+                stateProvider = any(),
+                isLogoutAll = false,
+            )
+        }
+    }
+
+    @Test
+    fun `LogoutAllAccounts passes currentState provider to dataSettingsManager`() {
+        viewModel.handleIntent(SettingsIntent.LogoutAllAccounts)
+        verify {
+            dataSettingsManager.onLogOutClick(
+                scope = any(),
+                stateProvider = any(),
+                isLogoutAll = true,
+            )
+        }
+    }
+
+    @Test
+    fun `handleIntent dispatches intents to reducer correctly`() {
+        // dispatchIntent is used as ::dispatchIntent callback for managers
+        // Verify that state can be updated through the dispatch mechanism
+        viewModel.handleIntent(SettingsIntent.UpdateThemeMode(THEME_DARK))
+        assertThat(viewModel.state.value.currentThemeMode).isEqualTo(THEME_DARK)
+    }
+
+    @Test
+    fun `init delegates to profileSettingsManager showAccountSwitchInfoModal`() {
+        verify { profileSettingsManager.showAccountSwitchInfoModal(any()) }
     }
 }

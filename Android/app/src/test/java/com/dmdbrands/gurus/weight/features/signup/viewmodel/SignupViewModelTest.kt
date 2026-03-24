@@ -408,6 +408,75 @@ class SignupViewModelTest {
     // Helper
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // onNext — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onNext on non-last step does not call submit`() {
+        // Start at NAME (not last step), onNext should not trigger submit
+        viewModel.onNext()
+        // onNext alone doesn't advance steps - that's done by reducer via handleIntent
+        // Verify it doesn't show loader (which would mean onSubmit was called)
+        verify(exactly = 0) { dialogQueueService.showLoader(message = any()) }
+    }
+
+    @Test
+    fun `onNext on last step triggers submit`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+
+        navigateToLastStepWithValidForm()
+        assertThat(viewModel.state.value.isLastStep).isTrue()
+
+        viewModel.onNext() // should trigger onSubmit since isLastStep
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showLoader(message = any()) }
+        coVerify { accountService.signup(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onSubmit — additional error path coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit with invalid form sets error without calling signup`() = runTest {
+        // Navigate to last step
+        repeat(SignupStep.entries.size - 1) {
+            viewModel.handleIntent(SignupIntent.Next)
+        }
+        assertThat(viewModel.state.value.isLastStep).isTrue()
+
+        // Make form controls dirty with invalid values so validation actually fails
+        // (untouched/undirty controls skip validation by design)
+        viewModel.state.value.form.controls.email.onValueChange("not-an-email")
+        viewModel.state.value.form.controls.password.onValueChange("ab") // too short (min 6)
+
+        viewModel.handleIntent(SignupIntent.Next) // triggers submit with invalid form
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { accountService.signup(any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `Submit success sets Success intent state`() = runTest {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+
+        navigateToLastStepWithValidForm()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.error).isNull()
+        assertThat(viewModel.state.value.isLoading).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // Helper
+    // -------------------------------------------------------------------------
+
     /**
      * Navigates through all steps filling in valid form data,
      * ending on PASSWORD (last step) so the next Next triggers submit.

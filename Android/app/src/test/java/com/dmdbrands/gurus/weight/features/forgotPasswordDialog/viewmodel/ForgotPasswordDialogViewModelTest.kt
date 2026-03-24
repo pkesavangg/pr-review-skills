@@ -169,4 +169,69 @@ class ForgotPasswordDialogViewModelTest {
     fun `isSubmitEnabled is false with empty email`() {
         assertThat(viewModel.isSubmitEnabled).isFalse()
     }
+
+    // -------------------------------------------------------------------------
+    // onSubmit — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit with invalid email does not call resetPassword`() = runTest {
+        // Type an invalid email to make the control dirty so validators actually run
+        // (untouched/undirty controls skip validation by design)
+        viewModel.state.value.form.controls.email.onValueChange("not-an-email")
+
+        viewModel.handleIntent(ForgotPasswordDialogIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { accountService.resetPassword(any()) }
+    }
+
+    @Test
+    fun `Submit calls resetPassword with correct email`() = runTest {
+        viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
+        coEvery { accountService.resetPassword(TEST_EMAIL) } returns Unit
+
+        viewModel.handleIntent(ForgotPasswordDialogIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { accountService.resetPassword(TEST_EMAIL) }
+    }
+
+    @Test
+    fun `Submit resets form after completion`() = runTest {
+        viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
+        coEvery { accountService.resetPassword(any()) } returns Unit
+
+        viewModel.handleIntent(ForgotPasswordDialogIntent.Submit)
+        advanceUntilIdle()
+
+        // resetForm is called in the finally block
+        assertThat(viewModel.state.value.form.controls.email.value).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // resetForm — via Close intent
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Close resets form controls to initial state`() {
+        viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
+        assertThat(viewModel.state.value.form.controls.email.value).isEqualTo(TEST_EMAIL)
+
+        viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
+
+        assertThat(viewModel.state.value.form.controls.email.value).isEmpty()
+    }
+
+    @Test
+    fun `resetForm called after submit error also clears email`() = runTest {
+        viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
+        coEvery { accountService.resetPassword(any()) } throws RuntimeException("fail")
+
+        viewModel.handleIntent(ForgotPasswordDialogIntent.Submit)
+        advanceUntilIdle()
+
+        // resetForm is called in finally block
+        assertThat(viewModel.state.value.form.controls.email.value).isEmpty()
+    }
 }

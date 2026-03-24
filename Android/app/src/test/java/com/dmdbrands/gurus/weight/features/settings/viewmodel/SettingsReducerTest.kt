@@ -17,6 +17,19 @@ class SettingsReducerTest {
 
     private lateinit var reducer: SettingsReducer
 
+    private val fakeAccount = Account(
+        id = "test-id",
+        firstName = "Test",
+        lastName = "User",
+        dob = "1990-01-01",
+        email = "test@test.com",
+        gender = "male",
+        zipcode = "12345",
+        weightUnit = WeightUnit.LB,
+        height = 170,
+        activityLevel = "moderate",
+    )
+
     @BeforeEach
     fun setUp() {
         reducer = SettingsReducer()

@@ -23,6 +23,7 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -74,6 +75,7 @@ class EntryServiceTest {
             entryRepository = entryRepository,
             accountRepository = accountRepository,
             goalService = goalService,
+            appScope = TestScope(),
         )
     }
 
