@@ -1150,6 +1150,145 @@ class AccountRepositoryTest {
     }
 
     // -------------------------------------------------------------------------
+    // updateLastActiveTime
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateLastActiveTime calls accountDao updateLastActiveTime with accountId and timestamp`() = runTest {
+        repository.updateLastActiveTime(TEST_ACCOUNT_ID)
+
+        coVerify { accountDao.updateLastActiveTime(eq(TEST_ACCOUNT_ID), any()) }
+    }
+
+    @Test
+    fun `updateLastActiveTime passes a non-empty timestamp string`() = runTest {
+        repository.updateLastActiveTime(TEST_ACCOUNT_ID)
+
+        coVerify { accountDao.updateLastActiveTime(eq(TEST_ACCOUNT_ID), match { it.isNotEmpty() }) }
+    }
+
+    // -------------------------------------------------------------------------
+    // addAccountFromLoginResponse
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `addAccountFromLoginResponse adds account and sets active with tokens`() = runTest {
+        coEvery { accountDao.getAccountEntity(any()) } returns null
+
+        val result = repository.addAccountFromLoginResponse(loginResponse)
+
+        assertThat(result.id).isEqualTo(TEST_ACCOUNT_ID)
+        assertThat(result.email).isEqualTo(TEST_EMAIL)
+        // Verifies setActiveAccountAndTokens was called (activateAccount + deactivateOtherAccounts + setActiveAccount)
+        coVerify { accountDao.activateAccount(TEST_ACCOUNT_ID) }
+        coVerify { accountDao.deactivateOtherAccounts(TEST_ACCOUNT_ID) }
+        coVerify { userDataStore.setActiveAccount(TEST_ACCOUNT_ID) }
+        // Verifies setTokensForAccount was called (tokenManager.setTokens with accessToken)
+        coVerify { tokenManager.setTokens(match { it.accessToken == TEST_ACCESS_TOKEN && it.refreshToken == TEST_REFRESH_TOKEN }) }
+    }
+
+    @Test
+    fun `addAccountFromLoginResponse updates existing account when account already exists`() = runTest {
+        coEvery { accountDao.getAccountEntity(any()) } returns accountEntity
+
+        val result = repository.addAccountFromLoginResponse(loginResponse)
+
+        assertThat(result.id).isEqualTo(TEST_ACCOUNT_ID)
+        coVerify { accountDao.updateAccount(any()) }
+        coVerify(exactly = 0) { accountDao.insertAccount(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // deleteAccountFromServer (private, tested via deleteAccount)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `deleteAccount active account calls userAPI deleteAccount`() = runTest {
+        repository.deleteAccount(TEST_ACCOUNT_ID, isActiveAccount = true)
+
+        coVerify { userAPI.deleteAccount() }
+    }
+
+    @Test
+    fun `deleteAccount active account when server delete fails still clears local data`() = runTest {
+        coEvery { userAPI.deleteAccount() } throws RuntimeException("Server error")
+
+        try {
+            repository.deleteAccount(TEST_ACCOUNT_ID, isActiveAccount = true)
+            error("Expected exception not thrown")
+        } catch (_: RuntimeException) {
+            // expected — deleteAccount rethrows
+        }
+
+        coVerify { userAPI.deleteAccount() }
+    }
+
+    @Test
+    fun `deleteAccount non-active account does not call server delete`() = runTest {
+        repository.deleteAccount(TEST_ACCOUNT_ID, isActiveAccount = false)
+
+        coVerify(exactly = 0) { userAPI.deleteAccount() }
+    }
+
+    // -------------------------------------------------------------------------
+    // setActiveAccountAndTokens (private, tested via switchToAccount and addAccountFromLoginResponse)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `switchToAccount calls setActiveAccountAndTokens which updates lastActiveTime`() = runTest {
+        repository.switchToAccount(TEST_ACCOUNT_ID)
+
+        // setActiveAccountAndTokens calls updateLastActiveTime
+        coVerify { accountDao.updateLastActiveTime(eq(TEST_ACCOUNT_ID), any()) }
+    }
+
+    @Test
+    fun `switchToAccount calls setActiveAccountAndTokens with null tokens so tokenManager is not called`() = runTest {
+        repository.switchToAccount(TEST_ACCOUNT_ID)
+
+        // setTokensForAccount with null tokens should not call tokenManager.setTokens
+        coVerify(exactly = 0) { tokenManager.setTokens(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // setTokensForAccount (private, tested via updatePassword and addAccountFromLoginResponse)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updatePassword sets tokens via setTokensForAccount with response tokens`() = runTest {
+        val response = ChangePasswordResponse(TEST_NEW_ACCESS_TOKEN, TEST_NEW_REFRESH_TOKEN, TEST_EXPIRY)
+        coEvery { userAPI.changePassword(any()) } returns response
+
+        repository.updatePassword(TEST_ACCOUNT_ID, "old", "new")
+
+        coVerify {
+            tokenManager.setTokens(match {
+                it.accountId == TEST_ACCOUNT_ID &&
+                    it.accessToken == TEST_NEW_ACCESS_TOKEN &&
+                    it.refreshToken == TEST_NEW_REFRESH_TOKEN &&
+                    it.expiresAt == TEST_EXPIRY
+            })
+        }
+    }
+
+    @Test
+    fun `addAccountFromLoginResponse passes tokens through setTokensForAccount to tokenManager`() = runTest {
+        coEvery { accountDao.getAccountEntity(any()) } returns null
+
+        repository.addAccountFromLoginResponse(loginResponse)
+
+        coVerify {
+            tokenManager.setTokens(match {
+                it.accountId == TEST_ACCOUNT_ID &&
+                    it.accessToken == TEST_ACCESS_TOKEN &&
+                    it.refreshToken == TEST_REFRESH_TOKEN &&
+                    it.expiresAt == TEST_EXPIRES_AT &&
+                    it.isActive
+            })
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 

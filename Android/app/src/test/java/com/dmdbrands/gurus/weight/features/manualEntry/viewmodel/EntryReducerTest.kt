@@ -285,4 +285,121 @@ class EntryReducerTest {
         assertThat(form.weightDateTime).isNotNull()
         assertThat(form.generalMetrics).isNotNull()
     }
+
+    // -------------------------------------------------------------------------
+    // formatScaleEntryValue — tested indirectly via EntryForm.create(scaleEntry)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `EntryForm create with scaleEntry formats bmi via formatScaleEntryValue`() {
+        val scaleEntryEntity = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity(
+            id = 1L,
+            weight = 800.0,
+            bodyFat = null,
+            muscleMass = null,
+            water = null,
+            bmi = 25.3,
+            source = null,
+        )
+        val scaleEntryWithMetrics = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics(
+            scaleEntry = scaleEntryEntity,
+            scaleEntryMetric = null,
+        )
+        val entryEntity = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity(
+            id = 1L,
+            accountId = "acc-1",
+            entryTimestamp = "2026-01-01T00:00:00Z",
+            operationType = "create",
+            deviceType = "scale",
+            deviceId = "dev-1",
+            unit = WeightUnit.LB,
+        )
+        val scaleEntry = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry(
+            entry = entryEntity,
+            scale = scaleEntryWithMetrics,
+        )
+
+        val form = EntryForm.create(scaleEntry = scaleEntry, weightUnit = WeightUnit.LB)
+
+        // formatScaleEntryValue(25.3) => "25.3" -> 25.3f * 10 = 253.0f -> 253 -> "253"
+        val bmiValue = form.generalMetrics.controls.bodyMassIndex.value
+        assertThat(bmiValue).isEqualTo("253")
+    }
+
+    @Test
+    fun `EntryForm create with scaleEntry formats bodyFat via formatScaleEntryValue`() {
+        val scaleEntryEntity = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity(
+            id = 1L,
+            weight = 800.0,
+            bodyFat = 18.5,
+            muscleMass = 40.2,
+            water = 55.0,
+            bmi = null,
+            source = null,
+        )
+        val scaleEntryWithMetrics = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics(
+            scaleEntry = scaleEntryEntity,
+            scaleEntryMetric = null,
+        )
+        val entryEntity = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity(
+            id = 1L,
+            accountId = "acc-1",
+            entryTimestamp = "2026-01-01T00:00:00Z",
+            operationType = "create",
+            deviceType = "scale",
+            deviceId = "dev-1",
+            unit = WeightUnit.KG,
+        )
+        val scaleEntry = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry(
+            entry = entryEntity,
+            scale = scaleEntryWithMetrics,
+        )
+
+        val form = EntryForm.create(scaleEntry = scaleEntry, weightUnit = WeightUnit.KG)
+
+        // formatScaleEntryValue(18.5) => "18.5" -> 18.5f * 10 = 185.0f -> 185 -> "185"
+        assertThat(form.generalMetrics.controls.bodyFat.value).isEqualTo("185")
+        // formatScaleEntryValue(40.2) => "40.2" -> 40.2f * 10 = 402.0f -> 402 -> "402"
+        assertThat(form.generalMetrics.controls.muscleMass.value).isEqualTo("402")
+        // formatScaleEntryValue(55.0) => "55.0" -> 55.0f * 10 = 550.0f -> 550 -> "550"
+        assertThat(form.generalMetrics.controls.bodyWater.value).isEqualTo("550")
+    }
+
+    @Test
+    fun `EntryForm create with null scaleEntry values returns empty strings`() {
+        val scaleEntryEntity = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity(
+            id = 1L,
+            weight = 800.0,
+            bodyFat = null,
+            muscleMass = null,
+            water = null,
+            bmi = null,
+            source = null,
+        )
+        val scaleEntryWithMetrics = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics(
+            scaleEntry = scaleEntryEntity,
+            scaleEntryMetric = null,
+        )
+        val entryEntity = com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity(
+            id = 1L,
+            accountId = "acc-1",
+            entryTimestamp = "2026-01-01T00:00:00Z",
+            operationType = "create",
+            deviceType = "scale",
+            deviceId = "dev-1",
+            unit = WeightUnit.LB,
+        )
+        val scaleEntry = com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry(
+            entry = entryEntity,
+            scale = scaleEntryWithMetrics,
+        )
+
+        val form = EntryForm.create(scaleEntry = scaleEntry, weightUnit = WeightUnit.LB)
+
+        // formatScaleEntryValue(null) => ""
+        assertThat(form.generalMetrics.controls.bodyMassIndex.value).isEqualTo("")
+        assertThat(form.generalMetrics.controls.bodyFat.value).isEqualTo("")
+        assertThat(form.generalMetrics.controls.muscleMass.value).isEqualTo("")
+        assertThat(form.generalMetrics.controls.bodyWater.value).isEqualTo("")
+    }
 }
