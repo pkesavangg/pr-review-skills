@@ -11,9 +11,9 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import okhttp3.ResponseBody.Companion.toResponseBody
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import retrofit2.HttpException
 import retrofit2.Response
 
@@ -26,7 +26,7 @@ class BaseServiceTest {
 
     private lateinit var service: TestableBaseService
 
-    @Before
+    @BeforeEach
     fun setUp() {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(
             available = true,

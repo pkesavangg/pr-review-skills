@@ -26,14 +26,15 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DashboardServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -79,7 +80,7 @@ class DashboardServiceTest {
         shouldSendWeightInEntryNotifications = false,
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = true, unAvailable = false)
         every { dashboardRepository.getVisibleMetricKeys(any()) } returns flowOf(fakeMetricKeys)

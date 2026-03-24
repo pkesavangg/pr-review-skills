@@ -4,20 +4,20 @@ import com.dmdbrands.gurus.weight.BuildConfig
 import com.google.common.truth.Truth.assertThat
 import java.time.ZoneId
 import java.util.TimeZone
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class AppStatusServiceTest {
 
     private lateinit var originalTimeZone: TimeZone
 
-    @Before
+    @BeforeEach
     fun setUp() {
         originalTimeZone = TimeZone.getDefault()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         TimeZone.setDefault(originalTimeZone)
     }

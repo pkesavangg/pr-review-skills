@@ -16,9 +16,9 @@ import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntryCrudServiceTest {
@@ -34,7 +34,7 @@ class EntryCrudServiceTest {
     private val fakeEntry: Entry = mockk(relaxed = true)
     private val fakeEntry2: Entry = mockk(relaxed = true)
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -49,7 +49,7 @@ class EntryCrudServiceTest {
         service = EntryCrudService(syncService, analyticsService)
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }

@@ -22,17 +22,18 @@ import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 import retrofit2.HttpException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserSettingsServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -46,7 +47,7 @@ class UserSettingsServiceTest {
     // --- Test Fixtures ---
     private val fakeTimestamp = "2026-03-17 10:00:00.000000+00:00"
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(DateTimeUtil)
         every { DateTimeUtil.getCurrentTimestamp() } returns fakeTimestamp
@@ -54,7 +55,7 @@ class UserSettingsServiceTest {
         service = createService()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkObject(DateTimeUtil)
         clearAllMocks()

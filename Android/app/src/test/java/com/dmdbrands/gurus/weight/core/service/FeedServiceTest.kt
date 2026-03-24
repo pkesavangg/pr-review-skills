@@ -36,15 +36,16 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedServiceTest {
 
-  @get:Rule
+  @JvmField
+  @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
   // --- Mocks ---
@@ -94,7 +95,7 @@ class FeedServiceTest {
     promoCode = promoCode,
   )
 
-  @Before
+  @BeforeEach
   fun setUp() {
     mockkObject(AppLog)
     every { AppLog.d(any(), any(), any<String>()) } just Runs
@@ -128,7 +129,7 @@ class FeedServiceTest {
     appScope = TestScope(mainDispatcherRule.dispatcher),
   )
 
-  @After
+  @AfterEach
   fun tearDown() {
     unmockkAll()
   }

@@ -34,16 +34,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class IntegrationServiceTest {
 
-  @get:Rule
+  @JvmField
+  @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
   // --- Mocks ---
@@ -119,14 +120,14 @@ class IntegrationServiceTest {
     every { integrated } returns false
   }
 
-  @Before
+  @BeforeEach
   fun setUp() {
     stubNetworkAvailable()
     every { accountService.checkIntegrations } returns checkIntegrationsFlow
     service = createService()
   }
 
-  @After
+  @AfterEach
   fun tearDown() {
     clearAllMocks()
   }

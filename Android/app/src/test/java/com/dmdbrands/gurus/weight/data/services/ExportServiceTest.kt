@@ -31,18 +31,19 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 import retrofit2.HttpException
 import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExportServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -83,7 +84,7 @@ class ExportServiceTest {
         log = "LogA",
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.i(any(), any()) } returns Unit
@@ -96,7 +97,7 @@ class ExportServiceTest {
         service = createService()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         clearAllMocks()
     }

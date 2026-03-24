@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import app.cash.turbine.test
-import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.helpers.httpException
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
@@ -30,18 +29,18 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 import retrofit2.HttpException
 import retrofit2.Response
 
@@ -65,7 +64,8 @@ class AccountServiceTest {
         private const val TEST_HEIGHT = 1750
     }
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -155,7 +155,7 @@ class AccountServiceTest {
         dob = TEST_DOB,
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         stubNetworkAvailable()
         every { accountRepository.getActiveAccount() } returns flowOf(fakeAccount)
@@ -165,7 +165,7 @@ class AccountServiceTest {
         service = createService()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         clearAllMocks()
     }
@@ -1105,7 +1105,7 @@ class AccountServiceTest {
         every { accountRepository.getActiveAccount() } returns flowOf(fakeAccount)
 
         service.subscribeAccount()
-        advanceUntilIdle()
+        Thread.sleep(200) // subscribeAccount uses Dispatchers.IO internally
 
         assertThat(service.activeAccount.value).isEqualTo(fakeAccount)
     }

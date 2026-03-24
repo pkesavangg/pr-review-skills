@@ -46,19 +46,21 @@ import io.mockk.unmockkConstructor
 import io.mockk.unmockkObject
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HealthConnectServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -110,7 +112,7 @@ class HealthConnectServiceTest {
         unit = WeightUnit.LB,
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkConstructor(HealthConnect::class)
         mockkObject(DeviceInfoUtil)
@@ -124,7 +126,7 @@ class HealthConnectServiceTest {
         service.load(mockActivity)
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         clearAllMocks()
         unmockkConstructor(HealthConnect::class)
@@ -140,7 +142,7 @@ class HealthConnectServiceTest {
         appNavigationService = appNavigationService,
         entryRepository = entryRepository,
         integrationRepository = integrationRepository,
-        ioDispatcher = mainDispatcherRule.dispatcher,
+        appScope = CoroutineScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------

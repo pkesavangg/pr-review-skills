@@ -23,17 +23,19 @@ import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PushNotificationServiceTest {
 
-  @get:Rule
+  @JvmField
+  @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
   // --- Mocks ---
@@ -43,7 +45,7 @@ class PushNotificationServiceTest {
 
   private lateinit var service: PushNotificationService
 
-  @Before
+  @BeforeEach
   fun setUp() {
     mockkObject(AppLog)
     every { AppLog.v(any(), any<String>()) } just Runs
@@ -65,9 +67,10 @@ class PushNotificationServiceTest {
     service.context = context
     service.notificationService = notificationService
     service.appRepository = appRepository
+    service.appScope = CoroutineScope(mainDispatcherRule.dispatcher)
   }
 
-  @After
+  @AfterEach
   fun tearDown() {
     unmockkStatic(PendingIntent::class)
     clearAllMocks()
@@ -112,7 +115,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
     service.onNewToken("new-token")
-    Thread.sleep(200)
+
 
     coVerify(exactly = 1) { appRepository.getFcmToken() }
     coVerify(exactly = 1) { appRepository.setFcmToken("new-token") }
@@ -123,7 +126,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.getFcmToken() } returns "same-token"
 
     service.onNewToken("same-token")
-    Thread.sleep(200)
+
 
     coVerify(exactly = 1) { appRepository.getFcmToken() }
     coVerify(exactly = 0) { appRepository.setFcmToken(any()) }
@@ -134,7 +137,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.getFcmToken() } throws RuntimeException("DataStore error")
 
     service.onNewToken("new-token")
-    Thread.sleep(200)
+
 
     coVerify(exactly = 1) { appRepository.getFcmToken() }
     coVerify(exactly = 0) { appRepository.setFcmToken(any()) }
@@ -146,7 +149,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.setFcmToken(any()) } throws RuntimeException("Write error")
 
     service.onNewToken("new-token")
-    Thread.sleep(200)
+
 
     coVerify(exactly = 1) { appRepository.setFcmToken("new-token") }
   }
@@ -157,7 +160,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
     service.onNewToken("brand-new-token")
-    Thread.sleep(200)
+
 
     coVerify(exactly = 1) { appRepository.setFcmToken("brand-new-token") }
   }
@@ -168,9 +171,9 @@ class PushNotificationServiceTest {
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
     service.onNewToken("abc-123")
-    Thread.sleep(200)
 
-    verify { AppLog.v("PushNotificationService", "New FCM token: abc-123") }
+
+    verify { AppLog.v("PushNotificationService", "New FCM token received") }
   }
 
   @Test
@@ -179,9 +182,9 @@ class PushNotificationServiceTest {
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
     service.onNewToken("new")
-    Thread.sleep(200)
 
-    verify { AppLog.v("PushNotificationService", "FCM token updated: new") }
+
+    verify { AppLog.v("PushNotificationService", "FCM token updated") }
   }
 
   @Test
@@ -189,7 +192,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.getFcmToken() } throws RuntimeException("inner fail")
 
     service.onNewToken("token")
-    Thread.sleep(200)
+
 
     verify {
       AppLog.e("PushNotificationService", "Failed to check/update FCM token", any<Throwable>())
@@ -296,7 +299,7 @@ class PushNotificationServiceTest {
     val message = createMessage(msgId = "msg-6")
 
     service.onMessageReceived(message)
-    Thread.sleep(200)
+
 
     coVerify(exactly = 1) {
       AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
@@ -405,7 +408,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
     service.onNewToken("fresh-token")
-    Thread.sleep(200)
+
 
     coVerify(exactly = 1) { appRepository.setFcmToken("fresh-token") }
   }
@@ -416,7 +419,7 @@ class PushNotificationServiceTest {
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
     service.onNewToken("")
-    Thread.sleep(200)
+
 
     // "" != "existing", so setFcmToken is called
     coVerify(exactly = 1) { appRepository.setFcmToken("") }
