@@ -9,9 +9,6 @@ import SwiftData
 
 /// Concrete implementation of BabyServiceProtocol.
 /// Thin wrapper over SwiftData CRUD on the Baby model.
-///
-/// NOTE: This is a preliminary implementation. The service API will evolve
-/// as baby-related features are implemented in future tasks.
 @MainActor
 final class BabyService: ObservableObject, BabyServiceProtocol {
     static let shared = BabyService()
@@ -25,8 +22,13 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
 
     private init() {}
 
-    func saveBaby(name: String, accountId: String, deviceId: String?) async throws -> Baby {
-        let baby = Baby(accountId: accountId, name: name, deviceId: deviceId)
+    func saveBaby(name: String, accountId: String, deviceId: String?,
+                  birthday: Date?, biologicalSex: String?,
+                  birthLengthInches: Double?, birthWeightLbs: Double?, birthWeightOz: Double?) async throws -> Baby {
+        let baby = Baby(accountId: accountId, name: name, deviceId: deviceId,
+                        birthday: birthday, biologicalSex: biologicalSex,
+                        birthLengthInches: birthLengthInches,
+                        birthWeightLbs: birthWeightLbs, birthWeightOz: birthWeightOz)
         context.insert(baby)
         try context.save()
         try await loadBabies(for: accountId)
