@@ -277,7 +277,48 @@ For detailed test patterns, mock usage, and assertion examples → `meAppTests/d
 
 ## Workflow Orchestration
 
-For end-to-end workflow sequences, skill composition, review pipelines, and task management protocols, follow the orchestration guide at `.claude/orchestra.md`. It defines:
+**For every task — whether invoked via a slash command or natural language — consult `.claude/orchestra.md` Section 4 and follow the matching workflow sequence.** Read and execute each referenced skill file (`.claude/skills/*.md`) step-by-step as part of the task, even when no slash command was used.
+
+### Skill Auto-Matching Rules
+
+When the user describes a task in natural language, match it to the appropriate skill(s) using the `description` field in each `.claude/skills/*.md` file. Examples:
+
+| User says | Skill(s) to read and execute |
+|-----------|------------------------------|
+| "commit the code", "save my changes" | `.claude/skills/commit.md` |
+| "add an API call", "wire a new endpoint" | `.claude/skills/add-endpoint.md` → `.claude/skills/wire-service.md` |
+| "fix this bug" | `.claude/skills/debug-issue.md` → `.claude/skills/fix-bug.md` |
+| "refactor X", "rename Y" | `.claude/skills/refactor.md` |
+| "add logging", "instrument this" | `.claude/skills/analytics.md` |
+| "run tests", "do tests pass" | `.claude/skills/run-tests.md` |
+| "check coverage", "verify tests" | `.claude/skills/verify-tests.md` |
+| "review my changes", "self review" | `.claude/skills/self-review.md` |
+| "raise a PR", "open a PR" | `.claude/skills/raise-pr.md` |
+| "log time", "log work" | `.claude/skills/log-work.md` |
+| "create a branch", "start working on MA-XXXX" | `.claude/skills/create-branch.md` |
+| "scaffold this feature", "new feature" | `.claude/skills/feature-slice.md` |
+| "generate tests for X", "add unit tests" | `.claude/skills/gen-test-file.md` |
+| "generate a mock", "mock this protocol" | `.claude/skills/gen-mock-single.md` |
+| "add string for X", "add text for Y" | `.claude/skills/add-strings.md` |
+| "wire this screen", "add route for X" | `.claude/skills/wire-navigation.md` |
+| "register this in DI", "inject this" | `.claude/skills/wire-service.md` |
+| "does this build", "build check" | `.claude/skills/build.md` |
+| "graph bug", "chart issue", "fix graph" | `.claude/skills/graph.md` |
+| "security review", "check for secrets" | `.claude/skills/review-security.md` |
+| "fetch ticket", "show me the ticket" | `.claude/skills/fetch-ticket.md` |
+| "create a PRD", "plan this ticket" | `.claude/skills/create-prd.md` |
+| "update architecture" | `.claude/skills/update-architecture.md` |
+| "update mock", "mock is outdated" | `.claude/skills/update-mock.md` |
+| "storage change", "migration" | `.claude/skills/storage-change.md` |
+| "concurrency issue", "async bug" | `.claude/skills/swift-concurrency.md` |
+| "SwiftData issue" | `.claude/skills/swiftdata.md` |
+| "config change", "environment change" | `.claude/skills/config-change.md` |
+
+When a task spans multiple skills, chain them in the order defined by `.claude/orchestra.md` Section 4. After implementation tasks, always follow the verification checklist in Section 6.
+
+### Orchestration Reference
+
+The full orchestration guide at `.claude/orchestra.md` defines:
 
 - **Workflow sequences** for common task types (full ticket SDLC, new feature, bug fix, refactoring, API endpoint, test coverage, etc.)
 - **Review pipeline** — the 5-step self-review sequence to run before every commit
