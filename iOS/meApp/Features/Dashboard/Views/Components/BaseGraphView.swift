@@ -166,6 +166,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     xAxisGridLinesSolid
                     yAxisBaseline
                     chartSeries
+                    bpmReferenceLines
                     crosshairContent
                 }
                 .chartYScale(domain: viewModel.yAxisDomain)
@@ -237,9 +238,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     selectionCallout(for: selectedDate, weight: displayWeight)
                 }
 
-                // Goal chip overlay: show when goal is set (non-nil)
+                // Goal chip overlay: show when goal is set (non-nil) — hidden for BPM
                 // In weightless mode, goal of 0 is valid (maintain anchor weight)
-                if viewModel.goalWeight != nil {
+                if viewModel.goalWeight != nil && dashboardStore.productType != .bpm {
                     goalChipCallout()
                 }
             }
@@ -452,6 +453,18 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
     @ChartContentBuilder
+    private var bpmReferenceLines: some ChartContent {
+        if dashboardStore.productType == .bpm {
+            RuleMark(y: .value("SysRef", Double(BpmConstants.normalSystolic)))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                .foregroundStyle(theme.textSubheading.opacity(0.4))
+            RuleMark(y: .value("DiaRef", Double(BpmConstants.normalDiastolic)))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                .foregroundStyle(theme.textSubheading.opacity(0.4))
+        }
+    }
+
+    @ChartContentBuilder
     private func chartContentForSeries(seriesName: String, seriesPoints: [PlottedGraphSeries]) -> some ChartContent {
         ForEach(seriesPoints) { plottedPoint in
             let point = plottedPoint.original
@@ -471,15 +484,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             // Check if point is outside the active month interval (should be greyed out)
             let isOutsideMonthInterval = isPointOutsideActiveMonth(date: point.date)
 
-            // Line color stays consistent (SwiftUI Charts applies color to entire interpolated line)
-            let lineColor = point.series == DashboardStrings.weight
-                ? theme.actionPrimary
-                : theme.actionSecondary
-
-            // Point color is greyed out if outside the active month
-            let pointColor = point.series == DashboardStrings.weight
-                ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
-                : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
+            let colors = seriesColors(for: point, isOutsideMonthInterval: isOutsideMonthInterval)
 
             // Line mark — uses clamped value so the line stops at the domain boundary
             LineMark(
@@ -487,8 +492,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 y: .value(point.series, clampedValue),
                 series: .value("Series", point.series)
             )
-            .foregroundStyle(lineColor)
-            .interpolationMethod(.monotone)
+            .foregroundStyle(colors.line)
+            .interpolationMethod(dashboardStore.productType == .bpm ? .linear : .monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
             // Visible point mark — only shown when within domain to avoid
@@ -498,7 +503,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
             .symbolSize(isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
-            .foregroundStyle(pointColor)
+            .foregroundStyle(colors.point)
         }
     }
 
@@ -513,6 +518,23 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         }
         // Check if date is before month start or on/after month end
         return date < monthInterval.start || date >= monthInterval.end
+    }
+
+    /// Computes line and point colors for a chart series, factoring in product type and month interval.
+    private func seriesColors(for point: GraphSeries, isOutsideMonthInterval: Bool) -> (line: Color, point: Color) {
+        if dashboardStore.productType == .bpm {
+            if point.series == "pulse" {
+                return (theme.textSubheading, theme.textSubheading)
+            }
+            let ahaColor = dashboardStore.displayManager?.currentBpmClassification.color(theme: theme) ?? theme.actionPrimary
+            return (ahaColor, isOutsideMonthInterval ? ahaColor.opacity(0.4) : ahaColor)
+        }
+        let isWeight = point.series == DashboardStrings.weight
+        let lineColor = isWeight ? theme.actionPrimary : theme.actionSecondary
+        let pointColor = isWeight
+            ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
+            : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
+        return (lineColor, pointColor)
     }
 
     @ChartContentBuilder

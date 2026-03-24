@@ -188,6 +188,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         )
     }
 
+    /// Generates BPM chart data (3 series: systolic, diastolic, pulse).
+    func generateBpmChartData(from operations: [BathScaleWeightSummary]) -> [GraphSeries] {
+        dataPreparer.buildBpmChartSeries(from: operations)
+    }
+
     // swiftlint:disable:next function_parameter_count
     func generateChartDataWithYAxisDomain(
         from allOperations: [BathScaleWeightSummary],
@@ -257,6 +262,44 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             chartHeight: chartHeight,
             lastScale: lastYAxisScale
         )
+        lastYAxisScale = scale
+        return scale
+    }
+
+    /// Calculates Y-axis for BPM data (systolic, diastolic, pulse — all in mmHg/bpm).
+    func getBpmYAxisScale(
+        from operations: [BathScaleWeightSummary],
+        chartHeight: CGFloat
+    ) -> YAxisScale {
+        let allValues = operations.flatMap { op -> [Double] in
+            [op.systolic, op.diastolic, op.pulse].compactMap { $0 }
+        }
+        guard let minVal = allValues.min(), let maxVal = allValues.max() else {
+            let defaultTicks = stride(from: BpmConstants.defaultYMin, through: BpmConstants.defaultYMax, by: 40).map { $0 }
+            return YAxisScale(
+                min: BpmConstants.defaultYMin,
+                max: BpmConstants.defaultYMax,
+                step: 40,
+                ticks: defaultTicks,
+                domain: BpmConstants.defaultYMin...BpmConstants.defaultYMax,
+                average: 120
+            )
+        }
+        let paddedMin = max(0, floor(minVal - BpmConstants.yAxisPadding))
+        let paddedMax = ceil(maxVal + BpmConstants.yAxisPadding)
+        let range = paddedMax - paddedMin
+        let rawStep = range / 4.0
+        let step = max(10, ceil(rawStep / 10) * 10)
+        let niceMin = floor(paddedMin / step) * step
+        let niceMax = ceil(paddedMax / step) * step
+        var ticks: [Double] = []
+        var tick = niceMin
+        while tick <= niceMax {
+            ticks.append(tick)
+            tick += step
+        }
+        let avg = allValues.reduce(0, +) / Double(allValues.count)
+        let scale = YAxisScale(min: niceMin, max: niceMax, step: step, ticks: ticks, domain: niceMin...niceMax, average: avg)
         lastYAxisScale = scale
         return scale
     }

@@ -30,6 +30,8 @@ final class Entry {
     var operationType: String
     /// Device type (eg., 'scale', 'bgm' )
     var deviceType: String
+    /// Entry type discriminator: "wg" (weight) or "bpm" (blood pressure)
+    var entryType: String
     /// Whether entry is synced online
     var isSynced: Bool
     /// FK to Baby.id — non-nil only when deviceType == "babyScale"
@@ -48,6 +50,7 @@ final class Entry {
          opTimestamp: String? = nil,
          serverTimestamp: String? = nil,
          deviceType: String = "scale",
+         entryType: String = EntryType.wg.rawValue,
          isSynced: Bool = false,
          babyId: String? = nil) {
         self.id = id
@@ -57,6 +60,7 @@ final class Entry {
         self.opTimestamp = opTimestamp
         self.serverTimestamp = serverTimestamp
         self.deviceType = deviceType
+        self.entryType = entryType
         self.isSynced = isSynced
         self.babyId = babyId
         self.attempts = 0
@@ -70,7 +74,8 @@ final class Entry {
             self.accountId = accountId
             self.operationType = dto.operationType ?? ""
             self.serverTimestamp = dto.serverTimestamp
-            self.deviceType = DeviceType.scale.rawValue
+            self.deviceType = dto.entryType == EntryType.bpm.rawValue ? DeviceType.bpm.rawValue : DeviceType.scale.rawValue
+            self.entryType = dto.entryType ?? EntryType.wg.rawValue
             self.isSynced = isSynced
             self.babyId = nil
             self.attempts = 0
@@ -87,6 +92,7 @@ final class Entry {
             bodyFat: self.scaleEntry?.bodyFat.map { Double($0) },
             boneMass: self.scaleEntryMetric?.boneMass.map { Double($0) },
             entryTimestamp: self.entryTimestamp,
+            entryType: self.entryType,
             impedance: self.scaleEntryMetric?.impedance.map { Double($0) },
             metabolicAge: self.scaleEntryMetric?.metabolicAge.map { Double($0) },
             muscleMass: self.scaleEntry?.muscleMass.map { Double($0) },
@@ -97,10 +103,13 @@ final class Entry {
             skeletalMusclePercent: self.scaleEntryMetric?.skeletalMusclePercent.map { Double($0) },
             source: self.scaleEntry?.source,
             subcutaneousFatPercent: self.scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) },
+            systolic: self.scaleEntry?.systolic.map { Double($0) },
+            diastolic: self.scaleEntry?.diastolic.map { Double($0) },
+            meanArterial: self.scaleEntry?.meanArterial.map { Double($0) },
             unit: self.scaleEntryMetric?.unit,
             visceralFatLevel: self.scaleEntryMetric?.visceralFatLevel.map { Double($0) },
             water: self.scaleEntry?.water.map { Double($0) },
-            weight: self.scaleEntry?.weight.map { Double($0) },
+            weight: self.scaleEntry?.weight.map { Double($0) }
         )
     }
 

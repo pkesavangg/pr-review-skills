@@ -19,6 +19,7 @@ import SwiftUI
 @MainActor
 protocol DashboardStateProviding: AnyObject {
     var state: DashboardState { get set }
+    var productType: EntryType { get }
     func scheduleUIUpdate()
     func forceImmediateUIUpdate()
 }
@@ -102,6 +103,11 @@ protocol DashboardDisplayManaging {
     func updateMetricsForCurrentView()
     func updateMetricsWithVisibleRegionAverage()
     func resetMetricsToLatestEntry()
+
+    // BPM
+    var currentBpmClassification: AhaPressureClass { get }
+    func handleBpmPointSelection(_ point: BathScaleWeightSummary)
+    func getBpmDisplayValues() -> BpmDisplayData?
 }
 
 // MARK: - Grid Editing Management

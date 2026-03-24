@@ -75,6 +75,26 @@ struct GraphDataPreparer {
         }
     }
 
+    // MARK: - BPM Series
+
+    /// Builds three named chart series (systolic, diastolic, pulse) from BP summary data.
+    /// No interpolation — straight line segments between data points.
+    func buildBpmChartSeries(from operations: [BathScaleWeightSummary]) -> [GraphSeries] {
+        var series: [GraphSeries] = []
+        for op in operations {
+            if let sys = op.systolic {
+                series.append(GraphSeries(date: op.date, value: sys, series: "systolic"))
+            }
+            if let dia = op.diastolic {
+                series.append(GraphSeries(date: op.date, value: dia, series: "diastolic"))
+            }
+            if let pulse = op.pulse {
+                series.append(GraphSeries(date: op.date, value: pulse, series: "pulse"))
+            }
+        }
+        return series
+    }
+
     // MARK: - Normalized Metric Series
 
     /// Normalizes metric values into the visible weight range for co-plotting.

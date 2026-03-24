@@ -34,6 +34,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     @Published var state = DashboardState()
 
+    /// The active product type for the dashboard (weight or BPM).
+    @Published var productType: EntryType = .wg
+
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
@@ -361,6 +364,34 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 self?.lifecycleManager.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
+
+        // React to product type switching from the header dropdown
+        ProductTypeStore.shared.$selectedItem
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] selection in
+                guard let self else { return }
+                let newType: EntryType = selection == .myBloodPressure ? .bpm : .wg
+                self.switchProductType(to: newType)
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Product Type Switching
+
+    func switchProductType(to newType: EntryType) {
+        guard productType != newType else { return }
+        productType = newType
+        dataManager.switchDataSource(to: newType)
+        chartManager?.clearSelection()
+        chartManager?.clearAllCaches()
+        cacheManager.clearAllCaches()
+        Task { [weak self] in
+            guard let self else { return }
+            await self.entryService.loadDashboardData(entryType: newType)
+            await self.lifecycleManager.initializeDashboard()
+        }
     }
 
     // MARK: - Display State Computed Properties
@@ -502,6 +533,19 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     var chartSeriesData: [GraphSeries] {
+        // BPM uses its own 3-series builder; weight uses the existing pipeline
+        if productType == .bpm {
+            return cacheManager.getChartSeriesData(
+                isScrolling: state.graph.isScrolling,
+                isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
+                period: state.graph.selectedPeriod,
+                selectedMetric: nil,
+                operationsCount: continuousOperations.count,
+                yAxisDomain: chartManager.yAxisDomain
+            ) {
+                graphManager.generateBpmChartData(from: continuousOperations)
+            }
+        }
         return cacheManager.getChartSeriesData(
             isScrolling: state.graph.isScrolling,
             isProcessingScrollEnd: chartManager.isProcessingScrollEnd,

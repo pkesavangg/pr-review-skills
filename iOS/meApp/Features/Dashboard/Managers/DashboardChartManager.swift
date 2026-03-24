@@ -87,6 +87,14 @@ final class DashboardChartManager: DashboardChartManaging {
         let continuousOps = getContinuousOperations()
         let operationsForYAxis = stateProvider?.state.graph.selectedPeriod == .total ? continuousOps : visibleOps
 
+        // BPM uses its own Y-axis based on systolic/diastolic/pulse range
+        if stateProvider?.productType == .bpm {
+            return graphManager.getBpmYAxisScale(
+                from: operationsForYAxis,
+                chartHeight: stateProvider?.state.graph.chartHeight ?? 200
+            )
+        }
+
         return graphManager.getYAxisScale(
             from: operationsForYAxis,
             goalWeight: getGoalWeightForDisplay(),
@@ -125,14 +133,25 @@ final class DashboardChartManager: DashboardChartManaging {
         }
 
         let previousYAxisDomain = graphManager.state.cachedYAxisDomain ?? stateProvider.state.graph.cachedYAxisDomain
-        graphManager.calculateAndCacheYAxisDomain(
-            from: operationsForYAxis,
-            goalWeight: getGoalWeightForDisplay(),
-            isWeightlessMode: getIsWeightlessModeEnabled(),
-            anchorWeight: getWeightlessAnchorWeight(),
-            convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: stateProvider.state.graph.chartHeight
-        )
+
+        // BPM: compute and cache Y-axis from BP value range
+        if stateProvider.productType == .bpm {
+            let bpmScale = graphManager.getBpmYAxisScale(
+                from: operationsForYAxis,
+                chartHeight: stateProvider.state.graph.chartHeight
+            )
+            graphManager.state.cachedYAxisDomain = bpmScale.domain
+            graphManager.state.cachedYAxisTicks = bpmScale.ticks
+        } else {
+            graphManager.calculateAndCacheYAxisDomain(
+                from: operationsForYAxis,
+                goalWeight: getGoalWeightForDisplay(),
+                isWeightlessMode: getIsWeightlessModeEnabled(),
+                anchorWeight: getWeightlessAnchorWeight(),
+                convertWeight: goalManager.convertWeightToDisplay,
+                chartHeight: stateProvider.state.graph.chartHeight
+            )
+        }
 
         // Keep store state aligned with the graph manager immediately so cache invalidation
         // sees the freshly computed domain in the same update pass.
@@ -279,6 +298,8 @@ final class DashboardChartManager: DashboardChartManaging {
             at: selectedDate,
             operations: continuousOps,
             updateMetrics: { selectedPoint in
+                // Update BPM AHA classification on point selection
+                self.displayManager?.handleBpmPointSelection(selectedPoint)
                 try await self.metricsManager.updateMetrics(with: selectedPoint)
             },
             resetMetrics: { [weak self] in
