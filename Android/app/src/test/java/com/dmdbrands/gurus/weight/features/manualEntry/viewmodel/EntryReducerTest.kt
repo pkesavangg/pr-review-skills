@@ -202,4 +202,87 @@ class EntryReducerTest {
         assertThat(state.isMetricFieldsExpandedInitially).isFalse()
         assertThat(state.dashboardType).isEqualTo(DashboardType.DASHBOARD_4_METRICS)
     }
+
+    // -------------------------------------------------------------------------
+    // LoadAppSyncData
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `LoadAppSyncData creates new form with scale entry data`() {
+        val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
+            mockk(relaxed = true)
+        val realForm = MultiFormGroup.create(forms = EntryForm.create())
+        val state = EntryState(form = realForm, weightMode = WeightUnit.LB)
+
+        val result = reducer.reduce(
+            state,
+            EntryIntent.LoadAppSyncData(scaleEntry = mockScaleEntry, height = 170),
+        )
+
+        assertThat(result).isNotNull()
+        assertThat(result?.form).isNotNull()
+        // The form should be different from the original
+        assertThat(result?.form).isNotEqualTo(realForm)
+    }
+
+    @Test
+    fun `LoadAppSyncData preserves weightMode`() {
+        val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
+            mockk(relaxed = true)
+        val realForm = MultiFormGroup.create(forms = EntryForm.create())
+        val state = EntryState(form = realForm, weightMode = WeightUnit.KG)
+
+        val result = reducer.reduce(
+            state,
+            EntryIntent.LoadAppSyncData(scaleEntry = mockScaleEntry, height = 170),
+        )
+
+        assertThat(result?.weightMode).isEqualTo(WeightUnit.KG)
+    }
+
+    @Test
+    fun `LoadAppSyncData with null height does not crash`() {
+        val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
+            mockk(relaxed = true)
+        val realForm = MultiFormGroup.create(forms = EntryForm.create())
+        val state = EntryState(form = realForm)
+
+        val result = reducer.reduce(
+            state,
+            EntryIntent.LoadAppSyncData(scaleEntry = mockScaleEntry, height = null),
+        )
+
+        assertThat(result).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // EntryForm.create — companion object
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `EntryForm create returns form with expected structure`() {
+        val form = EntryForm.create()
+
+        assertThat(form.weightDateTime).isNotNull()
+        assertThat(form.generalMetrics).isNotNull()
+        assertThat(form.r4ScaleMetrics).isNull()
+    }
+
+    @Test
+    fun `EntryForm create with includeR4ScaleMetrics includes r4 section`() {
+        val form = EntryForm.create(includeR4ScaleMetrics = true)
+
+        assertThat(form.r4ScaleMetrics).isNotNull()
+    }
+
+    @Test
+    fun `EntryForm create with scaleEntry populates form fields`() {
+        val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
+            mockk(relaxed = true)
+
+        val form = EntryForm.create(scaleEntry = mockScaleEntry, weightUnit = WeightUnit.LB)
+
+        assertThat(form.weightDateTime).isNotNull()
+        assertThat(form.generalMetrics).isNotNull()
+    }
 }

@@ -123,4 +123,48 @@ class StringUtilTest {
 
         assertThat(result).isEmpty()
     }
+
+    // -------------------------------------------------------------------------
+    // Long.formatTimestamp — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `formatTimestamp converts timestamp to correct date for mid-year`() {
+        // July 4, 2024 00:00:00 UTC = 1720051200L
+        val result = 1_720_051_200L.formatTimestamp()
+
+        assertThat(result).isEqualTo("July 04, 2024")
+    }
+
+    @Test
+    fun `formatTimestamp converts timestamp for New Year 2025`() {
+        // January 1, 2025 00:00:00 UTC = 1735689600L
+        val result = 1_735_689_600L.formatTimestamp()
+
+        assertThat(result).isEqualTo("January 01, 2025")
+    }
+
+    @Test
+    fun `formatTimestamp converts timestamp for December 31, 1999`() {
+        // December 31, 1999 00:00:00 UTC = 946598400L
+        val result = 946_598_400L.formatTimestamp()
+
+        assertThat(result).isEqualTo("December 31, 1999")
+    }
+
+    @Test
+    fun `formatTimestamp converts negative timestamp to pre-epoch date`() {
+        // Negative timestamps represent dates before January 1, 1970
+        val result = (-86400L).formatTimestamp()
+
+        assertThat(result).isEqualTo("December 31, 1969")
+    }
+
+    @Test
+    fun `formatTimestamp converts large timestamp for far future`() {
+        // 2_000_000_000L = May 18, 2033
+        val result = 2_000_000_000L.formatTimestamp()
+
+        assertThat(result).isEqualTo("May 18, 2033")
+    }
 }
