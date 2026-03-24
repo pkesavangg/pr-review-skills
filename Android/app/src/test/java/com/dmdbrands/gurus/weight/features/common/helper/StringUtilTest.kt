@@ -4,7 +4,11 @@ import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorrupt
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.displayName
 import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.formatTimestamp
 import com.google.common.truth.Truth.assertThat
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * Unit tests for [StringUtil].
@@ -19,7 +23,7 @@ class StringUtilTest {
     private lateinit var originalLocale: Locale
     private lateinit var originalTimeZone: TimeZone
 
-    @Before
+    @BeforeEach
     fun setUp() {
         originalLocale = Locale.getDefault()
         originalTimeZone = TimeZone.getDefault()
@@ -27,7 +31,7 @@ class StringUtilTest {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         Locale.setDefault(originalLocale)
         TimeZone.setDefault(originalTimeZone)

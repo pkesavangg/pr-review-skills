@@ -153,7 +153,7 @@ class AccountRepositoryTest {
         MockKAnnotations.init(this)
         // AccountRepository reads userDataStore.currentThemeModeFlow at construction time.
         every { userDataStore.currentThemeModeFlow } returns flowOf(ThemeMode.SYSTEM)
-        repository = AccountRepository(accountDao, userDataStore, tokenManager, authAPI, userAPI)
+        repository = AccountRepository(accountDao, userDataStore, tokenManager, mockk(relaxed = true), authAPI, userAPI)
     }
 
     // -------------------------------------------------------------------------

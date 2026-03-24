@@ -85,6 +85,7 @@ class EntryViewModelTest {
             accountService = accountService,
             appSyncService = appSyncService,
             deviceService = deviceService,
+            analyticsService = mockk(relaxed = true),
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

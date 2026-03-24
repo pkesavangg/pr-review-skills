@@ -78,6 +78,7 @@ class SettingsViewModelTest {
             notificationSettingsManager = notificationSettingsManager,
             scaleSettingsManager = scaleSettingsManager,
             dataSettingsManager = dataSettingsManager,
+            crashReportingService = mockk(relaxed = true),
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

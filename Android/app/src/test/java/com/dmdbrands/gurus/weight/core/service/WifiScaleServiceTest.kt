@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import android.content.Context
+import kotlinx.coroutines.test.TestScope
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.wifi.ScanResult
@@ -90,7 +91,7 @@ class WifiScaleServiceTest {
 
         every { activity.getSystemService(Context.WIFI_SERVICE) } returns wifiManager
 
-        service = WifiScaleService(wifiSmartConnectManager, deviceService, context)
+        service = WifiScaleService(wifiSmartConnectManager, deviceService, context, TestScope())
         service.initialise(activity)
     }
 

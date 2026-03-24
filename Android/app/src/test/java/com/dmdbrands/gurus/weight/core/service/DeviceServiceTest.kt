@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
@@ -123,6 +124,7 @@ class DeviceServiceTest {
             dialogQueueService,
             appNavigationService,
             context,
+            appScope = TestScope(mainDispatcherRule.dispatcher),
         )
     }
 

@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import app.cash.turbine.test
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
@@ -130,7 +131,7 @@ class GoalServiceTest {
         goalAlertDataStore = goalAlertDataStore,
         accountRepository = accountRepository,
         deviceService = deviceService,
-        ioDispatcher = mainDispatcherRule.dispatcher,
+        appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------

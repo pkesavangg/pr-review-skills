@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.history.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.google.common.truth.Truth.assertThat
+import kotlinx.collections.immutable.persistentListOf
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -92,7 +93,7 @@ class HistoryReducerTest {
 
     @Test
     fun `SetHistoryItems with empty list clears previous items`() {
-        val state = HistoryState(historyItems = listOf(itemA, itemB))
+        val state = HistoryState(historyItems = persistentListOf(itemA, itemB))
 
         val result = reducer.reduce(state, HistoryIntent.SetHistoryItems(emptyList()))
 
@@ -105,7 +106,7 @@ class HistoryReducerTest {
 
     @Test
     fun `Retry sets isLoading to true without clearing existing items`() {
-        val state = HistoryState(historyItems = listOf(itemA), isLoading = false)
+        val state = HistoryState(historyItems = persistentListOf(itemA), isLoading = false)
 
         val result = reducer.reduce(state, HistoryIntent.Retry)
 
@@ -120,7 +121,7 @@ class HistoryReducerTest {
 
     @Test
     fun `Refresh returns state unchanged`() {
-        val state = HistoryState(isLoading = false, errorMessage = "x", historyItems = listOf(itemA))
+        val state = HistoryState(isLoading = false, errorMessage = "x", historyItems = persistentListOf(itemA))
 
         val result = reducer.reduce(state, HistoryIntent.Refresh)
 

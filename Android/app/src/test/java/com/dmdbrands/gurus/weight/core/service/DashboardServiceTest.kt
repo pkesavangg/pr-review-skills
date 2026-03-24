@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
@@ -99,6 +100,7 @@ class DashboardServiceTest {
             connectivityObserver,
             dialogQueueService,
             appNavigationService,
+            appScope = TestScope(mainDispatcherRule.dispatcher),
         )
     }
 

@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import app.cash.turbine.test
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.helpers.httpException
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
@@ -174,7 +175,8 @@ class AccountServiceTest {
         dialogQueueService,
         appNavigationService,
         storageClearService,
-        ioDispatcher = mainDispatcherRule.dispatcher,
+        analyticsService = mockk(relaxed = true),
+        appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------

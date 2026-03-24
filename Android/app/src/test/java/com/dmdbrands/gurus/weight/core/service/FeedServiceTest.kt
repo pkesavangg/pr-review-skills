@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.repository.FeedAction
@@ -124,6 +125,7 @@ class FeedServiceTest {
     appNavigationService = appNavigationService,
     selectedFeedItemHolder = selectedFeedItemHolder,
     context = context,
+    appScope = TestScope(mainDispatcherRule.dispatcher),
   )
 
   @After

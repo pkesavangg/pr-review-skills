@@ -7,6 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.FcmTokenUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -118,6 +119,7 @@ class DeviceInfoServiceTest {
     healthConnectRepository = healthConnectRepository,
     integrationRepository = integrationRepository,
     entryService = entryService,
+    appScope = TestScope(mainDispatcherRule.dispatcher),
   )
 
   @After
