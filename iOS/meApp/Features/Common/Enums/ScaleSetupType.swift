@@ -13,4 +13,5 @@ enum ScaleSetupType: String {
     case lcbt
     case espTouchWifi
     case btWifiR4
+    case babyScale
 }
