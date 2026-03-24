@@ -39,7 +39,7 @@ struct DashboardScreen: View {
             await store.lifecycleManager.refreshAll()
         }
         .onAppear(perform: store.lifecycleManager.onAppearActions)
-        .edgesIgnoringSafeArea(.bottom)
+        .ignoresSafeArea(.all, edges: productTypeStore.availableItems.count > 1 ? .bottom : .all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
