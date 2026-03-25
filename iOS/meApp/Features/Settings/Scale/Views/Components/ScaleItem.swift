@@ -41,7 +41,7 @@ struct ScaleItemView: View {
     private var shouldShowStatus: Bool {
         // Show status only for Bluetooth and BtWifi scales
         switch scaleType {
-        case .bluetoothA3, .bluetoothA6, .bluetoothR4:
+        case .bluetoothA3, .bluetoothA6, .bluetoothR4, .babyScale:
             return true
         case .appsync, .wifi:
             return false
