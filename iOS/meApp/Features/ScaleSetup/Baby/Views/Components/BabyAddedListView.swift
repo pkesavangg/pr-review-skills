@@ -9,7 +9,9 @@ import SwiftUI
 struct BabyAddedListView: View {
     @EnvironmentObject var store: BabyScaleSetupStore
     @Environment(\.appTheme) private var theme
+    @State private var openItemID: UUID?
     private let lang = BabyScaleSetupStrings.BabyAdded.self
+    private let swipeButtonWidth: CGFloat = 56
 
     var body: some View {
         ScrollView {
@@ -22,45 +24,13 @@ struct BabyAddedListView: View {
                     .multilineTextAlignment(.center)
 
                 // Baby list with swipe-to-delete
-                List {
+                VStack(spacing: 0) {
                     ForEach(store.savedBabies, id: \.id) { baby in
-                        HStack(spacing: .spacingSM) {
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 32, height: 32)
-                                .foregroundColor(theme.statusIconPrimary)
-
-                            Text(baby.name)
-                                .fontOpenSans(.body1)
-                                .foregroundColor(theme.textBody)
-
-                            Spacer()
-
-                            // Edit button
-                            Button {
-                                store.editBaby(baby)
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                                    .foregroundColor(theme.statusIconPrimary)
-                            }
-                        }
-                        .listRowInsets(EdgeInsets(top: CGFloat.spacingXS,
-                                                 leading: CGFloat.spacingSM,
-                                                 bottom: CGFloat.spacingXS,
-                                                 trailing: CGFloat.spacingSM))
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                store.deleteBabyFromList(baby)
-                            } label: {
-                                Image(systemName: "trash.fill")
-                            }
-                        }
+                        babyRow(baby)
                     }
                 }
-                .listStyle(.plain)
-                .frame(height: CGFloat(store.savedBabies.count) * 52)
-                .scrollDisabled(true)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, .spacingSM)
 
                 // Add a Baby button
                 ButtonView(
@@ -76,5 +46,52 @@ struct BabyAddedListView: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.top, .spacingLG)
         }
+    }
+
+    private func babyRow(_ baby: Baby) -> some View {
+        HStack(spacing: .spacingSM) {
+            Image(systemName: "person.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 32, height: 32)
+                .foregroundColor(theme.statusIconPrimary)
+
+            Text(baby.name)
+                .fontOpenSans(.body2)
+                .foregroundColor(theme.textBody)
+
+            Spacer()
+
+            // Edit button
+            Button {
+                store.editBaby(baby)
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 20))
+                    .foregroundColor(theme.statusIconPrimary)
+            }
+        }
+        .padding(.spacingSM)
+        .background(theme.backgroundPrimary)
+        .frame(height: 72)
+        .swipeableActions(
+            buttonWidth: swipeButtonWidth,
+            buttons: [
+                SwipeButton(
+                    tint: theme.textError,
+                    action: { store.deleteBabyFromList(baby) },
+                    label: {
+                        AnyView(
+                            AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
+                                .foregroundColor(theme.backgroundPrimary)
+                        )
+                    }
+                )
+            ],
+            itemID: UUID(uuidString: baby.id) ?? UUID(),
+            openItemID: $openItemID,
+            openThresholdFraction: 0.1,
+            closeWithoutAnimationOnAction: true
+        )
     }
 }
