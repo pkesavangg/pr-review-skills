@@ -41,6 +41,9 @@ protocol BluetoothServiceProtocol {
     /// Publisher for live measurement data while a user is on the scale.
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { get }
 
+    /// Publisher for new BPM reading events received from a blood pressure monitor.
+    var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { get }
+
     // MARK: - Lifecycle / Initialisation
     /// Initializes the Bluetooth service and subscribes to account changes.
     func initialize()
@@ -54,6 +57,22 @@ protocol BluetoothServiceProtocol {
 
     /// Clears all devices from the underlying Bluetooth plugin / cache.
     func clearDevices()
+
+    // MARK: - BPM Operations
+
+    /// Starts a scan specifically targeting BPM (Blood Pressure Monitor) devices.
+    func scanForBpm()
+
+    /// Connects to a BPM device by its broadcast ID.
+    /// - Parameter broadcastId: The broadcast ID of the BPM device to connect.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError>
+
+    /// Requests the latest BPM reading from the connected device.
+    /// The reading is delivered via `newBpmReadingReceivedPublisher`.
+    /// - Parameter broadcastId: The broadcast ID of the BPM device.
+    /// - Returns: Result<Void, BluetoothServiceError>
+    func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError>
 
     // MARK: - Scanning & Pairing
 

@@ -142,11 +142,14 @@ extension BluetoothService {
             return
         }
 
+        let category: DeviceCategory = scaleInfo.setupType == .bpm ? .bpm : .scale
+
         let discoveryEvent = DeviceDiscoveryEvent(
             device: device,
             deviceInfo: scaleInfo,
             protocolType: protocolType,
-            isNew: isNew
+            isNew: isNew,
+            deviceCategory: category
         )
 
         deviceDiscoveredSubject.send(discoveryEvent)
@@ -159,6 +162,20 @@ extension BluetoothService {
     }
 
     private func saveEntries(_ entriesData: GGScanResponseData) async {
+        // Handle BPM blood pressure measurements
+        if let bpmData = entriesData as? GGBPMEntry {
+            handleBpmMeasurement(bpmData)
+            let timestamp = bpmData.date.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
+            await saveBpmEntry(BpmMeasurement(
+                systolic: bpmData.systolic ?? 0,
+                diastolic: bpmData.diastolic ?? 0,
+                pulse: bpmData.pulse ?? 0,
+                timestamp: timestamp,
+                broadcastId: bpmData.broadcastId
+            ))
+            return
+        }
+
         if let weightEntry = entriesData as? GGEntry {
             let entry = convertGGEntry(weightEntry)
             guard let entry = entry else {

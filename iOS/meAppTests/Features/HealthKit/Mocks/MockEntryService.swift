@@ -95,4 +95,18 @@ final class MockEntryService: EntryServiceProtocol {
         exportCSVCalls += 1
         _ = try exportCSVResult.get()
     }
+
+    private(set) var createBpmEntryCalls = 0
+    private(set) var fetchBpmEntriesCalls = 0
+    private(set) var deleteBpmEntryCalls = 0
+    private(set) var exportBpmCSVCalls = 0
+    var fetchBpmEntriesResult: Result<[BpmOperationDTO], Error> = .success([])
+
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws { createBpmEntryCalls += 1 }
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] {
+        fetchBpmEntriesCalls += 1
+        return try fetchBpmEntriesResult.get()
+    }
+    func deleteBpmEntry(entryTimestamp: String) async throws { deleteBpmEntryCalls += 1 }
+    func exportBpmCSV() async throws { exportBpmCSVCalls += 1 }
 }

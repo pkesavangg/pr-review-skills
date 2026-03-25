@@ -10,7 +10,7 @@ import SwiftUI
 struct ScaleManualListView: View {
     @Environment(\.appTheme) private var theme
     @State private var selectedSegment: ScaleSegment = .all
-    var scales: [ScaleItemInfo] = SCALES
+    var scales: [ScaleItemInfo] = SCALES + BPMS
     var selectedScale: (ScaleItemInfo) -> Void
 
     var body: some View {
@@ -38,7 +38,7 @@ struct ScaleManualListView: View {
         case .all:
             return scales
         case .bluetooth:
-            return scales.filter { [.bluetooth, .lcbt, .btWifiR4].contains($0.setupType) }
+            return scales.filter { [.bluetooth, .lcbt, .btWifiR4, .bpm].contains($0.setupType) }
         case .wifi:
             return scales.filter { [.wifi, .espTouchWifi, .btWifiR4].contains($0.setupType) }
         case .appsync:

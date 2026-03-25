@@ -37,4 +37,32 @@ final class EntryRepositoryAPI: EntryRepositoryAPIProtocol {
         )
         return response
     }
+
+    // MARK: - BPM Operations
+
+    func syncBpmOperation(operation: BpmOperationDTO) async throws {
+        _ = try await httpClient.send(
+            .bpmOperations(startTimestamp: nil),
+            method: .post,
+            body: operation,
+            needsAuth: true
+        ) as EmptyResponse
+    }
+
+    func fetchBpmOperations(startTimestamp: String?) async throws -> BpmOperationListResponse {
+        let response: BpmOperationListResponse = try await httpClient.get(
+            .bpmOperations(startTimestamp: startTimestamp),
+            needsAuth: true
+        )
+        return response
+    }
+
+    func exportBpmCsv() async throws -> ExportResponse {
+        let utcOffset = DateTimeTools.getUTCOffset()
+        let response: ExportResponse = try await httpClient.get(
+            .bpmOperationsCSV(utcOffset: utcOffset, download: false),
+            needsAuth: true
+        )
+        return response
+    }
 }
