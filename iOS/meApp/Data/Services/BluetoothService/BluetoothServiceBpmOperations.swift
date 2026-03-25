@@ -93,15 +93,14 @@ extension BluetoothService {
             deviceType: DeviceType.bpm.rawValue,
             isSynced: false
         )
-        entry.bpmEntry = BpmEntry(
+        entry.scaleEntry = BathScaleEntry(
+            source: ScaleSourceType.bluetooth.rawValue,
             systolic: measurement.systolic,
             diastolic: measurement.diastolic,
-            pulse: measurement.pulse,
             meanArterial: measurement.meanArterial
         )
-        entry.bpmEntryMetric = BpmMetric(
-            irregularHb: measurement.irregularHb,
-            source: ScaleSourceType.bluetooth.rawValue
+        entry.scaleEntryMetric = BathScaleMetric(
+            pulse: measurement.pulse
         )
 
         do {

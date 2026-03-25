@@ -22,10 +22,29 @@ extension BpmSetupStoreTests {
         func btPermissionEnablesNextWhenGranted() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
+            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
 
             store.currentStepIndex = BpmSetupStep.btPermission.index
 
             #expect(store.isNextEnabled == true)
+        }
+
+        @Test("btPermission step disables next when A3 location permissions are missing")
+        func btPermissionDisablesNextWhenA3LocationMissing() {
+            let permissions = MockPermissionsService()
+            permissions.setPermissions([
+                .BLUETOOTH: .ENABLED,
+                .BLUETOOTH_SWITCH: .ENABLED,
+                .LOCATION: .DISABLED,
+                .LOCATION_SWITCH: .DISABLED
+            ])
+            let harness = BpmSetupStoreTestFixtures.makeSUT(permissions: permissions)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+
+            store.currentStepIndex = BpmSetupStep.btPermission.index
+
+            #expect(store.isNextEnabled == false)
         }
 
         @Test("selectModel step disables next when no SKU is selected")
@@ -99,6 +118,30 @@ extension BpmSetupStoreTests {
             store.handleExit()
 
             #expect(harness.notification.showAlertCalls == 1)
+        }
+
+        @Test("nickname disables next when empty")
+        func nicknameDisablesNextWhenEmpty() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+
+            store.deviceNickname = "   "
+            store.currentStepIndex = BpmSetupStep.nickname.index
+
+            #expect(store.isNextEnabled == false)
+        }
+
+        @Test("nickname enables next when non-empty")
+        func nicknameEnablesNextWhenNonEmpty() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+
+            store.deviceNickname = "My BPM"
+            store.currentStepIndex = BpmSetupStep.nickname.index
+
+            #expect(store.isNextEnabled == true)
         }
 
         @Test("BPM reading subscription marks isReadingSynced")
