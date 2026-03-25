@@ -212,6 +212,34 @@ jobs:
           working_directory: Android
           command: ./gradlew test
 
+  # ===========================================================
+  # Job 6: OWASP Dependency Vulnerability Scan (Android)
+  # Runs weekly via scheduled-security workflow.
+  # ===========================================================
+  android-owasp-scan:
+    docker:
+      - image: cimg/android:2024.11.1
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+      - run:
+          name: Run OWASP Dependency Check
+          working_directory: Android
+          command: ./gradlew dependencyCheckAnalyze
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: Android/build/reports/dependency-check
+          destination: owasp-reports
+
 workflows:
   version: 2
   build-and-test:
@@ -225,3 +253,13 @@ workflows:
       #       - build
       - dependency-audit
       - build-android
+
+  scheduled-security:
+    triggers:
+      - schedule:
+          cron: "0 9 * * 1"
+          filters:
+            branches:
+              only: main
+    jobs:
+      - android-owasp-scan
