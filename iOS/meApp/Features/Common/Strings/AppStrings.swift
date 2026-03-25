@@ -885,6 +885,12 @@ struct AppAssets {
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
+
+    // MARK: - Baby scale series
+    static let scale0220 = "0220"
+    static let scale0222 = "0222"
+    static let babyAppLoaderGif = "BabyAppLoader"
+    static let checkmarkSuccessGif = "gg_checkmark_success"
     static let streak = "streak"
     static let longestStreak = "longestStreak"
     static let plusCircle = "plusCircle"

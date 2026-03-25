@@ -30,9 +30,11 @@ struct ScaleTypeHelper {
                 return .appsync
             case .btWifiR4:
                 return .bluetoothR4
+            case .babyScale:
+                return .babyScale
             }
         }
-        
+
         // Fallback: determine based on scale source type if available
         if let scaleSourceType = scale.bathScale?.scaleType {
             let sourceType = ScaleSourceType(rawValue: scaleSourceType) ?? .bluetoothScale
@@ -85,9 +87,11 @@ struct ScaleTypeHelper {
                 return "AppSync"
             case .btWifiR4:
                 return "Bluetooth/Wi-Fi"
+            case .babyScale:
+                return "Bluetooth"
             }
         }
-        
+
         // Fallback: determine based on scale source type if available
         if let scaleSourceType = scale.bathScale?.scaleType {
             let sourceType = ScaleSourceType(rawValue: scaleSourceType) ?? .bluetoothScale
