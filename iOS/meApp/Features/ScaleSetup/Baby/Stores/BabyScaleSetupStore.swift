@@ -145,10 +145,12 @@ final class BabyScaleSetupStore: ObservableObject {
 
     /// Shows the help alert.
     func showHelpModal() {
-        notificationService.showAlert(AlertModel(
-            title: "Need Help?",
-            message: lang.Intro.troubleSettingUp,
-            buttons: [AlertButtonModel(title: commonLang.ok, type: .primary, action: { _ in })]
-        ))
+        notificationService.showAlert(
+            AlertModel(
+                title: "Need Help?",
+                message: lang.Intro.troubleSettingUp,
+                buttons: [AlertButtonModel(title: commonLang.ok, type: .primary) { _ in }]
+            )
+        )
     }
 }

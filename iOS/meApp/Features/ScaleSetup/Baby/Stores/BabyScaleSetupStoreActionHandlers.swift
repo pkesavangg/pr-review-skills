@@ -38,6 +38,8 @@ extension BabyScaleSetupStore {
 
     func handleBackButtonClick() {
         switch currentStep {
+        case .babyAdded:
+            navigateToStep(.paired)
         case .babyProfile:
             editingBaby = nil
             if !savedBabies.isEmpty {
@@ -69,12 +71,12 @@ extension BabyScaleSetupStore {
             title: "Exit Setup?",
             message: "Are you sure you want to exit scale setup?",
             buttons: [
-                AlertButtonModel(title: commonLang.cancel, type: .secondary, action: { [weak self] _ in
+                AlertButtonModel(title: commonLang.cancel, type: .secondary) { [weak self] _ in
                     self?.isExiting = false
-                }),
-                AlertButtonModel(title: "Exit", type: .danger, action: { [weak self] _ in
+                },
+                AlertButtonModel(title: "Exit", type: .danger) { [weak self] _ in
                     self?.performExitCleanup()
-                })
+                }
             ]
         )
         notificationService.showAlert(alert)

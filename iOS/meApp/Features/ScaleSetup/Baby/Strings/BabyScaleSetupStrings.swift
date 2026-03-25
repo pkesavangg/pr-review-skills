@@ -21,6 +21,7 @@ struct BabyScaleSetupStrings {
     // MARK: - Intro
     struct Intro {
         static let smartBabyScale = "Smart Baby Scale"
+        // swiftlint:disable:next line_length
         static let troubleSettingUp = "If you have any trouble setting up your monitor, you can connect with our team via the help button in the top right."
         static let cantFindModelNumber = "CAN'T FIND YOUR MODEL NUMBER?"
     }
@@ -42,6 +43,7 @@ struct BabyScaleSetupStrings {
     // MARK: - Connection
     struct Connection {
         static let unableToConnect = "Unable to connect to your device"
+        // swiftlint:disable:next line_length
         static let interferenceMessage = "This may be caused by interference from another Bluetooth device. Tap PAIR AGAIN to try again or contact customer service."
         static let pairAgain = "PAIR AGAIN"
         static let support = "SUPPORT"

@@ -24,9 +24,13 @@ extension BabyScaleSetupStore {
             if let existing = editingBaby {
                 // Update existing baby
                 try await babyService.updateBabyProfile(
-                    existing, name: name, birthday: birthday,
-                    biologicalSex: biologicalSex, birthLengthInches: lengthInches,
-                    birthWeightLbs: weightLbs, birthWeightOz: weightOz
+                    existing,
+                    name: name,
+                    birthday: birthday,
+                    biologicalSex: biologicalSex,
+                    birthLengthInches: lengthInches,
+                    birthWeightLbs: weightLbs,
+                    birthWeightOz: weightOz
                 )
                 if let index = savedBabies.firstIndex(where: { $0.id == existing.id }) {
                     savedBabies[index] = existing
@@ -38,9 +42,14 @@ extension BabyScaleSetupStore {
                 let accountId = accountService.activeAccount?.accountId ?? ""
                 let deviceId = savedScale?.id
                 let baby = try await babyService.saveBaby(
-                    name: name, accountId: accountId, deviceId: deviceId,
-                    birthday: birthday, biologicalSex: biologicalSex,
-                    birthLengthInches: lengthInches, birthWeightLbs: weightLbs, birthWeightOz: weightOz
+                    name: name,
+                    accountId: accountId,
+                    deviceId: deviceId,
+                    birthday: birthday,
+                    biologicalSex: biologicalSex,
+                    birthLengthInches: lengthInches,
+                    birthWeightLbs: weightLbs,
+                    birthWeightOz: weightOz
                 )
                 savedBabies.append(baby)
                 LoggerService.shared.log(level: .info, tag: tag, message: "Baby profile saved: \(baby.name)")

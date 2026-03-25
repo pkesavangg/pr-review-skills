@@ -29,7 +29,6 @@ struct BabyAddedListView: View {
                         babyRow(baby)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, .spacingSM)
 
                 // Add a Baby button

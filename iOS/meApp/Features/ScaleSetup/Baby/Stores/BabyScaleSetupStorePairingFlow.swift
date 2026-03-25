@@ -212,12 +212,12 @@ extension BabyScaleSetupStore {
             title: "Scale Already Paired",
             message: "This scale is already paired to your account. Would you like to set it up again?",
             buttons: [
-                AlertButtonModel(title: commonLang.cancel, type: .secondary, action: { [weak self] _ in
+                AlertButtonModel(title: commonLang.cancel, type: .secondary) { [weak self] _ in
                     self?.navigateToStep(.intro)
-                }),
-                AlertButtonModel(title: "Continue", type: .primary, action: { [weak self] _ in
+                },
+                AlertButtonModel(title: "Continue", type: .primary) { [weak self] _ in
                     self?.moveToNextStep()
-                })
+                }
             ]
         )
         notificationService.showAlert(alert)
