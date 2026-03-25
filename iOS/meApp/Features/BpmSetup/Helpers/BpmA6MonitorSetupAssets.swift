@@ -2,9 +2,6 @@
 ///  BpmA6MonitorSetupAssets.swift
 ///  meApp
 ///
-///  Bundled media for A6-series BPM setup (SKUs 0663, 0665).
-///  Files are stored under `Resources/BpmMonitors/A6/<sku>/` and prefixed with the device type
-///  (e.g. `A6_Start.gif`) to avoid name collisions across device type folders.
 
 import UIKit
 
@@ -18,6 +15,8 @@ enum BpmA6MonitorSetupAssets {
         static let start = "Start"
         static let syncing = "Syncing"
         static let monitorOff = "Monitor_Off"
+        static let setUser = “SetUser”
+        static let monitorStartStop = “Monitor_StartStop”
     }
 
     /// Returns the device-type-prefixed resource name, e.g. `"A6_Start"`.
@@ -25,14 +24,9 @@ enum BpmA6MonitorSetupAssets {
         "\(deviceType)_\(file)"
     }
 
-    /// BPM has no `0665` monitor folder; bundle files live under `0663`.
-    static func resolvedAssetSku(_ sku: String) -> String {
-        sku == "0665" ? "0663" : sku
-    }
-
-    /// Subdirectory for `GifView`, e.g. `Gifs/BpmMonitors/A6/0663` when `sku` is `0665`.
+    /// Subdirectory for `GifView` / PNG lookups, e.g. `Gifs/BpmMonitors/A6/0663` or `…/0665`.
     static func gifBundleSubdirectory(for sku: String) -> String {
-        "Gifs/BpmMonitors/A6/\(resolvedAssetSku(sku))"
+        "Gifs/BpmMonitors/A6/\(sku)"
     }
 
     /// A6 monitors use `User_A` / `User_B` GIFs.
@@ -41,13 +35,13 @@ enum BpmA6MonitorSetupAssets {
         return "\(deviceType)_User_\(letter)"
     }
 
-    static func path(forResource name: String, extension ext: String) -> String? {
+    static func path(forResource name: String, extension ext: String, sku: String) -> String? {
         let prefixed = resourceName(name)
-        return Bundle.main.path(forResource: prefixed, ofType: ext)
+        return Bundle.main.path(forResource: prefixed, ofType: ext, inDirectory: gifBundleSubdirectory(for: sku))
     }
 
-    static func loadUIImage(name: String, extension ext: String) -> UIImage? {
-        guard let path = path(forResource: name, extension: ext) else { return nil }
+    static func loadUIImage(name: String, extension ext: String, sku: String) -> UIImage? {
+        guard let path = path(forResource: name, extension: ext, sku: sku) else { return nil }
         return UIImage(contentsOfFile: path)
     }
 }

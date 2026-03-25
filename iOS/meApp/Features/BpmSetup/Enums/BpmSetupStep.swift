@@ -13,10 +13,10 @@ enum BpmSetupStep: Int, CaseIterable {
     // Phase 1 – Model selection
     case selectModel = 0
 
-    // Phase 3 – BT permission (placed early so it can be skipped if already granted)
+    // Phase 2 – BT permission (placed early so it can be skipped if already granted)
     case btPermission
 
-    // Phase 2 – Pre-pairing instructions
+    // Phase 3 – Pre-pairing instructions
     case selectUser
     case setUser
     case confirmUser
@@ -49,16 +49,8 @@ enum BpmSetupStep: Int, CaseIterable {
 
     /// Steps used when a SKU is pre-selected (intro flow, same as scale setup).
     static var preSelectedSteps: [BpmSetupStep] {
-        allCases.filter { $0 != .selectModel }
-            .sorted { lhs, rhs in
-                let order: [BpmSetupStep] = [
-                    .intro, .btPermission, .selectUser, .setUser,
-                    .confirmUser, .prePairing, .scanning, .nickname,
-                    .paired, .measureSetup, .measureStart, .complete
-                ]
-                let lhsIdx = order.firstIndex(of: lhs) ?? 0
-                let rhsIdx = order.firstIndex(of: rhs) ?? 0
-                return lhsIdx < rhsIdx
-            }
+        [.intro, .btPermission, .selectUser, .setUser,
+         .confirmUser, .prePairing, .scanning, .nickname,
+         .paired, .measureSetup, .measureStart, .complete]
     }
 }

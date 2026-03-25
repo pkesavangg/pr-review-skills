@@ -2,9 +2,6 @@
 ///  BpmA3MonitorSetupAssets.swift
 ///  meApp
 ///
-///  Bundled media for A3-series BPM setup (SKUs 0603, 0634, 0661), sourced from the Balance Health BPM app.
-///  Files are stored under `Resources/BpmMonitors/A3/<sku>/` and prefixed with the device type
-///  (e.g. `A3_Cuff.gif`) to avoid name collisions across device type folders.
 
 import UIKit
 
@@ -34,7 +31,7 @@ enum BpmA3MonitorSetupAssets {
         "0603"
     }
 
-    /// Subdirectory for `GifView` / bundle lookups, e.g. `Gifs/BpmMonitors/A3/0634` when `sku` is `0661`.
+    /// Subdirectory for `GifView` / bundle lookups, e.g. `Gifs/BpmMonitors/A3/0603`.
     static func gifBundleSubdirectory(for sku: String) -> String {
         "Gifs/BpmMonitors/A3/\(resolvedAssetSku(sku))"
     }
