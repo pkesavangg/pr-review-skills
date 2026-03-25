@@ -31,7 +31,30 @@ final class HistoryStore: ObservableObject {
     
     // MARK: - Metric Info State
     @Published private(set) var selectedMetric: BodyMetric?
-    
+
+    // MARK: - Blood Pressure State
+    @Published private(set) var bpMonths: [BPHistoryMonth] = []
+    @Published private(set) var bpEntries: [BPHistoryEntry] = []
+    @Published private(set) var selectedBPMonth: BPHistoryMonth?
+    @Published var expandedBPEntries: Set<String> = []
+
+    // MARK: - Baby State
+    @Published private(set) var babyWeeks: [BabyHistoryWeek] = []
+    @Published private(set) var babyEntries: [BabyHistoryEntry] = []
+    @Published private(set) var selectedBabyDay: BabyHistoryDay?
+    @Published var expandedBabyEntries: Set<String> = []
+
+    /// Whether the current product type selection is blood pressure.
+    var isBloodPressureMode: Bool {
+        productTypeStore.selectedItem == .myBloodPressure
+    }
+
+    /// Whether the current product type selection is a baby profile.
+    var isBabyMode: Bool {
+        if case .baby = productTypeStore.selectedItem { return true }
+        return false
+    }
+
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
     
@@ -161,8 +184,13 @@ final class HistoryStore: ObservableObject {
     
     // MARK: - Handle export
     func handleExport() {
+        let title = isBabyMode
+            ? HistoryListStrings.downloadBabyHistory
+            : isBloodPressureMode
+                ? HistoryListStrings.downloadBPHistory
+                : alertLang.CsvExportAlert.title
         let alert = AlertModel(
-            title: alertLang.CsvExportAlert.title,
+            title: title,
             message: alertLang.CsvExportAlert.message,
             buttons: [
                 AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in
@@ -179,6 +207,33 @@ final class HistoryStore: ObservableObject {
     
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
+
+        // Blood pressure mode uses dummy data — no service call needed
+        if isBloodPressureMode {
+            monthsLoadTask = Task { [weak self] in
+                guard let self else { return }
+                let result = BPDummyDataGenerator.generateMonths()
+                self.bpMonths = result
+                self.isEmptyState = result.isEmpty
+                self.monthsLoadTask = nil
+            }
+            await monthsLoadTask?.value
+            return
+        }
+
+        // Baby mode uses dummy data — no service call needed
+        if isBabyMode {
+            monthsLoadTask = Task { [weak self] in
+                guard let self else { return }
+                let result = BabyDummyDataGenerator.generateWeeks()
+                self.babyWeeks = result
+                self.isEmptyState = result.isEmpty
+                self.monthsLoadTask = nil
+            }
+            await monthsLoadTask?.value
+            return
+        }
+
         monthsLoadTask = Task { [weak self] in
             guard let self else { return }
             if canShowLoader { self.notificationService.showLoader(LoaderModel(text: loaderLang.loading)) }
@@ -186,7 +241,7 @@ final class HistoryStore: ObservableObject {
                 if canShowLoader { self.notificationService.dismissLoader() }
                 self.monthsLoadTask = nil
             }
-            
+
             do {
                 let result = try await self.entryService.getMonthsAll()
                 self.months = result
@@ -259,6 +314,32 @@ final class HistoryStore: ObservableObject {
         }
     }
     
+    // MARK: - Blood Pressure API
+
+    /// User tapped a BP month row.
+    func selectBPMonth(_ month: BPHistoryMonth) {
+        selectedBPMonth = month
+        bpEntries = BPDummyDataGenerator.generateEntries(for: month.id)
+    }
+
+    func resetSelectedBPMonth() {
+        selectedBPMonth = nil
+        bpEntries = []
+    }
+
+    // MARK: - Baby API
+
+    /// User tapped a baby day row.
+    func selectBabyDay(_ day: BabyHistoryDay) {
+        selectedBabyDay = day
+        babyEntries = BabyDummyDataGenerator.generateEntries(for: day.id)
+    }
+
+    func resetSelectedBabyDay() {
+        selectedBabyDay = nil
+        babyEntries = []
+    }
+
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
