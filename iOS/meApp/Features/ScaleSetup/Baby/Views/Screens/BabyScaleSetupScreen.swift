@@ -69,6 +69,7 @@ struct BabyScaleSetupScreen: View {
                     .padding(.spacingSM)
             }
         }
+        .background(theme.backgroundSecondary)
         .environmentObject(setupStore)
         .onAppear {
             isBeingDismissed = false

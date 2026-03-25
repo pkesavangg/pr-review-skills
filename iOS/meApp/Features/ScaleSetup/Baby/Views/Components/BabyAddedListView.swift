@@ -70,9 +70,9 @@ struct BabyAddedListView: View {
                     .foregroundColor(theme.statusIconPrimary)
             }
         }
-        .padding(.spacingSM)
+        .padding(.horizontal, .spacingSM)
+        .padding(.vertical, .spacingXS)
         .background(theme.backgroundPrimary)
-        .frame(height: 72)
         .swipeableActions(
             buttonWidth: swipeButtonWidth,
             buttons: [
