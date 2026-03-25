@@ -18,9 +18,7 @@ final class EntryStore: ObservableObject {
     private let alertLang = AlertStrings.ManualEntryExitAlert.self
     private let loaderLang = LoaderStrings.self
 
-    // Manual Entry type toggle
-    @Published var isManualEntryEnabled: Bool = true
-    @Published var selectedEntryType: ManualEntryType = .weight
+    // Product type injected via DI; drives which entry view is shown
 
     // Form & UI state
     @Published var manualEntryForm = ManualEntryForm()
