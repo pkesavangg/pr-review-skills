@@ -71,7 +71,6 @@ enum EntryTestFixtures {
         pulse: Int? = 72,
         meanArterial: String? = "93.3",
         note: String? = nil,
-        irregularHb: Bool? = false,
         source: String? = "manual",
         unit: String? = "mmHg",
         operationType: OperationType = .create,
@@ -87,16 +86,15 @@ enum EntryTestFixtures {
             deviceType: DeviceType.bpm.rawValue,
             isSynced: isSynced
         )
-        entry.bpmEntry = BpmEntry(
+        entry.scaleEntry = BathScaleEntry(
+            source: source,
             systolic: systolic,
             diastolic: diastolic,
-            pulse: pulse,
             meanArterial: meanArterial,
             note: note
         )
-        entry.bpmEntryMetric = BpmMetric(
-            irregularHb: irregularHb,
-            source: source,
+        entry.scaleEntryMetric = BathScaleMetric(
+            pulse: pulse,
             unit: unit
         )
         return entry
