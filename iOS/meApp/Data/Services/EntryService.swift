@@ -1451,7 +1451,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             pulse: dto.pulse,
             meanArterial: dto.meanArterial,
             note: dto.note,
-            irregularHb: dto.irregularHb,
             source: dto.source,
             unit: dto.unit,
             entryTimestamp: dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date()),

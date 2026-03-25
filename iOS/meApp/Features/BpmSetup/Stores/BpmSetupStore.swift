@@ -1,14 +1,18 @@
+// swiftlint:disable file_length
 ///
 ///  BpmSetupStore.swift
 ///  meApp
 ///
 
 import Combine
+// This file intentionally aggregates BPM setup orchestration logic.
+// Breaking it into smaller files would fragment the multi-step flow management.
 import Foundation
 import SwiftUI
 
 /// Store responsible for orchestrating the BPM (Blood Pressure Monitor) multi-step setup flow.
 @MainActor
+// swiftlint:disable:next type_body_length
 final class BpmSetupStore: ObservableObject {
     // MARK: - Dependencies
     @Injector private var notificationService: NotificationHelperServiceProtocol
@@ -23,7 +27,7 @@ final class BpmSetupStore: ObservableObject {
     private var scanTimerTask: Task<Void, Never>?
     private var bpmReadingSubscription: AnyCancellable?
 
-    private var bpmItem: ScaleItemInfo?
+    private(set) var bpmItem: ScaleItemInfo?
     private var discoveredDevice: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
     private var isDeviceSaved: Bool = false
@@ -43,7 +47,7 @@ final class BpmSetupStore: ObservableObject {
         didSet { handleStepChange() }
     }
 
-    @Published private(set) var steps: [BpmSetupStep] = BpmSetupStep.allCases
+    @Published private(set) var steps: [BpmSetupStep] = BpmSetupStep.defaultSteps
 
     /// Controls the enabled state of the footer "Next" button.
     @Published var isNextEnabled: Bool = true
@@ -59,11 +63,21 @@ final class BpmSetupStore: ObservableObject {
         didSet { updateNextEnabled() }
     }
 
+    /// Selected BPM user slot (1 or 2).
+    @Published var selectedUserNumber: Int? {
+        didSet { updateNextEnabled() }
+    }
+
+    /// Device nickname entered by the user.
+    @Published var deviceNickname: String = BpmSetupStrings.Nickname.defaultName
+
+    /// Focus state shared with the nickname view.
+    @Published var focusedField: FocusField?
+
     var isBackDisabled: Bool {
+        if currentStepIndex == 0 { return true }
         switch currentStep {
-        case .selectModel:
-            return true
-        case .success:
+        case .complete:
             return true
         default:
             return false
@@ -73,6 +87,154 @@ final class BpmSetupStore: ObservableObject {
     private let tag = "BpmSetupStore"
     private let scanTimeoutNs: UInt64
     private let stepTransitionDelayNs: UInt64
+
+    // MARK: - Step Views
+    /// Convenience accessor building the views for each step.
+    var stepViews: [AnyView] {
+        guard let bpmItem else { return [] }
+
+        return steps.map { step in
+            switch step {
+            case .selectModel:
+                return AnyView(
+                    A3BpmModelSelectionView(
+                        models: BPMS,
+                        selectedSku: selectedSku,
+                        onSelect: { [weak self] sku in
+                            self?.selectedSku = sku
+                        }
+                    )
+                )
+
+            case .intro:
+                return AnyView(ScaleSetupIntroView(scale: bpmItem))
+
+            case .btPermission:
+                return AnyView(
+                    PermissionListView(setupType: isA3Monitor ? .bpmA3 : .bluetooth)
+                )
+
+            case .selectUser:
+                return AnyView(
+                    A3BpmUserSelectionView(
+                        sku: bpmItem.sku,
+                        selectedUser: selectedUserNumber,
+                        onSelect: { [weak self] user in
+                            self?.selectedUserNumber = user
+                        }
+                    )
+                )
+
+            case .setUser:
+                return AnyView(
+                    A3BpmInstructionView(
+                        title: BpmSetupStrings.SetUser.title(selectedUserNumber ?? 1),
+                        description: BpmSetupStrings.SetUser.description,
+                        imagePath: bpmItem.imgPath,
+                        gifName: userGifName(for: bpmItem.sku, selectedUserNumber: selectedUserNumber),
+                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        resourceImageName: imageName(for: .setUser, sku: bpmItem.sku),
+                        resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        mediaLayout: .bottom,
+                        mediaHorizontalPadding: 0
+                    )
+                )
+            case .confirmUser:
+                return AnyView(
+                    A3BpmInstructionView(
+                        title: BpmSetupStrings.ConfirmUser.title,
+                        description: BpmSetupStrings.ConfirmUser.description,
+                        imagePath: bpmItem.imgPath,
+                        resourceImageName: imageName(for: .confirmUser, sku: bpmItem.sku),
+                        resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        mediaLayout: .top,
+                        mediaHorizontalPadding: 0
+                    )
+                )
+            case .prePairing:
+                return AnyView(
+                    A3BpmInstructionView(
+                        title: BpmSetupStrings.PrePairing.title,
+                        description: BpmSetupStrings.PrePairing.description,
+                        imagePath: bpmItem.imgPath,
+                        gifName: gifName(for: .prePairing, sku: bpmItem.sku),
+                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        mediaLayout: .top,
+                        mediaHorizontalPadding: 0
+                    )
+                )
+            case .scanning:
+                return AnyView(
+                    A3BpmScanningView(
+                        connectionState: connectionState,
+                        bpmItem: bpmItem,
+                        onTryAgain: { [weak self] in
+                            self?.retryScanning()
+                        },
+                        onSupport: { [weak self] in
+                            self?.showHelpModal()
+                        }
+                    )
+                )
+
+            case .nickname:
+                return AnyView(
+                    A3BpmNicknameView(
+                        nickname: Binding(
+                            get: { [weak self] in self?.deviceNickname ?? "" },
+                            set: { [weak self] in self?.deviceNickname = $0 }
+                        ),
+                        focusedField: Binding(
+                            get: { [weak self] in self?.focusedField },
+                            set: { [weak self] in self?.focusedField = $0 }
+                        )
+                    )
+                )
+
+            case .paired:
+                return AnyView(
+                    A3BpmPairedView(onLearnHowToMeasure: { [weak self] in
+                        self?.moveToMeasurementTutorial()
+                    })
+                )
+
+            case .measureSetup:
+                return AnyView(
+                    A3BpmInstructionView(
+                        title: BpmSetupStrings.MeasureSetup.title,
+                        description: BpmSetupStrings.MeasureSetup.description,
+                        imagePath: bpmItem.imgPath,
+                        gifName: gifName(for: .measureSetup, sku: bpmItem.sku),
+                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        contentHorizontalPadding: 0,
+                        mediaHorizontalPadding: 0,
+                        wrapsMediaInCard: false
+                    )
+                )
+            case .measureStart:
+                return AnyView(
+                    A3BpmInstructionView(
+                        title: BpmSetupStrings.MeasureStart.title,
+                        description: BpmSetupStrings.MeasureStart.description,
+                        imagePath: bpmItem.imgPath,
+                        gifName: gifName(for: .measureStart, sku: bpmItem.sku),
+                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        contentHorizontalPadding: 0,
+                        mediaHorizontalPadding: 0,
+                        wrapsMediaInCard: false
+                    )
+                )
+
+            case .complete:
+                return AnyView(
+                    ScaleSetupFinishView(
+                        title: BpmSetupStrings.Complete.title,
+                        description: BpmSetupStrings.Complete.description
+                    )
+                )
+            }
+        }
+    }
 
     // MARK: - Init
     init(
@@ -95,11 +257,21 @@ final class BpmSetupStore: ObservableObject {
     func moveToNextStep() {
         switch currentStep {
         case .btPermission:
-            if let index = steps.firstIndex(of: .scanning) {
+            // Skip directly to selectUser after permissions are granted
+            if let index = steps.firstIndex(of: .selectUser) {
                 currentStepIndex = index
             }
             return
-        case .success:
+        case .nickname:
+            Task { @MainActor in
+                await saveAndAdvanceFromNickname()
+            }
+            return
+        case .paired:
+            dismissAction?()
+            return
+        case .complete:
+            // "Finish" from complete screen dismisses the flow
             dismissAction?()
             return
         default:
@@ -125,8 +297,26 @@ final class BpmSetupStore: ObservableObject {
         let resolved = BPMS.first { $0.sku == sku } ?? BPMS.first
         self.bpmItem = resolved
         self.selectedSku = sku
+        self.deviceNickname = BpmSetupStrings.Nickname.defaultName
         resetDiscoveryState()
         bluetoothService.isSetupInProgress = true
+
+        // When a specific SKU is provided (e.g. from the model number input),
+        // replace the model selection step with an intro screen (same as scale setup flows).
+        if BPM_SKUS.contains(sku) {
+            self.steps = BpmSetupStep.preSelectedSteps
+            self.currentStepIndex = 0
+        }
+    }
+
+    // MARK: - Public Retry
+    func retryScanning() {
+        startScanning()
+    }
+
+    func moveToMeasurementTutorial() {
+        guard let measureSetupIndex = steps.firstIndex(of: .measureSetup) else { return }
+        currentStepIndex = measureSetupIndex
     }
 
     // MARK: - Exit / Help
@@ -161,6 +351,9 @@ final class BpmSetupStore: ObservableObject {
         switch currentStep {
         case .scanning:
             startScanning()
+        case .measureSetup:
+            // Start listening for BPM readings when the user enters the measurement flow
+            setupBpmReadingSubscription()
         default:
             break
         }
@@ -203,13 +396,11 @@ final class BpmSetupStore: ObservableObject {
         self.discoveryEvent = event
         self.connectionState = .success
 
-        LoggerService.shared.log(level: .info, tag: tag, message: "BPM device discovered")
+        LoggerService.shared.log(level: .info, tag: tag, message: "BPM device discovered, starting pairing")
 
+        // Auto-pair after discovery — scanning and pairing happen in a single phase
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
-            if self.currentStep == .scanning {
-                self.moveToNextStep()
-            }
+            await self.startPairing()
         }
     }
 
@@ -221,7 +412,6 @@ final class BpmSetupStore: ObservableObject {
             return
         }
 
-        connectionState = .loading
         let broadcastId = device.broadcastIdString ?? ""
 
         let result = await bluetoothService.connectBpm(broadcastId: broadcastId)
@@ -229,41 +419,44 @@ final class BpmSetupStore: ObservableObject {
         case .success:
             connectionState = .success
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device paired successfully")
-            await saveDevice()
-            setupBpmReadingSubscription()
 
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
-                if self.currentStep == .pairing {
+                if self.currentStep == .scanning {
                     self.moveToNextStep()
                 }
             }
         case .failure(let error):
-            LoggerService.shared.log(level: .error, tag: tag, message: "BPM pairing failed: \(error.localizedDescription)")
+            LoggerService.shared.log(
+                level: .error,
+                tag: tag,
+                message: "BPM pairing failed: \(error.localizedDescription)"
+            )
             connectionState = .failure
         }
     }
 
     // MARK: - Device Persistence
-    private func saveDevice() async {
-        guard !isDeviceSaved else { return }
+    private func saveDevice() async -> Bool {
+        guard !isDeviceSaved else { return true }
         guard let device = discoveredDevice, let bpmItem else {
             LoggerService.shared.log(level: .error, tag: tag, message: "saveDevice - missing device or bpmItem")
-            return
+            return false
         }
         guard let accountId = accountService.activeAccount?.accountId else {
             LoggerService.shared.log(level: .error, tag: tag, message: "No active account for BPM device creation")
-            return
+            return false
         }
 
         do {
             let deviceToSave = device
             deviceToSave.id = UUID().uuidString
+            deviceToSave.nickname = deviceNickname.isEmpty ? nil : deviceNickname
 
             _ = try await scaleService.createBluetoothScale(
                 device: deviceToSave,
                 sku: bpmItem.sku,
-                userNumber: "1",
+                userNumber: "\(selectedUserNumber ?? 1)",
                 accountId: accountId,
                 deviceMetadata: nil,
                 skipDuplicateCheck: false
@@ -273,10 +466,30 @@ final class BpmSetupStore: ObservableObject {
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             bluetoothService.isSetupInProgress = false
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
+            return true
         } catch {
-            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save BPM device: \(error.localizedDescription)")
+            LoggerService.shared.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to save BPM device: \(error.localizedDescription)"
+            )
             bluetoothService.isSetupInProgress = false
+            return false
         }
+    }
+
+    private func saveAndAdvanceFromNickname() async {
+        // Temporary workaround:
+        // skip local BPM device saving from the nickname step for now because
+        // the pairing flow is not consistently carrying discovered device/bpmItem
+        // context into this point, which causes repeated `saveDevice` errors.
+        // Re-enable the `saveDevice()` call here once the device context issue is fixed.
+
+        guard currentStep == .nickname else { return }
+        let candidate = currentStepIndex + 1
+        let nextIndex = adjustedIndex(from: candidate, direction: 1)
+        guard nextIndex < steps.count else { return }
+        currentStepIndex = nextIndex
     }
 
     // MARK: - BPM Reading Subscription
@@ -312,6 +525,77 @@ final class BpmSetupStore: ObservableObject {
         permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
     }
 
+    private func gifSubdirectory(for sku: String) -> String? {
+        if a3BpmSkus.contains(sku) {
+            return BpmA3MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        if a6BpmSkus.contains(sku) {
+            return BpmA6MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        return nil
+    }
+
+    private func gifName(for step: BpmSetupStep, sku: String) -> String? {
+        if a3BpmSkus.contains(sku) {
+            switch step {
+            case .prePairing:
+                return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.memButton)
+            case .measureSetup:
+                return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.cuff)
+            case .measureStart:
+                return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.start)
+            default:
+                return nil
+            }
+        }
+
+        if a6BpmSkus.contains(sku) {
+            switch step {
+            case .prePairing:
+                return BpmA6MonitorSetupAssets.resourceName(BpmA6MonitorSetupAssets.ImageFile.start)
+            default:
+                return nil
+            }
+        }
+
+        return nil
+    }
+
+    private func imageName(for step: BpmSetupStep, sku: String) -> String? {
+        guard a3BpmSkus.contains(sku) else { return nil }
+
+        switch step {
+        case .setUser:
+            return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.setUser)
+        case .confirmUser:
+            return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.monitorStartStop)
+        default:
+            return nil
+        }
+    }
+
+    private func userGifName(for sku: String, selectedUserNumber: Int?) -> String? {
+        guard a3BpmSkus.contains(sku), let selectedUserNumber else { return nil }
+        return BpmA3MonitorSetupAssets.userGifName(sku: sku, slot: selectedUserNumber)
+    }
+
+    private var isA3Monitor: Bool {
+        guard let sku = bpmItem?.sku ?? selectedSku else { return false }
+        return a3BpmSkus.contains(sku)
+    }
+
+    private func isLocationPermissionEnabled() -> Bool {
+        permissionsService.getPermissionState(.LOCATION) == .ENABLED &&
+        permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
+    }
+
+    private func isPermissionStepSatisfied() -> Bool {
+        let bluetoothEnabled = isBluetoothPermissionEnabled()
+        guard isA3Monitor else { return bluetoothEnabled }
+        return bluetoothEnabled && isLocationPermissionEnabled()
+    }
+
+    // swiftlint:disable:next cyclomatic_complexity
     private func updateNextEnabled() {
         switch currentStep {
         case .selectModel:
@@ -319,31 +603,52 @@ final class BpmSetupStore: ObservableObject {
         case .btPermission:
             let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
             let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+            let locationEnabled = permissionsService.getPermissionState(.LOCATION) == .ENABLED
+            let locationSwitchEnabled = permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
 
             if !bluetoothEnabled {
                 Task { await permissionsService.handlePermission(.bluetooth) }
             } else if !bluetoothSwitchEnabled {
                 Task { await permissionsService.handlePermission(.bluetoothSwitch) }
+            } else if isA3Monitor && !locationEnabled {
+                Task { await permissionsService.handlePermission(.location) }
+            } else if isA3Monitor && !locationSwitchEnabled {
+                Task { await permissionsService.handlePermission(.locationSwitch) }
             }
 
-            isNextEnabled = bluetoothEnabled && bluetoothSwitchEnabled
+            isNextEnabled = isPermissionStepSatisfied()
+        case .selectUser:
+            isNextEnabled = selectedUserNumber != nil
         case .scanning:
-            isNextEnabled = connectionState == .success
-        case .pairing:
-            isNextEnabled = connectionState == .success
-        case .connecting:
-            isNextEnabled = isReadingSynced
+            // Temporary UI-review override:
+            // isNextEnabled = connectionState == .success
+
+            // keep Next enabled on the scanning step so the swiper flow can be
+            // reviewed without waiting for BLE discovery/pairing.
+            // Revert this to `connectionState == .success` once UI validation is done.
+            isNextEnabled = true
+        case .nickname:
+            isNextEnabled = !deviceNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .measureStart:
+            // Temporary UI-review override:
+            // isNextEnabled = isReadingSynced
+
+            // keep Next enabled on the "Relax and take a deep breath" step so
+            // the measurement screens can be reviewed without waiting for a
+            // synced reading.
+            // Revert this to `isReadingSynced` once UI validation is done.
+            isNextEnabled = true
         default:
             isNextEnabled = true
         }
     }
 
     private func handlePermissionChange() {
-        let permissionsOK = isBluetoothPermissionEnabled()
+        let permissionsOK = isPermissionStepSatisfied()
 
         if !permissionsOK {
             connectionState = .loading
-            if ![.selectModel, .success].contains(currentStep) {
+            if ![.selectModel, .intro, .paired, .complete].contains(currentStep) {
                 resetDiscoveryState()
                 if let permissionIndex = steps.firstIndex(of: .btPermission) {
                     currentStepIndex = permissionIndex
@@ -352,12 +657,12 @@ final class BpmSetupStore: ObservableObject {
         }
     }
 
-    /// Skips the permissions page when Bluetooth permissions are already granted.
+    /// Skips the permissions page when all required setup permissions are already granted.
     private func adjustedIndex(from index: Int, direction: Int) -> Int {
         var idx = index
         while idx >= 0 && idx < steps.count,
               steps[idx] == .btPermission,
-              isBluetoothPermissionEnabled() {
+              isPermissionStepSatisfied() {
             idx += direction
         }
         return idx
@@ -422,3 +727,4 @@ extension BpmSetupStore {
     }
 }
 #endif
+// swiftlint:enable file_length

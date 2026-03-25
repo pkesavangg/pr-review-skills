@@ -33,9 +33,9 @@ struct BpmEntryServiceTests {
         #expect(repo.entries.count == 1)
         let savedEntry = repo.entries.first
         #expect(savedEntry?.deviceType == DeviceType.bpm.rawValue)
-        #expect(savedEntry?.bpmEntry?.systolic == 130)
-        #expect(savedEntry?.bpmEntry?.diastolic == 85)
-        #expect(savedEntry?.bpmEntry?.pulse == 68)
+        #expect(savedEntry?.scaleEntry?.systolic == 130)
+        #expect(savedEntry?.scaleEntry?.diastolic == 85)
+        #expect(savedEntry?.scaleEntryMetric?.pulse == 68)
         #expect(savedEntry?.operationType == OperationType.create.rawValue)
         #expect(savedNotifications.count >= 1)
 
