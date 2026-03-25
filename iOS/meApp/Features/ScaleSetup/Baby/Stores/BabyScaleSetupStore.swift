@@ -104,10 +104,8 @@ final class BabyScaleSetupStore: ObservableObject {
                 return AnyView(BabyScaleScanningView())
             case .connectingBluetooth:
                 return AnyView(
-                    BluetoothConnectionView(
-                        state: connectionState,
-                        setupType: .babyScale,
-                        onTryAgain: { [weak self] in
+                    BabyScaleConnectionErrorView(
+                        onPairAgain: { [weak self] in
                             self?.tryAgainButtonHandler()
                         },
                         onSupport: { [weak self] in
