@@ -16,42 +16,45 @@ struct ScaleSetupIntroView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                VStack {
-                    VStack(spacing: .spacingLG) {
-                        VStack(spacing: .spacingXS) {
-                            Image(scale.imgPath)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 180, height: 180)
-                                .cornerRadius(.radiusLG)
-                                .themeDropShadow()
-                                .padding(.bottom, .spacingLG)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: .spacingLG) {
+                    headerSection
 
-                            Text(scaleSetupLang.modelTitle(scale.sku))
-                                .fontOpenSans(.heading4)
-                                .foregroundColor(theme.textHeading)
+                    Text(scaleSetupLang.troubleSettingUp)
+                        .fontOpenSans(.body2)
+                        .multilineTextAlignment(.leading)
+                        .foregroundColor(theme.textBody)
 
-                            Text(scale.productName)
-                                .fontOpenSans(.body2)
-                                .foregroundColor(theme.textBody)
-                        }
-
-                        Text(scaleSetupLang.troubleSettingUp)
-                            .fontOpenSans(.body2)
-                            .multilineTextAlignment(.leading)
-                            .foregroundColor(theme.textBody)
-
-                        if let buttonTitle = self.buttonTitle {
-                            ButtonView(text: buttonTitle, type: .inlineTextPrimary, size: .large, isDisabled: false) {
-                                onClick?()
-                            }
+                    if let buttonTitle {
+                        ButtonView(text: buttonTitle, type: .inlineTextPrimary, size: .large, isDisabled: false) {
+                            onClick?()
                         }
                     }
-                    .frame(minHeight: geometry.size.height)
-                    .frame(maxWidth: .infinity, alignment: .center)
                 }
+                .frame(maxWidth: .infinity, alignment: .top)
+                .frame(minHeight: geometry.size.height, alignment: .top)
+                .padding(.top, .spacingLG)
             }
+        }
+    }
+
+    private var headerSection: some View {
+        VStack(spacing: .spacingXS) {
+            Image(scale.imgPath)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 180, height: 180)
+                .cornerRadius(.radiusLG)
+                .themeDropShadow()
+                .padding(.bottom, .spacingLG)
+
+            Text(scaleSetupLang.modelTitle(scale.sku))
+                .fontOpenSans(.heading4)
+                .foregroundColor(theme.textHeading)
+
+            Text(scale.productName)
+                .fontOpenSans(.body2)
+                .foregroundColor(theme.textBody)
         }
     }
     
