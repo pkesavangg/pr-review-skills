@@ -11,12 +11,16 @@ struct SettingsStrings {
     static let title = "Settings"
 
     // Account Settings
-    static let accountSettings = "Account Settings"
-    static let addEditScales = "Add & Edit Scales"
+    static let accountSettings = "Account"
+    static let addEditScales = "My Devices"
+    static let myKids = "My Kids"
     static let integrations = "Integrations"
     static let exportData = "Export Data"
     static let changePassword = "Change Password"
     static let userProfile = "User Profile"
+
+    // Weight Scale Settings
+    static let weightScaleSettings = "Weight Scale"
 
     // Profile Settings
     static let profileSettings = "Profile Settings"
@@ -28,7 +32,7 @@ struct SettingsStrings {
     static let weightless = "Weightless"
 
     // App Settings
-    static let appSettings = "App Settings"
+    static let appSettings = "App"
     static let notifications = "Notifications"
     static let messages = "Messages"
     static func messagesWithNew(_ count: Int) -> String { count > 0 ? "Messages (\(count) new)" : messages }

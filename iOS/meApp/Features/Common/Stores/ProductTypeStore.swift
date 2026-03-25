@@ -27,11 +27,6 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
 
     // MARK: - Public State
 
-    /// The item currently selected in the header dropdown.
-    @Published private(set) var selectedItem: ProductSelection = .myWeight
-
-    var selectedItemPublisher: Published<ProductSelection>.Publisher { $selectedItem }
-
     /// Ordered list of items for the dropdown, rebuilt whenever devices or baby profiles change.
     /// - Note: Initialized with sample data until real device registration is in place.
     @Published private(set) var availableItems: [ProductSelection] = [
@@ -40,6 +35,13 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         .baby(profile: BabyProfile(id: "sample_1", name: "Emma", deviceId: nil)),
         .baby(profile: BabyProfile(id: "sample_2", name: "Liam", deviceId: nil))
     ]
+
+    /// The item currently selected in the header dropdown.
+    /// Initialized to `.myWeight` as a placeholder; immediately corrected in `init()`
+    /// to match the first item in `availableItems`.
+    @Published private(set) var selectedItem: ProductSelection = .myWeight
+
+    var selectedItemPublisher: Published<ProductSelection>.Publisher { $selectedItem }
 
     private var cancellables = Set<AnyCancellable>()
     private var restoredForAccountId: String?
@@ -50,6 +52,11 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     static let shared = ProductTypeStore()
 
     private init() {
+        // Ensure selectedItem matches the first available item (not the placeholder default)
+        if let first = availableItems.first, selectedItem != first {
+            selectedItem = first
+        }
+
         // Uncomment once real device registration is in place:
         // subscribeToChanges()
 

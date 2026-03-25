@@ -15,135 +15,64 @@ struct EditProfileScreen: View {
     @EnvironmentObject var settingsStore: SettingsStore
     @EnvironmentObject var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
-    
+
     @State private var focusedField: FocusField?
     @State private var showDatePicker = false
-    
+
     private let labels = InputFieldLabels.self
     private let commonLang = CommonStrings.self
     private let screenLang = EditProfileStrings.self
-    
+
     private let maxDate = DateTimeTools.minAllowedBirthdayDate()
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: Header
-            NavbarHeaderView(
-                title: screenLang.title,
-                leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
-                trailingContent: {
-                    ButtonView(
-                        text: commonLang.save,
-                        type: .inlineTextPrimary,
-                        size: .small,
-                        // Disable when no changes or invalid.
-                        isDisabled: !settingsStore.editProfileForm.isDirty
-                            || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid),
-                    ) {
-                        hideKeyboard()
-                        settingsStore.saveProfile(router: router)
-                    } },
-                onLeadingTap: { settingsStore.handleEditProfileExit(router: router) },
-                onTrailingTap: {},
-                canShowBorder: true
-            )
-            // MARK: Form
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 4) {
-                    // First Name
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.firstName,
-                            inputType: .text,
-                            errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.firstName),
-                            focusField: .firstName
-                        ),
-                        value: $settingsStore.editProfileForm.firstName.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = .lastName
-                    }
-                    
-                    // Last Name
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.lastName,
-                            inputType: .text,
-                            errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.lastName),
-                            focusField: .lastName
-                        ),
-                        value: $settingsStore.editProfileForm.lastName.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = .email
-                    }
-                    
-                    // Email
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.email,
-                            inputType: .email,
-                            errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.email),
-                            focusField: .email
-                        ),
-                        value: $settingsStore.editProfileForm.email.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = .zipCode
-                    }
-                    
-                    // Zip Code
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.zipCode,
-                            inputType: .text,
-                            errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.zipcode),
-                            focusField: .zipCode
-                        ),
-                        value: $settingsStore.editProfileForm.zipcode.value,
-                        focusedField: $focusedField
-                    ) {
-                        focusedField = nil
-                    }
-                    
-                    // Birthday date selector
-                    VStack(alignment: .leading, spacing: .spacingSM) {
-                        Text(labels.birthday)
-                            .fontOpenSans(.subHeading1)
-                            .foregroundColor(theme.textSubheading)
-                        
-                        DateLabelView(
-                            date: settingsStore.editProfileForm.birthday.value,
-                            isSelected: showDatePicker
-                        ) {
-                            withAnimation { showDatePicker.toggle() }
-                        }
-                        .padding(.leading, 2)
-                        
-                        DatePickerView(isPresented: $showDatePicker,
-                                       date: $settingsStore.editProfileForm.birthday.value,
-                                       endDate: maxDate)
-                    }
-                }
-                .padding(.vertical, .spacingLG)
-                .padding(.bottom, .spacingXL)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .padding(.horizontal, .spacingSM)
-            .navigationBarHidden(true)
+            headerView()
+            formScrollView()
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .pickerSheet(
+            isPresented: $settingsStore.showGenderPicker,
+            selectedValues: [settingsStore.activeAccount?.gender ?? .male],
+            options: [Sex.allCases],
+            displayValue: { $0.rawValue.capitalized },
+            title: SettingsStrings.biologicalSex,
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
+                if let sex = vals.first {
+                    settingsStore.updateGender(sex)
+                }
+            }
+        )
+        .pickerSheet(
+            isPresented: $settingsStore.showHeightInchesPicker,
+            selectedValues: settingsStore.selectedHeightInches,
+            options: settingsStore.heightInchesOptions,
+            displayValue: { $0 },
+            pickerType: .heightInches,
+            title: SettingsStrings.height,
+            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
+                settingsStore.updateHeight(fromMetric: false, values: newValues)
+            }
+        )
+        .pickerSheet(
+            isPresented: $settingsStore.showHeightCmPicker,
+            selectedValues: settingsStore.selectedHeightCm,
+            options: settingsStore.heightCmOptions,
+            displayValue: { $0 },
+            pickerType: .heightCm,
+            title: SettingsStrings.height,
+            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
+                settingsStore.updateHeight(fromMetric: true, values: newValues)
+            }
+        )
         .onAppear {
             settingsStore.populateEditFormIfNeeded()
 
             registerDeactivation {
-                // If the form has no unsaved changes, allow immediate tab switch.
                 if !settingsStore.editProfileForm.isDirty {
                     router.navigateBack()
                     return true
                 }
-
-                // Otherwise ask for confirmation.
                 let confirmed = await settingsStore.confirmDiscardProfileChanges()
                 if confirmed {
                     Task { @MainActor in
@@ -156,12 +85,173 @@ struct EditProfileScreen: View {
             }
         }
         .onDisappear {
-            // Remove deactivation handler when leaving screen.
             registerDeactivation { true }
         }
         .onChange(of: focusedField) { _, _ in
-            // Close calendar when focus changes to other fields
             showDatePicker = false
+        }
+    }
+
+    // MARK: - Header
+
+    private func headerView() -> some View {
+        NavbarHeaderView(
+            title: screenLang.title,
+            leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
+            trailingContent: {
+                ButtonView(
+                    text: commonLang.save,
+                    type: .inlineTextPrimary,
+                    size: .small,
+                    isDisabled: !settingsStore.editProfileForm.isDirty
+                        || (settingsStore.editProfileForm.isDirty && settingsStore.editProfileForm.isInvalid)
+                ) {
+                    hideKeyboard()
+                    settingsStore.saveProfile(router: router)
+                } },
+            onLeadingTap: { settingsStore.handleEditProfileExit(router: router) },
+            onTrailingTap: {},
+            canShowBorder: true
+        )
+    }
+
+    // MARK: - Form
+
+    private func formScrollView() -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 4) {
+                nameFields()
+                contactFields()
+                birthdayField()
+                deviceSettingsFields()
+            }
+            .padding(.vertical, .spacingLG)
+            .padding(.bottom, .spacingXL)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .padding(.horizontal, .spacingSM)
+        .navigationBarHidden(true)
+    }
+
+    // MARK: - Field Groups
+
+    private func nameFields() -> some View {
+        Group {
+            AppInputField(
+                config: TextInputConfig(
+                    label: labels.firstName,
+                    inputType: .text,
+                    errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.firstName),
+                    focusField: .firstName
+                ),
+                value: $settingsStore.editProfileForm.firstName.value,
+                focusedField: $focusedField
+            ) {
+                focusedField = .lastName
+            }
+
+            AppInputField(
+                config: TextInputConfig(
+                    label: labels.lastName,
+                    inputType: .text,
+                    errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.lastName),
+                    focusField: .lastName
+                ),
+                value: $settingsStore.editProfileForm.lastName.value,
+                focusedField: $focusedField
+            ) {
+                focusedField = .email
+            }
+        }
+    }
+
+    private func contactFields() -> some View {
+        Group {
+            AppInputField(
+                config: TextInputConfig(
+                    label: labels.email,
+                    inputType: .email,
+                    errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.email),
+                    focusField: .email
+                ),
+                value: $settingsStore.editProfileForm.email.value,
+                focusedField: $focusedField
+            ) {
+                focusedField = .zipCode
+            }
+
+            AppInputField(
+                config: TextInputConfig(
+                    label: labels.zipCode,
+                    inputType: .text,
+                    errorMessage: settingsStore.editProfileForm.getError(for: settingsStore.editProfileForm.zipcode),
+                    focusField: .zipCode
+                ),
+                value: $settingsStore.editProfileForm.zipcode.value,
+                focusedField: $focusedField
+            ) {
+                focusedField = nil
+            }
+        }
+    }
+
+    private func birthdayField() -> some View {
+        VStack(alignment: .leading, spacing: .spacingSM) {
+            Text(labels.birthday)
+                .fontOpenSans(.subHeading1)
+                .foregroundColor(theme.textSubheading)
+
+            DateLabelView(
+                date: settingsStore.editProfileForm.birthday.value,
+                isSelected: showDatePicker
+            ) {
+                withAnimation { showDatePicker.toggle() }
+            }
+            .padding(.leading, 2)
+
+            DatePickerView(isPresented: $showDatePicker,
+                           date: $settingsStore.editProfileForm.birthday.value,
+                           endDate: maxDate)
+        }
+    }
+
+    private func deviceSettingsFields() -> some View {
+        let settingsLang = SettingsStrings.self
+        return Group {
+            VStack(alignment: .leading, spacing: .spacingMD) {
+                // Biological Sex
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: settingsLang.biologicalSex,
+                        value: settingsStore.biologicalSexText,
+                        chevronType: .upDown) { settingsStore.presentGenderPicker() })
+                        .padding(.horizontal, .spacingSM)
+                        .padding(.vertical, .spacingXS / 2)
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(8)
+
+                    Text(screenLang.biologicalSexNote)
+                        .fontOpenSans(.body3)
+                        .foregroundColor(theme.textSubheading)
+                }
+
+                // Height
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: settingsLang.height,
+                        value: settingsStore.heightText,
+                        chevronType: .upDown) { settingsStore.presentHeightPicker() })
+                        .padding(.horizontal, .spacingSM)
+                        .padding(.vertical, .spacingXS / 2)
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(8)
+
+                    Text(screenLang.heightNote)
+                        .fontOpenSans(.body3)
+                        .foregroundColor(theme.textSubheading)
+                }
+            }
+            .padding(.top, .spacingMD)
         }
     }
 }

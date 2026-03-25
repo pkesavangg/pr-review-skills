@@ -100,6 +100,9 @@ tags = ["phi", "mrn", "hipaa"]
     '''features/ScaleUsers/screens/ScaleUserListScreen\.kt''',
     '''features/settings/strings/SettingsScreenStrings\.kt''',
 
+    # iOS settings strings — contains "changePassword" UI label, not a credential
+    '''Features/Settings/Strings/SettingsStrings\.swift''',
+
     # CircleCI config references env var names ($GOOGLESERVICE_INFO_BASE64), not actual secrets
     '''\.circleci/config\.yml''',
 

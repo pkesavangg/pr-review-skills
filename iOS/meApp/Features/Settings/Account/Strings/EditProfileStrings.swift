@@ -11,4 +11,6 @@ import Foundation
 struct EditProfileStrings {
     /// Navigation bar title – "User Profile" in designs.
     static let title = "User Profile"
+    static let biologicalSexNote = "Note: Used by your devices for weight and bp readings."
+    static let heightNote = "Note: Used by your devices for weight readings."
 }
