@@ -49,6 +49,7 @@ import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
@@ -142,7 +143,7 @@ class HealthConnectServiceTest {
         appNavigationService = appNavigationService,
         entryRepository = entryRepository,
         integrationRepository = integrationRepository,
-        appScope = CoroutineScope(mainDispatcherRule.dispatcher),
+        appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------
