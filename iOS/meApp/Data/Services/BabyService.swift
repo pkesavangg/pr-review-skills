@@ -41,6 +41,19 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         try await loadBabies(for: baby.accountId)
     }
 
+    func updateBabyProfile(_ baby: Baby, name: String, birthday: Date?,
+                           biologicalSex: String?, birthLengthInches: Double?,
+                           birthWeightLbs: Double?, birthWeightOz: Double?) async throws {
+        baby.name = name
+        baby.birthday = birthday
+        baby.biologicalSex = biologicalSex
+        baby.birthLengthInches = birthLengthInches
+        baby.birthWeightLbs = birthWeightLbs
+        baby.birthWeightOz = birthWeightOz
+        try context.save()
+        try await loadBabies(for: baby.accountId)
+    }
+
     func deleteBaby(_ baby: Baby) async throws {
         let accountId = baby.accountId
         context.delete(baby)

@@ -21,8 +21,8 @@ struct BabyAddedListView: View {
                     .foregroundColor(theme.textHeading)
                     .multilineTextAlignment(.center)
 
-                // Baby list
-                VStack(spacing: 0) {
+                // Baby list with swipe-to-delete
+                List {
                     ForEach(store.savedBabies, id: \.id) { baby in
                         HStack(spacing: .spacingSM) {
                             Image(systemName: "person.circle.fill")
@@ -39,27 +39,28 @@ struct BabyAddedListView: View {
 
                             // Edit button
                             Button {
-                                // TODO: Edit baby profile
+                                store.editBaby(baby)
                             } label: {
                                 Image(systemName: "square.and.pencil")
                                     .foregroundColor(theme.statusIconPrimary)
                             }
-
-                            // Delete button
-                            Button {
+                        }
+                        .listRowInsets(EdgeInsets(top: CGFloat.spacingXS,
+                                                 leading: CGFloat.spacingSM,
+                                                 bottom: CGFloat.spacingXS,
+                                                 trailing: CGFloat.spacingSM))
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
                                 store.deleteBabyFromList(baby)
                             } label: {
                                 Image(systemName: "trash.fill")
-                                    .foregroundColor(theme.textError)
                             }
-                            .padding(.leading, .spacingXS)
                         }
-                        .padding(.horizontal, .spacingSM)
-                        .padding(.vertical, .spacingXS)
-
-                        Divider()
                     }
                 }
+                .listStyle(.plain)
+                .frame(height: CGFloat(store.savedBabies.count) * 52)
+                .scrollDisabled(true)
 
                 // Add a Baby button
                 ButtonView(

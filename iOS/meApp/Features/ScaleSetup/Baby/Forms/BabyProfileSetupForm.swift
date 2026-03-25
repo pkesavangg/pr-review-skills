@@ -76,13 +76,31 @@ class BabyProfileSetupForm: ObservableForm {
     }
 
     /// Weight (lbs) validation: if entered, must match `^\d{1,3}$` and be 1-999
-    func getBirthWeightError() -> String? {
+    func getBirthWeightLbsError() -> String? {
         let val = birthWeightLbs.value.trimmingCharacters(in: .whitespaces)
         guard !val.isEmpty else { return nil }
         guard val.range(of: weightLbPattern, options: .regularExpression) != nil,
               let num = Int(val), num >= 1, num <= 999 else {
-            return "Please enter a valid weight."
+            return BabyScaleSetupStrings.BabyProfile.invalidWeight
         }
+        return nil
+    }
+
+    /// Weight (oz) validation: if entered, must match `^\d{1,2}(\.\d)?$` and be 0-15.9
+    func getBirthWeightOzError() -> String? {
+        let val = birthWeightOz.value.trimmingCharacters(in: .whitespaces)
+        guard !val.isEmpty else { return nil }
+        guard val.range(of: weightOzPattern, options: .regularExpression) != nil,
+              let num = Double(val), num >= 0, num <= 15.9 else {
+            return BabyScaleSetupStrings.BabyProfile.invalidWeight
+        }
+        return nil
+    }
+
+    /// Combined birth weight error (lbs or oz).
+    func getBirthWeightError() -> String? {
+        if let lbsError = getBirthWeightLbsError() { return lbsError }
+        if let ozError = getBirthWeightOzError() { return ozError }
         return nil
     }
 
@@ -92,7 +110,7 @@ class BabyProfileSetupForm: ObservableForm {
         guard !val.isEmpty else { return nil }
         guard val.range(of: lengthPattern, options: .regularExpression) != nil,
               let num = Double(val), num >= 1 else {
-            return "Please enter a valid length."
+            return BabyScaleSetupStrings.BabyProfile.invalidLength
         }
         return nil
     }
@@ -104,8 +122,12 @@ class BabyProfileSetupForm: ObservableForm {
     var isProfileValid: Bool {
         // Name is required
         guard name.isValid else { return false }
-        // If weight is entered and invalid, block save
-        if !birthWeightLbs.value.trimmingCharacters(in: .whitespaces).isEmpty && getBirthWeightError() != nil {
+        // If weight lbs is entered and invalid, block save
+        if !birthWeightLbs.value.trimmingCharacters(in: .whitespaces).isEmpty && getBirthWeightLbsError() != nil {
+            return false
+        }
+        // If weight oz is entered and invalid, block save
+        if !birthWeightOz.value.trimmingCharacters(in: .whitespaces).isEmpty && getBirthWeightOzError() != nil {
             return false
         }
         // If length is entered and invalid, block save

@@ -88,17 +88,6 @@ struct BabyScaleSetupScreen: View {
             guard !isBeingDismissed else { return }
             setupStore.cleanup()
         }
-        // Skip Baby Profile dialog
-        .alert(lang.SkipDialog.title, isPresented: $setupStore.showSkipDialog) {
-            Button(lang.SkipDialog.cancel, role: .cancel) {
-                setupStore.handleSkipCancelled()
-            }
-            Button(lang.SkipDialog.finishSetup) {
-                setupStore.handleSkipConfirmed()
-            }
-        } message: {
-            Text(lang.SkipDialog.message)
-        }
     }
 
     // MARK: - Footer Buttons

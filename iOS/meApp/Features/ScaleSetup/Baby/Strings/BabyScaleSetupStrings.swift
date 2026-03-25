@@ -71,6 +71,8 @@ struct BabyScaleSetupStrings {
         static let birthWeightLabel = "birth weight"
         static let male = "Male"
         static let female = "Female"
+        static let invalidWeight = "Please enter a valid weight."
+        static let invalidLength = "Please enter a valid length."
     }
 
     // MARK: - Baby Added
@@ -78,14 +80,6 @@ struct BabyScaleSetupStrings {
         static let title = "Your Baby Has Been Added!"
         static let subtitle = "This helps personalize your baby's scale readings."
         static let addABaby = "ADD A BABY"
-    }
-
-    // MARK: - Skip Dialog
-    struct SkipDialog {
-        static let title = "Skip Baby Profile?"
-        static let message = "Setup is complete. You can add a baby profile later from Settings."
-        static let cancel = "CANCEL"
-        static let finishSetup = "FINISH SETUP"
     }
 
     // MARK: - Buttons

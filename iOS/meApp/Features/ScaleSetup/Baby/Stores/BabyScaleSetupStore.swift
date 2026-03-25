@@ -87,7 +87,7 @@ final class BabyScaleSetupStore: ObservableObject {
 
     // MARK: - Baby Profile State
     @Published var savedBabies: [Baby] = []
-    @Published var showSkipDialog: Bool = false
+    @Published var editingBaby: Baby?
 
     // MARK: - Computed Properties
 
@@ -132,8 +132,10 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Updates the enabled state of the footer "Next" button based on the current step.
     func updateNextEnabled() {
         switch currentStep {
-        case .intro, .permissions, .wakeup, .connectingBluetooth, .paired, .babyAdded:
+        case .intro, .wakeup, .connectingBluetooth, .paired, .babyAdded:
             isNextEnabled = true
+        case .permissions:
+            isNextEnabled = arePermissionsEnabled()
         case .scaleName:
             isNextEnabled = scaleNicknameForm.isValid
         case .babyProfile:

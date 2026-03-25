@@ -100,21 +100,31 @@ struct BabyProfileFormView: View {
                     .cornerRadius(.radiusSM)
                 }
 
-                // Birth Length — inline: "Birth Length" label | value | "in"
+                // Birth Length
                 VStack(alignment: .leading, spacing: 0) {
-                    MetricInputField(
-                        config: TextInputConfig(
-                            label: lang.birthLengthLabel,
-                            inputType: .metric,
-                            focusField: .inches,
-                            maxLength: 4,
-                            maxValue: 99.9
-                        ),
-                        value: $store.babyProfileForm.birthLengthInches.value,
-                        focusedField: focusBinding
-                    ) {
-                        focusedField = .pounds
+                    Divider()
+                    HStack {
+                        Text(lang.birthLengthLabel.capitalized)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                        Spacer()
+                        TextField("", text: $store.babyProfileForm.birthLengthInches.value)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.body2)
+                            .bold()
+                            .foregroundColor(theme.textHeading)
+                            .frame(width: 60)
+                            .focused($focusedField, equals: .inches)
+                            .onChange(of: store.babyProfileForm.birthLengthInches.value) { _, newValue in
+                                store.babyProfileForm.birthLengthInches.value = formatDecimalInput(newValue, maxDigits: 3)
+                            }
+                        Text("in")
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textSubheading)
                     }
+                    .padding(.vertical, .spacingSM)
+                    Divider()
 
                     if let error = store.babyProfileForm.getBirthLengthError() {
                         Text(error)
@@ -125,35 +135,45 @@ struct BabyProfileFormView: View {
                     }
                 }
 
-                // Birth Weight — inline: "Birth Weight" label | lbs | "lb" | oz | "oz"
+                // Birth Weight
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: .spacingSM) {
-                        MetricInputField(
-                            config: TextInputConfig(
-                                label: ManualEntryStrings.pounds,
-                                inputType: .metric,
-                                focusField: .pounds,
-                                maxLength: 3,
-                                allowWholeNumbers: true
-                            ),
-                            value: $store.babyProfileForm.birthWeightLbs.value,
-                            focusedField: focusBinding
-                        ) {
-                            focusedField = .ounces
-                        }
-
-                        MetricInputField(
-                            config: TextInputConfig(
-                                label: ManualEntryStrings.ounces,
-                                inputType: .metric,
-                                focusField: .ounces,
-                                maxLength: 3,
-                                clearZeroValue: true
-                            ),
-                            value: $store.babyProfileForm.birthWeightOz.value,
-                            focusedField: focusBinding
-                        )
+                    HStack {
+                        Text(lang.birthWeightLabel.capitalized)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                        Spacer()
+                        TextField("", text: $store.babyProfileForm.birthWeightLbs.value)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.body2)
+                            .bold()
+                            .foregroundColor(theme.textHeading)
+                            .frame(width: 50)
+                            .focused($focusedField, equals: .pounds)
+                            .onChange(of: store.babyProfileForm.birthWeightLbs.value) { _, newValue in
+                                let filtered = newValue.filter { $0.isNumber }
+                                store.babyProfileForm.birthWeightLbs.value = String(filtered.prefix(3))
+                            }
+                        Text("lb")
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textSubheading)
+                        TextField("", text: $store.babyProfileForm.birthWeightOz.value)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.body2)
+                            .bold()
+                            .foregroundColor(theme.textHeading)
+                            .frame(width: 50)
+                            .focused($focusedField, equals: .ounces)
+                            .onChange(of: store.babyProfileForm.birthWeightOz.value) { _, newValue in
+                                store.babyProfileForm.birthWeightOz.value = formatDecimalInput(newValue, maxDigits: 3)
+                            }
+                        Text("oz")
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textSubheading)
                     }
+                    .padding(.vertical, .spacingSM)
+                    Divider()
 
                     if let error = store.babyProfileForm.getBirthWeightError() {
                         Text(error)
@@ -168,5 +188,15 @@ struct BabyProfileFormView: View {
             .padding(.top, .spacingLG)
         }
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// Auto-formats numeric input with a decimal before the last digit (e.g. "888" → "88.8").
+    /// Max total digits (excluding decimal) is `maxDigits`.
+    private func formatDecimalInput(_ value: String, maxDigits: Int) -> String {
+        let digits = String(value.filter { $0.isNumber }.prefix(maxDigits))
+        guard digits.count > 1 else { return digits }
+        let intPart = String(digits.dropLast())
+        let decPart = String(digits.suffix(1))
+        return "\(intPart).\(decPart)"
     }
 }

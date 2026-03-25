@@ -17,7 +17,7 @@ struct BabyPairedSuccessView: View {
                 // Title + subtitle
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(lang.title)
-                        .fontOpenSans(.heading3)
+                        .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
 

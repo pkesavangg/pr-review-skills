@@ -25,6 +25,11 @@ protocol BabyServiceProtocol: AnyObject {
     /// Update a baby's name.
     func updateBaby(_ baby: Baby, name: String) async throws
 
+    /// Update a baby's full profile.
+    func updateBabyProfile(_ baby: Baby, name: String, birthday: Date?,
+                           biologicalSex: String?, birthLengthInches: Double?,
+                           birthWeightLbs: Double?, birthWeightOz: Double?) async throws
+
     /// Delete a baby record.
     func deleteBaby(_ baby: Baby) async throws
 

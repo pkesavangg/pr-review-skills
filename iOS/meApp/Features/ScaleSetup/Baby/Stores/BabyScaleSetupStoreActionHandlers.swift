@@ -38,10 +38,15 @@ extension BabyScaleSetupStore {
 
     func handleBackButtonClick() {
         switch currentStep {
-        case .paired:
-            moveToPreviousStep()
         case .babyProfile:
-            moveToPreviousStep()
+            editingBaby = nil
+            if !savedBabies.isEmpty {
+                babyProfileForm.reset()
+                navigateToStep(.babyAdded)
+            } else {
+                babyProfileForm.reset()
+                moveToPreviousStep()
+            }
         default:
             moveToPreviousStep()
         }
