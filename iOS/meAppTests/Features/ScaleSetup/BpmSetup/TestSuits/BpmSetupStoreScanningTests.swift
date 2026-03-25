@@ -92,8 +92,8 @@ extension BpmSetupStoreTests {
             #expect(store.connectionState == .loading)
         }
 
-        @Test("pairing success saves the device")
-        func pairingSuccessSavesDevice() async {
+        @Test("pairing success does not save the device before nickname confirmation")
+        func pairingSuccessDoesNotSaveTheDeviceBeforeNicknameConfirmation() async {
             let bluetooth = MockBluetoothService()
             bluetooth.connectBpmResult = .success(())
             let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
@@ -110,7 +110,7 @@ extension BpmSetupStoreTests {
             await store.testStartPairing()
 
             #expect(store.connectionState == .success)
-            #expect(harness.scaleService.createBluetoothScaleCalls == 1)
+            #expect(harness.scaleService.createBluetoothScaleCalls == 0)
         }
 
         @Test("pairing failure sets connection state to failure")
