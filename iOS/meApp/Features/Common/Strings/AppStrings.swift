@@ -885,6 +885,15 @@ struct AppAssets {
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
+
+    // MARK: - BPM series
+    static let bpm0603 = "0603"
+    static let bpm0634 = "0634"
+    static let bpm0661 = "0661"
+    static let bpm0663 = "0663"
+    static let bpm0665 = "0665"
+    static let a3BpmUser1 = "A3bpmUser1"
+    static let a3BpmUser2 = "A3bpmUser2"
     static let streak = "streak"
     static let longestStreak = "longestStreak"
     static let plusCircle = "plusCircle"

@@ -161,10 +161,12 @@ struct MyScalesScreen: View {
                             // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
                             let enteredValue = scaleStore.addScaleForm.modelNumberValue
                             let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
-                            
-                            // Find the scale matching the mapped SKU.
-                            guard let scaleInfo = SCALES.first(where: { $0.sku == lookupSku }) else { return }
-                            
+
+                            // Find the scale or BPM matching the SKU.
+                            let scaleInfo = SCALES.first(where: { $0.sku == lookupSku })
+                                ?? BPMS.first(where: { $0.sku == enteredValue })
+                            guard let scaleInfo else { return }
+
                             // Create a modified scale info with original SKU for navigation
                             // Pass original SKU to routes (not mapped), setup will save original SKU
                             let scaleWithOriginalSku = ScaleItemInfo(
@@ -174,7 +176,7 @@ struct MyScalesScreen: View {
                                 setupType: scaleInfo.setupType,
                                 bodyComp: scaleInfo.bodyComp
                             )
-                            
+
                             handleScaleSelection(scaleWithOriginalSku, clearUI: true)
                         }
                     .padding(.bottom, .spacingSM)
@@ -223,6 +225,9 @@ struct MyScalesScreen: View {
                                 .interactiveDismissDisabled(true)
                         case .espTouchWifi, .wifi:
                             WifiScaleSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
+                        case .bpm:
+                            BpmSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
                         }
                     }

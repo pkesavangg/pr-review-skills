@@ -37,6 +37,8 @@ enum Endpoint {
     case submitOperation
     case operationsCSV(utcOffset: Int?, download: Bool?)
     case operationsR4CSV(utcOffset: Int?, download: Bool?)
+    case bpmOperations(startTimestamp: String?)
+    case bpmOperationsCSV(utcOffset: Int?, download: Bool?)
     case flags
     case clearFlag(flagId: String)
     case feed
@@ -112,6 +114,15 @@ enum Endpoint {
                 return csvRequest(path: "/operation/csv/", utcOffset: utcOffset, download: download)
         case .operationsR4CSV(let utcOffset, let download):
                 return csvRequest(path: "/operation/r4/csv/", utcOffset: utcOffset, download: download)
+        case .bpmOperations(let startTimestamp):
+            var components = URLComponents(string: "\(API.baseURL)/operation/bpm")
+            if let timestamp = startTimestamp {
+                components?.queryItems = [URLQueryItem(name: "start", value: timestamp)]
+            }
+            guard let url = components?.url else { return nil }
+            return URLRequest(url: url)
+        case .bpmOperationsCSV(let utcOffset, let download):
+            return csvRequest(path: "/operation/bpm/csv/", utcOffset: utcOffset, download: download)
         case .flags:
             return request(path: "/account/flag")
         case .clearFlag(let flagId):

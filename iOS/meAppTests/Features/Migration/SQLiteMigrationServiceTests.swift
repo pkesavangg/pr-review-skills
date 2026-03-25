@@ -429,6 +429,7 @@ private final class MockSQLiteMigrationEntryRepository: EntryRepositoryProtocol 
     func fetchOldestEntry(forUserId userId: String) async throws -> Entry? { nil }
     func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool { false }
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO] { [] }
+    func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String?) async throws -> [BpmOperationDTO] { [] }
     func syncEntries(newEntries: [Entry]) async throws {}
 }
 

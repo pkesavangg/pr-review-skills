@@ -11,6 +11,7 @@ struct InlineButtonText: View {
     let prefix: String
     let linkText: String
     let suffix: String
+    var isUnderlined: Bool = true
     let action: () -> Void
     @Environment(\.appTheme) private var theme
     
@@ -30,7 +31,9 @@ struct InlineButtonText: View {
         // Style only the linkText part
         if let range = attributed.range(of: linkText) {
             attributed[range].foregroundColor = theme.actionPrimary
-            attributed[range].underlineStyle = .single
+            if isUnderlined {
+                attributed[range].underlineStyle = .single
+            }
             attributed[range].font = .system(size: CustomTextStyle.body2.size, weight: .bold)
         }
         return attributed
