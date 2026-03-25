@@ -38,9 +38,21 @@ final class HistoryStore: ObservableObject {
     @Published private(set) var selectedBPMonth: BPHistoryMonth?
     @Published var expandedBPEntries: Set<String> = []
 
+    // MARK: - Baby State
+    @Published private(set) var babyWeeks: [BabyHistoryWeek] = []
+    @Published private(set) var babyEntries: [BabyHistoryEntry] = []
+    @Published private(set) var selectedBabyDay: BabyHistoryDay?
+    @Published var expandedBabyEntries: Set<String> = []
+
     /// Whether the current product type selection is blood pressure.
     var isBloodPressureMode: Bool {
         productTypeStore.selectedItem == .myBloodPressure
+    }
+
+    /// Whether the current product type selection is a baby profile.
+    var isBabyMode: Bool {
+        if case .baby = productTypeStore.selectedItem { return true }
+        return false
     }
 
     // MARK: - UI Flags
@@ -172,9 +184,11 @@ final class HistoryStore: ObservableObject {
     
     // MARK: - Handle export
     func handleExport() {
-        let title = isBloodPressureMode
-            ? HistoryListStrings.downloadBPHistory
-            : alertLang.CsvExportAlert.title
+        let title = isBabyMode
+            ? HistoryListStrings.downloadBabyHistory
+            : isBloodPressureMode
+                ? HistoryListStrings.downloadBPHistory
+                : alertLang.CsvExportAlert.title
         let alert = AlertModel(
             title: title,
             message: alertLang.CsvExportAlert.message,
@@ -200,6 +214,19 @@ final class HistoryStore: ObservableObject {
                 guard let self else { return }
                 let result = BPDummyDataGenerator.generateMonths()
                 self.bpMonths = result
+                self.isEmptyState = result.isEmpty
+                self.monthsLoadTask = nil
+            }
+            await monthsLoadTask?.value
+            return
+        }
+
+        // Baby mode uses dummy data — no service call needed
+        if isBabyMode {
+            monthsLoadTask = Task { [weak self] in
+                guard let self else { return }
+                let result = BabyDummyDataGenerator.generateWeeks()
+                self.babyWeeks = result
                 self.isEmptyState = result.isEmpty
                 self.monthsLoadTask = nil
             }
@@ -298,6 +325,19 @@ final class HistoryStore: ObservableObject {
     func resetSelectedBPMonth() {
         selectedBPMonth = nil
         bpEntries = []
+    }
+
+    // MARK: - Baby API
+
+    /// User tapped a baby day row.
+    func selectBabyDay(_ day: BabyHistoryDay) {
+        selectedBabyDay = day
+        babyEntries = BabyDummyDataGenerator.generateEntries(for: day.id)
+    }
+
+    func resetSelectedBabyDay() {
+        selectedBabyDay = nil
+        babyEntries = []
     }
 
     deinit {

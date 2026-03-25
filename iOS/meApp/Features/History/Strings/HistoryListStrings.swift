@@ -23,4 +23,15 @@ enum HistoryListStrings {
     static let pulse = "pulse"
     static let notes = "Notes"
     static let downloadBPHistory = "Download BP History"
+    static let downloadBabyHistory = "Download Baby History"
+
+    // Baby
+    static let weight = "weight"
+    static let length = "length"
+    static let percentile = "percent"
+    static let week = "week"
+    static let lbs = "lbs"
+    static let oz = "oz"
+    static let inUnit = "in"
+    static let th = "th"
 }
