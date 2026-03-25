@@ -79,7 +79,8 @@ struct BpmSetupScreen: View {
     }
 
     private var footerButtons: some View {
-        let nextButtonText = finishSteps.contains(setupStore.currentStep) ? commonLang.finish : commonLang.next
+        let isFinish = finishSteps.contains(setupStore.currentStep)
+        let nextButtonText = isFinish ? commonLang.finish : commonLang.next
 
         return HStack {
             ButtonView(

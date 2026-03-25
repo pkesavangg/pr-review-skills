@@ -22,7 +22,7 @@ struct ScaleManualListRowView: View {
                 .themeDropShadow()
             
             VStack(alignment: .leading, spacing: 0) {
-                Text(scale.sku)
+                Text(scale.setupType == .bpm ? bpmListModelLabel(primarySku: scale.sku) : scale.sku)
                     .fontOpenSans(.heading5)
                     .foregroundColor(theme.textHeading)
                 Text(scale.productName.lowercased())

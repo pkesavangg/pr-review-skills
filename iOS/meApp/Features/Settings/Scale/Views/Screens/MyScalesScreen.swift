@@ -164,7 +164,7 @@ struct MyScalesScreen: View {
 
                             // Find the scale or BPM matching the SKU.
                             let scaleInfo = SCALES.first(where: { $0.sku == lookupSku })
-                                ?? BPMS.first(where: { $0.sku == enteredValue })
+                                ?? bpmCatalogItem(forEnteredCode: enteredValue)
                             guard let scaleInfo else { return }
 
                             // Create a modified scale info with original SKU for navigation
