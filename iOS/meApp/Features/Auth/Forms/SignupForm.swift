@@ -34,8 +34,8 @@ class SignupForm: ObservableForm {
         return FormControl(defaultDate)
     }()
     var babySex = FormControl("")
-    var babyBirthLength = FormControl("")
-    var babyBirthWeight = FormControl("")
+    var babyBirthLength = FormControl("", validators: [.required, .numericOnly])
+    var babyBirthWeight = FormControl("", validators: [.required, .numericOnly])
     
     /// Publisher that merges all value changes in the form
     var formDidChange: AnyPublisher<Void, Never> {
@@ -175,6 +175,7 @@ class SignupForm: ObservableForm {
             }
         }
         if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
+        if control.errors[.numericOnly] { return FormErrorMessages.numericOnly }
         if control.errors[.futureDate] { return FormErrorMessages.futureDate }
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch

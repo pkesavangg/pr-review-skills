@@ -67,39 +67,52 @@ struct AddBabyStepView: View {
                         )
                     }
 
-                    // Biological Sex dropdown
-                    BabySexPickerField(signupStore: signupStore)
+                    // Biological Sex
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: labels.biologicalSex,
+                        value: babySexDisplayText,
+                        chevronType: .upDown) { signupStore.showBabySexPicker = true })
+                        .padding(.horizontal, .spacingSM)
+                        .padding(.vertical, .spacingXS / 2)
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(.spacingXS)
 
                     // Birth Length
                     AppInputField(
                         config: TextInputConfig(
                             label: labels.babyBirthLength,
-                            inputType: .text,
-                            errorMessage: nil,
+                            inputType: .number,
+                            errorMessage: signupStore.getError(for: signupStore.signupForm.babyBirthLength),
                             focusField: .babyBirthLength
                         ),
                         value: $signupStore.signupForm.babyBirthLength.value,
                         focusedField: $focusedField,
                         onCommit: {
+                            signupStore.touchAndValidate(field: .babyBirthLength)
                             focusedField = .babyBirthWeight
                         },
-                        onEditingChanged: { _ in }
+                        onEditingChanged: { isEditing in
+                            signupStore.handleEditingChanged(isEditing, field: .babyBirthLength)
+                        }
                     )
 
                     // Birth Weight
                     AppInputField(
                         config: TextInputConfig(
                             label: labels.babyBirthWeight,
-                            inputType: .text,
-                            errorMessage: nil,
+                            inputType: .number,
+                            errorMessage: signupStore.getError(for: signupStore.signupForm.babyBirthWeight),
                             focusField: .babyBirthWeight
                         ),
                         value: $signupStore.signupForm.babyBirthWeight.value,
                         focusedField: $focusedField,
                         onCommit: {
+                            signupStore.touchAndValidate(field: .babyBirthWeight)
                             focusedField = nil
                         },
-                        onEditingChanged: { _ in }
+                        onEditingChanged: { isEditing in
+                            signupStore.handleEditingChanged(isEditing, field: .babyBirthWeight)
+                        }
                     )
                 }
                 .padding(.top, .spacingLG)
@@ -115,47 +128,27 @@ struct AddBabyStepView: View {
         .onChange(of: signupStore.currentStep) { _, _ in
             signupStore.showBabyDatePicker = false
         }
-    }
-}
-
-// MARK: - BabySexPickerField
-
-private struct BabySexPickerField: View {
-    @ObservedObject var signupStore: SignupStore
-    @Environment(\.appTheme) private var theme
-    let labels = InputFieldLabels.self
-
-    var body: some View {
-        Menu {
-            ForEach(Sex.allCases, id: \.self) { sex in
-                Button(sex.rawValue.capitalized) {
+        .pickerSheet(
+            isPresented: $signupStore.showBabySexPicker,
+            selectedValues: [selectedBabySex],
+            options: [Sex.allCases],
+            displayValue: { $0.rawValue.capitalized },
+            title: labels.biologicalSex,
+            onUpdate: { vals in // swiftlint:disable:this trailing_closure
+                if let sex = vals.first {
                     signupStore.signupForm.babySex.value = sex.rawValue
                 }
             }
-        } label: {
-            HStack {
-                Text(displayText)
-                    .fontOpenSans(.body3)
-                    .foregroundColor(
-                        signupStore.signupForm.babySex.value.isEmpty
-                            ? theme.textSubheading
-                            : theme.textHeading
-                    )
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .foregroundColor(theme.textSubheading)
-                    .font(.system(size: 14))
-            }
-            .padding(.horizontal, .spacingSM)
-            .frame(height: 56)
-            .background(theme.backgroundPrimary)
-            .cornerRadius(.spacingXS)
-        }
+        )
     }
 
-    private var displayText: String {
+    private var babySexDisplayText: String {
         let value = signupStore.signupForm.babySex.value
-        return value.isEmpty ? labels.biologicalSex : value.capitalized
+        return value.isEmpty ? "" : value.capitalized
+    }
+
+    private var selectedBabySex: Sex {
+        Sex(rawValue: signupStore.signupForm.babySex.value) ?? .male
     }
 }
 

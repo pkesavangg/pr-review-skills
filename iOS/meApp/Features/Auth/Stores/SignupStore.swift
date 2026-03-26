@@ -243,6 +243,13 @@ final class SignupStore: ObservableObject {
         currentStepIndex = addBabyIndex
     }
 
+    /// Shows a confirmation alert before removing a baby at the given index.
+    func confirmDeleteBaby(at index: Int) {
+        notificationService.showDeleteBabyConfirmation { [weak self] in
+            self?.deleteBaby(at: index)
+        }
+    }
+
     /// Removes a baby at the given index.
     func deleteBaby(at index: Int) {
         guard index < babies.count else { return }
@@ -260,6 +267,8 @@ final class SignupStore: ObservableObject {
             isNextEnabled = selectedDeviceType != nil
         case .addBaby:
             isNextEnabled = signupForm.babyName.isValid
+                && signupForm.babyBirthLength.isValid
+                && signupForm.babyBirthWeight.isValid
         case .babyList:
             isNextEnabled = !babies.isEmpty
         case .sex:

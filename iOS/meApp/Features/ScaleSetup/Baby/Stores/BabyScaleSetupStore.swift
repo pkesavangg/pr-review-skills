@@ -87,6 +87,7 @@ final class BabyScaleSetupStore: ObservableObject {
 
     // MARK: - Baby Profile State
     @Published var savedBabies: [Baby] = []
+    @Published var editingBaby: Baby?
     @Published var showSkipDialog: Bool = false
 
     // MARK: - Computed Properties

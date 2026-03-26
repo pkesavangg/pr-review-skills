@@ -8,6 +8,7 @@ import SwiftUI
 struct BabyListStepView: View {
     @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
+    @State private var openItemID: UUID?
     let lang = SignupStrings.BabyListStep.self
 
     var body: some View {
@@ -22,10 +23,28 @@ struct BabyListStepView: View {
                 // Baby list
                 VStack(spacing: 0) {
                     ForEach(Array(signupStore.babies.enumerated()), id: \.element.id) { index, baby in
-                        BabyListRow(
-                            baby: baby,
-                            onEdit: { signupStore.editBaby(at: index) },
-                            onDelete: { signupStore.deleteBaby(at: index) }
+                        UserListItemView(
+                            user: UserItemInfo(
+                                id: baby.id,
+                                accountID: baby.id.uuidString,
+                                name: baby.name,
+                                email: "",
+                                isSelected: false,
+                                isExpired: false,
+                                canShowSelection: false
+                            ),
+                            openItemID: $openItemID,
+                            iconSize: 32,
+                            swipeButtonWidth: 56,
+                            onTap: { _, _ in
+                                signupStore.editBaby(at: index)
+                            },
+                            onEdit: { _ in
+                                signupStore.editBaby(at: index)
+                            },
+                            onDelete: { _ in
+                                signupStore.confirmDeleteBaby(at: index)
+                            }
                         )
                         if index < signupStore.babies.count - 1 {
                             Divider()
@@ -46,55 +65,6 @@ struct BabyListStepView: View {
                 }
             }
         }
-    }
-}
-
-// MARK: - BabyListRow
-
-private struct BabyListRow: View {
-    @Environment(\.appTheme) private var theme
-    let baby: SignupBaby
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: .spacingSM) {
-            // Initial circle
-            Text(initial)
-                .fontOpenSans(.heading5)
-                .foregroundColor(theme.actionPrimary)
-                .frame(width: 32, height: 32)
-                .overlay(
-                    Circle()
-                        .stroke(theme.actionPrimary, lineWidth: 2)
-                )
-
-            // Name
-            Text(baby.name)
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
-
-            Spacer()
-
-            // Edit button
-            Button(action: onEdit) {
-                Image(systemName: "square.and.pencil")
-                    .foregroundColor(theme.textBody)
-            }
-            .buttonStyle(.plain)
-
-            // Delete button
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .foregroundColor(.red)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.spacingSM)
-    }
-
-    private var initial: String {
-        String(baby.name.prefix(1)).uppercased()
     }
 }
 

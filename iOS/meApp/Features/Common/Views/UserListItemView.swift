@@ -17,6 +17,7 @@ struct UserListItemView: View {
     /// Width of each swipe action button; allows per-screen customization
     var swipeButtonWidth: CGFloat = 72
     var onTap: ((String, Bool) -> Void)
+    var onEdit: ((String) -> Void)? // optional edit trigger — shows pencil icon when set
     var onDelete: ((String) -> Void)? // optional deletion trigger
     
     var body: some View {
@@ -28,7 +29,7 @@ struct UserListItemView: View {
             .swipeableActions(
                 buttonWidth: swipeButtonWidth,
                 buttons:
-                    !user.canShowSelection || onDelete == nil ? [] : [
+                    onDelete == nil ? [] : [
                         SwipeButton(
                             tint: theme.textError,
                             action: { onDelete?(user.accountID) },
@@ -67,9 +68,11 @@ struct UserListItemView: View {
                 Text(user.name)
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
-                Text(user.email)
-                    .fontOpenSans(.subHeading2)
-                    .foregroundColor(theme.textSubheading)
+                if !user.email.isEmpty {
+                    Text(user.email)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                }
             }
             .opacity(user.isExpired ? 0.4 : 1)
             
@@ -80,6 +83,14 @@ struct UserListItemView: View {
                         onTap(user.accountID, user.isExpired)
                     }
                 }
+            } else if let onEdit {
+                Button {
+                    onEdit(user.accountID)
+                } label: {
+                    AppIconView(icon: AppAssets.editIcon, size: IconSize(width: 24, height: 24))
+                        .foregroundColor(theme.actionSecondary)
+                }
+                .buttonStyle(.plain)
             } else if user.canShowSelection {
                 AppIconView(icon: user.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline, size: IconSize(width: 24, height: 24))
                     .foregroundColor(theme.statusIconPrimary)

@@ -46,6 +46,13 @@ extension BabyScaleSetupStore {
 
     // MARK: - Delete Baby
 
+    /// Shows a confirmation alert before deleting a baby from the list.
+    func confirmDeleteBabyFromList(_ baby: Baby) {
+        notificationService.showDeleteBabyConfirmation { [weak self] in
+            self?.deleteBabyFromList(baby)
+        }
+    }
+
     func deleteBabyFromList(_ baby: Baby) {
         savedBabies.removeAll { $0.id == baby.id }
         Task {
@@ -60,6 +67,26 @@ extension BabyScaleSetupStore {
         if savedBabies.isEmpty {
             navigateToStep(.babyProfile)
         }
+    }
+
+    /// Loads a baby's data into the form for editing and navigates to the baby profile step.
+    func editBaby(_ baby: Baby) {
+        babyProfileForm.name.value = baby.name
+        if let birthday = baby.birthday {
+            babyProfileForm.birthday.value = birthday
+        }
+        babyProfileForm.biologicalSex.value = baby.biologicalSex ?? ""
+        if let length = baby.birthLengthInches {
+            babyProfileForm.birthLengthInches.value = String(length)
+        }
+        if let lbs = baby.birthWeightLbs {
+            babyProfileForm.birthWeightLbs.value = String(Int(lbs))
+        }
+        if let oz = baby.birthWeightOz {
+            babyProfileForm.birthWeightOz.value = String(oz)
+        }
+        editingBaby = baby
+        navigateToStep(.babyProfile)
     }
 
     // MARK: - Skip Baby Profile

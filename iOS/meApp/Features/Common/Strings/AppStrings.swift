@@ -278,6 +278,7 @@ struct FormErrorMessages {
     static let namePattern = "please enter a valid name"
     static let validInput = "please enter valid input"
     static let userNameUnavailable = "user name unavailable"
+    static let numericOnly = "only numbers are allowed"
 }
 
 /// Constants for input field labels used in the app
@@ -718,6 +719,13 @@ struct AlertStrings {
             + "Weight Gurus will save changes and update the scale next time it connects."
         static let okButton = "OK"
     }
+
+    struct RemoveBabyAlert {
+        static let title = "Remove Baby"
+        static let message = "Are you sure you want to remove this baby? You will not be able to get it back."
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -857,6 +865,7 @@ struct AppAssets {
     static let scale = "scale"
     static let metric = "metric"
     static let export = "export"
+    static let editIcon = "edit"
 
     // MARK: - Scale images
     // MARK: - AppSync series

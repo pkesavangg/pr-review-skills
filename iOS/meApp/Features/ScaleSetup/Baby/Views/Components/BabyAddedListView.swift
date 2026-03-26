@@ -9,6 +9,7 @@ import SwiftUI
 struct BabyAddedListView: View {
     @EnvironmentObject var store: BabyScaleSetupStore
     @Environment(\.appTheme) private var theme
+    @State private var openItemID: UUID?
     private let lang = BabyScaleSetupStrings.BabyAdded.self
 
     var body: some View {
@@ -24,42 +25,35 @@ struct BabyAddedListView: View {
                 // Baby list
                 VStack(spacing: 0) {
                     ForEach(store.savedBabies, id: \.id) { baby in
-                        HStack(spacing: .spacingSM) {
-                            Image(systemName: "person.circle.fill")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 32, height: 32)
-                                .foregroundColor(theme.statusIconPrimary)
-
-                            Text(baby.name)
-                                .fontOpenSans(.body1)
-                                .foregroundColor(theme.textBody)
-
-                            Spacer()
-
-                            // Edit button
-                            Button {
-                                // TODO: Edit baby profile
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                                    .foregroundColor(theme.statusIconPrimary)
+                        UserListItemView(
+                            user: UserItemInfo(
+                                accountID: baby.id,
+                                name: baby.name,
+                                email: "",
+                                isSelected: false,
+                                isExpired: false,
+                                canShowSelection: false
+                            ),
+                            openItemID: $openItemID,
+                            iconSize: 32,
+                            swipeButtonWidth: 56,
+                            onTap: { _, _ in
+                                store.editBaby(baby)
+                            },
+                            onEdit: { _ in
+                                store.editBaby(baby)
+                            },
+                            onDelete: { _ in
+                                store.confirmDeleteBabyFromList(baby)
                             }
-
-                            // Delete button
-                            Button {
-                                store.deleteBabyFromList(baby)
-                            } label: {
-                                Image(systemName: "trash.fill")
-                                    .foregroundColor(theme.textError)
-                            }
-                            .padding(.leading, .spacingXS)
+                        )
+                        if baby.id != store.savedBabies.last?.id {
+                            Divider()
                         }
-                        .padding(.horizontal, .spacingSM)
-                        .padding(.vertical, .spacingXS)
-
-                        Divider()
                     }
                 }
+                .background(theme.backgroundPrimary)
+                .cornerRadius(.spacingXS)
 
                 // Add a Baby button
                 ButtonView(
