@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuReducer
 import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuState
 import com.dmdbrands.gurus.weight.features.debugMenu.strings.DebugMenuStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -290,7 +291,7 @@ class DebugMenuViewModel @Inject constructor(
             if (device.connectionStatus != com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus.CONNECTED) {
                 AppLog.w(tag, "Selected scale not connected, skipping send")
                 _state.value = state.value.copy(
-                    scaleLogsPickerScales = emptyList(),
+                    scaleLogsPickerScales = persistentListOf<Device>(),
                     isLoading = false,
                 )
                 return@launch
@@ -307,7 +308,7 @@ class DebugMenuViewModel @Inject constructor(
                     showRestartAlertForScaleLog()
                 }
                 _state.value = state.value.copy(
-                    scaleLogsPickerScales = emptyList(),
+                    scaleLogsPickerScales = persistentListOf<Device>(),
                 )
             } finally {
                 dialogQueueService.dismissLoader()

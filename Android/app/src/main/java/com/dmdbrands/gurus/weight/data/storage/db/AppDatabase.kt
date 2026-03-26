@@ -62,7 +62,7 @@ import android.content.Context
   ],
   views = [ActiveEntryEntity::class],
   version = 1,
-  exportSchema = false,
+  exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
 abstract class AppDatabase : RoomDatabase() {

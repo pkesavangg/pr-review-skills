@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.network.HttpClient
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.data.api.RefreshTokenAPI
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
@@ -21,9 +22,9 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.time.ZoneOffset
 import javax.inject.Inject
 
 /**
@@ -34,7 +35,8 @@ class TokenAuthenticator @Inject constructor(
     private val tokenManager: ITokenManager,
     private val refreshTokenAPI: RefreshTokenAPI,
     private val userDataStore: UserDataStore,
-    private val appNavigationService: IAppNavigationService
+    private val appNavigationService: IAppNavigationService,
+    private val crashReportingService: ICrashReportingService,
 ) : Authenticator {
     companion object {
         private const val TAG = "TokenAuthenticator"
@@ -44,7 +46,8 @@ class TokenAuthenticator @Inject constructor(
 
     private val refreshMutex = Mutex()
     private var ongoingRefreshDeferred: CompletableDeferred<Token?>? = null
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+    private val dateFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
 
     override fun authenticate(route: Route?, response: Response): Request? {
@@ -103,6 +106,7 @@ class TokenAuthenticator @Inject constructor(
 
             } catch (e: Exception) {
                 AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
+                crashReportingService.recordException(e, "token_refresh_failure")
                 // At this point, we know it's the current account (non-active accounts are skipped earlier)
                 // For current account, logout and return null to fail the request
               logoutUser(accountId, isCurrentAccount(accountId))
@@ -144,9 +148,9 @@ class TokenAuthenticator @Inject constructor(
      */
     private fun isTokenExpired(expiresAt: String): Boolean {
         return try {
-            val tokenExpires = dateFormat.parse(expiresAt) ?: return true
-            val currentTime = Date()
-            val timeUntilExpiry = tokenExpires.time - currentTime.time
+            val tokenExpires = Instant.from(dateFormatter.parse(expiresAt))
+            val currentTime = Instant.now()
+            val timeUntilExpiry = tokenExpires.toEpochMilli() - currentTime.toEpochMilli()
             AppLog.v(TAG, "Token expires at: $expiresAt ($timeUntilExpiry ms until expiry)")
 
             val isExpired = timeUntilExpiry <= TOKEN_EXPIRY_BUFFER_MS

@@ -288,6 +288,46 @@ public enum BluetoothScaleType: String, Sendable, CaseIterable {
     case btWifiR4
 }
 
+/// BPM device type enumeration
+public enum BluetoothBpmType: String, Sendable, CaseIterable {
+    case bpm
+}
+
+/// Represents a blood pressure measurement received from a BPM device.
+public struct BpmMeasurement: Sendable, Equatable {
+    public let systolic: Int
+    public let diastolic: Int
+    public let pulse: Int
+    public let meanArterial: String?
+    public let irregularHb: Bool
+    public let timestamp: Date
+    public let broadcastId: String?
+
+    public init(
+        systolic: Int,
+        diastolic: Int,
+        pulse: Int,
+        meanArterial: String? = nil,
+        irregularHb: Bool = false,
+        timestamp: Date = Date(),
+        broadcastId: String? = nil
+    ) {
+        self.systolic = systolic
+        self.diastolic = diastolic
+        self.pulse = pulse
+        self.meanArterial = meanArterial
+        self.irregularHb = irregularHb
+        self.timestamp = timestamp
+        self.broadcastId = broadcastId
+    }
+}
+
+/// Category of device discovered via Bluetooth.
+public enum DeviceCategory: String, Sendable, Equatable {
+    case scale
+    case bpm
+}
+
 /// Unified device discovery event
 ///
 /// Usage example:
@@ -324,6 +364,21 @@ public struct DeviceDiscoveryEvent: @unchecked Sendable, Equatable {
     let deviceInfo: ScaleItemInfo
     let protocolType: ProtocolType
     let isNew: Bool
+    let deviceCategory: DeviceCategory
+
+    init(
+        device: Device,
+        deviceInfo: ScaleItemInfo,
+        protocolType: ProtocolType,
+        isNew: Bool,
+        deviceCategory: DeviceCategory = .scale
+    ) {
+        self.device = device
+        self.deviceInfo = deviceInfo
+        self.protocolType = protocolType
+        self.isNew = isNew
+        self.deviceCategory = deviceCategory
+    }
 }
 
 /// Represents firmware update status

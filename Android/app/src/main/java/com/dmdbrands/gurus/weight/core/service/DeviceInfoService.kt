@@ -17,11 +17,10 @@ import com.dmdbrands.gurus.weight.domain.repository.IIntegrationRepository
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -50,15 +49,14 @@ constructor(
   private val accountRepository: IAccountRepository,
   private val healthConnectRepository: IHealthConnectRepository,
   private val integrationRepository: IIntegrationRepository,
-  private val entryService: IEntryService
-
+  private val entryService: IEntryService,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceInfoService {
   companion object {
     private const val TAG = "DeviceInfoService"
     private const val NETWORK_UNAVAILABLE_DEBOUNCE_MS = 2000L
   }
 
-  private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
   /** Re-entry guard: skip sync if already running (tryLock semantics). */
   private val onlineSyncGuard = AtomicBoolean(false)
@@ -96,7 +94,7 @@ constructor(
         AppLog.d(TAG, "App started offline, showing network error")
         showNetworkError()
       }
-    serviceScope.launch {
+    appScope.launch {
       connectivityObserver
         .observe()
         .map { it.available }

@@ -1440,6 +1440,133 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
+    // MARK: - BPM Entry CRUD
+
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {
+        let accountId = try getAccountId()
+        let bpmDTO = BpmOperationDTO(
+            accountId: accountId,
+            systolic: dto.systolic,
+            diastolic: dto.diastolic,
+            pulse: dto.pulse,
+            meanArterial: dto.meanArterial,
+            note: dto.note,
+            source: dto.source,
+            unit: dto.unit,
+            entryTimestamp: dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date()),
+            operationType: OperationType.create.rawValue,
+            serverTimestamp: dto.serverTimestamp
+        )
+
+        let entry = Entry(from: bpmDTO, accountId: accountId, isSynced: false)
+        entry.attempts = 0
+
+        do {
+            try await localRepo.saveEntry(entry)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "BPM entry saved locally: entryId=\(entry.id.uuidString), accountId=\(accountId)"
+            )
+
+            let notification = EntryNotification(from: entry)
+            entrySaved.send(notification)
+
+            await syncUnsyncedBpmEntries()
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to save BPM entry: accountId=\(accountId), error=\(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] {
+        let accountId = try getAccountId()
+        return try await localRepo.fetchEntriesAsBpmDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
+    }
+
+    func deleteBpmEntry(entryTimestamp: String) async throws {
+        let accountId = try getAccountId()
+
+        let entries = try await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: entryTimestamp)
+        guard let entry = entries.first(where: { $0.deviceType == DeviceType.bpm.rawValue }) else {
+            throw NSError(domain: "EntryService", code: 404, userInfo: [NSLocalizedDescriptionKey: "BPM entry not found"])
+        }
+
+        entry.operationType = OperationType.delete.rawValue
+        entry.isSynced = false
+
+        do {
+            try await localRepo.updateEntry(entry)
+            let notification = EntryNotification(from: entry)
+            entryDeleted.send(notification)
+            await syncUnsyncedBpmEntries()
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "BPM entry delete queued: entryTimestamp=\(entryTimestamp), accountId=\(accountId)"
+            )
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "BPM entry delete failed: entryTimestamp=\(entryTimestamp), error=\(error.localizedDescription)"
+            )
+            throw error
+        }
+    }
+
+    func exportBpmCSV() async throws {
+        _ = try await remoteRepo.exportBpmCsv()
+    }
+
+    /// Pushes unsynced BPM entries to the remote API and pulls remote BPM operations.
+    private func syncUnsyncedBpmEntries() async {
+        guard let accountId = try? getAccountId() else { return }
+
+        do {
+            let unsynced = try await localRepo.fetchUnsyncedEntries(forUserId: accountId)
+            let bpmUnsynced = unsynced.filter { $0.deviceType == DeviceType.bpm.rawValue }
+
+            for operation in bpmUnsynced {
+                let entryIdString = operation.id.uuidString
+                let operationType = operation.operationType
+                let currentAttempts = operation.attempts
+                let dto = operation.toBpmOperationDTO()
+
+                do {
+                    try await remoteRepo.syncBpmOperation(operation: dto)
+
+                    if operationType == OperationType.create.rawValue {
+                        try await localRepo.updateEntrySyncStatus(
+                            entryId: entryIdString,
+                            isSynced: true,
+                            isFailedToSync: false,
+                            attempts: currentAttempts
+                        )
+                    } else {
+                        try await localRepo.deleteEntry(byId: entryIdString)
+                    }
+                } catch {
+                    let newAttempts = currentAttempts + 1
+                    let markAsFailed = newAttempts > 8
+
+                    try? await localRepo.updateEntrySyncStatus(
+                        entryId: entryIdString,
+                        isSynced: markAsFailed,
+                        isFailedToSync: markAsFailed,
+                        attempts: newAttempts
+                    )
+                }
+            }
+        } catch {
+            logger.log(level: .error, tag: tag, message: "BPM sync failed: \(error.localizedDescription)")
+        }
+    }
+
     deinit {
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()

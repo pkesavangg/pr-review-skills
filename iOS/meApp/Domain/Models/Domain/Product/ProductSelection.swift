@@ -45,6 +45,15 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         }
     }
 
+    /// Title shown in the Dashboard screen header.
+    var dashboardTitle: String {
+        switch self {
+        case .myWeight:           return ProductTypeStrings.myWeight
+        case .myBloodPressure:    return ProductTypeStrings.myBP
+        case .baby(let profile):  return profile.name
+        }
+    }
+
     /// Title shown in the Manual Entry screen header.
     var entryTitle: String {
         switch self {

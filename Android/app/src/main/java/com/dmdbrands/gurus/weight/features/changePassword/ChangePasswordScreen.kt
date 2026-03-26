@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -51,7 +51,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun ChangePasswordScreen() {
     val viewmodel: ChangePasswordViewModel = hiltViewModel()
-    val state by viewmodel.state.collectAsState()
+    val state by viewmodel.state.collectAsStateWithLifecycle()
 
     ChangePasswordContent(state, viewmodel::handleIntent)
 }

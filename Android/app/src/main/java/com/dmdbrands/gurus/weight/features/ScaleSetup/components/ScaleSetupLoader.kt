@@ -257,19 +257,6 @@ fun ScaleSetupLoader(
   }
 }
 
-// @PreviewTheme
-// @Composable
-// private fun PreviewScaleSetupLoaderConnecting() {
-//   MeAppTheme {
-//     ScaleSetupLoader(
-//       title = "Connecting to Bluetooth",
-//       subtitle = "Please wait while we connect your scale",
-//       scaleImageSku = "0412",
-//       connectionState = ConnectionState.Loading,
-//     )
-//   }
-// }
-
 @PreviewTheme
 @Composable
 private fun PreviewScaleSetupLoaderConnectionError() {
@@ -303,40 +290,7 @@ private fun PreviewScaleSetupLoaderWifiConnecting() {
     )
   }
 }
-//
-// @PreviewTheme
-// @Composable
-// private fun PreviewScaleSetupLoaderSuccess() {
-//   MeAppTheme {
-//     ScaleSetupLoader(
-//       scaleImageSku = "0412",
-//       title = "Successfully Connected",
-//       subtitle = "Your scale is now connected and ready to use",
-//       connectionState = ConnectionState.Success,
-//       showIndicationOnly = false,
-//       primaryButtonText = "Continue",
-//       primaryButtonClick = { },
-//     )
-//   }
-// }
-//
-// @PreviewTheme
-// @Composable
-// private fun PreviewScaleSetupLoaderWithCustomIcon() {
-//   MeAppTheme {
-//     ScaleSetupLoader(
-//       scaleImageSku = "0412",
-//       title = "Connecting to Scale",
-//       subtitle = "Please wait while we establish connection",
-//       connectionState = ConnectionState.Loading,
-//       showIndicationOnly = true,
-//       indicatorIcon = LoaderIconType.Measurement,
-//       primaryButtonText = "Cancel",
-//       primaryButtonClick = { },
-//     )
-//   }
-// }
-//
+
 @PreviewTheme
 @Composable
 private fun PreviewScaleSetupLoaderWithButtons() {

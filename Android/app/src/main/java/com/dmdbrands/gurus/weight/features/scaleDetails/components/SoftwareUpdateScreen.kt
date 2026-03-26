@@ -137,7 +137,6 @@ private fun UpToDateContent(latestVersion: String) {
       modifier = Modifier.size(120.dp),
       contentAlignment = Alignment.Center,
     ) {
-      // TODO: Add animated checkmark or use a checkmark icon
       AppText(
         text = "✓",
         textType = TextType.Title,

@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +38,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 
 @Composable
@@ -48,7 +49,7 @@ fun AppsyncScaleSetupScreen(
       factory.create(sku)
     },
 ) {
-  val state by viewModel.state.collectAsState()
+  val state by viewModel.state.collectAsStateWithLifecycle()
 
   AppsyncScaleSetupScreenContent(
     state = state,
@@ -243,7 +244,7 @@ fun AppsyncScaleSetupPreview() {
         AppsyncScaleSetupState(
           sku = "0342",
           bodyComp = true,
-          steps = listOf(
+          steps = persistentListOf(
             AppsyncScaleSetupStep.SCALE_INFO,
             AppsyncScaleSetupStep.PERMISSIONS,
             AppsyncScaleSetupStep.ACTIVATE_SCALE,

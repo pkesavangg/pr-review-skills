@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.app.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import androidx.compose.runtime.Stable
 
 /**
  * UI state for the app, holding theme mode and FCM token.
@@ -9,6 +10,7 @@ import com.dmdbrands.gurus.weight.proto.ThemeMode
  * @property themeMode The current theme mode.
  * @property fcmToken The current FCM token.
  */
+@Stable
 data class AppState(
   val fcmToken: String = "",
   val themeMode: ThemeMode = ThemeMode.SYSTEM,

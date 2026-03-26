@@ -91,7 +91,7 @@ The `/work-ticket` command orchestrates the complete flow. When working a Jira t
   ↓
 agent: api-change-planner        → Map affected layers and files
   ↓
-/feature-slice                   → Scaffold feature module structure
+/feature-slice                   → Scaffold feature module (includes #Preview + accessibility)
 /add-endpoint                    → Add API endpoint (if needed)
 /wire-service                    → Register service in DI
 /wire-navigation                 → Wire screen into routing
@@ -99,7 +99,11 @@ agent: api-change-planner        → Map affected layers and files
   ↓
 [Build feature code]
   ↓
+/add-accessibility               → Add accessibility labels/identifiers to all new views
+/add-preview                     → Add #Preview blocks to new views and components
+  ↓
 /gen-test-file                   → Scaffold unit tests
+/gen-ui-test-file                → Scaffold UI tests (flags zero-coverage features)
 /gen-mock-single or              → Generate required mocks
   agent: gen-mock-batch
   ↓
@@ -253,11 +257,13 @@ Before marking any task complete, confirm:
 ### Scaffolding & Wiring
 | Skill | Purpose |
 |-------|---------|
-| `/feature-slice` | Scaffold feature module structure |
+| `/feature-slice` | Scaffold feature module structure (includes #Preview + accessibility) |
 | `/add-endpoint` | Add API endpoint end-to-end |
 | `/wire-service` | Register service in DI system |
 | `/wire-navigation` | Wire screen into routing |
 | `/add-strings` | Add string constants |
+| `/add-accessibility` | Add accessibility labels, identifiers, and Dynamic Type to a view |
+| `/add-preview` | Scaffold #Preview blocks with mock data for a view |
 
 ### Implementation Guides
 | Skill | Purpose |
@@ -270,7 +276,7 @@ Before marking any task complete, confirm:
 | `/graph` | Dashboard graph layer changes |
 | `/swift-concurrency` | Concurrency patterns |
 | `/swiftdata` | SwiftData rules and patterns |
-| `/analytics` | Structured logging |
+| `/analytics` | Structured logging + Crashlytics non-fatal for critical paths |
 
 ### Testing & Mocks
 | Skill/Agent | Purpose |
@@ -288,10 +294,11 @@ Before marking any task complete, confirm:
 |-------|---------|
 | `/self-review` | Run all 5 specialist reviews |
 | `/review-lint` | SwiftLint and style check |
+| `/swiftlint` | Run SwiftLint with auto-fix, then manually fix remaining violations |
 | `/review-regression` | Breaking change detection |
 | `/review-security` | Security audit |
 | `/review-issue-fix` | Jira acceptance criteria check |
-| `/review-accessibility` | Accessibility audit |
+| `/review-accessibility` | Accessibility audit (with optional `--fix` auto-repair mode) |
 
 ### Git & Delivery
 | Skill/Command | Purpose |
