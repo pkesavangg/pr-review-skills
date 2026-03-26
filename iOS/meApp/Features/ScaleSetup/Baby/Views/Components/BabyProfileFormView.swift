@@ -143,7 +143,7 @@ struct BabyProfileFormView: View {
                             .focused($focusedField, equals: .inches)
                             .padding(.top, (!store.babyProfileForm.birthLengthInches.value.isEmpty || focusedField == .inches) ? 8 : 0)
                             .onChange(of: store.babyProfileForm.birthLengthInches.value) { _, newValue in
-                                store.babyProfileForm.birthLengthInches.value = limitDigits(
+                                store.babyProfileForm.birthLengthInches.value = formatDecimalInput(
                                     newValue,
                                     maxDigits: 3
                                 )
@@ -268,23 +268,6 @@ struct BabyProfileFormView: View {
             default: break
             }
         }
-    }
-
-    private func limitDigits(_ value: String, maxDigits: Int) -> String {
-        var result = ""
-        var digitCount = 0
-        var hasDecimal = false
-        for char in value {
-            if char.isNumber {
-                guard digitCount < maxDigits else { continue }
-                result.append(char)
-                digitCount += 1
-            } else if char == "." && !hasDecimal {
-                result.append(char)
-                hasDecimal = true
-            }
-        }
-        return result
     }
 
     private func formatDecimalInput(_ value: String, maxDigits: Int) -> String {
