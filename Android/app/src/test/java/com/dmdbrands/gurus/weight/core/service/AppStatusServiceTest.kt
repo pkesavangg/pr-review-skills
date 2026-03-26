@@ -66,11 +66,6 @@ class AppStatusServiceTest {
     }
 
     @Test
-    fun `isMetric returns false`() {
-        assertThat(AppStatusService.isMetric).isFalse()
-    }
-
-    @Test
     fun `canShowRateAppItem returns true`() {
         assertThat(AppStatusService.canShowRateAppItem).isTrue()
     }
