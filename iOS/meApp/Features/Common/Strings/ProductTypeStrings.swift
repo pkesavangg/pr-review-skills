@@ -19,6 +19,9 @@ enum ProductTypeStrings {
     static let weightEntry = "Weight Entry"
     static let bpEntry = "BP Entry"
 
+    // MARK: - Dashboard screen titles
+    static let myBP = "My BP"
+
     // MARK: - Sheet titles
     static let myHistory = "My History"
     static let manualEntry = "Manual Entry"

@@ -90,6 +90,9 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { liveMeasurementSubject.eraseToAnyPublisher() }
 
+    let newBpmReadingReceivedSubject = PassthroughSubject<BpmMeasurement, Never>()
+    var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { newBpmReadingReceivedSubject.eraseToAnyPublisher() }
+
     func initialize() {}
     func stopScan() {}
     func startBluetoothOperations() async {}
@@ -103,6 +106,26 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         lastResumeClearOnlyPairing = clearOnlyPairing
     }
     func scanForPairing() { scanForPairingCalls += 1 }
+
+    private(set) var scanForBpmCalls = 0
+    private(set) var connectBpmCalls = 0
+    private(set) var receiveBpmReadingCalls = 0
+    private(set) var lastConnectBpmBroadcastId: String?
+    private(set) var lastReceiveBpmBroadcastId: String?
+    var connectBpmResult: Result<Void, BluetoothServiceError> = .success(())
+    var receiveBpmReadingResult: Result<Void, BluetoothServiceError> = .success(())
+
+    func scanForBpm() { scanForBpmCalls += 1 }
+    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+        connectBpmCalls += 1
+        lastConnectBpmBroadcastId = broadcastId
+        return connectBpmResult
+    }
+    func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> {
+        receiveBpmReadingCalls += 1
+        lastReceiveBpmBroadcastId = broadcastId
+        return receiveBpmReadingResult
+    }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> {
         resyncAndScanCalls += 1

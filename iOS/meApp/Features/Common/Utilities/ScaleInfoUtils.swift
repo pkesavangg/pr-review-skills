@@ -19,8 +19,9 @@ class ScaleInfoUtils {
     // MARK: - Initialization
 
     init() {
-        // Initialize scales with image paths resolved
-      self.scales = SCALES.map { scale in
+        // Initialize scales and BPM devices with image paths resolved
+        let allDevices = SCALES + BPMS
+        self.scales = allDevices.map { scale in
             var updatedScale = scale
             updatedScale = ScaleItemInfo(
                 productName: scale.productName,
@@ -110,14 +111,19 @@ class ScaleInfoUtils {
             }
 
         default:
-            // Return a default scale info with null SKU if not found
-            scaleInfo = ScaleItemInfo(
-                productName: "Unknown Scale",
-                sku: "",
-                imgPath: "",
-                setupType: .bluetooth,
-                bodyComp: false
-            )
+            // Check if the device name matches a BPM device
+            if let bpmInfo = getBpmInfo(byDeviceName: upperScaleName) {
+                scaleInfo = bpmInfo
+            } else {
+                // Return a default scale info with null SKU if not found
+                scaleInfo = ScaleItemInfo(
+                    productName: "Unknown Scale",
+                    sku: "",
+                    imgPath: "",
+                    setupType: .bluetooth,
+                    bodyComp: false
+                )
+            }
         }
 
         return scaleInfo
@@ -132,7 +138,8 @@ class ScaleInfoUtils {
     private func resolveImagePath(for sku: String) -> String? {
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-        return SCALES.first { $0.sku == lookupSku }?.imgPath
+        let allDevices = SCALES + BPMS
+        return allDevices.first { $0.sku == lookupSku }?.imgPath
     }
 }
 
@@ -146,6 +153,23 @@ extension ScaleInfoUtils {
 // MARK: - Additional Convenience Methods
 
 extension ScaleInfoUtils {
+    /// Get BPM device info by device name (broadcast name from SDK).
+    /// - Parameter deviceName: The uppercased BPM device name
+    /// - Returns: ScaleItemInfo if the name matches a known BPM device
+    public func getBpmInfo(byDeviceName deviceName: String) -> ScaleItemInfo? {
+        for bpm in BPMS {
+            if deviceName.contains(bpm.sku) {
+                return getScaleInfo(bySku: bpm.sku)
+            }
+        }
+        return nil
+    }
+
+    /// Checks whether the given SKU belongs to a BPM device.
+    public func isBpmDevice(sku: String) -> Bool {
+        return BPM_SKUS.contains(sku)
+    }
+
     /// Check if a scale supports body composition by SKU
     /// - Parameter sku: The scale SKU
     /// - Returns: True if scale supports body composition, false otherwise

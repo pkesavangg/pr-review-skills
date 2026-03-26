@@ -105,6 +105,13 @@ protocol EntryRepositoryProtocol {
     /// - Returns: An array of BathScaleOperationDTO objects.
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO]
 
+    /// Fetches BPM entries and returns BpmOperationDTOs.
+    /// - Parameters:
+    ///   - userId: The user ID to filter entries by.
+    ///   - operationType: Optional operation type filter.
+    /// - Returns: An array of BpmOperationDTO objects.
+    func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String?) async throws -> [BpmOperationDTO]
+
     // MARK: - Sync
 
     /// Syncs new and deleted entries with the local data store.

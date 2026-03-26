@@ -12,9 +12,9 @@ import com.greatergoods.lib.wificonnect.model.SmartConfigParams
 import com.greatergoods.lib.wificonnect.model.SmartConfigResult
 import com.greatergoods.lib.wificonnect.model.WifiConnectRequest
 import com.greatergoods.lib.wificonnect.model.WifiConnectResult
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -79,7 +79,8 @@ data class WifiStatus(
 class WifiScaleService @Inject constructor(
   private val wifiSmartConnectManager: WifiSmartConnectManager,
   private val deviceService: IDeviceService,
-  @ApplicationContext private val context: Context
+  @ApplicationContext private val context: Context,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) {
   private lateinit var currentActivity: ComponentActivity
   private var TAG = "WifiScaleService"
@@ -100,7 +101,7 @@ class WifiScaleService @Inject constructor(
     onError: (String) -> Unit
   ) {
     AppLog.d(TAG, "connectWifi called with setupType: $setupType")
-    CoroutineScope(Dispatchers.IO).launch {
+    appScope.launch {
       try {
         // Validate setup data
         validateSetupDataOrThrow(setupInfo, setupType)

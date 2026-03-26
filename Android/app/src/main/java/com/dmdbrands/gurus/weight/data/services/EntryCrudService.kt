@@ -4,12 +4,14 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IEntryCrudService
 import com.dmdbrands.gurus.weight.domain.services.IEntrySyncService
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 
 class EntryCrudService(
     private val syncService: IEntrySyncService,
+    private val analyticsService: IAnalyticsService,
 ) : IEntryCrudService {
 
     private val TAG = "EntryCrudService"
@@ -40,6 +42,7 @@ class EntryCrudService(
             )
         }
         syncService.syncOperations(currentAccountId, listOf(updatedEntry))
+        analyticsService.logEvent(IAnalyticsService.Events.WEIGHT_ENTRY_CREATED)
     }
 
     /**
@@ -72,6 +75,7 @@ class EntryCrudService(
                 }
             }
             syncService.syncOperations(currentAccountId, updatedEntries)
+            analyticsService.logEvent(IAnalyticsService.Events.WEIGHT_ENTRY_CREATED)
         } catch (e: Exception) {
             AppLog.e(TAG, "Error saving new entries", e)
         }

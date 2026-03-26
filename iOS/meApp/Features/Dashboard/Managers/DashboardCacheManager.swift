@@ -170,14 +170,14 @@ final class DashboardCacheManager: DashboardCacheManagerProtocol {
         return result
     }
     
-    // MARK: - UserDefaults Cache
-    
+    // MARK: - KvStorage Cache
+
     func getBool(forKey key: String) -> Bool {
-        return UserDefaults.standard.bool(forKey: key)
+        return KvStorageService.shared.getValue(forKey: key) as? Bool ?? false
     }
-    
+
     func setBool(_ value: Bool, forKey key: String) {
-        UserDefaults.standard.set(value, forKey: key)
+        KvStorageService.shared.setValue(value, forKey: key)
     }
     
     // MARK: - Cache Clearing

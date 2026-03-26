@@ -32,8 +32,9 @@ struct ScaleSetupFinishView: View {
                     Spacer()
                 }
                 AppIconView(icon: AppAssets.checkMarkLarge, size: IconSize(width: 180, height: 180))
-                    .foregroundColor(theme.statusIconPrimary)
+                    .foregroundColor(theme.statusSuccess)
                     .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, .spacingXL)
                 if isAppSyncScaleSetup {
                     ThemedImage(name: AppAssets.appSyncTab)
                 }

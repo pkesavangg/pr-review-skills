@@ -9,14 +9,14 @@ import Foundation
 
 /// Helper class for determining scale types based on device properties
 struct ScaleTypeHelper {
-    
+
     // Determines the scale type based on the scale's SKU and other properties
     // - Parameter scale: The device to determine the scale type for
     // - Returns: The determined scale type as a ScaleType enum
 // swiftlint:disable:next cyclomatic_complexity
     static func determineScaleType(for scale: Device) -> ScaleType {
         guard let sku = scale.sku else { return .bluetoothA6 } // Default fallback
-        
+
         // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         // Get scale info from the SCALES constant
@@ -32,6 +32,8 @@ struct ScaleTypeHelper {
                 return .bluetoothR4
             case .babyScale:
                 return .babyScale
+            case .bpm:
+                return .bluetoothA6
             }
         }
 
@@ -49,7 +51,7 @@ struct ScaleTypeHelper {
                 return .bluetoothR4
             }
         }
-        
+
         // Final fallback: determine based on device type
         if let deviceType = scale.deviceType {
             switch deviceType.lowercased() {
@@ -63,17 +65,17 @@ struct ScaleTypeHelper {
                 return .bluetoothA6
             }
         }
-        
+
         return .bluetoothA6 // Default fallback
     }
-    
+
     // Determines the scale type as a string based on the scale's SKU and other properties
     // - Parameter scale: The device to determine the scale type for
     // - Returns: The determined scale type as a string
 // swiftlint:disable:next cyclomatic_complexity
     static func determineScaleTypeString(for scale: Device) -> String {
         guard let sku = scale.sku else { return "Unknown" }
-        
+
         // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         // Get scale info from the SCALES constant
@@ -89,6 +91,8 @@ struct ScaleTypeHelper {
                 return "Bluetooth/Wi-Fi"
             case .babyScale:
                 return "Bluetooth"
+            case .bpm:
+                return "BPM"
             }
         }
 
@@ -106,7 +110,7 @@ struct ScaleTypeHelper {
                 return "Bluetooth/Wi-Fi"
             }
         }
-        
+
         // Final fallback: determine based on device type
         if let deviceType = scale.deviceType {
             switch deviceType.lowercased() {
@@ -120,7 +124,7 @@ struct ScaleTypeHelper {
                 return "Unknown"
             }
         }
-        
+
         return "Unknown"
     }
-} 
+}

@@ -25,6 +25,7 @@ class SettingsStore: ObservableObject {
     @Injector var goalAlertService: GoalAlertServiceProtocol
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var integrationService: IntegrationServiceProtocol
+    @Injector var productTypeStore: ProductTypeStoreProtocol
     private let httpClient = HTTPClient.shared
     var theme = Theme.shared
     let kvStore = KvStorageService.shared
@@ -85,6 +86,40 @@ class SettingsStore: ObservableObject {
 
     @Published var hasEntries: Bool = false
 
+    // MARK: - Device-Type Visibility (driven by ProductTypeStore.availableItems)
+
+    private var availableItems: [ProductSelection] {
+        productTypeStore.availableItems
+    }
+
+    var hasWeightScale: Bool {
+        availableItems.contains(.myWeight)
+    }
+
+    var hasBpmDevice: Bool {
+        availableItems.contains(.myBloodPressure)
+    }
+
+    var hasBabyScale: Bool {
+        availableItems.contains { if case .baby = $0 { return true } else { return false } }
+    }
+
+    var shouldShowIntegrations: Bool {
+        hasWeightScale || hasBpmDevice
+    }
+
+    var shouldShowUnitType: Bool {
+        hasWeightScale || hasBabyScale
+    }
+
+    var shouldShowWeightScaleSection: Bool {
+        hasWeightScale
+    }
+
+    var shouldShowMyKids: Bool {
+        hasBabyScale
+    }
+
     /// Main browser presentation binding for the view
     var isBrowserPresented: Binding<Bool> {
         Binding(
@@ -142,20 +177,28 @@ class SettingsStore: ObservableObject {
                 self?.syncHeightPickers()
             }
             .store(in: &cancellables)
-        
+
         accountService.allAccountsPublisher
             .sink { [weak self] allAccounts in
                 self?.canShowLogOutAllItems = allAccounts.filter { $0.isLoggedIn == true }.count > 1
             }
             .store(in: &cancellables)
-        
+
         self.populateWeightlessFormIfNeeded()
-        
+
         // Listen to theme appearance changes so SettingsScreen refreshes immediately
         Theme.shared.$appearanceMode
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 // Broadcast a manual change so any computed properties that depend on Theme refresh
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        // Listen to product type changes to update conditional settings visibility
+        ProductTypeStore.shared.$availableItems
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
@@ -430,17 +473,17 @@ class SettingsStore: ObservableObject {
     func isGoalFormValid(focusedField: FocusField?) -> Bool {
         goalForm.isValidForSave(focusedField: focusedField)
     }
-    
+
     /// Determines if the Weightless form is valid for saving
     /// Save enabled only when toggle changed OR valid form changes exist
     var isWeightLessFormValid: Bool {
         let hasToggleChanged = weightlessForm.isOn.value != initialWeightlessToggleState
-        
+
         // If turned OFF → only toggle change matters
         guard weightlessForm.isOn.value else {
             return hasToggleChanged
         }
-        
+
         // If turned ON → form must be valid, and allow either toggle change OR valid form changes
         let weightValue = Double(weightlessForm.weight.value) ?? 0.0
         return weightlessForm.isValid &&
@@ -1043,7 +1086,7 @@ class SettingsStore: ObservableObject {
     func confirmDiscardWeightlessChanges() async -> Bool {
         // Allow immediate exit when there are no actual changes
         guard hasWeightlessChanges else { return true }
-        
+
         return await withCheckedContinuation { continuation in
             presentWeightlessExitAlert(onExit: {
                 continuation.resume(returning: true)
@@ -1057,10 +1100,10 @@ class SettingsStore: ObservableObject {
     func saveWeightless(router: Router<SettingsRoute>) {
         // Validate form first.
         weightlessForm.validate()
-        
+
         guard hasWeightlessChanges, isWeightLessFormValid else { return }
         if weightlessForm.isOn.value && weightlessForm.weight.isInvalid { return }
-        
+
         let unit = activeAccount?.weightSettings?.weightUnit ?? .lb
         let storedWeight: Int = {
             if let val = Double(weightlessForm.weight.value) {
@@ -1095,13 +1138,13 @@ class SettingsStore: ObservableObject {
                     weightlessTimestamp: timestamp,
                     weightlessWeight: Double(storedWeight)
                 )
-                
+
                 // Refresh account to ensure latest state is available when user returns
                 _ = try? await accountService.refreshAccount()
 
                 notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.weightlessUpdated))
                 logger.log(level: .info, tag: tag, message: "Weightless settings updated")
-                
+
                 // Mark form as pristine after successful save
                 await MainActor.run {
                     self.weightlessForm.isOn.markAsPristine()
@@ -1109,7 +1152,7 @@ class SettingsStore: ObservableObject {
                     // Update initial toggle state to match saved state
                     self.initialWeightlessToggleState = isOn
                 }
-                
+
                 onSuccess()
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.errorUpdatingWeightless, message: toastLang.restartAndTryAgain))
@@ -1149,7 +1192,7 @@ class SettingsStore: ObservableObject {
         weightlessForm.isOn.markAsPristine()
         // Store initial toggle state to detect changes
         initialWeightlessToggleState = shouldBeOn
-        
+
         // Set weight field value
         if let storedWeight = account.weightlessSettings?.weightlessWeight, shouldBeOn {
             // Convert stored tenths-of-lbs value to display unit.

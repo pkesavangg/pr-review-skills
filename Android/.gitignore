@@ -9,7 +9,9 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+/.claude/cache
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+app/google-services.json

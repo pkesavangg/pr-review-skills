@@ -5,10 +5,13 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.google.service) apply false
+    alias(libs.plugins.firebase.crashlytics.plugin) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.ksp) apply false
-    alias(libs.plugins.detekt)
+    alias(libs.plugins.detekt) apply false
     alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.android.test) apply false
+    alias(libs.plugins.baselineprofile) apply false
 }
 
 subprojects {
@@ -20,23 +23,28 @@ subprojects {
         baseline.set(file("ktlint-baseline.xml"))
 
 }
-}
 
-detekt {
-    config.setFrom(files("config/detekt/detekt.yml"))
-    buildUponDefaultConfig = false  // only rules in our config file are active
-    parallel = true
-}
+    apply(plugin = "io.gitlab.arturbosch.detekt")
 
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-    jvmTarget = "11"
-    source = fileTree(projectDir) {
-        include("**/*.kt")
-        exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+    configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
+        config.setFrom(files("${rootProject.projectDir}/config/detekt/detekt.yml"))
+        buildUponDefaultConfig = false
+        parallel = true
+        baseline = file("${rootProject.projectDir}/config/detekt/detekt-baseline.xml")
     }
-    reports {
-        html.required.set(true)
-        xml.required.set(false)
-        txt.required.set(false)
+
+    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+        jvmTarget = "11"
+        exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+        reports {
+            html.required.set(true)
+            xml.required.set(false)
+            txt.required.set(false)
+        }
+    }
+
+    tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
+        jvmTarget = "11"
+        exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
     }
 }
