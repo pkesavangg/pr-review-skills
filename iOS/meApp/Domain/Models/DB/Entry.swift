@@ -90,9 +90,12 @@ final class Entry {
         self.entryTimestamp = timestamp
         self.accountId = accountId
         self.operationType = dto.operationType ?? ""
+        self.opTimestamp = nil
         self.serverTimestamp = dto.serverTimestamp
         self.deviceType = DeviceType.bpm.rawValue
+        self.entryType = EntryType.bpm.rawValue
         self.isSynced = isSynced
+        self.babyId = nil
         self.attempts = 0
         self.isFailedToSync = false
         self.scaleEntry = BathScaleEntry(from: dto)
