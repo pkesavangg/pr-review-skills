@@ -39,9 +39,9 @@ struct ScaleItemView: View {
     }
     
     private var shouldShowStatus: Bool {
-        // Show status only for Bluetooth and BtWifi scales
+        // Show status only for Bluetooth and BtWifi scales and BPM devices
         switch scaleType {
-        case .bluetoothA3, .bluetoothA6, .bluetoothR4, .babyScale:
+        case .bluetoothA3, .bluetoothA6, .bluetoothR4, .babyScale, .bpm:
             return true
         case .appsync, .wifi:
             return false

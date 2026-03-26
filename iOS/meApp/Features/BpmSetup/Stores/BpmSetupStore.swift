@@ -413,8 +413,8 @@ final class BpmSetupStore: ObservableObject {
     // MARK: - Device Persistence
     private func saveDevice() async -> Bool {
         guard !isDeviceSaved else { return true }
-        guard let device = discoveredDevice, let bpmItem else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "saveDevice - missing device or bpmItem")
+        guard let bpmItem else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveDevice - missing bpmItem")
             return false
         }
         guard let accountId = accountService.activeAccount?.accountId else {
@@ -422,21 +422,48 @@ final class BpmSetupStore: ObservableObject {
             return false
         }
 
-        do {
-            let deviceToSave = device
-            deviceToSave.id = UUID().uuidString
-            deviceToSave.nickname = deviceNickname.isEmpty ? nil : deviceNickname
+        // Check for existing device with same broadcastId to prevent duplicates
+        if let broadcastId = discoveredDevice?.broadcastIdString, !broadcastId.isEmpty {
+            let existingDevices = (try? await scaleService.getDevices()) ?? []
+            if existingDevices.contains(where: { $0.broadcastIdString == broadcastId }) {
+                LoggerService.shared.log(level: .info, tag: tag, message: "BPM device already exists, skipping save")
+                isDeviceSaved = true
+                bluetoothService.isSetupInProgress = false
+                return true
+            }
+        }
 
+        let deviceToSave: Device
+        if let device = discoveredDevice {
+            deviceToSave = device
+            if deviceToSave.id.isEmpty { deviceToSave.id = UUID().uuidString }
+        } else {
+            // No real BLE device discovered (UI-only mode) — create a local placeholder.
+            deviceToSave = Device(
+                id: UUID().uuidString,
+                accountId: accountId,
+                sku: bpmItem.sku,
+                deviceType: DeviceType.scale.rawValue,
+                createdAt: DateTimeTools.getCurrentDatetimeIsoString(),
+                isSynced: false,
+                hasServerID: false
+            )
+        }
+        deviceToSave.nickname = deviceNickname.isEmpty ? nil : deviceNickname
+
+        do {
             _ = try await scaleService.createBluetoothScale(
                 device: deviceToSave,
                 sku: bpmItem.sku,
                 userNumber: "\(selectedUserNumber ?? 1)",
                 accountId: accountId,
                 deviceMetadata: nil,
-                skipDuplicateCheck: false
+                skipDuplicateCheck: discoveredDevice == nil
             )
-            await scaleService.syncAllScalesWithRemote()
             isDeviceSaved = true
+            // Re-sync to reconcile any timing gap between push and pull
+            // inside createBluetoothScale (mirrors baby-scale pattern).
+            await scaleService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             bluetoothService.isSetupInProgress = false
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
@@ -453,13 +480,8 @@ final class BpmSetupStore: ObservableObject {
     }
 
     private func saveAndAdvanceFromNickname() async {
-        // Temporary workaround:
-        // skip local BPM device saving from the nickname step for now because
-        // the pairing flow is not consistently carrying discovered device/bpmItem
-        // context into this point, which causes repeated `saveDevice` errors.
-        // Re-enable the `saveDevice()` call here once the device context issue is fixed.
-
         guard currentStep == .nickname else { return }
+        _ = await saveDevice()
         let candidate = currentStepIndex + 1
         let nextIndex = adjustedIndex(from: candidate, direction: 1)
         guard nextIndex < steps.count else { return }
@@ -637,13 +659,23 @@ final class BpmSetupStore: ObservableObject {
         }
     }
 
-    /// Skips the permissions page when all required setup permissions are already granted.
+    /// Skips steps that should be bypassed during normal forward navigation:
+    /// - `.btPermission` when permissions are already granted (both directions)
+    /// - `.measureSetup`, `.measureStart` in forward direction — only reachable via "Learn How to Measure"
+    ///   Once the user is already in the measurement tutorial, these steps are NOT skipped.
     private func adjustedIndex(from index: Int, direction: Int) -> Int {
+        let measurementSteps: Set<BpmSetupStep> = [.measureSetup, .measureStart]
+        let isInMeasurementTutorial = measurementSteps.contains(currentStep)
         var idx = index
-        while idx >= 0 && idx < steps.count,
-              steps[idx] == .btPermission,
-              isPermissionStepSatisfied() {
-            idx += direction
+        while idx >= 0 && idx < steps.count {
+            let step = steps[idx]
+            if step == .btPermission && isPermissionStepSatisfied() {
+                idx += direction
+            } else if direction == 1 && measurementSteps.contains(step) && !isInMeasurementTutorial {
+                idx += direction
+            } else {
+                break
+            }
         }
         return idx
     }
