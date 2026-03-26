@@ -32,7 +32,7 @@ class DashboardRepository @Inject constructor(
   override fun getVisibleMetricKeys(accountId: String): Flow<List<MetricKey>> =
     accountDao.getDashboardSettings(accountId).map { settings ->
       val dashboardType = settings?.dashboardType?.let { type ->
-        DashboardType.entries.find { it.value == type }
+        DashboardType.entries.find { it.value.equals(type, ignoreCase = true) }
       } ?: DashboardType.DASHBOARD_4_METRICS
 
       // Get available metrics based on dashboard type

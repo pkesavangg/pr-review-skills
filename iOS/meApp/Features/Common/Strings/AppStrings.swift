@@ -700,14 +700,14 @@ struct AlertStrings {
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
-    
+
     struct DuplicateUserAlert {
         static let header = "Duplicate Scale User Name"
         static let message = "Reconnect the scale with a new user name."
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
-    
+
     struct UpdatesPendingAlert {
         static let title = "Updates Pending..."
         static let message = "Scale settings can't be updated at this time. "
@@ -886,6 +886,11 @@ struct AppAssets {
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
 
+    // MARK: - Baby scale series
+    static let scale0220 = "0220"
+    static let scale0222 = "0222"
+    static let babyAppLoaderGif = "BabyAppLoader"
+    static let checkmarkSuccessGif = "gg_checkmark_success"
     // MARK: - BPM series
     static let bpm0603 = "0603"
     static let bpm0604 = "0604"
@@ -930,7 +935,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_Err_\(errorCode)_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates AP mode image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - sku: Scale SKU (e.g., "0384", "0396")
@@ -942,7 +947,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_AP_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates complete setup image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - isFilled: Whether to use filled or outlined version
@@ -953,7 +958,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "0396_Complete_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates step on image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - sku: Scale SKU (e.g., "0396")
@@ -965,7 +970,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_StepOn_\(fillType)\(themeVariant)"
     }
-    
+
     // MARK: - Bluetooth Setup
     static let setupPressUnitButtonGifName: (String) -> String = { sku in
         "\(sku)-Setup-PressUnitButton"
@@ -993,7 +998,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "0384_U\(user)_\(fillType)\(themeVariant)"
     }
-    
+
     /// Legacy function for backward compatibility - generates step on GIF name
     /// Parameters:
     ///   - isFilled: Whether to use filled or outlined version

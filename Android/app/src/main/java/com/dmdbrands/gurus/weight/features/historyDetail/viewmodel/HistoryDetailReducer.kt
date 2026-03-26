@@ -2,16 +2,21 @@ package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * UI state for the history detail feature, holding loading state, error, and data.
  */
+@Stable
 data class HistoryDetailState(
   val isLoading: Boolean = false,
   val errorMessage: String? = null,
   val month: String = "",
-  val itemsOpened: List<Long> = emptyList(),
-  val historyItems: List<ScaleEntry> = emptyList(),
+  val itemsOpened: ImmutableList<Long> = persistentListOf(),
+  val historyItems: ImmutableList<ScaleEntry> = persistentListOf(),
 ) : IReducer.State
 
 /**
@@ -44,11 +49,11 @@ class HistoryDetailReducer : IReducer<HistoryDetailState, HistoryDetailIntent> {
       is HistoryDetailIntent.SetError -> state.copy(errorMessage = intent.message, isLoading = false)
       HistoryDetailIntent.ClearError -> state.copy(errorMessage = null)
       is HistoryDetailIntent.LoadHistoryDetail -> state.copy(isLoading = true)
-      is HistoryDetailIntent.SetItemsOpened -> state.copy(itemsOpened = intent.ids)
+      is HistoryDetailIntent.SetItemsOpened -> state.copy(itemsOpened = intent.ids.toImmutableList())
       is HistoryDetailIntent.SetHistoryItems ->
         state.copy(
           month = intent.month,
-          historyItems = intent.items,
+          historyItems = intent.items.toImmutableList(),
           isLoading = false,
           errorMessage = null,
         )

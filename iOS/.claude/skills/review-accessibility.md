@@ -65,14 +65,25 @@ If the view is tested (or will be tested) by `meAppUITests`:
 
 ---
 
-### 5 — Output
+### 5 — Check Dynamic Type Support
+
+For each view file, check:
+- Are fixed font sizes used (`.font(.system(size: N))`) instead of semantic fonts (`.body`, `.headline`)?
+- Are text containers constrained with fixed `.frame(height:)` that would clip at larger sizes?
+- Is content inside a `ScrollView` if it could overflow at accessibility text sizes?
+
+Flag fixed sizes as **WARNING** — they break Dynamic Type scaling.
+
+---
+
+### 6 — Output
 
 ```
 ### Accessibility Review
 
-| File | Interactive Labels | Decorative Hidden | UI Test Identifiers | Issues |
-|------|--------------------|-------------------|---------------------|--------|
-| …    | ✅ / ⚠️ / ❌      | ✅ / ⚠️ / N/A    | ✅ / ⚠️ / N/A      | …      |
+| File | Interactive Labels | Decorative Hidden | Dynamic Type | UI Test Identifiers | Issues |
+|------|--------------------|-------------------|--------------|---------------------|--------|
+| …    | ✅ / ⚠️ / ❌      | ✅ / ⚠️ / N/A    | ✅ / ⚠️ / N/A | ✅ / ⚠️ / N/A      | …      |
 
 **Verdict:** PASS / NEEDS CHANGES
 
@@ -81,4 +92,32 @@ Findings:
 ```
 
 - **FAIL** if any interactive element is completely inaccessible (no label, not reachable by VoiceOver)
-- **WARNING** if decorative elements lack `.accessibilityHidden(true)`, or UI-tested views lack identifiers
+- **WARNING** if decorative elements lack `.accessibilityHidden(true)`, UI-tested views lack identifiers, or fixed font sizes break Dynamic Type
+
+---
+
+### 7 — Fix Mode (Optional)
+
+If the caller passes `--fix` or this skill is invoked after a review that found issues, **auto-fix all findings** instead of just reporting them:
+
+1. For each missing `.accessibilityLabel` — add the label using the element's visible text or a descriptive string
+2. For each missing `.accessibilityHidden(true)` on decorative elements — add it
+3. For each missing `.accessibilityIdentifier` on interactive elements in UI-tested views — add the identifier and register it in `AccessibilityIdentifiers.swift`
+4. For each fixed font size — replace with the nearest semantic font equivalent
+5. For each fixed-height text frame — change to `minHeight`
+
+After fixing, re-run Steps 3–5 on the modified files to confirm all issues are resolved.
+
+If fixes are too complex or ambiguous (e.g. custom gesture recognizers, complex conditional layouts), report them as **manual fixes needed** instead of auto-fixing.
+
+Report fixes applied:
+```
+Auto-fixes applied:
+- {file}:{line} Added .accessibilityLabel("…")
+- {file}:{line} Added .accessibilityHidden(true)
+- {file}:{line} Added .accessibilityIdentifier(AccessibilityID.…)
+- {file}:{line} Replaced .font(.system(size: N)) with .font(.subheadline)
+
+Manual fixes still needed:
+- {file}:{line} {description}
+```

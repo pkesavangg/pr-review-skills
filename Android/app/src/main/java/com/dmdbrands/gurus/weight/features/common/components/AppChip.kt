@@ -82,7 +82,6 @@ object ChipButtonDefaults {
                     1.5.dp,
                     if (selected) MeTheme.colorScheme.primaryAction else Color.Transparent,
                 )
-            // TODO: val borderInDp = with(LocalDensity.current) { 1.5f.toDp() }
         }
 
     /**

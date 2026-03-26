@@ -49,6 +49,8 @@ public enum ValidatorType: Hashable {
     case namePattern
     case alphanumeric
     case userNameUnavailable
+    case reversedValues
+    case maxLimit
     
     public func hash(into hasher: inout Hasher) {
         hasher.combine(String(describing: self))

@@ -14,9 +14,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IEntrySyncService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,9 +29,10 @@ class EntryService(
     private val entryRepository: IEntryRepository,
     private val accountRepository: IAccountRepository,
     private val goalService: IGoalService,
+    private val appScope: CoroutineScope,
 ) : IEntryService {
 
-    private var serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val activeJobs = mutableListOf<Job>()
 
     private var accountId: String? = null
     private var initialWeight: Double? = null
@@ -68,7 +67,7 @@ class EntryService(
         aggregationService.setAccountId(accountId, initialWeight)
         syncService.syncOperations(accountId)
 
-        serviceScope.launch {
+        activeJobs += appScope.launch {
             entryRepository.getEntriesByOperationType(accountId, "create").collect {
                 if (_isEmpty.value != it.isEmpty()) _isEmpty.value = it.isEmpty()
             }
@@ -78,13 +77,13 @@ class EntryService(
     }
 
     fun clearAllData() {
-        serviceScope.cancel()
+        activeJobs.forEach { it.cancel() }
+        activeJobs.clear()
         _isEmpty.value = false
         accountId = null
         initialWeight = null
         syncService.reset()
         aggregationService.clearFlows()
-        serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
     override suspend fun addEntry(entry: Entry) = crudService.addEntry(entry, accountId)
@@ -110,7 +109,7 @@ class EntryService(
         entryRepository.getEntriesByDeviceType(accountId, deviceType)
 
     override fun initializeGoalCardMonitoring(accountId: String) {
-        serviceScope.launch {
+        activeJobs += appScope.launch {
             syncService.lastUpdated.collect {
                 try {
                     val entries = entryRepository.getEntriesByAccount(accountId, false)

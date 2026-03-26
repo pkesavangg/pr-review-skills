@@ -43,7 +43,9 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -107,12 +109,15 @@ constructor(
     monitorNetworkStatus()
     // Observe selectedWifiMode changes and update canProceedToNext in WIFI_MODE step
     viewModelScope.launch {
-      state.collect { currentState ->
-        if (currentState.currentStep == WifiScaleSetupStep.WIFI_MODE) {
-          val canProceed = isWifiModeSelected()
-          handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+      state
+        .map { it.currentStep to it.selectedWifiMode }
+        .distinctUntilChanged()
+        .collect { (step, _) ->
+          if (step == WifiScaleSetupStep.WIFI_MODE) {
+            val canProceed = isWifiModeSelected()
+            handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+          }
         }
-      }
     }
   }
 
@@ -456,7 +461,7 @@ constructor(
       try {
         val token = wifiScaleService.getScaleToken()
         scaleToken = token
-        AppLog.d(TAG, "getScaleToken - token retrieved: $token")
+        AppLog.d(TAG, "getScaleToken - token retrieved successfully")
       } catch (e: Exception) {
         AppLog.e(TAG, "getScaleToken - Error getting scale token", e)
       }
