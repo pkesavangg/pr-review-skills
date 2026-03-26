@@ -60,7 +60,7 @@ struct AhaRatingSheet: View {
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
 
-                Text("Systolic: \(classification.systolicRange)\nDiastolic: \(classification.diastolicRange)")
+                Text("\(BpmDashboardStrings.systolicRangePrefix)\(classification.systolicRange)\(BpmDashboardStrings.diastolicRangePrefix)\(classification.diastolicRange)")
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
             }

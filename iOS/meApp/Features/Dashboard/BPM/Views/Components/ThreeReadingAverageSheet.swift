@@ -65,7 +65,7 @@ struct ThreeReadingAverageSheet: View {
                                 )
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel(
-                                    "\(reading.systolic) over \(reading.diastolic) millimeters mercury, pulse \(reading.pulse), \(reading.formattedDate)"
+                                    BpmDashboardStrings.bpReadingMmhgAccessibility(systolic: reading.systolic, diastolic: reading.diastolic, pulse: reading.pulse, date: reading.formattedDate)
                                 )
                             }
                         }

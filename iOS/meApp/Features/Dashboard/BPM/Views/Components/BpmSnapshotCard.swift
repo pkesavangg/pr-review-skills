@@ -261,8 +261,8 @@ struct BpmSnapshotCard: View {
 
     private var accessibilityLabel: String {
         if let reading = latestReading {
-            return "Blood pressure snapshot, \(reading.systolic) over \(reading.diastolic), pulse \(reading.pulse)"
+            return BpmDashboardStrings.bpSnapshotAccessibility(systolic: reading.systolic, diastolic: reading.diastolic, pulse: reading.pulse)
         }
-        return "Blood pressure snapshot, no readings yet"
+        return BpmDashboardStrings.bloodPressureSnapshotNoReadings
     }
 }

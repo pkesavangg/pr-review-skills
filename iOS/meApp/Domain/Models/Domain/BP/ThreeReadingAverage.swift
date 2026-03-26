@@ -17,9 +17,9 @@ struct ThreeReadingAverage {
     /// Display label adapts to how many readings were available.
     static func displayLabel(for count: Int) -> String {
         switch count {
-        case 3...: return "three entry average"
-        case 2:    return "two entry average"
-        default:   return "last reading"
+        case 3...: return BpmDashboardStrings.threeEntryAverage
+        case 2:    return BpmDashboardStrings.twoEntryAverage
+        default:   return BpmDashboardStrings.lastReading
         }
     }
 }

@@ -64,7 +64,7 @@ struct BpmDisplayView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Open AHA ratings")
+                        .accessibilityLabel(BpmDashboardStrings.openAhaRatings)
                     }
 
                     Spacer()
@@ -87,7 +87,7 @@ struct BpmDisplayView: View {
                 .frame(height: Layout.rowHeight)
             } else {
                 HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
-                    Text("--/--")
+                    Text(BpmDashboardStrings.bpPlaceholder)
                         .fontWeight(.heavy)
                         .fontOpenSans(.heading1)
                         .foregroundColor(theme.textSubheading)
@@ -98,8 +98,8 @@ struct BpmDisplayView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel({
-            guard let data = displayValues else { return "No blood pressure data" }
-            return "Blood pressure \(data.systolic) over \(data.diastolic), pulse \(data.pulse), \(data.classification.label)"
+            guard let data = displayValues else { return BpmDashboardStrings.noBloodPressureData }
+            return BpmDashboardStrings.bpReadingAccessibility(systolic: data.systolic, diastolic: data.diastolic, pulse: data.pulse, label: data.classification.label)
         }())
         .sheet(isPresented: $showAhaRatingSheet) {
             AhaRatingSheet()

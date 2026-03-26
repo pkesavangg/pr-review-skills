@@ -33,31 +33,31 @@ enum AhaPressureClass: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .normal:             return "Normal"
-        case .elevated:           return "Elevated"
-        case .hypertensionStage1: return "Hypertension Stage 1"
-        case .hypertensionStage2: return "Hypertension Stage 2"
-        case .hypertensiveCrisis: return "Hypertensive Crisis"
+        case .normal:             return BpmDashboardStrings.ahaNormal
+        case .elevated:           return BpmDashboardStrings.ahaElevated
+        case .hypertensionStage1: return BpmDashboardStrings.ahaHypertensionStage1
+        case .hypertensionStage2: return BpmDashboardStrings.ahaHypertensionStage2
+        case .hypertensiveCrisis: return BpmDashboardStrings.ahaHypertensiveCrisis
         }
     }
 
     var systolicRange: String {
         switch self {
-        case .normal:             return "Less than 120"
-        case .elevated:           return "120-129"
-        case .hypertensionStage1: return "130-139"
-        case .hypertensionStage2: return "140 or higher"
-        case .hypertensiveCrisis: return "Higher than 180"
+        case .normal:             return BpmDashboardStrings.systolicNormal
+        case .elevated:           return BpmDashboardStrings.systolicElevated
+        case .hypertensionStage1: return BpmDashboardStrings.systolicStage1
+        case .hypertensionStage2: return BpmDashboardStrings.systolicStage2
+        case .hypertensiveCrisis: return BpmDashboardStrings.systolicCrisis
         }
     }
 
     var diastolicRange: String {
         switch self {
-        case .normal:             return "Less than 80"
-        case .elevated:           return "Less than 80"
-        case .hypertensionStage1: return "80-89"
-        case .hypertensionStage2: return "90 or higher"
-        case .hypertensiveCrisis: return "Higher than 120"
+        case .normal:             return BpmDashboardStrings.diastolicNormal
+        case .elevated:           return BpmDashboardStrings.diastolicElevated
+        case .hypertensionStage1: return BpmDashboardStrings.diastolicStage1
+        case .hypertensionStage2: return BpmDashboardStrings.diastolicStage2
+        case .hypertensiveCrisis: return BpmDashboardStrings.diastolicCrisis
         }
     }
 

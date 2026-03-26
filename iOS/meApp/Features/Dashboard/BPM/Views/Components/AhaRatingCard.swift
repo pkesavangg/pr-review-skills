@@ -46,6 +46,6 @@ struct AhaRatingCard: View {
         .sheet(isPresented: $showSheet) {
             AhaRatingSheet()
         }
-        .accessibilityLabel("AHA rating: \(classification.label). Tap for details.")
+        .accessibilityLabel(BpmDashboardStrings.ahaRatingAccessibility(label: classification.label))
     }
 }

@@ -14,14 +14,9 @@ struct BpmSummaryCardView: View {
     let diastolic: Int
     let pulse: Int
     let classification: AhaPressureClass
-    let footer: Footer
+    let footer: BpmSummaryCardFooter
     var cornerRadius: CGFloat = .radiusSM
     @Environment(\.appTheme) private var theme
-
-    enum Footer {
-        case centered(String)
-        case split(left: String, right: String)
-    }
 
     var body: some View {
         VStack(spacing: .zero) {
