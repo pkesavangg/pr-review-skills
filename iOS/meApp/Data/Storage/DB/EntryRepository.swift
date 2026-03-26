@@ -397,6 +397,31 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    /// Fetches BPM entries and returns BpmOperationDTOs with all relationship data extracted.
+    func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BpmOperationDTO] {
+        let bpmDeviceType = DeviceType.bpm.rawValue
+        return try await performBackgroundTask { backgroundContext in
+            let descriptor: FetchDescriptor<Entry>
+            if let opType = operationType {
+                descriptor = FetchDescriptor<Entry>(
+                    predicate: #Predicate {
+                        $0.accountId == userId && $0.operationType == opType && $0.deviceType == bpmDeviceType
+                    },
+                    sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+                )
+            } else {
+                descriptor = FetchDescriptor<Entry>(
+                    predicate: #Predicate {
+                        $0.accountId == userId && $0.deviceType == bpmDeviceType
+                    },
+                    sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+                )
+            }
+            let entries = try backgroundContext.fetch(descriptor)
+            return entries.map { $0.toBpmOperationDTO() }
+        }
+    }
+
     /// Fetches entry identifiers only for later MainActor refetch.
     /// Use this when you need to modify entries after fetching.
     /// - Parameters:

@@ -75,6 +75,10 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
 
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
+    func deleteBpmEntry(entryTimestamp: String) async throws {}
+    func exportBpmCSV() async throws {}
 }
 
 @MainActor
@@ -196,6 +200,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { Empty().eraseToAnyPublisher() }
+    var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { Empty().eraseToAnyPublisher() }
 
     func initialize() { initializeCalls += 1 }
     func stopScan() {}
@@ -211,6 +216,9 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func pauseSmartScan() {}
     func resumeSmartScan(clearOnlyPairing: Bool) {}
     func scanForPairing() {}
+    func scanForBpm() {}
+    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func syncDevices(_ devices: [Device]) {}

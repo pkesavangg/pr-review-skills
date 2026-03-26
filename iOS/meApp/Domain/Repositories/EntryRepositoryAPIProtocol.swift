@@ -18,4 +18,15 @@ protocol EntryRepositoryAPIProtocol {
     /// - useR4Endpoint: Whether to use the R4 endpoint for export.
     /// - Returns: Data representing the CSV file.
     func exportCsv(useR4Endpoint: Bool) async throws -> ExportResponse
+
+    // MARK: - BPM Operations
+
+    /// Syncs a BPM entry with the backend via the BPM operation API.
+    func syncBpmOperation(operation: BpmOperationDTO) async throws
+
+    /// Fetches all BPM operations from the backend, optionally since a given timestamp.
+    func fetchBpmOperations(startTimestamp: String?) async throws -> BpmOperationListResponse
+
+    /// Exports all BPM operations as a CSV file.
+    func exportBpmCsv() async throws -> ExportResponse
 }

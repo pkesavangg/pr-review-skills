@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.core.service
 
 import app.cash.turbine.test
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.helpers.httpException
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkAvailable
 import com.dmdbrands.gurus.weight.core.helpers.stubNetworkUnavailable
@@ -16,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.AuthState
+import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
 import com.dmdbrands.gurus.weight.domain.services.MaxAccountsReachedException
 import com.dmdbrands.gurus.weight.proto.ThemeMode
@@ -28,6 +30,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -72,7 +75,7 @@ class AccountServiceTest {
     private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
     private val appNavigationService: IAppNavigationService = mockk(relaxed = true)
     private val storageClearService: StorageClearService = mockk(relaxed = true)
-
+    private val analyticsService: IAnalyticsService = mockk(relaxed = true)
     private lateinit var service: AccountService
 
     // --- Test Fixtures ---
@@ -174,7 +177,8 @@ class AccountServiceTest {
         dialogQueueService,
         appNavigationService,
         storageClearService,
-        ioDispatcher = mainDispatcherRule.dispatcher,
+        analyticsService = mockk(relaxed = true),
+        appScope = TestScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------
@@ -183,8 +187,6 @@ class AccountServiceTest {
 
     private fun stubNetworkAvailable() = connectivityObserver.stubNetworkAvailable()
     private fun stubNetworkUnavailable() = connectivityObserver.stubNetworkUnavailable()
-    private fun goOnline() = stubNetworkAvailable()
-    private fun goOffline() = stubNetworkUnavailable()
 
     /** Re-stubs active account to null and recreates service. */
     private fun withNoActiveAccount() {
@@ -2046,5 +2048,66 @@ class AccountServiceTest {
         coVerify(exactly = 0) { accountRepository.getAccountFromAPI(expired.id) }
         coVerify(exactly = 1) { accountRepository.getAccountFromAPI(valid.id) }
         coVerify(exactly = 1) { accountRepository.updateAccountInfo(valid.id, validInfo) }
+    }
+
+    // -------------------------------------------------------------------------
+    // checkActiveAccountLocalValidity — offline sync with isOnline=false
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `checkActiveAccountLocalValidity syncs to DB with isOnline false when offline`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.syncAccountSettingsWithServer(any(), any()) } just Runs
+
+        val result = service.checkLoginStatusForActiveAccount()
+
+        assertThat(result).isTrue()
+        coVerify { accountRepository.syncAccountSettingsWithServer(any(), isOnline = false) }
+    }
+
+    // -------------------------------------------------------------------------
+    // handleAccountValidationError — non-401 shows generic error toast
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `switchAccount on HttpException 403 shows generic error toast without marking expired`() = runTest {
+        coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws httpException(403)
+
+        val result = service.switchAccount(fakeAccount2)
+
+        assertThat(result).isFalse()
+        verify { dialogQueueService.showToast(any()) }
+        coVerify(exactly = 0) { accountRepository.markAccountExpired(any()) }
+        coVerify(exactly = 0) { accountRepository.removeAccount(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // showNoNetworkErrorToast — tested via logout and logoutAll offline paths
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `logout offline shows no-network toast with correct message structure`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.logoutAccount(any(), any(), any()) } returns true
+        coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
+
+        service.logout(fakeAccount.id, fcmToken = null)
+
+        verify {
+            dialogQueueService.showToast(match<com.dmdbrands.gurus.weight.features.common.model.Toast> {
+                it.title == null && it.action == null
+            })
+        }
+    }
+
+    @Test
+    fun `logoutAll offline shows no-network toast`() = runTest {
+        stubNetworkUnavailable()
+        coEvery { accountRepository.logoutAllAccounts() } returns true
+        coEvery { accountRepository.setNotificationAlertShownForAccount(any(), any()) } just Runs
+
+        service.logoutAll()
+
+        verify(atLeast = 1) { dialogQueueService.showToast(any()) }
     }
 }

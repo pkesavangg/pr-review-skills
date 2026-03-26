@@ -93,7 +93,7 @@ struct AlertModifier: ViewModifier {
             return .emailAddress
         case .number, .metric:
             return .numberPad
-        case .password, .text:
+        case .password, .text, .notes:
             return .default
         }
     }

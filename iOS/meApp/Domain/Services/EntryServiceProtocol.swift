@@ -101,6 +101,23 @@ protocol EntryServiceProtocol {
     // MARK: - Export
     /// Exports all entries to a CSV file.
     func exportCSV() async throws
+
+    // MARK: - BPM Entry CRUD
+
+    /// Creates a new BPM entry, persists it locally, and syncs with the backend.
+    /// - Parameter dto: The BPM operation data to save.
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws
+
+    /// Fetches all BPM entries for the current user as DTOs.
+    /// - Returns: An array of BpmOperationDTO objects.
+    func fetchBpmEntries() async throws -> [BpmOperationDTO]
+
+    /// Deletes a BPM entry by its entry timestamp.
+    /// - Parameter entryTimestamp: The timestamp identifying the BPM entry to delete.
+    func deleteBpmEntry(entryTimestamp: String) async throws
+
+    /// Exports BPM entries as CSV.
+    func exportBpmCSV() async throws
 }
 
 // MARK: - Default Parameter Values

@@ -84,6 +84,37 @@ final class Entry {
             self.scaleEntryMetric = BathScaleMetric(from: dto)
     }
 
+    init(from dto: BpmOperationDTO, accountId: String, isSynced: Bool = false) {
+        let timestamp = dto.entryTimestamp ?? ISO8601DateFormatter().string(from: Date())
+        self.id = UUID()
+        self.entryTimestamp = timestamp
+        self.accountId = accountId
+        self.operationType = dto.operationType ?? ""
+        self.serverTimestamp = dto.serverTimestamp
+        self.deviceType = DeviceType.bpm.rawValue
+        self.isSynced = isSynced
+        self.attempts = 0
+        self.isFailedToSync = false
+        self.scaleEntry = BathScaleEntry(from: dto)
+        self.scaleEntryMetric = BathScaleMetric(from: dto)
+    }
+
+    func toBpmOperationDTO() -> BpmOperationDTO {
+        return BpmOperationDTO(
+            accountId: self.accountId,
+            systolic: self.scaleEntry?.systolic.map { Double($0) },
+            diastolic: self.scaleEntry?.diastolic.map { Double($0) },
+            pulse: self.scaleEntryMetric?.pulse.map { Double($0) },
+            meanArterial: self.scaleEntry?.meanArterial,
+            note: self.scaleEntry?.note,
+            source: self.scaleEntry?.source,
+            unit: self.scaleEntryMetric?.unit,
+            entryTimestamp: self.entryTimestamp,
+            operationType: self.operationType,
+            serverTimestamp: self.serverTimestamp
+        )
+    }
+
     func toOperationDTO() -> BathScaleOperationDTO {
         return BathScaleOperationDTO(
             accountId: self.accountId,

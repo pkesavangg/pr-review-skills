@@ -1,13 +1,13 @@
 package com.dmdbrands.gurus.weight.features.common.service
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.features.common.components.LoaderStyle
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Loader
 import com.dmdbrands.gurus.weight.features.common.model.Toast
-import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +35,7 @@ class DialogQueueService
         private val _loader = MutableStateFlow<Loader?>(null)
         override val loader: StateFlow<Loader?> = _loader.asStateFlow()
         private val scope = appScope
+        private var pendingShowJob: Job? = null
 
         /**
          * Enqueue a dialog. If no dialog is showing, show immediately.
@@ -95,6 +96,8 @@ class DialogQueueService
          * Clear all dialogs and reset state.
          */
         override fun clear() {
+            pendingShowJob?.cancel()
+            pendingShowJob = null
             dialogQueue.clear()
             _currentDialog.value = null
         }
@@ -118,7 +121,7 @@ class DialogQueueService
         private fun showNext() {
             if (dialogQueue.isNotEmpty()) {
                 val next = dialogQueue.peek() ?: return
-                scope.launch {
+                pendingShowJob = scope.launch {
                     delay(next.delayMillis)
                     _currentDialog.value = next
                 }

@@ -84,6 +84,11 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         liveMeasurementSubject.eraseToAnyPublisher()
     }
 
+    /// Publisher for new BPM reading events.
+    var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> {
+        newBpmReadingReceivedSubject.eraseToAnyPublisher()
+    }
+
     var skipDevices: [String] = []
     var blockedBroadcastIds: Set<String> = []
     var unblockTasks: [String: Task<Void, Never>] = [:]
@@ -103,6 +108,8 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
     let firmwareUpdateProgressSubject = PassthroughSubject<FirmwareUpdateStatus, Never>()
     /// Subject for live measurement data events.
     let liveMeasurementSubject = PassthroughSubject<GGWeightEntry, Never>()
+    /// Subject for BPM reading events.
+    let newBpmReadingReceivedSubject = PassthroughSubject<BpmMeasurement, Never>()
 
     // MARK: - Private Properties
 

@@ -394,4 +394,31 @@ class PushNotificationServiceTest {
       NotificationEventType.ERROR_OCCURRED,
     )
   }
+
+  // -------------------------------------------------------------------------
+  // updateFcmToken — additional edge cases via onNewToken
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `onNewToken with blank current token updates to new token`() = runTest {
+    coEvery { appRepository.getFcmToken() } returns "   "
+    coEvery { appRepository.setFcmToken(any()) } just Runs
+
+    service.onNewToken("fresh-token")
+    Thread.sleep(200)
+
+    coVerify(exactly = 1) { appRepository.setFcmToken("fresh-token") }
+  }
+
+  @Test
+  fun `onNewToken with empty new token still checks current token`() = runTest {
+    coEvery { appRepository.getFcmToken() } returns "existing"
+    coEvery { appRepository.setFcmToken(any()) } just Runs
+
+    service.onNewToken("")
+    Thread.sleep(200)
+
+    // "" != "existing", so setFcmToken is called
+    coVerify(exactly = 1) { appRepository.setFcmToken("") }
+  }
 }

@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
@@ -123,6 +124,7 @@ class DeviceServiceTest {
             dialogQueueService,
             appNavigationService,
             context,
+            appScope = TestScope(mainDispatcherRule.dispatcher),
         )
     }
 
@@ -920,5 +922,124 @@ class DeviceServiceTest {
 
         // Should save exactly once for d1 (no duplicate)
         coVerify(exactly = 1) { deviceRepository.saveDeviceToDb(match { it.id == "d1" }, accountId) }
+    }
+
+    // -------------------------------------------------------------------------
+    // updateConnectedDeviceDetailMap — via onDeviceUpdate
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onDeviceUpdate stores device detail in connectedDeviceMap for subsequent fetchScales`() = runTest {
+        val mac = "AA:BB:CC:DD:EE:FF"
+        val detail: GGDeviceDetail = mockk(relaxed = true)
+        every { detail.macAddress } returns mac
+        every { detail.isWifiConfigured } returns true
+        every { detail.wifiMacAddress } returns "WF:01:02:03"
+        every { detail.impedanceSwitchState } returns null
+
+        // Update device detail before setting up account
+        service.onDeviceUpdate(detail, BLEStatus.CONNECTED)
+
+        // Now set up account with a device that has the same mac — fetchScales should pick up the stored detail
+        val deviceFromDb = fakeDevice(mac = mac)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(deviceFromDb))
+        service.setAccountId(accountId)
+        Thread.sleep(2000)
+
+        service.pairedScales.test {
+            val devices = awaitItem()
+            val d = devices.firstOrNull { it.device?.macAddress == mac }
+            assertThat(d?.device?.isWifiConfigured).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // fetchScales — throws when no accountId provided
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `fetchScales throws IllegalArgumentException when no accountId is available`() = runTest {
+        var thrownException: Exception? = null
+        try {
+            service.fetchScales(null)
+        } catch (e: Exception) {
+            thrownException = e
+        }
+
+        assertThat(thrownException).isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
+    fun `fetchScales applies connection status and weight-only mode from maps`() = runTest {
+        val mac = "AA:BB:CC:DD:EE:FF"
+        val prefs = fakePreferences.copy(shouldMeasureImpedance = true)
+        val deviceDetail: GGDeviceDetail = mockk(relaxed = true)
+        every { deviceDetail.macAddress } returns mac
+        every { deviceDetail.impedanceSwitchState } returns false
+
+        val device = fakeDevice(mac = mac, preferences = prefs)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(device))
+
+        // Pre-seed maps
+        service.updateConnectionStatus(mac, BLEStatus.CONNECTED)
+        service.onDeviceUpdate(deviceDetail, BLEStatus.CONNECTED)
+
+        service.setAccountId(accountId)
+        Thread.sleep(2000)
+
+        service.pairedScales.test {
+            val devices = awaitItem()
+            val d = devices.firstOrNull { it.device?.macAddress == mac }
+            assertThat(d?.connectionStatus).isEqualTo(BLEStatus.CONNECTED)
+            assertThat(d?.isWeighOnlyModeEnabledByOthers).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // getTimeZoneInMinutes — tested via updateScalePreferences
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateScalePreferences sets tzOffset from getTimeZoneInMinutes`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        val prefSlot = slot<R4ScalePreferenceApiModel>()
+        coEvery { deviceRepository.saveScalePreferencesToApi(capture(prefSlot)) } returns fakeR4Preferences
+
+        service.updateScalePreferences(deviceId, fakeR4Preferences)
+
+        val captured = prefSlot.captured
+        // tzOffset should be set to a valid timezone offset in minutes
+        assertThat(captured.tzOffset).isNotNull()
+        assertThat(captured.wifiFotaScheduleTime).isEqualTo(0)
+    }
+
+    @Test
+    fun `updateScalePreferences returns false when API throws`() = runTest {
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        coEvery { deviceRepository.saveScalePreferencesToApi(any()) } throws RuntimeException("API error")
+
+        val result = service.updateScalePreferences(deviceId, fakeR4Preferences)
+
+        assertThat(result).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // updateScalePreferencesByMac
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateScalePreferencesByMac returns false when scale not found by mac`() = runTest {
+        service.setAccountId(accountId)
+        every { deviceRepository.getDeviceByMac(any(), any()) } returns flowOf(null)
+
+        val result = service.updateScalePreferencesByMac("unknown:mac", fakeR4Preferences)
+
+        assertThat(result).isFalse()
     }
 }

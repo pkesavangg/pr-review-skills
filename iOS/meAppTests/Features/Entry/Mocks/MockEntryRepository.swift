@@ -131,6 +131,12 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         return filteredEntries(userId: userId, operationType: operationType).map { $0.toOperationDTO() }
     }
 
+    func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String?) async throws -> [BpmOperationDTO] {
+        filteredEntries(userId: userId, operationType: operationType)
+            .filter { $0.deviceType == DeviceType.bpm.rawValue }
+            .map { $0.toBpmOperationDTO() }
+    }
+
     func syncEntries(newEntries: [Entry]) async throws {
         for entry in newEntries {
             entries.removeAll(where: { $0.id == entry.id })

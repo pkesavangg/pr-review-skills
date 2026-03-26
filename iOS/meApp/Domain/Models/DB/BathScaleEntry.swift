@@ -1,19 +1,18 @@
-/// Stores scale-specific data for each entry.
-/// Also stores BP fields when `entryType == "bpm"`.
+/// Stores scale and BPM measurement data for each entry.
 ///
-/// | Column Name    | Type   | Description                                  |
-/// |----------------|--------|----------------------------------------------|
-/// | id             | int    | FK to entry.id (Primary Key)                 |
-/// | weight         | int    | Weight recorded in the entry (wg only)       |
-/// | bodyFat        | int    | Body fat percentage recorded (wg only)       |
-/// | muscleMass     | int    | Muscle mass recorded (wg only)               |
-/// | water          | int    | Water percentage recorded (wg only)          |
-/// | bmi            | int    | Body Mass Index (wg only)                    |
-/// | source         | string | Source data (e.g., manual, scale)             |
-/// | systolic       | int    | Systolic pressure in mmHg (bpm only)         |
-/// | diastolic      | int    | Diastolic pressure in mmHg (bpm only)        |
-/// | meanArterial   | int    | Mean arterial pressure in mmHg (bpm only)    |
-/// | note           | string | Free-text note (bpm only)                    |
+/// | Column Name    | Type   | Description                              |
+/// |----------------|--------|------------------------------------------|
+/// | id             | int    | FK to entry.id (Primary Key)             |
+/// | weight         | int    | Weight recorded in the entry             |
+/// | bodyFat        | int    | Body fat percentage recorded             |
+/// | muscleMass     | int    | Muscle mass recorded                     |
+/// | water          | int    | Water percentage recorded                |
+/// | bmi            | int    | Body Mass Index                          |
+/// | source         | string | Source data (e.g., manual, scale)        |
+/// | systolic       | int    | Systolic blood pressure reading          |
+/// | diastolic      | int    | Diastolic blood pressure reading         |
+/// | meanArterial   | string | Mean arterial pressure                   |
+/// | note           | string | User note for the entry                  |
 
 import Foundation
 import SwiftData
@@ -27,6 +26,10 @@ final class BathScaleEntry {
     var water: Int?
     var bmi: Int?
     var source: String?
+    var systolic: Int?
+    var diastolic: Int?
+    var meanArterial: String?
+    var note: String?
 
     // MARK: - BP fields
     var systolic: Int?
@@ -42,7 +45,7 @@ final class BathScaleEntry {
          source: String? = nil,
          systolic: Int? = nil,
          diastolic: Int? = nil,
-         meanArterial: Int? = nil,
+         meanArterial: String? = nil,
          note: String? = nil) {
         self.weight = weight
         self.bodyFat = bodyFat
@@ -67,6 +70,16 @@ final class BathScaleEntry {
             systolic: dto.systolic.map { Int($0) },
             diastolic: dto.diastolic.map { Int($0) },
             meanArterial: dto.meanArterial.map { Int($0) }
+        )
+    }
+
+    convenience init(from dto: BpmOperationDTO) {
+        self.init(
+            source: dto.source,
+            systolic: dto.systolic.map { Int($0) },
+            diastolic: dto.diastolic.map { Int($0) },
+            meanArterial: dto.meanArterial,
+            note: dto.note
         )
     }
 }

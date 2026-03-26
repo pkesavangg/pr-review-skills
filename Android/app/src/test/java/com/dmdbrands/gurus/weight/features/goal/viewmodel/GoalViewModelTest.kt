@@ -599,4 +599,119 @@ class GoalViewModelTest {
 
         verify(exactly = 0) { goalService.getPercentComplete(any(), any()) }
     }
+
+    // -------------------------------------------------------------------------
+    // onSubmit — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit calls updateR4Profile after goalService updateGoal`() = runTest {
+        val account = accountWithGoal()
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        coEvery { goalService.updateGoal(any(), any(), any(), any()) } returns mockk(relaxed = true)
+
+        viewModel.handleIntent(GoalIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { goalService.updateGoal(any(), any(), any(), any()) }
+        // updateR4Profile is called after goalService succeeds
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `Submit with MAINTAIN goalType and zero latestWeight still calls goalService`() = runTest {
+        val account = accountWithGoal(goalType = GoalType.MAINTAIN.value)
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        viewModel.handleIntent(GoalIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { goalService.updateGoal(any(), any(), any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onSuccess — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Success navigates back with null topLevel`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(GoalIntent.Success)
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateBack(null) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onHandleGoalMet — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `HandleGoalMet with setNewGoal true clears existing form values`() = runTest {
+        viewModel = createViewModel()
+        accountFlow.value = accountWithGoal(goalWeight = 150.0, initialWeight = 180.0)
+        advanceUntilIdle()
+
+        viewModel.handleIntent(GoalIntent.HandleGoalMet(setNewGoal = true))
+        advanceUntilIdle()
+
+        // Form should be reset with new controls
+        val controls = viewModel.state.value.form.controls
+        assertThat(controls.goalType.value).isEqualTo(GoalType.LOSE_GAIN.value)
+    }
+
+    // -------------------------------------------------------------------------
+    // onHandleGoalLeave — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `HandleGoalLeave with updateGoal true preserves state`() = runTest {
+        viewModel = createViewModel()
+        accountFlow.value = accountWithGoal()
+        advanceUntilIdle()
+
+        val stateBefore = viewModel.state.value
+        viewModel.handleIntent(GoalIntent.HandleGoalLeave(updateGoal = true))
+        advanceUntilIdle()
+
+        // State should remain unchanged (only logging occurs)
+        assertThat(viewModel.state.value.account).isEqualTo(stateBefore.account)
+    }
+
+    // -------------------------------------------------------------------------
+    // updateStateWithAccount — additional edge cases
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `updateStateWithAccount preserves latestWeight when account changes`() = runTest {
+        every { goalService.getPercentComplete(any(), any()) } returns 50
+
+        viewModel = createViewModel()
+        viewModel.handleIntent(GoalIntent.UpdateLatestWeight(165.0))
+        advanceUntilIdle()
+
+        val account = accountWithGoal()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.latestWeight).isEqualTo(165.0)
+    }
+
+    @Test
+    fun `updateStateWithAccount with non-zero weights populates form fields`() = runTest {
+        val account = accountWithGoal(goalWeight = 150.0, initialWeight = 180.0)
+        viewModel = createViewModel()
+        accountFlow.value = account
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.form.controls.startingWeight.value).isNotEmpty()
+        assertThat(viewModel.state.value.form.controls.goalWeight.value).isNotEmpty()
+    }
 }

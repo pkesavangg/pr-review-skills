@@ -12,7 +12,7 @@ struct ScaleManualListRowView: View {
     let scale: ScaleItemInfo
     @Environment(\.appTheme) private var theme
     let rowHeight: CGFloat = 139
-    
+
     var body: some View {
         HStack(spacing: .spacingSM) {
             Image(scale.imgPath)
@@ -20,7 +20,7 @@ struct ScaleManualListRowView: View {
                 .scaledToFit()
                 .frame(width: 75, height: 75)
                 .themeDropShadow()
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 Text(scale.sku)
                     .fontOpenSans(.heading5)
@@ -30,7 +30,7 @@ struct ScaleManualListRowView: View {
                     .foregroundColor(theme.textSubheading)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                
+
             }
             .frame(height: 75)
 
@@ -49,7 +49,7 @@ struct ScaleManualListRowView: View {
     /// Returns human-readable connectivity label for a given setup type.
     private func connectivityText(for type: ScaleSetupType) -> String {
         switch type {
-        case .bluetooth, .lcbt:
+        case .bluetooth, .lcbt, .babyScale:
             return "Bluetooth"
         case .wifi, .espTouchWifi:
             return "WiFi"
@@ -57,9 +57,11 @@ struct ScaleManualListRowView: View {
             return "AppSync"
         case .btWifiR4:
             return "BtWifi"
+        case .bpm:
+            return "BPM"
         }
     }
-    
+
     private func iconName(for type: ScaleSetupType) -> String {
         switch type {
         case .bluetooth, .lcbt:
@@ -70,6 +72,9 @@ struct ScaleManualListRowView: View {
             return AppAssets.appSync
         case .btWifiR4:
             return AppAssets.btWifi
+        case .babyScale:
+        case .bpm:
+            return AppAssets.bluetooth
         }
     }
 }
