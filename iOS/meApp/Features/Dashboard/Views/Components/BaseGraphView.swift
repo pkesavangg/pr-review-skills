@@ -493,7 +493,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 series: .value("Series", point.series)
             )
             .foregroundStyle(colors.line)
-            .interpolationMethod(dashboardStore.productType == .bpm ? .linear : .monotone)
+            .interpolationMethod(dashboardStore.productType == .bpm ? .monotone : .monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
             // Visible point mark — only shown when within domain to avoid
@@ -522,19 +522,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
     /// Computes line and point colors for a chart series, factoring in product type and month interval.
     private func seriesColors(for point: GraphSeries, isOutsideMonthInterval: Bool) -> (line: Color, point: Color) {
-        if dashboardStore.productType == .bpm {
-            if point.series == "pulse" {
-                return (theme.textSubheading, theme.textSubheading)
-            }
-            let ahaColor = dashboardStore.displayManager?.currentBpmClassification.color(theme: theme) ?? theme.actionPrimary
-            return (ahaColor, isOutsideMonthInterval ? ahaColor.opacity(0.4) : ahaColor)
-        }
-        let isWeight = point.series == DashboardStrings.weight
-        let lineColor = isWeight ? theme.actionPrimary : theme.actionSecondary
-        let pointColor = isWeight
-            ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
-            : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
-        return (lineColor, pointColor)
+        DashboardChartStyleProvider.seriesColors(
+            for: point.series,
+            productType: dashboardStore.productType,
+            theme: theme,
+            bpmClassification: dashboardStore.displayManager?.currentBpmClassification,
+            isOutsideMonthInterval: isOutsideMonthInterval
+        )
     }
 
     @ChartContentBuilder
@@ -934,7 +928,12 @@ extension View {
                         return uniqueByDay
                     }()
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
-                    let adjustedLabelTicks: [Date] = allTicks
+                    let adjustedLabelTicks: [Date] = {
+                        if viewModel.timePeriod == .year {
+                            return nonLastTicks
+                        }
+                        return allTicks
+                    }()
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
                     AxisMarks(values: gridTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
@@ -1081,19 +1080,22 @@ extension View {
                             viewModel.clearSelection()
                             return
                         }
-                        localSelectedXValue.wrappedValue = newValue
                         viewModel.handleChartSelection(at: newValue)
 
                         // Update dashboard store selection using snapped date when available
                         if let rawDate = newValue {
                             if viewModel.showCrosshair {
                                 let dateToSend = viewModel.preferredSelectedDate ?? rawDate
+                                localSelectedXValue.wrappedValue = dateToSend
                                 Task {
                                     await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                 }
                             } else {
+                                localSelectedXValue.wrappedValue = nil
                                 Task { await dashboardStore.chartManager.handleChartSelection(at: nil) }
                             }
+                        } else {
+                            localSelectedXValue.wrappedValue = nil
                         }
                     }
                 ))
@@ -1103,14 +1105,15 @@ extension View {
                         .onEnded { value in
                             guard !viewModel.chartOperations.isEmpty else { return }
                             if let date: Date = proxy.value(atX: value.location.x) {
-                                localSelectedXValue.wrappedValue = date
                                 viewModel.handleChartSelection(at: date)
                                 if viewModel.showCrosshair {
                                     let dateToSend = viewModel.preferredSelectedDate ?? date
+                                    localSelectedXValue.wrappedValue = dateToSend
                                     Task {
                                         await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                     }
                                 } else {
+                                    localSelectedXValue.wrappedValue = nil
                                     // Clear any previous selection in the store
                                     Task {
                                         await dashboardStore.chartManager.handleChartSelection(at: nil)

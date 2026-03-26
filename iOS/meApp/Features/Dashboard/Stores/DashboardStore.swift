@@ -387,6 +387,8 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
         cacheManager.clearAllCaches()
+        state.ui.hasInitializedChart = false
+        graphManager.state.isGraphReady = false
         Task { [weak self] in
             guard let self else { return }
             await self.entryService.loadDashboardData(entryType: newType)

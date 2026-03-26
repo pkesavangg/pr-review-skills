@@ -27,21 +27,24 @@ struct DashboardScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            navbarHeader()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if store.state.ui.isEditMode {
-                        store.cancelEdit()
-                    }
-                }
             if productTypeStore.availableItems.count > 1 && !isInProductDashboard {
+                snapshotLogo()
                 ScrollView(showsIndicators: false) {
                     MultiDeviceSnapshotView(productTypeStore: productTypeStore) { selectedItem in
+                        let newType: EntryType = selectedItem == .myBloodPressure ? .bpm : .wg
+                        store.switchProductType(to: newType)
                         productTypeStore.select(selectedItem)
                         isInProductDashboard = true
                     }
                 }
             } else {
+                navbarHeader()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if store.state.ui.isEditMode {
+                            store.cancelEdit()
+                        }
+                    }
                 dashboardScroll()
             }
         }
@@ -131,16 +134,23 @@ struct DashboardScreen: View {
         }
     }
     
+    private func snapshotLogo() -> some View {
+        AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
+            .foregroundColor(theme.textSubheading)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, .spacingXS)
+    }
+
     private func navbarHeader() -> some View {
         NavbarHeaderView<EmptyView, EmptyView>(
-            title: productTypeStore.availableItems.count > 1
+            title: productTypeStore.availableItems.count > 1 && isInProductDashboard
                 ? productTypeStore.selectedItem.dashboardTitle
                 : nil,
-            onTitleTap: productTypeStore.availableItems.count > 1 ? {
+            onTitleTap: productTypeStore.availableItems.count > 1 && isInProductDashboard ? {
                 isProductTypeSelectorPresented = true
             } : nil,
             canShowBorder: false,
-            canShowTitleChevron: productTypeStore.availableItems.count > 1
+            canShowTitleChevron: productTypeStore.availableItems.count > 1 && isInProductDashboard
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
             ProductTypeSelectorSheet(

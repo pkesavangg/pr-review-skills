@@ -27,14 +27,16 @@ struct AhaRatingSheet: View {
             )
 
             ScrollView {
-                VStack(alignment: .leading, spacing: .spacingLG) {
-                    Text(BpmDashboardStrings.bloodPressureLevelColors)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
+                VStack(alignment: .leading, spacing: .spacingSM) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(BpmDashboardStrings.bloodPressureLevelColors)
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
 
-                    Text(BpmDashboardStrings.colorChartDescription)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        Text(BpmDashboardStrings.colorChartDescription)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                    }
 
                     ForEach(AhaPressureClass.allCases.reversed()) { classification in
                         classificationRow(classification)
@@ -48,23 +50,18 @@ struct AhaRatingSheet: View {
 
     @ViewBuilder
     private func classificationRow(_ classification: AhaPressureClass) -> some View {
-        HStack(alignment: .top, spacing: .spacingSM) {
+        HStack(alignment: .center, spacing: 20) {
             RoundedRectangle(cornerRadius: 4)
                 .fill(classification.color(theme: theme))
-                .frame(width: 16, height: 48)
+                .frame(width: 27, height: 65)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: .zero) {
                 Text(classification.label)
-                    .fontOpenSans(.heading5)
-                    .fontWeight(.bold)
+                    .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
 
-                Text("Systolic: \(classification.systolicRange)")
-                    .fontOpenSans(.body3)
-                    .foregroundColor(theme.textBody)
-
-                Text("Diastolic: \(classification.diastolicRange)")
-                    .fontOpenSans(.body3)
+                Text("Systolic: \(classification.systolicRange)\nDiastolic: \(classification.diastolicRange)")
+                    .fontOpenSans(.body2)
                     .foregroundColor(theme.textBody)
             }
 

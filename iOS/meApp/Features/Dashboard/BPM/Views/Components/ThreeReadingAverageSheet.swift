@@ -9,13 +9,14 @@ import SwiftUI
 
 struct ThreeReadingAverageSheet: View {
     let average: ThreeReadingAverage
+    let readings: [BpmReadingDisplayData]
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<AnyView, EmptyView>(
-                title: BpmDashboardStrings.threeEntryAverage.capitalized,
+                title: BpmDashboardStrings.threeReadingAverageTitle,
                 leadingContent: {
                     AnyView(
                         AppIconView(icon: AppAssets.close)
@@ -28,35 +29,47 @@ struct ThreeReadingAverageSheet: View {
             )
 
             ScrollView {
-                VStack(alignment: .leading, spacing: .spacingLG) {
-                    Text("Why We Take an Average")
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
+                VStack(alignment: .leading, spacing: .spacingSM) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Why We Take an Average")
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
 
-                    Text("Blood pressure readings can vary throughout the day. Averaging your most recent readings gives a more accurate picture of your overall blood pressure health.")
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        Text("Blood pressure changes throughout the day. Averaging three readings gives a more accurate result.")
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                    }
 
-                    // Average display
-                    HStack(spacing: .spacingSM) {
-                        Text("\(average.systolic)/\(average.diastolic)")
-                            .fontOpenSans(.heading2)
-                            .foregroundColor(average.classification.color(theme: theme))
+                    BpmSummaryCardView(
+                        systolic: average.systolic,
+                        diastolic: average.diastolic,
+                        pulse: average.pulse,
+                        classification: average.classification,
+                        footer: .centered(average.label)
+                    )
 
-                        VStack(alignment: .leading) {
-                            Text(average.classification.label)
-                                .fontOpenSans(.body2)
-                                .fontWeight(.bold)
-                                .foregroundColor(average.classification.color(theme: theme))
-                            Text(average.label)
-                                .fontOpenSans(.body3)
-                                .foregroundColor(theme.textSubheading)
+                    if !readings.isEmpty {
+                        Text("Last 3 readings")
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
+
+                        VStack(spacing: .spacingSM) {
+                            ForEach(readings) { reading in
+                                BpmSummaryCardView(
+                                    systolic: reading.systolic,
+                                    diastolic: reading.diastolic,
+                                    pulse: reading.pulse,
+                                    classification: reading.classification,
+                                    footer: .split(left: BpmDashboardStrings.mmhg, right: BpmDashboardStrings.pulse),
+                                    cornerRadius: .radiusSM
+                                )
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(
+                                    "\(reading.systolic) over \(reading.diastolic) millimeters mercury, pulse \(reading.pulse), \(reading.formattedDate)"
+                                )
+                            }
                         }
                     }
-                    .padding(.spacingSM)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(theme.backgroundPrimaryDisabled)
-                    .cornerRadius(12)
                 }
                 .padding(.spacingSM)
             }

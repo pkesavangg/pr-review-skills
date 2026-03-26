@@ -288,6 +288,16 @@ final class DashboardChartManager: DashboardChartManaging {
 
     func handleChartSelection(at selectedDate: Date?) async {
         let continuousOps = getContinuousOperations()
+        let selectionOps: [BathScaleWeightSummary]
+        if stateProvider?.productType == .bpm {
+            let period = stateProvider?.state.graph.selectedPeriod ?? .week
+            selectionOps = graphManager.dataPreparer.aggregatedBpmOperationsForPeriod(
+                from: continuousOps,
+                period: period
+            )
+        } else {
+            selectionOps = continuousOps
+        }
 
         guard let selectedDate = selectedDate else {
             clearSelection()
@@ -296,7 +306,7 @@ final class DashboardChartManager: DashboardChartManaging {
 
         await graphManager.handleCompleteChartSelection(
             at: selectedDate,
-            operations: continuousOps,
+            operations: selectionOps,
             updateMetrics: { selectedPoint in
                 // Update BPM AHA classification on point selection
                 self.displayManager?.handleBpmPointSelection(selectedPoint)

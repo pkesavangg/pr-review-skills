@@ -22,6 +22,7 @@ enum BpmDashboardStrings {
     static let threeEntryAverage = "three entry average"
     static let twoEntryAverage = "two entry average"
     static let lastReading = "last reading"
+    static let threeReadingAverageTitle = "Three Reading Average"
     static let ahaRating = "AHA Rating"
 
     // MARK: - AHA Rating Sheet
