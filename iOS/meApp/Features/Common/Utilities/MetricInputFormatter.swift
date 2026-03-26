@@ -76,8 +76,17 @@ class MetricFieldFormatter: ObservableObject {
         
         // Allow single zero
         let trimmedDigits = digitsOnly.replacingOccurrences(of: "^0+", with: "", options: .regularExpression)
-        let digits = trimmedDigits.isEmpty && digitsOnly.contains("0") ? "0" : trimmedDigits
-        
+        let digits: String
+        if trimmedDigits.isEmpty && digitsOnly.contains("0") {
+            // When clearZeroValue is enabled, treat zero-only input as empty
+            if config.clearZeroValue {
+                return emptyValue
+            }
+            digits = "0"
+        } else {
+            digits = trimmedDigits
+        }
+
         if digits.isEmpty {
             return emptyValue
         }

@@ -18,8 +18,12 @@ final class EntryStore: ObservableObject {
     private let alertLang = AlertStrings.ManualEntryExitAlert.self
     private let loaderLang = LoaderStrings.self
 
+    // Product type injected via DI; drives which entry view is shown
+
     // Form & UI state
     @Published var manualEntryForm = ManualEntryForm()
+    @Published var bpForm = BloodPressureEntryForm()
+    @Published var babyForm = BabyEntryForm()
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
     @Published var showMetrics = false
@@ -396,6 +400,40 @@ final class EntryStore: ObservableObject {
         setupBmiObservers()
         updateWeightValidators()
         setupDateTimeObservers()
+    }
+
+    func getBPError<T>(for control: FormControl<T>) -> String? {
+        bpForm.getError(for: control)
+    }
+
+    func getBPWarning<T>(for control: FormControl<T>) -> String? {
+        bpForm.getWarning(for: control)
+    }
+
+    @MainActor func resetBPForm() {
+        bpForm = BloodPressureEntryForm()
+        bpForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+    }
+
+    func getBabyError<T>(for control: FormControl<T>) -> String? {
+        babyForm.getError(for: control)
+    }
+
+    var babyWeightError: String? {
+        babyForm.weightError
+    }
+
+    var babyLengthError: String? {
+        babyForm.lengthError
+    }
+
+    @MainActor func resetBabyForm() {
+        babyForm = BabyEntryForm()
+        babyForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     func showExitAlert(onConfirm: @escaping () -> Void, onCancel: (() -> Void)? = nil) {

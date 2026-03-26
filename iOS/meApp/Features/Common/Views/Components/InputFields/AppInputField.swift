@@ -37,16 +37,61 @@ struct AppInputField: View {
     @FocusState private var fieldIsFocused: Bool
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            inputBox
-            Text(config.errorMessage ?? "")
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textError)
-                .padding(.leading, .spacingSM)
-                .frame(height: 20, alignment: .center)
-            Spacer()
+        if config.inputType == .notes {
+            textareaBody
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                inputBox
+                Text(config.errorMessage ?? "")
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textError)
+                    .padding(.leading, .spacingSM)
+                    .frame(height: 20, alignment: .center)
+                Spacer()
+            }
+            .frame(height: 76)
         }
-        .frame(height: 76)
+    }
+
+    private var isTextareaLabelActive: Bool {
+        focusedField == config.focusField || !value.isEmpty
+    }
+
+    private var textareaBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $value)
+                    .font(.body1)
+                    .foregroundColor(theme.textBody)
+                    .scrollContentBackground(.hidden)
+                    .padding(.horizontal, CGFloat.spacingXS)
+                    .padding(.top, isTextareaLabelActive ? CGFloat.spacingLG : CGFloat.spacingXS)
+                    .padding(.bottom, CGFloat.spacingXS)
+                    .frame(minHeight: 100)
+                    .background(theme.backgroundPrimary)
+                    .cornerRadius(BorderRadius.sm)
+                    .onTapGesture {
+                        focusedField = config.focusField
+                    }
+
+                Text(config.label)
+                    .fontOpenSans(isTextareaLabelActive ? .subHeading2 : .subHeading1)
+                    .foregroundColor(floatingLabelColor)
+                    .padding(.horizontal, CGFloat.spacingXS + 4)
+                    .padding(.vertical, CGFloat.spacingXS + 8)
+                    .offset(y: isTextareaLabelActive ? -8 : 0)
+                    .animation(.easeInOut(duration: 0.1), value: isTextareaLabelActive)
+                    .allowsHitTesting(false)
+            }
+
+            if let errorMessage = config.errorMessage {
+                Text(errorMessage)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundColor(theme.textError)
+                    .padding(.leading, .spacingSM)
+                    .padding(.top, 4)
+            }
+        }
     }
 
     private var inputBox: some View {
