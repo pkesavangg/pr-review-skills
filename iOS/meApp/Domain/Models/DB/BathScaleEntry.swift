@@ -31,12 +31,6 @@ final class BathScaleEntry {
     var meanArterial: String?
     var note: String?
 
-    // MARK: - BP fields
-    var systolic: Int?
-    var diastolic: Int?
-    var meanArterial: Int?
-    var note: String?
-
     init(weight: Int? = nil,
          bodyFat: Int? = nil,
          muscleMass: Int? = nil,
@@ -69,7 +63,7 @@ final class BathScaleEntry {
             source: dto.source,
             systolic: dto.systolic.map { Int($0) },
             diastolic: dto.diastolic.map { Int($0) },
-            meanArterial: dto.meanArterial.map { Int($0) }
+            meanArterial: dto.meanArterial.map { String(Int($0)) }
         )
     }
 

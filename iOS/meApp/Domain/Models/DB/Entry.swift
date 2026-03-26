@@ -136,7 +136,7 @@ final class Entry {
             subcutaneousFatPercent: self.scaleEntryMetric?.subcutaneousFatPercent.map { Double($0) },
             systolic: self.scaleEntry?.systolic.map { Double($0) },
             diastolic: self.scaleEntry?.diastolic.map { Double($0) },
-            meanArterial: self.scaleEntry?.meanArterial.map { Double($0) },
+            meanArterial: self.scaleEntry?.meanArterial.flatMap { Double($0) },
             unit: self.scaleEntryMetric?.unit,
             visceralFatLevel: self.scaleEntryMetric?.visceralFatLevel.map { Double($0) },
             water: self.scaleEntry?.water.map { Double($0) },
