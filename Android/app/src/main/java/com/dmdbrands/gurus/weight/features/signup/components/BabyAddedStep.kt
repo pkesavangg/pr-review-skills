@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -104,12 +105,17 @@ fun BabyAddedStep(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
 
-        AppButton(
-            label = BabySignupStrings.addABabyButton,
-            onClick = onAddBaby,
-            type = ButtonType.PrimaryFilled,
-            size = ButtonSize.Small,
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            AppButton(
+                label = BabySignupStrings.addABabyButton,
+                onClick = onAddBaby,
+                type = ButtonType.PrimaryFilled,
+                size = ButtonSize.Small,
+            )
+        }
     }
 }
 

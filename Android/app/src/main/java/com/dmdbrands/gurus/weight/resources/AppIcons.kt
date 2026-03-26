@@ -35,6 +35,9 @@ object AppIcons {
     val Plus = R.drawable.ic_plus
     val Minus = R.drawable.ic_minus
     val EditPencil = R.drawable.ic_edit_pencil
+    val BabyScale = R.drawable.ic_baby_scale
+    val BloodPressureMonitor = R.drawable.ic_blood_pressure_monitor
+    val WeightScale = R.drawable.ic_weight_scale
   }
 
   object Outlined {
