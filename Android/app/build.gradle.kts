@@ -21,6 +21,12 @@ ksp {
   arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+kotlin {
+  compilerOptions {
+    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+  }
+}
+
 android {
   namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
@@ -56,7 +62,7 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"http://ec2-54-161-28-150.compute-1.amazonaws.com:3005/\"",
+        "\"https://api.weightgurus.com/v3/\"",
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
@@ -90,9 +96,6 @@ release {
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
-  }
-  kotlinOptions {
-    jvmTarget = "11"
   }
   buildFeatures {
     compose = true
@@ -156,7 +159,7 @@ dependencies {
   androidTestImplementation(libs.truth)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
-  debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+  debugImplementation(libs.leakcanary.android)
   implementation(libs.hilt.navigation.compose)
 
   // browser
@@ -236,7 +239,7 @@ dependencies {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.3"
+    artifact = "com.google.protobuf:protoc:${libs.versions.protoc.get()}"
   }
   generateProtoTasks {
     all().forEach {
