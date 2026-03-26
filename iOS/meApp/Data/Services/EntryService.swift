@@ -387,7 +387,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
 
-        let streak = try await getStreak()
+        let streak = try await getStreak(entryType: entryType)
 
         logger.log(
             level: .debug,

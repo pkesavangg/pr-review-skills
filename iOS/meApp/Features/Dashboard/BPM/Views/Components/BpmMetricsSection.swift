@@ -11,7 +11,13 @@ import SwiftUI
 struct BpmMetricsSection: View {
     @ObservedObject var store: DashboardStore
     @State private var recentReadings: [BpmReadingDisplayData] = []
+    @State private var streakCards: [MetricItem] = []
     private let entryService = EntryService.shared
+
+    private let streakColumns = [
+        GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing),
+        GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing)
+    ]
 
     private var displayReadings: [BpmReadingDisplayData] {
         if !recentReadings.isEmpty {
@@ -47,17 +53,43 @@ struct BpmMetricsSection: View {
             if let average = threeReadingAverage {
                 ThreeReadingAverageCard(average: average, recentReadings: displayReadings)
             }
+
+            if !streakCards.isEmpty {
+                LazyVGrid(columns: streakColumns, spacing: DashboardConstants.UIConstants.gridSpacing) {
+                    ForEach(streakCards) { streak in
+                        StreakCardView(
+                            value: streak.value,
+                            label: streak.label,
+                            icon: streak.icon,
+                            isEditMode: false,
+                            isRemoved: false,
+                            isDropTarget: false,
+                            onToggleRemoval: {},
+                            onDrop: { _, _ in false },
+                            onDropTargetChanged: { _ in },
+                            parentView: .dashboard
+                        )
+                    }
+                }
+            }
         }
         .padding(.horizontal, .spacingSM)
         .padding(.vertical, .spacingSM)
         .task {
             await loadRecentReadings()
+            await loadBpmStreaks()
         }
         .onReceive(entryService.entrySaved) { _ in
-            Task { await loadRecentReadings() }
+            Task {
+                await loadRecentReadings()
+                await loadBpmStreaks()
+            }
         }
         .onReceive(entryService.entryDeleted) { _ in
-            Task { await loadRecentReadings() }
+            Task {
+                await loadRecentReadings()
+                await loadBpmStreaks()
+            }
         }
     }
 
@@ -73,6 +105,31 @@ struct BpmMetricsSection: View {
             recentReadings = Array(readingData.prefix(BpmConstants.readingAverageCount))
         } catch {
             recentReadings = []
+        }
+    }
+
+    @MainActor
+    private func loadBpmStreaks() async {
+        do {
+            let progress = try await entryService.getProgress(entryType: .bpm)
+            streakCards = [
+                MetricItem(
+                    value: "\(progress.currentStreak)",
+                    label: DashboardStrings.currentStreak,
+                    unit: nil,
+                    preLabel: nil,
+                    icon: AppAssets.streak
+                ),
+                MetricItem(
+                    value: "\(progress.longestStreak)",
+                    label: DashboardStrings.longestStreak,
+                    unit: nil,
+                    preLabel: nil,
+                    icon: AppAssets.longestStreak
+                )
+            ]
+        } catch {
+            streakCards = []
         }
     }
 }

@@ -233,9 +233,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
                 // Selection callout overlay
                 if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
-                   let displayWeight = viewModel.displayWeight,
+                   let selectedValue = selectionCalloutValue(for: selectedDate),
                    viewModel.showCrosshair {
-                    selectionCallout(for: selectedDate, weight: displayWeight)
+                    selectionCallout(for: selectedDate, weight: selectedValue)
                 }
 
                 // Goal chip overlay: show when goal is set (non-nil) — hidden for BPM
@@ -526,7 +526,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             for: point.series,
             productType: dashboardStore.productType,
             theme: theme,
-            bpmClassification: dashboardStore.displayManager?.currentBpmClassification,
+            bpmClassification: dashboardStore.displayManager?.getBpmDisplayValues()?.classification,
             isOutsideMonthInterval: isOutsideMonthInterval
         )
     }
@@ -562,6 +562,21 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
     // MARK: - Selection Callout
+    private func selectionCalloutValue(for selectedDate: Date) -> Double? {
+        let plottedDate = viewModel.plotXDate(for: selectedDate)
+
+        let matchingValues = cachedPlottedPoints.values
+            .flatMap { $0 }
+            .filter { $0.xDate == plottedDate }
+            .map { $0.original.value }
+
+        if let topVisibleValue = matchingValues.max() {
+            return topVisibleValue
+        }
+
+        return viewModel.displayWeight
+    }
+
     @ViewBuilder
     private func selectionCallout(for selectedDate: Date, weight: Double) -> some View {
         if let chartPosition = viewModel.getChartPosition(for: selectedDate, value: weight) {
