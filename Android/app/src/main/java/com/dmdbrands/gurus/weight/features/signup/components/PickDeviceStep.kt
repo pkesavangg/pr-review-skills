@@ -52,6 +52,7 @@ data class DeviceOption(
 fun PickDeviceStep(
     deviceControl: FormControl<String>,
     modifier: Modifier = Modifier,
+    onDeviceSelected: (String) -> Unit = {},
 ) {
     val devices = listOf(
         DeviceOption(
@@ -87,7 +88,7 @@ fun PickDeviceStep(
                 DeviceCard(
                     device = device,
                     isSelected = deviceControl.value == device.id,
-                    onClick = { deviceControl.onValueChange(device.id) },
+                    onClick = { onDeviceSelected(device.id) },
                 )
             }
         }
