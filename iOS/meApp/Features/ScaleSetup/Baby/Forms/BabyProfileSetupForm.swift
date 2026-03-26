@@ -17,9 +17,9 @@ import Foundation
 class BabyProfileSetupForm: ObservableForm {
     var name = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(50)])
     var birthday = FormControl(Date(), validators: [.futureDate])
-    var biologicalSex = FormControl("")
-    var birthLengthInches = FormControl("")
-    var birthWeightLbs = FormControl("")
+    var biologicalSex = FormControl("", validators: [.required])
+    var birthLengthInches = FormControl("", validators: [.required])
+    var birthWeightLbs = FormControl("", validators: [.required])
     var birthWeightOz = FormControl("")
 
     // MARK: - Regex patterns from babyApp
@@ -28,7 +28,7 @@ class BabyProfileSetupForm: ObservableForm {
     /// Weight oz: 1-2 digits, optional single decimal (max 15.9)
     private let weightOzPattern = "^\\d{1,2}(\\.\\d)?$"
     /// Length: 1-2 digits, optional single decimal (imperial inches)
-    private let lengthPattern = "^\\d{1,2}(\\.\\d)?$"
+    private let lengthPattern = "^\\d{1,3}(\\.\\d)?$"
 
     /// Publisher that merges all value changes in the form.
     var formDidChange: AnyPublisher<Void, Never> {
@@ -47,24 +47,30 @@ class BabyProfileSetupForm: ObservableForm {
     func reset() {
         name.value = ""
         name.markAsPristine()
+        name.markAsUntouched()
         birthday.value = Date()
         birthday.markAsPristine()
+        birthday.markAsUntouched()
         biologicalSex.value = ""
         biologicalSex.markAsPristine()
+        biologicalSex.markAsUntouched()
         birthLengthInches.value = ""
         birthLengthInches.markAsPristine()
+        birthLengthInches.markAsUntouched()
         birthWeightLbs.value = ""
         birthWeightLbs.markAsPristine()
+        birthWeightLbs.markAsUntouched()
         birthWeightOz.value = ""
         birthWeightOz.markAsPristine()
+        birthWeightOz.markAsUntouched()
     }
 
     // MARK: - Error Messages
 
     func getNameError() -> String? {
-        guard name.isDirty else { return nil }
-        if name.errors[.required] { return FormErrorMessages.required }
-        if name.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
+        guard name.isDirty || name.isTouched else { return nil }
+        if name.errors[.required] { return BabyScaleSetupStrings.BabyProfile.required }
+        if name.errors[.noWhiteSpace] { return BabyScaleSetupStrings.BabyProfile.required }
         if name.errors[.maxLength] { return FormErrorMessages.maxLength(50) }
         return nil
     }
@@ -72,6 +78,12 @@ class BabyProfileSetupForm: ObservableForm {
     func getBirthdayError() -> String? {
         guard birthday.isDirty else { return nil }
         if birthday.errors[.futureDate] { return FormErrorMessages.futureDate }
+        return nil
+    }
+
+    func getBiologicalSexError() -> String? {
+        guard biologicalSex.isDirty || biologicalSex.isTouched else { return nil }
+        if biologicalSex.errors[.required] { return BabyScaleSetupStrings.BabyProfile.required }
         return nil
     }
 
@@ -99,15 +111,26 @@ class BabyProfileSetupForm: ObservableForm {
 
     /// Combined birth weight error (lbs or oz).
     func getBirthWeightError() -> String? {
+        let lbsVal = birthWeightLbs.value.trimmingCharacters(in: .whitespaces)
+        let ozVal = birthWeightOz.value.trimmingCharacters(in: .whitespaces)
+        if lbsVal.isEmpty && ozVal.isEmpty {
+            let interacted = birthWeightLbs.isDirty || birthWeightLbs.isTouched
+                || birthWeightOz.isDirty || birthWeightOz.isTouched
+            guard interacted else { return nil }
+            return BabyScaleSetupStrings.BabyProfile.required
+        }
         if let lbsError = getBirthWeightLbsError() { return lbsError }
         if let ozError = getBirthWeightOzError() { return ozError }
         return nil
     }
 
-    /// Length validation: if entered, must match `^\d{1,2}(\.\d)?$` and be >= 1
+    /// Length validation: required; if entered, must match pattern and be >= 1
     func getBirthLengthError() -> String? {
         let val = birthLengthInches.value.trimmingCharacters(in: .whitespaces)
-        guard !val.isEmpty else { return nil }
+        if val.isEmpty {
+            guard birthLengthInches.isDirty || birthLengthInches.isTouched else { return nil }
+            return BabyScaleSetupStrings.BabyProfile.required
+        }
         guard val.range(of: lengthPattern, options: .regularExpression) != nil,
               let num = Double(val), num >= 1 else {
             return BabyScaleSetupStrings.BabyProfile.invalidLength
@@ -117,23 +140,17 @@ class BabyProfileSetupForm: ObservableForm {
 
     // MARK: - Form Validity
 
-    /// Mirrors babyApp's `isFormValid()`: name + birthday + sex required,
-    /// weight/length optional but if entered must pass validation.
+    /// All fields required: name, sex, length, weight (at least lbs or oz).
     var isProfileValid: Bool {
-        // Name is required
         guard name.isValid else { return false }
-        // If weight lbs is entered and invalid, block save
-        if !birthWeightLbs.value.trimmingCharacters(in: .whitespaces).isEmpty && getBirthWeightLbsError() != nil {
-            return false
-        }
-        // If weight oz is entered and invalid, block save
-        if !birthWeightOz.value.trimmingCharacters(in: .whitespaces).isEmpty && getBirthWeightOzError() != nil {
-            return false
-        }
-        // If length is entered and invalid, block save
-        if !birthLengthInches.value.trimmingCharacters(in: .whitespaces).isEmpty && getBirthLengthError() != nil {
-            return false
-        }
+        guard !biologicalSex.value.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        guard !birthLengthInches.value.trimmingCharacters(in: .whitespaces).isEmpty
+              && getBirthLengthError() == nil else { return false }
+        let lbsVal = birthWeightLbs.value.trimmingCharacters(in: .whitespaces)
+        let ozVal = birthWeightOz.value.trimmingCharacters(in: .whitespaces)
+        guard !lbsVal.isEmpty || !ozVal.isEmpty else { return false }
+        if !lbsVal.isEmpty && getBirthWeightLbsError() != nil { return false }
+        if !ozVal.isEmpty && getBirthWeightOzError() != nil { return false }
         return true
     }
 

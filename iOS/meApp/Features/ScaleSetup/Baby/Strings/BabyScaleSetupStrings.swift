@@ -73,6 +73,7 @@ struct BabyScaleSetupStrings {
         static let birthWeightLabel = "birth weight"
         static let male = "Male"
         static let female = "Female"
+        static let required = "Required."
         static let invalidWeight = "Please enter a valid weight."
         static let invalidLength = "Please enter a valid length."
     }

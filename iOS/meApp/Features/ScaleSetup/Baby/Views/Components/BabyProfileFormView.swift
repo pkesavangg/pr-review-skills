@@ -81,29 +81,41 @@ struct BabyProfileFormView: View {
                 }
 
                 // Biological Sex
-                Button {
-                    showSexPicker = true
-                } label: {
-                    HStack {
-                        Text(sexDisplayText)
-                            .fontOpenSans(.subHeading1)
-                            .foregroundColor(
-                                store.babyProfileForm.biologicalSex.value.isEmpty
-                                    ? theme.textSubheading
-                                    : theme.textBody
-                            )
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .foregroundColor(theme.textSubheading)
+                VStack(alignment: .leading, spacing: 4) {
+                    Button {
+                        showSexPicker = true
+                    } label: {
+                        HStack {
+                            Text(sexDisplayText)
+                                .fontOpenSans(.subHeading1)
+                                .foregroundColor(
+                                    store.babyProfileForm.biologicalSex.value.isEmpty
+                                        ? theme.textSubheading
+                                        : theme.textBody
+                                )
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(theme.textSubheading)
+                        }
+                        .frame(height: 56)
+                        .padding(.horizontal, .spacingSM)
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(.radiusSM)
                     }
-                    .frame(height: 56)
-                    .padding(.horizontal, .spacingSM)
-                    .background(theme.backgroundPrimary)
-                    .cornerRadius(.radiusSM)
-                }
-                .buttonStyle(.plain)
-                .sheet(isPresented: $showSexPicker) {
-                    sexPickerSheet
+                    .buttonStyle(.plain)
+                    .sheet(isPresented: $showSexPicker, onDismiss: {
+                        store.babyProfileForm.biologicalSex.markAsTouched()
+                        store.babyProfileForm.biologicalSex.validate()
+                    }) {
+                        sexPickerSheet
+                    }
+
+                    if let error = store.babyProfileForm.getBiologicalSexError() {
+                        Text(error)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textError)
+                            .padding(.leading, .spacingSM)
+                    }
                 }
 
                 // Birth Length
@@ -127,7 +139,7 @@ struct BabyProfileFormView: View {
                             .focused($focusedField, equals: .inches)
                             .padding(.top, store.babyProfileForm.birthLengthInches.value.isEmpty ? 0 : 8)
                             .onChange(of: store.babyProfileForm.birthLengthInches.value) { _, newValue in
-                                store.babyProfileForm.birthLengthInches.value = formatDecimalInput(
+                                store.babyProfileForm.birthLengthInches.value = limitDigits(
                                     newValue,
                                     maxDigits: 3
                                 )
@@ -219,6 +231,23 @@ struct BabyProfileFormView: View {
             .padding(.top, .spacingLG)
         }
         .scrollDismissesKeyboard(.interactively)
+        .onChange(of: focusedField) { oldValue, _ in
+            switch oldValue {
+            case .firstName:
+                store.babyProfileForm.name.markAsTouched()
+                store.babyProfileForm.name.validate()
+            case .inches:
+                store.babyProfileForm.birthLengthInches.markAsTouched()
+                store.babyProfileForm.birthLengthInches.validate()
+            case .pounds:
+                store.babyProfileForm.birthWeightLbs.markAsTouched()
+                store.babyProfileForm.birthWeightLbs.validate()
+            case .ounces:
+                store.babyProfileForm.birthWeightOz.markAsTouched()
+                store.babyProfileForm.birthWeightOz.validate()
+            default: break
+            }
+        }
     }
 
     private var sexPickerSheet: some View {
@@ -265,6 +294,23 @@ struct BabyProfileFormView: View {
         .background(theme.backgroundSecondary)
         .presentationDetents([.fraction(0.3)])
         .presentationDragIndicator(.visible)
+    }
+
+    private func limitDigits(_ value: String, maxDigits: Int) -> String {
+        var result = ""
+        var digitCount = 0
+        var hasDecimal = false
+        for char in value {
+            if char.isNumber {
+                guard digitCount < maxDigits else { continue }
+                result.append(char)
+                digitCount += 1
+            } else if char == "." && !hasDecimal {
+                result.append(char)
+                hasDecimal = true
+            }
+        }
+        return result
     }
 
     private func formatDecimalInput(_ value: String, maxDigits: Int) -> String {
