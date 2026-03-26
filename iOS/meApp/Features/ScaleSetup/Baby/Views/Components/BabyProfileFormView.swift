@@ -13,10 +13,13 @@ struct BabyProfileFormView: View {
     @State private var showSexPicker = false
     private let lang = BabyScaleSetupStrings.BabyProfile.self
 
-    private let sexOptions = [
-        BabyScaleSetupStrings.BabyProfile.male,
-        BabyScaleSetupStrings.BabyProfile.female
-    ]
+    /// When `true`, the title and subtitle header is hidden (e.g. Settings → Add Baby).
+    var hideHeader: Bool = false
+
+    /// The currently selected `Sex` value derived from the form string, defaulting to `.male`.
+    private var selectedSex: Sex {
+        Sex(rawInput: store.babyProfileForm.biologicalSex.value) ?? .male
+    }
 
     private var focusBinding: Binding<FocusField?> {
         Binding(
@@ -38,17 +41,19 @@ struct BabyProfileFormView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: .spacingMD) {
-                // Header
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(lang.title)
-                        .fontOpenSans(.heading4)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
+            VStack(alignment: .leading, spacing: .spacingLG) {
+                // Header (scale setup only)
+                if !hideHeader {
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text(lang.title)
+                            .fontOpenSans(.heading4)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.textHeading)
 
-                    Text(lang.subtitle)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        Text(lang.subtitle)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                    }
                 }
 
                 // Name
@@ -79,6 +84,7 @@ struct BabyProfileFormView: View {
                     .datePickerStyle(.compact)
                     .labelsHidden()
                 }
+                .padding(.top, -.spacingSM)
 
                 // Biological Sex
                 VStack(alignment: .leading, spacing: 4) {
@@ -94,7 +100,7 @@ struct BabyProfileFormView: View {
                                         : theme.textBody
                                 )
                             Spacer()
-                            Image(systemName: "chevron.down")
+                            Image(systemName: "chevron.up.chevron.down")
                                 .foregroundColor(theme.textSubheading)
                         }
                         .frame(height: 56)
@@ -103,12 +109,6 @@ struct BabyProfileFormView: View {
                         .cornerRadius(.radiusSM)
                     }
                     .buttonStyle(.plain)
-                    .sheet(isPresented: $showSexPicker, onDismiss: {
-                        store.babyProfileForm.biologicalSex.markAsTouched()
-                        store.babyProfileForm.biologicalSex.validate()
-                    }) {
-                        sexPickerSheet
-                    }
 
                     if let error = store.babyProfileForm.getBiologicalSexError() {
                         Text(error)
@@ -139,7 +139,7 @@ struct BabyProfileFormView: View {
                             .focused($focusedField, equals: .inches)
                             .padding(.top, store.babyProfileForm.birthLengthInches.value.isEmpty ? 0 : 8)
                             .onChange(of: store.babyProfileForm.birthLengthInches.value) { _, newValue in
-                                store.babyProfileForm.birthLengthInches.value = limitDigits(
+                                store.babyProfileForm.birthLengthInches.value = formatDecimalInput(
                                     newValue,
                                     maxDigits: 3
                                 )
@@ -192,6 +192,8 @@ struct BabyProfileFormView: View {
                             Text("lb")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
+                                .fixedSize()
+                                .padding(.top, birthWeightHasValue ? 8 : 0)
 
                             TextField(
                                 "",
@@ -212,6 +214,8 @@ struct BabyProfileFormView: View {
                             Text("oz")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
+                                .fixedSize()
+                                .padding(.top, birthWeightHasValue ? 8 : 0)
                         }
                     }
                     .frame(height: 56)
@@ -227,10 +231,23 @@ struct BabyProfileFormView: View {
                     }
                 }
             }
-            .padding(.horizontal, .spacingSM)
             .padding(.top, .spacingLG)
         }
         .scrollDismissesKeyboard(.interactively)
+        .pickerSheet(
+            isPresented: $showSexPicker,
+            selectedValues: [selectedSex],
+            options: [Sex.allCases],
+            displayValue: { $0.rawValue.capitalized },
+            title: lang.biologicalSexLabel,
+            onUpdate: { vals in
+                if let sex = vals.first {
+                    store.babyProfileForm.biologicalSex.value = sex.rawValue.capitalized
+                    store.babyProfileForm.biologicalSex.markAsTouched()
+                    store.babyProfileForm.biologicalSex.validate()
+                }
+            }
+        )
         .onChange(of: focusedField) { oldValue, _ in
             switch oldValue {
             case .firstName:
@@ -248,52 +265,6 @@ struct BabyProfileFormView: View {
             default: break
             }
         }
-    }
-
-    private var sexPickerSheet: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(lang.biologicalSexLabel)
-                    .fontOpenSans(.heading5)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.textHeading)
-                Spacer()
-                Button {
-                    showSexPicker = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(theme.textBody)
-                }
-            }
-            .padding(.spacingSM)
-            .padding(.top, .spacingXS)
-
-            ForEach(sexOptions, id: \.self) { option in
-                Button {
-                    store.babyProfileForm.biologicalSex.value = option
-                    showSexPicker = false
-                } label: {
-                    HStack {
-                        Text(option)
-                            .fontOpenSans(.body1)
-                            .foregroundColor(theme.textBody)
-                        Spacer()
-                        if store.babyProfileForm.biologicalSex.value == option {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(theme.actionPrimary)
-                        }
-                    }
-                    .padding(.horizontal, .spacingSM)
-                    .padding(.vertical, .spacingMD)
-                }
-            }
-
-            Spacer()
-        }
-        .background(theme.backgroundSecondary)
-        .presentationDetents([.fraction(0.3)])
-        .presentationDragIndicator(.visible)
     }
 
     private func limitDigits(_ value: String, maxDigits: Int) -> String {

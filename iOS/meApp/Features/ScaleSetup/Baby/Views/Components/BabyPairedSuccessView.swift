@@ -31,7 +31,6 @@ struct BabyPairedSuccessView: View {
                     .frame(width: 160, height: 160)
                     .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, .spacingSM)
             .padding(.top, .spacingLG)
         }
     }
