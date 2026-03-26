@@ -322,6 +322,10 @@ struct InputFieldLabels {
     static let skeletalMuscles = "skeletal muscles (%)"
     static let basalMetabolicRate = "basal metabolic rate (kcal)"
     static let metabolicAge = "metabolic age (yrs)"
+    static let babyName = "name"
+    static let babyBirthLength = "birth length"
+    static let babyBirthWeight = "birth weight"
+    static let biologicalSex = "Biological sex"
 }
 
 // Constants for Alert strings used in the app
@@ -885,6 +889,11 @@ struct AppAssets {
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
+
+    // MARK: - Signup device icons
+    static let babyAppIcon = "babyAppIcon"
+    static let bpmIcon = "bpmIcon"
+    static let weightScaleIcon = "weightScaleIcon"
 
     // MARK: - Baby scale series
     static let scale0220 = "0220"

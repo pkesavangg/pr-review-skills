@@ -73,8 +73,9 @@ struct ScaleManualListRowView: View {
         case .btWifiR4:
             return AppAssets.btWifi
         case .babyScale:
+            return AppAssets.babyAppIcon
         case .bpm:
-            return AppAssets.bluetooth
+            return AppAssets.bpmIcon
         }
     }
 }
