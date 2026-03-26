@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(./gradlew assembleRelease)",
-      "Bash(./gradlew ktlintCheck)"
+      "Bash(./gradlew ktlintCheck)",
+      "Bash(find Android/app/src/main/java/com/dmdbrands/gurus/weight/features -name \"*.kt\" -type f -exec grep -l \"remember\\\\|rememberCoroutineScope\" {})"
     ]
   }
 }

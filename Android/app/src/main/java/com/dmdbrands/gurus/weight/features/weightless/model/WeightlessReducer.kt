@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import androidx.compose.runtime.Stable
 
 /**
  * Controls for Weightless form.
@@ -39,6 +40,7 @@ data class WeightlessFormControls(
  * @property weightUnit The weight unit to display (kg or lbs).
  * @property isMetric Whether the user prefers metric units.
  */
+@Stable
 data class WeightlessState(
     val form: FormGroup<WeightlessFormControls>,
     val isWeightlessOn: Boolean = false,

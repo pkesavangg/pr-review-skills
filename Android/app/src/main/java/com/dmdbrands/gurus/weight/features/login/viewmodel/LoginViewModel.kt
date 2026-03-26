@@ -99,7 +99,7 @@ constructor(
           AppLog.i(TAG, "Login successful for account: ${account.id}")
           handleIntent(LoginIntent.Success)
         } else {
-           AppLog.w(TAG, "Login returned null account for email: $email")
+           AppLog.w(TAG, "Login returned null account")
           handleIntent(LoginIntent.Error("Login failed"))
         }
       } catch (e: MaxAccountsReachedException) {

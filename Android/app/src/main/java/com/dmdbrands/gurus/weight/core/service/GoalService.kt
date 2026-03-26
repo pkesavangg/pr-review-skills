@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -19,6 +20,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.goal.helper.GoalHelper
 import com.dmdbrands.gurus.weight.features.goal.strings.GoalStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +50,7 @@ constructor(
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
   private val deviceService: IDeviceService,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val TAG = "GoalService"
   private var isShowingAlert = false
@@ -66,7 +69,7 @@ constructor(
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
   private var account: Account? = null
   init {
-    CoroutineScope(Dispatchers.IO).launch {
+    appScope.launch {
       accountRepository.getActiveAccount().collect {
         if (it != null) {
           account = it
@@ -92,7 +95,6 @@ constructor(
   ): Account? {
     return try {
       AppLog.d(TAG, "Updating goal: type=$goalType, goalWeight=$goalWeight, initialWeight=$initialWeight")
-      null
       val goalData =
         GoalData(
           goalWeight = goalWeight,
@@ -236,33 +238,6 @@ constructor(
     }
   }
 
-  private suspend fun handleGoalLeave(updateGoal: Boolean) {
-    if (updateGoal) {
-      val currentGoal = getCurrentGoal().first() ?: return
-      val fromUnit = account?.weightUnit ?: WeightUnit.LB
-      val convertedGoalWeight =
-        convertTenthsBetweenUnits(
-          weightTenths = account?.goalWeight ?: 0.0,
-          fromUnit = fromUnit,
-          toUnit = WeightUnit.LB,
-        )
-      val convertedInitialWeight =
-        convertTenthsBetweenUnits(
-          weightTenths = account?.initialWeight ?: 0.0,
-          fromUnit = fromUnit,
-          toUnit = WeightUnit.LB,
-        )
-
-      // Update goal with met status
-      updateGoal(
-        goalWeight = convertedGoalWeight,
-        initialWeight = convertedInitialWeight,
-        goalType = currentGoal.type,
-        wasMet = true,
-      )
-    }
-  }
-
   /**
    * Creates a goal for a newly created account during signup.
    * Converts display weights to stored format and determines the correct goal type.
@@ -362,7 +337,7 @@ constructor(
         params = mapOf(
           "onSetGoal" to {
             AppLog.d(TAG, "User confirmed Set Goal popup - navigating to goal screen")
-            CoroutineScope(Dispatchers.Main).launch {
+            appScope.launch(Dispatchers.Main) {
               appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
             }
             dialogQueueService.dismissCurrent()
@@ -394,15 +369,7 @@ constructor(
    * Gets the current goal immediately without suspension.
    * @return Current goal or null
    */
-  override fun getCurrentGoalSync(): Goal? {
-    return try {
-      val currentGoal = _goalStatusFlow.value
-      currentGoal
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error getting current goal synchronously", e)
-      null
-    }
-  }
+  override fun getCurrentGoalSync(): Goal? = _goalStatusFlow.value
 
 
   /**
@@ -419,7 +386,7 @@ constructor(
         cancelText = GoalStrings.SetNewGoalButton,
         onConfirm = {
           dialogQueueService.dismissCurrent()
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             handleGoalMet(true)
           }
           isShowingAlert = false
@@ -427,7 +394,7 @@ constructor(
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
             handleGoalMet(false)
           }
@@ -435,7 +402,7 @@ constructor(
         onDismiss = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             handleGoalMet(false)
           }
         }
@@ -457,16 +424,13 @@ constructor(
         onConfirm = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
+          appScope.launch(Dispatchers.Main) {
             appNavigationService.navigateTo(AppRoute.AccountSettings.Goal)
           }
         },
         onCancel = {
           dialogQueueService.dismissCurrent()
           isShowingAlert = false
-          CoroutineScope(Dispatchers.Main).launch {
-            handleGoalLeave(updateGoal = false)
-          }
         },
       ),
     )

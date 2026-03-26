@@ -156,6 +156,11 @@ struct BottomTabBarView: View {
                                        isReconnect: payload.isReconnect,
                                        isDuplicated: payload.isDuplicated)
                 .interactiveDismissDisabled(true)
+            case .babyScale:
+                BabyScaleSetupScreen(sku: payload.sku,
+                                     discoveredScale: payload.scale,
+                                     discoveryEvent: payload.event)
+                .interactiveDismissDisabled(true)
             default:
                 // Fallback to A6 setup for other types
                 A6ScaleSetupScreen(sku: payload.sku,

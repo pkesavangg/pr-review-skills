@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
+import androidx.compose.runtime.Stable
 
 /**
  * Controls for Login form.
@@ -47,6 +48,7 @@ data class LoginFormControls(
  * @property isLoading Whether the login process is ongoing.
  * @property error Error message to display, if any.
  */
+@Stable
 data class LoginState(
   val form: FormGroup<LoginFormControls>,
   val isLoading: Boolean = false,

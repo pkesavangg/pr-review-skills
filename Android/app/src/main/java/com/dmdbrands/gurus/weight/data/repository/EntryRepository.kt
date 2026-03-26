@@ -85,7 +85,6 @@ class EntryRepository @Inject constructor(
   /**
    * Gets valid entries for an account within a time range.
    */
-  //TODO: This is not used at the moment and is retained for possible future requirements
   override fun getEntriesByTimeRange(
     accountId: String,
     startTime: String,

@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +45,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 @Composable
 fun GoalScreen() {
   val viewmodel: GoalViewModel = hiltViewModel()
-  val state by viewmodel.state.collectAsState()
+  val state by viewmodel.state.collectAsStateWithLifecycle()
   BackHandler {
     viewmodel.handleIntent(GoalIntent.OnBack)
   }
