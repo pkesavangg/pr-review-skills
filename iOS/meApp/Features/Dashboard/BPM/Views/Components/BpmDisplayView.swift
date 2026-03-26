@@ -9,6 +9,15 @@
 import SwiftUI
 
 struct BpmDisplayView: View {
+    private enum Layout {
+        static let helpButtonTopPadding: CGFloat = 6
+        static let helpButtonHorizontalPadding: CGFloat = 4
+        static let headlineLeadingPadding: CGFloat = 14
+        static let rowHeight: CGFloat = 55
+        static let valueSpacing: CGFloat = 6
+        static let unitSpacing: CGFloat = 4
+    }
+
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     @State private var showAhaRatingSheet = false
@@ -19,7 +28,7 @@ struct BpmDisplayView: View {
 
     /// Reuses the same label logic as weight: "no entries", "week average", "day average", etc.
     private var displayLabel: String {
-        dashboardStore.displayManager?.weightDisplayLabel ?? "no entries"
+        dashboardStore.displayManager?.weightDisplayLabel ?? BpmDashboardStrings.noEntries
     }
 
     var body: some View {
@@ -31,8 +40,8 @@ struct BpmDisplayView: View {
 
             if let values = displayValues {
                 HStack(alignment: .lastTextBaseline, spacing: 0) {
-                    HStack(alignment: .top, spacing: 6) {
-                        HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    HStack(alignment: .top, spacing: Layout.valueSpacing) {
+                        HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
                             Text("\(values.systolic)/\(values.diastolic)")
                                 .fontWeight(.heavy)
                                 .fontOpenSans(.heading1)
@@ -50,8 +59,8 @@ struct BpmDisplayView: View {
                         } label: {
                             AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 16, height: 16))
                                 .foregroundColor(theme.textSubheading)
-                                .padding(.top, 6)
-                                .padding(.horizontal, 4)
+                                .padding(.top, Layout.helpButtonTopPadding)
+                                .padding(.horizontal, Layout.helpButtonHorizontalPadding)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -60,7 +69,7 @@ struct BpmDisplayView: View {
 
                     Spacer()
 
-                    HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
                         Text("\(values.pulse)")
                             .fontWeight(.heavy)
                             .fontOpenSans(.heading1)
@@ -73,18 +82,18 @@ struct BpmDisplayView: View {
                             .foregroundColor(theme.textSubheading)
                     }
                 }
-                .padding(.leading, 14)
+                .padding(.leading, Layout.headlineLeadingPadding)
                 .padding(.trailing, .spacingSM)
-                .frame(height: 55)
+                .frame(height: Layout.rowHeight)
             } else {
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
                     Text("--/--")
                         .fontWeight(.heavy)
                         .fontOpenSans(.heading1)
                         .foregroundColor(theme.textSubheading)
                 }
-                .padding(.leading, 14)
-                .frame(height: 55)
+                .padding(.leading, Layout.headlineLeadingPadding)
+                .frame(height: Layout.rowHeight)
             }
         }
         .accessibilityElement(children: .combine)

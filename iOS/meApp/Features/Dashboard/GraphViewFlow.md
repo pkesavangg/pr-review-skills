@@ -2,24 +2,28 @@
 
 ## Overview
 
-The Graph module renders weight and secondary body-composition metrics across four time periods (week, month, year, total). It is built with **SwiftUI + Swift Charts** and follows a layered architecture:
+The Dashboard graph module now supports both weight and BPM presentation across four time periods (week, month, year, total). It is built with **SwiftUI + Swift Charts** and follows a layered architecture:
 
 - **BaseGraphView** — shared chart renderer for all four periods
 - **Period wrappers** — thin SwiftUI views (`WeekGraphView`, `MonthGraphView`, `YearGraphView`, `TotalGraphView`)
 - **ViewModels** — `BaseSectionViewModel` base class + four period-specific subclasses
 - **Domain managers** — `DashboardGraphManager` (orchestrator) delegates to `GraphDataPreparer`, `GraphRenderingConfiguration`, `GraphInteractionHandler`, `GraphAnimationManager`
-- **Coordinating managers** — `DashboardChartManager` (chart init/scroll/Y-axis), `DashboardDisplayManager` (weight display/labels/formatting)
+- **Coordinating managers** — `DashboardChartManager` (chart init/scroll/Y-axis), `DashboardDisplayManager` (weight/BPM display/labels/formatting)
 - **State** — centralized `DashboardState` in `DashboardStore`, with nested `GraphState`, `DataState`, `GoalState`, `MetricsState`, `StreakState`, `UIState`
-- **UI surrounding the chart** — `WeightDisplayView`, `DashboardMetricsSection`, `MetricCardView`, `StreakCardView`, `GoalProgressView`, skeleton loaders, drag-drop reordering
+- **UI surrounding the chart** — shared trend shell plus product-specific top sections and metric sections
+- **Multi-product dashboard shell** — `DashboardScreen` can show either the direct product dashboard or the multi-device snapshot chooser
+- **Snapshot cards** — lightweight non-interactive week snapshots for weight and BPM, using shared chart rules but not `BaseGraphView`
 
 ### Design Priorities
 
 1. Smooth, predictable selection with clear crosshair rules per period
 2. Stable Y-axis during scroll — cached domain/ticks, minimal animation churn, refresh only on scroll-end
 3. Consistent X-axis tick strategies per period, including "phantom" trailing ticks to prevent edge clipping
-4. Efficient chart data generation with multi-level caching and downsampling during scroll
-5. Coordinated animations that suppress during scroll/transitions and re-enable cleanly
-6. Skeleton loading states for seamless perceived performance
+4. Shared chart behavior across weight and BPM where the rendering rules are the same
+5. Efficient chart data generation with multi-level caching and downsampling during scroll
+6. Coordinated animations that suppress during scroll/transitions and re-enable cleanly
+7. Lightweight multi-device snapshots that visually match the full graph without reusing the interactive graph stack directly
+8. Skeleton loading states for seamless perceived performance
 
 ---
 
@@ -37,9 +41,17 @@ The Graph module renders weight and secondary body-composition metrics across fo
 | `YearGraphView.swift`           | ~35   | Thin wrapper → `BaseGraphView` with `YearSectionViewModel`                                                        |
 | `TotalGraphView.swift`          | ~35   | Thin wrapper → `BaseGraphView` with `TotalSectionViewModel`                                                       |
 | `WeightDisplayView.swift`       | ~30   | Headline weight + unit label above chart                                                                          |
-| `WeightTrendView.swift`         | ~95   | Container: weight info section + `GraphView` + `SegmentedButtonView` (period picker)                              |
-| `DashboardScreen.swift`         | ~220  | Root screen: navbar, scroll view, `WeightTrendView`, metrics section, action buttons                              |
+| `DashboardTrendView.swift`      | ~60   | Shared trend shell: top content slot + `GraphView` + `SegmentedButtonView`                                        |
+| `WeightTrendView.swift`         | ~thin | Weight wrapper around `DashboardTrendView`                                                                        |
+| `BpmTrendView.swift`            | ~thin | BPM wrapper around `DashboardTrendView`                                                                           |
+| `BpmDisplayView.swift`          | varies | Headline BPM display (systolic/diastolic, pulse, AHA help affordance)                                            |
+| `DashboardScreen.swift`         | ~260  | Root screen: multi-device snapshot chooser or product dashboard, navbar, metrics section, empty states            |
+| `MultiDeviceSnapshotView.swift` | ~40   | Snapshot chooser list for available product types                                                                  |
+| `WeightSnapshotCard.swift`      | ~190  | Lightweight week snapshot for weight                                                                               |
+| `BpmSnapshotCard.swift`         | ~250  | Lightweight 3-line week snapshot for BPM                                                                           |
 | `DashboardMetricsSection.swift` | ~165  | Body metrics grid + goal/streak section with skeleton states                                                      |
+| `BpmMetricsSection.swift`       | ~180  | BPM metric cards: three-reading average + streak cards                                                            |
+| `BpmSummaryCardView.swift`      | varies | Reusable summary card used by BPM sheets/cards                                                                    |
 | `MetricCardView.swift`          | ~305  | Individual metric tile (value, label, edit mode, selection, drop target)                                          |
 | `StreakCardView.swift`          | ~180  | Streak/progress tile (icon, value, label, R4 setup variants)                                                      |
 | `GraphSkeletonView.swift`       | ~140  | Animated skeleton for chart area (grid lines + wavy line)                                                         |
@@ -77,6 +89,7 @@ The Graph module renders weight and secondary body-composition metrics across fo
 | `DashboardDateRangeManager.swift`   | varies | Period-specific date range calculations, label formatting, operation filtering                                            |
 | `DashboardSyncCoordinator.swift`    | varies | Entry sync, metrics save to API, configuration loading, API ↔ label mapping                                               |
 | `DashboardMetricsCalculator.swift`  | varies | Average weight, display weight, synthetic entry creation                                                                  |
+| `DashboardChartRules.swift`         | varies | Shared snapshot chart helpers: windowing, scale providers, style rules, plot border renderer                             |
 
 
 ### Coordinating Managers (Cross-cutting)
@@ -85,7 +98,7 @@ The Graph module renders weight and secondary body-composition metrics across fo
 | File                                | Lines  | Responsibility                                                                                            |
 | ----------------------------------- | ------ | --------------------------------------------------------------------------------------------------------- |
 | `DashboardChartManager.swift`       | ~391   | Chart init, scroll handling (multi-phase end), Y-axis caching, selection resolution, period changes       |
-| `DashboardDisplayManager.swift`     | ~524   | Weight display logic, date range labels, Y-axis tick formatting, metric info sheet, active month interval |
+| `DashboardDisplayManager.swift`     | ~524   | Weight/BPM display logic, date range labels, Y-axis tick formatting, metric info sheet, active month interval |
 | `DashboardGridEditingManager.swift` | varies | Progress metrics, drag-drop, removal/toggle, edit mode, wiggle animations                                 |
 | `DashboardLifecycleManager.swift`   | ~683   | Dashboard init sequence, entry lifecycle, settings changes, save/reset flows, scene phase handling        |
 
@@ -95,7 +108,7 @@ The Graph module renders weight and secondary body-composition metrics across fo
 
 | File                   | Responsibility                                                                                           |
 | ---------------------- | -------------------------------------------------------------------------------------------------------- |
-| `DashboardStore.swift` | Central coordinator — owns `DashboardState`, all managers, reactive bindings, UI update batching         |
+| `DashboardStore.swift` | Central coordinator — owns `DashboardState`, all managers, product-type switching, reactive bindings, UI update batching         |
 | `DashboardState.swift` | Nested state container: `UIState`, `MetricsState`, `StreakState`, `GraphState`, `GoalState`, `DataState` |
 | `GraphSeries.swift`    | Data model — `GraphSeries` (date, value, series name) + `PlottedGraphSeries` (with precomputed xDate)    |
 
@@ -119,6 +132,7 @@ The Graph module renders weight and secondary body-composition metrics across fo
 | `YAxisCalculator.swift`    | Nice-scale Y-axis: `calculateYAxis()`, goal-centric fallback, edge buffering, tick enforcement |
 | `DashboardConstants.swift` | Time intervals, metric types, UI constants, metric ranges, wiggle animation constants          |
 | `DashboardStrings.swift`   | All UI strings: metric names, units, labels, placeholders                                      |
+| `BpmDashboardStrings.swift` | BPM-specific dashboard strings                                                                 |
 | `DashboardError.swift`     | Error hierarchy (80+ cases) with `LocalizedError`                                              |
 | `DashboardModels.swift`    | `GoalCardData`, `StreakCardData`, `DashboardRow`, helper models                                |
 | `MetricItem.swift`         | Metric value/label/unit/icon tuple                                                             |
@@ -143,39 +157,29 @@ The Graph module renders weight and secondary body-composition metrics across fo
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          DashboardScreen                                    │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │ WeightTrendView                                                      │   │
-│  │  ┌─────────────────────┐  ┌────────────────────────────────────┐    │   │
-│  │  │ WeightDisplayView   │  │ GraphView                          │    │   │
-│  │  │  (weight + unit)    │  │  ┌────────────────────────────┐    │    │   │
-│  │  └─────────────────────┘  │  │ BaseGraphView<VM>          │    │    │   │
-│  │                           │  │  • Chart { series, grid,   │    │    │   │
-│  │                           │  │    crosshair }             │    │    │   │
-│  │                           │  │  • Selection callout       │    │    │   │
-│  │                           │  │  • Goal chip overlay       │    │    │   │
-│  │                           │  │  • Cached chart data       │    │    │   │
-│  │                           │  └────────────────────────────┘    │    │   │
-│  │                           │  ┌─────────────────────────────┐   │    │   │
-│  │                           │  │ GraphSkeletonView (loading) │   │    │   │
-│  │                           │  └─────────────────────────────┘   │    │   │
-│  │                           └────────────────────────────────────┘    │   │
-│  │  ┌──────────────────────────────────────────────────┐              │   │
-│  │  │ SegmentedButtonView (Week | Month | Year | Total) │              │   │
-│  │  └──────────────────────────────────────────────────┘              │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │ DashboardMetricsSection                                              │   │
-│  │  ┌──────────────────────┐  ┌──────────────────────────────────┐     │   │
-│  │  │ MetricGridUIKitView  │  │ GoalStreakGridUIKitView           │     │   │
-│  │  │  (MetricCardView ×N) │  │  (GoalProgressView + StreakCards)│     │   │
-│  │  └──────────────────────┘  └──────────────────────────────────┘     │   │
-│  │  ┌──────────────────────┐  ┌──────────────────────────────────┐     │   │
-│  │  │ Skeleton loaders     │  │ Skeleton loaders                 │     │   │
-│  │  └──────────────────────┘  └──────────────────────────────────┘     │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │ Action Buttons (Edit/Save/Reset/Update Goal/Metric Info)             │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────┐  ┌────────────────────────────────────┐   │
+│  │ MultiDeviceSnapshotView      │  │ Product Dashboard                   │   │
+│  │  • WeightSnapshotCard        │  │  ┌──────────────────────────────┐   │   │
+│  │  • BpmSnapshotCard           │  │  │ DashboardTrendView           │   │   │
+│  │  • Tap routes to product     │  │  │  topContent:                │   │   │
+│  │    dashboard + product type  │  │  │   • WeightDisplayView       │   │   │
+│  │                              │  │  │   • or BpmDisplayView       │   │   │
+│  │                              │  │  │  GraphView                  │   │   │
+│  │                              │  │  │   ┌──────────────────────┐   │   │   │
+│  │                              │  │  │   │ BaseGraphView<VM>    │   │   │   │
+│  │                              │  │  │   │ • series/grid/axes   │   │   │   │
+│  │                              │  │  │   │ • crosshair/callout  │   │   │   │
+│  │                              │  │  │   │ • BPM ref lines      │   │   │   │
+│  │                              │  │  │   │ • goal chip (weight) │   │   │   │
+│  │                              │  │  │   └──────────────────────┘   │   │   │
+│  │                              │  │  │  SegmentedButtonView         │   │   │
+│  │                              │  │  └──────────────────────────────┘   │   │
+│  │                              │  │  ┌──────────────────────────────┐   │   │
+│  │                              │  │  │ Below-graph section          │   │   │
+│  │                              │  │  │ • DashboardMetricsSection    │   │   │
+│  │                              │  │  │ • or BpmMetricsSection       │   │   │
+│  │                              │  │  └──────────────────────────────┘   │   │
+│  └──────────────────────────────┘  └────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -213,22 +217,32 @@ The Graph module renders weight and secondary body-composition metrics across fo
 
 ## Entry Points
 
-### DashboardScreen → WeightTrendView → GraphView
+### DashboardScreen → Multi-Device Snapshot Or Product Dashboard
 
 ```swift
 // DashboardScreen.swift
 VStack(spacing: 0) {
-    WeightTrendView(dashboardStore: store)   // Weight + chart + period picker
-    DashboardMetricsSection(store: store, parentView: .dashboard, ...)  // Metrics below chart
-    actionButtons()
+    if store.availableProductItems.count > 1 && !isInProductDashboard {
+        MultiDeviceSnapshotView(availableItems: store.availableProductItems) { selectedItem in
+            store.switchProductType(to: ...)
+            store.selectProductItem(selectedItem)
+        }
+    } else if store.productType == .bpm {
+        BpmTrendView(dashboardStore: store)
+        BpmMetricsSection(store: store)
+    } else {
+        WeightTrendView(dashboardStore: store)
+        DashboardMetricsSection(store: store, parentView: .dashboard, ...)
+        actionButtons()
+    }
 }
 ```
 
 ```swift
-// WeightTrendView.swift
+// DashboardTrendView.swift
 VStack(alignment: .leading, spacing: 0) {
-    weightInfoSection(dashboardStore: store)  // Weight label + WeightDisplayView
-    GraphView(dashboardStore: store)          // The chart
+    topContent                                  // WeightDisplayView or BpmDisplayView
+    GraphView(dashboardStore: store)           // Shared chart host
     SegmentedButtonView(segments: TimePeriod.allCases, selectedSegment: $localSelectedPeriod)
 }
 ```
@@ -243,6 +257,26 @@ case .total: TotalGraphView(viewModel: totalSectionViewModel, dashboardStore: st
 }
 ```
 
+### Snapshot Cards
+
+The multi-device snapshot cards do **not** reuse `BaseGraphView` directly.
+
+They use lightweight purpose-built views:
+- `WeightSnapshotCard`
+- `BpmSnapshotCard`
+
+But they share chart rules through `DashboardChartRules.swift`:
+- snapshot week window / bracketing logic
+- shared Y-axis scale providers
+- shared series styling rules
+- shared plot border rendering
+
+This keeps snapshots visually aligned with the full graph without pulling in:
+- scroll handling
+- crosshair/selection
+- goal chip overlays
+- chart lifecycle/configuration side effects
+
 ### GraphView Period Transition
 
 When `selectedPeriod` changes in `GraphView.onChange`:
@@ -256,7 +290,13 @@ When `selectedPeriod` changes in `GraphView.onChange`:
 
 ## Sections & Selection Rules
 
-All periods share `BaseGraphView` rendering but differ in selection logic, X-axis ticks, scroll behavior, and plotting transforms.
+All periods share `BaseGraphView` rendering but differ in selection logic, X-axis ticks, scroll behavior, and plotting transforms. Product type then further affects:
+- chart series generation (single weight line vs BPM systolic/diastolic/pulse)
+- Y-axis scale calculation
+- display/header values
+- below-chart metric section
+- goal chip visibility
+- BPM reference lines and series colors
 
 ### Week (`WeekSectionViewModel`)
 

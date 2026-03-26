@@ -12,7 +12,6 @@ struct BpmMetricsSection: View {
     @ObservedObject var store: DashboardStore
     @State private var recentReadings: [BpmReadingDisplayData] = []
     @State private var streakCards: [MetricItem] = []
-    private let entryService = EntryService.shared
 
     private let streakColumns = [
         GridItem(.flexible(), spacing: DashboardConstants.UIConstants.gridSpacing),
@@ -79,13 +78,13 @@ struct BpmMetricsSection: View {
             await loadRecentReadings()
             await loadBpmStreaks()
         }
-        .onReceive(entryService.entrySaved) { _ in
+        .onReceive(store.dashboardEntryService.entrySaved) { _ in
             Task {
                 await loadRecentReadings()
                 await loadBpmStreaks()
             }
         }
-        .onReceive(entryService.entryDeleted) { _ in
+        .onReceive(store.dashboardEntryService.entryDeleted) { _ in
             Task {
                 await loadRecentReadings()
                 await loadBpmStreaks()
@@ -96,7 +95,7 @@ struct BpmMetricsSection: View {
     @MainActor
     private func loadRecentReadings() async {
         do {
-            let entries = try await entryService.getAllEntries()
+            let entries = try await store.dashboardEntryService.getAllEntries()
             let bpmEntries = entries.filter {
                 $0.entryType == EntryType.bpm.rawValue && $0.operationType == OperationType.create.rawValue
             }
@@ -111,7 +110,7 @@ struct BpmMetricsSection: View {
     @MainActor
     private func loadBpmStreaks() async {
         do {
-            let progress = try await entryService.getProgress(entryType: .bpm)
+            let progress = try await store.dashboardEntryService.getProgress(entryType: .bpm)
             streakCards = [
                 MetricItem(
                     value: "\(progress.currentStreak)",

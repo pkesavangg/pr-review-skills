@@ -17,7 +17,7 @@ struct AhaRatingCard: View {
             showSheet = true
         } label: {
             HStack(spacing: .spacingSM) {
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: .radiusXS)
                     .fill(classification.color(theme: theme))
                     .frame(width: 8, height: 32)
 
@@ -40,7 +40,7 @@ struct AhaRatingCard: View {
             }
             .padding(.spacingSM)
             .background(theme.backgroundPrimaryDisabled)
-            .cornerRadius(12)
+            .cornerRadius(.radiusMD)
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showSheet) {

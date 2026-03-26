@@ -24,6 +24,10 @@ enum BpmDashboardStrings {
     static let lastReading = "last reading"
     static let threeReadingAverageTitle = "Three Reading Average"
     static let ahaRating = "AHA Rating"
+    static let whyWeTakeAnAverage = "Why We Take an Average"
+    static let averageExplanation = "Blood pressure changes throughout the day. Averaging three readings gives a more accurate result."
+    static let lastThreeReadings = "Last 3 readings"
+    static let noEntries = "no entries"
 
     // MARK: - AHA Rating Sheet
     static let ahaRatings = "AHA Ratings"

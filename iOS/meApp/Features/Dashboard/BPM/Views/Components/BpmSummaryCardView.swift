@@ -1,12 +1,21 @@
 import SwiftUI
 
 struct BpmSummaryCardView: View {
+    private enum Layout {
+        static let footerLeftWidth: CGFloat = 168
+        static let footerRightWidth: CGFloat = 72
+        static let horizontalPadding: CGFloat = 33
+        static let verticalPadding: CGFloat = 12
+        static let cardHeight: CGFloat = 119
+        static let valueSpacing: CGFloat = 5
+    }
+
     let systolic: Int
     let diastolic: Int
     let pulse: Int
     let classification: AhaPressureClass
     let footer: Footer
-    var cornerRadius: CGFloat = 9
+    var cornerRadius: CGFloat = .radiusSM
     @Environment(\.appTheme) private var theme
 
     enum Footer {
@@ -33,25 +42,27 @@ struct BpmSummaryCardView: View {
                     Text(left)
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.textSubheading)
-                        .frame(width: 168, alignment: .leading)
+                        .frame(width: Layout.footerLeftWidth, alignment: .leading)
                     Spacer(minLength: .zero)
                     Text(right)
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.textSubheading)
-                        .frame(width: 72, alignment: .leading)
+                        .frame(width: Layout.footerRightWidth, alignment: .leading)
                 }
             }
         }
-        .padding(.horizontal, 33)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Layout.horizontalPadding)
+        .padding(.vertical, Layout.verticalPadding)
         .frame(maxWidth: .infinity)
-        .frame(height: 119)
+        .frame(height: Layout.cardHeight)
         .background(theme.backgroundPrimary)
         .cornerRadius(cornerRadius)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var bpValuesSection: some View {
-        HStack(alignment: .center, spacing: 5) {
+        HStack(alignment: .center, spacing: Layout.valueSpacing) {
             Text("\(systolic)")
                 .fontOpenSans(.heading2)
                 .fontWeight(.heavy)
@@ -67,10 +78,7 @@ struct BpmSummaryCardView: View {
     }
 
     private var slashDivider: some View {
-        RoundedRectangle(cornerRadius: 0.5)
-            .fill(theme.textSubheading.opacity(0.45))
-            .frame(width: 1, height: 47)
-            .rotationEffect(.degrees(15))
+        SlashDividerView(color: theme.textSubheading.opacity(0.45))
     }
 
     private var pulseSection: some View {
@@ -78,5 +86,14 @@ struct BpmSummaryCardView: View {
             .fontOpenSans(.heading2)
             .fontWeight(.heavy)
             .foregroundColor(theme.textSubheading)
+    }
+
+    private var accessibilityLabel: String {
+        switch footer {
+        case .centered(let title):
+            return "\(title), \(systolic) over \(diastolic), pulse \(pulse), \(classification.label)"
+        case .split(let left, let right):
+            return "\(left), \(systolic) over \(diastolic), \(right), \(pulse), \(classification.label)"
+        }
     }
 }

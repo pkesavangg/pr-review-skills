@@ -134,6 +134,19 @@ struct EntryServiceExtendedTests {
         #expect(results.count == 1)
     }
 
+    @Test("getEntries lastNDays: filters BPM entries by entry type")
+    func getEntriesLastNDaysFiltersBpmByEntryType() async throws {
+        let repo = MockEntryRepository()
+        let recentWeight = EntryTestFixtures.makeEntry(timestamp: ISO8601DateFormatter().string(from: Date()))
+        let recentBpm = EntryTestFixtures.makeBpmEntry(timestamp: ISO8601DateFormatter().string(from: Date()))
+        repo.entries = [recentWeight, recentBpm]
+        let sut = makeSUT(repo: repo)
+
+        let results = try await sut.getEntries(lastNDays: 7, entryType: .bpm)
+        #expect(results.count == 1)
+        #expect(results.first?.entryType == EntryType.bpm.rawValue)
+    }
+
     // MARK: - getMonthsAll
 
     @Test("getMonthsAll: groups by month, sorts descending, computes stats")
@@ -189,6 +202,24 @@ struct EntryServiceExtendedTests {
         #expect(entries.count == 1)
     }
 
+    @Test("getMonthDetail: treats empty entryType as weight and excludes it from BPM")
+    func getMonthDetailHandlesLegacyEntryTypes() async throws {
+        let repo = MockEntryRepository()
+        let legacyWeightEntry = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z")
+        legacyWeightEntry.entryType = ""
+        let bpmEntry = EntryTestFixtures.makeBpmEntry(timestamp: "2026-03-02T08:00:00Z")
+        repo.entries = [legacyWeightEntry, bpmEntry]
+        let sut = makeSUT(repo: repo)
+
+        let weightEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .wg)
+        let bpmEntries = try await sut.getMonthDetail(month: "2026-03", entryType: .bpm)
+
+        #expect(weightEntries.count == 1)
+        #expect(weightEntries.first?.entryType == "")
+        #expect(bpmEntries.count == 1)
+        #expect(bpmEntries.first?.entryType == EntryType.bpm.rawValue)
+    }
+
     // MARK: - getMonthYear
 
     @Test("getMonthYear: only returns months within last 365 days")
@@ -242,8 +273,11 @@ struct EntryServiceExtendedTests {
         let repo = MockEntryRepository()
         let cal = Calendar.current
         let today = Date()
-        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
-        let twoDaysAgo = cal.date(byAdding: .day, value: -2, to: today)!
+        guard let yesterday = cal.date(byAdding: .day, value: -1, to: today),
+              let twoDaysAgo = cal.date(byAdding: .day, value: -2, to: today) else {
+            Issue.record("Failed to create test dates")
+            return
+        }
         let iso = ISO8601DateFormatter()
 
         repo.entries = [
@@ -263,9 +297,12 @@ struct EntryServiceExtendedTests {
         let repo = MockEntryRepository()
         let cal = Calendar.current
         let today = Date()
-        let threeDaysAgo = cal.date(byAdding: .day, value: -3, to: today)!
-        let fourDaysAgo = cal.date(byAdding: .day, value: -4, to: today)!
-        let fiveDaysAgo = cal.date(byAdding: .day, value: -5, to: today)!
+        guard let threeDaysAgo = cal.date(byAdding: .day, value: -3, to: today),
+              let fourDaysAgo = cal.date(byAdding: .day, value: -4, to: today),
+              let fiveDaysAgo = cal.date(byAdding: .day, value: -5, to: today) else {
+            Issue.record("Failed to create test dates")
+            return
+        }
         let iso = ISO8601DateFormatter()
 
         repo.entries = [

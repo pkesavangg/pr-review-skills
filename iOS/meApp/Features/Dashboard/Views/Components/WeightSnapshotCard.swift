@@ -10,6 +10,7 @@ import Charts
 import SwiftUI
 
 struct WeightSnapshotCard: View {
+    @StateObject private var viewModel = WeightSnapshotCardViewModel()
     let summaries: [BathScaleWeightSummary]
     let onTap: () -> Void
     @Environment(\.appTheme) private var theme
@@ -31,12 +32,12 @@ struct WeightSnapshotCard: View {
         let weights = recentWeekSummaries.map(\.weight).filter { $0 > 0 }
         guard !weights.isEmpty else { return "--" }
         let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
-        let avgDisplay = convertStoredWeightToDisplay(avgStored)
+        let avgDisplay = viewModel.convertStoredWeightToDisplay(avgStored)
         return String(format: "%.1f", avgDisplay)
     }
 
     private var unitText: String {
-        AccountService.shared.activeAccount?.weightSettings?.weightUnit?.rawValue ?? "lbs"
+        viewModel.unitText
     }
 
     var body: some View {
@@ -57,9 +58,10 @@ struct WeightSnapshotCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
-            .cornerRadius(10)
+            .cornerRadius(.radiusSM)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     // MARK: - Headline
@@ -86,7 +88,7 @@ struct WeightSnapshotCard: View {
     // MARK: - Chart
 
     private var snapshotChart: some View {
-        let displayWeights = chartSummaries.map { ($0.date, convertStoredWeightToDisplay(Int($0.weight))) }
+        let displayWeights = chartSummaries.map { ($0.date, viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
         let yScale = calculateYAxisScale()
         let xDomain = weekXDomain()
         let yRange = yScale.domain
@@ -168,23 +170,18 @@ struct WeightSnapshotCard: View {
         return bounds.start...bounds.end
     }
 
-    private func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {
-        let unit = AccountService.shared.activeAccount?.weightSettings?.weightUnit ?? .lb
-        return unit == .kg
-            ? ConversionTools.convertStoredToKg(storedWeight)
-            : ConversionTools.convertStoredToLbs(storedWeight)
-    }
-
-    private func goalWeightForDisplay() -> Double? {
-        guard let storedGoal = AccountService.shared.activeAccount?.goalSettings?.goalWeight else { return nil }
-        return convertStoredWeightToDisplay(Int(storedGoal))
-    }
-
     private func calculateYAxisScale() -> YAxisScale {
         DashboardChartScaleProvider.weightScale(
             operations: chartSummaries,
-            goalWeight: goalWeightForDisplay(),
-            convertStoredWeightToDisplay: convertStoredWeightToDisplay
+            goalWeight: viewModel.goalWeightForDisplay(),
+            convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay
         )
+    }
+
+    private var accessibilityLabel: String {
+        if weekAverage != "--" {
+            return "Weight snapshot, week average \(weekAverage) \(unitText)"
+        }
+        return "Weight snapshot, no readings yet"
     }
 }

@@ -30,12 +30,12 @@ struct ThreeReadingAverageSheet: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: .spacingSM) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Why We Take an Average")
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text(BpmDashboardStrings.whyWeTakeAnAverage)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
 
-                        Text("Blood pressure changes throughout the day. Averaging three readings gives a more accurate result.")
+                        Text(BpmDashboardStrings.averageExplanation)
                             .fontOpenSans(.body2)
                             .foregroundColor(theme.textBody)
                     }
@@ -49,7 +49,7 @@ struct ThreeReadingAverageSheet: View {
                     )
 
                     if !readings.isEmpty {
-                        Text("Last 3 readings")
+                        Text(BpmDashboardStrings.lastThreeReadings)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
 

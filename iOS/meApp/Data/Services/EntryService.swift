@@ -1582,6 +1582,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         do {
             try await localRepo.saveEntry(entry)
+            await refreshBpmDashboardSummaries()
             logger.log(
                 level: .info,
                 tag: tag,
@@ -1620,6 +1621,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         do {
             try await localRepo.updateEntry(entry)
+            await refreshBpmDashboardSummaries()
             let notification = EntryNotification(from: entry)
             entryDeleted.send(notification)
             await syncUnsyncedBpmEntries()
@@ -1684,6 +1686,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         } catch {
             logger.log(level: .error, tag: tag, message: "BPM sync failed: \(error.localizedDescription)")
         }
+    }
+
+    private func refreshBpmDashboardSummaries() async {
+        await loadDashboardData(entryType: .bpm)
     }
 
     // MARK: - Dummy BPM Data (Testing Only — Remove Before Release)

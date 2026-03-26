@@ -34,11 +34,21 @@ struct BpmSnapshotCard: View {
         return AhaPressureClass.classify(systolic: Int(sys), diastolic: Int(dia))
     }
 
-    private var latestReading: (sys: Int, dia: Int, pulse: Int)? {
+    private struct LatestReading {
+        let systolic: Int
+        let diastolic: Int
+        let pulse: Int
+    }
+
+    private var latestReading: LatestReading? {
         guard let latest = recentWeekSummaries.last,
               let sys = latest.systolic,
               let dia = latest.diastolic else { return nil }
-        return (Int(sys), Int(dia), Int(latest.pulse ?? 0))
+        return LatestReading(
+            systolic: Int(sys),
+            diastolic: Int(dia),
+            pulse: Int(latest.pulse ?? 0)
+        )
     }
 
     var body: some View {
@@ -59,9 +69,10 @@ struct BpmSnapshotCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
-            .cornerRadius(10)
+            .cornerRadius(.radiusSM)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     // MARK: - Headline
@@ -82,14 +93,14 @@ struct BpmSnapshotCard: View {
 
                     HStack(alignment: .lastTextBaseline, spacing: .zero) {
                         HStack(alignment: .lastTextBaseline, spacing: 4) {
-                            Text("\(reading.sys)")
+                            Text("\(reading.systolic)")
                                 .fontOpenSans(.heading1)
                                 .fontWeight(.heavy)
                                 .foregroundColor(classification.color(theme: theme))
 
                             slashDivider
 
-                            Text("\(reading.dia)")
+                            Text("\(reading.diastolic)")
                                 .fontOpenSans(.heading1)
                                 .fontWeight(.heavy)
                                 .foregroundColor(classification.color(theme: theme))
@@ -113,10 +124,7 @@ struct BpmSnapshotCard: View {
     }
 
     private var slashDivider: some View {
-        RoundedRectangle(cornerRadius: 0.5)
-            .fill(theme.textSubheading.opacity(0.45))
-            .frame(width: 1, height: 47)
-            .rotationEffect(.degrees(15))
+        SlashDividerView(color: theme.textSubheading.opacity(0.45))
     }
 
     // MARK: - Chart
@@ -249,5 +257,12 @@ struct BpmSnapshotCard: View {
 
     private func calculateYAxisScale() -> YAxisScale {
         DashboardChartScaleProvider.bpmScale(from: chartSummaries)
+    }
+
+    private var accessibilityLabel: String {
+        if let reading = latestReading {
+            return "Blood pressure snapshot, \(reading.systolic) over \(reading.diastolic), pulse \(reading.pulse)"
+        }
+        return "Blood pressure snapshot, no readings yet"
     }
 }
