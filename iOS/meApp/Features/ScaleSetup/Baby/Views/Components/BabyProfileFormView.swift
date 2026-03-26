@@ -33,6 +33,10 @@ struct BabyProfileFormView: View {
             || !store.babyProfileForm.birthWeightOz.value.isEmpty
     }
 
+    private var birthWeightIsActive: Bool {
+        birthWeightHasValue || focusedField == .pounds || focusedField == .ounces
+    }
+
     /// Display text for the biological sex picker.
     private var sexDisplayText: String {
         let val = store.babyProfileForm.biologicalSex.value
@@ -121,7 +125,7 @@ struct BabyProfileFormView: View {
                 // Birth Length
                 VStack(alignment: .leading, spacing: 4) {
                     ZStack(alignment: .leading) {
-                        if !store.babyProfileForm.birthLengthInches.value.isEmpty {
+                        if !store.babyProfileForm.birthLengthInches.value.isEmpty || focusedField == .inches {
                             Text(lang.birthLengthLabel)
                                 .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.textSubheading)
@@ -130,16 +134,16 @@ struct BabyProfileFormView: View {
 
                         HStack {
                             TextField(
-                                lang.birthLengthLabel,
+                                focusedField == .inches ? "" : lang.birthLengthLabel,
                                 text: $store.babyProfileForm.birthLengthInches.value
                             )
                             .keyboardType(.decimalPad)
                             .font(.subHeading1)
                             .foregroundColor(theme.textBody)
                             .focused($focusedField, equals: .inches)
-                            .padding(.top, store.babyProfileForm.birthLengthInches.value.isEmpty ? 0 : 8)
+                            .padding(.top, (!store.babyProfileForm.birthLengthInches.value.isEmpty || focusedField == .inches) ? 8 : 0)
                             .onChange(of: store.babyProfileForm.birthLengthInches.value) { _, newValue in
-                                store.babyProfileForm.birthLengthInches.value = formatDecimalInput(
+                                store.babyProfileForm.birthLengthInches.value = limitDigits(
                                     newValue,
                                     maxDigits: 3
                                 )
@@ -166,8 +170,7 @@ struct BabyProfileFormView: View {
                 // Birth Weight
                 VStack(alignment: .leading, spacing: 4) {
                     ZStack(alignment: .leading) {
-                        if !store.babyProfileForm.birthWeightLbs.value.isEmpty
-                            || !store.babyProfileForm.birthWeightOz.value.isEmpty {
+                        if birthWeightIsActive {
                             Text(lang.birthWeightLabel)
                                 .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.textSubheading)
@@ -176,14 +179,14 @@ struct BabyProfileFormView: View {
 
                         HStack(spacing: .spacingSM) {
                             TextField(
-                                birthWeightHasValue ? "" : lang.birthWeightLabel,
+                                birthWeightIsActive ? "" : lang.birthWeightLabel,
                                 text: $store.babyProfileForm.birthWeightLbs.value
                             )
                             .keyboardType(.numberPad)
                             .font(.subHeading1)
                             .foregroundColor(theme.textBody)
                             .focused($focusedField, equals: .pounds)
-                            .padding(.top, birthWeightHasValue ? 8 : 0)
+                            .padding(.top, birthWeightIsActive ? 8 : 0)
                             .onChange(of: store.babyProfileForm.birthWeightLbs.value) { _, newValue in
                                 let filtered = newValue.filter { $0.isNumber }
                                 store.babyProfileForm.birthWeightLbs.value = String(filtered.prefix(3))
@@ -193,7 +196,7 @@ struct BabyProfileFormView: View {
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
                                 .fixedSize()
-                                .padding(.top, birthWeightHasValue ? 8 : 0)
+                                .padding(.top, birthWeightIsActive ? 8 : 0)
 
                             TextField(
                                 "",
@@ -203,7 +206,7 @@ struct BabyProfileFormView: View {
                             .font(.subHeading1)
                             .foregroundColor(theme.textBody)
                             .focused($focusedField, equals: .ounces)
-                            .padding(.top, birthWeightHasValue ? 8 : 0)
+                            .padding(.top, birthWeightIsActive ? 8 : 0)
                             .onChange(of: store.babyProfileForm.birthWeightOz.value) { _, newValue in
                                 store.babyProfileForm.birthWeightOz.value = formatDecimalInput(
                                     newValue,
@@ -215,7 +218,7 @@ struct BabyProfileFormView: View {
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
                                 .fixedSize()
-                                .padding(.top, birthWeightHasValue ? 8 : 0)
+                                .padding(.top, birthWeightIsActive ? 8 : 0)
                         }
                     }
                     .frame(height: 56)
