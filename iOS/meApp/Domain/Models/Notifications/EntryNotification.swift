@@ -46,6 +46,10 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     let bmi: Int?
     let source: String?
 
+    // MARK: - BPM Entry Data (from BPMEntry relationship)
+    let systolic: Int?
+    let diastolic: Int?
+
     // MARK: - Scale Metric Data (from BathScaleMetric relationship)
     let bmr: Int?
     let metabolicAge: Int?
@@ -83,6 +87,10 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.bmi = entry.scaleEntry?.bmi
         self.source = entry.scaleEntry?.source
 
+        // Extract BPM entry data (relationship)
+        self.systolic = entry.bpmEntry?.systolic
+        self.diastolic = entry.bpmEntry?.diastolic
+
         // Extract scale metric data (relationship)
         self.bmr = entry.scaleEntryMetric?.bmr
         self.metabolicAge = entry.scaleEntryMetric?.metabolicAge
@@ -116,6 +124,10 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.water = dto.water.map { Int($0) }
         self.bmi = dto.bmi.map { Int($0) }
         self.source = nil
+
+        // BPM data not available from BathScaleOperationDTO
+        self.systolic = nil
+        self.diastolic = nil
 
         self.bmr = dto.bmr.map { Int($0) }
         self.metabolicAge = dto.metabolicAge.map { Int($0) }
