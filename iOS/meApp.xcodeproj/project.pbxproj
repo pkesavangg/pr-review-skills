@@ -255,7 +255,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
-				D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
+				D0D0CDDF2E14F32B004FDC17 /* XCLocalSwiftPackageReference "ggHealthKitPackage" */,
 				D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */,
 				10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */,
 				D0BCA1AF2E3A42070094546D /* XCRemoteSwiftPackageReference "ggInAppMessagingPackage" */,
@@ -719,13 +719,9 @@
 				kind = branch;
 			};
 		};
-		D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/dmdbrands/ggHealthKitPackage";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
+		D0D0CDDF2E14F32B004FDC17 /* XCLocalSwiftPackageReference "ggHealthKitPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../../ggHealthKitPackage;
 		};
 /* End XCRemoteSwiftPackageReference section */
 
@@ -775,7 +771,7 @@
 		};
 		D0D0CDE02E14F32B004FDC17 /* ggHealthKitPackage */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = D0D0CDDF2E14F32B004FDC17 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */;
+			package = D0D0CDDF2E14F32B004FDC17 /* XCLocalSwiftPackageReference "ggHealthKitPackage" */;
 			productName = ggHealthKitPackage;
 		};
 /* End XCSwiftPackageProductDependency section */

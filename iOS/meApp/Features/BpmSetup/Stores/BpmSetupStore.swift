@@ -18,6 +18,7 @@ final class BpmSetupStore: ObservableObject {
     @Injector private var bluetoothService: BluetoothServiceProtocol
     @Injector private var scaleService: ScaleServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
+    @Injector private var healthKitService: HealthKitServiceProtocol
 
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
@@ -251,6 +252,9 @@ final class BpmSetupStore: ObservableObject {
             }
             return
         case .paired, .complete:
+            // Mark setup as finished here so deferred post-setup flows don't depend
+            // solely on the view's onDisappear timing.
+            bluetoothService.isSetupInProgress = false
             dismissAction?()
             return
         default:
@@ -314,6 +318,7 @@ final class BpmSetupStore: ObservableObject {
             message: alertLang.message,
             buttons: [
                 AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
+                    self?.bluetoothService.isSetupInProgress = false
                     self?.dismissAction?()
                 },
                 AlertButtonModel(title: alertLang.returnButton, type: .secondary) { _ in }
@@ -428,7 +433,6 @@ final class BpmSetupStore: ObservableObject {
             if existingDevices.contains(where: { $0.broadcastIdString == broadcastId }) {
                 LoggerService.shared.log(level: .info, tag: tag, message: "BPM device already exists, skipping save")
                 isDeviceSaved = true
-                bluetoothService.isSetupInProgress = false
                 return true
             }
         }
@@ -458,14 +462,14 @@ final class BpmSetupStore: ObservableObject {
                 userNumber: "\(selectedUserNumber ?? 1)",
                 accountId: accountId,
                 deviceMetadata: nil,
-                skipDuplicateCheck: discoveredDevice == nil
+                skipDuplicateCheck: discoveredDevice == nil,
+                deviceType: .bpm
             )
             isDeviceSaved = true
             // Re-sync to reconcile any timing gap between push and pull
             // inside createBluetoothScale (mirrors baby-scale pattern).
             await scaleService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
-            bluetoothService.isSetupInProgress = false
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
             return true
         } catch {
@@ -474,7 +478,6 @@ final class BpmSetupStore: ObservableObject {
                 tag: tag,
                 message: "Failed to save BPM device: \(error.localizedDescription)"
             )
-            bluetoothService.isSetupInProgress = false
             return false
         }
     }
@@ -686,6 +689,7 @@ final class BpmSetupStore: ObservableObject {
     }
 
     func cleanUp() {
+        let shouldRecheckHealthKitPermissions = isDeviceSaved
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
         deviceDiscoveryCancellable?.cancel()
@@ -697,6 +701,11 @@ final class BpmSetupStore: ObservableObject {
         resetDiscoveryState()
         bluetoothService.isSetupInProgress = false
         isDeviceSaved = false
+
+        guard shouldRecheckHealthKitPermissions else { return }
+        Task { @MainActor [weak self] in
+            await self?.healthKitService.requestAdditionalPermissionsIfNeeded()
+        }
     }
 }
 

@@ -134,7 +134,8 @@ extension BabyScaleSetupStore {
                 userNumber: "1",
                 accountId: accountId,
                 deviceMetadata: nil,
-                skipDuplicateCheck: true
+                skipDuplicateCheck: true,
+                deviceType: .babyScale
             )
             isScaleSaved = true
             await scaleService.syncAllScalesWithRemote()

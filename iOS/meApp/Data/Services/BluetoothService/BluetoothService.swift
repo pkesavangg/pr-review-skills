@@ -89,6 +89,10 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
         newBpmReadingReceivedSubject.eraseToAnyPublisher()
     }
 
+    var isSetupInProgressPublisher: AnyPublisher<Bool, Never> {
+        $isSetupInProgress.eraseToAnyPublisher()
+    }
+
     var skipDevices: [String] = []
     var blockedBroadcastIds: Set<String> = []
     var unblockTasks: [String: Task<Void, Never>] = [:]

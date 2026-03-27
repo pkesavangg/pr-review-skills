@@ -3,13 +3,20 @@
 // to maintain a single source of truth for health data synchronization.
 // Splitting would fragment the integration flow and reduce maintainability.
 
+import Combine
 import Foundation
 import ggHealthKitPackage
 import HealthKit
+import SwiftUI
 import SwiftData
 
 @MainActor
 final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:this type_body_length
+    private struct PendingPermissionExpansion {
+        let accountId: String
+        let deviceTypes: Set<String>
+    }
+
     static let shared = HealthKitService()
     private let integrationService: IntegrationServiceProtocol
     private let logger: LoggerServiceProtocol
@@ -17,8 +24,15 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     private let entryService: EntryServiceProtocol
     private let kvStore: KvStorageServiceProtocol
     private let hkPackage: HealthKitHandlerProtocol
+    private let deviceService: DeviceServiceProtocol
+    private let bluetoothService: BluetoothServiceProtocol
+    private let notificationService: NotificationHelperServiceProtocol
     private let tag = "HealthKitService"
     private let context: ModelContext
+    private var devicePairingObserver: NSObjectProtocol?
+    private var cancellables = Set<AnyCancellable>()
+    private var pendingPermissionExpansion: PendingPermissionExpansion?
+    private var isPresentingPermissionExpansionAlert = false
     private let addHKModalFlagKeyBase = KvStorageKeys.addAppleHealthModalBase
     /// Local storage flag indicating the *Finish Adding Apple Health* prompt has already been shown on this device.
     private let finishHKModalFlagKeyBase = KvStorageKeys.finishAppleHealthModalBase
@@ -26,6 +40,8 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     private let outOfSyncHKModalFlagKeyBase = KvStorageKeys.outOfSyncAppleHealthModalBase
     /// Local storage flag indicating we're waiting for permissions to be restored after out-of-sync.
     private let waitingForHKPermissionsRestoredBase = KvStorageKeys.waitingForHKPermissionsRestoredBase
+    private let permissionExpansionAlertDelayNs: UInt64 = 1_500_000_000
+    private let permissionExpansionAlertRetryDelayNs: UInt64 = 500_000_000
 
     // MARK: - Initialization
 
@@ -35,7 +51,10 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         accountService: AccountServiceProtocol? = nil,
         entryService: EntryServiceProtocol? = nil,
         kvStore: KvStorageServiceProtocol? = nil,
-        healthKitHandler: HealthKitHandlerProtocol? = nil
+        healthKitHandler: HealthKitHandlerProtocol? = nil,
+        deviceService: DeviceServiceProtocol? = nil,
+        bluetoothService: BluetoothServiceProtocol? = nil,
+        notificationService: NotificationHelperServiceProtocol? = nil
     ) {
         self.integrationService = integrationService ?? IntegrationsService.shared
         self.logger = logger ?? LoggerService.shared
@@ -43,7 +62,18 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         self.entryService = entryService ?? EntryService.shared
         self.kvStore = kvStore ?? KvStorageService.shared
         self.hkPackage = healthKitHandler ?? AppleHealthHandlerAdapter()
+        self.deviceService = deviceService ?? ScaleService.shared
+        self.bluetoothService = bluetoothService ?? BluetoothService.shared
+        self.notificationService = notificationService ?? NotificationHelperService.shared
         self.context = PersistenceController.shared.context
+        observeDevicePairing()
+        observeSetupProgress()
+    }
+
+    deinit {
+        if let devicePairingObserver {
+            NotificationCenter.default.removeObserver(devicePairingObserver)
+        }
     }
     
     // MARK: - Helpers
@@ -58,7 +88,367 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             accountService.activeAccount?.integrationSettings?.isHealthKitOn ?? false
         }
     }
-    
+
+    /// Returns the set of device type raw values for paired devices on the active account.
+    private func getPairedDeviceTypes() async -> Set<String> {
+        guard let devices = try? await deviceService.getDevices() else { return [] }
+        return Set(devices.compactMap { $0.deviceType })
+    }
+
+    private func getSignupSelectedDeviceType(for accountId: String) -> SignupDeviceType? {
+        let key = KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)
+        guard let rawValue = kvStore.getValue(forKey: key) as? String else { return nil }
+        return SignupDeviceType(rawValue: rawValue)
+    }
+
+    private func persistSignupSelectedDeviceType(_ signupDeviceType: SignupDeviceType, for accountId: String) {
+        let key = KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)
+        kvStore.setValue(signupDeviceType.rawValue, forKey: key)
+    }
+
+    private func getRecentSignupSelectedDeviceType(for accountId: String) -> SignupDeviceType? {
+        guard let recentSignupAccountId = kvStore.getValue(forKey: KvStorageKeys.recentSignupAccountId.rawValue) as? String,
+              recentSignupAccountId == accountId,
+              let rawValue = kvStore.getValue(forKey: KvStorageKeys.recentSignupDeviceType.rawValue) as? String else {
+            return nil
+        }
+        return SignupDeviceType(rawValue: rawValue)
+    }
+
+    private func resolveSignupSelectedDeviceType(for accountId: String) -> SignupDeviceType? {
+        if let signupDeviceType = getSignupSelectedDeviceType(for: accountId) {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Resolved signup-selected device type from account-scoped storage. "
+                    + "accountId=\(accountId), deviceType=\(signupDeviceType.rawValue)"
+            )
+            return signupDeviceType
+        }
+
+        guard let recentSignupDeviceType = getRecentSignupSelectedDeviceType(for: accountId) else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "No signup-selected device type found in storage. accountId=\(accountId)"
+            )
+            return nil
+        }
+
+        persistSignupSelectedDeviceType(recentSignupDeviceType, for: accountId)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Recovered signup-selected device type from recent-signup fallback. "
+                + "accountId=\(accountId), deviceType=\(recentSignupDeviceType.rawValue)"
+        )
+        return recentSignupDeviceType
+    }
+
+    private func getSignupSelectedDeviceTypes() async -> Set<String> {
+        guard let accountId = await getActiveAccountId() else {
+            logger.log(level: .info, tag: tag, message: "Unable to resolve signup-selected device types: active account is nil")
+            return []
+        }
+
+        guard let signupDeviceType = resolveSignupSelectedDeviceType(for: accountId) else {
+            return []
+        }
+
+        let signupDeviceTypes = signupDeviceType.healthKitFallbackDeviceTypes
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Using signup-selected device types for HealthKit permission scope. "
+                + "accountId=\(accountId), deviceTypes=\(signupDeviceTypes.sorted())"
+        )
+        return signupDeviceTypes
+    }
+
+    private func getStoredHealthKitPermissionScopeDeviceTypes(for accountId: String) -> Set<String>? {
+        let key = KvStorageKeys.healthKitPermissionScopeDeviceTypesKey(for: accountId)
+        guard let storedDeviceTypes = kvStore.getCodable(forKey: key, as: [String].self) else { return nil }
+        return Set(storedDeviceTypes)
+    }
+
+    private func persistHealthKitPermissionScopeDeviceTypes(_ deviceTypes: Set<String>, for accountId: String) {
+        let key = KvStorageKeys.healthKitPermissionScopeDeviceTypesKey(for: accountId)
+        kvStore.setCodable(Array(deviceTypes).sorted(), forKey: key)
+    }
+
+    private func clearStoredHealthKitPermissionScopeDeviceTypes(for accountId: String?) {
+        guard let accountId else { return }
+        let key = KvStorageKeys.healthKitPermissionScopeDeviceTypesKey(for: accountId)
+        kvStore.clearValue(forKey: key)
+    }
+
+    private func getInitialAuthorizationDeviceTypes() async -> Set<String> {
+        let signupDeviceTypes = await getSignupSelectedDeviceTypes()
+        let pairedDeviceTypes = await getPairedDeviceTypes()
+        let initialDeviceTypes = signupDeviceTypes.union(pairedDeviceTypes)
+
+        guard !initialDeviceTypes.isEmpty else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Initial HealthKit permission scope is empty. signupDeviceTypes=[], pairedDeviceTypes=[]"
+            )
+            return []
+        }
+
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Using initial HealthKit permission scope from signup + paired devices. "
+                + "signupDeviceTypes=\(signupDeviceTypes.sorted()), "
+                + "pairedDeviceTypes=\(pairedDeviceTypes.sorted()), "
+                + "resolvedDeviceTypes=\(initialDeviceTypes.sorted())"
+        )
+        return initialDeviceTypes
+    }
+
+    private func getConfiguredHealthKitPermissionScopeDeviceTypes() async -> Set<String> {
+        guard let accountId = await getActiveAccountId() else {
+            return await getInitialAuthorizationDeviceTypes()
+        }
+
+        if let storedDeviceTypes = getStoredHealthKitPermissionScopeDeviceTypes(for: accountId),
+           !storedDeviceTypes.isEmpty {
+            return storedDeviceTypes
+        }
+
+        return await getInitialAuthorizationDeviceTypes()
+    }
+
+    private func updateAppType(for deviceTypes: Set<String>, context: String) {
+        hkPackage.updateAppType(for: deviceTypes)
+        logger.log(level: .info, tag: tag, message: "Updated HealthKit app type for \(context): \(deviceTypes)")
+    }
+
+    private func updateAppTypeForInitialAuthorization() async -> Set<String> {
+        let deviceTypes = await getInitialAuthorizationDeviceTypes()
+        updateAppType(for: deviceTypes, context: "initial authorization")
+        return deviceTypes
+    }
+
+    private func updateAppTypeForConfiguredPermissionScope() async -> Set<String> {
+        let deviceTypes = await getConfiguredHealthKitPermissionScopeDeviceTypes()
+        updateAppType(for: deviceTypes, context: "configured permission scope")
+        return deviceTypes
+    }
+
+    private func observeSetupProgress() {
+        bluetoothService.isSetupInProgressPublisher
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isSetupInProgress in
+                guard let self, !isSetupInProgress else { return }
+                Task { @MainActor in
+                    await self.processPendingPermissionExpansionIfNeeded()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func isHealthKitIntegrated() async -> Bool {
+        do {
+            guard let info = try await integrationService.getStoredIntegrationData() else { return false }
+            return info.isIntegrated && info.type == .healthKit
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to check HealthKit integration status",
+                data: error.localizedDescription
+            )
+            return false
+        }
+    }
+
+    private func resolvePermissionExpansionIfNeeded() async -> PendingPermissionExpansion? {
+        guard await isHealthKitIntegrated() else { return nil }
+        guard hkPackage.available() else { return nil }
+        guard let accountId = await getActiveAccountId() else { return nil }
+
+        let pairedDeviceTypes = await getPairedDeviceTypes()
+        guard !pairedDeviceTypes.isEmpty else { return nil }
+
+        let currentPermissionScope = await getConfiguredHealthKitPermissionScopeDeviceTypes()
+        let expandedDeviceTypes = currentPermissionScope.union(pairedDeviceTypes)
+        guard expandedDeviceTypes != currentPermissionScope else { return nil }
+
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Detected additional HealthKit permissions needed. "
+                + "accountId=\(accountId), currentScope=\(currentPermissionScope.sorted()), "
+                + "pairedDeviceTypes=\(pairedDeviceTypes.sorted()), expandedScope=\(expandedDeviceTypes.sorted())"
+        )
+        return PendingPermissionExpansion(accountId: accountId, deviceTypes: expandedDeviceTypes)
+    }
+
+    private func queuePermissionExpansion(_ expansion: PendingPermissionExpansion) {
+        if let pendingPermissionExpansion, pendingPermissionExpansion.accountId == expansion.accountId {
+            self.pendingPermissionExpansion = PendingPermissionExpansion(
+                accountId: expansion.accountId,
+                deviceTypes: pendingPermissionExpansion.deviceTypes.union(expansion.deviceTypes)
+            )
+        } else {
+            pendingPermissionExpansion = expansion
+        }
+
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Queued HealthKit permission expansion. accountId=\(expansion.accountId), "
+                + "deviceTypes=\(self.pendingPermissionExpansion?.deviceTypes.sorted() ?? [])"
+        )
+    }
+
+    private func clearPendingPermissionExpansion(accountId: String? = nil) {
+        guard let pendingPermissionExpansion else { return }
+        guard accountId == nil || pendingPermissionExpansion.accountId == accountId else { return }
+
+        self.pendingPermissionExpansion = nil
+        isPresentingPermissionExpansionAlert = false
+    }
+
+    private func waitForNotificationSurfaceToClear() async -> Bool {
+        for _ in 0..<20 {
+            if !notificationService.isAlertVisible &&
+                !notificationService.isLoaderVisible &&
+                !notificationService.isModalVisible {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: permissionExpansionAlertRetryDelayNs)
+        }
+
+        return !notificationService.isAlertVisible &&
+            !notificationService.isLoaderVisible &&
+            !notificationService.isModalVisible
+    }
+
+    private func schedulePermissionExpansionRetry() {
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: permissionExpansionAlertRetryDelayNs)
+            await self?.processPendingPermissionExpansionIfNeeded()
+        }
+    }
+
+    private func showPermissionExpansionModal(for expansion: PendingPermissionExpansion) {
+        let modalView = HKIntegrationModalView(
+            state: .updatePermissions,
+            onClose: { [weak self] in
+                guard let self else { return }
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Dismissed HealthKit permission expansion modal. accountId=\(expansion.accountId)"
+                )
+                self.notificationService.dismissModal()
+                self.clearPendingPermissionExpansion(accountId: expansion.accountId)
+            },
+            onPrimaryTap: { [weak self] in
+                guard let self else { return }
+                self.notificationService.dismissModal()
+                Task { @MainActor [weak self] in
+                    await self?.requestQueuedPermissionExpansionAuthorization(accountId: expansion.accountId)
+                }
+            },
+            onSecondaryTap: { [weak self] in
+                guard let self else { return }
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Deferred HealthKit permission expansion from modal. accountId=\(expansion.accountId)"
+                )
+                self.notificationService.dismissModal()
+                self.clearPendingPermissionExpansion(accountId: expansion.accountId)
+            }
+        )
+        logger.log(level: .info, tag: tag, message: "Presenting queued HealthKit permission expansion modal. accountId=\(expansion.accountId)")
+        notificationService.showModal(ModalData(presentedView: AnyView(modalView), backdropDismiss: false))
+    }
+
+    private func processPendingPermissionExpansionIfNeeded() async {
+        guard !bluetoothService.isSetupInProgress else { return }
+        guard !isPresentingPermissionExpansionAlert else { return }
+        guard let pendingPermissionExpansion else { return }
+
+        guard let activeAccountId = await getActiveAccountId(), activeAccountId == pendingPermissionExpansion.accountId else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Discarding queued HealthKit permission expansion because the active account changed."
+            )
+            clearPendingPermissionExpansion()
+            return
+        }
+
+        isPresentingPermissionExpansionAlert = true
+        try? await Task.sleep(nanoseconds: permissionExpansionAlertDelayNs)
+
+        guard !bluetoothService.isSetupInProgress else {
+            isPresentingPermissionExpansionAlert = false
+            return
+        }
+
+        guard await waitForNotificationSurfaceToClear() else {
+            isPresentingPermissionExpansionAlert = false
+            schedulePermissionExpansionRetry()
+            return
+        }
+
+        guard let latestPendingPermissionExpansion = self.pendingPermissionExpansion,
+              latestPendingPermissionExpansion.accountId == pendingPermissionExpansion.accountId else {
+            isPresentingPermissionExpansionAlert = false
+            return
+        }
+
+        showPermissionExpansionModal(for: latestPendingPermissionExpansion)
+    }
+
+    private func requestQueuedPermissionExpansionAuthorization(accountId: String) async {
+        defer {
+            isPresentingPermissionExpansionAlert = false
+        }
+
+        guard let latestExpansion = await resolvePermissionExpansionIfNeeded(),
+              latestExpansion.accountId == accountId else {
+            clearPendingPermissionExpansion(accountId: accountId)
+            return
+        }
+
+        updateAppType(for: latestExpansion.deviceTypes, context: "permission expansion")
+        let result = await hkPackage.requestAuthorization()
+        if result {
+            persistHealthKitPermissionScopeDeviceTypes(latestExpansion.deviceTypes, for: latestExpansion.accountId)
+        }
+
+        logger.log(
+            level: result ? .success : .error,
+            tag: tag,
+            message: "Additional HealthKit permissions request completed. "
+                + "accountId=\(latestExpansion.accountId), success=\(result), "
+                + "deviceTypes=\(latestExpansion.deviceTypes.sorted())"
+        )
+        clearPendingPermissionExpansion(accountId: latestExpansion.accountId)
+    }
+
+    /// Listens for `.scaleAddedOrUpdated` notifications to request additional HealthKit permissions
+    /// when a new device type is paired while HealthKit is already integrated.
+    private func observeDevicePairing() {
+        devicePairingObserver = NotificationCenter.default.addObserver(
+            forName: .scaleAddedOrUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.requestAdditionalPermissionsIfNeeded()
+            }
+        }
+    }
+
     // MARK: - HealthKitServiceProtocol
     
     /// Integrates or de-integrates Apple Health based on `turnOn`. Returns `true` when integration remains enabled after the call.
@@ -88,6 +478,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
                 logger.log(level: .error, tag: tag, message: "HealthKit integrate failed: HealthKit unavailable on device. accountId=\(accountId)")
                 return false
             }
+            let permissionScopeDeviceTypes = await updateAppTypeForInitialAuthorization()
             let authorizationResult = await hkPackage.requestAuthorization()
             if !authorizationResult {
                 logger.log(level: .error, tag: tag, message: "HealthKit authorization failed.")
@@ -110,6 +501,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             )
             do {
                 try await self.integrationService.setStoredIntegrationData(integrationInfo)
+                persistHealthKitPermissionScopeDeviceTypes(permissionScopeDeviceTypes, for: accountID)
                 logger.log(
                     level: .success,
                     tag: tag,
@@ -146,41 +538,72 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     }
     
     /// Pushes the entire local entry history into Apple Health.
-    public func syncAllData() async throws {
+    public func syncAllData() async throws { // swiftlint:disable:this function_body_length
         // Get accountId on main actor first
         let accountId = await getActiveAccountId()
         guard let accountId else { return }
         logger.log(level: .info, tag: tag, message: "HealthKit full sync started. accountId=\(accountId)")
 
+        // Use the configured permission scope so initial Balance Health integrations
+        // do not silently expand into Weight Gurus until we explicitly re-request.
+        await updateAppTypeForConfiguredPermissionScope()
+
         // Materialize simple export values off the main actor to avoid cross-context @Model access
-        let exports: [HealthKitExport] = try await Task.detached(priority: .userInitiated) {
+        let (scaleExports, bpmExports): ([HealthKitExport], [HealthKitExportExtended]) = try await Task.detached(priority: .userInitiated) {
             let container = await PersistenceController.shared.container
             let bgContext = ModelContext(container)
-            // Avoid referencing enum cases inside #Predicate; compare to a captured String constant instead.
             let opCreate = OperationType.create.rawValue
+
+            // Fetch all entries for this account
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
                 $0.accountId == accountId && $0.operationType == opCreate
             })
             let entries = try bgContext.fetch(descriptor)
-            var items: [HealthKitExport] = []
-            items.reserveCapacity(entries.count)
+
+            var scaleItems: [HealthKitExport] = []
+            var bpmItems: [HealthKitExportExtended] = []
+            let bpmType = DeviceType.bpm.rawValue
+
             for entry in entries {
-                items.append(HealthKitExport(
-                    timestamp: entry.entryTimestamp,
-                    weight: entry.scaleEntry?.weight,
-                    bodyFat: entry.scaleEntry?.bodyFat,
-                    muscleMass: entry.scaleEntry?.muscleMass,
-                    bmi: entry.scaleEntry?.bmi
-                ))
+                if entry.deviceType == bpmType, let bpmEntry = entry.bpmEntry {
+                    // BPM entries → systolic, diastolic, pulse
+                    bpmItems.append(HealthKitExportExtended(
+                        timestamp: entry.entryTimestamp,
+                        weight: nil,
+                        bodyFat: nil,
+                        muscleMass: nil,
+                        bmi: nil,
+                        pulse: bpmEntry.pulse,
+                        systolic: bpmEntry.systolic,
+                        diastolic: bpmEntry.diastolic
+                    ))
+                } else if entry.scaleEntry != nil {
+                    // Scale entries → weight, body fat, muscle mass, BMI
+                    scaleItems.append(HealthKitExport(
+                        timestamp: entry.entryTimestamp,
+                        weight: entry.scaleEntry?.weight,
+                        bodyFat: entry.scaleEntry?.bodyFat,
+                        muscleMass: entry.scaleEntry?.muscleMass,
+                        bmi: entry.scaleEntry?.bmi
+                    ))
+                }
             }
-            return items
+            return (scaleItems, bpmItems)
         }.value
 
-        let healthKitData = buildHealthKitData(from: exports)
+        // Build HealthKit payloads for scale entries
+        var healthKitData = buildHealthKitData(from: scaleExports)
+
+        // Build HealthKit payloads for BPM entries
+        for bpmExport in bpmExports {
+            healthKitData.append(contentsOf: buildHealthKitData(from: bpmExport))
+        }
+
         logger.log(
             level: .info,
             tag: tag,
-            message: "HealthKit full sync prepared payload. accountId=\(accountId), entriesCount=\(exports.count), "
+            message: "HealthKit full sync prepared payload. accountId=\(accountId), "
+                + "scaleEntries=\(scaleExports.count), bpmEntries=\(bpmExports.count), "
                 + "payloadCount=\(healthKitData.count)"
         )
         try await saveHealthKitData(finalData: healthKitData)
@@ -205,14 +628,16 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     /// Writes entry data into Apple Health using an EntryNotification.
     /// This method is safe to call from any actor as it uses extracted data.
     func syncNewData(notification: EntryNotification) async throws {
-        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp)")
+        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), deviceType=\(notification.deviceType)")
         let export = HealthKitExportExtended(
             timestamp: notification.entryTimestamp,
             weight: notification.weight,
             bodyFat: notification.bodyFat,
             muscleMass: notification.muscleMass,
             bmi: notification.bmi,
-            pulse: notification.pulse
+            pulse: notification.pulse,
+            systolic: notification.systolic,
+            diastolic: notification.diastolic
         )
         let healthKitData = buildHealthKitData(from: export)
         try await hkPackage.saveData(healthKitData)
@@ -242,7 +667,9 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             bodyFat: notification.bodyFat,
             muscleMass: notification.muscleMass,
             bmi: notification.bmi,
-            pulse: notification.pulse
+            pulse: notification.pulse,
+            systolic: notification.systolic,
+            diastolic: notification.diastolic
         )
         let healthKitData = buildHealthKitData(from: export)
         try await hkPackage.deleteEntry(healthKitData)
@@ -255,15 +682,39 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         return true
     }
     
+    /// Requests additional HealthKit permissions if the paired device types have expanded
+    /// since the last authorization (e.g., user added a weight scale after only having BPM).
+    /// iOS only prompts for types with `.notDetermined` status — already-granted types are silently skipped.
+    public func requestAdditionalPermissionsIfNeeded() async {
+        guard let expansion = await resolvePermissionExpansionIfNeeded() else { return }
+        queuePermissionExpansion(expansion)
+        await processPendingPermissionExpansionIfNeeded()
+    }
+
+    /// Returns the expected total permission count based on the user's paired device types.
+    public func expectedPermissionCount() async -> Int {
+        let deviceTypes = await getConfiguredHealthKitPermissionScopeDeviceTypes()
+        let hasBpm = deviceTypes.contains(DeviceType.bpm.rawValue)
+        let hasScale = deviceTypes.contains(DeviceType.scale.rawValue)
+
+        switch (hasScale, hasBpm) {
+        case (true, true): return 7   // WG (5) + BH (3) - heartRate overlap (1)
+        case (false, true): return 3  // Balance Health: heartRate, systolic, diastolic
+        default: return 5             // Weight Gurus: weight, leanBodyMass, bodyFat, BMI, heartRate
+        }
+    }
+
     /// Removes all Apple Health records previously generated by the app.
     public func clearHealthKit() async throws {
         let accountId = accountService.activeAccount?.accountId ?? "nil"
         logger.log(level: .info, tag: tag, message: "HealthKit clear requested. accountId=\(accountId)")
+        clearPendingPermissionExpansion(accountId: accountService.activeAccount?.accountId)
         do {
             try await self.integrationService.clearIntegrationStatus(integrationType: .healthKit)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to clear integration status", data: error.localizedDescription)
         }
+        clearStoredHealthKitPermissionScopeDeviceTypes(for: accountService.activeAccount?.accountId)
         do {
             try await hkPackage.deleteAllData()
             logger.log(level: .success, tag: tag, message: "HealthKit clear completed. accountId=\(accountId)")
@@ -435,7 +886,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         let bmi: Int?
     }
 
-    /// Extended export struct that includes pulse for EntryNotification conversions.
+    /// Extended export struct that includes pulse and BPM data for EntryNotification conversions.
     private struct HealthKitExportExtended {
         let timestamp: String
         let weight: Int?
@@ -443,6 +894,8 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
         let muscleMass: Int?
         let bmi: Int?
         let pulse: Int?
+        let systolic: Int?
+        let diastolic: Int?
     }
 
     /// Converts a single extended export into HealthKitData payloads.
@@ -499,9 +952,26 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             ))
         }
 
+        // BPM data (blood pressure)
+        if let systolic = export.systolic {
+            healthKitData.append(HealthKitData(
+                type: .systolic,
+                value: Double(systolic),
+                timestamp: timestamp
+            ))
+        }
+
+        if let diastolic = export.diastolic {
+            healthKitData.append(HealthKitData(
+                type: .diastolic,
+                value: Double(diastolic),
+                timestamp: timestamp
+            ))
+        }
+
         return healthKitData
     }
-    
+
     /// Writes the provided dataset to Apple Health and logs the outcome.
     private func saveHealthKitData(finalData: [HealthKitData]) async throws {
         if finalData.isEmpty {

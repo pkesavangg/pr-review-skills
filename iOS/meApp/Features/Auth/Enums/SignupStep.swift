@@ -48,4 +48,17 @@ enum SignupDeviceType: String, CaseIterable, Identifiable {
         case .weightScale: return AppAssets.weightScaleIcon
         }
     }
+
+    /// Device types that should drive HealthKit permission selection
+    /// before any paired hardware has been saved.
+    var healthKitFallbackDeviceTypes: Set<String> {
+        switch self {
+        case .babyScale:
+            return [DeviceType.babyScale.rawValue]
+        case .bpm:
+            return [DeviceType.bpm.rawValue]
+        case .weightScale:
+            return [DeviceType.scale.rawValue]
+        }
+    }
 }

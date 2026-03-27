@@ -293,9 +293,6 @@ final class AppSyncSetupStore: ObservableObject {
                 // Post notification that scale was added
                 NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
 
-                // Clear setup in progress flag after scale is saved
-                bluetoothService.isSetupInProgress = false
-
                 self.dismissAction?()
             } catch {
                 logger.log(
@@ -304,8 +301,6 @@ final class AppSyncSetupStore: ObservableObject {
                     message: "Failed to save AppSync scale: sku=\(scaleItem.sku), accountId=\(accountId), error=\(error.localizedDescription)"
                 )
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
-                // Clear setup in progress flag even on error
-                bluetoothService.isSetupInProgress = false
             }
         }
     }
