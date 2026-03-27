@@ -165,6 +165,8 @@ object AppIcons {
     val UserNameScale = R.drawable.scale_0412_user_name
     val AppSyncNavBar = R.drawable.app_bottom_bar
     val SetupCompleteCheck = R.drawable.setup_complete_check
+    val BabyScalePairedCheck = R.drawable.ic_baby_scale_paired_check
+    val EditPencil = R.drawable.ic_edit_pencil
     val WifiAPMode = R.drawable.wifi_ap_mode
     val WifiSmartConnect = R.drawable.wifi_smart_connect
     val WifiAPModeSelected = R.drawable.wifi_ap_mode_filled

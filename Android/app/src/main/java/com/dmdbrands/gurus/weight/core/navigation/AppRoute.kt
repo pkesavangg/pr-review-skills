@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.navigation
 import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
@@ -205,6 +206,14 @@ sealed class AppRoute : NavKey {
     @Serializable
     data class AppsyncScaleSetup(
       val sku: String
+    ) : ScaleSetup()
+
+    @Serializable
+    data class BabyScaleSetup(
+      val sku: String,
+      val initialStep: BabyScaleSetupStep = BabyScaleSetupStep.SCALE_INFO,
+      val broadcastId: String? = null,
+      val scaleInfo: ScaleInfo? = null,
     ) : ScaleSetup()
   }
 

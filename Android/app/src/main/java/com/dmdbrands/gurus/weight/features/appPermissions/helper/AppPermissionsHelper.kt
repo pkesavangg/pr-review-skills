@@ -164,7 +164,8 @@ object AppPermissionsHelper {
       }
 
       ScaleSetupType.Lcbt,
-      ScaleSetupType.Bluetooth -> {
+      ScaleSetupType.Bluetooth,
+      ScaleSetupType.BabyScale -> {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
           listOf(
             GGPermissionType.BLUETOOTH_SWITCH,
@@ -227,7 +228,8 @@ object AppPermissionsHelper {
       )
 
       ScaleSetupType.Lcbt,
-      ScaleSetupType.Bluetooth -> listOf(
+      ScaleSetupType.Bluetooth,
+      ScaleSetupType.BabyScale -> listOf(
         AppPermissionsScreenStrings.BluetoothHeader,
         AppPermissionsScreenStrings.LocationHeader,
       )
@@ -455,7 +457,7 @@ object AppPermissionsHelper {
     pairedScales.forEach { scale ->
       val scaleSetupType = ScaleSetupType.fromString(scale.deviceType)
       when (scaleSetupType) {
-        ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> {
+        ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt, ScaleSetupType.BabyScale -> {
           requiredPermissions.add(GGPermissionType.BLUETOOTH_SWITCH)
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             requiredPermissions.add(GGPermissionType.NEARBY_DEVICE)
