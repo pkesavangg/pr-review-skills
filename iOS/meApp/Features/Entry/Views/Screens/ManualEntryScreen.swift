@@ -14,9 +14,11 @@ import SwiftUI
 struct ManualEntryScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var entryStore = EntryStore()
+    @ObservedObject private var productTypeStore = ProductTypeStore.shared
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @State private var focusedField: FocusField?
+    @State private var isProductTypeSelectorPresented = false
     // Keyboard observer to adjust bottom padding when the keyboard is visible
     @StateObject private var keyboard = KeyboardResponder()
     
@@ -40,7 +42,23 @@ struct ManualEntryScreen: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            NavbarHeaderView<EmptyView, EmptyView>(title: manualEntryLang.title, canShowBorder: true)
+            NavbarHeaderView<EmptyView, EmptyView>(
+                title: productTypeStore.availableItems.count > 1
+                    ? productTypeStore.selectedItem.entryTitle
+                    : manualEntryLang.title,
+                onTitleTap: productTypeStore.availableItems.count > 1 ? {
+                    isProductTypeSelectorPresented = true
+                } : nil,
+                canShowBorder: true,
+                canShowTitleChevron: productTypeStore.availableItems.count > 1
+            )
+            .sheet(isPresented: $isProductTypeSelectorPresented) {
+                ProductTypeSelectorSheet(
+                    store: productTypeStore,
+                    isPresented: $isProductTypeSelectorPresented,
+                    title: ProductTypeStrings.manualEntry
+                )
+            }
             
             ScrollView(.vertical) {
                 VStack(spacing: .spacingLG) {

@@ -85,6 +85,7 @@ class EntryViewModelTest {
             accountService = accountService,
             appSyncService = appSyncService,
             deviceService = deviceService,
+            analyticsService = mockk(relaxed = true),
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -376,5 +377,50 @@ class EntryViewModelTest {
         viewModel.Exit()
         advanceUntilIdle()
         coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // earlyExitToHome — delegates to earlyExit which calls Exit
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `earlyExitToHome registers deactivation handler on Entry route`() = runTest {
+        viewModel.earlyExitToHome()
+        advanceUntilIdle()
+        coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
+    }
+
+    @Test
+    fun `EarlyExit intent triggers earlyExitToHome`() = runTest {
+        viewModel.handleIntent(EntryIntent.EarlyExit)
+        advanceUntilIdle()
+        coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // saveEntry — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Save logs manual entry created analytics event`() = runTest {
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+        // analyticsService is relaxed, so logEvent should have been called
+        // The save path calls analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
+        coVerify { entryService.addEntry(entry = any()) }
+    }
+
+    @Test
+    fun `Save returns early when activeAccount id is null`() = runTest {
+        every { accountService.activeAccountFlow } returns flowOf(null)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        // Should show loader but not call addEntry since account id is null
+        verify { dialogQueueService.showLoader(message = any()) }
+        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
     }
 }

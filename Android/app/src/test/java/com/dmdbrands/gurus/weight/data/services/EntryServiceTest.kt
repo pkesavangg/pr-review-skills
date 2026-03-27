@@ -23,10 +23,12 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntryServiceTest {
@@ -54,7 +56,7 @@ class EntryServiceTest {
     private val isUpdatingFlow = MutableStateFlow(false)
     private val emptyEntriesFlow = MutableStateFlow<List<Entry>>(emptyList())
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -74,10 +76,11 @@ class EntryServiceTest {
             entryRepository = entryRepository,
             accountRepository = accountRepository,
             goalService = goalService,
+            appScope = TestScope(UnconfinedTestDispatcher()),
         )
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }

@@ -110,6 +110,8 @@ class AppViewModelTest {
             feedService = feedService,
             ggInAppMessagingService = ggInAppMessagingService,
             accountFlagService = accountFlagService,
+            tokenMigrationHelper = mockk(relaxed = true),
+            analyticsService = mockk(relaxed = true),
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

@@ -31,18 +31,19 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 import retrofit2.HttpException
 import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExportServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -83,7 +84,7 @@ class ExportServiceTest {
         log = "LogA",
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.i(any(), any()) } returns Unit
@@ -96,7 +97,7 @@ class ExportServiceTest {
         service = createService()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         clearAllMocks()
     }
@@ -683,6 +684,153 @@ class ExportServiceTest {
 
         logSlot.captured.forEach { entry ->
             assertThat(entry.time).isEmpty()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // getUtcOffset — indirectly tested via exportCsvToEmail
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `getUtcOffset returns value within valid UTC offset range`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        val offsetSlot = slot<Int>()
+        coEvery { exportAPI.exportCsvDashboard4(capture(offsetSlot)) } returns Unit
+
+        service.exportCsvToEmail()
+
+        // UTC offset in minutes should be between -720 (-12h) and 840 (+14h)
+        val offset = offsetSlot.captured
+        assertThat(offset).isAtLeast(-720)
+        assertThat(offset).isAtMost(840)
+    }
+
+    @Test
+    fun `getUtcOffset is consistent across consecutive calls`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        val offsets = mutableListOf<Int>()
+        coEvery { exportAPI.exportCsvDashboard4(capture(offsets)) } returns Unit
+
+        service.exportCsvToEmail()
+        service.exportCsvToEmail()
+
+        assertThat(offsets).hasSize(2)
+        assertThat(offsets[0]).isEqualTo(offsets[1])
+    }
+
+    // -------------------------------------------------------------------------
+    // isDashboard12 — indirectly tested via exportCsvToEmail
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `isDashboard12 returns false for null dashboardType`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = null))
+        stubExportDashboard4()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard4(any()) }
+        coVerify(exactly = 0) { exportAPI.exportCsvDashboard12(any()) }
+    }
+
+    @Test
+    fun `isDashboard12 returns true for exact dashboard_12_metrics string`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = "dashboard_12_metrics"))
+        stubExportDashboard12()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard12(any()) }
+    }
+
+    @Test
+    fun `isDashboard12 matches case-insensitively for mixed case`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = "Dashboard_12_Metrics"))
+        stubExportDashboard12()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard12(any()) }
+    }
+
+    @Test
+    fun `isDashboard12 returns false for empty dashboardType`() = runTest {
+        stubGetCurrentAccount(fakeAccount.copy(dashboardType = ""))
+        stubExportDashboard4()
+
+        service.exportCsvToEmail()
+
+        coVerify { exportAPI.exportCsvDashboard4(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // buildScaleLogEntries — additional edge cases
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `sendScaleLog with single device log having single line produces two entries`() = runTest {
+        val singleLineLog = GGDeviceLog(macAddress = "AB:CD:EF", log = "SingleLine")
+        stubDeviceLogsCompleted(listOf(singleLineLog))
+        val logSlot = slot<List<LogEntry>>()
+        coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
+
+        service.sendScaleLog("broadcast-123")
+
+        val entries = logSlot.captured
+        // 1 mac header + 1 line
+        assertThat(entries).hasSize(2)
+        assertThat(entries[0].data).isEqualTo("Mac Address: AB:CD:EF")
+        assertThat(entries[1].data).isEqualTo("SingleLine")
+    }
+
+    @Test
+    fun `sendScaleLog with device log having trailing newline includes empty last line`() = runTest {
+        val trailingNewline = GGDeviceLog(macAddress = "AB:CD:EF", log = "Line1\n")
+        stubDeviceLogsCompleted(listOf(trailingNewline))
+        val logSlot = slot<List<LogEntry>>()
+        coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
+
+        service.sendScaleLog("broadcast-123")
+
+        val entries = logSlot.captured
+        // 1 mac header + 2 lines ("Line1" and "")
+        assertThat(entries).hasSize(3)
+        assertThat(entries[1].data).isEqualTo("Line1")
+        assertThat(entries[2].data).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // showExportSuccessToast — indirectly tested via exportCsvWithPrompt
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `showExportSuccessToast shows toast with ExportStrings SuccessMessage`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        stubExportDashboard4()
+
+        service.exportCsvWithPrompt()
+
+        verify {
+            dialogQueueService.showToast(match<Toast> {
+                it.message == ExportStrings.SuccessMessage
+            })
+        }
+    }
+
+    @Test
+    fun `showExportSuccessToast is not called when export throws`() = runTest {
+        stubGetCurrentAccount(fakeAccount)
+        coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
+
+        try {
+            service.exportCsvWithPrompt()
+        } catch (_: HttpException) { }
+
+        // Verify the success toast was NOT shown, only the error toast
+        verify(exactly = 0) {
+            dialogQueueService.showToast(match<Toast> {
+                it.message == ExportStrings.SuccessMessage
+            })
         }
     }
 }

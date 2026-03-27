@@ -22,15 +22,16 @@ import io.mockk.slot
 import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppSyncServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -45,7 +46,7 @@ class AppSyncServiceTest {
     private val fakeScaleEntry: ScaleEntry = mockk(relaxed = true)
     private val fakeApiEntry: ScaleApiEntry = mockk(relaxed = true)
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         service = AppSyncService(
@@ -56,7 +57,7 @@ class AppSyncServiceTest {
         )
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkObject(AppLog)
     }

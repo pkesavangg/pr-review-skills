@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -13,7 +14,6 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
-import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -50,7 +50,7 @@ constructor(
   private val goalAlertDataStore: GoalAlertDataStore,
   private val accountRepository: IAccountRepository,
   private val deviceService: IDeviceService,
-  private val appScope: CoroutineScope,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
   private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
   private val TAG = "GoalService"
@@ -70,7 +70,7 @@ constructor(
   override val goalStatusFlow: Flow<Goal?> = _goalStatusFlow.asStateFlow()
   private var account: Account? = null
   init {
-    CoroutineScope(ioDispatcher).launch {
+    appScope.launch {
       accountRepository.getActiveAccount().collect {
         if (it != null) {
           account = it

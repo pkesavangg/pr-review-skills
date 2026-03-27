@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.android.test) apply false
     alias(libs.plugins.baselineprofile) apply false
+    alias(libs.plugins.owasp.dependency.check)
 }
 
 subprojects {
@@ -46,5 +47,18 @@ subprojects {
     tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
         jvmTarget = "11"
         exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+    }
+}
+
+dependencyCheck {
+    failBuildOnCVSS = 7.0f
+    suppressionFile = "$projectDir/config/owasp-suppressions.xml"
+    formats = listOf("HTML", "JSON")
+    outputDirectory = layout.buildDirectory.dir("reports/dependency-check").get().asFile.absolutePath
+    analyzers {
+        assemblyEnabled = false
+    }
+    nvd {
+        apiKey = System.getenv("NVD_API_KEY") ?: ""
     }
 }

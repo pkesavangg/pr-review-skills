@@ -7,6 +7,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DeviceInfoUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.FcmTokenUtil
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -37,16 +38,17 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DeviceInfoServiceTest {
 
-  @get:Rule
+  @JvmField
+  @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
   // --- Mocks ---
@@ -76,7 +78,7 @@ class DeviceInfoServiceTest {
   /** Standard wait for IO collector to start after service construction. */
   private val collectorStartDelayMs = 100L
 
-  @Before
+  @BeforeEach
   fun setUp() {
     mockkObject(DeviceInfoUtil)
     mockkObject(FcmTokenUtil)
@@ -118,9 +120,10 @@ class DeviceInfoServiceTest {
     healthConnectRepository = healthConnectRepository,
     integrationRepository = integrationRepository,
     entryService = entryService,
+    appScope = TestScope(mainDispatcherRule.dispatcher),
   )
 
-  @After
+  @AfterEach
   fun tearDown() {
     unmockkAll()
   }
@@ -410,7 +413,9 @@ class DeviceInfoServiceTest {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     networkFlow.emit(offlineState)
 
-    Thread.sleep(2500)
+    // Advance virtual time past the NETWORK_UNAVAILABLE_DEBOUNCE_MS (2000ms)
+    mainDispatcherRule.dispatcher.scheduler.advanceTimeBy(2500)
+    Thread.sleep(200) // Allow coroutine to complete after virtual time advancement
 
     verify(atLeast = 1) { dialogQueueService.showToast(any<Toast>()) }
   }
@@ -529,6 +534,74 @@ class DeviceInfoServiceTest {
     coVerify(timeout = 3000) { offlineHandlerService.handleOfflineSync() }
 
     // Emit unavailable then available to trigger a new distinct emission
+    networkFlow.emit(offlineState)
+    Thread.sleep(collectorStartDelayMs)
+    networkFlow.emit(onlineState)
+
+    coVerify(timeout = 3000, atLeast = 2) { offlineHandlerService.handleOfflineSync() }
+  }
+
+  // -------------------------------------------------------------------------
+  // isAppInForeground — requires ProcessLifecycleOwner (Android framework)
+  // Cannot be unit tested directly because ProcessLifecycleOwner.get()
+  // requires an actual Android process lifecycle. It is tested indirectly
+  // via the startNetworkMonitoring debounce tests above that mock
+  // ProcessLifecycleOwner and verify foreground/background gating.
+  // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+  // startNetworkMonitoring — additional initial state tests
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `startNetworkMonitoring called during init observes connectivity flow`() {
+    createService()
+
+    // observe() should have been called during init
+    verify { connectivityObserver.observe() }
+  }
+
+  @Test
+  fun `startNetworkMonitoring checks initial network state during init`() {
+    createService()
+
+    verify { connectivityObserver.getCurrentNetworkState() }
+  }
+
+  // -------------------------------------------------------------------------
+  // runOnlineSyncOnce — all four sync steps called in order
+  // -------------------------------------------------------------------------
+
+  @Test
+  fun `runOnlineSyncOnce completes successfully when all steps succeed`() = runTest {
+    createService()
+    Thread.sleep(collectorStartDelayMs)
+
+    networkFlow.emit(onlineState)
+
+    coVerify(timeout = 3000) { offlineHandlerService.handleOfflineSync() }
+    coVerify(timeout = 3000) { entryService.syncOperations() }
+    coVerify(timeout = 3000) { healthConnectRepository.syncIntegration() }
+    coVerify(timeout = 3000) { integrationRepository.updateLocalAccount() }
+  }
+
+  @Test
+  fun `runOnlineSyncOnce releases guard even when all steps fail`() = runTest {
+    coEvery { offlineHandlerService.handleOfflineSync() } throws RuntimeException("err1")
+    coEvery { entryService.syncOperations() } throws RuntimeException("err2")
+    coEvery { healthConnectRepository.syncIntegration() } throws RuntimeException("err3")
+    coEvery { integrationRepository.updateLocalAccount() } throws RuntimeException("err4")
+
+    createService()
+    Thread.sleep(collectorStartDelayMs)
+
+    networkFlow.emit(onlineState)
+    coVerify(timeout = 3000) { offlineHandlerService.handleOfflineSync() }
+
+    // Wait for first sync to complete (guard released in finally)
+    Thread.sleep(1000)
+
+    // Second emission should trigger another sync (guard released)
     networkFlow.emit(offlineState)
     Thread.sleep(collectorStartDelayMs)
     networkFlow.emit(onlineState)

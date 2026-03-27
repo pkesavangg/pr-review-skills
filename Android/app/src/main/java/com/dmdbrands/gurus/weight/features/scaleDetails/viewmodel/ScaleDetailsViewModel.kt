@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.scaleDetails.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
-import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
@@ -12,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
@@ -108,7 +108,6 @@ constructor(
 
       ScaleDetailsIntent.OpenWiFiSetup -> openWiFiSetup()
 
-
       ScaleDetailsIntent.ShowScaleNameModal -> openScaleNameModal()
       ScaleDetailsIntent.UpdateScaleName -> updateScaleName()
       is ScaleDetailsIntent.OnCopyMacAddress -> onCopyMacAddress(intent.isCopied)
@@ -169,8 +168,9 @@ constructor(
     viewModelScope.launch {
       val scale = state.value.scale
       if (scale != null &&
-          scale.deviceType == ScaleSetupType.BtWifiR4.value &&
-          scale.connectionStatus == BLEStatus.CONNECTED) {
+        scale.deviceType == ScaleSetupType.BtWifiR4.value &&
+        scale.connectionStatus == BLEStatus.CONNECTED
+      ) {
         try {
           ggDeviceService.getConnectedWifiMacAddress(scale.toGGBTDevice()) { macAddress ->
             handleIntent(ScaleDetailsIntent.SetWifiMacAddress(macAddress))
@@ -298,11 +298,11 @@ constructor(
                 }
               }
             },
-          onDismiss = {
+            onDismiss = {
               dialogQueueService.dismissCurrent()
             },
 
-          ),
+            ),
 
           )
       }
@@ -330,7 +330,7 @@ constructor(
           "scaleId" to (state.value.scale?.id ?: scaleId),
           "accountId" to (activeAccount?.id ?: ""),
         ),
-        dismissOnBackPress = true
+        dismissOnBackPress = true,
       ),
     )
   }

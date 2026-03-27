@@ -38,3 +38,23 @@
 | `class redefinition failed` with `mockkStatic` | JaCoCo instrumentation conflicts with MockK's class rewriting — wrap the static call behind an interface and mock that instead |
 | `ClassCastException` from relaxed mock with generic return | `relaxed = true` returns nested mocks for generics (`List<T>`, `Map<K,V>`) — explicitly stub generic-returning methods even on relaxed mocks |
 | `spyk` gives wrong results for suspend functions | MockK docs warn spies + suspend = unexpected behavior — use `mockk()` with explicit stubs instead of `spyk` for suspend functions |
+
+## Instrumented test errors (androidTest/)
+
+| Error | Fix |
+|---|---|
+| `No connected devices` | Start an emulator: `emulator -avd <name>` or use Android Studio device manager |
+| `IllegalStateException: Cannot access database on main thread` | Ensure `allowMainThreadQueries()` is set — `BaseDaoTest` handles this |
+| `SQLiteConstraintException: FOREIGN KEY constraint failed` | Insert parent entities before children (FK order) — use `insertFullAccount()` |
+| `SQLiteConstraintException: UNIQUE constraint failed` | Use unique values (especially `email`) for each inserted entity |
+| `ComposeNotIdleException` | Add `composeTestRule.waitForIdle()` or `waitUntil { }` for async operations |
+| `AssertionError: Expected node count: 1 but found: 0` | Check text spelling, use `substring = true`, or `useUnmergedTree = true`. Debug with `onRoot().printToLog("TAG")` |
+| `AssertionError: Expected node count: 1 but found: 2+` | Use `onAllNodesWithText()` and pick specific node, or add `Modifier.testTag()` for uniqueness |
+| `IllegalStateException: No compose views found` | Ensure `debugImplementation(libs.androidx.ui.test.manifest)` is in `build.gradle.kts` |
+| `No Activity set` | Use `createComposeRule()` (needs `ui-test-manifest`) or `createAndroidComposeRule<Activity>()` |
+| `Theme tokens not resolving / crash in theme` | Wrap content in `MeAppTheme { }` in the `setContent()` helper |
+| `Test passes locally but fails on CI` | Check emulator API level matches local. Use `@Suppress("DEPRECATION")` for API-specific behavior |
+| `connectedDebugAndroidTest task hangs` | Emulator may be stuck — restart emulator or use `./gradlew --stop` then retry |
+| `Turbine not available in androidTest` | Known version conflict with compose-ui-test — use `flow.first()` instead of Turbine in androidTest |
+| `Room DB schema mismatch` | Run `./gradlew clean` then rebuild — may need to clear emulator app data |
+| `Test order dependency` | Each test gets a fresh DB (BaseDaoTest creates new in @Before). If still failing, check for leaked state in companion objects |

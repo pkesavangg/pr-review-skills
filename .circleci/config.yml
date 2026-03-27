@@ -30,6 +30,14 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Skip if no iOS changes
+          command: |
+            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^iOS/|^\.circleci/"; then
+              echo "No iOS changes detected, skipping job."
+              circleci-agent step halt
+            fi
+      - run:
           name: Install SwiftLint
           command: brew install swiftlint
       - run:
@@ -46,6 +54,14 @@ jobs:
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
+      - run:
+          name: Skip if no iOS changes
+          command: |
+            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^iOS/|^\.circleci/"; then
+              echo "No iOS changes detected, skipping job."
+              circleci-agent step halt
+            fi
       - run:
           name: Restore GoogleService-Info.plist
           command: |
@@ -157,6 +173,14 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Skip if no iOS changes
+          command: |
+            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^iOS/|^\.circleci/"; then
+              echo "No iOS changes detected, skipping job."
+              circleci-agent step halt
+            fi
+      - run:
           name: Audit SPM Dependencies
           working_directory: iOS
           command: |
@@ -188,7 +212,130 @@ jobs:
             print('\nAll dependencies are pinned.')
             "
 
-  build-android:
+  # ===========================================================
+  # Job 6: Android Build
+  # ===========================================================
+  android-build:
+    docker:
+      - image: cimg/android:2024.11.1
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Skip if no Android changes
+          command: |
+            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^Android/|^\.circleci/"; then
+              echo "No Android changes detected, skipping job."
+              circleci-agent step halt
+            fi
+      - restore_cache:
+          keys:
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
+            - gradle-v1-
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+      - run:
+          name: Build Android debug APK
+          working_directory: Android
+          command: ./gradlew assembleDebug
+      - save_cache:
+          key: gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
+          paths:
+            - ~/.gradle/caches
+            - ~/.gradle/wrapper
+            - ~/.gradle/build-cache
+
+  # ===========================================================
+  # Job 7: Android Lint
+  # ===========================================================
+  android-lint:
+    docker:
+      - image: cimg/android:2024.11.1
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Skip if no Android changes
+          command: |
+            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^Android/|^\.circleci/"; then
+              echo "No Android changes detected, skipping job."
+              circleci-agent step halt
+            fi
+      - restore_cache:
+          keys:
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
+            - gradle-v1-
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+      - run:
+          name: Run Android lint
+          working_directory: Android
+          command: ./gradlew lint
+      - store_artifacts:
+          path: Android/app/build/reports/lint-results-debug.html
+          destination: lint-reports
+
+  # ===========================================================
+  # Job 8: Android Unit Tests
+  # ===========================================================
+  android-test:
+    docker:
+      - image: cimg/android:2024.11.1
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: Skip if no Android changes
+          command: |
+            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^Android/|^\.circleci/"; then
+              echo "No Android changes detected, skipping job."
+              circleci-agent step halt
+            fi
+      - restore_cache:
+          keys:
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
+            - gradle-v1-
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+      - run:
+          name: Run Android unit tests
+          working_directory: Android
+          command: ./gradlew test
+      - store_test_results:
+          path: Android/app/build/test-results
+
+  # ===========================================================
+  # Job 9: OWASP Dependency Vulnerability Scan (Android)
+  # Runs weekly via scheduled-security workflow.
+  # ===========================================================
+  android-owasp-scan:
     docker:
       - image: cimg/android:2024.11.1
     resource_class: large
@@ -204,24 +351,75 @@ jobs:
             echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
             echo "google-services.json restored."
       - run:
-          name: Build Android debug APK
+          name: Run OWASP Dependency Check
           working_directory: Android
-          command: ./gradlew assembleDebug
-      - run:
-          name: Run Android unit tests
-          working_directory: Android
-          command: ./gradlew test
+          command: ./gradlew dependencyCheckAnalyze
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: Android/build/reports/dependency-check
+          destination: owasp-reports
 
 workflows:
   version: 2
   build-and-test:
     jobs:
+      # --- Platform-agnostic ---
       - gitleaks
-      - swiftlint
-      - build
+      # --- iOS jobs ---
+      - swiftlint:
+          filters:
+            branches:
+              only:
+                - dev
+                - main
+                - /^MA-.*$/
+      - build:
+          filters:
+            branches:
+              only:
+                - dev
+                - main
+                - /^MA-.*$/
       # Uncomment when simulator support is restored:
       # - unit-tests:
       #     requires:
       #       - build
-      - dependency-audit
-      - build-android
+      - dependency-audit:
+          filters:
+            branches:
+              only:
+                - dev
+                - main
+                - /^MA-.*$/
+      # --- Android jobs ---
+      - android-build:
+          filters:
+            branches:
+              only:
+                - dev
+                - main
+                - /^MA-.*$/
+      - android-lint:
+          filters:
+            branches:
+              only:
+                - dev
+                - main
+                - /^MA-.*$/
+      - android-test:
+          filters:
+            branches:
+              only:
+                - dev
+                - main
+                - /^MA-.*$/
+
+  scheduled-security:
+    triggers:
+      - schedule:
+          cron: "0 9 * * 1"
+          filters:
+            branches:
+              only: main
+    jobs:
+      - android-owasp-scan

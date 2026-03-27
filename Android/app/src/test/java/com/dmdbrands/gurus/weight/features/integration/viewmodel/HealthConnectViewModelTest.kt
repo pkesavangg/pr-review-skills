@@ -17,6 +17,7 @@ import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
+import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -470,6 +471,177 @@ class HealthConnectViewModelTest {
     @Test
     fun `navigationEvent initial value is null`() {
         assertThat(viewModel.navigationEvent.value).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // handlePrimaryAction — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `handlePrimaryAction UPDATE_PERMISSIONS calls requestAuthorization`() {
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.UPDATE_PERMISSIONS))
+        advanceScheduler()
+        coVerify { healthConnectService.requestAuthorization(any()) }
+    }
+
+    @Test
+    fun `handlePrimaryAction CONNECT shows and dismisses loader`() {
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+        advanceScheduler()
+        verify { dialogQueueService.showLoader(any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `handlePrimaryAction FINISH shows loader and navigates back on success`() {
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+        advanceScheduler()
+        verify { dialogQueueService.showLoader(any()) }
+        coVerify { healthConnectService.turnOnIntegration() }
+        coVerify { navigationService.navigateBack() }
+    }
+
+    @Test
+    fun `handlePrimaryAction FINISH sets error on exception`() {
+        coEvery { healthConnectService.turnOnIntegration() } throws RuntimeException("fail")
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+        advanceScheduler()
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    @Test
+    fun `handlePrimaryAction FINISH dismisses loader on exception`() {
+        coEvery { healthConnectService.turnOnIntegration() } throws RuntimeException("fail")
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+        advanceScheduler()
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    // -------------------------------------------------------------------------
+    // resumeSetup — tested via onResume lifecycle callback
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onResume with isHealthConnectOpened triggers resumeSetup`() {
+        coEvery { healthConnectService.checkPermissionStatus() } returns HealthConnectPermissionStatus.ALL
+        advanceScheduler()
+
+        // Set the flag first
+        viewModel.handleIntent(HealthConnectIntent.SetHealthConnectOpened)
+        advanceScheduler()
+        assertThat(viewModel.state.value.isHealthConnectOpened).isTrue()
+
+        // Trigger lifecycle onResume
+        val lifecycleOwner = mockk<androidx.lifecycle.LifecycleOwner>(relaxed = true)
+        viewModel.onResume(lifecycleOwner)
+        advanceScheduler()
+
+        // resumeSetup checks permission status again
+        coVerify(atLeast = 2) { healthConnectService.checkPermissionStatus() }
+    }
+
+    @Test
+    fun `onResume with ALL permissions transitions to FINISH_CONNECT`() {
+        coEvery { healthConnectService.checkPermissionStatus() } returns HealthConnectPermissionStatus.ALL
+        advanceScheduler()
+
+        viewModel.handleIntent(HealthConnectIntent.SetHealthConnectOpened)
+        advanceScheduler()
+
+        val lifecycleOwner = mockk<androidx.lifecycle.LifecycleOwner>(relaxed = true)
+        viewModel.onResume(lifecycleOwner)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState).isEqualTo(HealthConnectSetup.FINISH_CONNECT)
+    }
+
+    @Test
+    fun `onResume with PARTIAL permissions transitions to FINISH_CONNECT`() {
+        coEvery { healthConnectService.checkPermissionStatus() } returns HealthConnectPermissionStatus.PARTIAL
+        advanceScheduler()
+
+        viewModel.handleIntent(HealthConnectIntent.SetHealthConnectOpened)
+        advanceScheduler()
+
+        val lifecycleOwner = mockk<androidx.lifecycle.LifecycleOwner>(relaxed = true)
+        viewModel.onResume(lifecycleOwner)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState).isEqualTo(HealthConnectSetup.FINISH_CONNECT)
+    }
+
+    @Test
+    fun `onResume with NONE permissions transitions to START_CONNECT`() {
+        coEvery { healthConnectService.checkPermissionStatus() } returns HealthConnectPermissionStatus.NONE
+        advanceScheduler()
+
+        viewModel.handleIntent(HealthConnectIntent.SetHealthConnectOpened)
+        advanceScheduler()
+
+        val lifecycleOwner = mockk<androidx.lifecycle.LifecycleOwner>(relaxed = true)
+        viewModel.onResume(lifecycleOwner)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState).isEqualTo(HealthConnectSetup.START_CONNECT)
+    }
+
+    @Test
+    fun `onResume handles exception in resumeSetup and sets error`() {
+        // First call succeeds (init), subsequent calls throw
+        coEvery { healthConnectService.checkPermissionStatus() } returns HealthConnectPermissionStatus.NONE andThenThrows RuntimeException("fail")
+        advanceScheduler()
+
+        viewModel.handleIntent(HealthConnectIntent.SetHealthConnectOpened)
+        advanceScheduler()
+
+        val lifecycleOwner = mockk<androidx.lifecycle.LifecycleOwner>(relaxed = true)
+        viewModel.onResume(lifecycleOwner)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // handleAppResume — does nothing when HC not opened
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onResume does nothing when isHealthConnectOpened is false`() {
+        advanceScheduler()
+
+        // isHealthConnectOpened is false by default
+        assertThat(viewModel.state.value.isHealthConnectOpened).isFalse()
+
+        val lifecycleOwner = mockk<androidx.lifecycle.LifecycleOwner>(relaxed = true)
+        viewModel.onResume(lifecycleOwner)
+        advanceScheduler()
+
+        // checkPermissionStatus should only have been called once from init
+        coVerify(exactly = 1) { healthConnectService.checkPermissionStatus() }
+    }
+
+    @Test
+    fun `onResume clears isHealthConnectOpened after processing`() {
+        coEvery { healthConnectService.checkPermissionStatus() } returns HealthConnectPermissionStatus.NONE
+        advanceScheduler()
+
+        viewModel.handleIntent(HealthConnectIntent.SetHealthConnectOpened)
+        advanceScheduler()
+
+        val lifecycleOwner = mockk<androidx.lifecycle.LifecycleOwner>(relaxed = true)
+        viewModel.onResume(lifecycleOwner)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.isHealthConnectOpened).isFalse()
     }
 
     // -------------------------------------------------------------------------

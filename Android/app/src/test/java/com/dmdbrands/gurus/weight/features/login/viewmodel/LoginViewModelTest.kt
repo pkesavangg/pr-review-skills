@@ -527,4 +527,51 @@ class LoginViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // -------------------------------------------------------------------------
+    // onSubmit — additional coverage for edge cases
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Submit trims email before calling login`() = runTest {
+        coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns TestFixtures.activeAccount
+
+        viewModel.state.value.form.controls.email.onValueChange("  $TEST_EMAIL  ")
+        viewModel.state.value.form.controls.password.onValueChange(TEST_PASSWORD)
+        viewModel.handleIntent(LoginIntent.Submit)
+        advanceUntilIdle()
+
+        coVerify { accountService.login(TEST_EMAIL, TEST_PASSWORD) }
+    }
+
+    // -------------------------------------------------------------------------
+    // showMaxLimitReachedAlert — via ShowMaxAccountAlert intent
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `ShowMaxAccountAlert delegates to dialogUtility with isFromLanding true`() {
+        viewModel.handleIntent(LoginIntent.ShowMaxAccountAlert)
+        verify { dialogUtility.showMaxAccountAlert(isFromLanding = true) }
+    }
+
+    // -------------------------------------------------------------------------
+    // navigateToDashboard — via Success intent
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `navigateToDashboard calls reInitialize on navigation service`() = runTest {
+        viewModel.handleIntent(LoginIntent.Success)
+        advanceUntilIdle()
+        coVerify { navigationService.reInitialize() }
+    }
+
+    @Test
+    fun `navigateToDashboard clears loading and error state`() = runTest {
+        viewModel.handleIntent(LoginIntent.Error(ERROR_MESSAGE))
+        viewModel.handleIntent(LoginIntent.Success)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.isLoading).isFalse()
+        assertThat(viewModel.state.value.error).isNull()
+    }
 }

@@ -339,4 +339,46 @@ class FeedMessagesViewModelTest {
         verify { selectedFeedItemHolder.setSelectedFeedItem(feedItem) }
         coVerify { navigationService.navigateTo(AppRoute.Feed.FeedLanding) }
     }
+
+    // -------------------------------------------------------------------------
+    // loadFeedMessages — covered via Refresh
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Refresh triggers loadFeedMessages which calls fetchFeedItems`() = runTest {
+        viewModel.handleIntent(FeedMessagesIntent.Refresh)
+        advanceUntilIdle()
+
+        // fetchFeedItems called from init + refresh's loadFeedMessages
+        coVerify(atLeast = 2) { feedService.fetchFeedItems() }
+    }
+
+    @Test
+    fun `loadFeedMessages sets error when fetchFeedItems throws`() = runTest {
+        var callCount = 0
+        coEvery { feedService.fetchFeedItems() } answers {
+            callCount++
+            if (callCount > 1) throw RuntimeException("fail")
+        }
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(FeedMessagesIntent.Refresh)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.error).isEqualTo(ERROR_LOAD)
+    }
+
+    // -------------------------------------------------------------------------
+    // navigateToSettings — additional coverage
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OnSettingsPress navigates to FeedMessageSetting route`() = runTest {
+        viewModel.handleIntent(FeedMessagesIntent.OnSettingsPress)
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateTo(AppRoute.Feed.FeedMessageSetting) }
+    }
 }

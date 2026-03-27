@@ -22,8 +22,6 @@ object AppStatusService {
 
   val isAndroid: Boolean = true
 
-  val isMetric: Boolean = false
-
   val enableTestingFeatures: Boolean = BuildConfig.DEBUG
 
   val showDownloadLogOption: Boolean = BuildConfig.DEBUG
