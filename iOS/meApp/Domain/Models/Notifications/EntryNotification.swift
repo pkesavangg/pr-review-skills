@@ -94,6 +94,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.boneMass = entry.scaleEntryMetric?.boneMass
         self.impedance = entry.scaleEntryMetric?.impedance
         self.unit = entry.scaleEntryMetric?.unit
+
     }
 
     /// Creates a notification from a DTO (for cases where Entry is not available).
@@ -126,6 +127,7 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
         self.boneMass = dto.boneMass.map { Int($0) }
         self.impedance = dto.impedance.map { Int($0) }
         self.unit = dto.unit
+
     }
 
     // MARK: - Conversion Methods
