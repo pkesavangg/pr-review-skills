@@ -12,79 +12,86 @@ struct BpmDisplayView: View {
     private enum Layout {
         static let helpButtonTopPadding: CGFloat = 6
         static let helpButtonHorizontalPadding: CGFloat = 4
-        static let headlineLeadingPadding: CGFloat = 14
-        static let rowHeight: CGFloat = 55
-        static let valueSpacing: CGFloat = 6
+        static let horizontalPadding: CGFloat = 14
+        static let contentSpacing: CGFloat = 2
+        static let valueSpacing: CGFloat = 12
         static let unitSpacing: CGFloat = 4
+        static let slashSpacing: CGFloat = 12
+        static let pulseColumnWidth: CGFloat = 88
     }
-
+    
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     @State private var showAhaRatingSheet = false
-
+    
     private var displayValues: BpmDisplayData? {
         dashboardStore.displayManager?.getBpmDisplayValues()
     }
-
+    
     /// Reuses the same label logic as weight: "no entries", "week average", "day average", etc.
     private var displayLabel: String {
         dashboardStore.displayManager?.weightDisplayLabel ?? BpmDashboardStrings.noEntries
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: .zero) {
-            Text(displayLabel)
-                .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
-                .padding(.leading, .spacingSM)
-
             if let values = displayValues {
-                HStack(alignment: .lastTextBaseline, spacing: 0) {
+                VStack(alignment: .leading, spacing: Layout.contentSpacing) {
                     HStack(alignment: .top, spacing: Layout.valueSpacing) {
-                        HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
-                            Text("\(values.systolic)/\(values.diastolic)")
-                                .fontWeight(.heavy)
-                                .fontOpenSans(.heading1)
-                                .foregroundColor(values.classification.color(theme: theme))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.6)
-
+                        VStack(alignment: .leading, spacing: 0) {
                             Text(BpmDashboardStrings.mmhg)
                                 .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.textSubheading)
-                        }
+                            
+                            HStack(alignment: .lastTextBaseline, spacing: Layout.slashSpacing) {
+                                Text("\(values.systolic)")
+                                    .fontWeight(.heavy)
+                                    .fontOpenSans(.heading1)
+                                    .foregroundColor(values.classification.color(theme: theme))
+                                    .lineLimit(1)
+                                    .fixedSize()
 
-                        Button {
-                            showAhaRatingSheet = true
-                        } label: {
-                            AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 16, height: 16))
+                                SlashDividerView(
+                                    color: theme.textSubheading.opacity(0.45)
+                                )
+
+                                Text("\(values.diastolic)")
+                                    .fontWeight(.heavy)
+                                    .fontOpenSans(.heading1)
+                                    .foregroundColor(values.classification.color(theme: theme))
+                                    .lineLimit(1)
+                                    .fixedSize()
+                            }
+                            .overlay(alignment: .topTrailing) {
+                                Button {
+                                    showAhaRatingSheet = true
+                                } label: {
+                                    AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 16, height: 16))
+                                        .foregroundColor(theme.textSubheading)
+                                        .padding(.top, -4)      // tweak to align visually
+                                        .padding(.trailing, -6) // tweak to sit nicely at edge
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(BpmDashboardStrings.pulse)
+                                .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.textSubheading)
-                                .padding(.top, Layout.helpButtonTopPadding)
-                                .padding(.horizontal, Layout.helpButtonHorizontalPadding)
-                                .contentShape(Rectangle())
+                            
+                            Text("\(values.pulse)")
+                                .fontWeight(.heavy)
+                                .fontOpenSans(.heading1)
+                                .foregroundColor(theme.textSubheading)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(BpmDashboardStrings.openAhaRatings)
-                    }
-
-                    Spacer()
-
-                    HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
-                        Text("\(values.pulse)")
-                            .fontWeight(.heavy)
-                            .fontOpenSans(.heading1)
-                            .foregroundColor(theme.textSubheading)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-
-                        Text(BpmDashboardStrings.bpm)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
+                        .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                     }
                 }
-                .padding(.leading, Layout.headlineLeadingPadding)
-                .padding(.trailing, .spacingSM)
-                .frame(height: Layout.rowHeight)
+                .padding(.horizontal, Layout.horizontalPadding)
             } else {
                 HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
                     Text(BpmDashboardStrings.bpPlaceholder)
@@ -92,8 +99,7 @@ struct BpmDisplayView: View {
                         .fontOpenSans(.heading1)
                         .foregroundColor(theme.textSubheading)
                 }
-                .padding(.leading, Layout.headlineLeadingPadding)
-                .frame(height: Layout.rowHeight)
+                .padding(.horizontal, Layout.horizontalPadding)
             }
         }
         .accessibilityElement(children: .combine)

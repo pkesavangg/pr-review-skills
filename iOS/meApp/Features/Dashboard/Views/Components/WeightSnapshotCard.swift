@@ -10,6 +10,11 @@ import Charts
 import SwiftUI
 
 struct WeightSnapshotCard: View {
+    private enum Layout {
+        static let headlineSpacing: CGFloat = 2
+        static let unitSpacing: CGFloat = 4
+    }
+
     @StateObject private var viewModel = WeightSnapshotCardViewModel()
     let summaries: [BathScaleWeightSummary]
     let onTap: () -> Void
@@ -67,12 +72,12 @@ struct WeightSnapshotCard: View {
     // MARK: - Headline
 
     private var headlineSection: some View {
-        VStack(alignment: .leading, spacing: .zero) {
+        VStack(alignment: .leading, spacing: Layout.headlineSpacing) {
             Text("week average")
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
 
-            HStack(alignment: .lastTextBaseline, spacing: 4) {
+            HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
                 Text(weekAverage)
                     .fontOpenSans(.heading1)
                     .fontWeight(.heavy)

@@ -10,6 +10,12 @@ import Charts
 import SwiftUI
 
 struct BpmSnapshotCard: View {
+    private enum Layout {
+        static let valueSpacing: CGFloat = 12
+        static let pulseColumnWidth: CGFloat = 72
+        static let labelBottomTightening: CGFloat = -6
+    }
+
     let summaries: [BathScaleWeightSummary]
     let onTap: () -> Void
     @Environment(\.appTheme) private var theme
@@ -80,19 +86,14 @@ struct BpmSnapshotCard: View {
     private var headlineSection: some View {
         Group {
             if let reading = latestReading, let classification = latestClassification {
-                VStack(alignment: .leading, spacing: .zero) {
-                    HStack {
+                HStack(alignment: .top, spacing: .zero) {
+                    VStack(alignment: .leading, spacing: 0) {
                         Text(BpmDashboardStrings.mmhg)
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.textSubheading)
-                        Spacer()
-                        Text(BpmDashboardStrings.pulse)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
-                    }
+                            .padding(.bottom, Layout.labelBottomTightening)
 
-                    HStack(alignment: .lastTextBaseline, spacing: .zero) {
-                        HStack(alignment: .lastTextBaseline, spacing: 4) {
+                        HStack(alignment: .lastTextBaseline, spacing: Layout.valueSpacing) {
                             Text("\(reading.systolic)")
                                 .fontOpenSans(.heading1)
                                 .fontWeight(.heavy)
@@ -105,14 +106,22 @@ struct BpmSnapshotCard: View {
                                 .fontWeight(.heavy)
                                 .foregroundColor(classification.color(theme: theme))
                         }
+                    }
 
-                        Spacer()
+                    Spacer()
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(BpmDashboardStrings.pulse)
+                            .fontOpenSans(.subHeading2)
+                            .foregroundColor(theme.textSubheading)
+                            .padding(.bottom, Layout.labelBottomTightening)
 
                         Text("\(reading.pulse)")
                             .fontOpenSans(.heading1)
                             .fontWeight(.heavy)
                             .foregroundColor(theme.textSubheading)
                     }
+                    .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                 }
             } else {
                 Text(BpmDashboardStrings.noReadingsYet)

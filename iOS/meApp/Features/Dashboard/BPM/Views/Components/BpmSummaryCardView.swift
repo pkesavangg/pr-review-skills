@@ -2,12 +2,12 @@ import SwiftUI
 
 struct BpmSummaryCardView: View {
     private enum Layout {
-        static let footerLeftWidth: CGFloat = 168
-        static let footerRightWidth: CGFloat = 72
-        static let horizontalPadding: CGFloat = 33
+        static let pulseColumnWidth: CGFloat = 72
+        static let horizontalPadding: CGFloat = 16
         static let verticalPadding: CGFloat = 12
-        static let cardHeight: CGFloat = 119
-        static let valueSpacing: CGFloat = 5
+        static let cardHeight: CGFloat = 128
+        static let valueSpacing: CGFloat = 12
+        static let columnSpacing: CGFloat = 12
     }
 
     let systolic: Int
@@ -20,10 +20,12 @@ struct BpmSummaryCardView: View {
 
     var body: some View {
         VStack(spacing: .zero) {
-            HStack(alignment: .center, spacing: .zero) {
+            HStack(alignment: .center, spacing: Layout.columnSpacing) {
                 bpValuesSection
-                Spacer(minLength: .zero)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
                 pulseSection
+                    .frame(width: Layout.pulseColumnWidth, alignment: .trailing)
             }
 
             switch footer {
@@ -33,16 +35,15 @@ struct BpmSummaryCardView: View {
                     .foregroundColor(theme.textSubheading)
                     .frame(maxWidth: .infinity, alignment: .center)
             case .split(let left, let right):
-                HStack(spacing: .zero) {
+                HStack(alignment: .center, spacing: Layout.columnSpacing) {
                     Text(left)
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.textSubheading)
-                        .frame(width: Layout.footerLeftWidth, alignment: .leading)
-                    Spacer(minLength: .zero)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     Text(right)
                         .fontOpenSans(.subHeading1)
                         .foregroundColor(theme.textSubheading)
-                        .frame(width: Layout.footerRightWidth, alignment: .leading)
+                        .frame(width: Layout.pulseColumnWidth, alignment: .center)
                 }
             }
         }
@@ -62,6 +63,7 @@ struct BpmSummaryCardView: View {
                 .fontOpenSans(.heading2)
                 .fontWeight(.heavy)
                 .foregroundColor(classification.color(theme: theme))
+                .fixedSize(horizontal: true, vertical: false)
 
             slashDivider
 
@@ -69,6 +71,7 @@ struct BpmSummaryCardView: View {
                 .fontOpenSans(.heading2)
                 .fontWeight(.heavy)
                 .foregroundColor(classification.color(theme: theme))
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -81,6 +84,7 @@ struct BpmSummaryCardView: View {
             .fontOpenSans(.heading2)
             .fontWeight(.heavy)
             .foregroundColor(theme.textSubheading)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private var accessibilityLabel: String {
