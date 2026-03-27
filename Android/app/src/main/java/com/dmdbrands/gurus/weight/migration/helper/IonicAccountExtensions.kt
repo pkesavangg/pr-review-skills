@@ -221,6 +221,8 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
     isSynced = this.isTemporary == false || this.isTemporary == null,
     hasServerID = !this.id.isNullOrBlank(),
     token = this.scaleToken,
+    broadcastName = this.broadcastName,
+    lastModified = this.lastModified,
   )
 }
 

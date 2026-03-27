@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -61,7 +62,7 @@ import android.content.Context
     IntegrationsSettingsEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 1,
+  version = 3,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -75,9 +76,19 @@ abstract class AppDatabase : RoomDatabase() {
   abstract fun logDao(): LogDao
 
   companion object {
-    /*The value of a volatile variable will never be cached, and all writes and reads will be done to and from the main memory.
-    This helps make sure the value of INSTANCE is always up-to-date and the same for all execution threads.
-    It means that changes made by one thread to INSTANCE are visible to all other threads immediately.*/
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE device ADD COLUMN productType TEXT DEFAULT NULL")
+      }
+    }
+
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE device ADD COLUMN broadcastName TEXT DEFAULT NULL")
+        db.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -105,6 +116,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance

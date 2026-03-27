@@ -47,7 +47,13 @@ data class DeviceApiModel(
   val preference: PreferenceApiModel?,
 
   @SerializedName("latestVersion")
-  val latestVersion: String?
+  val latestVersion: String?,
+
+  @SerializedName("productType")
+  val productType: String? = null,
+
+  @SerializedName("broadcastName")
+  val broadcastName: String? = null,
 )
 
 /**

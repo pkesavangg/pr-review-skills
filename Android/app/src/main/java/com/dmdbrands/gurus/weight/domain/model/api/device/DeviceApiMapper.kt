@@ -40,6 +40,7 @@ fun DeviceApiModel.toDomainModel(
     hasServerID = !id.isNullOrEmpty(),
     isWeighOnlyModeEnabledByOthers = false,
     token = scaleToken,
+    productType = productType,
   )
 }
 
@@ -64,6 +65,8 @@ fun Device.toApiModel(): DeviceApiModel =
     peripheralIdentifier = device?.identifier,
     preference = preferences?.toPreferencesApiModel(), // Not present in GGDevice, add if needed
     latestVersion = null, // Not present in GGDevice
+    productType = productType,
+    broadcastName = device?.deviceName,
   )
 
 fun convertHexToInt(value: String?): Long? {
