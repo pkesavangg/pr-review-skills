@@ -144,10 +144,7 @@ struct BabyEntryView: View {
             ) {
                 Task {
                     focusedField = nil
-                    entryStore.notificationService.showToast(
-                        ToastModel(title: ToastStrings.success, message: ToastStrings.entryAdded)
-                    )
-                    entryStore.resetBabyForm()
+                    await entryStore.saveBabyEntry()
                 }
             }
         }

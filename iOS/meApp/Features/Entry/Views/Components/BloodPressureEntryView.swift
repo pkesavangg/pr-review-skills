@@ -135,10 +135,7 @@ struct BloodPressureEntryView: View {
             ) {
                 Task {
                     focusedField = nil
-                    entryStore.notificationService.showToast(
-                        ToastModel(title: ToastStrings.success, message: ToastStrings.entryAdded)
-                    )
-                    entryStore.resetBPForm()
+                    await entryStore.saveBPEntry()
                 }
             }
         }

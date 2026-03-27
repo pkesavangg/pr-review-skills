@@ -109,4 +109,9 @@ protocol EntryServiceProtocol {
 
     /// Exports BPM entries as CSV.
     func exportBpmCSV() async throws
+
+    // MARK: - Baby Entry CRUD
+
+    /// Creates a new baby entry, persists it locally.
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws
 }
