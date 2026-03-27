@@ -110,6 +110,12 @@ class ScaleInfoUtils {
                 scaleInfo = info
             }
 
+        case "GG BS 0220":
+            scaleInfo = getScaleInfo(bySku: "0220")
+
+        case "GG BS 0222":
+            scaleInfo = getScaleInfo(bySku: "0222")
+
         default:
             // Check if the device name matches a BPM device
             if let bpmInfo = getBpmInfo(byDeviceName: upperScaleName) {

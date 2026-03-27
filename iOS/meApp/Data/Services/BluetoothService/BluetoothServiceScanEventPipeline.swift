@@ -19,7 +19,7 @@ extension BluetoothService {
             throw BluetoothServiceError.noProfileInfo
         }
 
-        ggBleSDK.scan(.WEIGHT_GURUS, accountData) { [weak self] result in
+        ggBleSDK.scan(.SMART_BABY, accountData) { [weak self] result in
             Task { @MainActor in
                 switch result {
                 case .success(let scanResponse):
@@ -52,14 +52,17 @@ extension BluetoothService {
         let scanData = data.data
         switch responseType {
         case .NEW_DEVICE:
+            logger.log(level: .info, tag: tag, message: "NEW_DEVICE called in handleSmartScaleData", data: scanData)
             await handleNewDevice(scanData)
         case .SINGLE_ENTRY:
+            logger.log(level: .info, tag: tag, message: "SINGLE_ENTRY called in handleSmartScaleData", data: scanData)
             await saveEntries(scanData)
         case .MULTI_ENTRIES:
             await saveEntries(scanData)
         case .KNOWN_DEVICE:
             break
         case .DEVICE_CONNECTED:
+            logger.log(level: .info, tag: tag, message: "DEVICE_CONNECTED called in handleSmartScaleData", data: scanData)
             await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
             if let deviceDetails = data.data as? GGDeviceDetails {
                 await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
@@ -205,18 +208,20 @@ extension BluetoothService {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
             return nil
         }
-        let entryDate = if let epoch = ggEntry.date {
+        let deviceType = resolveDeviceType(broadcastId: ggEntry.broadcastIdString)
+        let entryDate: Date = if deviceType == .babyScale {
+            Date()
+        } else if let epoch = ggEntry.date {
             Date(timeIntervalSince1970: TimeInterval(epoch) / 1000)
         } else {
             Date()
         }
         let timestamp = ISO8601DateFormatter().string(from: entryDate)
-
         let entry = Entry(
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
             operationType: OperationType.create.rawValue,
-            deviceType: DeviceType.scale.rawValue,
+            deviceType: deviceType.rawValue,
             isSynced: false
         )
         let protocolType = ProtocolType(rawValue: ggEntry.protocolType ?? "") ?? .A6
@@ -253,6 +258,21 @@ extension BluetoothService {
         entry.scaleEntry = scaleEntry
         entry.scaleEntryMetric = scaleMetric
         return entry
+    }
+
+    private func resolveDeviceType(broadcastId: String?) -> DeviceType {
+        guard let broadcastId = broadcastId else { return .scale }
+        if let scale = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }),
+           let sku = scale.sku {
+            let scaleInfo = ScaleInfoUtils.shared.getScaleInfo(bySku: sku)
+            if scaleInfo?.setupType == .babyScale {
+                return .babyScale
+            }
+            if scaleInfo?.setupType == .bpm {
+                return .bpm
+            }
+        }
+        return .scale
     }
 
     // MARK: - Weight-only mode (alert, preference sync, status on connect/disconnect)

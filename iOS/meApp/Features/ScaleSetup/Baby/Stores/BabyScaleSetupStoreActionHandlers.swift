@@ -17,8 +17,7 @@ extension BabyScaleSetupStore {
         case .permissions:
             moveToNextStep()
         case .scaleName:
-            // TODO: Re-enable when API is ready
-            // updateScaleNickname()
+            updateScaleNickname()
             moveToNextStep()
         case .paired:
             // Move to baby profile creation
@@ -53,13 +52,11 @@ extension BabyScaleSetupStore {
         guard !isExiting else { return }
         isExiting = true
 
-        // TODO: Re-enable scale-saved check when API is ready
-        // if currentStep.rawValue >= BabyScaleSetupStep.scaleName.rawValue && isScaleSaved {
-        //     performExitCleanup()
-        //     return
-        // }
+        if currentStep.rawValue >= BabyScaleSetupStep.scaleName.rawValue && isScaleSaved {
+            performExitCleanup()
+            return
+        }
 
-        // For UI-only mode, just confirm and exit
         let alert = AlertModel(
             title: "Exit Setup?",
             message: "Are you sure you want to exit scale setup?",
@@ -97,8 +94,6 @@ extension BabyScaleSetupStore {
 
     // MARK: - Private
 
-    // TODO: Re-enable when API is ready
-    /*
     private func updateScaleNickname() {
         guard let scale = savedScale else { return }
         let nickname = scaleNicknameForm.nickname.value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -106,5 +101,4 @@ extension BabyScaleSetupStore {
         scale.nickname = nickname
         LoggerService.shared.log(level: .info, tag: tag, message: "Scale nickname updated to: \(nickname)")
     }
-    */
 }
