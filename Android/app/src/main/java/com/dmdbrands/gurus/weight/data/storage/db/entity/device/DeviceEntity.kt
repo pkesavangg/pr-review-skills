@@ -47,6 +47,5 @@ data class DeviceEntity(
   val hasServerID: Boolean = false,
   val token: String?,
   val productType: String? = null,
-  val broadcastName: String? = null,
   val lastModified: Long? = null,
 )

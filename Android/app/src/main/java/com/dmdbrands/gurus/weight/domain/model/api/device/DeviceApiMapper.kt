@@ -66,7 +66,6 @@ fun Device.toApiModel(): DeviceApiModel =
     preference = preferences?.toPreferencesApiModel(), // Not present in GGDevice, add if needed
     latestVersion = null, // Not present in GGDevice
     productType = productType,
-    broadcastName = device?.deviceName,
   )
 
 fun convertHexToInt(value: String?): Long? {

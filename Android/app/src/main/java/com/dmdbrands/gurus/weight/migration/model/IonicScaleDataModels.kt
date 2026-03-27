@@ -299,9 +299,7 @@ data class IonicScale(
   @SerializedName("isDeleted") val isDeleted: Boolean? = null,
   @SerializedName("isWifiConfigured") val isWifiConfigured: Boolean? = null,
   @SerializedName("isConnected") val isConnected: Boolean? = null,
-  @SerializedName("isWeighOnlyModeEnabledByOthers") val isWeighOnlyModeEnabledByOthers: Boolean? = null,
-  @SerializedName("broadcastName") val broadcastName: String? = null,
-  @SerializedName("last_modified") val lastModified: Long? = null,
+  @SerializedName("isWeighOnlyModeEnabledByOthers") val isWeighOnlyModeEnabledByOthers: Boolean? = null
 )
 
 /**

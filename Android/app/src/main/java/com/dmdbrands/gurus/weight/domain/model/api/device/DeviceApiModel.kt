@@ -51,9 +51,6 @@ data class DeviceApiModel(
 
   @SerializedName("productType")
   val productType: String? = null,
-
-  @SerializedName("broadcastName")
-  val broadcastName: String? = null,
 )
 
 /**

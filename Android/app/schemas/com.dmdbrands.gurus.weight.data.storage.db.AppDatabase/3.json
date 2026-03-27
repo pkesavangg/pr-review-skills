@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 3,
-    "identityHash": "7854188bfc9d1dc8b409b65334cf00e9",
+    "identityHash": "081b65c0bf5f0f77ee1d701588f4cd59",
     "entities": [
       {
         "tableName": "account",
@@ -128,7 +128,7 @@
       },
       {
         "tableName": "device",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `peripheralIdentifier` TEXT, `nickname` TEXT, `sku` TEXT, `mac` TEXT, `password` INTEGER, `isDeleted` INTEGER NOT NULL, `deviceName` TEXT, `deviceType` TEXT, `broadcastId` INTEGER, `broadcastIdString` TEXT, `userNumber` TEXT, `protocolType` TEXT, `createdAt` TEXT, `isSynced` INTEGER NOT NULL, `hasServerID` INTEGER NOT NULL, `token` TEXT, `productType` TEXT, `broadcastName` TEXT, `lastModified` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `peripheralIdentifier` TEXT, `nickname` TEXT, `sku` TEXT, `mac` TEXT, `password` INTEGER, `isDeleted` INTEGER NOT NULL, `deviceName` TEXT, `deviceType` TEXT, `broadcastId` INTEGER, `broadcastIdString` TEXT, `userNumber` TEXT, `protocolType` TEXT, `createdAt` TEXT, `isSynced` INTEGER NOT NULL, `hasServerID` INTEGER NOT NULL, `token` TEXT, `productType` TEXT, `lastModified` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -228,11 +228,6 @@
           {
             "fieldPath": "productType",
             "columnName": "productType",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "broadcastName",
-            "columnName": "broadcastName",
             "affinity": "TEXT"
           },
           {
@@ -1333,7 +1328,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7854188bfc9d1dc8b409b65334cf00e9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '081b65c0bf5f0f77ee1d701588f4cd59')"
     ]
   }
 }

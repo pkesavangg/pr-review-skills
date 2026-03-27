@@ -119,7 +119,6 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
         isDeleted = isDeleted,
         token = token,
         productType = productType,
-        broadcastName = device?.deviceName,
         lastModified = System.currentTimeMillis() / 1000,
       ),
 
