@@ -173,30 +173,28 @@ struct MyKidsScreen: View {
                 NavbarHeaderView(
                     title: lang.addBaby,
                     leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
-                    trailingContent: { EmptyView() },
+                    trailingContent: {
+                        Button {
+                            Task { await store.saveBabyProfile() }
+                        } label: {
+                            Text(lang.save)
+                                .fontOpenSans(.heading5)
+                                .fontWeight(.bold)
+                                .foregroundColor(
+                                    store.isSaveEnabled
+                                        ? theme.actionPrimary
+                                        : theme.textSubheading
+                                )
+                        }
+                        .disabled(!store.isSaveEnabled)
+                    },
                     onLeadingTap: { store.isShowingAddBaby = false },
-                    onTrailingTap: {},
                     canShowBorder: true
                 )
 
                 BabyProfileFormView(hideHeader: true)
                     .padding(.horizontal, .spacingSM)
                     .environmentObject(asBabyScaleSetupStore())
-
-                // Footer — matches scale setup save button style
-                HStack {
-                    Spacer()
-
-                    ButtonView(
-                        text: lang.save,
-                        type: .filledPrimary,
-                        size: .small,
-                        isDisabled: !store.babyProfileForm.isProfileValid
-                    ) {
-                        Task { await store.saveBabyProfile() }
-                    }
-                }
-                .padding(.spacingSM)
             }
             .background(theme.backgroundSecondary.ignoresSafeArea())
         }

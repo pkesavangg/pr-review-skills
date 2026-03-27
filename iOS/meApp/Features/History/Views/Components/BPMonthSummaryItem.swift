@@ -58,7 +58,7 @@ struct BPMonthSummaryItem: View {
 
                 // Average pulse
                 VStack(alignment: .leading) {
-                    Text("+/-#.# \(month.avgPulse)")
+                    Text("\(month.avgPulse)")
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
 

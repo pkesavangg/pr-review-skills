@@ -19,11 +19,29 @@ final class MyKidsStore: ObservableObject {
     /// Form used by the add/edit baby sheet.
     @Published var babyProfileForm = BabyProfileSetupForm()
 
+    /// Save is enabled when the form is valid AND (adding a new baby OR the form has been edited).
+    var isSaveEnabled: Bool {
+        guard babyProfileForm.isProfileValid else { return false }
+        if editingBaby != nil { return isFormDirty }
+        return true
+    }
+
+    /// Whether any form field has been changed by the user since the form was populated.
+    private var isFormDirty: Bool {
+        babyProfileForm.name.isDirty
+            || babyProfileForm.birthday.isDirty
+            || babyProfileForm.biologicalSex.isDirty
+            || babyProfileForm.birthLengthInches.isDirty
+            || babyProfileForm.birthWeightLbs.isDirty
+            || babyProfileForm.birthWeightOz.isDirty
+    }
+
     private var cancellables = Set<AnyCancellable>()
     private let lang = MyKidsStrings.self
 
     init() {
         subscribeToBabies()
+        subscribeToFormChanges()
     }
 
     // MARK: - Data Loading
@@ -32,6 +50,15 @@ final class MyKidsStore: ObservableObject {
         babyService.babiesPublisher
             .receive(on: DispatchQueue.main)
             .assign(to: &$babies)
+    }
+
+    private func subscribeToFormChanges() {
+        babyProfileForm.formDidChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     func loadBabies() async {
@@ -139,5 +166,15 @@ final class MyKidsStore: ObservableObject {
         if let oz = baby.birthWeightOz {
             babyProfileForm.birthWeightOz.value = String(oz)
         }
+        markFormAsPristine()
+    }
+
+    private func markFormAsPristine() {
+        babyProfileForm.name.markAsPristine()
+        babyProfileForm.birthday.markAsPristine()
+        babyProfileForm.biologicalSex.markAsPristine()
+        babyProfileForm.birthLengthInches.markAsPristine()
+        babyProfileForm.birthWeightLbs.markAsPristine()
+        babyProfileForm.birthWeightOz.markAsPristine()
     }
 }

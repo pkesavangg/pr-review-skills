@@ -44,7 +44,7 @@ struct BabyProfileFormView: View {
     }
 
     var body: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: .spacingLG) {
                 // Header (scale setup only)
                 if !hideHeader {
