@@ -52,6 +52,32 @@ enum DashboardChartScaleProvider {
         )
     }
 
+    static func babyWeightScale(
+        operations: [BathScaleWeightSummary],
+        convertStoredWeightToDisplay: (Int) -> Double
+    ) -> YAxisScale {
+        let displayWeights = operations.map { convertStoredWeightToDisplay(Int($0.weight)) }.filter { $0 > 0 }
+        guard let minVal = displayWeights.min(), let maxVal = displayWeights.max() else {
+            return YAxisScale(min: 0, max: 30, step: 10, ticks: [0, 10, 20, 30], domain: 0...30, average: 15)
+        }
+        let padding = max((maxVal - minVal) * 0.15, 1.0)
+        let paddedMin = max(0, floor(minVal - padding))
+        let paddedMax = ceil(maxVal + padding)
+        let range = paddedMax - paddedMin
+        let rawStep = range / 4.0
+        let step = max(1, ceil(rawStep))
+        let niceMin = floor(paddedMin / step) * step
+        let niceMax = ceil(paddedMax / step) * step
+        var ticks: [Double] = []
+        var tick = niceMin
+        while tick <= niceMax {
+            ticks.append(tick)
+            tick += step
+        }
+        let avg = displayWeights.reduce(0, +) / Double(displayWeights.count)
+        return YAxisScale(min: niceMin, max: niceMax, step: step, ticks: ticks, domain: niceMin...niceMax, average: avg)
+    }
+
     static func bpmScale(from operations: [BathScaleWeightSummary]) -> YAxisScale {
         let allValues = operations.flatMap { op -> [Double] in
             [op.systolic, op.diastolic, op.pulse].compactMap { $0 }

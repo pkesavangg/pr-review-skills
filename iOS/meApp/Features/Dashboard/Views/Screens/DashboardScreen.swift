@@ -168,7 +168,9 @@ struct DashboardScreen: View {
     private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                if store.productType == .bpm {
+                if case .baby(let profile) = store.selectedProductItem {
+                    babyDashboardContent(babyProfile: profile)
+                } else if store.productType == .bpm {
                     bpmDashboardContent(availableHeight: availableHeight)
                 } else {
                     weightDashboardContent(availableHeight: availableHeight)
@@ -224,6 +226,11 @@ struct DashboardScreen: View {
         } else {
             bpmEmptyState(availableHeight: availableHeight)
         }
+    }
+
+    @ViewBuilder
+    private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
+        BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
     }
 
     @ViewBuilder
