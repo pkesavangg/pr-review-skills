@@ -102,6 +102,13 @@ extension BluetoothService {
         entry.scaleEntryMetric = BathScaleMetric(
             pulse: measurement.pulse
         )
+        entry.bpmEntry = BPMEntry(
+            systolic: measurement.systolic,
+            diastolic: measurement.diastolic,
+            meanArterial: measurement.meanArterial ?? "",
+            pulse: measurement.pulse,
+            note: ""
+        )
 
         do {
             try await entryService.saveNewEntry(entry)

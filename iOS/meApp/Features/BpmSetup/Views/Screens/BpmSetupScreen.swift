@@ -55,7 +55,7 @@ struct BpmSetupScreen: View {
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews
             ) { index in
-                ![.nickname, .selectUser].contains(setupStore.steps[index])
+                ![.nickname, .selectUser, .paired, .complete].contains(setupStore.steps[index])
             }
 
             footerButtons
