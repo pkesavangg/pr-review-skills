@@ -14,7 +14,10 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations.we
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
 import com.dmdbrands.gurus.weight.features.login.strings.LoginStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
+import com.dmdbrands.gurus.weight.domain.enums.Gender
+import com.dmdbrands.gurus.weight.features.signup.strings.PickDeviceStrings
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlin.math.round
 import kotlin.math.roundToInt
@@ -23,6 +26,7 @@ import kotlin.math.roundToInt
  * All form controls for the signup process in a single FormGroup.
  */
 data class SignupFormControls(
+  val device: FormControl<String>,
   val firstName: FormControl<String>,
   val lastName: FormControl<String>,
   val email: FormControl<String>,
@@ -78,6 +82,11 @@ data class SignupFormControls(
       // Create the SignupFormControls first
       val controls =
         SignupFormControls(
+          device =
+            FormControl.create(
+              "",
+              listOf(FormValidations.required()),
+            ),
           firstName =
             FormControl.create(
               signupData.firstName,
@@ -246,11 +255,6 @@ data class SignupFormControls(
         }
       }
 
-      // When goal weight changes, validate it (already handled by onValueChange, but ensure it's validated)
-      controls.goalWeight.onValueChangeListener { _, _ ->
-        // Validation is already triggered by onValueChange, but this ensures weight match validator runs
-      }
-
       // Set up metric toggle validation trigger
       controls.useMetric.onValueChangeListener { oldValue, newValue ->
 
@@ -328,64 +332,56 @@ data class SignupFormControls(
 }
 
 /**
- * State for Signup screen, including form group, current step, and UI state.
- * @property form The form group containing all signup controls.
- * @property currentStep The current step in the signup process.
- * @property isLoading Whether the signup process is ongoing.
- * @property error Error message to display, if any.
- * @property goalSkipped Whether the goal step was skipped.
+ * Baby-specific state, null when not on baby path.
+ */
+@Stable
+data class BabyState(
+  val babies: List<BabyProfile> = emptyList(),
+  val babyForm: BabyFormControls = BabyFormControls.create(),
+  val editingBabyId: String? = null,
+)
+
+/**
+ * State for Signup screen with dynamic step list based on device selection.
  */
 @Stable
 data class SignupState(
   val form: FormGroup<SignupFormControls>,
+  val steps: ImmutableList<SignupStep> = COMMON_STEPS,
   val currentStep: SignupStep = SignupStep.NAME,
   val isLoading: Boolean = false,
   val error: String? = null,
   val goalSkipped: Boolean = false,
+  val babyState: BabyState? = null,
 ) : IReducer.State {
-  val steps: ImmutableList<SignupStep> = SignupStep.entries.toPersistentList()
-  val currentStepIndex: Int get() = steps.indexOf(currentStep)
+  val currentStepIndex: Int get() = steps.indexOf(currentStep).coerceAtLeast(0)
   val isFirstStep: Boolean get() = currentStepIndex == 0
   val isLastStep: Boolean get() = currentStepIndex == steps.size - 1
-  val showSkipButton: Boolean get() = currentStep == SignupStep.GOAL
+  val showSkipButton: Boolean
+    get() = currentStep == SignupStep.GOAL
+      || currentStep == SignupStep.ADD_BABY
+      || (currentStep == SignupStep.BABY_ADDED && babyState?.babies.isNullOrEmpty())
   val progress: Float get() = (currentStepIndex + 1f) / steps.size
 
-  /**
-   * Returns true if the current step form is valid without triggering validation.
-   * This is used for reactive UI updates to enable/disable the Next button.
-   */
   val isCurrentStepValid: Boolean
     get() =
       when (currentStep) {
-        SignupStep.NAME -> {
-          val controls = form.controls
-          val firstNameValid = controls.firstName.isValueValid()
-          val lastNameValid = controls.lastName.isValueValid()
-          firstNameValid && lastNameValid
-        }
+        SignupStep.NAME ->
+          form.controls.firstName.isValueValid() && form.controls.lastName.isValueValid()
 
-        SignupStep.BIRTHDAY -> {
-          val controls = form.controls
-          val birthdayValid = controls.birthday.isValueValid()
-          birthdayValid
-        }
+        SignupStep.EMAIL ->
+          form.controls.email.isValueValid()
 
-        SignupStep.GENDER -> {
-          val controls = form.controls
-          val sexValid = controls.sex.isValueValid()
-          sexValid
-        }
+        SignupStep.BIRTHDAY ->
+          form.controls.birthday.isValueValid()
 
-        SignupStep.HEIGHT -> {
-          // Height doesn't have validators and has a default value, so it's always valid
-          true
-        }
+        SignupStep.PICK_DEVICE ->
+          form.controls.device.isValueValid()
 
-        SignupStep.EMAIL -> {
-          val controls = form.controls
-          val emailValid = controls.email.isValueValid()
-          emailValid
-        }
+        SignupStep.GENDER ->
+          form.controls.sex.isValueValid()
+
+        SignupStep.HEIGHT -> true
 
         SignupStep.GOAL -> {
           if (goalSkipped) {
@@ -395,157 +391,226 @@ data class SignupState(
             val goalTypeValid = controls.goalType.isValueValid()
             val goalWeightValid = controls.goalWeight.isValueValid()
             val currentWeightValid =
-              if (controls.goalType.value == GoalType.MAINTAIN.value) {
-                true
-              } else {
-                val currentWeightValidated = controls.currentWeight.isValueValid()
-                currentWeightValidated
-              }
-
+              if (controls.goalType.value == GoalType.MAINTAIN.value) true
+              else controls.currentWeight.isValueValid()
             goalTypeValid && goalWeightValid && currentWeightValid
           }
         }
 
-        SignupStep.PASSWORD -> {
-          val controls = form.controls
-
-          val passwordValid = controls.password.isValueValid()
-          val confirmPasswordValid = controls.confirmPassword.isValueValid()
-          val zipcodeValid = controls.zipcode.isValueValid()
-
-          passwordValid && confirmPasswordValid && zipcodeValid
+        SignupStep.ADD_BABY -> {
+          babyState?.let { bs ->
+            bs.babyForm.name.isValueValid()
+              && bs.babyForm.birthday.isValueValid()
+              && bs.babyForm.biologicalSex.isValueValid()
+          } ?: false
         }
+
+        SignupStep.BABY_ADDED ->
+          babyState?.babies?.isNotEmpty() == true
+
+        SignupStep.PASSWORD ->
+          form.controls.password.isValueValid()
+            && form.controls.confirmPassword.isValueValid()
+            && form.controls.zipcode.isValueValid()
       }
+
+  companion object {
+    val COMMON_STEPS = persistentListOf(
+      SignupStep.NAME, SignupStep.EMAIL,
+      SignupStep.BIRTHDAY, SignupStep.PICK_DEVICE,
+      SignupStep.PASSWORD,
+    )
+
+    fun stepsForDevice(device: String): ImmutableList<SignupStep> {
+      val common = listOf(
+        SignupStep.NAME, SignupStep.EMAIL,
+        SignupStep.BIRTHDAY, SignupStep.PICK_DEVICE,
+      )
+      val pathSteps = when (device) {
+        PickDeviceStrings.Devices.BABY_SCALE ->
+          listOf(SignupStep.ADD_BABY, SignupStep.BABY_ADDED)
+        PickDeviceStrings.Devices.BLOOD_PRESSURE ->
+          listOf(SignupStep.GENDER)
+        PickDeviceStrings.Devices.WEIGHT_SCALE ->
+          listOf(SignupStep.GENDER, SignupStep.HEIGHT, SignupStep.GOAL)
+        else -> emptyList()
+      }
+      return (common + pathSteps + SignupStep.PASSWORD).toPersistentList()
+    }
+  }
 }
 
 /**
  * Intents for Signup screen actions.
  */
 sealed class SignupIntent : IReducer.Intent {
-  /** Move to the next step or submit if on last step. */
   object Next : SignupIntent()
-
-  /** Move to the previous step. */
   object Back : SignupIntent()
-
   object OnRequestBack : SignupIntent()
-
   object OpenHelpModal : SignupIntent()
-
-  data class OpenURL(
-    val url: String,
-  ) : SignupIntent()
-
-  /** Skip the current step (only available for goal step). */
+  data class OpenURL(val url: String) : SignupIntent()
   object Skip : SignupIntent()
-
-  /** Toggle between metric and imperial units. */
-  data class ToggleMetric(
-    val useMetric: Boolean,
-  ) : SignupIntent()
-
-  /** Show an error message. */
-  data class Error(
-    val message: String,
-  ) : SignupIntent()
-
-  /** Signup was successful. */
+  data class ToggleMetric(val useMetric: Boolean) : SignupIntent()
+  data class Error(val message: String) : SignupIntent()
   object Success : SignupIntent()
+  data class UpdateGoalSkipped(val skipped: Boolean) : SignupIntent()
 
-  /** Update goal skip status. */
-  data class UpdateGoalSkipped(
-    val skipped: Boolean,
-  ) : SignupIntent()
+  /** Device selection — rebuilds step list and resets abandoned path data. */
+  data class SelectDevice(val device: String) : SignupIntent()
+
+  /** Baby flow intents */
+  data class DeleteBaby(val babyId: String) : SignupIntent()
+  data class EditBaby(val baby: BabyProfile) : SignupIntent()
+  object AddAnotherBaby : SignupIntent()
 }
 
 /**
  * Reducer for Signup screen state transitions.
  */
 class SignupReducer : IReducer<SignupState, SignupIntent> {
-  /**
-   * Reduces the current state and intent to a new state.
-   * @param state The current state.
-   * @param intent The intent/action to handle.
-   * @return The new state after applying the intent.
-   */
   override fun reduce(
     state: SignupState,
     intent: SignupIntent,
   ): SignupState =
     when (intent) {
       is SignupIntent.Next -> {
-        if (!state.isLastStep) {
-          val updatedState =
-            if (state.currentStep == SignupStep.GOAL) {
-              state.copy(goalSkipped = false)
+        when {
+          // On ADD_BABY: save baby and go to BABY_ADDED
+          state.currentStep == SignupStep.ADD_BABY -> {
+            val bs = state.babyState ?: return state
+            val baby = BabyProfile(
+              id = bs.editingBabyId ?: java.util.UUID.randomUUID().toString(),
+              name = bs.babyForm.name.value,
+              birthday = bs.babyForm.birthday.value,
+              biologicalSex = Gender.entries.firstOrNull {
+                it.value.equals(bs.babyForm.biologicalSex.value, ignoreCase = true)
+              },
+              birthLength = bs.babyForm.birthLength.value,
+              birthWeight = bs.babyForm.birthWeight.value,
+            )
+            val updatedBabies = if (bs.editingBabyId != null) {
+              bs.babies.map { if (it.id == bs.editingBabyId) baby else it }
             } else {
-              state
+              bs.babies + baby
             }
-          val nextIndex = (updatedState.currentStepIndex + 1)
-            .coerceAtMost(updatedState.steps.lastIndex)
-
-          val newStep = updatedState.steps[nextIndex]
-          updatedState.copy(
-            currentStep = newStep,
-            error = null,
-          )
-        } else {
-          state.copy(isLoading = false, error = null)
+            state.copy(
+              babyState = BabyState(babies = updatedBabies),
+              currentStep = SignupStep.BABY_ADDED,
+            )
+          }
+          !state.isLastStep -> {
+            val updatedState =
+              if (state.currentStep == SignupStep.GOAL) state.copy(goalSkipped = false)
+              else state
+            val nextIndex = (updatedState.currentStepIndex + 1)
+              .coerceAtMost(updatedState.steps.lastIndex)
+            updatedState.copy(currentStep = updatedState.steps[nextIndex], error = null)
+          }
+          else -> state.copy(isLoading = false, error = null)
         }
       }
 
       is SignupIntent.Back -> {
-        val updatedState = if (state.currentStep == SignupStep.GOAL || state.currentStep == SignupStep.EMAIL) {
+        var updatedState = if (state.currentStep == SignupStep.GOAL) {
           state.copy(goalSkipped = false)
         } else {
           state
         }
-
+        // Clear stale editingBabyId when leaving ADD_BABY via Back
+        if (state.currentStep == SignupStep.ADD_BABY && state.babyState?.editingBabyId != null) {
+          updatedState = updatedState.copy(
+            babyState = updatedState.babyState?.copy(
+              babyForm = BabyFormControls.create(),
+              editingBabyId = null,
+            ),
+          )
+        }
+        // Strictly linear back navigation
         val prevIndex = (updatedState.currentStepIndex - 1).coerceAtLeast(0)
         updatedState.copy(currentStep = updatedState.steps[prevIndex], error = null)
       }
 
       is SignupIntent.Skip -> {
-        if (state.currentStep == SignupStep.GOAL) {
-          state.form.controls.currentWeight.reset()
-          state.form.controls.goalWeight.reset()
-          state.form.controls.goalType.reset()
-          val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
-          state.copy(
-            currentStep = state.steps[nextIndex],
-            goalSkipped = true,
-            error = null,
-          )
-        } else {
-          state
+        when {
+          state.currentStep == SignupStep.GOAL -> {
+            state.form.controls.currentWeight.reset()
+            state.form.controls.goalWeight.reset()
+            state.form.controls.goalType.reset()
+            val nextIndex = (state.currentStepIndex + 1).coerceAtMost(state.steps.lastIndex)
+            state.copy(currentStep = state.steps[nextIndex], goalSkipped = true, error = null)
+          }
+          state.currentStep == SignupStep.ADD_BABY
+            || state.currentStep == SignupStep.BABY_ADDED -> {
+            state.copy(
+              babyState = BabyState(),
+              currentStep = SignupStep.PASSWORD,
+              error = null,
+            )
+          }
+          else -> state
         }
       }
 
-      is SignupIntent.OnRequestBack -> {
-        state.copy(isLoading = false, error = null)
+      is SignupIntent.SelectDevice -> {
+        val newSteps = SignupState.stepsForDevice(intent.device)
+        val newBabyState = if (intent.device == PickDeviceStrings.Devices.BABY_SCALE)
+          BabyState() else null
+
+        // Reset abandoned path data
+        if (state.form.controls.device.value != intent.device) {
+          state.form.controls.sex.reset()
+          state.form.controls.height.onValueChange(HeightInput.FtIn(5, 10))
+          state.form.controls.currentWeight.reset()
+          state.form.controls.goalWeight.reset()
+          state.form.controls.goalType.onValueChange(GoalType.LOSE_GAIN.value)
+        }
+
+        state.form.controls.device.onValueChange(intent.device)
+        state.copy(
+          steps = newSteps,
+          babyState = newBabyState,
+          goalSkipped = false,
+          error = null,
+        )
       }
 
-      is SignupIntent.OpenHelpModal -> {
-        state.copy(isLoading = false, error = null)
+      is SignupIntent.DeleteBaby -> {
+        val bs = state.babyState ?: return state
+        state.copy(babyState = bs.copy(babies = bs.babies.filter { it.id != intent.babyId }))
       }
 
-      is SignupIntent.Error -> {
-        state.copy(isLoading = false, error = intent.message)
+      is SignupIntent.EditBaby -> {
+        val bs = state.babyState ?: return state
+        val baby = intent.baby
+        val newForm = BabyFormControls.create()
+        newForm.name.onValueChange(baby.name)
+        if (baby.birthday != null) newForm.birthday.onValueChange(baby.birthday)
+        val sexValue = baby.biologicalSex?.value?.replaceFirstChar { it.uppercase() } ?: ""
+        if (sexValue.isNotEmpty()) newForm.biologicalSex.onValueChange(sexValue)
+        if (baby.birthLength.isNotEmpty()) newForm.birthLength.onValueChange(baby.birthLength)
+        if (baby.birthWeight.isNotEmpty()) newForm.birthWeight.onValueChange(baby.birthWeight)
+        state.copy(
+          babyState = bs.copy(babyForm = newForm, editingBabyId = baby.id),
+          currentStep = SignupStep.ADD_BABY,
+        )
       }
 
-      is SignupIntent.Success -> {
-        state.copy(isLoading = false, error = null)
+      is SignupIntent.AddAnotherBaby -> {
+        val bs = state.babyState ?: return state
+        state.copy(
+          babyState = bs.copy(babyForm = BabyFormControls.create(), editingBabyId = null),
+          currentStep = SignupStep.ADD_BABY,
+        )
       }
 
-      is SignupIntent.UpdateGoalSkipped -> {
-        state.copy(goalSkipped = intent.skipped)
-      }
+      is SignupIntent.OnRequestBack -> state.copy(isLoading = false, error = null)
+      is SignupIntent.OpenHelpModal -> state.copy(isLoading = false, error = null)
+      is SignupIntent.Error -> state.copy(isLoading = false, error = intent.message)
+      is SignupIntent.Success -> state.copy(isLoading = false, error = null)
+      is SignupIntent.UpdateGoalSkipped -> state.copy(goalSkipped = intent.skipped)
 
       is SignupIntent.ToggleMetric -> {
-        // Update the metric setting - this will trigger the listener which handles all conversions
-        val controls = state.form.controls
-        controls.useMetric.onValueChange(intent.useMetric)
-
+        state.form.controls.useMetric.onValueChange(intent.useMetric)
         state.copy(error = null)
       }
 
