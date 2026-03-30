@@ -47,6 +47,9 @@ open class BaseViewModel
          */
         protected open fun onDependenciesReady() {}
 
+        @Inject
+        lateinit var productSelectionManager: IProductSelectionManager
+
         /**
          * Opens a URL using the injected CustomTabManager.
          * @param url The URL to open.
