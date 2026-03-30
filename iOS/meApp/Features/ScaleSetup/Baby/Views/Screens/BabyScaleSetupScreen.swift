@@ -91,29 +91,39 @@ struct BabyScaleSetupScreen: View {
         }
     }
 
+    /// Steps where the footer should show "FINISH" instead of "NEXT".
+    private var finishSteps: Set<BabyScaleSetupStep> {
+        [.babyAdded]
+    }
+
     // MARK: - Footer Buttons
     private var footerButtons: some View {
-        HStack {
-            if setupStore.shouldShowBackButton() {
-                ButtonView(
-                    text: lang.Buttons.back,
-                    type: .inlineTextPrimary,
-                    size: .small,
-                    isDisabled: setupStore.isBackButtonDisabled(),
-                    useFrameForInlineText: true
-                ) {
-                    setupStore.handleBackButtonClick()
-                }
+        let isFinish = finishSteps.contains(setupStore.currentStep)
+        let nextButtonText = isFinish ? commonLang.finish : setupStore.nextButtonText
+
+        return HStack {
+            ButtonView(
+                text: commonLang.back,
+                type: .inlineTextPrimary,
+                size: .small,
+                isDisabled: setupStore.isBackButtonDisabled(),
+                useFrameForInlineText: true
+            ) {
+                withAnimation { hideKeyboard() }
+                setupStore.handleBackButtonClick()
             }
 
             Spacer()
 
             ButtonView(
-                text: setupStore.nextButtonText,
+                text: nextButtonText,
                 type: .filledPrimary,
                 size: .small,
-                isDisabled: !setupStore.isNextEnabled
+                isDisabled: !setupStore.isNextEnabled,
+                customHorizontalPadding: nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
+                customVerticalPadding: .spacingXS / 4
             ) {
+                withAnimation { hideKeyboard() }
                 setupStore.handleNextButtonClick()
             }
         }

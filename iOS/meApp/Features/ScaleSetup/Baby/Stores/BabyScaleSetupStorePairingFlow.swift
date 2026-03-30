@@ -49,7 +49,7 @@ extension BabyScaleSetupStore {
 
     /// Creates a Device record in SwiftData (local-only, no API call).
     /// Follows babyApp pattern: scale is account-level, saved with SKU from scaleItem.
-    private func saveScaleLocally() async {
+    func saveScaleLocally() async {
         guard !isScaleSaved else { return }
         let accountId = accountService.activeAccount?.accountId ?? ""
         let scaleId = String(DateTimeTools.getCurrentTimestampMillis())
