@@ -71,6 +71,7 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     /// - Parameters:
     ///   - scales: The scales to update.
     func updateAllScalesStatus(_ scales: [Device]?) async throws
+    func createScaleInLocal(_ device: Device) async throws -> Device
     func syncAllScalesWithRemote() async
     func pushLocalChangesToServer() async
     func getDevice(by deviceId: String) async throws -> Device?

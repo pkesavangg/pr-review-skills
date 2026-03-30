@@ -169,7 +169,7 @@ struct SettingsScreen: View {
             .listRowInsets()
             if settingsStore.shouldShowMyKids {
                 ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
-                    // TODO: Navigate to My Kids screen
+                    router.navigate(to: .myKids)
                 })
                 .listRowInsets()
             }

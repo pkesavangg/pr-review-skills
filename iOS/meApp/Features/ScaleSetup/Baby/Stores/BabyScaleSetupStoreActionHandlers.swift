@@ -37,9 +37,11 @@ extension BabyScaleSetupStore {
 
     func handleBackButtonClick() {
         switch currentStep {
-        case .paired:
-            moveToPreviousStep()
+        case .babyAdded:
+            navigateToStep(.babyProfile)
         case .babyProfile:
+            editingBaby = nil
+            babyProfileForm.reset()
             moveToPreviousStep()
         default:
             moveToPreviousStep()
@@ -61,12 +63,12 @@ extension BabyScaleSetupStore {
             title: "Exit Setup?",
             message: "Are you sure you want to exit scale setup?",
             buttons: [
-                AlertButtonModel(title: commonLang.cancel, type: .secondary, action: { [weak self] _ in
+                AlertButtonModel(title: commonLang.cancel, type: .secondary) { [weak self] _ in
                     self?.isExiting = false
-                }),
-                AlertButtonModel(title: "Exit", type: .danger, action: { [weak self] _ in
+                },
+                AlertButtonModel(title: "Exit", type: .danger) { [weak self] _ in
                     self?.performExitCleanup()
-                })
+                }
             ]
         )
         notificationService.showAlert(alert)
@@ -74,8 +76,8 @@ extension BabyScaleSetupStore {
 
     /// Tab-deactivation handler (returns true if setup can be left).
     func confirmExit() async -> Bool {
-        handleExit()
-        return false
+    handleExit()
+    return false
     }
 
     // MARK: - Try Again
@@ -93,12 +95,29 @@ extension BabyScaleSetupStore {
     }
 
     // MARK: - Private
-
+    /// Saves the user-entered nickname to the locally persisted Device record.
     private func updateScaleNickname() {
         guard let scale = savedScale else { return }
         let nickname = scaleNicknameForm.nickname.value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !nickname.isEmpty else { return }
-        scale.nickname = nickname
-        LoggerService.shared.log(level: .info, tag: tag, message: "Scale nickname updated to: \(nickname)")
+        Task {
+            do {
+                _ = try await scaleService.editDevice(
+                    scale.id,
+                    properties: ["nickname": nickname]
+                )
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Scale nickname saved: \(nickname)"
+                )
+            } catch {
+                LoggerService.shared.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to save nickname: \(error)"
+                )
+            }
+        }
     }
 }
