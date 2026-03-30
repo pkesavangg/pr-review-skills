@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.StreakRequest
 import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
-import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coJustRun
@@ -20,14 +19,13 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
 import retrofit2.HttpException
+import kotlin.test.assertFailsWith
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserSettingsServiceTest {
@@ -155,37 +153,31 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleStreakSetting rethrows HttpException from online call`() {
+    fun `toggleStreakSetting rethrows HttpException from online call`() = runTest {
         // Arrange
         stubUpdateStreakSettingThrows(httpException(500))
 
         // Act & Assert
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.toggleStreakSetting(isStreakOn = true) }
-        }
+        assertFailsWith<HttpException> { service.toggleStreakSetting(isStreakOn = true) }
     }
 
     @Test
-    fun `toggleStreakSetting rethrows RuntimeException from online call`() {
+    fun `toggleStreakSetting rethrows RuntimeException from online call`() = runTest {
         // Arrange
         stubUpdateStreakSettingThrows(RuntimeException("DB error"))
 
         // Act & Assert
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.toggleStreakSetting(isStreakOn = true) }
-        }
+        assertFailsWith<RuntimeException> { service.toggleStreakSetting(isStreakOn = true) }
     }
 
     @Test
-    fun `toggleStreakSetting rethrows exception from offline call`() {
+    fun `toggleStreakSetting rethrows exception from offline call`() = runTest {
         // Arrange
         stubNetworkUnavailable()
         coEvery { userSettingsRepository.updateStreakSettingOffline(any()) } throws RuntimeException("DB write failed")
 
         // Act & Assert
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.toggleStreakSetting(isStreakOn = false) }
-        }
+        assertFailsWith<RuntimeException> { service.toggleStreakSetting(isStreakOn = false) }
     }
 
     // -------------------------------------------------------------------------
@@ -297,36 +289,30 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting rethrows HttpException from online call`() {
+    fun `toggleWeightlessSetting rethrows HttpException from online call`() = runTest {
         // Arrange
         stubUpdateWeightlessSettingThrows(httpException(500))
 
         // Act & Assert
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 150.0) }
-        }
+        assertFailsWith<HttpException> { service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 150.0) }
     }
 
     @Test
-    fun `toggleWeightlessSetting rethrows RuntimeException from online call`() {
+    fun `toggleWeightlessSetting rethrows RuntimeException from online call`() = runTest {
         // Arrange
         stubUpdateWeightlessSettingThrows(RuntimeException("Server error"))
 
         // Act & Assert
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.toggleWeightlessSetting(isWeightlessOn = false) }
-        }
+        assertFailsWith<RuntimeException> { service.toggleWeightlessSetting(isWeightlessOn = false) }
     }
 
     @Test
-    fun `toggleWeightlessSetting rethrows exception from offline call`() {
+    fun `toggleWeightlessSetting rethrows exception from offline call`() = runTest {
         // Arrange
         stubNetworkUnavailable()
         coEvery { userSettingsRepository.updateWeightlessSettingOffline(any()) } throws RuntimeException("DB write failed")
 
         // Act & Assert
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 75.0) }
-        }
+        assertFailsWith<RuntimeException> { service.toggleWeightlessSetting(isWeightlessOn = true, weightlessWeight = 75.0) }
     }
 }

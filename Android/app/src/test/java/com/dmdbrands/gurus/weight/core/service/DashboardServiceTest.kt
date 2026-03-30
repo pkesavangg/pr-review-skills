@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.Test
+import kotlin.test.assertFailsWith
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DashboardServiceTest {
@@ -351,16 +352,12 @@ class DashboardServiceTest {
 
     @Test
     fun `getVisibleKeys throws IllegalStateException when no accountId available`() = runTest {
-        var threw = false
-        try {
+        assertFailsWith<IllegalStateException> {
             service.getVisibleKeys(null).test {
                 awaitItem()
                 cancelAndIgnoreRemainingEvents()
             }
-        } catch (e: IllegalStateException) {
-            threw = true
         }
-        assertThat(threw).isTrue()
     }
 
     // -------------------------------------------------------------------------
@@ -379,16 +376,12 @@ class DashboardServiceTest {
 
     @Test
     fun `getVisibleMetricKeys throws when no accountId available`() = runTest {
-        var threw = false
-        try {
+        assertFailsWith<IllegalStateException> {
             service.getVisibleMetricKeys(null).test {
                 awaitItem()
                 cancelAndIgnoreRemainingEvents()
             }
-        } catch (e: IllegalStateException) {
-            threw = true
         }
-        assertThat(threw).isTrue()
     }
 
     // -------------------------------------------------------------------------
@@ -407,16 +400,12 @@ class DashboardServiceTest {
 
     @Test
     fun `getVisibleMilestoneKeys throws when no accountId available`() = runTest {
-        var threw = false
-        try {
+        assertFailsWith<IllegalStateException> {
             service.getVisibleMilestoneKeys(null).test {
                 awaitItem()
                 cancelAndIgnoreRemainingEvents()
             }
-        } catch (e: IllegalStateException) {
-            threw = true
         }
-        assertThat(threw).isTrue()
     }
 
     // -------------------------------------------------------------------------

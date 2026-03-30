@@ -31,11 +31,10 @@ import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertThrows
+import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.Test
@@ -344,9 +343,7 @@ class IntegrationServiceTest {
   fun `disconnectIntegration shows network error toast and throws when offline`() = runTest {
     stubNetworkUnavailable()
 
-    assertThrows(Exception::class.java) {
-      runBlocking { service.disconnectIntegration(IntegrationProvider.Fitbit) }
-    }
+    assertFailsWith<Exception> { service.disconnectIntegration(IntegrationProvider.Fitbit) }
     verify {
       dialogQueueService.showToast(withArg<Toast> {
         assertThat(it.message).isNotEmpty()
@@ -359,9 +356,7 @@ class IntegrationServiceTest {
   fun `disconnectIntegration dismisses loader and rethrows on API error`() = runTest {
     coEvery { integrationRepository.removeIntegration(any(), any()) } throws RuntimeException("API error")
 
-    assertThrows(RuntimeException::class.java) {
-      runBlocking { service.disconnectIntegration(IntegrationProvider.Fitbit) }
-    }
+    assertFailsWith<RuntimeException> { service.disconnectIntegration(IntegrationProvider.Fitbit) }
     verify { dialogQueueService.dismissLoader() }
   }
 

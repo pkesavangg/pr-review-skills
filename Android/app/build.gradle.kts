@@ -147,6 +147,7 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
   testImplementation(libs.mockk)
   testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(kotlin("test"))
   testImplementation(libs.turbine)
   testImplementation(libs.truth)
   testImplementation(libs.mockwebserver)

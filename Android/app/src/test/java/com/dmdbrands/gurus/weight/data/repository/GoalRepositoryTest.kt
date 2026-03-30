@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
+import kotlin.test.assertFailsWith
 import java.io.IOException
 
 class GoalRepositoryTest {
@@ -136,14 +137,9 @@ class GoalRepositoryTest {
         val goalData = GoalData(goalWeight = 160.0, initialWeight = 180.0, type = "lose")
         coEvery { goalAPI.updateGoal(goalData) } throws IOException("Network error")
 
-        var threw = false
-        try {
+        assertFailsWith<IOException> {
             repository.updateGoalSetting(goalData)
-        } catch (e: IOException) {
-            threw = true
         }
-
-        assertThat(threw).isTrue()
     }
 
     // -----------------------------------------------------------------------
