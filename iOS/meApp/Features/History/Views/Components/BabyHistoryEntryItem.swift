@@ -79,10 +79,11 @@ struct BabyHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Expansion chevron
+                // Expansion chevron (hidden when no notes)
                 AppIconView(icon: AppAssets.chevronDown)
                     .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .opacity(entry.notes?.isEmpty == false ? 1 : 0)
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
@@ -110,7 +111,9 @@ struct BabyHistoryEntryItem: View {
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            onTap()
+            if let notes = entry.notes, !notes.isEmpty {
+                onTap()
+            }
         }
     }
 }
