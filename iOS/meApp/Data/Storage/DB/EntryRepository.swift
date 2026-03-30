@@ -599,7 +599,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     // MARK: - Sync Helpers
 
     /// Extracts entry data into Sendable structures before crossing actor boundary
-    func extractEntryData(from entries: [Entry]) -> [EntrySyncData] {
+    private func extractEntryData(from entries: [Entry]) -> [EntrySyncData] {
         return entries.map { entry in
             let scaleEntryData = entry.scaleEntry.map { scaleEntry in
                 ScaleEntryData(
@@ -652,7 +652,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     }
     
     /// Creates entries in background context from extracted data
-    func createEntriesInBackground(entriesData: [EntrySyncData]) async throws {
+    private func createEntriesInBackground(entriesData: [EntrySyncData]) async throws {
         try await performBackgroundTask { [self] ctx in
             for data in entriesData {
                 let newEntry = self.createEntry(from: data)
@@ -664,7 +664,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     }
     
     /// Creates an Entry instance from EntrySyncData
-    func createEntry(from data: EntrySyncData) -> Entry {
+    private func createEntry(from data: EntrySyncData) -> Entry {
         let newEntry = Entry(
             id: data.id,
             entryTimestamp: data.entryTimestamp,
