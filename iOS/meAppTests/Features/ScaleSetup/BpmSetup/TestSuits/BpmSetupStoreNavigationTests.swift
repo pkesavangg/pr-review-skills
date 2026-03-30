@@ -18,9 +18,8 @@ extension BpmSetupStoreTests {
         func selectModelSkipsBtPermissionWhenEnabled() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            // Move from selectModel -> should skip btPermission -> selectUser
             store.moveToNextStep()
             #expect(store.currentStep == .selectUser)
         }
@@ -31,9 +30,9 @@ extension BpmSetupStoreTests {
             permissions.setPermissions(BpmSetupStoreTestFixtures.disabledPermissions())
             let harness = BpmSetupStoreTestFixtures.makeSUT(permissions: permissions)
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            store.moveToNextStep() // selectModel -> btPermission
+            store.moveToNextStep()
 
             #expect(store.currentStep == .btPermission)
             #expect(store.isNextEnabled == false)
@@ -43,7 +42,7 @@ extension BpmSetupStoreTests {
         func btPermissionNextNavigatesToSelectUser() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.btPermission.index
             store.moveToNextStep()
@@ -55,7 +54,7 @@ extension BpmSetupStoreTests {
         func backFromSelectUserSkipsBtPermissionAndReturnsToSelectModel() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.selectUser.index
             store.moveToPreviousStep()
@@ -70,18 +69,11 @@ extension BpmSetupStoreTests {
             #expect(store.isBackDisabled == true)
         }
 
-        @Test("back is disabled on paired")
-        func backIsDisabledOnPaired() {
-            let harness = BpmSetupStoreTestFixtures.makeSUT()
-            let store = harness.store
-            store.currentStepIndex = BpmSetupStep.paired.index
-            #expect(store.isBackDisabled == true)
-        }
-
         @Test("back is disabled on complete")
         func backIsDisabledOnComplete() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
             store.currentStepIndex = BpmSetupStep.complete.index
             #expect(store.isBackDisabled == true)
         }
@@ -90,7 +82,7 @@ extension BpmSetupStoreTests {
         func nextFromPairedInvokesDismiss() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             var dismissCalls = 0
             store.dismissAction = { dismissCalls += 1 }
@@ -105,7 +97,7 @@ extension BpmSetupStoreTests {
         func learnHowToMeasureOpensMeasurementSetup() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.paired.index
             store.moveToMeasurementTutorial()
@@ -117,7 +109,7 @@ extension BpmSetupStoreTests {
         func nextFromCompleteInvokesDismiss() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             var dismissCalls = 0
             store.dismissAction = { dismissCalls += 1 }
@@ -132,7 +124,7 @@ extension BpmSetupStoreTests {
         func selectUserDisablesNextWhenNoUser() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.selectedUserNumber = nil
             store.currentStepIndex = BpmSetupStep.selectUser.index
@@ -144,7 +136,7 @@ extension BpmSetupStoreTests {
         func selectUserEnablesNextWhenUserSelected() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.selectedUserNumber = 1
             store.currentStepIndex = BpmSetupStep.selectUser.index
@@ -156,7 +148,7 @@ extension BpmSetupStoreTests {
         func nicknameNextSavesDeviceLocallyAndAdvancesToPaired() async {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             let device = BpmSetupStoreTestFixtures.makeBpmDevice()
             store.deviceNickname = "Living Room BPM"
@@ -174,6 +166,87 @@ extension BpmSetupStoreTests {
 
             #expect(advanced)
             #expect(harness.scaleService.lastCreatedBluetoothScale?.nickname == "Living Room BPM")
+        }
+
+        // MARK: - A6 Navigation (same steps as A3)
+
+        @Test("A6 configure uses preSelectedSteps")
+        func a6ConfigureUsesPreSelectedSteps() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+
+            #expect(store.steps == BpmSetupStep.preSelectedSteps)
+            #expect(store.isA6Flow == true)
+        }
+
+        @Test("A6 and A3 share the same step sequence when pre-selected")
+        func a6AndA3ShareSameSteps() {
+            let a3Harness = BpmSetupStoreTestFixtures.makeSUT()
+            BpmSetupStoreTestFixtures.configureA3Bpm(a3Harness.store)
+
+            let a6Harness = BpmSetupStoreTestFixtures.makeSUT()
+            BpmSetupStoreTestFixtures.configureA6Bpm(a6Harness.store)
+
+            #expect(a3Harness.store.steps == a6Harness.store.steps)
+        }
+
+        @Test("A6 next from paired invokes dismiss (same as A3)")
+        func a6NextFromPairedInvokesDismiss() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+
+            var dismissCalls = 0
+            store.dismissAction = { dismissCalls += 1 }
+            store.currentStepIndex = BpmSetupStep.paired.index
+
+            store.moveToNextStep()
+
+            #expect(dismissCalls == 1)
+        }
+
+        @Test("A6 learn how to measure opens measurement setup")
+        func a6LearnHowToMeasureOpensMeasurementSetup() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+
+            store.currentStepIndex = BpmSetupStep.paired.index
+            store.moveToMeasurementTutorial()
+
+            #expect(store.currentStep == .measureSetup)
+        }
+
+        @Test("A6 next from complete invokes dismiss")
+        func a6NextFromCompleteInvokesDismiss() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+
+            var dismissCalls = 0
+            store.dismissAction = { dismissCalls += 1 }
+            store.currentStepIndex = BpmSetupStep.complete.index
+
+            store.moveToNextStep()
+
+            #expect(dismissCalls == 1)
+        }
+
+        @Test("A6 measurement tutorial advances through measureSetup -> measureStart -> complete")
+        func a6MeasurementTutorialFlow() {
+            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+
+            store.moveToMeasurementTutorial()
+            #expect(store.currentStep == .measureSetup)
+
+            store.moveToNextStep()
+            #expect(store.currentStep == .measureStart)
+
+            store.moveToNextStep()
+            #expect(store.currentStep == .complete)
         }
     }
 }

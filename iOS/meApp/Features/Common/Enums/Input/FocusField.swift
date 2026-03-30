@@ -42,4 +42,7 @@ enum FocusField: Hashable {
     case modelNumber
     case scaleName
     case networkName
+    case babyName
+    case babyBirthLength
+    case babyBirthWeight
 }

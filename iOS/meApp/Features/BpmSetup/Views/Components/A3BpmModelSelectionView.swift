@@ -63,7 +63,7 @@ private struct BpmModelCard: View {
                     .frame(height: 100)
                     .cornerRadius(.radiusMD)
 
-                Text(model.sku)
+                Text(bpmListModelLabel(primarySku: model.sku))
                     .fontOpenSans(.body2)
                     .foregroundColor(theme.textHeading)
             }

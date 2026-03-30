@@ -55,7 +55,7 @@ struct BpmSetupScreen: View {
                 selectedIndex: $setupStore.currentStepIndex,
                 views: stepViews
             ) { index in
-                ![.nickname, .selectUser].contains(setupStore.steps[index])
+                ![.nickname, .selectUser, .paired, .complete].contains(setupStore.steps[index])
             }
 
             footerButtons
@@ -79,7 +79,8 @@ struct BpmSetupScreen: View {
     }
 
     private var footerButtons: some View {
-        let nextButtonText = finishSteps.contains(setupStore.currentStep) ? commonLang.finish : commonLang.next
+        let isFinish = finishSteps.contains(setupStore.currentStep)
+        let nextButtonText = isFinish ? commonLang.finish : commonLang.next
 
         return HStack {
             ButtonView(

@@ -1,33 +1,32 @@
 //
-//  BabyAddedListView.swift
+//  BabyListStepView.swift
 //  meApp
 //
 
 import SwiftUI
 
-/// "Your Baby Has Been Added!" — shows list of added babies with option to add more.
-struct BabyAddedListView: View {
-    @EnvironmentObject var store: BabyScaleSetupStore
+struct BabyListStepView: View {
+    @ObservedObject var signupStore: SignupStore
     @Environment(\.appTheme) private var theme
     @State private var openItemID: UUID?
-    private let lang = BabyScaleSetupStrings.BabyAdded.self
+    let lang = SignupStrings.BabyListStep.self
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: .spacingLG) {
-                // Header
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .center, spacing: .spacingLG) {
+                // Title
                 Text(lang.title)
                     .fontOpenSans(.heading4)
-                    .fontWeight(.bold)
                     .foregroundColor(theme.textHeading)
-                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Baby list
                 VStack(spacing: 0) {
-                    ForEach(store.savedBabies, id: \.id) { baby in
+                    ForEach(Array(signupStore.babies.enumerated()), id: \.element.id) { index, baby in
                         UserListItemView(
                             user: UserItemInfo(
-                                accountID: baby.id,
+                                id: baby.id,
+                                accountID: baby.id.uuidString,
                                 name: baby.name,
                                 email: "",
                                 isSelected: false,
@@ -38,16 +37,16 @@ struct BabyAddedListView: View {
                             iconSize: 32,
                             swipeButtonWidth: 56,
                             onTap: { _, _ in
-                                store.editBaby(baby)
+                                signupStore.editBaby(at: index)
                             },
                             onEdit: { _ in
-                                store.editBaby(baby)
+                                signupStore.editBaby(at: index)
                             },
                             onDelete: { _ in
-                                store.confirmDeleteBabyFromList(baby)
+                                signupStore.confirmDeleteBaby(at: index)
                             }
                         )
-                        if baby.id != store.savedBabies.last?.id {
+                        if index < signupStore.babies.count - 1 {
                             Divider()
                         }
                     }
@@ -57,17 +56,19 @@ struct BabyAddedListView: View {
 
                 // Add a Baby button
                 ButtonView(
-                    text: lang.addABaby,
-                    type: .outlinedPrimary,
-                    size: .large,
+                    text: lang.addBabyButton,
+                    type: .filledPrimary,
+                    size: .small,
                     isDisabled: false
                 ) {
-                    store.addAnotherBaby()
+                    signupStore.addAnotherBaby()
                 }
-                .padding(.horizontal, .spacingSM)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.top, .spacingLG)
         }
     }
+}
+
+#Preview {
+    BabyListStepView(signupStore: SignupStore())
+        .padding()
 }

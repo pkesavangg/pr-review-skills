@@ -43,7 +43,14 @@ class ScaleInfoUtils {
     public func getScaleInfo(bySku sku: String) -> ScaleItemInfo? {
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-        return scales.first { $0.sku == lookupSku }
+        if let row = scales.first(where: { $0.sku == lookupSku }) {
+            return row
+        }
+        let bpmPrimary = primaryBpmSetupSku(for: lookupSku)
+        if bpmPrimary != lookupSku, let row = scales.first(where: { $0.sku == bpmPrimary }) {
+            return row
+        }
+        return nil
     }
 
     // Get scale information by scale name with fallback logic
@@ -139,7 +146,11 @@ class ScaleInfoUtils {
         // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         let allDevices = SCALES + BPMS
-        return allDevices.first { $0.sku == lookupSku }?.imgPath
+        if let path = allDevices.first(where: { $0.sku == lookupSku })?.imgPath {
+            return path
+        }
+        let bpmPrimary = primaryBpmSetupSku(for: lookupSku)
+        return allDevices.first(where: { $0.sku == bpmPrimary })?.imgPath
     }
 }
 
@@ -157,17 +168,17 @@ extension ScaleInfoUtils {
     /// - Parameter deviceName: The uppercased BPM device name
     /// - Returns: ScaleItemInfo if the name matches a known BPM device
     public func getBpmInfo(byDeviceName deviceName: String) -> ScaleItemInfo? {
-        for bpm in BPMS {
-            if deviceName.contains(bpm.sku) {
-                return getScaleInfo(bySku: bpm.sku)
-            }
+        let sortedCodes = bpmSkus.sorted { $0.count > $1.count }
+        for code in sortedCodes where deviceName.contains(code) {
+            guard let item = bpmCatalogItem(forEnteredCode: code) else { continue }
+            return getScaleInfo(bySku: item.sku)
         }
         return nil
     }
 
     /// Checks whether the given SKU belongs to a BPM device.
     public func isBpmDevice(sku: String) -> Bool {
-        return BPM_SKUS.contains(sku)
+        return bpmSkus.contains(sku)
     }
 
     /// Check if a scale supports body composition by SKU

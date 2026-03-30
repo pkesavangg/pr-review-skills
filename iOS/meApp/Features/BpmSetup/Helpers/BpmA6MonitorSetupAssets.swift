@@ -15,8 +15,8 @@ enum BpmA6MonitorSetupAssets {
         static let start = "Start"
         static let syncing = "Syncing"
         static let monitorOff = "Monitor_Off"
-        static let setUser = “SetUser”
-        static let monitorStartStop = “Monitor_StartStop”
+        static let setUser = "SetUser"
+        static let monitorStartStop = "Monitor_StartStop"
     }
 
     /// Returns the device-type-prefixed resource name, e.g. `"A6_Start"`.

@@ -114,11 +114,11 @@ struct BluetoothServiceBpmTests {
 
     @Test("BPM SKU constants contain expected values")
     func bpmSkuConstants() {
-        #expect(BPM_SKUS.contains("0603"))
-        #expect(BPM_SKUS.contains("0661"))
-        #expect(BPM_SKUS.contains("0634"))
-        #expect(BPM_SKUS.contains("0663"))
-        #expect(BPM_SKUS.count == 4)
+        #expect(bpmSkus.contains("0603"))
+        #expect(bpmSkus.contains("0661"))
+        #expect(bpmSkus.contains("0634"))
+        #expect(bpmSkus.contains("0663"))
+        #expect(bpmSkus.count == 4)
     }
 
     @Test("BPMS array has correct entries")
