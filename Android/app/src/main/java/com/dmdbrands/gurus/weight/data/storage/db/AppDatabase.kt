@@ -69,7 +69,7 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 3,
+  version = 4,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -101,6 +101,59 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `baby_profiles` (
+            `id` TEXT NOT NULL,
+            `accountId` TEXT NOT NULL,
+            `name` TEXT NOT NULL,
+            `birthDate` INTEGER,
+            `biologicalSex` TEXT,
+            `birthWeightDecigrams` INTEGER,
+            `birthLengthMillimeters` INTEGER,
+            `isBorn` INTEGER,
+            `isOwnedByAccount` INTEGER,
+            `babyPermissions` INTEGER,
+            `createdAt` INTEGER,
+            PRIMARY KEY(`id`)
+          )
+          """.trimIndent(),
+        )
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_baby_profiles_accountId` ON `baby_profiles` (`accountId`)",
+        )
+        db.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `baby_entry` (
+            `id` INTEGER NOT NULL,
+            `babyProfileId` TEXT NOT NULL,
+            `babyWeightDecigrams` INTEGER,
+            `babyLengthMillimeters` INTEGER,
+            `entryNote` TEXT,
+            `entryType` TEXT,
+            `feedingTimeLeft` INTEGER,
+            `feedingTimeRight` INTEGER,
+            `feedingMilliliters` INTEGER,
+            `diaperType` TEXT,
+            `sleepTime` INTEGER,
+            `babyDisplayWeightDecigrams` INTEGER,
+            `photo` TEXT,
+            `isPlaceholder` INTEGER,
+            `source` TEXT,
+            PRIMARY KEY(`id`),
+            FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY(`babyProfileId`) REFERENCES `baby_profiles`(`id`) ON DELETE CASCADE
+          )
+          """.trimIndent(),
+        )
+        db.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_baby_entry_babyProfileId` ON `baby_entry` (`babyProfileId`)",
+        )
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -128,7 +181,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance
