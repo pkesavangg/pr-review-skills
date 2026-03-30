@@ -421,4 +421,53 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
         )
         return entry
     }
+
+    // MARK: - BPM Average Calculations
+
+    /// Returns averaged BP readings from visible operations.
+    func getCurrentAverageBP(from operations: [BathScaleWeightSummary]) -> BpmAverage? {
+        let validOps = operations.filter { $0.systolic != nil }
+        guard !validOps.isEmpty else { return nil }
+
+        let avgSys = validOps.compactMap(\.systolic).reduce(0, +) / Double(validOps.count)
+        let avgDia = validOps.compactMap(\.diastolic).reduce(0, +) / Double(validOps.count)
+        let avgPulse = validOps.compactMap(\.pulse).reduce(0, +) / Double(validOps.count)
+
+        return BpmAverage(
+            systolic: Int(round(avgSys)),
+            diastolic: Int(round(avgDia)),
+            pulse: Int(round(avgPulse)),
+            classification: AhaPressureClass.classify(
+                systolic: Int(round(avgSys)),
+                diastolic: Int(round(avgDia))
+            )
+        )
+    }
+
+    /// Returns a three-reading average from the most recent BPM entries.
+    func getThreeReadingAverage(from entries: [Entry]) -> ThreeReadingAverage? {
+        let bpmEntries = entries
+            .filter { $0.entryType == EntryType.bpm.rawValue && $0.operationType == "create" }
+            .sorted { $0.entryTimestamp > $1.entryTimestamp }
+        let lastN = Array(bpmEntries.prefix(BpmConstants.readingAverageCount))
+        guard !lastN.isEmpty else { return nil }
+
+        let sysValues = lastN.compactMap { $0.scaleEntry?.systolic }
+        let diaValues = lastN.compactMap { $0.scaleEntry?.diastolic }
+        let pulseValues = lastN.compactMap { $0.scaleEntryMetric?.pulse }
+        guard !sysValues.isEmpty else { return nil }
+
+        let avgSys = Int(round(Double(sysValues.reduce(0, +)) / Double(sysValues.count)))
+        let avgDia = Int(round(Double(diaValues.reduce(0, +)) / Double(diaValues.count)))
+        let avgPulse = pulseValues.isEmpty ? 0 : Int(round(Double(pulseValues.reduce(0, +)) / Double(pulseValues.count)))
+
+        return ThreeReadingAverage(
+            systolic: avgSys,
+            diastolic: avgDia,
+            pulse: avgPulse,
+            count: lastN.count,
+            label: ThreeReadingAverage.displayLabel(for: lastN.count),
+            classification: AhaPressureClass.classify(systolic: avgSys, diastolic: avgDia)
+        )
+    }
 }

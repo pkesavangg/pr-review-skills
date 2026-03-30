@@ -101,7 +101,10 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
             _ = try? await accountService.refreshAccount()
             try await streakManager.refreshStreakData()
             await gridEditingManager.loadProgressMetricsFromAccount()
-            try? await goalManager.loadGoalData()
+            // Goals are weight-only — skip for BPM
+            if stateProvider.productType != .bpm {
+                try? await goalManager.loadGoalData()
+            }
 
             await MainActor.run {
                 stateProvider.state.ui.hasLoadedProgressMetrics = true

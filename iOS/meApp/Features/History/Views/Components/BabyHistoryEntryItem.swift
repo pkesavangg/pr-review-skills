@@ -13,6 +13,8 @@ struct BabyHistoryEntryItem: View {
     let isExpanded: Bool
     let onTap: () -> Void
 
+    private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
+
     private var timeText: String {
         DateTimeTools.getFormattedTime(entry.entryTimestamp).lowercased()
     }
@@ -47,7 +49,7 @@ struct BabyHistoryEntryItem: View {
                         .fontOpenSans(.heading5)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
                         .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .minimumScaleFactor(0.7)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
@@ -79,11 +81,11 @@ struct BabyHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Expansion chevron (hidden when no notes)
+                // Expansion chevron — always occupies space to keep columns aligned
                 AppIconView(icon: AppAssets.chevronDown)
                     .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    .opacity(entry.notes?.isEmpty == false ? 1 : 0)
+                    .opacity(hasNotes ? 1 : 0)
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
@@ -111,9 +113,7 @@ struct BabyHistoryEntryItem: View {
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            if let notes = entry.notes, !notes.isEmpty {
-                onTap()
-            }
+            if hasNotes { onTap() }
         }
     }
 }

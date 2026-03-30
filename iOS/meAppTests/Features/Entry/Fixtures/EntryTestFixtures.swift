@@ -84,6 +84,7 @@ enum EntryTestFixtures {
             operationType: operationType.rawValue,
             serverTimestamp: serverTimestamp,
             deviceType: DeviceType.bpm.rawValue,
+            entryType: EntryType.bpm.rawValue,
             isSynced: isSynced
         )
         entry.scaleEntry = BathScaleEntry(

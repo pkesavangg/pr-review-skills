@@ -16,12 +16,12 @@ struct ScaleManualListRowView: View {
     let rowHeight: CGFloat = 139
 
     var body: some View {
-        HStack(spacing: .spacingSM) {
-            Image(scale.imgPath)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 75, height: 75)
-                .themeDropShadow()
+    HStack(spacing: .spacingSM) {
+    Image(scale.imgPath)
+    .resizable()
+    .scaledToFit()
+    .frame(width: 75, height: 75)
+    .themeDropShadow()
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(scale.setupType == .bpm ? bpmListModelLabel(primarySku: scale.sku) : scale.sku)
@@ -33,8 +33,8 @@ struct ScaleManualListRowView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-            }
-            .frame(height: 75)
+    }
+    .frame(height: 75)
 
             Spacer()
             if showConnectivityIcon {
