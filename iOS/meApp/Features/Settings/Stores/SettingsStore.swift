@@ -109,7 +109,11 @@ class SettingsStore: ObservableObject {
     }
 
     var shouldShowUnitType: Bool {
-        hasWeightScale || hasBabyScale
+        hasWeightScale || hasBabyScale || hasBpmDevice
+    }
+
+    var shouldShowNotifications: Bool {
+        hasWeightScale || hasBabyScale || hasBpmDevice
     }
 
     var shouldShowWeightScaleSection: Bool {

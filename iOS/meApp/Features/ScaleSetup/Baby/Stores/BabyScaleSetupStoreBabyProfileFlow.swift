@@ -46,6 +46,13 @@ extension BabyScaleSetupStore {
 
     // MARK: - Delete Baby
 
+    /// Shows a confirmation alert before deleting a baby from the list.
+    func confirmDeleteBabyFromList(_ baby: Baby) {
+        notificationService.showDeleteBabyConfirmation { [weak self] in
+            self?.deleteBabyFromList(baby)
+        }
+    }
+
     func deleteBabyFromList(_ baby: Baby) {
         savedBabies.removeAll { $0.id == baby.id }
         Task {
@@ -60,6 +67,26 @@ extension BabyScaleSetupStore {
         if savedBabies.isEmpty {
             navigateToStep(.babyProfile)
         }
+    }
+
+    /// Loads a baby's data into the form for editing and navigates to the baby profile step.
+    func editBaby(_ baby: Baby) {
+        babyProfileForm.name.value = baby.name
+        if let birthday = baby.birthday {
+            babyProfileForm.birthday.value = birthday
+        }
+        babyProfileForm.biologicalSex.value = baby.biologicalSex ?? ""
+        if let length = baby.birthLengthInches {
+            babyProfileForm.birthLengthInches.value = String(length)
+        }
+        if let lbs = baby.birthWeightLbs {
+            babyProfileForm.birthWeightLbs.value = String(Int(lbs))
+        }
+        if let oz = baby.birthWeightOz {
+            babyProfileForm.birthWeightOz.value = String(oz)
+        }
+        editingBaby = baby
+        navigateToStep(.babyProfile)
     }
 
     // MARK: - Skip Baby Profile
@@ -77,9 +104,53 @@ extension BabyScaleSetupStore {
         showSkipDialog = false
     }
 
+    // MARK: - Save Device Locally
+
+    /// Creates a local Device record for the baby scale so it appears in My Scales.
+    func saveScaleLocally() async {
+        guard !isScaleSaved else { return }
+        guard let accountId = accountService.activeAccount?.accountId else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "No active account for baby scale device creation")
+            return
+        }
+
+        let sku = scaleItem?.sku
+        let nickname = scaleNicknameForm.nickname.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let device = Device(
+            id: UUID().uuidString,
+            accountId: accountId,
+            nickname: nickname.isEmpty ? nil : nickname,
+            sku: sku,
+            deviceType: DeviceType.scale.rawValue,
+            createdAt: DateTimeTools.getCurrentDatetimeIsoString(),
+            isSynced: false,
+            hasServerID: false
+        )
+
+        do {
+            _ = try await scaleService.createBluetoothScale(
+                device: device,
+                sku: sku,
+                userNumber: "1",
+                accountId: accountId,
+                deviceMetadata: nil,
+                skipDuplicateCheck: true
+            )
+            isScaleSaved = true
+            await scaleService.syncAllScalesWithRemote()
+            NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
+            LoggerService.shared.log(level: .info, tag: tag, message: "Baby scale saved locally with SKU: \(sku ?? "unknown")")
+        } catch {
+            LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save baby scale locally: \(error)")
+        }
+    }
+
     // MARK: - Finish
 
     func handleFinish() {
-        performExitCleanup()
+        Task {
+            await saveScaleLocally()
+            performExitCleanup()
+        }
     }
 }

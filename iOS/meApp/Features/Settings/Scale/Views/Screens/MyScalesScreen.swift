@@ -62,7 +62,9 @@ struct MyScalesScreen: View {
     private func scaleIcon(for sku: String?) -> Image {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku ?? "")
-        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath ?? AppAssets.meLogoDark
+        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath
+            ?? bpmCatalogItem(forEnteredCode: sku ?? "")?.imgPath
+            ?? AppAssets.meLogoDark
         return Image(imagePath)
     }
 
@@ -266,7 +268,11 @@ struct MyScalesScreen: View {
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
                                 status: scaleStore.determineConnectionStatus(for: scale),
                                 onTap: {
-                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
+                                    if scaleType == .bpm {
+                                        router.navigate(to: .bpmDeviceSettings(device: scale))
+                                    } else {
+                                        router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
+                                    }
                                 },
                                 scaleType: scaleType
                             )

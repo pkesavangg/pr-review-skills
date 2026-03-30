@@ -278,6 +278,7 @@ struct FormErrorMessages {
     static let namePattern = "please enter a valid name"
     static let validInput = "please enter valid input"
     static let userNameUnavailable = "user name unavailable"
+    static let numericOnly = "only numbers are allowed"
 }
 
 /// Constants for input field labels used in the app
@@ -322,6 +323,10 @@ struct InputFieldLabels {
     static let skeletalMuscles = "skeletal muscles (%)"
     static let basalMetabolicRate = "basal metabolic rate (kcal)"
     static let metabolicAge = "metabolic age (yrs)"
+    static let babyName = "name"
+    static let babyBirthLength = "birth length"
+    static let babyBirthWeight = "birth weight"
+    static let biologicalSex = "Biological sex"
 }
 
 // Constants for Alert strings used in the app
@@ -714,6 +719,13 @@ struct AlertStrings {
             + "Weight Gurus will save changes and update the scale next time it connects."
         static let okButton = "OK"
     }
+
+    struct RemoveBabyAlert {
+        static let title = "Remove Baby"
+        static let message = "Are you sure you want to remove this baby? You will not be able to get it back."
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
+    }
 }
 
 struct LoaderStrings {
@@ -853,6 +865,7 @@ struct AppAssets {
     static let scale = "scale"
     static let metric = "metric"
     static let export = "export"
+    static let editIcon = "edit"
 
     // MARK: - Scale images
     // MARK: - AppSync series
@@ -885,6 +898,11 @@ struct AppAssets {
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
+
+    // MARK: - Signup device icons
+    static let babyAppIcon = "babyAppIcon"
+    static let bpmIcon = "bpmIcon"
+    static let weightScaleIcon = "weightScaleIcon"
 
     // MARK: - Baby scale series
     static let scale0220 = "0220"

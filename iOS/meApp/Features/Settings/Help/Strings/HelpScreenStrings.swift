@@ -32,4 +32,8 @@ struct HelpScreenStrings {
     static let clearAllLocalData = "Clear All Local Data"
     static let rateApp = "Rate the App"
     static let sendScaleLog = "Send Scale Log"
+    // Device category cards
+    static let weightScale = "Weight Scale"
+    static let babyScale = "Baby Scale"
+    static let bloodPressureMonitor = "Blood Pressure Monitor"
 } 

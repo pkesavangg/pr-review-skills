@@ -183,6 +183,13 @@ extension Validator where Value == String {
         return trimmedValue.lowercased() != "guest"
     }
 
+    /// Validator that checks if the value contains only numeric characters (digits).
+    public static let numericOnly = Validator(type: .numericOnly) { value in
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true } // Let .required handle empty
+        return trimmed.allSatisfy(\.isNumber)
+    }
+
 }
 
 // MARK: - Integer Validators

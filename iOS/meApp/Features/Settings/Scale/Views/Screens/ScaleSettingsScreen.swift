@@ -92,7 +92,9 @@ struct ScaleSettingsScreen: View {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let sku = scale.sku ?? ""
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
-        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath ?? AppAssets.scale0412 // fallback
+        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath
+            ?? bpmCatalogItem(forEnteredCode: sku)?.imgPath
+            ?? AppAssets.scale0412 // fallback
         return Image(imagePath)
             .resizable()
             .scaledToFit()
