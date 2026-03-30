@@ -133,6 +133,7 @@ struct MetricInfoSheetWrapperTests {
             bodyFat: 290,
             boneMass: nil,
             entryTimestamp: "2026-03-08T08:00:00Z",
+            entryType: nil,
             impedance: nil,
             metabolicAge: nil,
             muscleMass: nil,
@@ -143,6 +144,9 @@ struct MetricInfoSheetWrapperTests {
             skeletalMusclePercent: nil,
             source: nil,
             subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
             unit: nil,
             visceralFatLevel: nil,
             water: nil,
@@ -177,7 +181,7 @@ struct MetricInfoSheetWrapperTests {
         }
 
         try? await Task.sleep(nanoseconds: 100_000_000)
-        store.state.metrics.metrics = store.state.metrics.metrics + [DashboardTestFixtures.makeMetricItem(label: DashboardStrings.bodyFat)]
+        store.state.metrics.metrics += [DashboardTestFixtures.makeMetricItem(label: DashboardStrings.bodyFat)]
         store.forceImmediateUIUpdate()
         await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 3_000_000_000) {
             loadCalls >= 3

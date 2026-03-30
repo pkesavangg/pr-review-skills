@@ -19,6 +19,7 @@ import SwiftData
 
 @Model
 final class BathScaleEntry {
+    // MARK: - Weight fields
     var weight: Int?
     var bodyFat: Int?
     var muscleMass: Int?
@@ -59,7 +60,10 @@ final class BathScaleEntry {
             muscleMass: dto.muscleMass.map { Int($0) },
             water: dto.water.map { Int($0) },
             bmi: dto.bmi.map { Int($0) },
-            source: dto.source
+            source: dto.source,
+            systolic: dto.systolic.map { Int($0) },
+            diastolic: dto.diastolic.map { Int($0) },
+            meanArterial: dto.meanArterial.map { String(Int($0)) }
         )
     }
 

@@ -166,6 +166,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     xAxisGridLinesSolid
                     yAxisBaseline
                     chartSeries
+                    bpmReferenceLines
                     crosshairContent
                 }
                 .chartYScale(domain: viewModel.yAxisDomain)
@@ -232,14 +233,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
                 // Selection callout overlay
                 if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
-                   let displayWeight = viewModel.displayWeight,
+                   let selectedValue = selectionCalloutValue(for: selectedDate),
                    viewModel.showCrosshair {
-                    selectionCallout(for: selectedDate, weight: displayWeight)
+                    selectionCallout(for: selectedDate, weight: selectedValue)
                 }
 
-                // Goal chip overlay: show when goal is set (non-nil)
+                // Goal chip overlay: show when goal is set (non-nil) — hidden for BPM
                 // In weightless mode, goal of 0 is valid (maintain anchor weight)
-                if viewModel.goalWeight != nil {
+                if viewModel.goalWeight != nil && dashboardStore.productType != .bpm {
                     goalChipCallout()
                 }
             }
@@ -452,6 +453,18 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
     @ChartContentBuilder
+    private var bpmReferenceLines: some ChartContent {
+        if dashboardStore.productType == .bpm {
+            RuleMark(y: .value("SysRef", Double(BpmConstants.normalSystolic)))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                .foregroundStyle(theme.textSubheading.opacity(0.4))
+            RuleMark(y: .value("DiaRef", Double(BpmConstants.normalDiastolic)))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                .foregroundStyle(theme.textSubheading.opacity(0.4))
+        }
+    }
+
+    @ChartContentBuilder
     private func chartContentForSeries(seriesName: String, seriesPoints: [PlottedGraphSeries]) -> some ChartContent {
         ForEach(seriesPoints) { plottedPoint in
             let point = plottedPoint.original
@@ -471,15 +484,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             // Check if point is outside the active month interval (should be greyed out)
             let isOutsideMonthInterval = isPointOutsideActiveMonth(date: point.date)
 
-            // Line color stays consistent (SwiftUI Charts applies color to entire interpolated line)
-            let lineColor = point.series == DashboardStrings.weight
-                ? theme.actionPrimary
-                : theme.actionSecondary
-
-            // Point color is greyed out if outside the active month
-            let pointColor = point.series == DashboardStrings.weight
-                ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
-                : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
+            let colors = seriesColors(for: point, isOutsideMonthInterval: isOutsideMonthInterval)
 
             // Line mark — uses clamped value so the line stops at the domain boundary
             LineMark(
@@ -487,8 +492,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 y: .value(point.series, clampedValue),
                 series: .value("Series", point.series)
             )
-            .foregroundStyle(lineColor)
-            .interpolationMethod(.monotone)
+            .foregroundStyle(colors.line)
+            .interpolationMethod(dashboardStore.productType == .bpm ? .monotone : .monotone)
             .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
 
             // Visible point mark — only shown when within domain to avoid
@@ -498,7 +503,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
             .symbolSize(isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
-            .foregroundStyle(pointColor)
+            .foregroundStyle(colors.point)
         }
     }
 
@@ -513,6 +518,17 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         }
         // Check if date is before month start or on/after month end
         return date < monthInterval.start || date >= monthInterval.end
+    }
+
+    /// Computes line and point colors for a chart series, factoring in product type and month interval.
+    private func seriesColors(for point: GraphSeries, isOutsideMonthInterval: Bool) -> (line: Color, point: Color) {
+        DashboardChartStyleProvider.seriesColors(
+            for: point.series,
+            productType: dashboardStore.productType,
+            theme: theme,
+            bpmClassification: dashboardStore.displayManager?.getBpmDisplayValues()?.classification,
+            isOutsideMonthInterval: isOutsideMonthInterval
+        )
     }
 
     @ChartContentBuilder
@@ -546,6 +562,21 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
     // MARK: - Selection Callout
+    private func selectionCalloutValue(for selectedDate: Date) -> Double? {
+        let plottedDate = viewModel.plotXDate(for: selectedDate)
+
+        let matchingValues = cachedPlottedPoints.values
+            .flatMap { $0 }
+            .filter { $0.xDate == plottedDate }
+            .map { $0.original.value }
+
+        if let topVisibleValue = matchingValues.max() {
+            return topVisibleValue
+        }
+
+        return viewModel.displayWeight
+    }
+
     @ViewBuilder
     private func selectionCallout(for selectedDate: Date, weight: Double) -> some View {
         if let chartPosition = viewModel.getChartPosition(for: selectedDate, value: weight) {
@@ -912,7 +943,12 @@ extension View {
                         return uniqueByDay
                     }()
                     // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
-                    let adjustedLabelTicks: [Date] = allTicks
+                    let adjustedLabelTicks: [Date] = {
+                        if viewModel.timePeriod == .year {
+                            return nonLastTicks
+                        }
+                        return allTicks
+                    }()
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
                     AxisMarks(values: gridTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
@@ -1059,19 +1095,22 @@ extension View {
                             viewModel.clearSelection()
                             return
                         }
-                        localSelectedXValue.wrappedValue = newValue
                         viewModel.handleChartSelection(at: newValue)
 
                         // Update dashboard store selection using snapped date when available
                         if let rawDate = newValue {
                             if viewModel.showCrosshair {
                                 let dateToSend = viewModel.preferredSelectedDate ?? rawDate
+                                localSelectedXValue.wrappedValue = dateToSend
                                 Task {
                                     await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                 }
                             } else {
+                                localSelectedXValue.wrappedValue = nil
                                 Task { await dashboardStore.chartManager.handleChartSelection(at: nil) }
                             }
+                        } else {
+                            localSelectedXValue.wrappedValue = nil
                         }
                     }
                 ))
@@ -1081,14 +1120,15 @@ extension View {
                         .onEnded { value in
                             guard !viewModel.chartOperations.isEmpty else { return }
                             if let date: Date = proxy.value(atX: value.location.x) {
-                                localSelectedXValue.wrappedValue = date
                                 viewModel.handleChartSelection(at: date)
                                 if viewModel.showCrosshair {
                                     let dateToSend = viewModel.preferredSelectedDate ?? date
+                                    localSelectedXValue.wrappedValue = dateToSend
                                     Task {
                                         await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
                                     }
                                 } else {
+                                    localSelectedXValue.wrappedValue = nil
                                     // Clear any previous selection in the store
                                     Task {
                                         await dashboardStore.chartManager.handleChartSelection(at: nil)

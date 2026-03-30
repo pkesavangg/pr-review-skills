@@ -293,6 +293,8 @@ When the user describes a task in natural language, match it to the appropriate 
 | "run tests", "do tests pass" | `.claude/skills/run-tests.md` |
 | "check coverage", "verify tests" | `.claude/skills/verify-tests.md` |
 | "review my changes", "self review" | `.claude/skills/self-review.md` |
+| "code standards review", "check conventions", "architecture review" | `.claude/skills/review-code-standards.md` |
+| "UI review", "check theme usage", "design standards review" | `.claude/skills/review-ui-standards.md` |
 | "raise a PR", "open a PR" | `.claude/skills/raise-pr.md` |
 | "write a PR description", "draft a PR description", "describe this PR", "what should I put in the PR description" | `.claude/skills/pr-description.md` |
 | "log time", "log work" | `.claude/skills/log-work.md` |
