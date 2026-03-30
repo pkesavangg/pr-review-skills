@@ -1380,7 +1380,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 }
             }
         } catch {
-            logger.log(level: .error, tag: tag, message: "loadDashboardData(\(entryType)) failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "loadDashboardData failed (\(entryType)): \(error.localizedDescription)")
         }
     }
 

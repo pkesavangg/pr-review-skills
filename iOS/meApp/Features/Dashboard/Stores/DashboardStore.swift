@@ -25,7 +25,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     @Injector var logger: LoggerService
     @Injector private var scaleService: ScaleService
     @Injector private var entryService: EntryService
-    @Injector private var productTypeStore: ProductTypeStore
+    @Injector private var productTypeStore: ProductTypeStoreProtocol
 
     // MARK: - Formatter and Cache Services
     let formatter: DashboardFormatterProtocol
@@ -371,7 +371,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .store(in: &cancellables)
 
         // React to product type switching from the header dropdown
-        productTypeStore.$availableItems
+        productTypeStore.availableItemsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
                 self?.availableProductItems = items
@@ -413,7 +413,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     var productTypeSelectorStore: ProductTypeStore {
-        productTypeStore
+        ProductTypeStore.shared
     }
 
     var dashboardEntryService: EntryService {
