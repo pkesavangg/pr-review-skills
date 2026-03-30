@@ -86,6 +86,12 @@ extension BluetoothService {
                 macAddress: device.mac ?? ""
             )
         }
+        let deviceNames = ggDevices.map { $0.name }
+        let broadcastIds = ggDevices.map { $0.broadcastId }
+        let passwords = ggDevices.map { $0.password }
+        let userNumbers = ggDevices.map { $0.userNumber }
+        let message = "syncDevices called in handleSmartScaleData: \(deviceNames) \(broadcastIds) \(passwords) \(broadcastIds) \(userNumbers)"
+        logger.log(level: .info, tag: tag, message: message)
         ggBleSDK.syncDevices(ggDevices)
     }
 

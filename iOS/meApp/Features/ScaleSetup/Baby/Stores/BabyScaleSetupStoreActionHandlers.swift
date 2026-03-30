@@ -54,13 +54,11 @@ extension BabyScaleSetupStore {
         guard !isExiting else { return }
         isExiting = true
 
-        // TODO: Re-enable scale-saved check when API is ready
-        // if currentStep.rawValue >= BabyScaleSetupStep.scaleName.rawValue && isScaleSaved {
-        //     performExitCleanup()
-        //     return
-        // }
+        if currentStep.rawValue >= BabyScaleSetupStep.scaleName.rawValue && isScaleSaved {
+            performExitCleanup()
+            return
+        }
 
-        // For UI-only mode, just confirm and exit
         let alert = AlertModel(
             title: "Exit Setup?",
             message: "Are you sure you want to exit scale setup?",
@@ -78,8 +76,8 @@ extension BabyScaleSetupStore {
 
     /// Tab-deactivation handler (returns true if setup can be left).
     func confirmExit() async -> Bool {
-        handleExit()
-        return false
+    handleExit()
+    return false
     }
 
     // MARK: - Try Again
@@ -97,7 +95,6 @@ extension BabyScaleSetupStore {
     }
 
     // MARK: - Private
-
     /// Saves the user-entered nickname to the locally persisted Device record.
     private func updateScaleNickname() {
         guard let scale = savedScale else { return }

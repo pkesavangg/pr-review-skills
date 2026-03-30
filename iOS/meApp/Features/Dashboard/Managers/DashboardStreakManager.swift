@@ -55,7 +55,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     // MARK: - Streak Data Management
     func refreshStreakData() async throws {
         do {
-            let progress = try await entryService.getProgress()
+            let progress = try await entryService.getProgress(entryType: .wg)
             try await updateStreakItems(with: progress)
         } catch {
             logger.log(level: .error, tag: "DashboardStreakManager", message: "Failed to refresh streak data: \(error)")

@@ -13,6 +13,7 @@ struct BathScaleOperationRequest: Codable {
     let bodyFat: Double?
     let boneMass: Double?
     let entryTimestamp: String?
+    let entryType: String?
     let metabolicAge: Double?
     let muscleMass: Double?
     let operationType: String?
@@ -21,6 +22,9 @@ struct BathScaleOperationRequest: Codable {
     let skeletalMusclePercent: Double?
     let source: String?
     let subcutaneousFatPercent: Double?
+    let systolic: Double?
+    let diastolic: Double?
+    let meanArterial: Double?
     let unit: String?
     let visceralFatLevel: Double?
     let water: Double?

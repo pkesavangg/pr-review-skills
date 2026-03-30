@@ -10,18 +10,25 @@ struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory
 
-    private func makeSUT() -> (
-        store: DashboardStore,
-        accountService: AccountService,
-        entryService: EntryService,
-        cacheManager: MockDashboardCacheManager
-    ) {
+    private struct SUTBundle {
+        let store: DashboardStore
+        let accountService: AccountService
+        let entryService: EntryService
+        let cacheManager: MockDashboardCacheManager
+    }
+
+    private func makeSUT() -> SUTBundle {
         let cacheManager = MockDashboardCacheManager()
         let sut = DashboardManagerTestSupport.makeStore(
             cacheManager: cacheManager,
             formatter: MockDashboardFormatter()
         )
-        return (sut.store, sut.accountService, sut.entryService, cacheManager)
+        return SUTBundle(
+            store: sut.store,
+            accountService: sut.accountService,
+            entryService: sut.entryService,
+            cacheManager: cacheManager
+        )
     }
 
     private func makeNotification() -> MockNotificationHelperService? {
@@ -650,6 +657,7 @@ struct DashboardLifecycleManagerTests {
             bodyFat: nil,
             boneMass: nil,
             entryTimestamp: "2026-03-01T08:00:00Z",
+            entryType: nil,
             impedance: nil,
             metabolicAge: nil,
             muscleMass: nil,
@@ -660,6 +668,9 @@ struct DashboardLifecycleManagerTests {
             skeletalMusclePercent: nil,
             source: nil,
             subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
             unit: nil,
             visceralFatLevel: nil,
             water: nil,
