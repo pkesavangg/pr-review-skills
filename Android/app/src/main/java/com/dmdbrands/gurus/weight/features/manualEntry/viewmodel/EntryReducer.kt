@@ -189,14 +189,168 @@ data class EntryForm(
   }
 }
 
+/**
+ * Form controls for blood pressure entry.
+ */
+data class BloodPressureFormControls(
+  val systolic: FormControl<String>,
+  val diastolic: FormControl<String>,
+  val pulse: FormControl<String>,
+  val notes: FormControl<String>,
+  val dateTime: FormControl<DateTimeValue>,
+)
+
+/**
+ * Blood pressure entry form.
+ */
+data class BloodPressureEntryForm(
+  val bloodPressure: FormGroup<BloodPressureFormControls>,
+) {
+  companion object {
+    fun create(): BloodPressureEntryForm {
+      val calendar = Calendar.getInstance()
+      val controls = BloodPressureFormControls(
+        systolic = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.Systolic.MIN, AppValidatorConfig.Systolic.MAX, false,
+            ),
+            FormValidations.required(),
+          ),
+        ),
+        diastolic = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.Diastolic.MIN, AppValidatorConfig.Diastolic.MAX, false,
+            ),
+            FormValidations.required(),
+          ),
+        ),
+        pulse = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.Pulse.MIN, AppValidatorConfig.Pulse.MAX, false,
+            ),
+          ),
+        ),
+        notes = FormControl.create("", emptyList()),
+        dateTime = FormControl.create(
+          DateTimeValue.DateTime(
+            millis = calendar.timeInMillis,
+            hour = calendar.get(Calendar.HOUR_OF_DAY),
+            minute = calendar.get(Calendar.MINUTE),
+          ),
+          emptyList(),
+        ),
+      )
+      return BloodPressureEntryForm(bloodPressure = FormGroup(controls))
+    }
+  }
+}
+
+/**
+ * Form controls for baby entry.
+ */
+data class BabyEntryFormControls(
+  val pounds: FormControl<String>,
+  val ounces: FormControl<String>,
+  val inches: FormControl<String>,
+  val notes: FormControl<String>,
+  val dateTime: FormControl<DateTimeValue>,
+)
+
+/**
+ * Baby entry form.
+ */
+data class BabyEntryForm(
+  val baby: FormGroup<BabyEntryFormControls>,
+) {
+  companion object {
+    fun create(): BabyEntryForm {
+      val calendar = Calendar.getInstance()
+      val controls = BabyEntryFormControls(
+        pounds = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.BabyWeightLb.MIN, AppValidatorConfig.BabyWeightLb.MAX, false,
+            ),
+            FormValidations.required(),
+          ),
+        ),
+        ounces = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.BabyWeightOz.MIN, AppValidatorConfig.BabyWeightOz.MAX, false,
+            ),
+          ),
+        ),
+        inches = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.BabyHeight.MIN, AppValidatorConfig.BabyHeight.MAX, false,
+            ),
+          ),
+        ),
+        notes = FormControl.create("", emptyList()),
+        dateTime = FormControl.create(
+          DateTimeValue.DateTime(
+            millis = calendar.timeInMillis,
+            hour = calendar.get(Calendar.HOUR_OF_DAY),
+            minute = calendar.get(Calendar.MINUTE),
+          ),
+          emptyList(),
+        ),
+      )
+      return BabyEntryForm(baby = FormGroup(controls))
+    }
+  }
+}
+
+/**
+ * Sealed class representing the active entry form for each product type.
+ * Only one form is active at a time.
+ */
+sealed class ActiveEntryForm {
+  abstract val isValid: Boolean
+  abstract val isDirty: Boolean
+
+  data class Weight(val form: MultiFormGroup<EntryForm>) : ActiveEntryForm() {
+    override val isValid get() = form.isValid
+    override val isDirty get() = form.isDirty || form.isTouched
+  }
+
+  data class BloodPressure(val form: MultiFormGroup<BloodPressureEntryForm>) : ActiveEntryForm() {
+    override val isValid get() = form.isValid
+    override val isDirty get() = form.isDirty || form.isTouched
+  }
+
+  data class Baby(val form: MultiFormGroup<BabyEntryForm>) : ActiveEntryForm() {
+    override val isValid get() = form.isValid
+    override val isDirty get() = form.isDirty || form.isTouched
+  }
+}
+
 @Stable
 data class EntryState(
-  val form: MultiFormGroup<EntryForm>,
+  val activeForm: ActiveEntryForm = ActiveEntryForm.Weight(
+    form = MultiFormGroup.create(forms = EntryForm.create()),
+  ),
   val weightMode: WeightUnit = WeightUnit.LB,
   val isLoading: Boolean = false,
   val isMetricFieldsExpandedInitially: Boolean = false,
-  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
-) : IReducer.State
+  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS,
+) : IReducer.State {
+  /** Convenience accessor for the weight form (backward compatibility). */
+  val form: MultiFormGroup<EntryForm>
+    get() = (activeForm as? ActiveEntryForm.Weight)?.form
+      ?: MultiFormGroup.create(forms = EntryForm.create())
+}
 
 /**
  * Intent for entry actions, such as loading, selecting, adding, and deleting entries.
@@ -205,9 +359,12 @@ sealed interface EntryIntent : IReducer.Intent {
   data object UpdateOnRelaunch : EntryIntent
   data object Save : EntryIntent
   data object EarlyExit : EntryIntent
-  data class UpdateForm(
-    val form: MultiFormGroup<EntryForm>,
-  ) : EntryIntent
+
+  /** Updates the weight form (wraps into ActiveEntryForm.Weight). */
+  data class UpdateForm(val form: MultiFormGroup<EntryForm>) : EntryIntent
+
+  /** Switches the active form to a different product type. */
+  data class UpdateActiveForm(val activeForm: ActiveEntryForm) : EntryIntent
 
   data class UpdateWeightUnit(val weightUnit: WeightUnit) : EntryIntent
   data class UpdateDashboardType(val dashboardType: DashboardType) : EntryIntent
@@ -228,45 +385,41 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
   ): EntryState? {
     return when (intent) {
       is EntryIntent.UpdateForm -> {
-        state.copy(
-          form = intent.form,
-        )
+        state.copy(activeForm = ActiveEntryForm.Weight(form = intent.form))
+      }
+
+      is EntryIntent.UpdateActiveForm -> {
+        state.copy(activeForm = intent.activeForm)
       }
 
       is EntryIntent.UpdateWeightUnit -> {
-        state.copy(
-          weightMode = intent.weightUnit,
-        )
+        state.copy(weightMode = intent.weightUnit)
       }
 
       is EntryIntent.UpdateDashboardType -> {
-        state.copy(
-          dashboardType = intent.dashboardType,
-        )
+        state.copy(dashboardType = intent.dashboardType)
       }
 
       is EntryIntent.UpdateMetricFieldsExpandedStatus -> {
-        state.copy(
-          isMetricFieldsExpandedInitially = intent.isExpanded,
-        )
+        state.copy(isMetricFieldsExpandedInitially = intent.isExpanded)
       }
 
       is EntryIntent.LoadAppSyncData -> {
-        // Create new form with AppSync data, following Profile pattern exactly
         val scaleEntry = intent.scaleEntry
         val currentForm = state.form.forms
         val updatedForm = EntryForm.create(
           includeR4ScaleMetrics = currentForm.r4ScaleMetrics != null,
           weightUnit = state.weightMode,
-          height = intent.height, // Use height from intent
+          height = intent.height,
           scaleEntry = scaleEntry,
           isValueChangeAllowed = { _, _ ->
             !state.form.forms.generalMetrics.controls.bodyMassIndex.touched
           },
         )
-
         state.copy(
-          form = MultiFormGroup.create(forms = updatedForm),
+          activeForm = ActiveEntryForm.Weight(
+            form = MultiFormGroup.create(forms = updatedForm),
+          ),
         )
       }
 
