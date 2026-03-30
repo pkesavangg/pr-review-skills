@@ -185,7 +185,15 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
     private func getInitialAuthorizationDeviceTypes() async -> Set<String> {
         let signupDeviceTypes = await getSignupSelectedDeviceTypes()
         let pairedDeviceTypes = await getPairedDeviceTypes()
-        let initialDeviceTypes = signupDeviceTypes.union(pairedDeviceTypes)
+
+        // Balance Health users (BPM-only signup) should only request BPM permissions.
+        // Don't expand the scope with weight scale types from paired devices.
+        // Weight Gurus users get their signup types expanded with any paired BPM.
+        let isBalanceHealthSignup = signupDeviceTypes.contains(DeviceType.bpm.rawValue)
+            && !signupDeviceTypes.contains(DeviceType.scale.rawValue)
+        let initialDeviceTypes = isBalanceHealthSignup
+            ? signupDeviceTypes
+            : signupDeviceTypes.union(pairedDeviceTypes)
 
         guard !initialDeviceTypes.isEmpty else {
             logger.log(
@@ -202,6 +210,7 @@ final class HealthKitService: HealthKitServiceProtocol { // swiftlint:disable:th
             message: "Using initial HealthKit permission scope from signup + paired devices. "
                 + "signupDeviceTypes=\(signupDeviceTypes.sorted()), "
                 + "pairedDeviceTypes=\(pairedDeviceTypes.sorted()), "
+                + "isBalanceHealthSignup=\(isBalanceHealthSignup), "
                 + "resolvedDeviceTypes=\(initialDeviceTypes.sorted())"
         )
         return initialDeviceTypes

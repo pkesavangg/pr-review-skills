@@ -473,7 +473,6 @@ final class BpmSetupStore: ObservableObject {
             await scaleService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
-            bluetoothService.isSetupInProgress = false
             return true
         } catch {
             LoggerService.shared.log(
