@@ -1,0 +1,362 @@
+// Coverage target: 80% (Store)
+
+import Combine
+import Foundation
+import Testing
+@testable import meApp
+
+@Suite(.serialized)
+@MainActor
+struct MyKidsStoreTests {
+
+    // MARK: - isSaveEnabled (Dirty Tracking)
+
+    @Test("isSaveEnabled in add mode with valid form returns true")
+    func isSaveEnabled_addMode_validForm_returnsTrue() {
+        let (store, _, _, _) = makeSUT()
+        store.babyProfileForm.name.value = "Baby"
+        store.babyProfileForm.birthday.value = Date()
+        store.babyProfileForm.biologicalSex.value = "male"
+        #expect(store.editingBaby == nil)
+        #expect(store.isSaveEnabled == true)
+    }
+
+    @Test("isSaveEnabled in add mode with invalid form returns false")
+    func isSaveEnabled_addMode_invalidForm_returnsFalse() {
+        let (store, _, _, _) = makeSUT()
+        store.babyProfileForm.name.value = ""
+        #expect(store.isSaveEnabled == false)
+    }
+
+    @Test("isSaveEnabled in edit mode with pristine form returns false")
+    func isSaveEnabled_editMode_formNotDirty_returnsFalse() {
+        let (store, _, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Test",
+                        birthday: Date(), biologicalSex: "male")
+        store.editBaby(baby)
+        #expect(store.isSaveEnabled == false)
+    }
+
+    @Test("isSaveEnabled in edit mode with dirty valid form returns true")
+    func isSaveEnabled_editMode_formDirtyAndValid_returnsTrue() {
+        let (store, _, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Test",
+                        birthday: Date(), biologicalSex: "male")
+        store.editBaby(baby)
+        store.babyProfileForm.name.value = "Updated Name"
+        #expect(store.isSaveEnabled == true)
+    }
+
+    @Test("isSaveEnabled in edit mode with dirty invalid form returns false")
+    func isSaveEnabled_editMode_formDirtyButInvalid_returnsFalse() {
+        let (store, _, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Test",
+                        birthday: Date(), biologicalSex: "male")
+        store.editBaby(baby)
+        store.babyProfileForm.name.value = ""
+        #expect(store.isSaveEnabled == false)
+    }
+
+    @Test("isSaveEnabled detects dirty state on each individual field")
+    func isSaveEnabled_editMode_eachFieldDirtyEnablesSave() {
+        let (store, _, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Test",
+                        birthday: Date(), biologicalSex: "male",
+                        birthLengthInches: 20.0, birthWeightLbs: 7, birthWeightOz: 4.0)
+        let fields: [(String, (MyKidsStore) -> Void)] = [
+            ("name", { $0.babyProfileForm.name.value = "Changed" }),
+            ("birthday", { $0.babyProfileForm.birthday.value = Date.distantPast }),
+            ("biologicalSex", { $0.babyProfileForm.biologicalSex.value = "female" }),
+            ("birthLengthInches", { $0.babyProfileForm.birthLengthInches.value = "22" }),
+            ("birthWeightLbs", { $0.babyProfileForm.birthWeightLbs.value = "8" }),
+            ("birthWeightOz", { $0.babyProfileForm.birthWeightOz.value = "5.0" })
+        ]
+        for (fieldName, mutate) in fields {
+            store.editBaby(baby)
+            #expect(store.isSaveEnabled == false, "Expected save disabled before changing \(fieldName)")
+            mutate(store)
+            #expect(store.isSaveEnabled == true, "Expected save enabled after changing \(fieldName)")
+        }
+    }
+
+    @Test("editBaby populates form and form is not dirty")
+    func editBaby_populatesForm_andFormIsNotDirty() {
+        let (store, _, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Baby",
+                        birthday: Date(), biologicalSex: "male",
+                        birthLengthInches: 20.0, birthWeightLbs: 7, birthWeightOz: 4.0)
+        store.editBaby(baby)
+        #expect(store.isSaveEnabled == false)
+    }
+
+    // MARK: - addBaby
+
+    @Test("addBaby resets form fields")
+    func addBaby_resetsForm() {
+        let (store, _, _, _) = makeSUT()
+        store.babyProfileForm.name.value = "Leftover"
+        store.addBaby()
+        #expect(store.babyProfileForm.name.value == "")
+    }
+
+    @Test("addBaby sets editingBaby to nil")
+    func addBaby_setsEditingBabyToNil() {
+        let (store, _, _, _) = makeSUT()
+        store.editingBaby = Baby(accountId: "acct-1", name: "X")
+        store.addBaby()
+        #expect(store.editingBaby == nil)
+    }
+
+    @Test("addBaby sets isShowingAddBaby to true")
+    func addBaby_setsIsShowingAddBabyTrue() {
+        let (store, _, _, _) = makeSUT()
+        store.addBaby()
+        #expect(store.isShowingAddBaby == true)
+    }
+
+    // MARK: - editBaby
+
+    @Test("editBaby sets editingBaby")
+    func editBaby_setsEditingBaby() {
+        let (store, _, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "My Baby")
+        store.editBaby(baby)
+        #expect(store.editingBaby?.id == baby.id)
+    }
+
+    @Test("editBaby populates all form fields")
+    func editBaby_populatesAllFields() {
+        let (store, _, _, _) = makeSUT()
+        let birthday = Date()
+        let baby = Baby(accountId: "acct-1", name: "My Baby",
+                        birthday: birthday, biologicalSex: "female",
+                        birthLengthInches: 19.5, birthWeightLbs: 8, birthWeightOz: 3.5)
+        store.editBaby(baby)
+        #expect(store.babyProfileForm.name.value == "My Baby")
+        #expect(store.babyProfileForm.biologicalSex.value == "female")
+        #expect(store.babyProfileForm.birthLengthInches.value == "19.5")
+        #expect(store.babyProfileForm.birthWeightLbs.value == "8")
+        #expect(store.babyProfileForm.birthWeightOz.value == "3.5")
+        #expect(store.isShowingAddBaby == true)
+    }
+
+    @Test("editBaby leaves optional fields empty when nil on baby")
+    func editBaby_populatesOptionalFieldsWhenNil() {
+        let (store, _, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Minimal Baby")
+        store.editBaby(baby)
+        #expect(store.babyProfileForm.biologicalSex.value == "")
+        #expect(store.babyProfileForm.birthLengthInches.value == "")
+        #expect(store.babyProfileForm.birthWeightLbs.value == "")
+        #expect(store.babyProfileForm.birthWeightOz.value == "")
+    }
+
+    // MARK: - saveBabyProfile
+
+    @Test("saveBabyProfile for new baby calls saveBaby on service")
+    func saveBabyProfile_newBaby_callsSaveBaby() async {
+        let (store, babyService, _, _) = makeSUT()
+        store.babyProfileForm.name.value = "New Baby"
+        store.babyProfileForm.birthday.value = Date()
+        store.babyProfileForm.biologicalSex.value = "male"
+
+        await store.saveBabyProfile()
+
+        #expect(babyService.saveBabyCalls == 1)
+        #expect(babyService.updateBabyProfileCalls == 0)
+    }
+
+    @Test("saveBabyProfile for new baby passes correct parameters")
+    func saveBabyProfile_newBaby_passesCorrectParams() async {
+        let (store, babyService, account, _) = makeSUT()
+        account.activeAccount = Account(email: "test@test.com")
+        store.babyProfileForm.name.value = "  Baby Name  "
+        store.babyProfileForm.birthday.value = Date()
+        store.babyProfileForm.biologicalSex.value = "female"
+
+        await store.saveBabyProfile()
+
+        #expect(babyService.lastSavedName == "Baby Name")
+        #expect(babyService.lastSavedAccountId == account.activeAccount?.accountId)
+    }
+
+    @Test("saveBabyProfile for existing baby calls updateBabyProfile")
+    func saveBabyProfile_existingBaby_callsUpdateBabyProfile() async {
+        let (store, babyService, _, _) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Old Name",
+                        birthday: Date(), biologicalSex: "male")
+        store.editBaby(baby)
+        store.babyProfileForm.name.value = "New Name"
+
+        await store.saveBabyProfile()
+
+        #expect(babyService.updateBabyProfileCalls == 1)
+        #expect(babyService.saveBabyCalls == 0)
+        #expect(babyService.lastUpdatedBaby?.id == baby.id)
+    }
+
+    @Test("saveBabyProfile with empty name does not call service")
+    func saveBabyProfile_emptyName_doesNotCallService() async {
+        let (store, babyService, _, _) = makeSUT()
+        store.babyProfileForm.name.value = ""
+
+        await store.saveBabyProfile()
+
+        #expect(babyService.saveBabyCalls == 0)
+        #expect(babyService.updateBabyProfileCalls == 0)
+    }
+
+    @Test("saveBabyProfile with whitespace-only name does not call service")
+    func saveBabyProfile_whitespaceName_doesNotCallService() async {
+        let (store, babyService, _, _) = makeSUT()
+        store.babyProfileForm.name.value = "   "
+
+        await store.saveBabyProfile()
+
+        #expect(babyService.saveBabyCalls == 0)
+    }
+
+    @Test("saveBabyProfile success dismisses sheet and clears editing baby")
+    func saveBabyProfile_success_dismissesSheet() async {
+        let (store, _, _, _) = makeSUT()
+        store.babyProfileForm.name.value = "Baby"
+        store.babyProfileForm.birthday.value = Date()
+        store.babyProfileForm.biologicalSex.value = "male"
+        store.isShowingAddBaby = true
+
+        await store.saveBabyProfile()
+
+        #expect(store.isShowingAddBaby == false)
+        #expect(store.editingBaby == nil)
+    }
+
+    @Test("saveBabyProfile failure does not dismiss sheet")
+    func saveBabyProfile_failure_doesNotDismissSheet() async {
+        let (store, babyService, _, _) = makeSUT()
+        babyService.saveBabyError = MyKidsTestError.genericFailure
+        store.babyProfileForm.name.value = "Baby"
+        store.babyProfileForm.birthday.value = Date()
+        store.babyProfileForm.biologicalSex.value = "male"
+        store.isShowingAddBaby = true
+
+        await store.saveBabyProfile()
+
+        #expect(store.isShowingAddBaby == true)
+    }
+
+    // MARK: - loadBabies
+
+    @Test("loadBabies with active account calls service")
+    func loadBabies_withActiveAccount_callsService() async {
+        let (store, babyService, account, _) = makeSUT()
+        account.activeAccount = Account(email: "test@test.com")
+
+        await store.loadBabies()
+
+        #expect(babyService.loadBabiesCalls == 1)
+        #expect(babyService.lastLoadAccountId == account.activeAccount?.accountId)
+    }
+
+    @Test("loadBabies without active account does not call service")
+    func loadBabies_noActiveAccount_doesNotCallService() async {
+        let (store, babyService, _, _) = makeSUT()
+
+        await store.loadBabies()
+
+        #expect(babyService.loadBabiesCalls == 0)
+    }
+
+    // MARK: - confirmDeleteBaby / deleteBaby
+
+    @Test("confirmDeleteBaby shows alert via notification service")
+    func confirmDeleteBaby_showsAlert() {
+        let (store, _, _, notification) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Delete Me")
+
+        store.confirmDeleteBaby(baby)
+
+        #expect(notification.showAlertCalls == 1)
+        #expect(notification.alertData != nil)
+    }
+
+    @Test("deleteBaby calls service delete when triggered from alert")
+    func deleteBaby_callsServiceDelete() async {
+        let (store, babyService, _, notification) = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Delete Me")
+
+        store.confirmDeleteBaby(baby)
+
+        // Simulate tapping the delete button in the alert
+        if let deleteButton = notification.alertData?.buttons.last {
+            deleteButton.action(deleteButton.title)
+        }
+
+        let deleted = await waitUntil { babyService.deleteBabyCalls == 1 }
+        #expect(deleted == true)
+        #expect(babyService.lastDeletedBaby?.id == baby.id)
+    }
+
+    @Test("deleteBaby failure does not crash")
+    func deleteBaby_failure_doesNotCrash() async {
+        let (store, babyService, _, notification) = makeSUT()
+        babyService.deleteBabyError = MyKidsTestError.genericFailure
+        let baby = Baby(accountId: "acct-1", name: "Delete Me")
+
+        store.confirmDeleteBaby(baby)
+
+        if let deleteButton = notification.alertData?.buttons.last {
+            deleteButton.action(deleteButton.title)
+        }
+
+        let attempted = await waitUntil { babyService.deleteBabyCalls == 1 }
+        #expect(attempted == true)
+    }
+}
+
+// MARK: - Test Errors
+
+private enum MyKidsTestError: Error {
+    case genericFailure
+}
+
+// MARK: - makeSUT
+
+@MainActor
+private func makeSUT(
+    babyService: MockBabyService? = nil,
+    accountService: MockAccountService? = nil,
+    notificationService: MockNotificationHelperService? = nil
+) -> (
+    store: MyKidsStore,
+    babyService: MockBabyService,
+    accountService: MockAccountService,
+    notificationService: MockNotificationHelperService
+) {
+    let baby = babyService ?? MockBabyService()
+    let account = accountService ?? MockAccountService()
+    let notification = notificationService ?? MockNotificationHelperService()
+
+    TestDependencyContainer.reset()
+    DependencyContainer.shared.register(baby as BabyServiceProtocol)
+    DependencyContainer.shared.register(account as AccountServiceProtocol)
+    DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+
+    let store = MyKidsStore()
+    return (store, baby, account, notification)
+}
+
+// MARK: - Helpers
+
+@MainActor
+private func waitUntil(
+    timeoutNanoseconds: UInt64 = 2_000_000_000,
+    pollIntervalNanoseconds: UInt64 = 10_000_000,
+    condition: @MainActor () -> Bool
+) async -> Bool {
+    let start = DispatchTime.now().uptimeNanoseconds
+    while DispatchTime.now().uptimeNanoseconds - start < timeoutNanoseconds {
+        if condition() { return true }
+        try? await Task.sleep(nanoseconds: pollIntervalNanoseconds)
+    }
+    return false
+}

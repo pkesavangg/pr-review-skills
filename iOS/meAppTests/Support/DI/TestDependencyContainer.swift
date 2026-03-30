@@ -30,6 +30,7 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(MockWifiScaleService() as WifiScaleServiceProtocol)
         DependencyContainer.shared.register(MockPushNotificationService() as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelAccountFlagService() as AccountFlagServiceProtocol)
+        DependencyContainer.shared.register(MockProductTypeStore() as ProductTypeStoreProtocol)
         // Some stores/managers inject concrete dashboard services.
         // Register mock-backed concrete instances to keep tests isolated and avoid DI fatals.
         _ = registerDashboardConcreteDependencies()
