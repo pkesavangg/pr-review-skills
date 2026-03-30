@@ -19,7 +19,7 @@ subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
-        ignoreFailures.set(true)
+        ignoreFailures.set(false)
         outputToConsole.set(true)
         baseline.set(file("ktlint-baseline.xml"))
 
