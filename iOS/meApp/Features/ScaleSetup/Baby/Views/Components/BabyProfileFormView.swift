@@ -13,10 +13,13 @@ struct BabyProfileFormView: View {
     @State private var showSexPicker = false
     private let lang = BabyScaleSetupStrings.BabyProfile.self
 
-    private let sexOptions = [
-        BabyScaleSetupStrings.BabyProfile.male,
-        BabyScaleSetupStrings.BabyProfile.female
-    ]
+    /// When `true`, the title and subtitle header is hidden (e.g. Settings → Add Baby).
+    var hideHeader: Bool = false
+
+    /// The currently selected `Sex` value derived from the form string, defaulting to `.male`.
+    private var selectedSex: Sex {
+        Sex(rawInput: store.babyProfileForm.biologicalSex.value) ?? .male
+    }
 
     private var focusBinding: Binding<FocusField?> {
         Binding(
@@ -30,6 +33,10 @@ struct BabyProfileFormView: View {
             || !store.babyProfileForm.birthWeightOz.value.isEmpty
     }
 
+    private var birthWeightIsActive: Bool {
+        birthWeightHasValue || focusedField == .pounds || focusedField == .ounces
+    }
+
     /// Display text for the biological sex picker.
     private var sexDisplayText: String {
         let val = store.babyProfileForm.biologicalSex.value
@@ -37,18 +44,20 @@ struct BabyProfileFormView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: .spacingMD) {
-                // Header
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(lang.title)
-                        .fontOpenSans(.heading4)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: .spacingLG) {
+                // Header (scale setup only)
+                if !hideHeader {
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text(lang.title)
+                            .fontOpenSans(.heading4)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.textHeading)
 
-                    Text(lang.subtitle)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        Text(lang.subtitle)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                    }
                 }
 
                 // Name
@@ -79,6 +88,7 @@ struct BabyProfileFormView: View {
                     .datePickerStyle(.compact)
                     .labelsHidden()
                 }
+                .padding(.top, -.spacingSM)
 
                 // Biological Sex
                 VStack(alignment: .leading, spacing: 4) {
@@ -94,7 +104,7 @@ struct BabyProfileFormView: View {
                                         : theme.textBody
                                 )
                             Spacer()
-                            Image(systemName: "chevron.down")
+                            Image(systemName: "chevron.up.chevron.down")
                                 .foregroundColor(theme.textSubheading)
                         }
                         .frame(height: 56)
@@ -103,12 +113,6 @@ struct BabyProfileFormView: View {
                         .cornerRadius(.radiusSM)
                     }
                     .buttonStyle(.plain)
-                    .sheet(isPresented: $showSexPicker, onDismiss: {
-                        store.babyProfileForm.biologicalSex.markAsTouched()
-                        store.babyProfileForm.biologicalSex.validate()
-                    }) {
-                        sexPickerSheet
-                    }
 
                     if let error = store.babyProfileForm.getBiologicalSexError() {
                         Text(error)
@@ -121,7 +125,7 @@ struct BabyProfileFormView: View {
                 // Birth Length
                 VStack(alignment: .leading, spacing: 4) {
                     ZStack(alignment: .leading) {
-                        if !store.babyProfileForm.birthLengthInches.value.isEmpty {
+                        if !store.babyProfileForm.birthLengthInches.value.isEmpty || focusedField == .inches {
                             Text(lang.birthLengthLabel)
                                 .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.textSubheading)
@@ -130,16 +134,16 @@ struct BabyProfileFormView: View {
 
                         HStack {
                             TextField(
-                                lang.birthLengthLabel,
+                                focusedField == .inches ? "" : lang.birthLengthLabel,
                                 text: $store.babyProfileForm.birthLengthInches.value
                             )
                             .keyboardType(.decimalPad)
                             .font(.subHeading1)
                             .foregroundColor(theme.textBody)
                             .focused($focusedField, equals: .inches)
-                            .padding(.top, store.babyProfileForm.birthLengthInches.value.isEmpty ? 0 : 8)
+                            .padding(.top, (!store.babyProfileForm.birthLengthInches.value.isEmpty || focusedField == .inches) ? 8 : 0)
                             .onChange(of: store.babyProfileForm.birthLengthInches.value) { _, newValue in
-                                store.babyProfileForm.birthLengthInches.value = limitDigits(
+                                store.babyProfileForm.birthLengthInches.value = formatDecimalInput(
                                     newValue,
                                     maxDigits: 3
                                 )
@@ -166,8 +170,7 @@ struct BabyProfileFormView: View {
                 // Birth Weight
                 VStack(alignment: .leading, spacing: 4) {
                     ZStack(alignment: .leading) {
-                        if !store.babyProfileForm.birthWeightLbs.value.isEmpty
-                            || !store.babyProfileForm.birthWeightOz.value.isEmpty {
+                        if birthWeightIsActive {
                             Text(lang.birthWeightLabel)
                                 .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.textSubheading)
@@ -176,14 +179,14 @@ struct BabyProfileFormView: View {
 
                         HStack(spacing: .spacingSM) {
                             TextField(
-                                birthWeightHasValue ? "" : lang.birthWeightLabel,
+                                birthWeightIsActive ? "" : lang.birthWeightLabel,
                                 text: $store.babyProfileForm.birthWeightLbs.value
                             )
                             .keyboardType(.numberPad)
                             .font(.subHeading1)
                             .foregroundColor(theme.textBody)
                             .focused($focusedField, equals: .pounds)
-                            .padding(.top, birthWeightHasValue ? 8 : 0)
+                            .padding(.top, birthWeightIsActive ? 8 : 0)
                             .onChange(of: store.babyProfileForm.birthWeightLbs.value) { _, newValue in
                                 let filtered = newValue.filter { $0.isNumber }
                                 store.babyProfileForm.birthWeightLbs.value = String(filtered.prefix(3))
@@ -192,6 +195,8 @@ struct BabyProfileFormView: View {
                             Text("lb")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
+                                .fixedSize()
+                                .padding(.top, birthWeightIsActive ? 8 : 0)
 
                             TextField(
                                 "",
@@ -201,7 +206,7 @@ struct BabyProfileFormView: View {
                             .font(.subHeading1)
                             .foregroundColor(theme.textBody)
                             .focused($focusedField, equals: .ounces)
-                            .padding(.top, birthWeightHasValue ? 8 : 0)
+                            .padding(.top, birthWeightIsActive ? 8 : 0)
                             .onChange(of: store.babyProfileForm.birthWeightOz.value) { _, newValue in
                                 store.babyProfileForm.birthWeightOz.value = formatDecimalInput(
                                     newValue,
@@ -212,6 +217,8 @@ struct BabyProfileFormView: View {
                             Text("oz")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
+                                .fixedSize()
+                                .padding(.top, birthWeightIsActive ? 8 : 0)
                         }
                     }
                     .frame(height: 56)
@@ -227,10 +234,22 @@ struct BabyProfileFormView: View {
                     }
                 }
             }
-            .padding(.horizontal, .spacingSM)
             .padding(.top, .spacingLG)
         }
         .scrollDismissesKeyboard(.interactively)
+        .pickerSheet(
+            isPresented: $showSexPicker,
+            selectedValues: [selectedSex],
+            options: [Sex.allCases],
+            displayValue: { $0.rawValue.capitalized },
+            title: lang.biologicalSexLabel
+        )            { vals in
+                if let sex = vals.first {
+                    store.babyProfileForm.biologicalSex.value = sex.rawValue.capitalized
+                    store.babyProfileForm.biologicalSex.markAsTouched()
+                    store.babyProfileForm.biologicalSex.validate()
+                }
+            }
         .onChange(of: focusedField) { oldValue, _ in
             switch oldValue {
             case .firstName:
@@ -248,69 +267,6 @@ struct BabyProfileFormView: View {
             default: break
             }
         }
-    }
-
-    private var sexPickerSheet: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(lang.biologicalSexLabel)
-                    .fontOpenSans(.heading5)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.textHeading)
-                Spacer()
-                Button {
-                    showSexPicker = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(theme.textBody)
-                }
-            }
-            .padding(.spacingSM)
-            .padding(.top, .spacingXS)
-
-            ForEach(sexOptions, id: \.self) { option in
-                Button {
-                    store.babyProfileForm.biologicalSex.value = option
-                    showSexPicker = false
-                } label: {
-                    HStack {
-                        Text(option)
-                            .fontOpenSans(.body1)
-                            .foregroundColor(theme.textBody)
-                        Spacer()
-                        if store.babyProfileForm.biologicalSex.value == option {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(theme.actionPrimary)
-                        }
-                    }
-                    .padding(.horizontal, .spacingSM)
-                    .padding(.vertical, .spacingMD)
-                }
-            }
-
-            Spacer()
-        }
-        .background(theme.backgroundSecondary)
-        .presentationDetents([.fraction(0.3)])
-        .presentationDragIndicator(.visible)
-    }
-
-    private func limitDigits(_ value: String, maxDigits: Int) -> String {
-        var result = ""
-        var digitCount = 0
-        var hasDecimal = false
-        for char in value {
-            if char.isNumber {
-                guard digitCount < maxDigits else { continue }
-                result.append(char)
-                digitCount += 1
-            } else if char == "." && !hasDecimal {
-                result.append(char)
-                hasDecimal = true
-            }
-        }
-        return result
     }
 
     private func formatDecimalInput(_ value: String, maxDigits: Int) -> String {

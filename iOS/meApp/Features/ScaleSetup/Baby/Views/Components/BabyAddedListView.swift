@@ -14,46 +14,66 @@ struct BabyAddedListView: View {
     private let swipeButtonWidth: CGFloat = 56
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: .spacingLG) {
-                // Header
-                Text(lang.title)
-                    .fontOpenSans(.heading4)
-                    .fontWeight(.bold)
-                    .foregroundColor(theme.textHeading)
-                    .multilineTextAlignment(.center)
-
-                // Baby list with swipe-to-delete
-                VStack(spacing: 0) {
-                    ForEach(store.savedBabies, id: \.id) { baby in
-                        babyRow(baby)
-                    }
-                }
-                .padding(.horizontal, .spacingSM)
-
-                // Add a Baby button
-                ButtonView(
-                    text: lang.addABaby,
-                    type: .outlinedPrimary,
-                    size: .large,
-                    isDisabled: false
-                ) {
-                    store.addAnotherBaby()
-                }
-                .padding(.horizontal, .spacingSM)
+        ZStack {
+            theme.backgroundSecondary.ignoresSafeArea()
+            List {
+                babyListSection
+                addBabyCTA
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.top, .spacingLG)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
         }
+    }
+
+    @ViewBuilder
+    private var babyListSection: some View {
+        Section {
+            ForEach(store.savedBabies, id: \.id) { baby in
+                babyRow(baby)
+                    .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+            }
+        } header: {
+            Text(lang.title)
+                .fontOpenSans(.heading4)
+                .fontWeight(.bold)
+                .foregroundColor(theme.textHeading)
+                .textCase(nil)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, .spacingSM)
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
+    }
+
+    private var addBabyCTA: some View {
+        VStack(alignment: .center, spacing: .spacingLG) {
+            ButtonView(
+                text: lang.addABaby,
+                type: .outlinedPrimary,
+                size: .large,
+                isDisabled: false
+            ) {
+                store.addAnotherBaby()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     private func babyRow(_ baby: Baby) -> some View {
         HStack(spacing: .spacingSM) {
-            Image(systemName: "person.circle.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 32, height: 32)
-                .foregroundColor(theme.statusIconPrimary)
+            let firstInitial = baby.name.firstAlphabeticCharacter().uppercased()
+            InitialIconView(
+                character: firstInitial,
+                textColor: theme.backgroundPrimary,
+                backgroundColor: theme.statusIconPrimary,
+                size: 32,
+                style: .fill
+            )
 
             Text(baby.name)
                 .fontOpenSans(.body2)
@@ -61,7 +81,6 @@ struct BabyAddedListView: View {
 
             Spacer()
 
-            // Edit button
             Button {
                 store.editBaby(baby)
             } label: {
@@ -70,9 +89,9 @@ struct BabyAddedListView: View {
                     .foregroundColor(theme.statusIconPrimary)
             }
         }
-        .padding(.horizontal, .spacingSM)
-        .padding(.vertical, .spacingXS)
+        .padding(.spacingSM)
         .background(theme.backgroundPrimary)
+        .frame(height: 72)
         .swipeableActions(
             buttonWidth: swipeButtonWidth,
             buttons: [

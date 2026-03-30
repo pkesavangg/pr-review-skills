@@ -18,7 +18,7 @@ extension BabyScaleSetupStore {
         case .intro, .permissions, .scaleName, .paired, .babyProfile, .babyAdded:
             break
         case .wakeup:
-            // TODO: Re-enable BLE scanning when API is ready
+    // TODO: Re-enable BLE scanning when API is ready
             // startBluetoothScan()
             simulateScanAndPair()
         case .connectingBluetooth:
@@ -35,17 +35,58 @@ extension BabyScaleSetupStore {
         }
     }
 
-    // MARK: - UI-Only Simulation (API not working)
+    // MARK: - UI-Only Simulation (BLE scanning disabled)
 
-    /// Simulates scan + pair flow: shows scanning UI briefly, then skips straight to scale name.
+    /// Simulates scan + pair: saves scale locally to SwiftData, then navigates to scale name.
     private func simulateScanAndPair() {
         Task { @MainActor in
-            // Show scanning animation for 2 seconds
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             guard !isExiting else { return }
-            // Skip connectingBluetooth and go directly to scaleName
-            isScaleSaved = true
+            await saveScaleLocally()
             navigateToStep(.scaleName)
+        }
+    }
+
+    /// Creates a Device record in SwiftData (local-only, no API call).
+    /// Follows babyApp pattern: scale is account-level, saved with SKU from scaleItem.
+    private func saveScaleLocally() async {
+        guard !isScaleSaved else { return }
+        let accountId = accountService.activeAccount?.accountId ?? ""
+        let scaleId = String(DateTimeTools.getCurrentTimestampMillis())
+        let sku = scaleItem?.sku ?? "0222"
+        let name = scaleItem?.productName ?? "Smart Baby Scale"
+
+        let device = Device(
+            id: scaleId,
+            accountId: accountId,
+            nickname: name,
+            sku: sku,
+            deviceName: name,
+            deviceType: DeviceType.scale.rawValue,
+            createdAt: DateTimeTools.getCurrentDatetimeIsoString(),
+            hasServerID: false,
+            isConnected: false
+        )
+        device.bathScale = BathScale(
+            scaleType: ScaleSourceType.bluetooth.rawValue,
+            bodyComp: false
+        )
+
+        do {
+            let saved = try await scaleService.createScaleInLocal(device)
+            self.savedScale = saved
+            isScaleSaved = true
+            LoggerService.shared.log(
+                level: .info,
+                tag: tag,
+                message: "Baby scale saved locally: \(saved.id)"
+            )
+        } catch {
+            LoggerService.shared.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to save baby scale: \(error)"
+            )
         }
     }
 

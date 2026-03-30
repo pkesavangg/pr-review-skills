@@ -17,8 +17,7 @@ extension BabyScaleSetupStore {
         case .permissions:
             moveToNextStep()
         case .scaleName:
-            // TODO: Re-enable when API is ready
-            // updateScaleNickname()
+            updateScaleNickname()
             moveToNextStep()
         case .paired:
             // Move to baby profile creation
@@ -99,14 +98,29 @@ extension BabyScaleSetupStore {
 
     // MARK: - Private
 
-    // TODO: Re-enable when API is ready
-    /*
+    /// Saves the user-entered nickname to the locally persisted Device record.
     private func updateScaleNickname() {
         guard let scale = savedScale else { return }
         let nickname = scaleNicknameForm.nickname.value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !nickname.isEmpty else { return }
-        scale.nickname = nickname
-        LoggerService.shared.log(level: .info, tag: tag, message: "Scale nickname updated to: \(nickname)")
+        Task {
+            do {
+                _ = try await scaleService.editDevice(
+                    scale.id,
+                    properties: ["nickname": nickname]
+                )
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Scale nickname saved: \(nickname)"
+                )
+            } catch {
+                LoggerService.shared.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to save nickname: \(error)"
+                )
+            }
+        }
     }
-    */
 }
