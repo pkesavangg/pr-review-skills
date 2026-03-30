@@ -34,6 +34,7 @@ object AppIcons {
     val Export = R.drawable.export_info
     val Plus = R.drawable.ic_plus
     val Minus = R.drawable.ic_minus
+    val EditPencil = R.drawable.ic_edit_pencil
   }
 
   object Outlined {
