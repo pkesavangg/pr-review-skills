@@ -209,7 +209,7 @@ final class ContentViewModel: ObservableObject {
         // Migration runs before sync so opStack entries are available for first sync.
         await entryService.migrateFromSQLiteIfNeeded()
         await entryService.syncAllEntriesWithRemote()
-        await entryService.loadDashboardData()
+        await entryService.loadDashboardData(entryType: .wg)
         bluetoothService.initialize()
 
         do {

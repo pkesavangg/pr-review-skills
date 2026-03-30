@@ -18,40 +18,21 @@ extension BabyScaleSetupStore {
         case .intro, .permissions, .scaleName, .paired, .babyProfile, .babyAdded:
             break
         case .wakeup:
-            // TODO: Re-enable BLE scanning when API is ready
-            // startBluetoothScan()
-            simulateScanAndPair()
+            startBluetoothScan()
         case .connectingBluetooth:
-            // TODO: Re-enable BLE pairing when API is ready
-            // connectionState = .loading
-            // Task {
-            //     if discoveredScale != nil && discoveryEvent != nil {
-            //         await confirmPair()
-            //     } else {
-            //         connectionState = .failure
-            //     }
-            // }
-            break
+            connectionState = .loading
+            Task {
+                if discoveredScale != nil && discoveryEvent != nil {
+                    await confirmPair()
+                } else {
+                    connectionState = .failure
+                }
+            }
         }
     }
 
-    // MARK: - UI-Only Simulation (API not working)
+    // MARK: - Bluetooth Scanning
 
-    /// Simulates scan + pair flow: shows scanning UI briefly, then skips straight to scale name.
-    private func simulateScanAndPair() {
-        Task { @MainActor in
-            // Show scanning animation for 2 seconds
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard !isExiting else { return }
-            // Skip connectingBluetooth and go directly to scaleName
-            isScaleSaved = true
-            navigateToStep(.scaleName)
-        }
-    }
-
-    // MARK: - Bluetooth Scanning (disabled — API not working)
-
-    /*
     func startBluetoothScan() {
         resetDiscoveryState()
         Task { bluetoothService.scanForPairing() }
@@ -189,13 +170,13 @@ extension BabyScaleSetupStore {
             )
             self.savedScale = device
             await scaleService.syncAllScalesWithRemote()
+            NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "Baby scale saved: \(device.id)")
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save baby scale: \(error)")
             isScaleSaved = false
         }
     }
-    */
 
     // MARK: - Helpers
 
@@ -212,12 +193,12 @@ extension BabyScaleSetupStore {
             title: "Scale Already Paired",
             message: "This scale is already paired to your account. Would you like to set it up again?",
             buttons: [
-                AlertButtonModel(title: commonLang.cancel, type: .secondary, action: { [weak self] _ in
+                AlertButtonModel(title: commonLang.cancel, type: .secondary) { [weak self] _ in
                     self?.navigateToStep(.intro)
-                }),
-                AlertButtonModel(title: "Continue", type: .primary, action: { [weak self] _ in
+                },
+                AlertButtonModel(title: "Continue", type: .primary) { [weak self] _ in
                     self?.moveToNextStep()
-                })
+                }
             ]
         )
         notificationService.showAlert(alert)

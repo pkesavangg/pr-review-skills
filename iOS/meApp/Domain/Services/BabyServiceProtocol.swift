@@ -18,12 +18,32 @@ protocol BabyServiceProtocol: AnyObject {
     var currentBabies: [Baby] { get }
 
     /// Save a new baby with full profile fields (called at the end of baby scale setup flow).
-    func saveBaby(name: String, accountId: String, deviceId: String?,
-                  birthday: Date?, biologicalSex: String?,
-                  birthLengthInches: Double?, birthWeightLbs: Double?, birthWeightOz: Double?) async throws -> Baby
+    // swiftlint:disable:next function_parameter_count
+    func saveBaby(
+        name: String,
+        accountId: String,
+        deviceId: String?,
+        birthday: Date?,
+        biologicalSex: String?,
+        birthLengthInches: Double?,
+        birthWeightLbs: Double?,
+        birthWeightOz: Double?
+    ) async throws -> Baby
 
     /// Update a baby's name.
     func updateBaby(_ baby: Baby, name: String) async throws
+
+    /// Update a baby's full profile.
+    // swiftlint:disable:next function_parameter_count
+    func updateBabyProfile(
+        _ baby: Baby,
+        name: String,
+        birthday: Date?,
+        biologicalSex: String?,
+        birthLengthInches: Double?,
+        birthWeightLbs: Double?,
+        birthWeightOz: Double?
+    ) async throws
 
     /// Delete a baby record.
     func deleteBaby(_ baby: Baby) async throws
@@ -35,8 +55,15 @@ protocol BabyServiceProtocol: AnyObject {
 /// Convenience extension preserving the original 3-parameter signature.
 extension BabyServiceProtocol {
     func saveBaby(name: String, accountId: String, deviceId: String?) async throws -> Baby {
-        try await saveBaby(name: name, accountId: accountId, deviceId: deviceId,
-                           birthday: nil, biologicalSex: nil,
-                           birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil)
+        try await saveBaby(
+            name: name,
+            accountId: accountId,
+            deviceId: deviceId,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
+        )
     }
 }

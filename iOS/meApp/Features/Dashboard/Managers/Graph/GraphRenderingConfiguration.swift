@@ -179,6 +179,17 @@ struct GraphRenderingConfiguration {
 
         if period == .total { return bounds.min }
 
+        if period == .year,
+           calendar.isDate(bounds.min, equalTo: bounds.max, toGranularity: .year) {
+            var components = yearlyCalendar.dateComponents([.year], from: bounds.min)
+            components.month = 1
+            components.day = 1
+            components.hour = 12
+            components.minute = 0
+            components.second = 0
+            return yearlyCalendar.date(from: components) ?? bounds.min
+        }
+
         let domainLength = visibleDomainLength(for: period)
 
         if let anchor = anchorDate {
@@ -382,6 +393,12 @@ struct GraphRenderingConfiguration {
         let adjMax = maxDate.addingTimeInterval(maxBuffer)
 
         if useFixedDomain {
+            if period == .year {
+                let cal = yearlyCalendar
+                let start = cal.dateInterval(of: .year, for: minDate)?.start ?? adjMin
+                let end = cal.dateInterval(of: .year, for: maxDate)?.end.addingTimeInterval(-1) ?? adjMax
+                return (start, end)
+            }
             return (adjMin, max(adjMax, currentPeriodEnd(for: period)))
         } else {
             let buffer = domainLength * 2.0

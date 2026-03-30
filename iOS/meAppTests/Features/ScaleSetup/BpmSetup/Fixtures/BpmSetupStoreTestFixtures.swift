@@ -61,8 +61,13 @@ enum BpmSetupStoreTestFixtures {
     }
 
     @MainActor
-    static func configureDefaultBpm(_ store: BpmSetupStore) {
+    static func configureA3Bpm(_ store: BpmSetupStore) {
         store.configure(with: "0603")
+    }
+
+    @MainActor
+    static func configureA6Bpm(_ store: BpmSetupStore) {
+        store.configure(with: "0663")
     }
 
     @MainActor
@@ -96,14 +101,13 @@ enum BpmSetupStoreTestFixtures {
         id: String = "bpm-1",
         accountId: String = "acct-1"
     ) -> Device {
-        let device = ScaleTestFixtures.makeDevice(
+        ScaleTestFixtures.makeDevice(
             id: id,
             accountId: accountId,
             displayName: "Blood Pressure Monitor",
             sku: "0603",
             deviceName: "BPM Device"
         )
-        return device
     }
 
     static func makeBpmDiscoveryEvent(

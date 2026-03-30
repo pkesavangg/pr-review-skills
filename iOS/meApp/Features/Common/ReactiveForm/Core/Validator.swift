@@ -142,7 +142,7 @@ extension Validator where Value == String {
     public static let skuMatch = Validator(type: .skuMatch) { value in
         // Map SKU for SCALES lookup (e.g., 0022 -> 0383)
         let lookupSku = DeviceHelper.mapSkuForDisplay(value)
-        return SCALES.contains { $0.sku == lookupSku } || BPMS.contains { $0.sku == value }
+        return SCALES.contains { $0.sku == lookupSku } || bpmSkus.contains(value)
     }
     
     /// Validator that checks for duplicate usernames in a provided user list
@@ -181,6 +181,13 @@ extension Validator where Value == String {
     public static let userNameUnavailable = Validator(type: .userNameUnavailable) { value in
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedValue.lowercased() != "guest"
+    }
+
+    /// Validator that checks if the value contains only numeric characters (digits).
+    public static let numericOnly = Validator(type: .numericOnly) { value in
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true } // Let .required handle empty
+        return trimmed.allSatisfy(\.isNumber)
     }
 
 }

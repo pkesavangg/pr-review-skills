@@ -12,18 +12,12 @@ final class DashboardDateRangeManager: DashboardDateRangeManagerProtocol {
     // MARK: - Date Range Calculations
     
     func getYearLabelDateRange(xScrollPosition: Date) -> (start: Date, end: Date)? {
-        let leftEdge = xScrollPosition
-        
-        // Align to the start of the month containing the left edge
-        let start = calendar.dateInterval(of: .month, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
-        guard let endExclusive = calendar.date(byAdding: .month, value: 12, to: start) else {
+        // Year view labels should describe the calendar year window, not a rolling
+        // 12-month span based on the current month.
+        guard let yearInterval = calendar.dateInterval(of: .year, for: xScrollPosition) else {
             return nil
         }
-        let endInclusive = inclusiveEnd(fromExclusive: endExclusive)
-        
-        // Keep label aligned to the visible 12-month window, even if trailing months
-        // have no entries. This matches the rendered year grid/ticks behavior.
-        return (start: start, end: endInclusive)
+        return (start: yearInterval.start, end: inclusiveEnd(fromExclusive: yearInterval.end))
     }
     
     func getLabelDateRangeForMonth(
@@ -84,8 +78,8 @@ final class DashboardDateRangeManager: DashboardDateRangeManagerProtocol {
         }
         
         let leftEdge = xScrollPosition
-        let windowStart = calendar.dateInterval(of: .month, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
-        let endExclusive = calendar.date(byAdding: .month, value: 12, to: windowStart)
+        let windowStart = calendar.dateInterval(of: .year, for: leftEdge)?.start ?? calendar.startOfDay(for: leftEdge)
+        let endExclusive = calendar.date(byAdding: .year, value: 1, to: windowStart)
             ?? windowStart.addingTimeInterval(visibleDomainLength)
         return DateInterval(start: windowStart, end: inclusiveEnd(fromExclusive: endExclusive))
     }

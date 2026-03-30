@@ -6,16 +6,16 @@
 import SwiftUI
 
 /// "Complete Baby Profile" — form for name, birthday, sex, birth length/weight.
+/// Uses the same UI components as the signup flow's AddBabyStepView.
 struct BabyProfileFormView: View {
     @EnvironmentObject var store: BabyScaleSetupStore
     @Environment(\.appTheme) private var theme
     @FocusState private var focusedField: FocusField?
     private let lang = BabyScaleSetupStrings.BabyProfile.self
+    private let labels = InputFieldLabels.self
 
-    private let sexOptions = [
-        BabyScaleSetupStrings.BabyProfile.male,
-        BabyScaleSetupStrings.BabyProfile.female
-    ]
+    /// When `true`, the title and subtitle header is hidden (e.g. Settings -> Add Baby).
+    var hideHeader: Bool = false
 
     private var focusBinding: Binding<FocusField?> {
         Binding(
@@ -27,146 +27,153 @@ struct BabyProfileFormView: View {
     /// Display text for the biological sex picker.
     private var sexDisplayText: String {
         let val = store.babyProfileForm.biologicalSex.value
-        return val.isEmpty ? lang.biologicalSexLabel : val
+        return val.isEmpty ? "" : val.capitalized
+    }
+
+    /// The currently selected `Sex` value derived from the form string, defaulting to `.male`.
+    private var selectedSex: Sex {
+        Sex(rawInput: store.babyProfileForm.biologicalSex.value) ?? .male
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: .spacingMD) {
-                // Header
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(lang.title)
-                        .fontOpenSans(.heading4)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
-
-                    Text(lang.subtitle)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
-                }
-
-                // Name
-                AppInputField(
-                    config: TextInputConfig(
-                        label: lang.namePlaceholder,
-                        placeholder: lang.namePlaceholder,
-                        inputType: .text,
-                        errorMessage: store.babyProfileForm.getNameError(),
-                        focusField: .firstName
-                    ),
-                    value: $store.babyProfileForm.name.value,
-                    focusedField: focusBinding
-                )
-
-                // Birthday
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(lang.birthdayLabel)
-                        .fontOpenSans(.body3)
-                        .foregroundColor(theme.textBody)
-
-                    DatePicker(
-                        "",
-                        selection: $store.babyProfileForm.birthday.value,
-                        in: ...Date(),
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-                    .labelsHidden()
-                }
-
-                // Biological Sex
-                Menu {
-                    ForEach(sexOptions, id: \.self) { option in
-                        Button(option) {
-                            store.babyProfileForm.biologicalSex.value = option
-                        }
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer().frame(height: .spacingSM)
+                // Header (scale setup only)
+                if !hideHeader {
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text(lang.title)
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
+                        Text(lang.subtitle)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textHeading)
                     }
-                } label: {
-                    HStack {
-                        Text(sexDisplayText)
-                            .fontOpenSans(.body1)
-                            .foregroundColor(
-                                store.babyProfileForm.biologicalSex.value.isEmpty
-                                    ? theme.textBody.opacity(0.5)
-                                    : theme.textBody
-                            )
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .foregroundColor(theme.textBody)
-                    }
-                    .padding(.horizontal, .spacingSM)
-                    .padding(.vertical, .spacingSM)
-                    .background(theme.backgroundPrimary)
-                    .cornerRadius(.radiusSM)
                 }
 
-                // Birth Length — inline: "Birth Length" label | value | "in"
-                VStack(alignment: .leading, spacing: 0) {
-                    MetricInputField(
+                // Form fields
+                VStack(alignment: .leading, spacing: .spacingMD) {
+                    // Baby Name
+                    AppInputField(
                         config: TextInputConfig(
-                            label: lang.birthLengthLabel,
-                            inputType: .metric,
-                            focusField: .inches,
-                            maxLength: 4,
-                            maxValue: 99.9
+                            label: labels.babyName,
+                            inputType: .text,
+                            errorMessage: store.babyProfileForm.getNameError(),
+                            focusField: .babyName
                         ),
-                        value: $store.babyProfileForm.birthLengthInches.value,
-                        focusedField: focusBinding
-                    ) {
-                        focusedField = .pounds
-                    }
+                        value: $store.babyProfileForm.name.value,
+                        focusedField: focusBinding,
+                        onCommit: {
+                            store.babyProfileForm.name.markAsTouched()
+                            store.babyProfileForm.name.validate()
+                            focusedField = nil
+                        },
+                        onEditingChanged: { isEditing in
+                            if !isEditing {
+                                store.babyProfileForm.name.markAsTouched()
+                                store.babyProfileForm.name.validate()
+                            }
+                        }
+                    )
 
-                    if let error = store.babyProfileForm.getBirthLengthError() {
-                        Text(error)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textError)
-                            .padding(.leading, .spacingSM)
-                            .padding(.top, 2)
-                    }
-                }
+                    // Baby's Birthday
+                    VStack(alignment: .leading, spacing: .spacingSM) {
+                        Text(lang.birthdayLabel)
+                            .fontOpenSans(.body3)
+                            .foregroundColor(theme.textSubheading)
 
-                // Birth Weight — inline: "Birth Weight" label | lbs | "lb" | oz | "oz"
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: .spacingSM) {
-                        MetricInputField(
-                            config: TextInputConfig(
-                                label: ManualEntryStrings.pounds,
-                                inputType: .metric,
-                                focusField: .pounds,
-                                maxLength: 3,
-                                allowWholeNumbers: true
-                            ),
-                            value: $store.babyProfileForm.birthWeightLbs.value,
-                            focusedField: focusBinding
+                        DateLabelView(
+                            date: store.babyProfileForm.birthday.value,
+                            isSelected: store.showBabyDatePicker
                         ) {
-                            focusedField = .ounces
+                            withAnimation { store.showBabyDatePicker.toggle() }
                         }
 
-                        MetricInputField(
-                            config: TextInputConfig(
-                                label: ManualEntryStrings.ounces,
-                                inputType: .metric,
-                                focusField: .ounces,
-                                maxLength: 3,
-                                clearZeroValue: true
-                            ),
-                            value: $store.babyProfileForm.birthWeightOz.value,
-                            focusedField: focusBinding
+                        DatePickerView(
+                            isPresented: $store.showBabyDatePicker,
+                            date: $store.babyProfileForm.birthday.value,
+                            endDate: Date()
                         )
                     }
 
-                    if let error = store.babyProfileForm.getBirthWeightError() {
-                        Text(error)
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textError)
-                            .padding(.leading, .spacingSM)
-                            .padding(.top, 2)
-                    }
+                    // Biological Sex
+                    ActionListItemView(config: ActionListItemConfig(
+                        title: labels.biologicalSex,
+                        value: sexDisplayText,
+                        chevronType: .upDown) { store.showBabySexPicker = true })
+                        .padding(.horizontal, .spacingSM)
+                        .padding(.vertical, .spacingXS / 2)
+                        .background(theme.backgroundPrimary)
+                        .cornerRadius(.spacingXS)
+
+                    // Birth Length
+                    AppInputField(
+                        config: TextInputConfig(
+                            label: labels.babyBirthLength,
+                            inputType: .number,
+                            errorMessage: store.babyProfileForm.getBirthLengthError(),
+                            focusField: .babyBirthLength
+                        ),
+                        value: $store.babyProfileForm.birthLengthInches.value,
+                        focusedField: focusBinding,
+                        onCommit: {
+                            store.babyProfileForm.birthLengthInches.markAsTouched()
+                            store.babyProfileForm.birthLengthInches.validate()
+                            focusedField = .babyBirthWeight
+                        },
+                        onEditingChanged: { isEditing in
+                            if !isEditing {
+                                store.babyProfileForm.birthLengthInches.markAsTouched()
+                                store.babyProfileForm.birthLengthInches.validate()
+                            }
+                        }
+                    )
+
+                    // Birth Weight
+                    AppInputField(
+                        config: TextInputConfig(
+                            label: labels.babyBirthWeight,
+                            inputType: .number,
+                            errorMessage: store.babyProfileForm.getBirthWeightError(),
+                            focusField: .babyBirthWeight
+                        ),
+                        value: $store.babyProfileForm.birthWeightLbs.value,
+                        focusedField: focusBinding,
+                        onCommit: {
+                            store.babyProfileForm.birthWeightLbs.markAsTouched()
+                            store.babyProfileForm.birthWeightLbs.validate()
+                            focusedField = nil
+                        },
+                        onEditingChanged: { isEditing in
+                            if !isEditing {
+                                store.babyProfileForm.birthWeightLbs.markAsTouched()
+                                store.babyProfileForm.birthWeightLbs.validate()
+                            }
+                        }
+                    )
                 }
+                .padding(.top, .spacingLG)
+
+                Spacer()
             }
-            .padding(.horizontal, .spacingSM)
-            .padding(.top, .spacingLG)
+            .padding(.bottom, .spacing3XL)
         }
         .scrollDismissesKeyboard(.interactively)
+        .onTapGesture {
+            hideKeyboard()
+        }
+        .pickerSheet(
+            isPresented: $store.showBabySexPicker,
+            selectedValues: [selectedSex],
+            options: [Sex.allCases],
+            displayValue: { $0.rawValue.capitalized },
+            title: labels.biologicalSex
+        ) { vals in
+            if let sex = vals.first {
+                store.babyProfileForm.biologicalSex.value = sex.rawValue.capitalized
+                store.babyProfileForm.biologicalSex.markAsTouched()
+                store.babyProfileForm.biologicalSex.validate()
+            }
+        }
     }
 }

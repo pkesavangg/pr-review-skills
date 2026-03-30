@@ -25,6 +25,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     @Injector var logger: LoggerService
     @Injector private var scaleService: ScaleService
     @Injector private var entryService: EntryService
+    @Injector private var productTypeStore: ProductTypeStore
 
     // MARK: - Formatter and Cache Services
     let formatter: DashboardFormatterProtocol
@@ -33,6 +34,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     // MARK: - Centralized State
 
     @Published var state = DashboardState()
+
+    /// The active product type for the dashboard (weight or BPM).
+    @Published var productType: EntryType = .wg
+    @Published private(set) var availableProductItems: [ProductSelection] = []
+    @Published private(set) var selectedProductItem: ProductSelection = .myWeight
 
     // MARK: - Private Properties
 
@@ -135,6 +141,8 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
         setupBindings()
         setupSubscriptions()
+        availableProductItems = productTypeStore.availableItems
+        selectedProductItem = productTypeStore.selectedItem
 
         if !streakManager.state.streakItems.isEmpty {
             state.ui.hasLoadedProgressMetrics = true
@@ -361,6 +369,55 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 self?.lifecycleManager.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
+
+        // React to product type switching from the header dropdown
+        productTypeStore.$availableItems
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] items in
+                self?.availableProductItems = items
+            }
+            .store(in: &cancellables)
+
+        productTypeStore.selectedItemPublisher
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] selection in
+                guard let self else { return }
+                self.selectedProductItem = selection
+                let newType: EntryType = selection == .myBloodPressure ? .bpm : .wg
+                self.switchProductType(to: newType)
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - Product Type Switching
+
+    func switchProductType(to newType: EntryType) {
+        guard productType != newType else { return }
+        productType = newType
+        dataManager.switchDataSource(to: newType)
+        chartManager?.clearSelection()
+        chartManager?.clearAllCaches()
+        cacheManager.clearAllCaches()
+        state.ui.hasInitializedChart = false
+        graphManager.state.isGraphReady = false
+        Task { [weak self] in
+            guard let self else { return }
+            await self.entryService.loadDashboardData(entryType: newType)
+            await self.lifecycleManager.initializeDashboard()
+        }
+    }
+
+    func selectProductItem(_ item: ProductSelection) {
+        productTypeStore.select(item)
+    }
+
+    var productTypeSelectorStore: ProductTypeStore {
+        productTypeStore
+    }
+
+    var dashboardEntryService: EntryService {
+        entryService
     }
 
     // MARK: - Display State Computed Properties
@@ -502,6 +559,19 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     var chartSeriesData: [GraphSeries] {
+        // BPM uses its own 3-series builder; weight uses the existing pipeline
+        if productType == .bpm {
+            return cacheManager.getChartSeriesData(
+                isScrolling: state.graph.isScrolling,
+                isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
+                period: state.graph.selectedPeriod,
+                selectedMetric: nil,
+                operationsCount: continuousOperations.count,
+                yAxisDomain: chartManager.yAxisDomain
+            ) {
+                graphManager.generateBpmChartData(from: continuousOperations)
+            }
+        }
         return cacheManager.getChartSeriesData(
             isScrolling: state.graph.isScrolling,
             isProcessingScrollEnd: chartManager.isProcessingScrollEnd,

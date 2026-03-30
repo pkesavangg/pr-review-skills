@@ -87,7 +87,10 @@ final class BabyScaleSetupStore: ObservableObject {
 
     // MARK: - Baby Profile State
     @Published var savedBabies: [Baby] = []
+    @Published var editingBaby: Baby?
     @Published var showSkipDialog: Bool = false
+    @Published var showBabyDatePicker: Bool = false
+    @Published var showBabySexPicker: Bool = false
 
     // MARK: - Computed Properties
 
@@ -104,10 +107,8 @@ final class BabyScaleSetupStore: ObservableObject {
                 return AnyView(BabyScaleScanningView())
             case .connectingBluetooth:
                 return AnyView(
-                    BluetoothConnectionView(
-                        state: connectionState,
-                        setupType: .babyScale,
-                        onTryAgain: { [weak self] in
+                    BabyScaleConnectionErrorView(
+                        onPairAgain: { [weak self] in
                             self?.tryAgainButtonHandler()
                         },
                         onSupport: { [weak self] in
@@ -132,8 +133,10 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Updates the enabled state of the footer "Next" button based on the current step.
     func updateNextEnabled() {
         switch currentStep {
-        case .intro, .permissions, .wakeup, .connectingBluetooth, .paired, .babyAdded:
+        case .intro, .wakeup, .connectingBluetooth, .paired, .babyAdded:
             isNextEnabled = true
+        case .permissions:
+            isNextEnabled = arePermissionsEnabled()
         case .scaleName:
             isNextEnabled = scaleNicknameForm.isValid
         case .babyProfile:
@@ -143,10 +146,12 @@ final class BabyScaleSetupStore: ObservableObject {
 
     /// Shows the help alert.
     func showHelpModal() {
-        notificationService.showAlert(AlertModel(
-            title: "Need Help?",
-            message: lang.Intro.troubleSettingUp,
-            buttons: [AlertButtonModel(title: commonLang.ok, type: .primary, action: { _ in })]
-        ))
+        notificationService.showAlert(
+            AlertModel(
+                title: "Need Help?",
+                message: lang.Intro.troubleSettingUp,
+                buttons: [AlertButtonModel(title: commonLang.ok, type: .primary) { _ in }]
+            )
+        )
     }
 }

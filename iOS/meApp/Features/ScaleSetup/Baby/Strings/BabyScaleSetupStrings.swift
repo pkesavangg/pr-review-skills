@@ -21,6 +21,7 @@ struct BabyScaleSetupStrings {
     // MARK: - Intro
     struct Intro {
         static let smartBabyScale = "Smart Baby Scale"
+        // swiftlint:disable:next line_length
         static let troubleSettingUp = "If you have any trouble setting up your monitor, you can connect with our team via the help button in the top right."
         static let cantFindModelNumber = "CAN'T FIND YOUR MODEL NUMBER?"
     }
@@ -42,6 +43,7 @@ struct BabyScaleSetupStrings {
     // MARK: - Connection
     struct Connection {
         static let unableToConnect = "Unable to connect to your device"
+        // swiftlint:disable:next line_length
         static let interferenceMessage = "This may be caused by interference from another Bluetooth device. Tap PAIR AGAIN to try again or contact customer service."
         static let pairAgain = "PAIR AGAIN"
         static let support = "SUPPORT"
@@ -71,6 +73,9 @@ struct BabyScaleSetupStrings {
         static let birthWeightLabel = "birth weight"
         static let male = "Male"
         static let female = "Female"
+        static let required = "Required."
+        static let invalidWeight = "Please enter a valid weight."
+        static let invalidLength = "Please enter a valid length."
     }
 
     // MARK: - Baby Added
@@ -78,14 +83,6 @@ struct BabyScaleSetupStrings {
         static let title = "Your Baby Has Been Added!"
         static let subtitle = "This helps personalize your baby's scale readings."
         static let addABaby = "ADD A BABY"
-    }
-
-    // MARK: - Skip Dialog
-    struct SkipDialog {
-        static let title = "Skip Baby Profile?"
-        static let message = "Setup is complete. You can add a baby profile later from Settings."
-        static let cancel = "CANCEL"
-        static let finishSetup = "FINISH SETUP"
     }
 
     // MARK: - Buttons

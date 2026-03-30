@@ -169,7 +169,7 @@ struct SettingsScreen: View {
             .listRowInsets()
             if settingsStore.shouldShowMyKids {
                 ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
-                    // TODO: Navigate to My Kids screen
+                    router.navigate(to: .myKids)
                 })
                 .listRowInsets()
             }
@@ -203,7 +203,7 @@ struct SettingsScreen: View {
                 router.navigate(to: .appPermissions)
             })
             .listRowInsets()
-            if settingsStore.hasWeightScale {
+            if settingsStore.shouldShowNotifications {
                 ActionListItemView(config: ActionListItemConfig(
                     title: settingsLang.notifications,
                     value: settingsStore.notificationsOnText,

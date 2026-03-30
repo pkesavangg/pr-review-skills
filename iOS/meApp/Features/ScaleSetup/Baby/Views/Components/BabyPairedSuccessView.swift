@@ -17,7 +17,7 @@ struct BabyPairedSuccessView: View {
                 // Title + subtitle
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(lang.title)
-                        .fontOpenSans(.heading3)
+                        .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
 
@@ -31,7 +31,6 @@ struct BabyPairedSuccessView: View {
                     .frame(width: 160, height: 160)
                     .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, .spacingSM)
             .padding(.top, .spacingLG)
         }
     }

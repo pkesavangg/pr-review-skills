@@ -19,10 +19,6 @@ struct BPMonthSummaryItem: View {
         return formatter.string(from: date)
     }
 
-    private var pressureText: String {
-        "\(month.avgSystolic)/\(month.avgDiastolic)"
-    }
-
     private var pressureColor: Color {
         BPCategory.classify(systolic: month.avgSystolic, diastolic: month.avgDiastolic).color(theme: theme)
     }
@@ -44,7 +40,7 @@ struct BPMonthSummaryItem: View {
 
                 // Average pressure
                 VStack(alignment: .leading) {
-                    Text(pressureText)
+                    Text(month.pressureText)
                         .fontOpenSans(.body2)
                         .foregroundColor(pressureColor)
 
@@ -58,7 +54,7 @@ struct BPMonthSummaryItem: View {
 
                 // Average pulse
                 VStack(alignment: .leading) {
-                    Text("+/-#.# \(month.avgPulse)")
+                    Text("\(month.avgPulse)")
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
 

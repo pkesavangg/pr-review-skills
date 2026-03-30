@@ -17,6 +17,8 @@ struct BPHistoryEntryItem: View {
         "\(entry.systolic)/\(entry.diastolic)"
     }
 
+    private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
+
     private var pressureColor: Color {
         BPCategory.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
     }
@@ -61,10 +63,11 @@ struct BPHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Expansion chevron
+                // Expansion chevron — always occupies space to keep columns aligned
                 AppIconView(icon: AppAssets.chevronDown)
                     .foregroundColor(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .opacity(hasNotes ? 1 : 0)
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
@@ -92,7 +95,7 @@ struct BPHistoryEntryItem: View {
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            onTap()
+            if hasNotes { onTap() }
         }
     }
 }
