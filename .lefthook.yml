@@ -7,11 +7,11 @@ pre-commit:
   commands:
     detekt:
       glob: "**/*.kt"
-      run: >
-        detekt
-        --input {staged_files}
-        --config Android/config/detekt/detekt.yml
-        --baseline Android/config/detekt/detekt-baseline.xml
+      run: |
+        detekt \
+          --input "$(echo {staged_files} | tr ' ' ',')" \
+          --config Android/config/detekt/detekt.yml \
+          --baseline Android/config/detekt/detekt-baseline.xml
       skip:
         - merge
         - rebase

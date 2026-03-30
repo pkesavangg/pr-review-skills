@@ -2,36 +2,25 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
-    <ID>ForbiddenComment:AppChip.kt$ChipButtonDefaults$// TODO: val borderInDp = with(LocalDensity.current) { 1.5f.toDp() }</ID>
-    <ID>ForbiddenComment:AppScaleImage.kt$// TODO: Update color tokens for glow effect</ID>
-    <ID>ForbiddenComment:AppStatusService.kt$AppStatusService$// TODO: Get from user preferences</ID>
-    <ID>ForbiddenComment:AppSwipableListItem.kt$// TODO: Need to handle this</ID>
-    <ID>ForbiddenComment:DashboardService.kt$DashboardService$// TODO: Not in use</ID>
-    <ID>ForbiddenComment:DashboardService.kt$DashboardService$// TODO: no use</ID>
-    <ID>ForbiddenComment:EntryRepository.kt$EntryRepository$//TODO: This is not used at the moment and is retained for possible future requirements</ID>
-    <ID>ForbiddenComment:HealthConnectRepository.kt$HealthConnectRepository$//TODO:Need to call update local account</ID>
-    <ID>ForbiddenComment:HealthConnectSyncWorker.kt$HealthConnectSyncWorker$// TODO: Implement background sync logic</ID>
-    <ID>ForbiddenComment:NotificationManager.kt$NotificationManager$// TODO: Here, you can handle the token as needed (e.g., send it to your server)</ID>
-    <ID>ForbiddenComment:ResponseInterceptor.kt$ResponseInterceptor$// TODO: Handle bad request response</ID>
-    <ID>ForbiddenComment:ResponseInterceptor.kt$ResponseInterceptor$// TODO: Handle forbidden response</ID>
-    <ID>ForbiddenComment:ResponseInterceptor.kt$ResponseInterceptor$// TODO: Handle internal server error response</ID>
-    <ID>ForbiddenComment:ScaleDetailsViewModel.kt$ScaleDetailsViewModel$// TODO: need to implement download option</ID>
-    <ID>ForbiddenComment:SegmentButtonGroup.kt$SegmentButtonDefaults$// TODO: Need to update after UX answered</ID>
-    <ID>ForbiddenComment:SegmentButtonGroup.kt$SegmentButtonDefaults$// TODO: use design token for radius after pr merge</ID>
-    <ID>ForbiddenComment:SettingsReducer.kt$// TODO: MyAccountsReducer and related state/intent may be implemented for MyAccountsScreen if needed, following the same pattern.</ID>
-    <ID>ForbiddenComment:SettingsScreen.kt$// TODO: A new folder 'screens' will be created under 'settings' for MyAccountsScreen, MaxAccountsReachedDialog, and RemoveAccountDialog.</ID>
-    <ID>ForbiddenComment:SettingsScreen.kt$// TODO: MyAccountsScreen and related dialogs/popups will be implemented in a new 'screens' folder under 'settings'.</ID>
-    <ID>ForbiddenComment:SettingsScreen.kt$// TODO: Navigation to MyAccountsScreen will be added to the settings list.</ID>
-    <ID>ForbiddenComment:SettingsScreenStrings.kt$// TODO: MyAccountsScreenStrings will be implemented in a new file in this folder, following the PascalCase object pattern for static text.</ID>
-    <ID>ForbiddenComment:SoftwareUpdateScreen.kt$// TODO: Add animated checkmark or use a checkmark icon</ID>
+    <ID>ForbiddenImport:AccountServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:AuthTokenInterceptor.kt$import kotlinx.coroutines.runBlocking</ID>
+    <ID>ForbiddenImport:ExportServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
+    <ID>ForbiddenImport:IntegrationServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:MainActivity.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:TokenAuthenticator.kt$import kotlinx.coroutines.runBlocking</ID>
+    <ID>ForbiddenImport:UserSettingsServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>LargeClass:AccountRepository.kt$AccountRepository : IAccountRepository</ID>
+    <ID>LargeClass:AccountRepositoryTest.kt$AccountRepositoryTest</ID>
     <ID>LargeClass:AccountService.kt$AccountService : BaseServiceIAccountService</ID>
+    <ID>LargeClass:AccountServiceTest.kt$AccountServiceTest</ID>
     <ID>LargeClass:AppViewModel.kt$AppViewModel : BaseIntentViewModel</ID>
     <ID>LargeClass:BtWifiScaleSetupViewModel.kt$BtWifiScaleSetupViewModel : ScaleSetupViewmodel</ID>
+    <ID>LargeClass:DeviceServiceTest.kt$DeviceServiceTest</ID>
+    <ID>LargeClass:FeedServiceTest.kt$FeedServiceTest</ID>
+    <ID>LargeClass:GoalServiceTest.kt$GoalServiceTest</ID>
     <ID>LargeClass:HealthConnectService.kt$HealthConnectService : BaseServiceIHealthConnectService</ID>
+    <ID>LargeClass:HealthConnectServiceTest.kt$HealthConnectServiceTest</ID>
+    <ID>LargeClass:MigrationServiceTest.kt$MigrationServiceTest</ID>
     <ID>LargeClass:ScaleDetailsViewModel.kt$ScaleDetailsViewModel : BaseIntentViewModel</ID>
     <ID>LargeClass:WifiScaleSetupViewModel.kt$WifiScaleSetupViewModel : ScaleSetupViewmodelDefaultLifecycleObserver</ID>
     <ID>LongMethod:AccountRepository.kt$AccountRepository$override suspend fun addAccount(account: Account): Account</ID>
@@ -54,7 +43,6 @@
     <ID>LongMethod:AppRadioGroupModal.kt$@Composable fun &lt;T&gt; AppRadioGroupModal( title: String, options: List&lt;RadioButtonOption&lt;T&gt;&gt;, onCancel: () -&gt; Unit, onOk: (T?) -&gt; Unit, modifier: Modifier = Modifier, selectedItem: T? = null, subtitle: String? = null, confirmText: String = "OK", cancelText: String = "Cancel", maxHeight: androidx.compose.ui.unit.Dp? = null, )</ID>
     <ID>LongMethod:AppScaleCard.kt$@Composable fun AppScaleCard( scale: ScaleInfo, modifier: Modifier = Modifier, horizontalSpacing: Dp? = null, isSavedScale: Boolean, enabled: Boolean = true, canShowRightCaret: Boolean = true, onClick: (ScaleInfo) -&gt; Unit, )</ID>
     <ID>LongMethod:AppSwipableList.kt$@Composable fun &lt;T&gt; AppSwipeableList( items: List&lt;T&gt;, modifier: Modifier = Modifier, contentPadding: PaddingValues = PaddingValues(0.dp), iconWidth: Dp = 56.dp, maxVisibleItems: Int? = null, isItemSwipeable: (T) -&gt; Boolean = { true }, keySelector: (T) -&gt; Any, trailingActions: @Composable RowScope.(index: Int, item: T) -&gt; Unit = { _, _ -&gt; }, positionalThreshold: Float = SwipeDefaults.POSITIONAL_THRESHOLD, velocityThreshold: Float = SwipeDefaults.VELOCITY_THRESHOLD, footerContent: @Composable (() -&gt; Unit)? = null, itemContent: @Composable SwipeableListItemScope.(item: T) -&gt; Unit, )</ID>
-    <ID>LongMethod:AppSyncScanScreen.kt$@Composable fun AppSyncScanScreen( initialZoom: Int = AppSyncConstants.DEFAULT_ZOOM, showManualEntryButton: Boolean = true, onResult: (AppSyncResult) -&gt; Unit, )</ID>
     <ID>LongMethod:AppText.kt$@Composable fun AppText( text: String = "", textType: TextType, modifier: Modifier = Modifier, annotatedText: String? = null, canApplyUppercaseStyle: Boolean = false, annotationPosition: AnnotationPosition = AnnotationPosition.Start, spanStyle: SpanStyle? = null, enabled: Boolean = true, spacing: Dp = LocalSpacing.current.none, textAlign: TextAlign = TextAlign.Start, softWrap: Boolean = true, textOverflow: TextOverflow = TextOverflow.Clip, maxLines: Int = Int.MAX_VALUE, color: Color? = null, onClick: (() -&gt; Unit)? = null, onAnnotationClick: ((String) -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:AppText.kt$TextTypeDefaults$@Composable fun appearance( type: TextType, enabled: Boolean = true, ): TextAppearance</ID>
     <ID>LongMethod:AppUser.kt$@Composable fun AppUser( account: Account, onAccountSelect: () -&gt; Unit, onLoginRequest: () -&gt; Unit, modifier: Modifier = Modifier, avatarAlpha: Float = 1f, shape: Shape = RectangleShape, showAccountActivity: Boolean = false, )</ID>
@@ -94,11 +82,6 @@
     <ID>LongMethod:EntrySyncService.kt$EntrySyncService$override suspend fun syncOperations( accountId: String, newEntries: List&lt;Entry&gt;, deleteOps: List&lt;Entry&gt;, )</ID>
     <ID>LongMethod:ErrorContent.kt$@Composable fun ErrorContent( errorCode: String, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:ExpandableMetricsCard.kt$@Composable fun ExpandableMetricsCard( title: String, subheading: String? = null, generalMetrics: GeneralMetricsFormControls, r4ScaleMetrics: R4ScaleMetricsFormControls? = null, expandedInitially: Boolean = false, onImeAction: (() -&gt; Unit)? = null, dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS, )</ID>
-    <ID>LongMethod:FAQComponent.kt$@Composable private fun FAQItemCard( faqItem: FAQItem, isExpanded: Boolean, onToggle: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:FeaturedProductVariations.kt$@Composable private fun SupportingImageCarousel( images: List&lt;String&gt;, title: String, onImageClick: (String) -&gt; Unit = {} )</ID>
-    <ID>LongMethod:FeedItemCard.kt$@Composable fun FeedItemCard( feedItem: FeedItem, onItemClick: (FeedItem) -&gt; Unit, modifier: Modifier = Modifier, showTopDivider: Boolean = true, showBottomDivider: Boolean = true )</ID>
-    <ID>LongMethod:FeedItemCard.kt$@Preview(showBackground = true) @Composable fun FeedItemCardPreview()</ID>
-    <ID>LongMethod:FeedPopup.kt$@Composable fun FeedPopup( imageUrl: String? = null, messageType: String = "", headline: String, supportingText: String, expiresAt: String? = null, primaryButtonText: String = FeedPopupStrings.ShopNow, secondaryButtonText: String = FeedPopupStrings.MessageSettings, onPrimaryButtonClick: () -&gt; Unit = {}, onSecondaryButtonClick: () -&gt; Unit = {}, onCloseClick: () -&gt; Unit = {}, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:FeedService.kt$FeedService$private suspend fun handleFeedModalAction( feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem, actionType: String )</ID>
     <ID>LongMethod:GeneralMetricsSection.kt$@Composable fun GeneralMetricsSection( controls: GeneralMetricsFormControls, isDashboardType: DashboardType, nextFocusRequester: FocusRequester? = null, onImeAction: (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:GoalMilestoneDisplay.kt$@Composable private fun LoseGainGoalDisplay( account: Account, currentWeight: Double, goalWeight: Double, progressPercentage: Double, weightlessWeight: Float?, )</ID>
@@ -112,7 +95,6 @@
     <ID>LongMethod:GraphViewModel.kt$GraphViewModel$private fun calculateYAxisRange( graphLines: GraphLine, goal: Goal? = null, min: Long, max: Long, isSecondary: Boolean = false, isWeightlessMode: Boolean = false, ): AxisMeta</ID>
     <ID>LongMethod:GraphViewModel.kt$GraphViewModel$private fun handleRenormalizationOnYAxisChange( newYAxisRange: CartesianRangeValues? = null, min: Long? = null, max: Long? = null )</ID>
     <ID>LongMethod:GraphViewModel.kt$GraphViewModel$private fun setupChartModelProducer( data: List&lt;PeriodBodyScaleSummary&gt;, secondaryKey: DashboardKey? = null, goal: Goal? )</ID>
-    <ID>LongMethod:HealthConnect.kt$HealthConnect$private fun mapToRecord(data: HealthConnectData): Record?</ID>
     <ID>LongMethod:HealthConnectIntegrationScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable fun HealthConnectIntegrationContent( state: HealthConnectUiState, handleIntent: (HealthConnectIntent) -&gt; Unit, onBack: () -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
     <ID>LongMethod:HealthConnectService.kt$HealthConnectService$override suspend fun checkHealthConnectPermissionDisabled()</ID>
     <ID>LongMethod:HealthConnectService.kt$HealthConnectService$override suspend fun healthConnectOutOfSync(): Boolean</ID>
@@ -124,14 +106,10 @@
     <ID>LongMethod:HistoryItem.kt$@Composable fun HistoryItem( item: HistoryMonth, onClick: () -&gt; Unit, )</ID>
     <ID>LongMethod:HomeScreen.kt$@Composable fun HomeScreenContent( state: HomeState, handleIntent: (HomeIntent) -&gt; Unit, showUnreadFeedIndicator: Boolean = false, )</ID>
     <ID>LongMethod:HomeViewModel.kt$HomeViewModel$private fun checkAndRequestCameraPermission(onResult: (Boolean) -&gt; Unit)</ID>
-    <ID>LongMethod:IAMButton.kt$@Preview @Composable fun AppButtonPreview()</ID>
     <ID>LongMethod:IAMFeedModal.kt$@Preview @Composable fun IAMFeedModalReview()</ID>
-    <ID>LongMethod:IAMText.kt$@Composable fun IAMText( text: String = "", textType: TextType, modifier: Modifier = Modifier, annotatedText: String? = null, canApplyUppercaseStyle: Boolean = false, annotationPosition: AnnotationPosition = AnnotationPosition.Start, spanStyle: SpanStyle? = null, enabled: Boolean = true, spacing: Dp = 0.dp, textAlign: TextAlign = TextAlign.Start, color: Color? = null, onClick: (() -&gt; Unit)? = null, onAnnotationClick: ((String) -&gt; Unit)? = null, expiresAt: String? = null, enableRichText: Boolean = false, )</ID>
-    <ID>LongMethod:IAMText.kt$TextTypeDefaults$@Composable fun appearance( type: TextType, enabled: Boolean = true, ): TextAppearance</ID>
     <ID>LongMethod:IntegrationsList.kt$@PreviewTheme @Composable fun IntegrationListPreview()</ID>
     <ID>LongMethod:IonicDataConverter.kt$IonicDataConverter$fun convertCursorToScaleEntry(cursor: Cursor, isOpStack: Boolean = false): ScaleEntry?</ID>
     <ID>LongMethod:LandingScreen.kt$@Composable fun LandingScreen()</ID>
-    <ID>LongMethod:LazyImageComponent.kt$@Composable fun LazyImageComponent( imageUrl: String?, placeholderUrl: String? = null, defaultPlaceholderUrl: String? = null, contentDescription: String? = null, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, onImageLoaded: (() -&gt; Unit)? = null, onImageError: (() -&gt; Unit)? = null )</ID>
     <ID>LongMethod:LcbtScaleSetupScreen.kt$@Composable fun LcbtScaleSetupScreenContent( state: LCBTScaleSetupState, sku: String, onIntent: (ScaleSetupIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:LoginScreen.kt$@Composable private fun LoginContent( state: LoginState, handleIntent: (LoginIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:MainBottomNav.kt$@Composable fun MainBottomNav( badgeVisible: List&lt;AppRoute&gt; = emptyList(), showAppsync: Boolean, onOpenAppSync: () -&gt; Unit, showUnreadFeedIndicator: Boolean = false, )</ID>
@@ -140,8 +118,6 @@
     <ID>LongMethod:MigrationService.kt$MigrationService$private suspend fun migrateIntegration(context: Context, activeAccountId: String?)</ID>
     <ID>LongMethod:MultiAccountLandingScreen.kt$@PreviewTheme @Composable fun MultiAccountLandingScreenPreview()</ID>
     <ID>LongMethod:MultipleDeviceConnectionScreen.kt$@Composable fun MultipleDeviceConnectionScreen( modifier: Modifier = Modifier, secondaryActionLabel: String? = null, onClose: () -&gt; Unit, onPrimaryAction: () -&gt; Unit, onSecondaryAction: (() -&gt; Unit)? = null )</ID>
-    <ID>LongMethod:OfferHeader.kt$@Composable fun PromoCodeContainer( promoCode: String, marketingColors: ThemeColorParser.MarketingColors, onCopyClick: () -&gt; Unit )</ID>
-    <ID>LongMethod:OverlayControls.kt$@Composable fun OverlayControls( zoomLevel: Float, showLowLightWarning: Boolean = false, onZoomIn: () -&gt; Unit, onZoomOut: () -&gt; Unit, onManualEntry: (() -&gt; Unit)? = null, onClose: () -&gt; Unit, )</ID>
     <ID>LongMethod:PagerWithNavigation.kt$@PreviewTheme @Composable fun PagerWithBottomNavigationPreview()</ID>
     <ID>LongMethod:PasswordStep.kt$@Composable fun PasswordStep( passwordControl: FormControl&lt;String&gt;, confirmPasswordControl: FormControl&lt;String&gt;, zipcodeControl: FormControl&lt;String&gt;, onUrlOpen: (String) -&gt; Unit, onSubmit: () -&gt; Unit = {}, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:PrimaryLayer.kt$@SuppressLint("RestrictedApi") @Composable internal fun rememberLineLayerWithConnection( segment: GraphSegment, lineColor: Color, verticalAxisPosition: Axis.Position.Vertical, yRangeValues: CartesianRangeValues?, handleIntent: (GraphIntent) -&gt; Unit ): LineCartesianLayer</ID>
@@ -161,7 +137,7 @@
     <ID>LongMethod:ScalePairingManager.kt$ScalePairingManager$override fun connectToBluetooth()</ID>
     <ID>LongMethod:ScaleSetupLoader.kt$@Composable fun ScaleSetupLoader( connectionState: ConnectionState? = null, modifier: Modifier = Modifier, scaleImageSku: String? = null, title: String? = null, subtitle: String? = null, errorCode: String? = null, showIndicationOnly: Boolean = false, setupImage: Int? = null, isGifImage: Boolean = false, indicatorIcon: LoaderIconType = LoaderIconType.Bluetooth, primaryButtonText: String = ScaleSetupStrings.SetupButtons.TryAgain, secondaryButtonText: String = ScaleSetupStrings.SetupButtons.Support, contentButtonText: String? = null, primaryButtonClick: (() -&gt; Unit)? = null, secondaryButtonClick: (() -&gt; Unit)? = null, contentButtonClick: (() -&gt; Unit)? = null )</ID>
     <ID>LongMethod:ScaleUserList.kt$@Composable fun ScaleUserList( modifier: Modifier = Modifier, userList: List&lt;GGBTUser&gt; = emptyList(), title: String? = null, subtitle: String? = null, userFormControl: FormControl&lt;String&gt;? = null, onDeleteUser: (GGBTUser) -&gt; Unit, )</ID>
-    <ID>LongMethod:SegmentButtonGroup.kt$@Composable fun &lt;T&gt; SegmentButtonGroup( modifier: Modifier = Modifier, data: List&lt;T&gt;, selectedData: T, key: KProperty1&lt;T, String&gt;, contentPadding: PaddingValues = PaddingValues(0.dp), size: SegmentButtonSize = SegmentButtonSize.Small, type: SegmentButtonType = SegmentButtonType.Single, spacedBy: Dp = 0.dp, onSelected: (T) -&gt; Unit, )</ID>
+    <ID>LongMethod:SegmentButtonGroup.kt$@Composable fun &lt;T&gt; SegmentButtonGroup( modifier: Modifier = Modifier, data: List&lt;T&gt;, selectedData: T, key: (T) -&gt; String, contentPadding: PaddingValues = PaddingValues(0.dp), size: SegmentButtonSize = SegmentButtonSize.Small, type: SegmentButtonType = SegmentButtonType.Single, spacedBy: Dp = 0.dp, onSelected: (T) -&gt; Unit, )</ID>
     <ID>LongMethod:SegmentButtonGroup.kt$@PreviewTheme @Composable fun SegmentButtonPreview()</ID>
     <ID>LongMethod:SelectButtonGrid.kt$@Composable private fun SelectButtonItem( item: SelectButtonItem, isSelectable: Boolean, onItemSelected: ((String) -&gt; Unit)?, modifier: Modifier = Modifier, sku: String? = null, )</ID>
     <ID>LongMethod:SettingSection.kt$@Composable private fun SettingsItemRow( item: SettingsItem, )</ID>
@@ -179,6 +155,7 @@
     <ID>LongMethod:StatCard.kt$@Composable internal fun StatCard( stat: Stat, enabled: Boolean = true, isVisible: Boolean = true, isSelected: Boolean = false, modifier: Modifier = Modifier, isFromSetup: Boolean = false, isPlaceHolder: Boolean = false, onMetricLongClick: (Stat) -&gt; Unit = {}, onMetricClick: (Stat) -&gt; Unit = {} )</ID>
     <ID>LongMethod:ToastHandler.kt$@OptIn(ExperimentalFoundationApi::class) @Composable fun ToastHandler( toast: Toast? = null, hostState: SnackbarHostState, clearToast: () -&gt; Unit, )</ID>
     <ID>LongMethod:TokenAuthenticator.kt$TokenAuthenticator$private suspend fun tokenRefresh(accountId: String?): Token?</ID>
+    <ID>LongMethod:TokenMigrationHelper.kt$TokenMigrationHelper$suspend fun migrateIfNeeded()</ID>
     <ID>LongMethod:WebViewScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun WebViewScreen( url: String, onClose: () -&gt; Unit, )</ID>
     <ID>LongMethod:WeightlessScreen.kt$@Composable private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessIntent) -&gt; Unit)</ID>
     <ID>LongMethod:WiFiConfigManager.kt$WiFiConfigManager$private fun setupWifi()</ID>
@@ -189,13 +166,13 @@
     <ID>LongMethod:WifiSelection.kt$@Composable fun WifiSelection( wifiList: List&lt;GGWifiInfo&gt; = emptyList(), title: String, subtitle: String, configuredSSID: String? = null, onSelect: (String) -&gt; Unit, onRefresh: () -&gt; Unit, )</ID>
     <ID>LongMethod:draggable.kt$internal fun Modifier.draggable( key1: Any?, enabled: Boolean = true, interactionSource: MutableInteractionSource? = null, dragGestureDetector: DragGestureDetector = DragGestureDetector.Press, onDragStarted: (Offset) -&gt; Unit = { }, onDragStopped: () -&gt; Unit = { }, onDrag: (change: PointerInputChange, dragAmount: Offset) -&gt; Unit, )</ID>
     <ID>SwallowedException:AccountRepository.kt$AccountRepository$e: Exception</ID>
+    <ID>SwallowedException:AccountRepositoryTest.kt$AccountRepositoryTest$e: HttpException</ID>
     <ID>SwallowedException:AppsyncScaleSetupScreen.kt$e: Exception</ID>
     <ID>SwallowedException:BtScaleSetupScreen.kt$e: Exception</ID>
     <ID>SwallowedException:BtScaleSetupViewModel.kt$BtScaleSetupViewModel$e: Exception</ID>
     <ID>SwallowedException:BtWifiScaleSetupViewModel.kt$BtWifiScaleSetupViewModel$e: Exception</ID>
-    <ID>SwallowedException:BuildConfig.kt$AppBuildConfig$e: Exception</ID>
     <ID>SwallowedException:CustomTabManager.kt$CustomTabManager$e: Exception</ID>
-    <ID>SwallowedException:DashboardViewModel.kt$DashboardViewModel$exception: Exception</ID>
+    <ID>SwallowedException:DashboardServiceTest.kt$DashboardServiceTest$e: IllegalStateException</ID>
     <ID>SwallowedException:DataSettingsManager.kt$DataSettingsManager$e: Exception</ID>
     <ID>SwallowedException:DateFormatHelper.kt$DateFormatHelper$e: Exception</ID>
     <ID>SwallowedException:DateTimeConverter.kt$DateTimeConverter$e: Exception</ID>
@@ -204,25 +181,24 @@
     <ID>SwallowedException:DecimalInputVisualTransformation.kt$DecimalInputVisualTransformation.&lt;no name provided&gt;$e: Exception</ID>
     <ID>SwallowedException:DeviceInfoUtil.kt$DeviceInfoUtil$e: Exception</ID>
     <ID>SwallowedException:FeedMessagesViewModel.kt$FeedMessagesViewModel$e: Exception</ID>
-    <ID>SwallowedException:GGInAppMessagingService.kt$GGInAppMessagingService$e: Exception</ID>
+    <ID>SwallowedException:GoalRepositoryTest.kt$GoalRepositoryTest$e: IOException</ID>
     <ID>SwallowedException:GraphViewModel.kt$GraphViewModel$e: Exception</ID>
-    <ID>SwallowedException:HealthConnect.kt$HealthConnect$e: Exception</ID>
     <ID>SwallowedException:HealthConnectRepository.kt$HealthConnectRepository$e: Exception</ID>
+    <ID>SwallowedException:HealthConnectRepositoryTest.kt$HealthConnectRepositoryTest$e: IOException</ID>
     <ID>SwallowedException:HealthConnectService.kt$HealthConnectService$e: Exception</ID>
     <ID>SwallowedException:HistoryDetailViewModel.kt$HistoryDetailViewModel$e: Exception</ID>
     <ID>SwallowedException:HomeScreen.kt$e: Exception</ID>
     <ID>SwallowedException:IntegrationRepository.kt$IntegrationRepository$e: Exception</ID>
+    <ID>SwallowedException:IntegrationRepositoryTest.kt$IntegrationRepositoryTest$e: IOException</ID>
     <ID>SwallowedException:IntegrationViewModel.kt$IntegrationViewModel$e: Exception</ID>
     <ID>SwallowedException:IonicDataConverter.kt$IonicDataConverter$e: Exception</ID>
-    <ID>SwallowedException:LazyImageComponent.kt$error: Exception</ID>
-    <ID>SwallowedException:LinkService.kt$LinkService$e: Exception</ID>
     <ID>SwallowedException:LoginViewModel.kt$LoginViewModel$e: MaxAccountsReachedException</ID>
     <ID>SwallowedException:MetricKey.kt$MetricKey.Companion$e: IllegalArgumentException</ID>
     <ID>SwallowedException:MilestoneKey.kt$MilestoneKey.Companion$e: IllegalArgumentException</ID>
     <ID>SwallowedException:ReorderableLazyCollection.kt$ReorderableLazyCollectionState$e: CancellationException</ID>
-    <ID>SwallowedException:RichTextParser.kt$RichTextParser$e: Exception</ID>
     <ID>SwallowedException:ScaleDetailsViewModel.kt$ScaleDetailsViewModel$e: Exception</ID>
     <ID>SwallowedException:ScalePairingManager.kt$ScalePairingManager$e: Exception</ID>
+    <ID>SwallowedException:SecureTokenStore.kt$SecureTokenStore$e: Exception</ID>
     <ID>SwallowedException:SignupReducer.kt$e: Exception</ID>
     <ID>SwallowedException:VersionUtils.kt$VersionUtils$e: Exception</ID>
     <ID>SwallowedException:WebViewLauncher.kt$WebViewLauncher$e: Exception</ID>
