@@ -66,7 +66,8 @@ struct ManualEntryScreen: View {
                 case .baby:
                     BabyEntryView(
                         entryStore: entryStore,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        onSaveCompleted: { performTabSwitchAndHideKeyboard() }
                     )
                     .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingLG)
@@ -74,7 +75,8 @@ struct ManualEntryScreen: View {
                 case .myBloodPressure:
                     BloodPressureEntryView(
                         entryStore: entryStore,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        onSaveCompleted: { performTabSwitchAndHideKeyboard() }
                     )
                     .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingLG)

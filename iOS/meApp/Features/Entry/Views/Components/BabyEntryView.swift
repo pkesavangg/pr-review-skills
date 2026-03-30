@@ -9,6 +9,7 @@ struct BabyEntryView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var entryStore: EntryStore
     @Binding var focusedField: FocusField?
+    var onSaveCompleted: (() -> Void)?
 
     private let babyLang = ManualEntryStrings.self
     private let labels = InputFieldLabels.self
@@ -145,6 +146,7 @@ struct BabyEntryView: View {
                 Task {
                     focusedField = nil
                     await entryStore.saveBabyEntry()
+                    onSaveCompleted?()
                 }
             }
         }
