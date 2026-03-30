@@ -203,5 +203,16 @@
     <ID>SwallowedException:VersionUtils.kt$VersionUtils$e: Exception</ID>
     <ID>SwallowedException:WebViewLauncher.kt$WebViewLauncher$e: Exception</ID>
     <ID>SwallowedException:WifiMacAddress.kt$e: Exception</ID>
+    <ID>SwallowedException:WifiSmartConnectManager.kt$WifiSmartConnectManager$e: Exception</ID>
+    <ID>LargeClass:AccountRepositoryTest.kt$AccountRepositoryTest</ID>
+    <ID>LargeClass:AccountServiceTest.kt$AccountServiceTest</ID>
+    <ID>LargeClass:DeviceServiceTest.kt$DeviceServiceTest</ID>
+    <ID>LargeClass:FeedServiceTest.kt$FeedServiceTest</ID>
+    <ID>LargeClass:GoalServiceTest.kt$GoalServiceTest</ID>
+    <ID>LargeClass:HealthConnectServiceTest.kt$HealthConnectServiceTest</ID>
+    <ID>LargeClass:MigrationServiceTest.kt$MigrationServiceTest</ID>
+    <ID>LargeClass:NotificationServiceTest.kt$NotificationServiceTest</ID>
+    <ID>LongMethod:TokenMigrationHelper.kt$TokenMigrationHelper$suspend fun migrateIfNeeded()</ID>
+    <ID>LongMethod:SegmentButtonGroup.kt$@Composable fun &lt;T&gt; SegmentButtonGroup( modifier: Modifier = Modifier, data: List&lt;T&gt;, selectedData: T, key: (T) -&gt; String, contentPadding: PaddingValues = PaddingValues(0.dp), size: SegmentButtonSize = SegmentButtonSize.Small, type: SegmentButtonType = SegmentButtonType.Single, spacedBy: Dp = 0.dp, onSelected: (T) -&gt; Unit, )</ID>
   </CurrentIssues>
 </SmellBaseline>

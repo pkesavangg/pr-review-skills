@@ -289,9 +289,16 @@ jobs:
           name: Run Android lint
           working_directory: Android
           command: ./gradlew lint
+      - run:
+          name: Run Detekt static analysis
+          working_directory: Android
+          command: ./gradlew detekt
       - store_artifacts:
           path: Android/app/build/reports/lint-results-debug.html
           destination: lint-reports
+      - store_artifacts:
+          path: Android/app/build/reports/detekt
+          destination: detekt-reports
 
   # ===========================================================
   # Job 8: Android Unit Tests

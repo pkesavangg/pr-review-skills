@@ -32,12 +32,11 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertThrows
+import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -238,9 +237,7 @@ class AccountServiceTest {
         )
         service = createService()
 
-        assertThrows(MaxAccountsReachedException::class.java) {
-            runBlocking { service.login("brandnew@example.com", TEST_PASSWORD) }
-        }
+        assertFailsWith<MaxAccountsReachedException> { service.login("brandnew@example.com", TEST_PASSWORD) }
     }
 
     @Test
@@ -277,9 +274,7 @@ class AccountServiceTest {
     fun `login propagates non-HttpException`() = runTest {
         coEvery { accountRepository.login(any(), any()) } throws java.io.IOException("connection reset")
 
-        assertThrows(java.io.IOException::class.java) {
-            runBlocking { service.login(TEST_EMAIL, TEST_PASSWORD) }
-        }
+        assertFailsWith<java.io.IOException> { service.login(TEST_EMAIL, TEST_PASSWORD) }
         coVerify(exactly = 0) { appNavigationService.emitAuthEvent(any()) }
     }
 
@@ -294,9 +289,7 @@ class AccountServiceTest {
         )
         service = createService()
 
-        assertThrows(MaxAccountsReachedException::class.java) {
-            runBlocking { service.signup(fakeSignupRequest) }
-        }
+        assertFailsWith<MaxAccountsReachedException> { service.signup(fakeSignupRequest) }
         coVerify { appNavigationService.emitAuthEvent(any<AuthState.Error>()) }
     }
 
@@ -485,9 +478,7 @@ class AccountServiceTest {
     fun `updateProfile shows error toast and rethrows on HttpException 401`() = runTest {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(401)
 
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
-        }
+        assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
         verify { dialogQueueService.showToast(any()) }
     }
 
@@ -495,10 +486,8 @@ class AccountServiceTest {
     fun `updateProfile propagates non-HttpException`() = runTest {
         coEvery { accountRepository.updateProfile(any()) } throws RuntimeException("DB error")
 
-        assertThrows(RuntimeException::class.java) {
-            runBlocking {
-                service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true)
-            }
+        assertFailsWith<RuntimeException> {
+            service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true)
         }
     }
 
@@ -889,9 +878,7 @@ class AccountServiceTest {
     fun `deleteAccount throws when offline`() = runTest {
         stubNetworkUnavailable()
 
-        assertThrows(Exception::class.java) {
-            runBlocking { service.deleteAccount(fakeAccount.id, isActiveAccount = true) }
-        }
+        assertFailsWith<Exception> { service.deleteAccount(fakeAccount.id, isActiveAccount = true) }
         coVerify(exactly = 0) { accountRepository.deleteAccount(any(), any()) }
     }
 
@@ -899,9 +886,7 @@ class AccountServiceTest {
     fun `deleteAccount rethrows exception on failure`() = runTest {
         coEvery { accountRepository.deleteAccount(any(), any()) } throws RuntimeException("delete failed")
 
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.deleteAccount(fakeAccount.id, isActiveAccount = true) }
-        }
+        assertFailsWith<RuntimeException> { service.deleteAccount(fakeAccount.id, isActiveAccount = true) }
     }
 
     // -------------------------------------------------------------------------
@@ -924,9 +909,7 @@ class AccountServiceTest {
     fun `switchAccount throws when offline (via requireNetworkAvailable)`() = runTest {
         stubNetworkUnavailable()
 
-        assertThrows(Exception::class.java) {
-            runBlocking { service.switchAccount(fakeAccount2) }
-        }
+        assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
     }
 
     @Test
@@ -1243,9 +1226,7 @@ class AccountServiceTest {
     fun `updateProfile shows error and rethrows on HttpException 500`() = runTest {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(500)
 
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
-        }
+        assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
         verify { dialogQueueService.showToast(any()) }
     }
 
@@ -1253,9 +1234,7 @@ class AccountServiceTest {
     fun `updateProfile shows error and rethrows on HttpException 400 (bad request)`() = runTest {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(400)
 
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
-        }
+        assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
         verify { dialogQueueService.showToast(any()) }
     }
 
@@ -1263,9 +1242,7 @@ class AccountServiceTest {
     fun `updateProfile shows error and rethrows on HttpException 403 (generic error)`() = runTest {
         coEvery { accountRepository.updateProfile(any()) } throws httpException(403)
 
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
-        }
+        assertFailsWith<HttpException> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = false, showToast = true) }
         verify { dialogQueueService.showToast(any()) }
     }
 
@@ -1401,7 +1378,7 @@ class AccountServiceTest {
     fun `switchAccount throws on UnknownHostException`() = runTest {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.net.UnknownHostException("host")
 
-        assertThrows(Exception::class.java) { runBlocking { service.switchAccount(fakeAccount2) } }
+        assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
         verify { dialogQueueService.showToast(any()) }
     }
 
@@ -1409,7 +1386,7 @@ class AccountServiceTest {
     fun `switchAccount throws on InterruptedIOException`() = runTest {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.io.InterruptedIOException("interrupted")
 
-        assertThrows(Exception::class.java) { runBlocking { service.switchAccount(fakeAccount2) } }
+        assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
         verify { dialogQueueService.showToast(any()) }
     }
 
@@ -1417,7 +1394,7 @@ class AccountServiceTest {
     fun `switchAccount throws on SocketTimeoutException`() = runTest {
         coEvery { accountRepository.getAccountFromAPI(fakeAccount2.id) } throws java.net.SocketTimeoutException("timeout")
 
-        assertThrows(Exception::class.java) { runBlocking { service.switchAccount(fakeAccount2) } }
+        assertFailsWith<Exception> { service.switchAccount(fakeAccount2) }
         verify { dialogQueueService.showToast(any()) }
     }
 
@@ -1570,9 +1547,7 @@ class AccountServiceTest {
     fun `updateProfile throws when isFromProfile true and offline`() = runTest {
         stubNetworkUnavailable()
 
-        assertThrows(Exception::class.java) {
-            runBlocking { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = true, showToast = true) }
-        }
+        assertFailsWith<Exception> { service.updateProfile(fakeProfileUpdateRequest, isFromProfile = true, showToast = true) }
         coVerify(exactly = 0) { accountRepository.updateProfile(any()) }
     }
 
@@ -1827,9 +1802,7 @@ class AccountServiceTest {
         every { accountRepository.getActiveAccount() } returns flow { throw RuntimeException("fatal") }
         service = createService()
 
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.refreshAccount() }
-        }
+        assertFailsWith<RuntimeException> { service.refreshAccount() }
     }
 
     // -------------------------------------------------------------------------

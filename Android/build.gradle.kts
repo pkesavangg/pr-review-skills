@@ -54,7 +54,7 @@ dependencyCheck {
     failBuildOnCVSS = 7.0f
     suppressionFile = "$projectDir/config/owasp-suppressions.xml"
     formats = listOf("HTML", "JSON")
-    outputDirectory = layout.buildDirectory.dir("reports/dependency-check").get().asFile.absolutePath
+    outputDirectory.set(layout.buildDirectory.dir("reports/dependency-check"))
     analyzers {
         assemblyEnabled = false
     }
