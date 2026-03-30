@@ -114,7 +114,11 @@ final class Device {
         self.r4ScalePreference = r4ScalePreference
         self.metaData = metaData
 
-        if let broadcastId = broadcastId {
+        // Only recompute broadcastIdString from broadcastId when we have a real value (> 0).
+        // For A3 BPM devices during discovery, broadcastId may be 0 (SDK provides a CoreBluetooth UUID
+        // that can't be converted to a valid hex broadcast ID). In that case, keep the SDK-provided
+        // broadcastIdString as-is.
+        if let broadcastId = broadcastId, broadcastId > 0 {
             let scaleSource = ScaleSourceType(rawValue: bathScale?.scaleType ?? "") ?? .bluetoothScale
             let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
             self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
@@ -201,7 +205,7 @@ final class Device {
         // Note: Relationship setup (device references) will be handled when the object is
         // inserted into a SwiftData ModelContext to avoid crashes with non-persisted instances
 
-        if let broadcastId = self.broadcastId {
+        if let broadcastId = self.broadcastId, broadcastId > 0 {
             let scaleSource = ScaleSourceType(rawValue: resolvedScaleType ?? "") ?? .bluetoothScale
             let protocolType = ProtocolConversionTools.getProtocolTypeFromScaleType(scaleType: scaleSource)
             self.broadcastIdString = ProtocolConversionTools.convertIntToHex(Int(broadcastId), protocolType: protocolType)
