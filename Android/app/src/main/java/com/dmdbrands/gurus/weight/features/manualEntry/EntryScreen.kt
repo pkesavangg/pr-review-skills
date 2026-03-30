@@ -34,6 +34,10 @@ import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle as collectAsState2
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
