@@ -119,7 +119,7 @@ fun AddBabyStep(
             )
         }
 
-        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+        Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
         // Birth length (optional)
         AppInput(
@@ -130,6 +130,8 @@ fun AddBabyStep(
             nextFocusRequester = birthWeightFocusRequester,
             modifier = Modifier.focusRequester(birthLengthFocusRequester),
         )
+
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
         // Birth weight (optional)
         AppInput(

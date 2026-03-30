@@ -3,9 +3,6 @@ package com.dmdbrands.gurus.weight.features.signup.model
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
-import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
-import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationMessages
-import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
 
 data class BabyFormControls(
     val name: FormControl<String>,
@@ -30,25 +27,12 @@ data class BabyFormControls(
             ),
             birthLength = FormControl.create(
                 initialValue = "",
-                validators = listOf(optionalNumericValidator()),
+                validators = emptyList(),
             ),
             birthWeight = FormControl.create(
                 initialValue = "",
-                validators = listOf(optionalNumericValidator()),
+                validators = emptyList(),
             ),
         )
-
-        private fun optionalNumericValidator(): (String) -> ValidationError? = { value ->
-            if (value.isBlank()) {
-                null
-            } else {
-                val parsed = value.toDoubleOrNull()
-                if (parsed == null || parsed <= 0) {
-                    ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
-                } else {
-                    null
-                }
-            }
-        }
     }
 }
