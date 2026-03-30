@@ -16,14 +16,14 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param onItemClick Callback when an item is clicked
  */
 @Composable
-fun HistoryList(
+fun WeightHistoryList(
     items: List<HistoryMonth>,
     onItemClick: (HistoryMonth) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier) {
         items(items, key = { item -> item.entryTimestamp ?: item.hashCode() }) { item ->
-            HistoryItem(item = item, onClick = { onItemClick(item) })
+            WeightHistoryItem(item = item, onClick = { onItemClick(item) })
             HorizontalDivider(
                 thickness = MeTheme.spacing.x6s,
                 color = MeTheme.colorScheme.utility,
@@ -34,7 +34,7 @@ fun HistoryList(
 
 @PreviewTheme
 @Composable
-fun HistoryListPreview() {
+fun WeightHistoryListPreview() {
     MeAppTheme {
         val sampleItems =
             listOf(
@@ -57,6 +57,6 @@ fun HistoryListPreview() {
                     change = -0.8,
                 ),
             )
-        HistoryList(items = sampleItems, onItemClick = {})
+        WeightHistoryList(items = sampleItems, onItemClick = {})
     }
 }

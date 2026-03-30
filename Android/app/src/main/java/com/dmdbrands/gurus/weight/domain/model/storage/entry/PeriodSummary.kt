@@ -48,3 +48,26 @@ data class PeriodBodyScaleSummary(
     return DateTimeConverter.isoToTimestamp(entryTimestamp)
   }
 }
+
+/**
+ * Room query result type for BP graph data points.
+ * period = "YYYY-MM" for month, "YYYY-MM-DD" for day.
+ */
+data class PeriodBpmSummary(
+    val period: String,
+    val entryTimestamp: String,
+    val avgSystolic: Int,
+    val avgDiastolic: Int,
+    val avgPulse: Int,
+)
+
+/**
+ * Room query result type for baby graph data points.
+ * period = "YYYY-MM" for month, "YYYY-MM-DD" for day.
+ */
+data class PeriodBabySummary(
+    val period: String,
+    val entryTimestamp: String,
+    val avgWeightDecigrams: Int?,
+    val avgLengthMillimeters: Int?,
+)

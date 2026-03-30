@@ -8,4 +8,11 @@ object HistoryItemStrings {
     const val Average = "average"
     const val Change = "change"
     const val GoToMonthView = "go to month view"
+    const val AvgPressure = "avg pressure"
+    const val AvgPulse = "avg pulse"
+    const val Mmhg = "mmhg"
+    const val Pulse = "pulse"
+    const val Weight = "weight"
+    const val Length = "length"
+    const val Percent = "percent"
 }

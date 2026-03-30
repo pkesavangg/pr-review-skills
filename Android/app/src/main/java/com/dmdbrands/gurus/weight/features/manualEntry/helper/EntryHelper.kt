@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -24,6 +25,7 @@ import java.math.RoundingMode
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -150,6 +152,41 @@ object EntryHelper {
     return timeFormatter.format(instant)
   }
 
+  fun BpmEntry.getDate(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return dateFormatter.format(instant)
+  }
+
+  fun BpmEntry.getTime(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return timeFormatter.format(instant)
+  }
+
+  fun BabyEntry.getDate(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return dateFormatter.format(instant)
+  }
+
+  fun BabyEntry.getTime(): String {
+    val instant = Instant.parse(entry.entryTimestamp)
+    return timeFormatter.format(instant)
+  }
+
+  /** Formatted weight as "X lbs Y.Z oz", or "--" if null. */
+  fun BabyEntry.formattedWeight(): String {
+    val dg = babyWeightDecigrams ?: return "--"
+    val totalOz = dg / 28.3495
+    val lbs = (totalOz / 16).toInt()
+    val oz = totalOz % 16
+    return "$lbs lbs ${String.format(Locale.US, "%.1f", oz)} oz"
+  }
+
+  /** Formatted length as "X in", or "--" if null. */
+  fun BabyEntry.formattedLength(): String {
+    val mm = babyLengthMillimeters ?: return "--"
+    return "${String.format(Locale.US, "%.0f", mm / 25.4)} in"
+  }
+
   fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
     return when {
       from == to -> value
@@ -266,6 +303,13 @@ object EntryHelper {
         BpmEntry(
           entry = entry,
           bpmEntry = bpmEntry,
+        )
+      }
+
+      is BabyEntry -> {
+        BabyEntry(
+          entry = entry,
+          babyEntry = babyEntry,
         )
       }
     }

@@ -106,6 +106,36 @@ object ConversionTools {
     return (inches * STORED_HEIGHT_TO_INCHES_FACTOR).toInt()
   }
 
+  // ========== Baby Weight/Length Conversions ==========
+
+  private const val DECIGRAMS_PER_OZ = 283.495
+  private const val OZ_PER_LB = 16
+  private const val MM_PER_INCH = 25.4
+
+  /**
+   * Converts baby weight from decigrams to pounds (whole number).
+   * @param decigrams Weight in decigrams
+   * @return Pounds component
+   */
+  fun convertDecigramsToLb(decigrams: Int): Int =
+      (decigrams / DECIGRAMS_PER_OZ / OZ_PER_LB).toInt()
+
+  /**
+   * Converts baby weight from decigrams to remaining ounces (1 decimal).
+   * @param decigrams Weight in decigrams
+   * @return Ounces component rounded to 1 decimal place
+   */
+  fun convertDecigramsToOz(decigrams: Int): Double =
+      round((decigrams / DECIGRAMS_PER_OZ) % OZ_PER_LB * 10.0) / 10.0
+
+  /**
+   * Converts baby length from millimeters to inches (1 decimal).
+   * @param millimeters Length in millimeters
+   * @return Inches rounded to 1 decimal place
+   */
+  fun convertMmToInches(millimeters: Int): Double =
+      round(millimeters / MM_PER_INCH * 10.0) / 10.0
+
   // ========== BMI Calculations ==========
 
   /**

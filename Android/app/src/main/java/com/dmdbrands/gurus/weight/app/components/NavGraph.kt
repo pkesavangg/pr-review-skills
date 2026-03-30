@@ -131,7 +131,7 @@ fun EntryProviderBuilder<NavKey>.dashboardEntries() {
 
 fun EntryProviderBuilder<NavKey>.historyEntries() {
   entry<AppRoute.History.MonthDetails> { monthDetails ->
-    HistoryDetailScreen(monthDetails.month)
+    HistoryDetailScreen(monthDetails.month, monthDetails.productType)
   }
 }
 

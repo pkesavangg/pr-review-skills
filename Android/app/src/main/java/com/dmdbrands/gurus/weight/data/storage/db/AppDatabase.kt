@@ -12,8 +12,11 @@ import com.dmdbrands.gurus.weight.data.storage.db.converter.DateConverter
 import com.dmdbrands.gurus.weight.data.storage.db.converter.JsonConverter
 import com.dmdbrands.gurus.weight.data.storage.db.converter.WeightUnitConverter
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyEntryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryDao
+import com.dmdbrands.gurus.weight.data.storage.db.dao.HistoryDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.LogDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
@@ -31,8 +34,10 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.device.R4ScalePreferenc
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.ActiveEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.log.LogEntity
 import com.dmdbrands.gurus.weight.migration.service.IonicMigrationWorker
 import android.content.Context
@@ -60,6 +65,8 @@ import android.content.Context
     NotificationSettingsEntity::class,
     DashboardSettingsEntity::class,
     IntegrationsSettingsEntity::class,
+    BabyProfileEntity::class,
+    BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
   version = 3,
@@ -74,6 +81,12 @@ abstract class AppDatabase : RoomDatabase() {
   abstract fun entryDao(): EntryDao
 
   abstract fun logDao(): LogDao
+
+  abstract fun babyProfileDao(): BabyProfileDao
+
+  abstract fun babyEntryDao(): BabyEntryDao
+
+  abstract fun historyDao(): HistoryDao
 
   companion object {
     private val MIGRATION_1_2 = object : Migration(1, 2) {

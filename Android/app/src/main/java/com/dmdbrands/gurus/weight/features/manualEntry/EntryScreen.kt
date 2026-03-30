@@ -32,6 +32,10 @@ import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
+import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle as collectAsState2
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
@@ -52,15 +56,18 @@ import java.util.Calendar
 fun EntryScreen() {
   val viewModel: EntryViewModel = hiltViewModel()
   val state by viewModel.state.collectAsStateWithLifecycle()
-  EntryScreenContent(state, viewModel::initDeactivate, viewModel::handleIntent)
+  EntryScreenContent(state, viewModel.productSelectionManager, viewModel::initDeactivate, viewModel::handleIntent)
 }
 
 @Composable
 private fun EntryScreenContent(
   state: EntryState,
+  productSelectionManager: IProductSelectionManager,
   initializeDeactivate: (() -> Unit) -> Unit,
   handleIntent: (EntryIntent) -> Unit,
 ) {
+  val selectedProduct by productSelectionManager.selectedProduct
+      .collectAsState2()
   val focusManager = LocalFocusManager.current
   val keyboardController = LocalSoftwareKeyboardController.current
   LaunchedEffect(Unit) {
@@ -87,7 +94,15 @@ private fun EntryScreenContent(
   val interactionSource = remember { MutableInteractionSource() }
   val weightFocusRequester = remember { FocusRequester() }
 
-  AppScaffold(EntryScreenStrings.Title) {
+  AppScaffold(
+    title = null,
+    topBarContent = {
+      ProductTypeHeader(
+        selectedProduct = selectedProduct,
+        onClick = { productSelectionManager.showProductSheet(EntryScreenStrings.Title) },
+      )
+    },
+  ) {
     Column(
       modifier =
         Modifier

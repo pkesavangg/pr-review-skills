@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import androidx.compose.runtime.Stable
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -16,7 +16,7 @@ data class HistoryDetailState(
   val errorMessage: String? = null,
   val month: String = "",
   val itemsOpened: ImmutableList<Long> = persistentListOf(),
-  val historyItems: ImmutableList<ScaleEntry> = persistentListOf(),
+  val historyItems: ImmutableList<Entry> = persistentListOf(),
 ) : IReducer.State
 
 /**
@@ -26,13 +26,13 @@ sealed interface HistoryDetailIntent : IReducer.Intent {
   data object Refresh : HistoryDetailIntent
   data class LoadHistoryDetail(val month: String) : HistoryDetailIntent
   data class SetItemsOpened(val ids: List<Long>) : HistoryDetailIntent
-  data class DeleteEntry(val entry: ScaleEntry) : HistoryDetailIntent
+  data class DeleteEntry(val entry: Entry) : HistoryDetailIntent
   object Retry : HistoryDetailIntent
   data class SetError(val message: String) : HistoryDetailIntent
   object ClearError : HistoryDetailIntent
   data class SetHistoryItems(
     val month: String,
-    val items: List<ScaleEntry>,
+    val items: List<Entry>,
   ) : HistoryDetailIntent
   data class SetRefreshing(val isRefreshing: Boolean) : HistoryDetailIntent
 }

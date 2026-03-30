@@ -61,6 +61,8 @@ sealed class AppRoute : NavKey {
 
     data class MonthDetails(
       val month: String,
+      val productType: com.dmdbrands.gurus.weight.domain.enums.ProductType =
+        com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
     ) : AppRoute()
   }
 

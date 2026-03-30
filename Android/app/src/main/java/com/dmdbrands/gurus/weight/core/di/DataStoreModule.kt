@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.di
 import com.dmdbrands.gurus.weight.data.storage.datastore.FcmDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.GoalAlertDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectDataStore
+import com.dmdbrands.gurus.weight.data.storage.datastore.ProductSelectionDataStore
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import dagger.Module
 import dagger.Provides
@@ -49,4 +50,10 @@ object DataStoreModule {
   fun provideGoalAlertDataStore(
     @ApplicationContext context: Context,
   ): GoalAlertDataStore = GoalAlertDataStore(context)
+
+  @Provides
+  @Singleton
+  fun provideProductSelectionDataStore(
+    @ApplicationContext context: Context,
+  ): ProductSelectionDataStore = ProductSelectionDataStore(context)
 }
