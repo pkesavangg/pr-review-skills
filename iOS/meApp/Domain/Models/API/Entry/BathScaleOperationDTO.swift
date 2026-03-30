@@ -7,6 +7,7 @@ struct BathScaleOperationDTO: Codable, Sendable {
     let bodyFat: Double?
     let boneMass: Double?
     let entryTimestamp: String?
+    let entryType: String?
     let impedance: Double?
     let metabolicAge: Double?
     let muscleMass: Double?
@@ -17,6 +18,9 @@ struct BathScaleOperationDTO: Codable, Sendable {
     let skeletalMusclePercent: Double?
     let source: String?
     let subcutaneousFatPercent: Double?
+    let systolic: Double?
+    let diastolic: Double?
+    let meanArterial: Double?
     let unit: String?
     let visceralFatLevel: Double?
     let water: Double?
@@ -42,6 +46,7 @@ extension BathScaleOperationDTO: Identifiable {
             bodyFat: bodyFat,
             boneMass: boneMass,
             entryTimestamp: newTimestamp,
+            entryType: entryType,
             impedance: impedance,
             metabolicAge: metabolicAge,
             muscleMass: muscleMass,
@@ -52,6 +57,9 @@ extension BathScaleOperationDTO: Identifiable {
             skeletalMusclePercent: skeletalMusclePercent,
             source: source,
             subcutaneousFatPercent: subcutaneousFatPercent,
+            systolic: systolic,
+            diastolic: diastolic,
+            meanArterial: meanArterial,
             unit: unit,
             visceralFatLevel: visceralFatLevel,
             water: water,
@@ -63,12 +71,13 @@ extension BathScaleOperationDTO: Identifiable {
 extension BathScaleOperationDTO {
     func toAPIRequest() -> BathScaleOperationRequest {
         return BathScaleOperationRequest(
-            userId: self.accountId, // Mapping accountId -> userId
+            userId: self.accountId,
             bmr: self.bmr,
             bmi: self.bmi,
             bodyFat: self.bodyFat,
             boneMass: self.boneMass,
             entryTimestamp: self.entryTimestamp,
+            entryType: self.entryType,
             metabolicAge: self.metabolicAge,
             muscleMass: self.muscleMass,
             operationType: self.operationType,
@@ -77,6 +86,9 @@ extension BathScaleOperationDTO {
             skeletalMusclePercent: self.skeletalMusclePercent,
             source: self.source,
             subcutaneousFatPercent: self.subcutaneousFatPercent,
+            systolic: self.systolic,
+            diastolic: self.diastolic,
+            meanArterial: self.meanArterial,
             unit: self.unit,
             visceralFatLevel: self.visceralFatLevel,
             water: self.water,
@@ -92,6 +104,7 @@ extension BathScaleOperationDTO {
         self.bodyFat = summary.bodyFat
         self.boneMass = summary.boneMass
         self.entryTimestamp = summary.entryTimestamp
+        self.entryType = summary.entryType
         self.impedance = summary.impedance
         self.metabolicAge = summary.metabolicAge
         self.muscleMass = summary.muscleMass
@@ -102,6 +115,9 @@ extension BathScaleOperationDTO {
         self.skeletalMusclePercent = summary.skeletalMusclePercent
         self.source = nil
         self.subcutaneousFatPercent = summary.subcutaneousFatPercent
+        self.systolic = summary.systolic
+        self.diastolic = summary.diastolic
+        self.meanArterial = summary.meanArterial
         self.unit = nil
         self.visceralFatLevel = summary.visceralFatLevel
         self.water = summary.water

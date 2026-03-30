@@ -26,7 +26,17 @@ struct SignupScreen: View {
             case .addBaby:
                 AnyView(AddBabyStepView(signupStore: signupStore))
             case .babyList:
-                AnyView(BabyListStepView(signupStore: signupStore))
+                AnyView(BabyListStepView(
+                    title: SignupStrings.BabyListStep.title,
+                    addButtonText: SignupStrings.BabyListStep.addBabyButton,
+                    babies: signupStore.babies.map {
+                        BabyListItem(id: $0.id, accountID: $0.id.uuidString, name: $0.name)
+                    },
+                    onTapBaby: { signupStore.editBaby(at: $0) },
+                    onEditBaby: { signupStore.editBaby(at: $0) },
+                    onDeleteBaby: { signupStore.confirmDeleteBaby(at: $0) },
+                    onAddBaby: { signupStore.addAnotherBaby() }
+                ))
             case .sex:
                 AnyView(SexStepView(signupStore: signupStore))
             case .height:

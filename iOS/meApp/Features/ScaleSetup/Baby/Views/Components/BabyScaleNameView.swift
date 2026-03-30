@@ -39,7 +39,6 @@ struct BabyScaleNameView: View {
                     focusedField: focusBinding
                 )
             }
-            .padding(.horizontal, .spacingSM)
             .padding(.top, .spacingLG)
         }
         .scrollDismissesKeyboard(.interactively)

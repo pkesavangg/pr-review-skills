@@ -40,7 +40,6 @@ struct BabyScaleIntroView: View {
                     .foregroundColor(theme.textBody)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, .spacingSM)
             .padding(.top, .spacingLG)
         }
     }

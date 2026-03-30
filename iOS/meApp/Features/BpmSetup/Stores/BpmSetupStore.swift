@@ -87,11 +87,10 @@ final class BpmSetupStore: ObservableObject {
                 return AnyView(
                     A3BpmModelSelectionView(
                         models: BPMS,
-                        selectedSku: selectedSku,
-                        onSelect: { [weak self] sku in
-                            self?.selectedSku = sku
-                        }
-                    )
+                        selectedSku: selectedSku
+                    ) { [weak self] sku in
+                        self?.selectedSku = sku
+                    }
                 )
 
             case .intro:
@@ -178,9 +177,9 @@ final class BpmSetupStore: ObservableObject {
 
             case .paired:
                 return AnyView(
-                    A3BpmPairedView(onLearnHowToMeasure: { [weak self] in
+                    A3BpmPairedView { [weak self] in
                         self?.moveToMeasurementTutorial()
-                    })
+                    }
                 )
 
             case .measureSetup:
@@ -343,7 +342,6 @@ final class BpmSetupStore: ObservableObject {
     private func startScanning() {
         connectionState = .loading
         resetDiscoveryState()
-        LoggerService.shared.log(level: .info, tag: tag, message: "BPM device scanning started")
 
         bluetoothService.scanForBpm()
 
@@ -397,7 +395,11 @@ final class BpmSetupStore: ObservableObject {
         switch result {
         case .success:
             connectionState = .success
-            LoggerService.shared.log(level: .info, tag: tag, message: "BPM device paired successfully")
+
+            // Fetch fresh device info after connection (matching Ionic pattern).
+            // The post-connection broadcastId may differ from the discovery broadcastId
+            // for A3 BPM devices, so update the device with stable identifiers.
+            await updateDeviceFromPostConnectionInfo(device)
 
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
@@ -423,7 +425,7 @@ final class BpmSetupStore: ObservableObject {
             return false
         }
         guard let accountId = accountService.activeAccount?.accountId else {
-            LoggerService.shared.log(level: .error, tag: tag, message: "No active account for BPM device creation")
+            LoggerService.shared.log(level: .error, tag: tag, message: "saveDevice failed: no active account")
             return false
         }
 
@@ -471,12 +473,13 @@ final class BpmSetupStore: ObservableObject {
             await scaleService.syncAllScalesWithRemote()
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
+            bluetoothService.isSetupInProgress = false
             return true
         } catch {
             LoggerService.shared.log(
                 level: .error,
                 tag: tag,
-                message: "Failed to save BPM device: \(error.localizedDescription)"
+                message: "saveDevice failed: \(error.localizedDescription)"
             )
             return false
         }
@@ -484,7 +487,12 @@ final class BpmSetupStore: ObservableObject {
 
     private func saveAndAdvanceFromNickname() async {
         guard currentStep == .nickname else { return }
-        _ = await saveDevice()
+        let saved = await saveDevice()
+        guard saved else {
+            LoggerService.shared.log(level: .error, tag: tag, message: "BPM device save failed, cannot advance from nickname")
+            return
+        }
+
         let candidate = currentStepIndex + 1
         let nextIndex = adjustedIndex(from: candidate, direction: 1)
         guard nextIndex < steps.count else { return }
@@ -504,6 +512,80 @@ final class BpmSetupStore: ObservableObject {
                 self.bpmReadingSubscription?.cancel()
                 self.bpmReadingSubscription = nil
             }
+    }
+
+    // MARK: - Post-Connection Device Info
+
+    /// Updates the discovered device with stable identifiers from the connected device info.
+    /// Matching the Ionic Balance Health app pattern:
+    /// - `broadcastIdString` is set to the real hex broadcastId (used for plugin sync)
+    /// - `peripheralIdentifier` stores the serialNumber (used for DB dedup)
+    /// - `password` is captured from the connected device (critical for A3 BPM)
+    ///
+    /// On iOS, A3 BPMs report a CoreBluetooth UUID during discovery. The real broadcastId
+    /// only becomes available after connection via DEVICE_CONNECTED. We first try getDeviceInfo,
+    /// then fall back to lastConnectedDeviceDetails from the DEVICE_CONNECTED event.
+    private func updateDeviceFromPostConnectionInfo(_ device: Device) async {
+        let protocolType = device.protocolType ?? "A3"
+
+        // Try getDeviceInfo first (works for A6/R4 where broadcastId is valid)
+        let deviceInfoResult = await bluetoothService.getDeviceInfo(for: device, skipConnectionCheck: true)
+
+        switch deviceInfoResult {
+        case .success(let deviceInfo):
+            applyDeviceInfo(deviceInfo, to: device, protocolType: protocolType)
+            
+        case .failure(let error):
+            // For A3 BPMs, getDeviceInfo fails because the SDK can't find the device
+            // by its CoreBluetooth UUID. Fall back to the DEVICE_CONNECTED event details.
+            // The DEVICE_CONNECTED event fires during confirmPair and has the real broadcastId.
+            // Allow a brief window for the async event to arrive.
+            // var connectedInfo = bluetoothService.lastConnectedDeviceInfo
+            let message = "No post-connection device info available after getDeviceInfo failed: "
+                + "\(error.localizedDescription)"
+            LoggerService.shared.log(level: .error, tag: tag, message: message)
+        }
+    }
+
+    /// Applies device info fields to the discovered device (matching Ionic setLastPairedDevice pattern).
+    private func applyDeviceInfo(_ deviceInfo: DeviceInfo, to device: Device, protocolType: String) {
+        let serialNumber = deviceInfo.serialNumber?.replacingOccurrences(of: "\0", with: "")
+
+        // Update broadcastIdString to the real hex value from the connected device.
+        // During A3 discovery, broadcastIdString was a CoreBluetooth UUID — now replace
+        // it with the real hex broadcastId that the SDK uses for sync.
+        let realBroadcastId = deviceInfo.broadcastIdString
+        if !realBroadcastId.isEmpty {
+            let broadcastIdInt = bluetoothService.convertHexToInt(realBroadcastId)
+            if broadcastIdInt > 0 {
+                device.broadcastIdString = realBroadcastId
+                device.broadcastId = broadcastIdInt
+            }
+        }
+
+        // For A3, store serialNumber as peripheralIdentifier (matching Ionic pattern).
+        // In Ionic: peripheralIdentifier = deviceInfo.serialNumber (for A3)
+        if protocolType == "A3", let serial = serialNumber, !serial.isEmpty {
+            device.peripheralIdentifier = serial
+        }
+
+        // Capture password (A3 BPMs need this for sync).
+        // In Ionic: deviceData.password = monitor.password (hex string from plugin)
+        if let password = deviceInfo.password, !password.isEmpty {
+            let passwordInt = bluetoothService.convertHexToInt(password)
+            if passwordInt > 0 {
+                device.password = passwordInt
+            }
+        }
+
+        // Capture MAC address if not already set
+        if !deviceInfo.macAddress.isEmpty, device.mac == nil || device.mac?.isEmpty == true {
+            device.mac = deviceInfo.macAddress
+        }
+
+        if device.protocolType == nil || device.protocolType?.isEmpty == true {
+            device.protocolType = protocolType
+        }
     }
 
     // MARK: - Helpers
@@ -608,7 +690,6 @@ final class BpmSetupStore: ObservableObject {
         isBluetoothPermissionEnabled() && isLocationPermissionEnabled()
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     private func updateNextEnabled() {
         switch currentStep {
         case .selectModel:
@@ -633,15 +714,11 @@ final class BpmSetupStore: ObservableObject {
         case .selectUser:
             isNextEnabled = selectedUserNumber != nil
         case .scanning:
-            // Temporary UI-review override:
-            // isNextEnabled = connectionState == .success
-            isNextEnabled = true
+            isNextEnabled = connectionState == .success
         case .nickname:
             isNextEnabled = !deviceNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .measureStart:
-            // Temporary UI-review override:
-            // isNextEnabled = isReadingSynced
-            isNextEnabled = true
+            isNextEnabled = isReadingSynced
         default:
             isNextEnabled = true
         }

@@ -22,13 +22,27 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
 
     private init() {}
 
-    func saveBaby(name: String, accountId: String, deviceId: String?,
-                  birthday: Date?, biologicalSex: String?,
-                  birthLengthInches: Double?, birthWeightLbs: Double?, birthWeightOz: Double?) async throws -> Baby {
-        let baby = Baby(accountId: accountId, name: name, deviceId: deviceId,
-                        birthday: birthday, biologicalSex: biologicalSex,
-                        birthLengthInches: birthLengthInches,
-                        birthWeightLbs: birthWeightLbs, birthWeightOz: birthWeightOz)
+    // swiftlint:disable:next function_parameter_count
+    func saveBaby(
+        name: String,
+        accountId: String,
+        deviceId: String?,
+        birthday: Date?,
+        biologicalSex: String?,
+        birthLengthInches: Double?,
+        birthWeightLbs: Double?,
+        birthWeightOz: Double?
+    ) async throws -> Baby {
+        let baby = Baby(
+            accountId: accountId,
+            name: name,
+            deviceId: deviceId,
+            birthday: birthday,
+            biologicalSex: biologicalSex,
+            birthLengthInches: birthLengthInches,
+            birthWeightLbs: birthWeightLbs,
+            birthWeightOz: birthWeightOz
+        )
         context.insert(baby)
         try context.save()
         try await loadBabies(for: accountId)
@@ -37,6 +51,26 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
 
     func updateBaby(_ baby: Baby, name: String) async throws {
         baby.name = name
+        try context.save()
+        try await loadBabies(for: baby.accountId)
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func updateBabyProfile(
+        _ baby: Baby,
+        name: String,
+        birthday: Date?,
+        biologicalSex: String?,
+        birthLengthInches: Double?,
+        birthWeightLbs: Double?,
+        birthWeightOz: Double?
+    ) async throws {
+        baby.name = name
+        baby.birthday = birthday
+        baby.biologicalSex = biologicalSex
+        baby.birthLengthInches = birthLengthInches
+        baby.birthWeightLbs = birthWeightLbs
+        baby.birthWeightOz = birthWeightOz
         try context.save()
         try await loadBabies(for: baby.accountId)
     }

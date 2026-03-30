@@ -73,6 +73,26 @@ struct BpmEntryServiceTests {
         #expect(repo.entries.first?.accountId == "acct-1")
     }
 
+    @Test("createBpmEntry: refreshes BPM dashboard summaries with the new reading")
+    func createBpmEntryRefreshesDashboardSummaries() async throws {
+        let repo = MockEntryRepository()
+        let sut = makeSUT(repo: repo)
+
+        try await sut.createBpmEntry(
+            EntryTestFixtures.makeBpmDTO(
+                systolic: 130.0,
+                diastolic: 85.0,
+                pulse: 68.0,
+                entryTimestamp: "2026-03-01T08:00:00Z"
+            )
+        )
+
+        let matchingSummary = sut.bpmDailySummaries.first { $0.period == "2026-03-01" }
+        #expect(matchingSummary != nil)
+        #expect(matchingSummary?.systolic == 130.0)
+        #expect(matchingSummary?.diastolic == 85.0)
+    }
+
     @Test("createBpmEntry: no active account throws")
     func createBpmEntryNoAccount() async {
         let sut = makeSUT(activeAccount: nil)
@@ -157,6 +177,20 @@ struct BpmEntryServiceTests {
             let nsError = error as NSError
             #expect(nsError.code == 404)
         }
+    }
+
+    @Test("deleteBpmEntry: refreshes BPM dashboard summaries after deletion")
+    func deleteBpmEntryRefreshesDashboardSummaries() async throws {
+        let repo = MockEntryRepository()
+        repo.entries = [EntryTestFixtures.makeBpmEntry(timestamp: "2026-03-01T08:00:00Z")]
+        let sut = makeSUT(repo: repo)
+
+        await sut.loadDashboardData(entryType: .bpm)
+        #expect(sut.bpmDailySummaries.contains { $0.period == "2026-03-01" })
+
+        try await sut.deleteBpmEntry(entryTimestamp: "2026-03-01T08:00:00Z")
+
+        #expect(!sut.bpmDailySummaries.contains { $0.period == "2026-03-01" })
     }
 
     // MARK: - exportBpmCSV

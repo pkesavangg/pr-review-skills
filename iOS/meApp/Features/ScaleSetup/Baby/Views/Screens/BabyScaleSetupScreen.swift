@@ -69,6 +69,7 @@ struct BabyScaleSetupScreen: View {
                     .padding(.spacingSM)
             }
         }
+        .background(theme.backgroundSecondary)
         .environmentObject(setupStore)
         .onAppear {
             isBeingDismissed = false
@@ -88,42 +89,41 @@ struct BabyScaleSetupScreen: View {
             guard !isBeingDismissed else { return }
             setupStore.cleanup()
         }
-        // Skip Baby Profile dialog
-        .alert(lang.SkipDialog.title, isPresented: $setupStore.showSkipDialog) {
-            Button(lang.SkipDialog.cancel, role: .cancel) {
-                setupStore.handleSkipCancelled()
-            }
-            Button(lang.SkipDialog.finishSetup) {
-                setupStore.handleSkipConfirmed()
-            }
-        } message: {
-            Text(lang.SkipDialog.message)
-        }
+    }
+
+    /// Steps where the footer should show "FINISH" instead of "NEXT".
+    private var finishSteps: Set<BabyScaleSetupStep> {
+        [.babyAdded]
     }
 
     // MARK: - Footer Buttons
     private var footerButtons: some View {
-        HStack {
-            if setupStore.shouldShowBackButton() {
-                ButtonView(
-                    text: lang.Buttons.back,
-                    type: .inlineTextPrimary,
-                    size: .small,
-                    isDisabled: setupStore.isBackButtonDisabled(),
-                    useFrameForInlineText: true
-                ) {
-                    setupStore.handleBackButtonClick()
-                }
+        let isFinish = finishSteps.contains(setupStore.currentStep)
+        let nextButtonText = isFinish ? commonLang.finish : setupStore.nextButtonText
+
+        return HStack {
+            ButtonView(
+                text: commonLang.back,
+                type: .inlineTextPrimary,
+                size: .small,
+                isDisabled: setupStore.isBackButtonDisabled(),
+                useFrameForInlineText: true
+            ) {
+                withAnimation { hideKeyboard() }
+                setupStore.handleBackButtonClick()
             }
 
             Spacer()
 
             ButtonView(
-                text: setupStore.nextButtonText,
+                text: nextButtonText,
                 type: .filledPrimary,
                 size: .small,
-                isDisabled: !setupStore.isNextEnabled
+                isDisabled: !setupStore.isNextEnabled,
+                customHorizontalPadding: nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
+                customVerticalPadding: .spacingXS / 4
             ) {
+                withAnimation { hideKeyboard() }
                 setupStore.handleNextButtonClick()
             }
         }
