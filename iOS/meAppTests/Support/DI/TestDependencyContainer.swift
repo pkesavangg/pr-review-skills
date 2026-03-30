@@ -3,12 +3,12 @@ import Foundation
 
 @MainActor
 enum TestDependencyContainer {
-    typealias DashboardConcreteDependencies = (
-        account: AccountService,
-        logger: LoggerService,
-        scale: ScaleService,
-        entry: EntryService
-    )
+    struct DashboardConcreteDependencies {
+        let account: AccountService
+        let logger: LoggerService
+        let scale: ScaleService
+        let entry: EntryService
+    }
 
     static func reset() {
         DependencyContainer.shared.dependencies.removeAll()
@@ -76,7 +76,7 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(entryService as EntryService)
         DependencyContainer.shared.register(goalAlertService as GoalAlertService)
 
-        return (
+        return DashboardConcreteDependencies(
             account: accountService,
             logger: loggerService,
             scale: scaleService,

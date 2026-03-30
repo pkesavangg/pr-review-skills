@@ -14,36 +14,36 @@ struct ScaleManualListRowView: View {
     let rowHeight: CGFloat = 139
 
     var body: some View {
-        HStack(spacing: .spacingSM) {
-            Image(scale.imgPath)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 75, height: 75)
-                .themeDropShadow()
+    HStack(spacing: .spacingSM) {
+    Image(scale.imgPath)
+    .resizable()
+    .scaledToFit()
+    .frame(width: 75, height: 75)
+    .themeDropShadow()
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text(scale.sku)
-                    .fontOpenSans(.heading5)
-                    .foregroundColor(theme.textHeading)
-                Text(scale.productName.lowercased())
-                    .fontOpenSans(.body2)
-                    .foregroundColor(theme.textSubheading)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+    VStack(alignment: .leading, spacing: 0) {
+    Text(scale.sku)
+    .fontOpenSans(.heading5)
+    .foregroundColor(theme.textHeading)
+    Text(scale.productName.lowercased())
+    .fontOpenSans(.body2)
+    .foregroundColor(theme.textSubheading)
+    .lineLimit(1)
+    .truncationMode(.tail)
 
-            }
-            .frame(height: 75)
+    }
+    .frame(height: 75)
 
-            Spacer()
-            AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 32, height: 32))
-                .foregroundColor(theme.actionPrimary)
-            AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 32, height: 32))
-                .foregroundColor(theme.actionPrimary)
-        }
-        .padding(.vertical, .spacingSM)
-        .padding(.horizontal, .spacingSM)
-        .frame(height: rowHeight)
-        .border(sides: [.bottom], thickness: 0.5)
+    Spacer()
+    AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 32, height: 32))
+    .foregroundColor(theme.actionPrimary)
+    AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 32, height: 32))
+    .foregroundColor(theme.actionPrimary)
+    }
+    .padding(.vertical, .spacingSM)
+    .padding(.horizontal, .spacingSM)
+    .frame(height: rowHeight)
+    .border(sides: [.bottom], thickness: 0.5)
     }
 
     /// Returns human-readable connectivity label for a given setup type.
