@@ -12,29 +12,20 @@ extension BabyScaleSetupStore {
 
     var nextButtonText: String {
         switch currentStep {
-        case .intro, .permissions:
-            return lang.Buttons.next
-        case .scaleName:
-            return lang.Buttons.next
-        case .paired:
-            return lang.Buttons.continueButton
         case .babyProfile:
-            return lang.Buttons.save
+            return commonLang.save
         case .babyAdded:
-            return lang.Buttons.finish
+            return commonLang.finish
         default:
-            return lang.Buttons.next
+            return commonLang.next
         }
-    }
-
-    var backButtonText: String {
-        lang.Buttons.back
     }
 
     // MARK: - Navigation
 
     func moveToNextStep() {
         guard !isExiting else { return }
+        dismissKeyboard()
         let nextIndex = adjustedIndex(from: currentStepIndex + 1, direction: 1)
         guard nextIndex < steps.count else {
             handleFinish()
@@ -45,14 +36,20 @@ extension BabyScaleSetupStore {
 
     func moveToPreviousStep() {
         guard !isExiting else { return }
+        dismissKeyboard()
         let previousIndex = adjustedIndex(from: currentStepIndex - 1, direction: -1)
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
     }
 
     func navigateToStep(_ step: BabyScaleSetupStep) {
+        dismissKeyboard()
         guard let index = steps.firstIndex(of: step) else { return }
         currentStepIndex = index
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     /// Skips steps that should be bypassed during navigation:

@@ -10,7 +10,7 @@ struct PermissionListView: View {
     /// – `bluetooth`➜ needs Bluetooth access only (BT scale).
     /// – `wifi`     ➜ needs Location access only (Wi-Fi scale).
     enum SetupType {
-        case all, appSync, btWifi, bluetooth, wifi, bpmA3
+        case all, appSync, btWifi, bluetooth, wifi, bpm
     }
     
     // MARK: Dependencies
@@ -54,7 +54,7 @@ struct PermissionListView: View {
             config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription, nil)
         case .wifi:
             config = ([.location], PermissionsStrings.locationPermissionDescription, nil)
-        case .bpmA3:
+        case .bpm:
             config = (
                 [.bluetooth, .location],
                 BpmSetupStrings.A3Permissions.description,
@@ -93,7 +93,7 @@ struct PermissionListView: View {
     // MARK: Sections
     private var bluetoothSection: some View {
         let rows: [(String, Bool, PermissionType)]
-        if setupType == .bpmA3 {
+        if setupType == .bpm {
             rows = [
                 (
                     viewModel.bluetoothAuthorized
@@ -140,7 +140,7 @@ struct PermissionListView: View {
         // Base rows for location services
 // swiftlint:disable:next large_tuple
         var rows: [(String, Bool, PermissionType)] =
-            setupType == .bpmA3
+            setupType == .bpm
             ? [
                 (
                     viewModel.locationAuthorized

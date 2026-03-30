@@ -33,7 +33,7 @@ struct ScaleTypeHelper {
             case .babyScale:
                 return .babyScale
             case .bpm:
-                return .bluetoothA6
+                return .bpm
             }
         }
 
@@ -50,6 +50,11 @@ struct ScaleTypeHelper {
             case .btWifiR4:
                 return .bluetoothR4
             }
+        }
+
+        // Fallback: check if device is a BPM by deviceType field
+        if scale.deviceType?.lowercased() == DeviceType.bpm.rawValue {
+            return .bpm
         }
 
         // Final fallback: determine based on device type

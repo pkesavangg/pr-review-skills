@@ -6,12 +6,12 @@
 import SwiftUI
 
 /// User selection view for the ``BpmSetupStep/selectUser`` step.
-/// Uses the static A3 BPM user icons on the "Which user do you want to be?" screen.
+/// Renders device-specific user slot icons based on the SKU.
 struct A3BpmUserSelectionView: View {
     @Environment(\.appTheme) private var theme
 
     let sku: String
-    let selectedUser: Int?
+    @Binding var selectedUser: Int?
     let onSelect: (Int) -> Void
 
     private let lang = BpmSetupStrings.SelectUser.self
@@ -34,35 +34,48 @@ struct A3BpmUserSelectionView: View {
                 }
                 .padding(.horizontal, .spacingXSM)
 
-                HStack(spacing: .spacingLG) {
-                    BpmUserIconButton(
-                        iconName: firstUserIcon,
-                        isSelected: selectedUser == 1
-                    ) {
-                        onSelect(1)
-                    }
+                if a6BpmSkus.contains(sku) {
+                    HStack(spacing: .spacingLG) {
+                        BpmUserIconButton(
+                            iconName: AppAssets.a6BpmUserA,
+                            isSelected: selectedUser == 1
+                        ) {
+                            onSelect(1)
+                        }
 
-                    BpmUserIconButton(
-                        iconName: secondUserIcon,
-                        isSelected: selectedUser == 2
-                    ) {
-                        onSelect(2)
+                        BpmUserIconButton(
+                            iconName: AppAssets.a6BpmUserB,
+                            isSelected: selectedUser == 2
+                        ) {
+                            onSelect(2)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    HStack(spacing: .spacingLG) {
+                        BpmUserIconButton(
+                            iconName: AppAssets.a3BpmUser1,
+                            isSelected: selectedUser == 1
+                        ) {
+                            onSelect(1)
+                        }
+
+                        BpmUserIconButton(
+                            iconName: AppAssets.a3BpmUser2,
+                            isSelected: selectedUser == 2
+                        ) {
+                            onSelect(2)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding(.top, .spacingLG)
         }
     }
-
-    private var firstUserIcon: String {
-        AppAssets.a3BpmUser1
-    }
-
-    private var secondUserIcon: String {
-        AppAssets.a3BpmUser2
-    }
 }
+
+// MARK: - Catalog icon button
 
 private struct BpmUserIconButton: View {
     let iconName: String
@@ -82,7 +95,7 @@ private struct BpmUserIconButton: View {
 }
 
 #Preview {
-    A3BpmUserSelectionView(sku: "0603", selectedUser: 1, onSelect: { _ in })
+    A3BpmUserSelectionView(sku: "0603", selectedUser: .constant(1), onSelect: { _ in })
         .padding(.horizontal)
         .environmentObject(Theme.shared)
 }

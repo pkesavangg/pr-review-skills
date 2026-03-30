@@ -48,7 +48,7 @@ struct ScaleSetupIntroView: View {
                 .themeDropShadow()
                 .padding(.bottom, .spacingLG)
 
-            Text(scaleSetupLang.modelTitle(scale.sku))
+            Text(scaleSetupLang.modelTitle(introModelCode(for: scale)))
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
 
@@ -62,6 +62,14 @@ struct ScaleSetupIntroView: View {
         return  [.espTouchWifi, .wifi].contains(scale.setupType)
         ? scaleSetupLang.getScaleMacAddress
         : nil
+    }
+
+    private func introModelCode(for scale: ScaleItemInfo) -> String {
+        if scale.setupType == .bpm {
+            let primary = primaryBpmSetupSku(for: scale.sku)
+            return bpmListModelLabel(primarySku: primary)
+        }
+        return scale.sku
     }
 }
 

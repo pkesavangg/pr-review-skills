@@ -97,6 +97,13 @@ extension BabyScaleSetupStore {
 
     // MARK: - Delete Baby
 
+    /// Shows a confirmation alert before deleting a baby from the list.
+    func confirmDeleteBabyFromList(_ baby: Baby) {
+        notificationService.showDeleteBabyConfirmation { [weak self] in
+            self?.deleteBabyFromList(baby)
+        }
+    }
+
     func deleteBabyFromList(_ baby: Baby) {
         savedBabies.removeAll { $0.id == baby.id }
         Task {
@@ -113,9 +120,27 @@ extension BabyScaleSetupStore {
         }
     }
 
+    // MARK: - Skip Baby Profile
+
+    func showSkipBabyProfileDialog() {
+        showSkipDialog = true
+    }
+
+    func handleSkipConfirmed() {
+        showSkipDialog = false
+        handleFinish()
+    }
+
+    func handleSkipCancelled() {
+        showSkipDialog = false
+    }
+
     // MARK: - Finish
 
     func handleFinish() {
-        performExitCleanup()
+        Task {
+            await saveScale()
+            performExitCleanup()
+        }
     }
 }

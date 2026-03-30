@@ -203,7 +203,7 @@ struct SettingsScreen: View {
                 router.navigate(to: .appPermissions)
             })
             .listRowInsets()
-            if settingsStore.hasWeightScale {
+            if settingsStore.shouldShowNotifications {
                 ActionListItemView(config: ActionListItemConfig(
                     title: settingsLang.notifications,
                     value: settingsStore.notificationsOnText,

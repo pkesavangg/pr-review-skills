@@ -10,7 +10,7 @@ extension BpmSetupStoreTests {
         func scanningStepTriggersBpmScan() async {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.scanning.index
 
@@ -24,7 +24,7 @@ extension BpmSetupStoreTests {
         func deviceDiscoveryUpdatesConnectionState() async {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.scanning.index
 
@@ -46,7 +46,7 @@ extension BpmSetupStoreTests {
         func scanTimeoutSetsFailure() async {
             let harness = BpmSetupStoreTestFixtures.makeSUT(scanTimeoutNs: 10_000_000) // 10ms
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.scanning.index
 
@@ -60,7 +60,7 @@ extension BpmSetupStoreTests {
         func nonBpmDiscoveryEventsAreIgnored() async {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.scanning.index
 
@@ -81,7 +81,7 @@ extension BpmSetupStoreTests {
         func discoveryEventsOutsideScanningAreIgnored() async {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             // Stay on selectModel step
             harness.bluetooth.deviceDiscoveredSubject.send(
@@ -98,7 +98,7 @@ extension BpmSetupStoreTests {
             bluetooth.connectBpmResult = .success(())
             let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             let device = BpmSetupStoreTestFixtures.makeBpmDevice()
             device.broadcastIdString = "ABCD"
@@ -119,7 +119,7 @@ extension BpmSetupStoreTests {
             bluetooth.connectBpmResult = .failure(.pairFailed(NSError(domain: "test", code: -1)))
             let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             let device = BpmSetupStoreTestFixtures.makeBpmDevice()
             device.broadcastIdString = "ABCD"
@@ -138,7 +138,7 @@ extension BpmSetupStoreTests {
         func pairingWithoutDeviceSetsFailure() async {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             await store.testStartPairing()
 

@@ -22,7 +22,7 @@ extension BpmSetupStoreTests {
         func btPermissionEnablesNextWhenGranted() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.btPermission.index
 
@@ -40,7 +40,7 @@ extension BpmSetupStoreTests {
             ])
             let harness = BpmSetupStoreTestFixtures.makeSUT(permissions: permissions)
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.btPermission.index
 
@@ -75,7 +75,7 @@ extension BpmSetupStoreTests {
             permissions.setPermissions(BpmSetupStoreTestFixtures.enabledPermissions())
             let harness = BpmSetupStoreTestFixtures.makeSUT(permissions: permissions)
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.currentStepIndex = BpmSetupStep.scanning.index
 
@@ -103,7 +103,7 @@ extension BpmSetupStoreTests {
         func cleanUpResetsState() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.cleanUp()
 
@@ -124,7 +124,7 @@ extension BpmSetupStoreTests {
         func nicknameDisablesNextWhenEmpty() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.deviceNickname = "   "
             store.currentStepIndex = BpmSetupStep.nickname.index
@@ -136,7 +136,7 @@ extension BpmSetupStoreTests {
         func nicknameEnablesNextWhenNonEmpty() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             store.deviceNickname = "My BPM"
             store.currentStepIndex = BpmSetupStep.nickname.index
@@ -150,7 +150,7 @@ extension BpmSetupStoreTests {
             bluetooth.connectBpmResult = .success(())
             let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
             let store = harness.store
-            BpmSetupStoreTestFixtures.configureDefaultBpm(store)
+            BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
             let device = BpmSetupStoreTestFixtures.makeBpmDevice()
             device.broadcastIdString = "ABCD"
