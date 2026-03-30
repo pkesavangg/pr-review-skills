@@ -73,6 +73,7 @@ struct ScaleManualListRowView: View {
         case .btWifiR4:
             return AppAssets.btWifi
         case .babyScale:
+            return AppAssets.bluetooth
         case .bpm:
             return AppAssets.bluetooth
         }
