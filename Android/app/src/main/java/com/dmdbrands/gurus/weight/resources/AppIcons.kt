@@ -166,6 +166,7 @@ object AppIcons {
     val AppSyncNavBar = R.drawable.app_bottom_bar
     val SetupCompleteCheck = R.drawable.setup_complete_check
     val BabyScalePairedCheck = R.drawable.ic_baby_scale_paired_check
+    val BabyScaleSearching = R.drawable.ic_searching_indicator
     val EditPencil = R.drawable.ic_edit_pencil
     val WifiAPMode = R.drawable.wifi_ap_mode
     val WifiSmartConnect = R.drawable.wifi_smart_connect

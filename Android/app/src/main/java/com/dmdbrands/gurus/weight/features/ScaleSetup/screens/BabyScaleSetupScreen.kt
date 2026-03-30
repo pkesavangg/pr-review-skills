@@ -246,6 +246,7 @@ fun BabyScaleSetupScreenContent(
               BabyProfileFormContent(
                 profile = state.editingProfile,
                 onProfileChanged = { onIntent(BabyScaleSetupIntent.UpdateEditingProfile(it)) },
+                onSkip = { onIntent(ScaleSetupIntent.ExitSetup(true)) },
               )
             }
 

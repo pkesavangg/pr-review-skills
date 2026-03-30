@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -25,7 +27,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.BabyProfile
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
+import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppText
+import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageDefaults
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.TextType
@@ -109,6 +113,7 @@ fun PairedSuccessContent(
 fun BabyProfileFormContent(
   profile: BabyProfile,
   onProfileChanged: (BabyProfile) -> Unit,
+  onSkip: (() -> Unit)? = null,
   modifier: Modifier = Modifier,
 ) {
   Column(
@@ -188,6 +193,16 @@ fun BabyProfileFormContent(
         unfocusedBorderColor = MeTheme.colorScheme.secondaryAction,
       ),
     )
+
+    if (onSkip != null) {
+      Spacer(modifier = Modifier.height(spacing.xs))
+      AppButton(
+        label = BabyScaleSetupStrings.BabyProfileForm.SkipButton,
+        type = ButtonType.InlineTextPrimary,
+        onClick = onSkip,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+      )
+    }
   }
 }
 
@@ -252,9 +267,10 @@ fun BabyListContent(
 
     Spacer(modifier = Modifier.height(spacing.sm))
 
-    androidx.compose.material3.TextButton(
+    OutlinedButton(
       onClick = onAddBaby,
       modifier = Modifier.align(Alignment.CenterHorizontally),
+      border = BorderStroke(1.dp, MeTheme.colorScheme.primaryAction),
     ) {
       Text(
         text = BabyScaleSetupStrings.BabyList.AddBabyButton,

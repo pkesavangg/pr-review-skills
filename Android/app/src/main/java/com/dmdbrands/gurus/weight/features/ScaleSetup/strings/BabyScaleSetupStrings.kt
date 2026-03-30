@@ -38,6 +38,7 @@ object BabyScaleSetupStrings {
     const val SexHint = "Biological Sex"
     const val BirthLengthHint = "birth length"
     const val BirthWeightHint = "birth weight"
+    const val SkipButton = "SKIP"
   }
 
   object BabyList {
