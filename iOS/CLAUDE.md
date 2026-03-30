@@ -294,6 +294,7 @@ When the user describes a task in natural language, match it to the appropriate 
 | "check coverage", "verify tests" | `.claude/skills/verify-tests.md` |
 | "review my changes", "self review" | `.claude/skills/self-review.md` |
 | "raise a PR", "open a PR" | `.claude/skills/raise-pr.md` |
+| "write a PR description", "draft a PR description", "describe this PR", "what should I put in the PR description" | `.claude/skills/pr-description.md` |
 | "log time", "log work" | `.claude/skills/log-work.md` |
 | "create a branch", "start working on MA-XXXX" | `.claude/skills/create-branch.md` |
 | "scaffold this feature", "new feature" | `.claude/skills/feature-slice.md` |
