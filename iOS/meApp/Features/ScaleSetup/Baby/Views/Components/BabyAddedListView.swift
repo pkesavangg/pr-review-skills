@@ -12,7 +12,6 @@ struct BabyAddedListView: View {
 
     var body: some View {
         BabyListStepView(
-            topPadding: .spacingSM,
             title: lang.title,
             addButtonText: lang.addABaby,
             babies: store.savedBabies.map {

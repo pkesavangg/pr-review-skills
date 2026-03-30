@@ -692,6 +692,8 @@ final class BpmSetupStore: ObservableObject {
         case .btPermission:
             let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
             let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+            let locationEnabled = permissionsService.getPermissionState(.LOCATION) == .ENABLED
+            let locationSwitchEnabled = permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
 
             if !bluetoothEnabled {
                 Task { await permissionsService.handlePermission(.bluetooth) }

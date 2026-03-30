@@ -139,7 +139,7 @@ extension BabyScaleSetupStore {
 
     func handleFinish() {
         Task {
-            await saveScaleLocally()
+            await saveScale()
             performExitCleanup()
         }
     }
