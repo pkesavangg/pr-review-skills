@@ -324,6 +324,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     private func setupSubscriptions() {
+        setupEntryServiceSubscriptions()
+        setupAccountServiceSubscriptions()
+        setupProductTypeStoreSubscriptions()
+    }
+
+    private func setupEntryServiceSubscriptions() {
         entryService.entrySaved
             .sink { [weak self] entry in
                 self?.lifecycleManager.onEntryAdded(entry)
@@ -335,7 +341,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 self?.lifecycleManager.onEntryDeleted(entry)
             }
             .store(in: &cancellables)
+    }
 
+    private func setupAccountServiceSubscriptions() {
         accountService.$activeAccount
             .map { AccountSettingsSnapshot(from: $0) }
             .removeDuplicates()
@@ -369,8 +377,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 self?.lifecycleManager.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
+    }
 
-        // React to product type switching from the header dropdown
+    private func setupProductTypeStoreSubscriptions() {
         productTypeStore.availableItemsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
