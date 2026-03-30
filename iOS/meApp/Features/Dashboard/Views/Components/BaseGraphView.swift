@@ -21,6 +21,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
+    @Environment(\.babyGrowthChartCalloutDateStyle) private var babyGrowthChartCalloutDateStyle
 
     // MARK: - Local State
     @State private var localSelectedXValue: Date?
@@ -562,6 +563,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
     // MARK: - Selection Callout
+
+    private func selectionCalloutDateLabel(for selectedDate: Date) -> String {
+        if babyGrowthChartCalloutDateStyle {
+            return BabyPercentileGrowthReference.formatChartSelectionDate(selectedDate).lowercased()
+        }
+        return (viewModel.formatSelectedXAxisLabel() ?? "").lowercased()
+    }
+
     private func selectionCalloutValue(for selectedDate: Date) -> Double? {
         let plottedDate = viewModel.plotXDate(for: selectedDate)
 
@@ -585,7 +594,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             let baseOffset: CGFloat = isOnLeftSide ? -10 : -40
             let finalXPosition = chartPosition.x + baseOffset
 
-            Text((viewModel.formatSelectedXAxisLabel() ?? "").lowercased())
+            Text(selectionCalloutDateLabel(for: selectedDate))
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .position(

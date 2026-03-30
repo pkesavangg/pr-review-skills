@@ -20,6 +20,11 @@ enum BabyDashboardStrings {
         "\(name.lowercased())'s weight"
     }
 
+    // MARK: - Growth chart (Smart Baby / WHO reference)
+    /// Citation for percentile curves and calculations that follow WHO Child Growth Standards.
+    static let growthChartAttribution =
+        "Growth percentiles use WHO Child Growth Standards (\(BabyPercentileGrowthReference.whoChildGrowthStandardsYear))."
+
     // MARK: - Empty State
     static let noReadingsYet = "No readings yet"
 

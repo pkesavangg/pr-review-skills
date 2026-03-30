@@ -17,9 +17,19 @@ struct BabyTrendView: View {
     private let babyColor = Color(red: 0x88 / 255.0, green: 0x41 / 255.0, blue: 0xA4 / 255.0)
 
     var body: some View {
-        DashboardTrendView(dashboardStore: dashboardStore) {
-            babyInfoSection
-        }
+        DashboardTrendView(
+            dashboardStore: dashboardStore,
+            topContent: { babyInfoSection },
+            chartFooter: {
+                Text(BabyDashboardStrings.growthChartAttribution)
+                    .fontOpenSans(.body3)
+                    .foregroundColor(theme.textSubheading)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.top, .spacingXS)
+            }
+        )
+        .environment(\.babyGrowthChartCalloutDateStyle, true)
     }
 
     @ViewBuilder
