@@ -112,8 +112,6 @@ final class MockHealthKitStoreHealthKitService: HealthKitServiceProtocol {
     var expectedPermissionCountResult = 5
     func requestAdditionalPermissionsIfNeeded() async {}
     func expectedPermissionCount() async -> Int { expectedPermissionCountResult }
-    var brandNameResult = "Weight Gurus"
-    func getBrandName() async -> String { brandNameResult }
 }
 
 @MainActor
