@@ -62,6 +62,8 @@ object ScaleSetupStrings {
       ScaleSetupType.Bluetooth -> "Weight Gurus needs Bluetooth and Location permissions to connect to your scale."
 
       ScaleSetupType.Lcbt -> "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
+
+      ScaleSetupType.BabyScale -> "meApp needs access to the following permissions to connect with your Scale remotely."
     }
   }
 
