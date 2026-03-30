@@ -78,11 +78,15 @@ final class EntryStore: ObservableObject {
             .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newItem in
-                self?.logger.log(
+                guard let self = self else { return }
+                self.logger.log(
                       level: .info,
-                      tag: self?.tag ?? "EntryStore",
+                      tag: self.tag,
                       message: "Product type changed to \(newItem.displayName)"
                   )
+                self.resetBPForm()
+                self.resetBabyForm()
+                self.resetWeightForm()
             }
             .store(in: &cancellables)
     }
@@ -527,6 +531,19 @@ final class EntryStore: ObservableObject {
         babyForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
+    }
+
+    @MainActor func resetWeightForm() {
+        isBmiAutoCalculationEnabled = true
+        manualEntryForm = ManualEntryForm()
+        manualEntryForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        showMetrics = false
+        showDatePicker = false
+        showTimePicker = false
+        hasUserAdjustedTime = false
+        updateWeightValidators()
     }
 
     func showExitAlert(onConfirm: @escaping () -> Void, onCancel: (() -> Void)? = nil) {

@@ -52,7 +52,7 @@ struct BabyEntryView: View {
 
                     if let weightError = entryStore.babyWeightError {
                         Text(weightError)
-                            .fontOpenSans(.subHeading2)
+                            .fontOpenSans(.body4)
                             .foregroundColor(theme.textError)
                             .padding(.leading, .spacingSM)
                             .padding(.top, -20)
