@@ -44,7 +44,7 @@ struct BabyProfileFormView: View {
     }
 
     var body: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: .spacingLG) {
                 // Header (scale setup only)
                 if !hideHeader {
@@ -242,15 +242,14 @@ struct BabyProfileFormView: View {
             selectedValues: [selectedSex],
             options: [Sex.allCases],
             displayValue: { $0.rawValue.capitalized },
-            title: lang.biologicalSexLabel,
-            onUpdate: { vals in
+            title: lang.biologicalSexLabel
+        )            { vals in
                 if let sex = vals.first {
                     store.babyProfileForm.biologicalSex.value = sex.rawValue.capitalized
                     store.babyProfileForm.biologicalSex.markAsTouched()
                     store.babyProfileForm.biologicalSex.validate()
                 }
             }
-        )
         .onChange(of: focusedField) { oldValue, _ in
             switch oldValue {
             case .firstName:
