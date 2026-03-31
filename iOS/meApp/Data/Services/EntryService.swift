@@ -1369,7 +1369,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 dailySummaries = dailyData
                 monthlySummaries = monthlyData
             case .bpm:
-                // TODO: Remove dummy data once real BPM entries exist
+                // Fallback to dummy data for development/testing when no real BPM entries exist.
+                // Once BPM data is available, this condition will be false and real data will be used.
                 if dailyData.isEmpty {
                     let dummy = Self.generateDummyBpmSummaries(accountId: accountId)
                     bpmDailySummaries = dummy
@@ -1380,7 +1381,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 }
             }
         } catch {
-            logger.log(level: .error, tag: tag, message: "loadDashboardData(\(entryType)) failed: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "loadDashboardData failed (\(entryType)): \(error.localizedDescription)")
         }
     }
 
