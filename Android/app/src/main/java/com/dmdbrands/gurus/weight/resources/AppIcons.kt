@@ -63,6 +63,7 @@ object AppIcons {
     val CircleUnselected = R.drawable.ic_circle_outline
     val CircleSelected = R.drawable.ic_check_circle_filled
     val CircleClosed = R.drawable.ic_circle_close_filled
+    val CircleCloseOutlined = R.drawable.ic_circle_close_outlined
   }
 
   object Metrics {

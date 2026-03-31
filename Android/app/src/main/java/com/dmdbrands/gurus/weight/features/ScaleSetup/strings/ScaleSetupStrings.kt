@@ -9,7 +9,8 @@ object ScaleSetupStrings {
   /** Default display name when scale product info is unknown. */
   const val UnknownScale = "Unknown Scale"
 
-  fun Header(sku: String) = "Scale Setup - $sku"
+  fun Header(sku: String) = "Scale Setup – $sku"
+  const val BabyScaleHeader = "Scale Setup – 0220/0222"
 
   const val backButton = "back"
   const val nextButton = "next"
@@ -20,9 +21,12 @@ object ScaleSetupStrings {
 
   object ScaleInfo {
     fun Title(sku: String) = "Model $sku"
+    const val BabyScaleTitle = "Model 0220/0222"
     const val WifiScaleButtonText = "Get your scale’s MAC address"
     const val Subtitle =
       "If you’re having trouble setting up your scale, press the help button in the top right to connect with our team."
+    const val BabyScaleSubtitle =
+      "If you have any trouble setting up your monitor, you can connect with our team via the help button in the top right."
   }
 
   object ExitSetupAlert {
@@ -63,7 +67,7 @@ object ScaleSetupStrings {
 
       ScaleSetupType.Lcbt -> "Weight Gurus requires location access to view your Wi-Fi network information and connect to your scale."
 
-      ScaleSetupType.BabyScale -> "meApp needs access to the following permissions to connect with your Scale remotely."
+      ScaleSetupType.BabyScale -> "meApp needs access to the following permissions to connect with your scale."
     }
   }
 

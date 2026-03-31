@@ -11,7 +11,6 @@ val babyScaleInitialSteps: ImmutableList<BabyScaleSetupStep> = persistentListOf(
   BabyScaleSetupStep.SCALE_INFO,
   BabyScaleSetupStep.PERMISSIONS,
   BabyScaleSetupStep.WAKEUP,
-  BabyScaleSetupStep.CONNECTING_BLUETOOTH,
   BabyScaleSetupStep.SCALE_NAME,
   BabyScaleSetupStep.PAIRED_SUCCESS,
   BabyScaleSetupStep.BABY_PROFILE_FORM,

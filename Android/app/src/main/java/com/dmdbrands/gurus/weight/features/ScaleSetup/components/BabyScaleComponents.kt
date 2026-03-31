@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,6 +22,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +32,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.BabyProfile
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
@@ -59,15 +65,40 @@ fun ScaleNameContent(
       textType = TextType.Title,
       modifier = Modifier.fillMaxWidth(),
     )
-    OutlinedTextField(
+    TextField(
       value = nickname,
       onValueChange = onNicknameChanged,
-      label = { Text(BabyScaleSetupStrings.ScaleName.Hint) },
+      label = {
+        Text(
+          text = BabyScaleSetupStrings.ScaleName.Hint,
+          style = MeTheme.typography.body3,
+          color = MeTheme.colorScheme.textSubheading,
+        )
+      },
       singleLine = true,
-      modifier = Modifier.fillMaxWidth(),
-      colors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MeTheme.colorScheme.primaryAction,
-        unfocusedBorderColor = MeTheme.colorScheme.secondaryAction,
+      textStyle = MeTheme.typography.body2,
+      modifier = Modifier.fillMaxWidth().height(56.dp),
+      shape = RoundedCornerShape(MeTheme.borderRadius.sm),
+      trailingIcon = {
+        if (nickname.isNotEmpty()) {
+          IconButton(onClick = { onNicknameChanged("") }) {
+            Icon(
+              painter = painterResource(id = AppIcons.Selection.CircleCloseOutlined),
+              contentDescription = "Clear",
+              modifier = Modifier.size(20.dp),
+              tint = MeTheme.colorScheme.secondaryAction,
+            )
+          }
+        }
+      },
+      colors = TextFieldDefaults.colors(
+        focusedContainerColor = MeTheme.colorScheme.primaryBackground,
+        unfocusedContainerColor = MeTheme.colorScheme.primaryBackground,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+        focusedTextColor = MeTheme.colorScheme.textBody,
+        unfocusedTextColor = MeTheme.colorScheme.textBody,
+        cursorColor = MeTheme.colorScheme.primaryAction,
       ),
     )
   }
@@ -83,9 +114,7 @@ fun PairedSuccessContent(
   Column(
     modifier = modifier
       .fillMaxSize()
-      .verticalScroll(rememberScrollState())
       .padding(vertical = spacing.md, horizontal = spacing.sm),
-    verticalArrangement = Arrangement.spacedBy(spacing.lg),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
     AppText(
@@ -93,16 +122,22 @@ fun PairedSuccessContent(
       textType = TextType.Title,
       modifier = Modifier.fillMaxWidth(),
     )
+    Spacer(modifier = Modifier.height(spacing.xs))
     AppText(
       text = BabyScaleSetupStrings.PairedSuccess.Subtitle,
       textType = TextType.Body,
       modifier = Modifier.fillMaxWidth(),
     )
-    Image(
-      painter = painterResource(id = AppIcons.Setup.BabyScalePairedCheck),
-      contentDescription = "Paired",
-      modifier = Modifier.size(ScaleImageDefaults.size(ScaleImageSize.Large)),
-    )
+    Box(
+      modifier = Modifier.fillMaxSize(),
+      contentAlignment = Alignment.Center,
+    ) {
+      Image(
+        painter = painterResource(id = AppIcons.Setup.BabyScalePairedCheck),
+        contentDescription = "Paired",
+        modifier = Modifier.size(ScaleImageDefaults.size(ScaleImageSize.Large)),
+      )
+    }
   }
 }
 
@@ -276,6 +311,59 @@ fun BabyListContent(
         text = BabyScaleSetupStrings.BabyList.AddBabyButton,
         style = MeTheme.typography.button1,
         color = MeTheme.colorScheme.primaryAction,
+      )
+    }
+  }
+}
+
+/**
+ * Connection failed screen for baby scale — left-aligned title/subtitle at top,
+ * PAIR AGAIN + SUPPORT buttons at bottom.
+ */
+@Composable
+fun BabyScaleConnectionFailed(
+  title: String,
+  subtitle: String,
+  onPairAgain: () -> Unit,
+  onSupport: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Box(
+    modifier = modifier
+      .fillMaxSize()
+      .padding(horizontal = spacing.sm, vertical = spacing.md),
+  ) {
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+    ) {
+      AppText(
+        text = title,
+        textType = TextType.Title,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      Spacer(modifier = Modifier.height(spacing.xs))
+      AppText(
+        text = subtitle,
+        textType = TextType.Body,
+        modifier = Modifier.fillMaxWidth(),
+      )
+    }
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .align(Alignment.BottomCenter),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      AppButton(
+        label = BabyScaleSetupStrings.SetupButtons.PairAgain,
+        type = ButtonType.PrimaryFilled,
+        onClick = onPairAgain,
+      )
+      Spacer(modifier = Modifier.height(spacing.xs))
+      AppButton(
+        label = ScaleSetupStrings.SetupButtons.Support,
+        type = ButtonType.InlineTextPrimary,
+        onClick = onSupport,
       )
     }
   }

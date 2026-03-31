@@ -113,6 +113,12 @@ constructor(
       return
     }
 
+    // Skip WAKEUP when going back — it auto-advances, so go to PERMISSIONS instead
+    if (currentStep == BabyScaleSetupStep.SCALE_NAME) {
+      handleIntent(ScaleSetupIntent.SetNewStep(BabyScaleSetupStep.PERMISSIONS))
+      return
+    }
+
     val previousStep = currentState.previousStep
     if (previousStep != null) {
       handleIntent(ScaleSetupIntent.SetNewStep(previousStep))
@@ -132,7 +138,6 @@ constructor(
 
     when (currentStep) {
       BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-      BabyScaleSetupStep.CONNECTING_BLUETOOTH -> connectToBluetooth()
       else -> AppLog.w(TAG, "Try again called on unsupported step: $currentStep")
     }
   }
@@ -141,10 +146,22 @@ constructor(
     AppLog.d(TAG, "Step changed to: $step")
     viewModelScope.launch {
       when (step) {
-        BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-        BabyScaleSetupStep.CONNECTING_BLUETOOTH -> connectToBluetooth()
+        // TODO: Restore real BLE actions when scale connection is ready
+        BabyScaleSetupStep.WAKEUP -> mockWakeUpScale()
         else -> AppLog.d(TAG, "No specific action for step: $step")
       }
+    }
+  }
+
+  // TODO: Remove mock methods and restore real BLE when scale connection is ready
+  private fun mockWakeUpScale() {
+    AppLog.d(TAG, "Mock: Starting wake up scale process")
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    viewModelScope.launch {
+      delay(3000)
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+      delay(1000)
+      onNext()
     }
   }
 
