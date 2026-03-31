@@ -76,6 +76,8 @@ The `/work-ticket` command orchestrates the complete flow. When working a Jira t
   ↓
 [Implementation phase — use skills as needed per task type]
   ↓
+/post-change-guard     → Auto-fix lint/a11y/concurrency; report security & standards; build if vital files changed
+  ↓
 /verify-tests          → Build + run tests + coverage check
 /self-review           → Run all 5 specialist reviews
 /commit                → Stage and commit with Jira ID prefix
@@ -107,6 +109,8 @@ agent: api-change-planner        → Map affected layers and files
 /gen-mock-single or              → Generate required mocks
   agent: gen-mock-batch
   ↓
+/post-change-guard               → Auto-fix quality issues; build check if vital files touched
+  ↓
 /verify-tests                    → Build + test + coverage
 /self-review                     → Full review pipeline
 /commit → /raise-pr → /log-work
@@ -119,6 +123,8 @@ agent: api-change-planner        → Map affected layers and files
 /debug-issue                     → Investigate root cause systematically
   ↓
 /fix-bug                         → Fix with regression test
+  ↓
+/post-change-guard               → Auto-fix quality issues; build check if services/DI touched
   ↓
 /verify-tests                    → Confirm fix + no regressions
 /self-review                     → Full review pipeline
@@ -133,6 +139,8 @@ agent: di-impact-finder          → Assess DI impact (if touching services)
   ↓
 /refactor                        → Execute refactor without behavior changes
 /update-mock                     → Update any affected mocks
+  ↓
+/post-change-guard               → Build always triggered (refactors touch DI/services)
   ↓
 /verify-tests                    → All existing tests must still pass
 /self-review                     → Full review pipeline
@@ -149,6 +157,8 @@ agent: api-change-planner        → Plan layers to touch
   ↓
 /gen-test-file                   → Tests for new repository/service
 /gen-mock-single                 → Mock for new protocol
+  ↓
+/post-change-guard               → Build always triggered (touches Domain/Repositories, Data/API)
   ↓
 /verify-tests → /self-review → /commit
 ```
@@ -292,6 +302,7 @@ Before marking any task complete, confirm:
 ### Review & Quality
 | Skill | Purpose |
 |-------|---------|
+| `/post-change-guard` | Mid-session fix + check (lint/a11y/concurrency auto-fix, security + standards report, build if vital files) |
 | `/self-review` | Run all 5 specialist reviews |
 | `/review-lint` | SwiftLint and style check |
 | `/swiftlint` | Run SwiftLint with auto-fix, then manually fix remaining violations |
@@ -339,6 +350,7 @@ These skill groups can run concurrently when their inputs are independent:
 
 | Parallel Group | Skills |
 |----------------|--------|
+| post-change-guard internals | `/swiftlint` + `/review-accessibility --fix` + `/review-security` + `/review-code-standards` (Steps 3a–3d run concurrently) |
 | Mock generation | `gen-mock-batch` (handles multiple protocols in parallel) |
 | Review pipeline | `/review-lint` + `/review-security` + `/review-accessibility` (read-only checks) |
 | Research phase | `/fetch-ticket` + `/read-figma` + `/read-jira-images` |

@@ -37,6 +37,27 @@ For each constructor dependency:
 1. Search for an existing mock: `rg -l "Mock<DepName>" meAppTests -g '*.swift'`
 2. List which mocks already exist vs. need to be created
 
+**If 3+ mocks are missing, invoke `gen-mock-batch` agent** to generate them in parallel. This subagent will:
+- Read all protocol definitions at once
+- Generate mock implementations for each protocol simultaneously
+- Apply project conventions (call tracking, argument capture, result builders)
+- Return complete list of generated mock file paths
+
+**Invocation:**
+```
+Spawn gen-mock-batch agent with:
+- List of missing mocks: [Protocol1, Protocol2, Protocol3, ...]
+- Protocols located at: Domain/Services/*, Domain/Repositories/*
+- Output location: meAppTests/Support/Mocks/
+- Conventions: meApp iOS mock patterns (call tracking, argument capture)
+```
+
+The agent will return:
+- List of generated mock files
+- File paths ready to import in test file
+- Skip if all required mocks already exist
+- Skip if only 1-2 mocks needed (faster to create manually)
+
 ---
 
 ### 4 — Generate the Test File
@@ -45,6 +66,7 @@ For each constructor dependency:
 // Coverage target: <N>% (<Layer>)
 import Testing
 import Foundation
+import Combine
 @testable import meApp
 
 @Suite(.serialized)
@@ -54,9 +76,19 @@ struct <ClassName>Tests {
     // MARK: - SUT Factory
 
     private func makeSUT() -> (sut: <ClassName>, dep1: Mock<Dep1>, dep2: Mock<Dep2>) {
+        // For Stores using @Injector, reset DI container and register mocks
+        TestDependencyContainer.reset()
+
         let dep1 = Mock<Dep1>()
         let dep2 = Mock<Dep2>()
-        let sut = <ClassName>(dep1: dep1, dep2: dep2)
+
+        // CRITICAL for @Injector-backed stores: register both concrete AND protocol
+        DependencyContainer.shared.register(dep1)
+        DependencyContainer.shared.register(dep1 as Dep1Protocol)
+        DependencyContainer.shared.register(dep2)
+        DependencyContainer.shared.register(dep2 as Dep2Protocol)
+
+        let sut = <ClassName>()  // Will use @Injector to pull from DependencyContainer
         return (sut, dep1, dep2)
     }
 
@@ -66,14 +98,14 @@ struct <ClassName>Tests {
     func <methodName1>Success() async throws {
         // Arrange
         let (sut, dep1, _) = makeSUT()
-        dep1.<relevantResult> = .success(<fixture>)
+        dep1.<relevantResult> = .success(.previewSample)  // Use fixture
 
         // Act
         let result = try await sut.<methodName1>(<args>)
 
         // Assert
         #expect(dep1.<relevantCalls> == 1)
-        #expect(result == <expected>)
+        #expect(result == .expected)
     }
 
     @Test("<methodName1> failure: propagates error from <dependency>")
@@ -88,6 +120,16 @@ struct <ClassName>Tests {
         }
     }
 
+    @Test("<methodName1> handles nil/optional guards")
+    func <methodName1>NilGuard() async throws {
+        let (sut, _, _) = makeSUT()
+
+        // Act / Assert
+        await #expect(throws: TestError.invalidInput) {
+            try await sut.<methodName1>(nil)
+        }
+    }
+
     // MARK: - <methodName2>
     // ... repeat pattern for each method
 
@@ -97,6 +139,7 @@ struct <ClassName>Tests {
 
 private enum TestError: Error, Equatable {
     case sample
+    case invalidInput
 }
 ```
 
@@ -105,12 +148,46 @@ private enum TestError: Error, Equatable {
 - Use `@Test`, `@Suite(.serialized)`, `#expect`, `Issue.record` — never `XCTAssert`
 - Use `await #expect(throws:)` for async throwing failure paths
 - Use `guard case .endpoint(let x) = capturedArg else { Issue.record("..."); return }` for endpoint matching
-- Follow naming: `"methodName success: ..."`, `"methodName failure: ..."`, `"methodName validation failure: ..."`
+- Follow naming: `"methodName success: ..."`, `"methodName failure: ..."`, `"methodName validation: ..."`
 - Group tests under `// MARK: - methodName` matching the source method name
 - Order within each group: 1) success path 2) validation/guard failures 3) runtime/network/persistence failures
 - One `makeSUT()` per test suite; never create the SUT inline in individual tests
-- Add `TestDependencyContainer.reset()` as the first line of `makeSUT()` if the SUT is a Store that uses `@Injector`
+- **For Stores with `@Injector`:** Call `TestDependencyContainer.reset()` first, then **double-register** each mock (concrete + protocol cast). This prevents `fatalError("Dependency not found")` at runtime.
+- **For protocols with `@Published` properties:** Mock setup requires `import Combine` and binding the publisher in the mock. E.g., `var accountPublisher: AnyPublisher<Account?, Never> { $account.eraseToAnyPublisher() }`
 - Place file at: `meAppTests/Features/<Feature>/<ClassName>Tests.swift`
+
+### Fixtures & Test Data
+
+For realistic tests, use:
+1. **`.previewSample` extension method** — if the model has a preview extension in the feature's Views folder
+   ```swift
+   dep1.accountResult = .success(.previewSample)
+   ```
+2. **`TestFixtures.swift`** — centralizes reusable test data across multiple test files
+   ```swift
+   // In meAppTests/Support/TestFixtures.swift
+   enum TestFixtures {
+       static var sampleAccount: Account { ... }
+       static var sampleEntry: Entry { ... }
+   }
+   ```
+3. **Inline literals** — for simple types only
+   ```swift
+   let entry = Entry(weight: 150.5, date: Date())
+   ```
+
+**Avoid placeholder values** — replace `<fixture>` placeholders with actual test data before running tests.
+
+### Branch Coverage
+
+For each method, ensure these branches are tested:
+- **Success path** — method completes and returns expected result
+- **Guard/validation failures** — nil checks, invalid input, preconditions
+- **Optional chaining failures** — property access on nil objects
+- **Error propagation** — dependency throws error, network timeout, persistence failure
+- **Early returns** — guard, if let, switch statements
+
+Add a test for each branch. Placeholder test names above capture these; fill in assertions matching the actual branch logic.
 
 ---
 
@@ -125,3 +202,13 @@ private enum TestError: Error, Equatable {
    - MockBarRepository (BarRepositoryProtocol at Domain/Repositories/BarRepositoryProtocol.swift)
    ```
 4. Remind: these are stubs — fill in real fixture values and assertions before running tests
+
+### 6 — Verify Coverage (MANDATORY)
+
+**ALWAYS follow this skill with `/verify-tests`** to run the test suite and confirm:
+- All tests pass
+- Coverage meets or exceeds the threshold (comment at top of file)
+- No `fatalError` from missing DI dependencies
+- Fixture data and assertions are filled in (no `<fixture>` placeholders remain)
+
+If coverage falls short, return to this skill and add more test cases targeting uncovered branches.
