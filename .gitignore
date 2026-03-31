@@ -25,21 +25,6 @@ local.properties
 *.bak
 *.tmp
 
-# Skill evaluation artifacts
-EVALUATION_*.txt
-OUTPUTS_README.txt
-README_SWIFTLINT_EVALUATION.md
-SKILL_EVALUATION_*.txt
-SWIFTLINT_EVALUATION_*.md
-SWIFTLINT_EVAL_*.md
-SWIFTLINT_HIPAA_FIX_GUIDE.md
-skills-lock.json
-swiftlint_eval_*.txt
-swiftlint_eval_*.md
-swiftlint_report.txt
-swiftlint_violations.json
-iOS/.claude/skills/pr-description-workspace/
-
 # Sensitive files - Q1 2026 audit
 .env
 .env.*
