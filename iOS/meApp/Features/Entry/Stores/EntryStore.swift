@@ -24,6 +24,8 @@ final class EntryStore: ObservableObject {
     @Published var manualEntryForm = ManualEntryForm()
     @Published var bpForm = BloodPressureEntryForm()
     @Published var babyForm = BabyEntryForm()
+    @Published var babyWeightUnit: BabyWeightUnit = .lbsOz
+    @Published var babyLengthUnit: BabyLengthUnit = .inches
     @Published var weightUnit: WeightUnit = .lb
     @Published var canShowOtherBodyMetrics = false
     @Published var showMetrics = false
@@ -71,6 +73,7 @@ final class EntryStore: ObservableObject {
         updateWeightValidators()
         setupDateTimeObservers()
         subscribeToProductTypeChanges()
+        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
     }
 
     private func subscribeToProductTypeChanges() {
@@ -321,9 +324,12 @@ final class EntryStore: ObservableObject {
     
     @MainActor private func updateWeightUnitFromAccount(_ account: Account?) {
         let unit = account?.weightSettings?.weightUnit ?? .lb
-        
+
         if self.weightUnit != unit {
             self.weightUnit = unit
+            self.babyWeightUnit = unit == .kg ? .kg : .lbsOz
+            self.babyLengthUnit = unit == .kg ? .cm : .inches
+            self.babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
             self.updateWeightValidators()
             self.calculateBMI()
             // Force UI update
@@ -475,10 +481,29 @@ final class EntryStore: ObservableObject {
             randomizeSubMinute: true
         )
 
-        let pounds = Int(Double(babyForm.pounds.value) ?? 0)
-        let ounces = Int(Double(babyForm.ounces.value) ?? 0)
-        let weight = pounds * 16 + ounces
-        let length = Int(Double(babyForm.inches.value) ?? 0)
+        let weight: Int
+        switch babyWeightUnit {
+        case .kg:
+            let kgValue = Double(babyForm.kg.value) ?? 0
+            weight = ConversionTools.convertBabyKgToDecigrams(kgValue)
+        case .lb:
+            let lbValue = Double(babyForm.lb.value) ?? 0
+            weight = ConversionTools.convertBabyLbToDecigrams(lbValue)
+        case .lbsOz:
+            let pounds = Int(Double(babyForm.pounds.value) ?? 0)
+            let ounces = Double(babyForm.ounces.value) ?? 0
+            weight = ConversionTools.convertBabyLbsOzToDecigrams(lbs: pounds, oz: ounces)
+        }
+
+        let length: Int
+        switch babyLengthUnit {
+        case .cm:
+            let cmValue = Double(babyForm.cm.value) ?? 0
+            length = ConversionTools.convertBabyCmToMm(cmValue)
+        case .inches:
+            let inchesValue = Double(babyForm.inches.value) ?? 0
+            length = ConversionTools.convertBabyInchesToMm(inchesValue)
+        }
         let note = babyForm.notes.value
 
         do {
@@ -519,15 +544,39 @@ final class EntryStore: ObservableObject {
     }
 
     var babyWeightError: String? {
-        babyForm.weightError
+        switch babyWeightUnit {
+        case .kg: return babyForm.weightErrorMetric
+        case .lb: return babyForm.weightErrorLb
+        case .lbsOz: return babyForm.weightError
+        }
     }
 
     var babyLengthError: String? {
-        babyForm.lengthError
+        switch babyLengthUnit {
+        case .cm: return babyForm.lengthErrorCm
+        case .inches: return babyForm.lengthError
+        }
+    }
+
+    /// Called when user toggles the baby weight unit segmented control.
+    func updateBabyWeightUnit(_ unit: BabyWeightUnit) {
+        guard unit != babyWeightUnit else { return }
+        babyWeightUnit = unit
+        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
+    }
+
+    /// Called when user toggles the baby length unit segmented control.
+    func updateBabyLengthUnit(_ unit: BabyLengthUnit) {
+        guard unit != babyLengthUnit else { return }
+        babyLengthUnit = unit
+        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
     }
 
     @MainActor func resetBabyForm() {
+        babyWeightUnit = weightUnit == .kg ? .kg : .lbsOz
+        babyLengthUnit = weightUnit == .kg ? .cm : .inches
         babyForm = BabyEntryForm()
+        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
         babyForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)

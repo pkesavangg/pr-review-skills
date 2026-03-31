@@ -20,11 +20,11 @@ struct BabyDaySummaryItem: View {
     }
 
     private var weightText: String {
-        "\(day.weightLbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", day.weightOz)) \(HistoryListStrings.oz)"
+        day.weightDisplay
     }
 
     private var lengthText: String {
-        "\(Int(day.lengthInches)) \(HistoryListStrings.inUnit)"
+        day.lengthDisplay
     }
 
     private var percentileText: String {

@@ -21,12 +21,22 @@ struct BabyHistoryDay: Identifiable, Equatable, Hashable {
     let id: String
     /// Number of entries on this day
     let entryCount: Int
-    /// Average weight in pounds (whole part)
+    /// Average weight in pounds (whole part) — used for imperial display
     let weightLbs: Int
-    /// Average weight in ounces (fractional part)
+    /// Average weight in ounces (fractional part) — used for imperial display
     let weightOz: Double
+    /// Average weight in kilograms — used for metric display
+    let weightKg: Double
+    /// Average weight in decimal pounds — used for lb display
+    let weightLb: Double
     /// Average length in inches
     let lengthInches: Double
+    /// Average length in centimeters — used for metric display
+    let lengthCm: Double
     /// Average growth percentile
     let percentile: Int
+    /// Pre-formatted weight string based on account unit preference
+    let weightDisplay: String
+    /// Pre-formatted length string based on account unit preference
+    let lengthDisplay: String
 }

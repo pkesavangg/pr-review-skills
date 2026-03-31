@@ -353,6 +353,68 @@ final class HistoryStore: ObservableObject {
         }
         notificationService.dismissLoader()
     }
+
+    // MARK: - BP Delete
+
+    func showDeleteBPEntryAlert(entry: BPHistoryEntry) {
+        let alert = AlertModel(
+            title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                    Task { await self.deleteBPEntryInternal(entry) }
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    self.notificationService.dismissAlert()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func deleteBPEntryInternal(_ entry: BPHistoryEntry) async {
+        do {
+            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
+            try await entryService.deleteBpmEntry(entryTimestamp: entry.entryTimestamp)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete BP entry: \(error.localizedDescription)")
+        }
+        notificationService.dismissLoader()
+    }
+
+    // MARK: - Baby Delete
+
+    func showDeleteBabyEntryAlert(entry: BabyHistoryEntry) {
+        let alert = AlertModel(
+            title: AlertStrings.DeleteEntryAlert.title,
+            message: AlertStrings.DeleteEntryAlert.message,
+            buttons: [
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.deleteButton, type: .danger) { _ in
+                    Task { await self.deleteBabyEntryInternal(entry) }
+                },
+                AlertButtonModel(title: AlertStrings.DeleteEntryAlert.cancelButton, type: .secondary) { _ in
+                    self.notificationService.dismissAlert()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func deleteBabyEntryInternal(_ babyEntry: BabyHistoryEntry) async {
+        do {
+            notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
+            let allEntries = try await entryService.getAllEntries()
+            guard let entry = allEntries.first(where: { $0.id == babyEntry.id }) else {
+                logger.log(level: .error, tag: tag, message: "Baby entry not found for deletion: id=\(babyEntry.id)")
+                notificationService.dismissLoader()
+                return
+            }
+            try await entryService.deleteEntry(entry)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to delete baby entry: \(error.localizedDescription)")
+        }
+        notificationService.dismissLoader()
+    }
     
     // MARK: - Export Data
     private func exportData() {
@@ -399,6 +461,11 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby API
 
+    /// Whether the active account uses metric (kg) for weight.
+    var isMetric: Bool {
+        accountService.activeAccount?.weightSettings?.weightUnit == .kg
+    }
+
     /// User tapped a baby day row.
     func selectBabyDay(_ day: BabyHistoryDay) {
         selectedBabyDay = day
@@ -415,19 +482,35 @@ final class HistoryStore: ObservableObject {
                     && $0.babyId == babyId
                     && self.localDayString(from: $0.entryTimestamp) == day.id
                 }
+                let metric = self.isMetric
                 babyEntries = dayEntries.compactMap { entry -> BabyHistoryEntry? in
                     guard let baby = entry.babyEntry else { return nil }
-                    let totalOz = baby.weight
-                    let lbs = totalOz / 16
-                    let oz = Double(totalOz % 16)
+                    let decigrams = baby.weight
+                    let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(decigrams)
+                    let kg = ConversionTools.convertBabyDecigramsToKg(decigrams)
+                    let lbDecimal = ConversionTools.convertBabyDecigramsToLb(decigrams)
+                    let mm = baby.length
+                    let lengthInches = ConversionTools.convertBabyMmToInches(mm)
+                    let lengthCm = ConversionTools.convertBabyMmToCm(mm)
+                    let weightDisplay = metric
+                        ? "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
+                        : "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
+                    let lengthDisplay = metric
+                        ? "\(String(format: "%.1f", lengthCm)) \(HistoryListStrings.cm)"
+                        : "\(String(format: "%.1f", lengthInches)) \(HistoryListStrings.inUnit)"
                     return BabyHistoryEntry(
                         id: entry.id,
                         entryTimestamp: entry.entryTimestamp,
-                        weightLbs: lbs,
-                        weightOz: oz,
-                        lengthInches: Double(baby.length),
+                        weightLbs: lbsOz.lbs,
+                        weightOz: lbsOz.oz,
+                        weightKg: kg,
+                        weightLb: lbDecimal,
+                        lengthInches: lengthInches,
+                        lengthCm: lengthCm,
                         percentile: 0,
-                        notes: baby.note.isEmpty ? nil : baby.note
+                        notes: baby.note.isEmpty ? nil : baby.note,
+                        weightDisplay: weightDisplay,
+                        lengthDisplay: lengthDisplay
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
             } catch {
@@ -504,19 +587,36 @@ final class HistoryStore: ObservableObject {
         }.filter { !$0.key.isEmpty }
 
         // Build days sorted newest first
+        let metric = self.isMetric
         let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
             let count = dayEntries.count
             let weights = dayEntries.compactMap { $0.babyEntry?.weight }
             let avgWeight = weights.isEmpty ? 0 : weights.reduce(0, +) / weights.count
             let lengths = dayEntries.compactMap { $0.babyEntry?.length }
-            let avgLength = lengths.isEmpty ? 0.0 : Double(lengths.reduce(0, +)) / Double(lengths.count)
+            let avgMm = lengths.isEmpty ? 0 : lengths.reduce(0, +) / lengths.count
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(avgWeight)
+            let kg = ConversionTools.convertBabyDecigramsToKg(avgWeight)
+            let lbDecimal = ConversionTools.convertBabyDecigramsToLb(avgWeight)
+            let lengthInches = ConversionTools.convertBabyMmToInches(avgMm)
+            let lengthCm = ConversionTools.convertBabyMmToCm(avgMm)
+            let weightDisplay = metric
+                ? "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
+                : "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
+            let lengthDisplay = metric
+                ? "\(String(format: "%.1f", lengthCm)) \(HistoryListStrings.cm)"
+                : "\(String(format: "%.1f", lengthInches)) \(HistoryListStrings.inUnit)"
             return BabyHistoryDay(
                 id: dayId,
                 entryCount: count,
-                weightLbs: avgWeight / 16,
-                weightOz: Double(avgWeight % 16),
-                lengthInches: avgLength,
-                percentile: 0
+                weightLbs: lbsOz.lbs,
+                weightOz: lbsOz.oz,
+                weightKg: kg,
+                weightLb: lbDecimal,
+                lengthInches: lengthInches,
+                lengthCm: lengthCm,
+                percentile: 0,
+                weightDisplay: weightDisplay,
+                lengthDisplay: lengthDisplay
             )
         }.sorted { $0.id > $1.id }
 

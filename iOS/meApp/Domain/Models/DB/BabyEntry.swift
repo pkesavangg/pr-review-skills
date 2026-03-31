@@ -3,8 +3,8 @@
 /// | Column Name | Type   | Description                              |
 /// |-------------|--------|------------------------------------------|
 /// | babyId      | string | FK to Baby.id                            |
-/// | length      | int    | Baby length measurement                  |
-/// | weight      | int    | Baby weight measurement                  |
+/// | length      | int    | Baby length in millimeters                |
+/// | weight      | int    | Baby weight in decigrams                  |
 /// | note        | string | User note for the entry                  |
 
 import Foundation
@@ -14,9 +14,9 @@ import SwiftData
 final class BabyEntry {
     /// FK to Baby.id
     var babyId: String
-    /// Baby length measurement
+    /// Baby length in millimeters (e.g. 615 = 24.2 inches)
     var length: Int
-    /// Baby weight measurement
+    /// Baby weight in decigrams (e.g. 545660 = 54.566 kg)
     var weight: Int
     /// User note for the entry
     var note: String

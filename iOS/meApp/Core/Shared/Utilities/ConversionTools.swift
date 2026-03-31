@@ -120,6 +120,66 @@ final class ConversionTools {
         return String(format: "%.1f", finalValue)
     }
     
+    // MARK: - Baby Weight Conversion
+    // All baby weight functions store/read in tenths-of-ounces (Int).
+    // e.g. 85 lbs 2.5 oz = (85*16 + 2.5) * 10 = 13,625
+
+    /// Converts baby weight from kg to decigrams for storage. 1 kg = 10000 decigrams.
+    static func convertBabyKgToDecigrams(_ kg: Double) -> Int {
+        return Int(round(kg * 10000.0))
+    }
+
+    /// Converts baby weight from decigrams to kg for display. Matches baby app `calcDecigramsToKg`.
+    static func convertBabyDecigramsToKg(_ decigrams: Int) -> Double {
+        return rounded(Double(decigrams) / 10000.0, toPlaces: 3)
+    }
+
+    /// Converts decigrams to (lbs, oz) tuple for imperial display. Matches baby app `calcDecigramsToLbOz`.
+    static func convertBabyDecigramsToLbsOz(_ decigrams: Int) -> (lbs: Int, oz: Double) {
+        let totalOz = rounded(Double(decigrams) / 283.5, toPlaces: 1)
+        let lbs = Int(totalOz / 16.0)
+        let oz = lbs > 0 ? rounded(totalOz.truncatingRemainder(dividingBy: 16.0), toPlaces: 1) : totalOz
+        return (lbs, oz)
+    }
+
+    /// Converts lbs + fractional oz to decigrams for storage. Matches baby app `calcLbOzToDecigrams`.
+    static func convertBabyLbsOzToDecigrams(lbs: Int, oz: Double) -> Int {
+        let totalOz = Double(lbs) * 16.0 + oz
+        return Int(round(totalOz * 283.5))
+    }
+
+    /// Converts decimal pounds to decigrams for storage. 1 lb = 4535.924 decigrams.
+    static func convertBabyLbToDecigrams(_ lb: Double) -> Int {
+        return Int(round(lb * 4535.924))
+    }
+
+    /// Converts decigrams to decimal pounds for display. Matches baby app `calcDecigramsToLbDecimal`.
+    static func convertBabyDecigramsToLb(_ decigrams: Int) -> Double {
+        return rounded(Double(decigrams) / 4535.924, toPlaces: 3)
+    }
+
+    // MARK: - Baby Length Conversion (stored in millimeters)
+
+    /// Converts inches to millimeters for storage. Matches baby app `calcInchesToMm`.
+    static func convertBabyInchesToMm(_ inches: Double) -> Int {
+        return Int(round(inches * 25.4))
+    }
+
+    /// Converts millimeters to inches for display. Matches baby app `calcMmToInches`.
+    static func convertBabyMmToInches(_ mm: Int) -> Double {
+        return round(Double(mm) / 25.4 * 10.0) / 10.0
+    }
+
+    /// Converts centimeters to millimeters for storage. Matches baby app `calcCmToMm`.
+    static func convertBabyCmToMm(_ cm: Double) -> Int {
+        return Int(round(cm * 10.0))
+    }
+
+    /// Converts millimeters to centimeters for display. Matches baby app `calcMmToCm`.
+    static func convertBabyMmToCm(_ mm: Int) -> Double {
+        return Double(mm) / 10.0
+    }
+
     // MARK: - BMI
     /// Calculates BMI from weight (tenths of lbs) and height (tenths of inches)
     /// Returns 0 if height is zero to avoid division by zero.

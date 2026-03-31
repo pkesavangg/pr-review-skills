@@ -92,16 +92,18 @@ class MetricFieldFormatter: ObservableObject {
         }
         
         // Limit to maxLength digits
+        let decimalPlaces = config.decimalPlaces
         let limitedDigits = String(digits.prefix(config.maxLength))
         let length = limitedDigits.count
-        
-        switch length {
-        case 1:
-            return "0.\(limitedDigits)"
-        default:
-            let beforeDecimal = limitedDigits.dropLast()
-            let afterDecimal = limitedDigits.suffix(1)
-            return "\(beforeDecimal).\(afterDecimal)"
+
+        if length <= decimalPlaces {
+            let padded = String(repeating: "0", count: decimalPlaces - length) + limitedDigits
+            return "0.\(padded)"
+        } else {
+            let splitIndex = length - decimalPlaces
+            let integerPart = String(limitedDigits.prefix(splitIndex))
+            let decimalPart = String(limitedDigits.suffix(decimalPlaces))
+            return "\(integerPart).\(decimalPart)"
         }
     }
     

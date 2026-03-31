@@ -12,6 +12,7 @@ struct BPHistoryMonthListScreen: View {
     @EnvironmentObject var router: Router<HistoryRoute>
 
     let month: BPHistoryMonth
+    @State private var openItemID: UUID?
 
     private var title: String {
         guard let firstEntry = historyStore.bpEntries.first else { return month.id }
@@ -38,6 +39,9 @@ struct BPHistoryMonthListScreen: View {
         .onAppear {
             historyStore.selectBPMonth(month)
         }
+        .onChange(of: historyStore.bpEntries) { _, entries in
+            if entries.isEmpty { router.navigateBack() }
+        }
         .onDisappear {
             historyStore.expandedBPEntries.removeAll()
             historyStore.resetSelectedBPMonth()
@@ -54,12 +58,24 @@ struct BPHistoryMonthListScreen: View {
                         isExpanded: historyStore.expandedBPEntries.contains(entry.id.uuidString),
                         onTap: {
                             toggleEntry(entry)
-                        }
+                        },
+                        onDelete: {
+                            historyStore.showDeleteBPEntryAlert(entry: entry)
+                        },
+                        openItemID: $openItemID
                     )
                     .id(entry.id)
                 }
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 10)
+                .onChanged { _ in
+                    if openItemID != nil {
+                        withAnimation { openItemID = nil }
+                    }
+                }
+        )
     }
 
     // MARK: - Private

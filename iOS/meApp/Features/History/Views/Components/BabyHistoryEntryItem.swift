@@ -12,6 +12,8 @@ struct BabyHistoryEntryItem: View {
     let entry: BabyHistoryEntry
     let isExpanded: Bool
     let onTap: () -> Void
+    let onDelete: () -> Void
+    var openItemID: Binding<UUID?>?
 
     private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
 
@@ -20,11 +22,11 @@ struct BabyHistoryEntryItem: View {
     }
 
     private var weightText: String {
-        "\(entry.weightLbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", entry.weightOz)) \(HistoryListStrings.oz)"
+        entry.weightDisplay
     }
 
     private var lengthText: String {
-        "\(Int(entry.lengthInches)) \(HistoryListStrings.inUnit)"
+        entry.lengthDisplay
     }
 
     private var percentileText: String {
@@ -91,6 +93,24 @@ struct BabyHistoryEntryItem: View {
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
             .background(isExpanded ? theme.actionSecondary : Color.clear)
+            .swipeableActions(
+                buttons: [
+                    SwipeButton(
+                        tint: theme.textError,
+                        action: { onDelete() },
+                        label: {
+                            AnyView(
+                                Text(CommonStrings.delete.uppercased())
+                                    .fontOpenSans(.button1)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(theme.textInverse)
+                            )
+                        }
+                    )
+                ],
+                itemID: entry.id,
+                openItemID: openItemID
+            )
 
             Divider()
                 .foregroundColor(theme.actionPrimary)
