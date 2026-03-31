@@ -9,6 +9,7 @@ import SwiftUI
 /// with a shared floating label ("Birth Weight") and combined error message.
 struct BirthWeightInputField: View {
     @Environment(\.appTheme) private var theme
+    private let lang = BabyScaleSetupStrings.BabyProfile.self
 
     // External bindings
     @Binding var lbsValue: String
@@ -79,12 +80,12 @@ struct BirthWeightInputField: View {
                 .keyboardType(.numberPad)
                 .focused($lbsFieldFocused)
                 .multilineTextAlignment(.trailing)
-                .font(.custom("OpenSans-Regular", size: CustomTextStyle.body1.size))
+                .fontOpenSans(.body1)
                 .foregroundColor(theme.textBody)
                 .frame(minWidth: 30)
                 .fixedSize()
 
-            Text("lb")
+            Text(lang.lbsUnit)
                 .fontOpenSans(.body3)
                 .foregroundColor(theme.textSubheading)
         }
@@ -98,12 +99,12 @@ struct BirthWeightInputField: View {
                 .keyboardType(.numberPad)
                 .focused($ozFieldFocused)
                 .multilineTextAlignment(.trailing)
-                .font(.custom("OpenSans-Regular", size: CustomTextStyle.body1.size))
+                .fontOpenSans(.body1)
                 .foregroundColor(theme.textBody)
                 .frame(minWidth: 30)
                 .fixedSize()
 
-            Text("oz")
+            Text(lang.ozUnit)
                 .fontOpenSans(.body3)
                 .foregroundColor(theme.textSubheading)
         }
@@ -157,9 +158,13 @@ struct BirthWeightInputField: View {
             }
         }
         .onChange(of: lbsDisplayValue) { oldValue, newValue in
-            handleDisplayChange(oldValue: oldValue, newValue: newValue,
-                                display: $lbsDisplayValue, source: $lbsValue,
-                                formatter: lbsFormatter)
+            handleDisplayChange(
+                oldValue: oldValue,
+                newValue: newValue,
+                display: $lbsDisplayValue,
+                source: $lbsValue,
+                formatter: lbsFormatter
+            )
         }
         .onChange(of: lbsValue) { oldValue, newValue in
             guard oldValue != newValue else { return }
@@ -167,9 +172,13 @@ struct BirthWeightInputField: View {
             if lbsDisplayValue != formatted { lbsDisplayValue = formatted }
         }
         .onChange(of: ozDisplayValue) { oldValue, newValue in
-            handleDisplayChange(oldValue: oldValue, newValue: newValue,
-                                display: $ozDisplayValue, source: $ozValue,
-                                formatter: ozFormatter)
+            handleDisplayChange(
+                oldValue: oldValue,
+                newValue: newValue,
+                display: $ozDisplayValue,
+                source: $ozValue,
+                formatter: ozFormatter
+            )
         }
         .onChange(of: ozValue) { oldValue, newValue in
             guard oldValue != newValue else { return }
@@ -184,12 +193,12 @@ struct BirthWeightInputField: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 if lbsFieldFocused {
-                    Button("Next") {
+                    Button(CommonStrings.next) {
                         focusedField = .babyBirthWeightOz
                     }
                 }
                 if ozFieldFocused {
-                    Button("Done") {
+                    Button(CommonStrings.done) {
                         focusedField = nil
                     }
                 }

@@ -19,7 +19,7 @@ extension BluetoothService {
             throw BluetoothServiceError.noProfileInfo
         }
         
-        ggBleSDK.scan(.SMART_BABY, accountData) { [weak self] result in
+        ggBleSDK.scan(.WEIGHT_GURUS, accountData) { [weak self] result in
             Task { @MainActor in
                 switch result {
                 case .success(let scanResponse):
