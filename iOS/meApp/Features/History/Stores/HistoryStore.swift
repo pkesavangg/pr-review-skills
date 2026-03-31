@@ -86,6 +86,14 @@ final class HistoryStore: ObservableObject {
                             await self.loadEntries(for: selectedMonth, showLoader: false)
                         }
                     }
+                    // Refresh BP month detail if viewing one
+                    if let selectedBPMonth = self.selectedBPMonth {
+                        self.selectBPMonth(selectedBPMonth)
+                    }
+                    // Refresh baby day detail if viewing one
+                    if let selectedBabyDay = self.selectedBabyDay {
+                        self.selectBabyDay(selectedBabyDay)
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -101,6 +109,14 @@ final class HistoryStore: ObservableObject {
                         if monthKey == selectedMonth.id {
                             await self.loadEntries(for: selectedMonth, showLoader: false)
                         }
+                    }
+                    // Refresh BP month detail if viewing one
+                    if let selectedBPMonth = self.selectedBPMonth {
+                        self.selectBPMonth(selectedBPMonth)
+                    }
+                    // Refresh baby day detail if viewing one
+                    if let selectedBabyDay = self.selectedBabyDay {
+                        self.selectBabyDay(selectedBabyDay)
                     }
                 }
             }
@@ -231,26 +247,49 @@ final class HistoryStore: ObservableObject {
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
 
-        // Blood pressure mode uses dummy data — no service call needed
+        // Blood pressure mode — load from local BPM entries
         if isBloodPressureMode {
             monthsLoadTask = Task { [weak self] in
                 guard let self else { return }
-                let result = BPDummyDataGenerator.generateMonths()
-                self.bpMonths = result
-                self.isEmptyState = result.isEmpty
+                do {
+                    let dtos = try await self.entryService.fetchBpmEntries()
+                    let result = self.mapBpmDTOsToMonths(dtos)
+                    self.bpMonths = result
+                    self.isEmptyState = result.isEmpty
+                } catch {
+                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load BP history: \(error.localizedDescription)")
+                    self.bpMonths = []
+                    self.isEmptyState = true
+                }
                 self.monthsLoadTask = nil
             }
             await monthsLoadTask?.value
             return
         }
 
-        // Baby mode uses dummy data — no service call needed
+        // Baby mode — load from local baby entries
         if isBabyMode {
             monthsLoadTask = Task { [weak self] in
                 guard let self else { return }
-                let result = BabyDummyDataGenerator.generateWeeks()
-                self.babyWeeks = result
-                self.isEmptyState = result.isEmpty
+                do {
+                    let allEntries = try await self.entryService.getAllEntries()
+                    let babyId: String? = {
+                        if case .baby(let profile) = self.productTypeStore.selectedItem { return profile.id }
+                        return nil
+                    }()
+                    let babyEntries = allEntries.filter {
+                        $0.deviceType == DeviceType.babyScale.rawValue
+                        && $0.operationType == OperationType.create.rawValue
+                        && $0.babyId == babyId
+                    }
+                    let result = self.mapBabyEntriesToWeeks(babyEntries)
+                    self.babyWeeks = result
+                    self.isEmptyState = result.isEmpty
+                } catch {
+                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load baby history: \(error.localizedDescription)")
+                    self.babyWeeks = []
+                    self.isEmptyState = true
+                }
                 self.monthsLoadTask = nil
             }
             await monthsLoadTask?.value
@@ -342,7 +381,15 @@ final class HistoryStore: ObservableObject {
     /// User tapped a BP month row.
     func selectBPMonth(_ month: BPHistoryMonth) {
         selectedBPMonth = month
-        bpEntries = BPDummyDataGenerator.generateEntries(for: month.id)
+        Task {
+            do {
+                let dtos = try await entryService.fetchBpmEntries()
+                bpEntries = mapBpmDTOsToEntries(dtos, monthId: month.id)
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to load BP entries for month \(month.id): \(error.localizedDescription)")
+                bpEntries = []
+            }
+        }
     }
 
     func resetSelectedBPMonth() {
@@ -355,12 +402,134 @@ final class HistoryStore: ObservableObject {
     /// User tapped a baby day row.
     func selectBabyDay(_ day: BabyHistoryDay) {
         selectedBabyDay = day
-        babyEntries = BabyDummyDataGenerator.generateEntries(for: day.id)
+        Task {
+            do {
+                let allEntries = try await entryService.getAllEntries()
+                let babyId: String? = {
+                    if case .baby(let profile) = productTypeStore.selectedItem { return profile.id }
+                    return nil
+                }()
+                let dayEntries = allEntries.filter {
+                    $0.deviceType == DeviceType.babyScale.rawValue
+                    && $0.operationType == OperationType.create.rawValue
+                    && $0.babyId == babyId
+                    && self.localDayString(from: $0.entryTimestamp) == day.id
+                }
+                babyEntries = dayEntries.compactMap { entry -> BabyHistoryEntry? in
+                    guard let baby = entry.babyEntry else { return nil }
+                    let totalOz = baby.weight
+                    let lbs = totalOz / 16
+                    let oz = Double(totalOz % 16)
+                    return BabyHistoryEntry(
+                        id: entry.id,
+                        entryTimestamp: entry.entryTimestamp,
+                        weightLbs: lbs,
+                        weightOz: oz,
+                        lengthInches: Double(baby.length),
+                        percentile: 0,
+                        notes: baby.note.isEmpty ? nil : baby.note
+                    )
+                }.sorted { $0.entryTimestamp > $1.entryTimestamp }
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to load baby entries for day \(day.id): \(error.localizedDescription)")
+                babyEntries = []
+            }
+        }
     }
 
     func resetSelectedBabyDay() {
         selectedBabyDay = nil
         babyEntries = []
+    }
+
+    // MARK: - Date Helpers
+
+    /// Converts a UTC ISO8601 timestamp to a local-timezone day string (yyyy-MM-dd).
+    private func localDayString(from timestamp: String) -> String {
+        guard let date = DateTimeTools.parse(timestamp) else { return "" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone.current
+        return formatter.string(from: date)
+    }
+
+    // MARK: - Mapping Helpers
+
+    /// Groups BPM DTOs by month and builds monthly summaries.
+    private func mapBpmDTOsToMonths(_ dtos: [BpmOperationDTO]) -> [BPHistoryMonth] {
+        let grouped = Dictionary(grouping: dtos) { dto -> String in
+            guard let timestamp = dto.entryTimestamp else { return "" }
+            return DateTimeTools.getLocalMonthStringFromUTCDate(timestamp)
+        }.filter { !$0.key.isEmpty }
+
+        return grouped.map { monthId, entries in
+            let count = entries.count
+            let avgSys = count > 0 ? Int(entries.compactMap { $0.systolic }.reduce(0, +) / Double(count)) : 0
+            let avgDia = count > 0 ? Int(entries.compactMap { $0.diastolic }.reduce(0, +) / Double(count)) : 0
+            let avgPulse = count > 0 ? Int(entries.compactMap { $0.pulse }.reduce(0, +) / Double(count)) : 0
+            let parts = monthId.split(separator: "-")
+            return BPHistoryMonth(
+                id: monthId,
+                count: count,
+                avgSystolic: avgSys,
+                avgDiastolic: avgDia,
+                avgPulse: avgPulse,
+                month: parts.count > 1 ? String(parts[1]) : "",
+                year: !parts.isEmpty ? String(parts[0]) : ""
+            )
+        }.sorted { $0.id > $1.id }
+    }
+
+    /// Filters BPM DTOs to a specific month and maps to history entries.
+    private func mapBpmDTOsToEntries(_ dtos: [BpmOperationDTO], monthId: String) -> [BPHistoryEntry] {
+        return dtos.compactMap { dto -> BPHistoryEntry? in
+            guard let timestamp = dto.entryTimestamp,
+                  DateTimeTools.getLocalMonthStringFromUTCDate(timestamp) == monthId else { return nil }
+            return BPHistoryEntry(
+                id: UUID(uuidString: dto.id) ?? UUID(),
+                entryTimestamp: timestamp,
+                systolic: Int(dto.systolic ?? 0),
+                diastolic: Int(dto.diastolic ?? 0),
+                pulse: Int(dto.pulse ?? 0),
+                notes: dto.note
+            )
+        }.sorted { $0.entryTimestamp > $1.entryTimestamp }
+    }
+
+    /// Groups baby entries by day, then by week, building weekly summaries.
+    private func mapBabyEntriesToWeeks(_ entries: [Entry]) -> [BabyHistoryWeek] {
+        // Group by local day
+        let grouped = Dictionary(grouping: entries) { entry -> String in
+            return self.localDayString(from: entry.entryTimestamp)
+        }.filter { !$0.key.isEmpty }
+
+        // Build days sorted newest first
+        let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
+            let count = dayEntries.count
+            let weights = dayEntries.compactMap { $0.babyEntry?.weight }
+            let avgWeight = weights.isEmpty ? 0 : weights.reduce(0, +) / weights.count
+            let lengths = dayEntries.compactMap { $0.babyEntry?.length }
+            let avgLength = lengths.isEmpty ? 0.0 : Double(lengths.reduce(0, +)) / Double(lengths.count)
+            return BabyHistoryDay(
+                id: dayId,
+                entryCount: count,
+                weightLbs: avgWeight / 16,
+                weightOz: Double(avgWeight % 16),
+                lengthInches: avgLength,
+                percentile: 0
+            )
+        }.sorted { $0.id > $1.id }
+
+        // Group days into weeks of 7
+        var weeks: [BabyHistoryWeek] = []
+        for (index, chunk) in days.chunked(into: 7).enumerated() {
+            weeks.append(BabyHistoryWeek(
+                id: "week-\(index + 1)",
+                weekNumber: index + 1,
+                days: chunk
+            ))
+        }
+        return weeks
     }
 
     deinit {

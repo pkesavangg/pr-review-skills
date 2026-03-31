@@ -78,11 +78,15 @@ final class EntryStore: ObservableObject {
             .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] newItem in
-                self?.logger.log(
+                guard let self = self else { return }
+                self.logger.log(
                       level: .info,
-                      tag: self?.tag ?? "EntryStore",
+                      tag: self.tag,
                       message: "Product type changed to \(newItem.displayName)"
                   )
+                self.resetBPForm()
+                self.resetBabyForm()
+                self.resetWeightForm()
             }
             .store(in: &cancellables)
     }
@@ -402,6 +406,99 @@ final class EntryStore: ObservableObject {
         setupDateTimeObservers()
     }
 
+    func saveBPEntry() async {
+        guard !isSaving else { return }
+        isSaving = true
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer {
+            notificationService.dismissLoader()
+            isSaving = false
+        }
+
+        guard bpForm.isValid else { return }
+
+        let entryTimestamp = DateTimeTools.isoString(
+            date: bpForm.date.value,
+            time: bpForm.time.value,
+            useUTC: true,
+            randomizeSubMinute: true
+        )
+
+        let systolic = Double(bpForm.systolic.value) ?? 0
+        let diastolic = Double(bpForm.diastolic.value) ?? 0
+        let pulse = Double(bpForm.pulse.value) ?? 0
+        let meanArterial = String(Int(round(diastolic + (systolic - diastolic) / 3.0)))
+
+        let dto = BpmOperationDTO(
+            accountId: nil,
+            systolic: systolic,
+            diastolic: diastolic,
+            pulse: pulse,
+            meanArterial: meanArterial,
+            note: bpForm.notes.value.isEmpty ? nil : bpForm.notes.value,
+            source: EntrySource.manual.rawValue,
+            unit: nil,
+            entryTimestamp: entryTimestamp,
+            operationType: nil,
+            serverTimestamp: nil
+        )
+
+        do {
+            logger.log(level: .info, tag: tag, message: "BPM entry save started. timestamp=\(entryTimestamp)")
+            try await entryService.createBpmEntry(dto)
+            resetBPForm()
+            logger.log(level: .success, tag: tag, message: "BPM entry save succeeded. timestamp=\(entryTimestamp)")
+            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to save BPM entry. error=\(error.localizedDescription)")
+            notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
+        }
+    }
+
+    func saveBabyEntry() async {
+        guard !isSaving else { return }
+        isSaving = true
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer {
+            notificationService.dismissLoader()
+            isSaving = false
+        }
+
+        guard babyForm.isValid else { return }
+
+        guard case .baby(let profile) = productTypeStore.selectedItem else { return }
+
+        let entryTimestamp = DateTimeTools.isoString(
+            date: babyForm.date.value,
+            time: babyForm.time.value,
+            useUTC: true,
+            randomizeSubMinute: true
+        )
+
+        let pounds = Int(Double(babyForm.pounds.value) ?? 0)
+        let ounces = Int(Double(babyForm.ounces.value) ?? 0)
+        let weight = pounds * 16 + ounces
+        let length = Int(Double(babyForm.inches.value) ?? 0)
+        let note = babyForm.notes.value
+
+        do {
+            logger.log(level: .info, tag: tag, message: "Baby entry save started. babyId=\(profile.id), timestamp=\(entryTimestamp)")
+            try await entryService.createBabyEntry(
+                babyId: profile.id,
+                weight: weight,
+                length: length,
+                note: note,
+                entryTimestamp: entryTimestamp
+            )
+            resetBabyForm()
+            logger.log(level: .success, tag: tag, message: "Baby entry save succeeded. babyId=\(profile.id), timestamp=\(entryTimestamp)")
+            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to save baby entry. error=\(error.localizedDescription)")
+            notificationService.showToast(ToastModel(title: toastLang.errorSavingEntry, message: toastLang.pleaseTryAgain))
+        }
+    }
+
     func getBPError<T>(for control: FormControl<T>) -> String? {
         bpForm.getError(for: control)
     }
@@ -434,6 +531,19 @@ final class EntryStore: ObservableObject {
         babyForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
+    }
+
+    @MainActor func resetWeightForm() {
+        isBmiAutoCalculationEnabled = true
+        manualEntryForm = ManualEntryForm()
+        manualEntryForm.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        showMetrics = false
+        showDatePicker = false
+        showTimePicker = false
+        hasUserAdjustedTime = false
+        updateWeightValidators()
     }
 
     func showExitAlert(onConfirm: @escaping () -> Void, onCancel: (() -> Void)? = nil) {
