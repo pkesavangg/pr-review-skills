@@ -123,6 +123,7 @@ struct BabyProfileFormView: View {
                         store.babyProfileForm.birthLengthInches.validate()
                         focusedField = .babyBirthWeight
                     }
+                    .padding(.top, .spacingSM)
 
                     // Birth Weight (lb + oz) — single compound field
                     BirthWeightInputField(
