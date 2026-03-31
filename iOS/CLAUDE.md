@@ -271,6 +271,12 @@ For detailed test patterns, mock usage, and assertion examples → `meAppTests/d
 | Mock HTTP client | `meAppTests/Support/Mocks/Network/MockHTTPClient.swift` |
 | Unit test guide | `meAppTests/docs/UNIT_TESTING.md` |
 | Coverage guide | `docs/COVERAGE_REPORTING.md` |
+| Architecture overview | `architecture.md` |
+| Theme system guide | `.claude/skills/theme-guide.md` |
+| Notification layer guide | `.claude/skills/notification-guide.md` |
+| API call patterns | `.claude/skills/api-guide.md` |
+| Form validation guide | `.claude/skills/form-guide.md` |
+| Logging system guide | `.claude/skills/logging-guide.md` |
 | Workflow orchestration | `.claude/orchestra.md` |
 
 ---
@@ -320,6 +326,11 @@ When the user describes a task in natural language, match it to the appropriate 
 | "run the guard", "post-change check", "check my changes", "guard", "quality check", "fix and check", "mid-session review", "check before self-review", "fix and review" | `.claude/skills/post-change-guard.md` |
 | "add accessibility to X", "make this screen accessible", "VoiceOver support" | `.claude/skills/add-accessibility.md` |
 | "add preview for X", "scaffold preview", "create #Preview" | `.claude/skills/add-preview.md` |
+| "how does theming work", "apply a color", "use a font", "add spacing", "dark mode", "use theme token" | `.claude/skills/theme-guide.md` |
+| "show a toast", "show an alert", "show a loader", "show a modal", "in-app notification", "notification layer" | `.claude/skills/notification-guide.md` |
+| "how do API calls work", "what's the DTO pattern", "HTTP client usage", "how do I call the API" | `.claude/skills/api-guide.md` |
+| "how does form validation work", "add a form", "validate a field", "form error message" | `.claude/skills/form-guide.md` |
+| "instrument this code", "add logging", "log this", "how does logging work", "send logs to server" | `.claude/skills/logging-guide.md` |
 
 When a task spans multiple skills, chain them in the order defined by `.claude/orchestra.md` Section 4. After implementation tasks, always follow the verification checklist in Section 6.
 

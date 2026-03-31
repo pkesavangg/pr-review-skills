@@ -177,5 +177,6 @@ CircleCI builds the iOS project on macOS M1 with Xcode 16.0.0. Android CI is not
 
 ## Documentation
 
+- [Architecture Overview](architecture.md)
 - [Database Schema](docs/database-schema.md)
 - [Account Switching Flow](docs/account-switching-flow.md)

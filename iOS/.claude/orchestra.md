@@ -287,6 +287,11 @@ Before marking any task complete, confirm:
 | `/swift-concurrency` | Concurrency patterns |
 | `/swiftdata` | SwiftData rules and patterns |
 | `/analytics` | Structured logging + Crashlytics non-fatal for critical paths |
+| `/theme-guide` | Theme system — colors, typography, spacing, border radius |
+| `/api-guide` | API call patterns — HTTPClient, Endpoint, DTO, RepositoryAPI |
+| `/form-guide` | Form validation — ObservableForm, FormControl, validators |
+| `/logging-guide` | Logging system — LoggerService, persistence, retention, server submission |
+| `/notification-guide` | Notification layer — alerts, toasts, loaders, modals, two-window architecture |
 
 ### Testing & Mocks
 | Skill/Agent | Purpose |
