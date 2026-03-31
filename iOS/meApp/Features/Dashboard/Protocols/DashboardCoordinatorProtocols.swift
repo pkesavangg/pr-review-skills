@@ -23,6 +23,7 @@ protocol DashboardStateProviding: AnyObject {
     var isBabySelection: Bool { get }
     func scheduleUIUpdate()
     func forceImmediateUIUpdate()
+    func yAxisScale(for operations: [BathScaleWeightSummary], chartHeight: CGFloat) -> YAxisScale
 }
 
 // MARK: - Chart Management

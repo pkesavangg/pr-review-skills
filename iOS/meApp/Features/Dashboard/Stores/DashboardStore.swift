@@ -44,6 +44,8 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountSettingsSnapshot: AccountSettingsSnapshot?
+    /// Guards against the Combine subscriber double-firing when `selectProductItem` updates state directly.
+    private var isSelectingDirectly = false
 
     // MARK: - UI Update Batching (Performance Optimization)
 
@@ -77,6 +79,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             return profile
         }
         return nil
+    }
+
+    private var selectedBabyMetric: BabyMetric {
+        state.ui.selectedMetricLabel == BabyMetric.height.rawValue ? .height : .weight
     }
 
     func scheduleUIUpdate() {
@@ -393,16 +399,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] selection in
-                guard let self else { return }
+                guard let self, !self.isSelectingDirectly else { return }
                 let previousSelection = self.selectedProductItem
                 self.selectedProductItem = selection
-                let newType: EntryType
-                switch selection {
-                case .myBloodPressure:
-                    newType = .bpm
-                case .myWeight, .baby:
-                    newType = .wg
-                }
+                let newType = selection.entryType
                 if self.productType != newType {
                     self.switchProductType(to: newType)
                 } else if previousSelection != selection {
@@ -418,6 +418,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         guard productType != newType else { return }
         productType = newType
         dataManager.switchDataSource(to: newType)
+        state.ui.selectedMetricLabel = nil
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
         cacheManager.clearAllCaches()
@@ -431,6 +432,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     private func refreshSelectedProductContext() {
+        state.ui.selectedMetricLabel = nil
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
         cacheManager.clearAllCaches()
@@ -455,22 +457,15 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     func selectProductItem(_ item: ProductSelection) {
         let previousSelection = selectedProductItem
-        // Update selectedProductItem synchronously so the view immediately
-        // renders the correct dashboard (baby vs weight) without waiting for
-        // the Combine publisher round-trip through DispatchQueue.main.
+        // Suppress the Combine subscriber while we handle selection directly.
+        isSelectingDirectly = true
+        defer { isSelectingDirectly = false }
+
         selectedProductItem = item
         productTypeStore.select(item)
 
-        // Trigger refresh directly since the Combine subscriber will see
-        // no change (previousSelection == selection) by the time it fires.
         guard previousSelection != item else { return }
-        let newType: EntryType
-        switch item {
-        case .myBloodPressure:
-            newType = .bpm
-        case .myWeight, .baby:
-            newType = .wg
-        }
+        let newType = item.entryType
         if productType != newType {
             switchProductType(to: newType)
         } else {
@@ -597,10 +592,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var continuousOperations: [BathScaleWeightSummary] {
         if let babyProfile = selectedBabyProfile {
-            return BabyDashboardChartSupport.dummySummaries(
-                for: babyProfile,
-                period: state.graph.selectedPeriod
-            )
+            return cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
+                BabyDashboardChartSupport.dummySummaries(
+                    for: babyProfile,
+                    period: state.graph.selectedPeriod
+                )
+            }
         }
 
         let operations = cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
@@ -650,7 +647,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 isScrolling: state.graph.isScrolling,
                 isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
                 period: state.graph.selectedPeriod,
-                selectedMetric: nil,
+                selectedMetric: selectedBabyMetric == .height ? BabyMetric.height.rawValue : nil,
                 operationsCount: continuousOperations.count,
                 yAxisDomain: chartManager.yAxisDomain
             ) {
@@ -658,6 +655,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                     from: continuousOperations,
                     visibleOperations: visibleOperations,
                     babyProfile: babyProfile,
+                    metric: selectedBabyMetric,
                     convertWeight: goalManager.convertWeightToDisplay,
                     convertDecigramsToDisplay: convertBabyDecigramsToDisplay,
                     yAxisDomain: chartManager.yAxisDomain
@@ -690,12 +688,20 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
 
         if let babyProfile = selectedBabyProfile {
-            return BabyDashboardChartSupport.yAxisScale(
-                for: operations,
-                babyProfile: babyProfile,
-                convertStoredWeightToDisplay: goalManager.convertWeightToDisplay,
-                convertDecigramsToDisplay: convertBabyDecigramsToDisplay
-            )
+            switch selectedBabyMetric {
+            case .weight:
+                return BabyDashboardChartSupport.yAxisScale(
+                    for: operations,
+                    babyProfile: babyProfile,
+                    convertStoredWeightToDisplay: goalManager.convertWeightToDisplay,
+                    convertDecigramsToDisplay: convertBabyDecigramsToDisplay
+                )
+            case .height:
+                return BabyDashboardChartSupport.heightYAxisScale(
+                    for: operations,
+                    babyProfile: babyProfile
+                )
+            }
         }
 
         return graphManager.getYAxisScale(
@@ -736,9 +742,14 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     private func convertBabyDecigramsToDisplay(_ decigrams: Int) -> Double {
+        let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
+        // TODO: Remove this fallback once baby-scale conversion is confirmed and
+        // implemented separately per SKU type.
         let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
         let stored = ConversionTools.convertKgToStored(kg)
-        return goalManager.convertWeightToDisplay(stored)
+        return isMetric
+            ? ConversionTools.convertStoredToKg(stored)
+            : ConversionTools.convertStoredToLbs(stored)
     }
 
     var selectedBodyMetric: BodyMetric {

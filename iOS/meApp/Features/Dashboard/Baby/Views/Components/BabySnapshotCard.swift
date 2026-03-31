@@ -126,14 +126,12 @@ struct BabySnapshotCard: View {
     // MARK: - Chart
 
     private var snapshotChart: some View {
-        let weightPoints = chartSummaries.map {
-            (date: $0.date, weight: viewModel.convertStoredWeightToDisplay(Int($0.weight)))
-        }
+        let weightPoints = rightClippedWeightPoints
         let yScale = calculateYAxisScale()
         let xDomain = weekXDomain()
         let yRange = yScale.domain
         let yTickValues = yScale.ticks
-        let groupedPercentiles = percentilePointsByLine
+        let groupedPercentiles = rightClippedPercentilePointsByLine
 
         return Chart {
             // WHO percentile reference curves (rendered behind weight data)
@@ -158,7 +156,7 @@ struct BabySnapshotCard: View {
             ForEach(Array(weightPoints.enumerated()), id: \.offset) { _, point in
                 LineMark(
                     x: .value("Date", point.date),
-                    y: .value("Weight", point.weight),
+                    y: .value("Weight", point.value),
                     series: .value("Series", "weight")
                 )
                 .foregroundStyle(babyColor)
@@ -167,7 +165,7 @@ struct BabySnapshotCard: View {
 
                 PointMark(
                     x: .value("Date", point.date),
-                    y: .value("Weight", point.weight)
+                    y: .value("Weight", point.value)
                 )
                 .foregroundStyle(babyColor)
                 .symbolSize(30)
@@ -202,12 +200,13 @@ struct BabySnapshotCard: View {
         .chartLegend(.hidden)
         .chartPlotStyle { plot in
             plot
-                .clipped()
                 .overlay {
                     SnapshotChartPlotBorderView(
                         color: theme.textSubheading.opacity(0.3),
                         yDomain: yRange,
-                        yTicks: yTickValues
+                        yTicks: yTickValues,
+                        showHorizontalGridLines: false,
+                        visibleHorizontalTicks: boundaryYTicks(from: yTickValues)
                     )
                 }
         }
@@ -238,11 +237,98 @@ struct BabySnapshotCard: View {
 
     private func calculateYAxisScale() -> YAxisScale {
         BabyDashboardChartSupport.yAxisScale(
-            for: chartSummaries,
+            for: rightClippedChartSummaries,
             babyProfile: babyProfile,
             convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay,
             convertDecigramsToDisplay: viewModel.convertDecigramsToDisplay
         )
+    }
+
+    private var rightClippedChartSummaries: [BathScaleWeightSummary] {
+        guard let bounds = snapshotWindow?.bounds else { return chartSummaries }
+        return chartSummaries.filter { $0.date <= bounds.end }
+    }
+
+    private var rightClippedWeightPoints: [(date: Date, value: Double)] {
+        guard let bounds = snapshotWindow?.bounds else {
+            return chartSummaries.map {
+                (date: $0.date, value: viewModel.convertStoredWeightToDisplay(Int($0.weight)))
+            }
+        }
+
+        let points = chartSummaries
+            .map { (date: $0.date, value: viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
+            .sorted { $0.date < $1.date }
+
+        return rightClippedPoints(points, endDate: bounds.end)
+    }
+
+    private var rightClippedPercentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] {
+        guard let bounds = snapshotWindow?.bounds else { return percentilePointsByLine }
+
+        return Dictionary(uniqueKeysWithValues: BabyPercentileLine.allCases.map { line in
+            let points = percentilePointsByLine[line] ?? []
+            return (line, rightClippedPercentilePoints(points, endDate: bounds.end))
+        })
+    }
+
+    private func rightClippedPercentilePoints(
+        _ points: [BabyPercentileChartPoint],
+        endDate: Date
+    ) -> [BabyPercentileChartPoint] {
+        let clipped = rightClippedPoints(
+            points.map { (date: $0.date, value: $0.value) },
+            endDate: endDate
+        )
+
+        guard let line = points.first?.line else { return [] }
+        return clipped.map { BabyPercentileChartPoint(date: $0.date, value: $0.value, line: line) }
+    }
+
+    private func rightClippedPoints(
+        _ points: [(date: Date, value: Double)],
+        endDate: Date
+    ) -> [(date: Date, value: Double)] {
+        let sortedPoints = points.sorted { $0.date < $1.date }
+        let visiblePoints = sortedPoints.filter { $0.date <= endDate }
+
+        guard let lastVisiblePoint = visiblePoints.last else { return [] }
+        guard lastVisiblePoint.date < endDate else { return visiblePoints }
+        guard let nextPoint = sortedPoints.first(where: { $0.date > endDate }) else { return visiblePoints }
+
+        let boundaryValue = interpolatedValue(
+            at: endDate,
+            from: lastVisiblePoint.date,
+            startValue: lastVisiblePoint.value,
+            to: nextPoint.date,
+            endValue: nextPoint.value
+        )
+
+        return visiblePoints + [(date: endDate, value: boundaryValue)]
+    }
+
+    private func interpolatedValue(
+        at targetDate: Date,
+        from startDate: Date,
+        startValue: Double,
+        to endDate: Date,
+        endValue: Double
+    ) -> Double {
+        let totalInterval = endDate.timeIntervalSince(startDate)
+        guard totalInterval > 0 else { return startValue }
+
+        let elapsedInterval = targetDate.timeIntervalSince(startDate)
+        let progress = elapsedInterval / totalInterval
+        return startValue + ((endValue - startValue) * progress)
+    }
+
+    private func boundaryYTicks(from ticks: [Double]) -> [Double] {
+        guard let first = ticks.first else { return [] }
+        guard let last = ticks.last,
+              abs(last - first) > AppConstants.Precision.doubleEqualityEpsilon else {
+            return [first]
+        }
+        return [first, last]
     }
 
     private var accessibilityLabel: String {

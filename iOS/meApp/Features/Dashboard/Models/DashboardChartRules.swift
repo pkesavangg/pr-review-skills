@@ -141,6 +141,8 @@ struct SnapshotChartPlotBorderView: View {
     let color: Color
     let yDomain: ClosedRange<Double>
     let yTicks: [Double]
+    var showHorizontalGridLines: Bool = true
+    var visibleHorizontalTicks: [Double]? = nil
     private let leftExtension: CGFloat = 16
 
     var body: some View {
@@ -148,10 +150,11 @@ struct SnapshotChartPlotBorderView: View {
             let width = geo.size.width
             let height = geo.size.height
             let range = yDomain.upperBound - yDomain.lowerBound
+            let ticksToDraw = visibleHorizontalTicks ?? (showHorizontalGridLines ? yTicks : [])
 
-            if range > 0 {
+            if !ticksToDraw.isEmpty, range > 0 {
                 Path { path in
-                    for tick in yTicks {
+                    for tick in ticksToDraw {
                         let fraction = (tick - yDomain.lowerBound) / range
                         let rawY = height * (1 - fraction)
                         let pixelY = min(max(rawY, 0), height)

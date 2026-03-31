@@ -10,9 +10,22 @@ import Foundation
 
 enum BabyDashboardChartSupport {
     private static let percentileSeriesPrefix = "baby_percentile_"
+    private static let heightSeriesName = "baby_height"
     private static let defaultBabyAgeDays = 84
     private static let dummyHistoryWindowDays = 180
     private static let defaultBirthWeightLbs = 7.4
+    private static let defaultBirthLengthInches = 19.5
+    private static let heightTickStep = 5.0
+    private static let minimumHeightAxisMax = 25.0
+    private static let heightPercentileOffsets: [BabyPercentileLine: Double] = [
+        .fifth: -1.3,
+        .tenth: -0.95,
+        .twentyFifth: -0.5,
+        .fiftieth: 0.0,
+        .seventyFifth: 0.5,
+        .ninetieth: 0.95,
+        .ninetyFifth: 1.3
+    ]
 
     static func resolvedBirthday(
         for babyProfile: BabyProfile,
@@ -96,6 +109,44 @@ enum BabyDashboardChartSupport {
         }
     }
 
+    static func dummyHeightSeries(
+        for babyProfile: BabyProfile,
+        operations: [BathScaleWeightSummary],
+        calendar: Calendar = .current
+    ) -> [GraphSeries] {
+        operations.map { summary in
+            GraphSeries(
+                date: summary.date,
+                value: dummyHeightValue(for: babyProfile, on: summary.date, calendar: calendar),
+                series: heightSeriesName
+            )
+        }
+    }
+
+    static func heightPercentileSeries(
+        for babyProfile: BabyProfile,
+        operations: [BathScaleWeightSummary],
+        calendar: Calendar = .current
+    ) -> [GraphSeries] {
+        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
+        let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
+
+        return operations.flatMap { summary in
+            let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: summary.date).day ?? 0)
+            return BabyPercentileLine.allCases.map { line in
+                GraphSeries(
+                    date: summary.date,
+                    value: percentileHeightInches(
+                        forDayOfLife: dayOfLife,
+                        birthLengthInches: birthLengthInches,
+                        line: line
+                    ),
+                    series: percentileSeriesName(for: line)
+                )
+            }
+        }
+    }
+
     static func yAxisScale(
         for operations: [BathScaleWeightSummary],
         babyProfile: BabyProfile,
@@ -150,8 +201,86 @@ enum BabyDashboardChartSupport {
         )
     }
 
+    static func heightYAxisScale(
+        for operations: [BathScaleWeightSummary],
+        babyProfile: BabyProfile,
+        calendar: Calendar = .current
+    ) -> YAxisScale {
+        let primaryValues = dummyHeightSeries(
+            for: babyProfile,
+            operations: operations,
+            calendar: calendar
+        ).map(\.value)
+        let percentileValues = heightPercentileSeries(
+            for: babyProfile,
+            operations: operations,
+            calendar: calendar
+        ).map(\.value)
+        let allValues = primaryValues + percentileValues
+
+        guard let allMin = allValues.min(),
+              let allMax = allValues.max() else {
+            return YAxisScale(
+                min: 10,
+                max: minimumHeightAxisMax,
+                step: heightTickStep,
+                ticks: stride(from: 10.0, through: minimumHeightAxisMax, by: heightTickStep).map { $0 },
+                domain: 10...minimumHeightAxisMax,
+                average: 0
+            )
+        }
+
+        let niceMin = max(0, floor((allMin - 5.0) / heightTickStep) * heightTickStep)
+        let niceMax = max(
+            minimumHeightAxisMax,
+            ceil((allMax + 2.0) / heightTickStep) * heightTickStep
+        )
+        let ticks = stride(from: niceMin, through: niceMax, by: heightTickStep).map { $0 }
+        let average = primaryValues.isEmpty ? 0 : primaryValues.reduce(0, +) / Double(primaryValues.count)
+
+        return YAxisScale(
+            min: niceMin,
+            max: niceMax,
+            step: heightTickStep,
+            ticks: ticks,
+            domain: niceMin...niceMax,
+            average: average
+        )
+    }
+
     static func isPercentileSeries(_ seriesName: String) -> Bool {
         seriesName.hasPrefix(percentileSeriesPrefix)
+    }
+
+    static func isHeightSeries(_ seriesName: String) -> Bool {
+        seriesName == heightSeriesName
+    }
+
+    static func dummyHeightValue(
+        for babyProfile: BabyProfile,
+        on date: Date,
+        calendar: Calendar = .current
+    ) -> Double {
+        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar, today: date)
+        let normalizedDate = calendar.startOfDay(for: date)
+        let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: normalizedDate).day ?? 0)
+        return dummyHeightInches(
+            forDayOfLife: dayOfLife,
+            birthLengthInches: resolvedBirthLengthInches(for: babyProfile)
+        )
+    }
+
+    static func averageDummyHeight(
+        for babyProfile: BabyProfile,
+        dates: [Date],
+        calendar: Calendar = .current
+    ) -> Double {
+        guard !dates.isEmpty else {
+            return dummyHeightValue(for: babyProfile, on: Date(), calendar: calendar)
+        }
+
+        let values = dates.map { dummyHeightValue(for: babyProfile, on: $0, calendar: calendar) }
+        return values.reduce(0, +) / Double(values.count)
     }
 
     static func percentileLine(for seriesName: String) -> BabyPercentileLine? {
@@ -186,6 +315,30 @@ enum BabyDashboardChartSupport {
         let weeklyVariation = sin(Double(day) / 8.0) * 0.06
         let lbs = max(4.0, birthWeightLbs + earlyDip + earlyGrowth + laterGrowth + weeklyVariation)
         return ConversionTools.convertLbsToStored(lbs)
+    }
+
+    private static func resolvedBirthLengthInches(for babyProfile: BabyProfile) -> Double {
+        max(12.0, babyProfile.birthLengthInches ?? defaultBirthLengthInches)
+    }
+
+    private static func dummyHeightInches(
+        forDayOfLife day: Int,
+        birthLengthInches: Double
+    ) -> Double {
+        let earlyGrowth = min(Double(day), 90) * 0.026
+        let laterGrowth = max(Double(day - 90), 0) * 0.010
+        let weeklyVariation = sin(Double(day) / 11.0) * 0.08
+        return max(12.0, birthLengthInches + earlyGrowth + laterGrowth + weeklyVariation)
+    }
+
+    private static func percentileHeightInches(
+        forDayOfLife day: Int,
+        birthLengthInches: Double,
+        line: BabyPercentileLine
+    ) -> Double {
+        let spreadMultiplier = 1.0 + (min(Double(day), 365) / 365.0) * 0.2
+        let offset = (heightPercentileOffsets[line] ?? 0) * spreadMultiplier
+        return dummyHeightInches(forDayOfLife: day, birthLengthInches: birthLengthInches) + offset
     }
 
     private static func aggregateMonthly(
