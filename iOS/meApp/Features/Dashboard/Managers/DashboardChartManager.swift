@@ -87,10 +87,9 @@ final class DashboardChartManager: DashboardChartManaging {
         let continuousOps = getContinuousOperations()
         let operationsForYAxis = stateProvider?.state.graph.selectedPeriod == .total ? continuousOps : visibleOps
 
-        // BPM uses its own Y-axis based on systolic/diastolic/pulse range
-        if stateProvider?.productType == .bpm {
-            return graphManager.getBpmYAxisScale(
-                from: operationsForYAxis,
+        if let store = stateProvider as? DashboardStore {
+            return store.yAxisScale(
+                for: operationsForYAxis,
                 chartHeight: stateProvider?.state.graph.chartHeight ?? 200
             )
         }
@@ -134,8 +133,14 @@ final class DashboardChartManager: DashboardChartManaging {
 
         let previousYAxisDomain = graphManager.state.cachedYAxisDomain ?? stateProvider.state.graph.cachedYAxisDomain
 
-        // BPM: compute and cache Y-axis from BP value range
-        if stateProvider.productType == .bpm {
+        if let store = stateProvider as? DashboardStore {
+            let resolvedScale = store.yAxisScale(
+                for: operationsForYAxis,
+                chartHeight: stateProvider.state.graph.chartHeight
+            )
+            graphManager.state.cachedYAxisDomain = resolvedScale.domain
+            graphManager.state.cachedYAxisTicks = resolvedScale.ticks
+        } else if stateProvider.productType == .bpm {
             let bpmScale = graphManager.getBpmYAxisScale(
                 from: operationsForYAxis,
                 chartHeight: stateProvider.state.graph.chartHeight

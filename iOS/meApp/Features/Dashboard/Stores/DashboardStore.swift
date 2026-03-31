@@ -68,6 +68,17 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         )
     }
 
+    var isBabySelection: Bool {
+        selectedBabyProfile != nil
+    }
+
+    private var selectedBabyProfile: BabyProfile? {
+        if case .baby(let profile) = selectedProductItem {
+            return profile
+        }
+        return nil
+    }
+
     func scheduleUIUpdate() {
         guard !pendingUIUpdate else { return }
         pendingUIUpdate = true
@@ -383,9 +394,20 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] selection in
                 guard let self else { return }
+                let previousSelection = self.selectedProductItem
                 self.selectedProductItem = selection
-                let newType: EntryType = selection == .myBloodPressure ? .bpm : .wg
-                self.switchProductType(to: newType)
+                let newType: EntryType
+                switch selection {
+                case .myBloodPressure:
+                    newType = .bpm
+                case .myWeight, .baby:
+                    newType = .wg
+                }
+                if self.productType != newType {
+                    self.switchProductType(to: newType)
+                } else if previousSelection != selection {
+                    self.refreshSelectedProductContext()
+                }
             }
             .store(in: &cancellables)
     }
@@ -408,8 +430,52 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
     }
 
+    private func refreshSelectedProductContext() {
+        chartManager?.clearSelection()
+        chartManager?.clearAllCaches()
+        cacheManager.clearAllCaches()
+        invalidateContinuousOperationsCache()
+        state.ui.hasInitializedChart = false
+        graphManager.state.isGraphReady = false
+
+        if isBabySelection {
+            // Baby charts use locally-computed data (BabyDashboardChartSupport),
+            // so skip the full initializeDashboard() pipeline with its network
+            // calls and just reinitialize the chart directly.
+            chartManager?.initializeChart()
+            displayManager.updateMetricsForCurrentView()
+            scheduleUIUpdate()
+        } else {
+            Task { [weak self] in
+                guard let self else { return }
+                await self.lifecycleManager.initializeDashboard()
+            }
+        }
+    }
+
     func selectProductItem(_ item: ProductSelection) {
+        let previousSelection = selectedProductItem
+        // Update selectedProductItem synchronously so the view immediately
+        // renders the correct dashboard (baby vs weight) without waiting for
+        // the Combine publisher round-trip through DispatchQueue.main.
+        selectedProductItem = item
         productTypeStore.select(item)
+
+        // Trigger refresh directly since the Combine subscriber will see
+        // no change (previousSelection == selection) by the time it fires.
+        guard previousSelection != item else { return }
+        let newType: EntryType
+        switch item {
+        case .myBloodPressure:
+            newType = .bpm
+        case .myWeight, .baby:
+            newType = .wg
+        }
+        if productType != newType {
+            switchProductType(to: newType)
+        } else {
+            refreshSelectedProductContext()
+        }
     }
 
     var productTypeSelectorStore: ProductTypeStore {
@@ -530,6 +596,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     // MARK: - Cached Operations (Performance Optimization)
 
     var continuousOperations: [BathScaleWeightSummary] {
+        if let babyProfile = selectedBabyProfile {
+            return BabyDashboardChartSupport.dummySummaries(
+                for: babyProfile,
+                period: state.graph.selectedPeriod
+            )
+        }
+
         let operations = cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
             dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
         }
@@ -572,6 +645,25 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 graphManager.generateBpmChartData(from: continuousOperations)
             }
         }
+        if let babyProfile = selectedBabyProfile {
+            return cacheManager.getChartSeriesData(
+                isScrolling: state.graph.isScrolling,
+                isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
+                period: state.graph.selectedPeriod,
+                selectedMetric: nil,
+                operationsCount: continuousOperations.count,
+                yAxisDomain: chartManager.yAxisDomain
+            ) {
+                graphManager.generateBabyChartData(
+                    from: continuousOperations,
+                    visibleOperations: visibleOperations,
+                    babyProfile: babyProfile,
+                    convertWeight: goalManager.convertWeightToDisplay,
+                    convertDecigramsToDisplay: convertBabyDecigramsToDisplay,
+                    yAxisDomain: chartManager.yAxisDomain
+                )
+            }
+        }
         return cacheManager.getChartSeriesData(
             isScrolling: state.graph.isScrolling,
             isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
@@ -590,6 +682,30 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 yAxisDomain: chartManager.yAxisDomain
             )
         }
+    }
+
+    func yAxisScale(for operations: [BathScaleWeightSummary], chartHeight: CGFloat) -> YAxisScale {
+        if productType == .bpm {
+            return graphManager.getBpmYAxisScale(from: operations, chartHeight: chartHeight)
+        }
+
+        if let babyProfile = selectedBabyProfile {
+            return BabyDashboardChartSupport.yAxisScale(
+                for: operations,
+                babyProfile: babyProfile,
+                convertStoredWeightToDisplay: goalManager.convertWeightToDisplay,
+                convertDecigramsToDisplay: convertBabyDecigramsToDisplay
+            )
+        }
+
+        return graphManager.getYAxisScale(
+            from: operations,
+            goalWeight: goalWeightForDisplay,
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            convertWeight: goalManager.convertWeightToDisplay,
+            chartHeight: chartHeight
+        )
     }
 
     var hasAnyEntries: Bool { state.data.hasAnyEntries }
@@ -617,6 +733,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight
         )
+    }
+
+    private func convertBabyDecigramsToDisplay(_ decigrams: Int) -> Double {
+        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
+        let stored = ConversionTools.convertKgToStored(kg)
+        return goalManager.convertWeightToDisplay(stored)
     }
 
     var selectedBodyMetric: BodyMetric {

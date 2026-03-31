@@ -15,15 +15,16 @@ struct BabySnapshotCard: View {
         static let unitSpacing: CGFloat = 4
     }
 
-    // TODO: Replace with ColorTokens.babyPrimary once color tokens are updated
-    private let babyColor = Color(red: 0x88 / 255.0, green: 0x41 / 255.0, blue: 0xA4 / 255.0)
+    private let babyColor = BabyDashboardChartStyle.weightColor
 
     @StateObject private var viewModel = BabySnapshotCardViewModel()
-    let babyName: String
+    let babyProfile: BabyProfile
     let summaries: [BathScaleWeightSummary]
     let onTap: () -> Void
     @Environment(\.appTheme) private var theme
     private let yAxisFormatter = DashboardFormatter()
+
+    private var babyName: String { babyProfile.name }
 
     private var snapshotWindow: DashboardSnapshotChartWindow? {
         DashboardSnapshotChartWindow.make(summaries: summaries) { $0.weight > 0 }
@@ -105,30 +106,72 @@ struct BabySnapshotCard: View {
         }
     }
 
+    // MARK: - Percentile Data
+
+    private var percentilePoints: [BabyPercentileChartPoint] {
+        guard let bounds = snapshotWindow?.bounds else { return [] }
+        return BabyPercentileGrowthReference.percentileChartPoints(
+            biologicalSex: babyProfile.biologicalSex,
+            birthday: BabyDashboardChartSupport.resolvedBirthday(for: babyProfile),
+            dateRange: bounds.start...bounds.end,
+            convertDecigramsToDisplay: viewModel.convertDecigramsToDisplay
+        )
+    }
+
+    /// Percentile points grouped by line for efficient chart rendering.
+    private var percentilePointsByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] {
+        Dictionary(grouping: percentilePoints, by: \.line)
+    }
+
     // MARK: - Chart
 
     private var snapshotChart: some View {
-        let displayWeights = chartSummaries.map { ($0.date, viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
+        let weightPoints = chartSummaries.map {
+            (date: $0.date, weight: viewModel.convertStoredWeightToDisplay(Int($0.weight)))
+        }
         let yScale = calculateYAxisScale()
         let xDomain = weekXDomain()
         let yRange = yScale.domain
         let yTickValues = yScale.ticks
+        let groupedPercentiles = percentilePointsByLine
 
-        return Chart(displayWeights, id: \.0) { date, weight in
-            LineMark(
-                x: .value("Date", date),
-                y: .value("Weight", weight)
-            )
-            .foregroundStyle(babyColor)
-            .interpolationMethod(.monotone)
-            .lineStyle(StrokeStyle(lineWidth: 2))
+        return Chart {
+            // WHO percentile reference curves (rendered behind weight data)
+            ForEach(BabyPercentileLine.allCases, id: \.rawValue) { line in
+                if let points = groupedPercentiles[line] {
+                    ForEach(points) { point in
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("Percentile", point.value),
+                            series: .value("Series", point.line.rawValue)
+                        )
+                        .foregroundStyle(BabyDashboardChartStyle.percentileLineColor(for: point.line, theme: theme))
+                        .interpolationMethod(.monotone)
+                        .lineStyle(StrokeStyle(
+                            lineWidth: BabyDashboardChartStyle.percentileLineWidth(for: point.line)
+                        ))
+                    }
+                }
+            }
 
-            PointMark(
-                x: .value("Date", date),
-                y: .value("Weight", weight)
-            )
-            .foregroundStyle(babyColor)
-            .symbolSize(30)
+            // Baby's actual weight measurements
+            ForEach(Array(weightPoints.enumerated()), id: \.offset) { _, point in
+                LineMark(
+                    x: .value("Date", point.date),
+                    y: .value("Weight", point.weight),
+                    series: .value("Series", "weight")
+                )
+                .foregroundStyle(babyColor)
+                .interpolationMethod(.monotone)
+                .lineStyle(StrokeStyle(lineWidth: 2))
+
+                PointMark(
+                    x: .value("Date", point.date),
+                    y: .value("Weight", point.weight)
+                )
+                .foregroundStyle(babyColor)
+                .symbolSize(30)
+            }
         }
         .chartYScale(domain: yRange)
         .chartXScale(domain: xDomain)
@@ -158,13 +201,15 @@ struct BabySnapshotCard: View {
         }
         .chartLegend(.hidden)
         .chartPlotStyle { plot in
-            plot.overlay {
-                SnapshotChartPlotBorderView(
-                    color: theme.textSubheading.opacity(0.3),
-                    yDomain: yRange,
-                    yTicks: yTickValues
-                )
-            }
+            plot
+                .clipped()
+                .overlay {
+                    SnapshotChartPlotBorderView(
+                        color: theme.textSubheading.opacity(0.3),
+                        yDomain: yRange,
+                        yTicks: yTickValues
+                    )
+                }
         }
         .padding(.horizontal, .spacingXS)
     }
@@ -187,13 +232,16 @@ struct BabySnapshotCard: View {
 
     private func weekXDomain() -> ClosedRange<Date> {
         guard let bounds = snapshotWindow?.bounds else { return Date()...Date() }
-        return bounds.start...bounds.end
+        let edgePadding: TimeInterval = 30 * 60
+        return bounds.start.addingTimeInterval(-edgePadding)...bounds.end.addingTimeInterval(edgePadding)
     }
 
     private func calculateYAxisScale() -> YAxisScale {
-        DashboardChartScaleProvider.babyWeightScale(
-            operations: chartSummaries,
-            convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay
+        BabyDashboardChartSupport.yAxisScale(
+            for: chartSummaries,
+            babyProfile: babyProfile,
+            convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay,
+            convertDecigramsToDisplay: viewModel.convertDecigramsToDisplay
         )
     }
 

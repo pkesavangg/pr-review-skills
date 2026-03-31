@@ -16,7 +16,6 @@ import SwiftUI
 /// Base graph view that provides common chart rendering functionality for all time periods
 /// Eliminates code duplication across WeekGraphView, MonthGraphView, YearGraphView, and TotalGraphView
 struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
-
     // MARK: - Dependencies
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
@@ -93,6 +92,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private let goalChipTrailingPadding: CGFloat = 20
     private var isScrollable: Bool {
         viewModel.hasXAxis
+    }
+
+    private var selectedBabyProfile: BabyProfile? {
+        if case .baby(let profile) = dashboardStore.selectedProductItem {
+            return profile
+        }
+        return nil
     }
 
     // MARK: - Visibility Helpers
@@ -241,7 +247,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
                 // Goal chip overlay: show when goal is set (non-nil) — hidden for BPM
                 // In weightless mode, goal of 0 is valid (maintain anchor weight)
-                if viewModel.goalWeight != nil && dashboardStore.productType != .bpm {
+                if viewModel.goalWeight != nil && dashboardStore.productType != .bpm && selectedBabyProfile == nil {
                     goalChipCallout()
                 }
             }
@@ -444,13 +450,29 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private var chartSeries: some ChartContent {
         // Use cached grouped data with render-time filtering
         // This ensures ALL visible points are shown while limiting buffer points
-        ForEach(Array(cachedPlottedPoints.keys), id: \.self) { seriesName in
+        ForEach(orderedSeriesNames, id: \.self) { seriesName in
             if let seriesPoints = cachedPlottedPoints[seriesName] {
                 // Filter to visible + downsampled buffer for this series
                 let pointsToRender = getPointsToRender(from: seriesPoints)
                 chartContentForSeries(seriesName: seriesName, seriesPoints: pointsToRender)
             }
         }
+    }
+
+    private var orderedSeriesNames: [String] {
+        cachedPlottedPoints.keys.sorted { lhs, rhs in
+            seriesRenderPriority(lhs) < seriesRenderPriority(rhs)
+        }
+    }
+
+    private func seriesRenderPriority(_ seriesName: String) -> Int {
+        if BabyDashboardChartSupport.isPercentileSeries(seriesName) {
+            return 0
+        }
+        if seriesName == DashboardStrings.weight {
+            return 1
+        }
+        return 2
     }
 
     @ChartContentBuilder
@@ -470,6 +492,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         ForEach(seriesPoints) { plottedPoint in
             let point = plottedPoint.original
             let xDate = plottedPoint.xDate  // Use precomputed
+            let percentileLine = BabyDashboardChartSupport.percentileLine(for: point.series)
+            let isBabyPercentileSeries = percentileLine != nil
 
             // Clamp value to the Y-axis domain so marks never overflow outside
             // the plot area into the x-axis region during domain transitions.
@@ -494,8 +518,12 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 series: .value("Series", point.series)
             )
             .foregroundStyle(colors.line)
-            .interpolationMethod(dashboardStore.productType == .bpm ? .monotone : .monotone)
-            .lineStyle(StrokeStyle(lineWidth: viewModel.lineWidth))
+            .interpolationMethod(.monotone)
+            .lineStyle(StrokeStyle(
+                lineWidth: isBabyPercentileSeries
+                    ? BabyDashboardChartStyle.percentileLineWidth(for: percentileLine)
+                    : viewModel.lineWidth
+            ))
 
             // Visible point mark — only shown when within domain to avoid
             // dots sitting on the axis boundary
@@ -503,7 +531,11 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                 x: .value("Date", xDate),
                 y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
-            .symbolSize(isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
+            .symbolSize(
+                isBabyPercentileSeries
+                    ? 0
+                    : (isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
+            )
             .foregroundStyle(colors.point)
         }
     }
@@ -523,7 +555,16 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
     /// Computes line and point colors for a chart series, factoring in product type and month interval.
     private func seriesColors(for point: GraphSeries, isOutsideMonthInterval: Bool) -> (line: Color, point: Color) {
-        DashboardChartStyleProvider.seriesColors(
+        if let percentileLine = BabyDashboardChartSupport.percentileLine(for: point.series) {
+            let color = BabyDashboardChartStyle.percentileLineColor(for: percentileLine, theme: theme)
+            return (color, color)
+        }
+
+        if selectedBabyProfile != nil, point.series == DashboardStrings.weight {
+            return (BabyDashboardChartStyle.weightColor, BabyDashboardChartStyle.weightColor)
+        }
+
+        return DashboardChartStyleProvider.seriesColors(
             for: point.series,
             productType: dashboardStore.productType,
             theme: theme,
@@ -574,10 +615,18 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     private func selectionCalloutValue(for selectedDate: Date) -> Double? {
         let plottedDate = viewModel.plotXDate(for: selectedDate)
 
-        let matchingValues = cachedPlottedPoints.values
+        let matchingPoints = cachedPlottedPoints.values
             .flatMap { $0 }
             .filter { $0.xDate == plottedDate }
-            .map { $0.original.value }
+
+        if selectedBabyProfile != nil,
+           let babyWeightValue = matchingPoints
+            .first(where: { $0.original.series == DashboardStrings.weight })?
+            .original.value {
+            return babyWeightValue
+        }
+
+        let matchingValues = matchingPoints.map { $0.original.value }
 
         if let topVisibleValue = matchingValues.max() {
             return topVisibleValue

@@ -16,6 +16,13 @@ struct BabyTrendView: View {
     // TODO: Replace with ColorTokens.babyPrimary once color tokens are updated
     private let babyColor = Color(red: 0x88 / 255.0, green: 0x41 / 255.0, blue: 0xA4 / 255.0)
 
+    private var headlineLabel: String {
+        if dashboardStore.state.graph.selectedXValue != nil || dashboardStore.state.graph.selectedPoint != nil {
+            return dashboardStore.displayManager.weightDisplayLabel
+        }
+        return BabyDashboardStrings.babyWeightLabel(name: babyProfile.name)
+    }
+
     var body: some View {
         DashboardTrendView(
             dashboardStore: dashboardStore,
@@ -35,7 +42,7 @@ struct BabyTrendView: View {
     @ViewBuilder
     private var babyInfoSection: some View {
         VStack(alignment: .leading, spacing: .zero) {
-            Text(dashboardStore.displayManager.weightDisplayLabel)
+            Text(headlineLabel)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)
                 .padding(.leading, .spacingSM)

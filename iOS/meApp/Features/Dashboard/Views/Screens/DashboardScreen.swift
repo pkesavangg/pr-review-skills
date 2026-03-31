@@ -26,15 +26,28 @@ struct DashboardScreen: View {
     private let weightEmptyStateOffset: CGFloat = 650
     private let bpmEmptyStateOffset: CGFloat = 400
 
+    private var hasBabySnapshotItem: Bool {
+        store.availableProductItems.contains { item in
+            if case .baby = item { return true }
+            return false
+        }
+    }
+
+    private var canShowSnapshotOverview: Bool {
+        store.availableProductItems.count > 1 || hasBabySnapshotItem
+    }
+
+    private var shouldShowSnapshotOverview: Bool {
+        canShowSnapshotOverview && !isInProductDashboard
+    }
+
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
-                if store.availableProductItems.count > 1 && !isInProductDashboard {
+                if shouldShowSnapshotOverview {
                     snapshotLogo()
                     ScrollView(showsIndicators: false) {
                         MultiDeviceSnapshotView(availableItems: store.availableProductItems) { selectedItem in
-                            let newType: EntryType = selectedItem == .myBloodPressure ? .bpm : .wg
-                            store.switchProductType(to: newType)
                             store.selectProductItem(selectedItem)
                             isInProductDashboard = true
                         }
@@ -54,8 +67,13 @@ struct DashboardScreen: View {
         .refreshable {
             await store.lifecycleManager.refreshAll()
         }
-        .onAppear(perform: store.lifecycleManager.onAppearActions)
-        .ignoresSafeArea(.all, edges: store.availableProductItems.count > 1 ? .bottom : .all)
+        .onAppear {
+            store.lifecycleManager.onAppearActions()
+            if canShowSnapshotOverview {
+                isInProductDashboard = false
+            }
+        }
+        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)

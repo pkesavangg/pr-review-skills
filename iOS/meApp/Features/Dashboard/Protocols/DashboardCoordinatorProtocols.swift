@@ -20,6 +20,7 @@ import SwiftUI
 protocol DashboardStateProviding: AnyObject {
     var state: DashboardState { get set }
     var productType: EntryType { get }
+    var isBabySelection: Bool { get }
     func scheduleUIUpdate()
     func forceImmediateUIUpdate()
 }

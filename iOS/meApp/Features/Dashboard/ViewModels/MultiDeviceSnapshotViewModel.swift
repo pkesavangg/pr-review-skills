@@ -48,33 +48,11 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
         return items
     }
 
-    func babySummaries(for babyId: String) -> [BathScaleWeightSummary] {
-        let real = babyDailySummaries[babyId] ?? []
+    func babySummaries(for babyProfile: BabyProfile) -> [BathScaleWeightSummary] {
+        let real = babyDailySummaries[babyProfile.id] ?? []
         // TODO: Remove dummy data once baby entry pipeline is wired
-        return real.isEmpty ? Self.makeDummyBabySummaries() : real
-    }
-
-    // MARK: - Dummy Data
-
-    /// Temporary sample data for baby snapshot card UI development.
-    /// Remove once real baby weight entries flow through EntryService.
-    private static func makeDummyBabySummaries() -> [BathScaleWeightSummary] {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let storedWeights: [Double] = [1420, 1440, 1475, 1500, 1530, 1560, 1600]
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        return storedWeights.enumerated().compactMap { index, weight in
-            guard let date = calendar.date(byAdding: .day, value: index - 6, to: today) else { return nil }
-            return BathScaleWeightSummary(
-                accountId: "dummy",
-                period: formatter.string(from: date),
-                entryTimestamp: date.ISO8601Format(),
-                date: date,
-                count: 1,
-                weight: weight
-            )
-        }
+        return real.isEmpty
+            ? BabyDashboardChartSupport.dummyDailySummaries(for: babyProfile)
+            : real
     }
 }

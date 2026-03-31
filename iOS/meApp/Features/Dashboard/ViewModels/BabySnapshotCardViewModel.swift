@@ -37,6 +37,13 @@ final class BabySnapshotCardViewModel: ObservableObject {
             : ConversionTools.convertStoredToLbs(storedWeight)
     }
 
+    /// Converts a WHO percentile JSON value (decigrams) to the active display unit.
+    func convertDecigramsToDisplay(_ decigrams: Int) -> Double {
+        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
+        let stored = ConversionTools.convertKgToStored(kg)
+        return convertStoredWeightToDisplay(stored)
+    }
+
     func formatBabyWeight(_ storedWeight: Int) -> (lbs: String, oz: String) {
         let displayWeight = convertStoredWeightToDisplay(storedWeight)
         let wholeLbs = Int(displayWeight)

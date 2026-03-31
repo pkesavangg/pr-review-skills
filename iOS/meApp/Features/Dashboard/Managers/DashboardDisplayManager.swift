@@ -167,7 +167,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     var weightLabel: String {
         guard let stateProvider else { return "" }
 
-        if !stateProvider.state.data.hasAnyEntries {
+        if !stateProvider.state.data.hasAnyEntries && getContinuousOperations().isEmpty {
             return emptyStatePeriodLabel(for: stateProvider.state.graph.selectedPeriod)
         }
 
