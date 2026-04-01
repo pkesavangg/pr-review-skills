@@ -26,7 +26,7 @@ extension BabyHistoryEntry {
     }
 
     var percentileText: String {
-        "\(percentile) \(HistoryListStrings.th)"
+        BabyWeightPercentileCalculator.percentileDisplayText(percentile)
     }
 }
 

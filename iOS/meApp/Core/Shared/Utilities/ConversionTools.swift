@@ -1,6 +1,5 @@
 // ConversionTools.swift
 // Utility class for unit and value conversions (height, weight, BMI, protocol, etc.)
-// Migrated from Angular conversion-tools.service.ts
 // All methods are static and thread-safe.
 
 import Foundation
@@ -138,12 +137,12 @@ final class ConversionTools {
         return Int(round(kg * decigramsPerKg))
     }
 
-    /// Converts baby weight from decigrams to kg for display. Matches baby app `calcDecigramsToKg`.
+    /// Converts baby weight from decigrams to kg for display.
     static func convertBabyDecigramsToKg(_ decigrams: Int) -> Double {
         return rounded(Double(decigrams) / decigramsPerKg, toPlaces: 3)
     }
 
-    /// Converts decigrams to (lbs, oz) tuple for imperial display. Matches baby app `calcDecigramsToLbOz`.
+    /// Converts decigrams to (lbs, oz) tuple for imperial display.
     static func convertBabyDecigramsToLbsOz(_ decigrams: Int) -> (lbs: Int, oz: Double) {
         let totalOz = rounded(Double(decigrams) / decigramsPerOunce, toPlaces: 1)
         let lbs = Int(totalOz / 16.0)
@@ -151,7 +150,7 @@ final class ConversionTools {
         return (lbs, oz)
     }
 
-    /// Converts lbs + fractional oz to decigrams for storage. Matches baby app `calcLbOzToDecigrams`.
+    /// Converts lbs + fractional oz to decigrams for storage.
     static func convertBabyLbsOzToDecigrams(lbs: Int, oz: Double) -> Int {
         let totalOz = Double(lbs) * 16.0 + oz
         return Int(round(totalOz * decigramsPerOunce))
@@ -162,31 +161,165 @@ final class ConversionTools {
         return Int(round(lb * decigramsPerPound))
     }
 
-    /// Converts decigrams to decimal pounds for display. Matches baby app `calcDecigramsToLbDecimal`.
+    /// Converts decigrams to decimal pounds for display.
     static func convertBabyDecigramsToLb(_ decigrams: Int) -> Double {
         return rounded(Double(decigrams) / decigramsPerPound, toPlaces: 3)
     }
 
     // MARK: - Baby Length Conversion (stored in millimeters)
 
-    /// Converts inches to millimeters for storage. Matches baby app `calcInchesToMm`.
+    /// Converts inches to millimeters for storage.
     static func convertBabyInchesToMm(_ inches: Double) -> Int {
         return Int(round(inches * mmPerInch))
     }
 
-    /// Converts millimeters to inches for display. Matches baby app `calcMmToInches`.
+    /// Converts millimeters to inches for display.
     static func convertBabyMmToInches(_ mm: Int) -> Double {
         return rounded(Double(mm) / mmPerInch, toPlaces: 1)
     }
 
-    /// Converts centimeters to millimeters for storage. Matches baby app `calcCmToMm`.
+    /// Converts centimeters to millimeters for storage.
     static func convertBabyCmToMm(_ cm: Double) -> Int {
         return Int(round(cm * 10.0))
     }
 
-    /// Converts millimeters to centimeters for display. Matches baby app `calcMmToCm`.
+    /// Converts millimeters to centimeters for display.
     static func convertBabyMmToCm(_ mm: Int) -> Double {
         return Double(mm) / 10.0
+    }
+
+    // MARK: - Baby Scale Display Graduation
+    // Baby scales (0220/0222) apply graduation-based rounding that matches the scale LCD.
+    // These functions convert raw decigrams to display values with correct resolution.
+
+    /// Weight thresholds in grams for graduation adjustment.
+    static let graduationThreshold18LbGrams = 8165.0
+    static let graduationThreshold25LbGrams = 11340.0
+    /// Precise grams-to-pounds factor used by the 0222 scale.
+    static let gramsToPoundsConversionFactor = 2.204623
+
+    /// Unit selector for baby display graduation routing.
+    enum BabyDisplayUnit {
+        case kg
+        case lbDecimal
+        case lbOz
+    }
+
+    /// Routes raw decigrams through the correct graduation function for the given scale source.
+    /// Returns graduated decigrams suitable for formatting. If source is nil or not a baby scale,
+    /// returns the input unchanged.
+    static func convertToDisplayWeightBase(decigrams: Int, source: String?, unit: BabyDisplayUnit) -> Int {
+        guard let source = source,
+              source.contains("0220") || source.contains("0222") else {
+            return decigrams
+        }
+        switch unit {
+        case .kg:
+            let scaleKg = convert0220DecigramsToKg(decigrams)
+            return Int(round(Double(convertBabyKgToDecigrams(scaleKg))))
+        case .lbDecimal:
+            let scaleLb: Double
+            if source.contains("0222") {
+                scaleLb = convert0222DecigramsToLbDecimal(decigrams)
+            } else {
+                scaleLb = convert0220DecigramsToLbDecimal(decigrams)
+            }
+            return Int(round(Double(scaleLb) * decigramsPerPound))
+        case .lbOz:
+            let scaleLbOz: (lbs: Int, oz: Double)
+            if source.contains("0222") {
+                scaleLbOz = convert0222DecigramsToLbOz(decigrams)
+            } else {
+                scaleLbOz = convert0220DecigramsToLbOz(decigrams)
+            }
+            return convertBabyLbsOzToDecigrams(lbs: scaleLbOz.lbs, oz: scaleLbOz.oz)
+        }
+    }
+
+    // MARK: 0220 Scale Conversions
+
+    /// Converts 0220 scale decigrams to kg with graduation rounding (5g/10g/50g).
+    static func convert0220DecigramsToKg(_ decigrams: Int) -> Double {
+        let grams = Double(decigrams) / 10.0
+        if grams >= graduationThreshold25LbGrams {
+            return (Double(Int(round(grams / 50.0))) * 50.0) / 1000.0
+        } else if grams >= graduationThreshold18LbGrams {
+            return Double(Int(round(grams / 10.0))) / 100.0
+        } else {
+            return (Double(Int(round(grams / 5.0))) * 5.0) / 1000.0
+        }
+    }
+
+    /// Converts 0220 scale decigrams to decimal pounds with graduation rounding.
+    static func convert0220DecigramsToLbDecimal(_ decigrams: Int) -> Double {
+        let grams = Double(decigrams) / 10.0
+        let unroundedLbs = (grams / 1000.0) * 2.2046
+        if grams >= graduationThreshold25LbGrams {
+            return rounded(unroundedLbs, toPlaces: 1)
+        } else if grams >= graduationThreshold18LbGrams {
+            return rounded(unroundedLbs / 2.0, toPlaces: 2) * 2.0
+        } else {
+            return rounded(unroundedLbs, toPlaces: 2)
+        }
+    }
+
+    /// Converts 0220 scale decigrams to lbs/oz with graduation rounding.
+    static func convert0220DecigramsToLbOz(_ decigrams: Int) -> (lbs: Int, oz: Double) {
+        let grams = Double(decigrams) / 10.0
+        let totalOz: Double
+        if grams >= graduationThreshold25LbGrams {
+            totalOz = Double(Int(round((grams / 2.0) / 28.35))) * 2.0
+        } else if grams >= graduationThreshold18LbGrams {
+            totalOz = Double(Int(round((grams * 5.0) / 28.35))) / 5.0
+        } else {
+            totalOz = rounded(grams / 28.35, toPlaces: 1)
+        }
+        let lbs = Int(totalOz / 16.0)
+        let oz = lbs > 0 ? rounded(totalOz.truncatingRemainder(dividingBy: 16.0), toPlaces: 1) : rounded(totalOz, toPlaces: 1)
+        return (lbs, oz)
+    }
+
+    // MARK: 0222 Scale Conversions
+
+    /// Converts 0222 scale decigrams to decimal pounds with graduation rounding.
+    /// Uses the precise 2.204623 conversion factor per manufacturer spec.
+    static func convert0222DecigramsToLbDecimal(_ decigrams: Int) -> Double {
+        let grams = Double(decigrams) / 10.0
+        let unroundedLbs = (grams / 1000.0) * gramsToPoundsConversionFactor
+        if grams >= graduationThreshold25LbGrams {
+            return rounded(unroundedLbs, toPlaces: 1)
+        } else if grams >= graduationThreshold18LbGrams {
+            return rounded(unroundedLbs / 2.0, toPlaces: 2) * 2.0
+        } else {
+            return rounded(unroundedLbs, toPlaces: 2)
+        }
+    }
+
+    /// Converts 0222 scale decigrams to lbs/oz using the manufacturer's calibration factor (369874/1048576).
+    static func convert0222DecigramsToLbOz(_ decigrams: Int) -> (lbs: Int, oz: Double) {
+        let transmissionWeight = Double(decigrams) / 10.0
+        let converted = Int(round(transmissionWeight * 369874.0 / 1048576.0))
+        let lb = Int(floor(Double(converted) / 160.0))
+        let rawOz = converted - (lb * 160)
+
+        var indexing = 5
+        if transmissionWeight >= graduationThreshold25LbGrams {
+            indexing = 50
+        } else if transmissionWeight >= graduationThreshold18LbGrams {
+            indexing = 10
+        }
+
+        let adjustedOz: Double
+        switch indexing {
+        case 10:
+            adjustedOz = rounded(Double(Int(round(Double(rawOz) / 2.0)) * 2) / 10.0, toPlaces: 1)
+        case 50:
+            adjustedOz = rounded(Double(Int(round(Double(rawOz) / 20.0)) * 20) / 10.0, toPlaces: 1)
+        default:
+            adjustedOz = rounded(Double(rawOz) / 10.0, toPlaces: 1)
+        }
+
+        return (lb, adjustedOz)
     }
 
     // MARK: - BMI

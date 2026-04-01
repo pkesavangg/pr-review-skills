@@ -423,7 +423,7 @@ class BottomTabBarViewModel: ObservableObject {
         bluetoothService.isSetupInProgress = true
 
         switch setupType {
-        case .lcbt, .btWifiR4:
+        case .lcbt, .btWifiR4, .babyScale:
             setupPayload = ScaleDiscoverSheetInfo(sku: sku, scale: scale, event: event, isReconnect: isReconnect, isDuplicated: isDuplicated)
         default:
             // Handle other setup types if needed

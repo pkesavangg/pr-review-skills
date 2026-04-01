@@ -128,7 +128,7 @@ protocol EntryServiceProtocol {
     // MARK: - Baby Entry CRUD
 
     /// Creates a new baby entry, persists it locally.
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws
 }
 
 // MARK: - Default Parameter Values
@@ -141,4 +141,7 @@ extension EntryServiceProtocol {
     func getMonthDetail(month: String) async throws -> [Entry] { try await getMonthDetail(month: month, entryType: .wg) }
     func getProgress() async throws -> Progress { try await getProgress(entryType: .wg) }
     func getStreak() async throws -> Streak { try await getStreak(entryType: .wg) }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {
+        try await createBabyEntry(babyId: babyId, weight: weight, length: length, note: note, entryTimestamp: entryTimestamp, source: nil)
+    }
 }

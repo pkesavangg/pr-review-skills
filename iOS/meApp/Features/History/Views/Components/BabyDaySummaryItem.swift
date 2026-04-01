@@ -28,7 +28,7 @@ struct BabyDaySummaryItem: View {
     }
 
     private var percentileText: String {
-        "\(day.percentile) \(HistoryListStrings.th)"
+        BabyWeightPercentileCalculator.percentileDisplayText(day.percentile)
     }
 
     var body: some View {

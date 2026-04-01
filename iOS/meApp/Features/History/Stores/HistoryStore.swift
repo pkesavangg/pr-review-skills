@@ -273,16 +273,16 @@ final class HistoryStore: ObservableObject {
                 guard let self else { return }
                 do {
                     let allEntries = try await self.entryService.getAllEntries()
-                    let babyId: String? = {
-                        if case .baby(let profile) = self.productTypeStore.selectedItem { return profile.id }
+                    let babyProfile: BabyProfile? = {
+                        if case .baby(let profile) = self.productTypeStore.selectedItem { return profile }
                         return nil
                     }()
                     let babyEntries = allEntries.filter {
                         $0.deviceType == DeviceType.babyScale.rawValue
                         && $0.operationType == OperationType.create.rawValue
-                        && $0.babyId == babyId
+                        && $0.babyId == babyProfile?.id
                     }
-                    let result = self.mapBabyEntriesToWeeks(babyEntries)
+                    let result = self.mapBabyEntriesToWeeks(babyEntries, profile: babyProfile)
                     self.babyWeeks = result
                     self.isEmptyState = result.isEmpty
                 } catch {
@@ -471,10 +471,11 @@ final class HistoryStore: ObservableObject {
         Task {
             do {
                 let allEntries = try await entryService.getAllEntries()
-                let babyId: String? = {
-                    if case .baby(let profile) = productTypeStore.selectedItem { return profile.id }
+                let babyProfile: BabyProfile? = {
+                    if case .baby(let profile) = productTypeStore.selectedItem { return profile }
                     return nil
                 }()
+                let babyId = babyProfile?.id
                 let dayEntries = allEntries.filter {
                     $0.deviceType == DeviceType.babyScale.rawValue
                     && $0.operationType == OperationType.create.rawValue
@@ -485,12 +486,23 @@ final class HistoryStore: ObservableObject {
                 babyEntries = dayEntries.compactMap { entry -> BabyHistoryEntry? in
                     guard let baby = entry.babyEntry else { return nil }
                     let decigrams = baby.weight
-                    let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(decigrams)
-                    let kg = ConversionTools.convertBabyDecigramsToKg(decigrams)
-                    let lbDecimal = ConversionTools.convertBabyDecigramsToLb(decigrams)
+                    let source = baby.source
+                    let displayUnit: ConversionTools.BabyDisplayUnit = metric ? .kg : .lbOz
+                    let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+                        decigrams: decigrams, source: source, unit: displayUnit
+                    )
+                    let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
+                    let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
+                    let lbDecimal = ConversionTools.convertBabyDecigramsToLb(graduatedDecigrams)
                     let mm = baby.length
                     let lengthInches = ConversionTools.convertBabyMmToInches(mm)
                     let lengthCm = ConversionTools.convertBabyMmToCm(mm)
+                    let pct = BabyWeightPercentileCalculator.calculatePercentile(
+                        weightDecigrams: decigrams,
+                        biologicalSex: babyProfile?.biologicalSex,
+                        birthday: babyProfile?.birthday,
+                        entryDate: DateTimeTools.parse(entry.entryTimestamp) ?? Date()
+                    )
                     return BabyHistoryEntry(
                         id: entry.id,
                         entryTimestamp: entry.entryTimestamp,
@@ -500,9 +512,9 @@ final class HistoryStore: ObservableObject {
                         weightLb: lbDecimal,
                         lengthInches: lengthInches,
                         lengthCm: lengthCm,
-                        percentile: 0,
+                        percentile: pct,
                         notes: baby.note.isEmpty ? nil : baby.note,
-                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, isMetric: metric),
+                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, isMetric: metric),
                         lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
@@ -521,12 +533,17 @@ final class HistoryStore: ObservableObject {
     // MARK: - Baby Display Formatting
 
     /// Formats baby weight in decigrams as a display string based on unit preference.
-    private func formatBabyWeightDisplay(decigrams: Int, isMetric: Bool) -> String {
+    /// When source is provided (e.g. "0220", "0222"), applies graduation rounding to match scale LCD.
+    private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, isMetric: Bool) -> String {
+        let displayUnit: ConversionTools.BabyDisplayUnit = isMetric ? .kg : .lbOz
+        let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+            decigrams: decigrams, source: source, unit: displayUnit
+        )
         if isMetric {
-            let kg = ConversionTools.convertBabyDecigramsToKg(decigrams)
+            let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
             return "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
         } else {
-            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(decigrams)
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
             return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
         }
     }
@@ -597,7 +614,7 @@ final class HistoryStore: ObservableObject {
     }
 
     /// Groups baby entries by day, then by week, building weekly summaries.
-    private func mapBabyEntriesToWeeks(_ entries: [Entry]) -> [BabyHistoryWeek] {
+    private func mapBabyEntriesToWeeks(_ entries: [Entry], profile: BabyProfile? = nil) -> [BabyHistoryWeek] {
         // Group by local day
         let grouped = Dictionary(grouping: entries) { entry -> String in
             return self.localDayString(from: entry.entryTimestamp)
@@ -616,6 +633,17 @@ final class HistoryStore: ObservableObject {
             let lbDecimal = ConversionTools.convertBabyDecigramsToLb(avgWeight)
             let lengthInches = ConversionTools.convertBabyMmToInches(avgMm)
             let lengthCm = ConversionTools.convertBabyMmToCm(avgMm)
+            let pct: Int = {
+                let fmt = DateFormatter()
+                fmt.dateFormat = "yyyy-MM-dd"
+                let entryDate = fmt.date(from: dayId) ?? Date()
+                return BabyWeightPercentileCalculator.calculatePercentile(
+                    weightDecigrams: avgWeight,
+                    biologicalSex: profile?.biologicalSex,
+                    birthday: profile?.birthday,
+                    entryDate: entryDate
+                )
+            }()
             return BabyHistoryDay(
                 id: dayId,
                 entryCount: count,
@@ -625,7 +653,7 @@ final class HistoryStore: ObservableObject {
                 weightLb: lbDecimal,
                 lengthInches: lengthInches,
                 lengthCm: lengthCm,
-                percentile: 0,
+                percentile: pct,
                 weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, isMetric: metric),
                 lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric)
             )
