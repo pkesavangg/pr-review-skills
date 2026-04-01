@@ -489,7 +489,7 @@ final class HistoryStore: ObservableObject {
                     let source = baby.source
                     let displayUnit: ConversionTools.BabyDisplayUnit = metric ? .kg : .lbOz
                     let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-                        decigrams: decigrams, source: source, unit: displayUnit
+                        decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
                     )
                     let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
                     let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
@@ -535,9 +535,10 @@ final class HistoryStore: ObservableObject {
     /// Formats baby weight in decigrams as a display string based on unit preference.
     /// When source is provided (e.g. "0220", "0222"), applies graduation rounding to match scale LCD.
     private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, isMetric: Bool) -> String {
+        guard decigrams > 0 else { return "--" }
         let displayUnit: ConversionTools.BabyDisplayUnit = isMetric ? .kg : .lbOz
         let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-            decigrams: decigrams, source: source, unit: displayUnit
+            decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
         )
         if isMetric {
             let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
@@ -550,6 +551,7 @@ final class HistoryStore: ObservableObject {
 
     /// Formats baby length in millimeters as a display string based on unit preference.
     private func formatBabyLengthDisplay(mm: Int, isMetric: Bool) -> String {
+        guard mm > 0 else { return "--" }
         if isMetric {
             let cm = ConversionTools.convertBabyMmToCm(mm)
             return "\(String(format: "%.1f", cm)) \(HistoryListStrings.cm)"

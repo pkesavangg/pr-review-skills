@@ -193,20 +193,16 @@ struct MyKidsScreen: View {
                     canShowBorder: true
                 )
 
-                BabyProfileFormView(hideHeader: true)
+                BabyProfileFormView(
+                    form: store.babyProfileForm,
+                    showDatePicker: $store.showBabyDatePicker,
+                    showSexPicker: $store.showBabySexPicker,
+                    hideHeader: true
+                )
                     .padding(.horizontal, .spacingSM)
-                    .environmentObject(asBabyScaleSetupStore())
             }
             .background(theme.backgroundSecondary.ignoresSafeArea())
         }
         .presentationDragIndicator(.visible)
-    }
-
-    /// Creates a lightweight BabyScaleSetupStore that shares the form state with MyKidsStore.
-    /// This allows reusing BabyProfileFormView without modification.
-    private func asBabyScaleSetupStore() -> BabyScaleSetupStore {
-        let setupStore = BabyScaleSetupStore()
-        setupStore.babyProfileForm = store.babyProfileForm
-        return setupStore
     }
 }

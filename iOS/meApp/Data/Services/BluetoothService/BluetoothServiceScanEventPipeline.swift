@@ -19,7 +19,7 @@ extension BluetoothService {
             throw BluetoothServiceError.noProfileInfo
         }
         
-        ggBleSDK.scan(.WEIGHT_GURUS, accountData) { [weak self] result in
+        ggBleSDK.scan(.SMART_BABY, accountData) { [weak self] result in
             Task { @MainActor in
                 switch result {
                 case .success(let scanResponse):
@@ -65,7 +65,11 @@ extension BluetoothService {
             logger.log(level: .info, tag: tag, message: "DEVICE_CONNECTED called in handleSmartScaleData", data: scanData)
             await scaleService.updateConnectedDevices(device: data.data, isConnected: true)
             if let deviceDetails = data.data as? GGDeviceDetails {
-                await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
+                // Weight-only mode only applies to adult weight scales, not baby scales
+                let deviceType = resolveDeviceType(broadcastId: deviceDetails.broadcastIdString)
+                if deviceType != .babyScale {
+                    await updateWeightOnlyModeStatusFromDeviceDetails(deviceDetails)
+                }
             }
             await checkCanShowWeightOnlyModeAlert()
         case .DEVICE_DISCONNECTED:
@@ -248,6 +252,12 @@ extension BluetoothService {
         let deviceType = resolveDeviceType(broadcastId: ggEntry.broadcastIdString)
         let entryDate = resolveEntryDate(ggEntry: ggEntry, deviceType: deviceType)
         let timestamp = ISO8601DateFormatter().string(from: entryDate)
+
+        // Baby scale entries get a BabyEntry relationship instead of BathScaleEntry
+        if deviceType == .babyScale {
+            return convertBabyScaleEntry(ggEntry: ggEntry, activeAccount: activeAccount, timestamp: timestamp)
+        }
+
         let entry = Entry(
             entryTimestamp: timestamp,
             accountId: activeAccount.accountId,
@@ -322,6 +332,44 @@ extension BluetoothService {
         }
         return .scale
     }
+
+    /// Finds the Baby linked to the device broadcasting with the given ID.
+    /// Chain: broadcastId → Device (bluetoothScales) → Device.id → Baby.deviceId → Baby
+    private func resolveBaby(forBroadcastId broadcastId: String?) -> Baby? {
+        guard let broadcastId = broadcastId else { return nil }
+        guard let device = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId }) else { return nil }
+        return babyService.currentBabies.first(where: { $0.deviceId == device.id })
+    }
+
+    /// Resolves the scale SKU for the device broadcasting with the given ID.
+    private func resolveScaleSku(forBroadcastId broadcastId: String?) -> String? {
+        guard let broadcastId = broadcastId else { return nil }
+        return bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.sku
+    }
+
+    /// Converts a BLE baby scale measurement into a baby Entry with a BabyEntry relationship.
+    private func convertBabyScaleEntry(ggEntry: GGEntry, activeAccount: Account, timestamp: String) -> Entry? {
+        guard let baby = resolveBaby(forBroadcastId: ggEntry.broadcastIdString) else {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Baby scale entry received but no baby linked for broadcastId: \(ggEntry.broadcastIdString ?? "nil")"
+            )
+            return nil
+        }
+        let weightDecigrams = ConversionTools.convertBabyKgToDecigrams(Double(ggEntry.weightInKg))
+        let scaleSku = resolveScaleSku(forBroadcastId: ggEntry.broadcastIdString)
+        let entry = Entry(
+            entryTimestamp: timestamp,
+            accountId: activeAccount.accountId,
+            operationType: OperationType.create.rawValue,
+            deviceType: DeviceType.babyScale.rawValue,
+            isSynced: false,
+            babyId: baby.id
+        )
+        entry.babyEntry = BabyEntry(babyId: baby.id, length: 0, weight: weightDecigrams, note: "", source: scaleSku)
+        return entry
+    }
     
     // MARK: - Weight-only mode (alert, preference sync, status on connect/disconnect)
     func checkCanShowWeightOnlyModeAlert() async {
@@ -332,10 +380,18 @@ extension BluetoothService {
             
             guard !Task.isCancelled, let self = self else { return }
             
-            let connectedScales = self.bluetoothScales.filter { scale in (scale.isConnected ?? false) }
-            
+            let connectedScales = self.bluetoothScales.filter { scale in
+                guard scale.isConnected ?? false else { return false }
+                // Exclude baby scales — weight-only mode only applies to adult weight scales
+                if let sku = scale.sku,
+                   ScaleInfoUtils.shared.getScaleInfo(bySku: sku)?.setupType == .babyScale {
+                    return false
+                }
+                return true
+            }
+
             var hasWeightOnlyModeEnabledByOthers = false
-            
+
             for scale in connectedScales {
                 if let isWeightOnlyEnabled = scale.isWeighOnlyModeEnabledByOthers, isWeightOnlyEnabled {
                     hasWeightOnlyModeEnabledByOthers = true

@@ -18,11 +18,13 @@ extension BabyHistoryEntry {
     var hasNotes: Bool { !(notes ?? "").isEmpty }
 
     var weightText: String {
-        "\(weightLbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", weightOz)) \(HistoryListStrings.oz)"
+        guard weightLbs > 0 || weightOz > 0 else { return "--" }
+        return "\(weightLbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", weightOz)) \(HistoryListStrings.oz)"
     }
 
     var lengthText: String {
-        "\(Int(lengthInches)) \(HistoryListStrings.inUnit)"
+        guard lengthInches > 0 else { return "--" }
+        return "\(Int(lengthInches)) \(HistoryListStrings.inUnit)"
     }
 
     var percentileText: String {

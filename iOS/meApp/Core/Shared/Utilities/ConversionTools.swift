@@ -208,11 +208,14 @@ final class ConversionTools {
     /// Routes raw decigrams through the correct graduation function for the given scale source.
     /// Returns graduated decigrams suitable for formatting. If source is nil or not a baby scale,
     /// returns the input unchanged.
-    static func convertToDisplayWeightBase(decigrams: Int, source: String?, unit: BabyDisplayUnit) -> Int {
-        guard let source = source,
-              source.contains("0220") || source.contains("0222") else {
+    /// When `isBabyScaleEntry` is true and source is nil (legacy entries), defaults to 0220 graduation.
+    static func convertToDisplayWeightBase(decigrams: Int, source: String?, unit: BabyDisplayUnit, isBabyScaleEntry: Bool = false) -> Int {
+        let effectiveSource: String? = source ?? (isBabyScaleEntry ? "0220" : nil)
+        guard let effectiveSource = effectiveSource,
+              effectiveSource.contains("0220") || effectiveSource.contains("0222") else {
             return decigrams
         }
+        let source = effectiveSource
         switch unit {
         case .kg:
             let scaleKg = convert0220DecigramsToKg(decigrams)
