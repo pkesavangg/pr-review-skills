@@ -32,10 +32,12 @@ import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
@@ -202,26 +204,39 @@ constructor(
       handleIntent(AppIntent.SetScaleDiscovered(false))
       // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
       dialogQueueService.clear()
-      if (sku == SKU_0412) {
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.BtWifiScaleSetup(
-            SKU_0412,
-            BtWifiSetupStep.CONNECTING_BLUETOOTH,
-            discoveredBroadcastId,
-          ),
-        )
-      } else if (sku != null) {
-        val localSku = sku ?: return@launch
-        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
-        // Pass original SKU to routes (not mapped), setup will save original SKU
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.LcbtScaleSetup(
-            localSku,
-            discoveredBroadcastId,
-            LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
-            scaleInfo = scaleInfo,
-          ),
-        )
+      val localSku = sku ?: return@launch
+      val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
+      when {
+        localSku == SKU_0412 -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BtWifiScaleSetup(
+              SKU_0412,
+              BtWifiSetupStep.CONNECTING_BLUETOOTH,
+              discoveredBroadcastId,
+            ),
+          )
+        }
+        DeviceHelper.isBabyScale(localSku) -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BabyScaleSetup(
+              sku = localSku,
+              initialStep = BabyScaleSetupStep.WAKEUP,
+              broadcastId = discoveredBroadcastId,
+              scaleInfo = scaleInfo,
+            ),
+          )
+        }
+        else -> {
+          // Pass original SKU to routes (not mapped), setup will save original SKU
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.LcbtScaleSetup(
+              localSku,
+              discoveredBroadcastId,
+              LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
+              scaleInfo = scaleInfo,
+            ),
+          )
+        }
       }
       onPopUpDismiss()
     }
@@ -582,11 +597,19 @@ constructor(
                   }
                 }
 
-                val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
-                  device = data,
-                  deviceType = ScaleSetupType.Lcbt.value,
-                  sku = sku,
-                )
+                val customizedDevice = when {
+                  deviceSku == SKU_0412 -> customizeDevice(data)
+                  DeviceHelper.isBabyScale(deviceSku) -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.BabyScale.value,
+                    sku = sku,
+                  )
+                  else -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.Lcbt.value,
+                    sku = sku,
+                  )
+                }
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
                 canShowScaleDiscoveredModal = false
               } else {

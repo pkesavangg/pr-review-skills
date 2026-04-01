@@ -18,6 +18,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleUtility
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -27,7 +28,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 enum class ScaleImageSize { Small, Medium, Large }
 
 object AppScaleImageDefaults {
-    val BABY_SCALE_SKUS = setOf("0220", "0222")
+    val BABY_SCALE_SKUS = DeviceHelper.BABY_SCALE_SKUS
 }
 
 object ScaleImageDefaults {
