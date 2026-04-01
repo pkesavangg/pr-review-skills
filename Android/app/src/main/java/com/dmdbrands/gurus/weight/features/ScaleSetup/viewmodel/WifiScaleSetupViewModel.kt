@@ -482,6 +482,10 @@ constructor(
         if (status.ssid.isNotEmpty()) {
           lastSsid = status.ssid
           handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
+          val hasLocationPermission = isAllLocationPermissionGranted()
+          if (hasLocationPermission) {
+            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(true))
+          }
           updateFormValuesWithSsid(status.ssid)
         }
 
@@ -496,7 +500,12 @@ constructor(
   /**
    * Updates the network status.
    * Equivalent to TypeScript updateNetworkStatus()
-   * When any required permission is revoked, preserves the last known SSID so the network field is not cleared.
+   *
+   * Permission-state transitions are handled explicitly:
+   * - Permission granted + live SSID available → auto-populate mode (isWifiAutoPopulated = true).
+   * - Permission revoked (or denied) → clear lastSsid, clear form, revert to manual-entry mode
+   *   (isWifiAutoPopulated = false) so the field is editable again.
+   * - Permission granted but no SSID yet → keep current state, do not force manual mode.
    */
   private fun updateNetworkStatus() {
     viewModelScope.launch {
@@ -504,31 +513,59 @@ constructor(
         val hasLocationPermission = isAllLocationPermissionGranted()
         val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
         wifiStatus = status
-        if (status.ssid.isNotEmpty()) {
-          lastSsid = status.ssid
-        }
         val currentState = state.value
         val hasAllRequiredPermissions = AppPermissionsHelper
           .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
-        // When any required permission is off, status.ssid may be empty; preserve last known SSID so we don't clear the field
-        val effectiveSsid =
-          if (status.ssid.isNotEmpty()) {
-            status.ssid
-          } else if (!hasAllRequiredPermissions) {
-            lastSsid ?: ""
-          } else {
-            ""
+
+        if (!hasAllRequiredPermissions) {
+          // Permission was revoked (or was never granted).
+          // If the field was previously auto-populated, revert to manual-entry mode.
+          if (currentState.isWifiAutoPopulated) {
+            AppLog.d(TAG, "updateNetworkStatus - Permission revoked; clearing auto-populated SSID and reverting to manual entry")
+            lastSsid = null
+            handleIntent(WifiScaleSetupIntent.SetWifiSsid(""))
+            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
+            // Reset the password form SSID field so the user can type freely
+            clearWifiPasswordFormSsid()
           }
-        handleIntent(WifiScaleSetupIntent.SetWifiSsid(effectiveSsid))
-        updateFormValuesWithSsid(effectiveSsid)
-        val savedSsid = lastSsid
-        val displayStatus =
-          if (!hasAllRequiredPermissions && status.ssid.isEmpty() && savedSsid != null) {
-            status.copy(ssid = savedSsid, bssid = currentState.wifiStatus?.bssid ?: "")
+          handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
+          return@launch
+        }
+
+        // Permissions are granted from here on.
+        if (status.ssid.isNotEmpty()) {
+          lastSsid = status.ssid
+          if (currentState.permissionsSkipped) {
+            // User skipped the permission screen but permissions are active.
+            // Auto-populate the field so they see the network name pre-filled,
+            // but only if they haven't already started typing their own value.
+            // Never set isWifiAutoPopulated=true here — the field must stay editable.
+            val ssidField = currentState.wifiPasswordForm.ssid
+            val userIsEditing = (ssidField.dirty || ssidField.touched) && ssidField.value.isNotEmpty()
+            if (!userIsEditing) {
+              AppLog.d(TAG, "updateNetworkStatus - permissionsSkipped + untouched field; pre-filling SSID as editable")
+              updateFormValuesWithSsid(status.ssid)
+            } else {
+              AppLog.d(TAG, "updateNetworkStatus - permissionsSkipped + user is editing; not overriding input")
+            }
           } else {
-            status
+            handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
+            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(true))
+            updateFormValuesWithSsid(status.ssid)
           }
-        handleIntent(WifiScaleSetupIntent.SetWifiStatus(displayStatus))
+        } else {
+          // Permissions granted but no SSID yet — do not flip back to manual mode,
+          // just reflect the empty status so the user is not confused.
+          handleIntent(WifiScaleSetupIntent.SetWifiSsid(""))
+          if (currentState.isWifiAutoPopulated) {
+            // Lost the network momentarily; keep lastSsid but switch to manual so the field
+            // is editable in case the network change is intentional.
+            AppLog.d(TAG, "updateNetworkStatus - Permission granted but SSID lost; switching to manual entry")
+            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
+            clearWifiPasswordFormSsid()
+          }
+        }
+        handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
       } catch (e: Exception) {
         AppLog.e(TAG, "updateNetworkStatus - Error updating network status", e)
       }
@@ -807,6 +844,27 @@ constructor(
     AppLog.d(TAG, "Cleared WiFi password form - reset all form controls to initial state")
   }
 
+  /**
+   * Clears only the SSID field of the WiFi password form, leaving password and toggle untouched.
+   * Used when reverting from auto-populated mode to manual-entry mode after permission revocation.
+   */
+  private fun clearWifiPasswordFormSsid() {
+    val emptySsid = FormControl.create(
+      initialValue = "",
+      validators = listOf(FormValidations.required()),
+    )
+    val currentForm = state.value.wifiPasswordForm
+    handleIntent(
+      WifiScaleSetupIntent.SetWifiPasswordForm(
+        WifiScalePasswordFormControls(
+          ssid = emptySsid,
+          password = currentForm.password,
+          noPasswordNetwork = currentForm.noPasswordNetwork,
+        ),
+      ),
+    )
+    AppLog.d(TAG, "clearWifiPasswordFormSsid - reset SSID form control to empty for manual entry")
+  }
 
   /**
    * Checks if all location permissions are granted.
@@ -937,6 +995,10 @@ constructor(
         handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.SCALE_INFO))
       }
       handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(false))
+      // Reset auto-populated flag so when the user returns, the SSID detection runs fresh
+      // via updateNetworkStatus() rather than showing a stale auto-populated chip.
+      handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
+      clearWifiPasswordFormSsid()
     }
 
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")

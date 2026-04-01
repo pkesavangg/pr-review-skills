@@ -199,7 +199,10 @@ fun WifiScaleSetupScreenContent(
                 onImeAction = {
                   onIntent(WifiScaleSetupIntent.GoToWifiSettings)
                 },
-                isWifiConnected = state.wifiPasswordForm.ssid.isValueValid() && !state.permissionsSkipped,
+                // Show auto-populated (read-only chip) style only when permissions are active
+                // and the SSID was detected automatically. Reverts to editable text field when
+                // permission is revoked or the user is in manual-entry mode.
+                isWifiConnected = state.isWifiAutoPopulated && !state.permissionsSkipped,
                 hasToggle = true,
                 toggleLabel = BtWifiScaleSetupStrings.WifiPassword.NetworkPasswordToggleLabel,
                 toggleChecked = state.wifiPasswordForm.noPasswordNetwork.value,

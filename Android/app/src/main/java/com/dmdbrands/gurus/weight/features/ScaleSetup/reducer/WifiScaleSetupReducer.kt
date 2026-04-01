@@ -111,6 +111,12 @@ data class WifiScaleSetupState(
   val isNavigating: Boolean = false, // Add navigation state to prevent double-clicks
   /** Step we were on when we navigated to ERROR_GUIDE; used for correct back navigation. */
   val stepBeforeErrorGuide: WifiScaleSetupStep? = null,
+  /**
+   * True when the network name field was auto-populated from a live permission-granted WiFi
+   * detection. False when the user is in manual-entry mode (permission denied/skipped) or
+   * when the previously auto-populated value has been cleared after permission revocation.
+   */
+  val isWifiAutoPopulated: Boolean = false,
 ) : IReducer.State {
   val currentStepIndex: Int = steps.indexOf(currentStep)
   val isFirstStep: Boolean = currentStepIndex == 0
@@ -237,6 +243,8 @@ sealed class WifiScaleSetupIntent : IReducer.Intent {
   data class ExitSetup(val isSetupFinished: Boolean, val isConnected: Boolean = false) : WifiScaleSetupIntent()
   data class OpenHelp(val helpType: String = "wifi") : WifiScaleSetupIntent()
   data class SetShouldGetMacAddress(val shouldGet: Boolean) : WifiScaleSetupIntent() // Add this intent
+  /** Tracks whether the network name was auto-populated from live WiFi detection. */
+  data class SetWifiAutoPopulated(val autoPopulated: Boolean) : WifiScaleSetupIntent()
   data class NavigateToErrorGuide(val step: WifiScaleSetupStep = WifiScaleSetupStep.ERROR_GUIDE) :
     WifiScaleSetupIntent()
 
@@ -640,6 +648,10 @@ class WifiScaleSetupReducer : IReducer<WifiScaleSetupState, WifiScaleSetupIntent
 
       is WifiScaleSetupIntent.SetShouldGetMacAddress -> {
         state.copy(shouldGetMacAddress = intent.shouldGet)
+      }
+
+      is WifiScaleSetupIntent.SetWifiAutoPopulated -> {
+        state.copy(isWifiAutoPopulated = intent.autoPopulated)
       }
 
       else -> state.copy()
