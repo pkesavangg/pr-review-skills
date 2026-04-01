@@ -25,7 +25,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     @Injector var logger: LoggerService
     @Injector private var scaleService: ScaleService
     @Injector private var entryService: EntryService
-    @Injector private var productTypeStore: ProductTypeStore
+    @Injector private var productTypeStore: ProductTypeStoreProtocol
 
     // MARK: - Formatter and Cache Services
     let formatter: DashboardFormatterProtocol
@@ -324,6 +324,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     private func setupSubscriptions() {
+        setupEntryServiceSubscriptions()
+        setupAccountServiceSubscriptions()
+        setupProductTypeStoreSubscriptions()
+    }
+
+    private func setupEntryServiceSubscriptions() {
         entryService.entrySaved
             .sink { [weak self] entry in
                 self?.lifecycleManager.onEntryAdded(entry)
@@ -335,7 +341,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 self?.lifecycleManager.onEntryDeleted(entry)
             }
             .store(in: &cancellables)
+    }
 
+    private func setupAccountServiceSubscriptions() {
         accountService.$activeAccount
             .map { AccountSettingsSnapshot(from: $0) }
             .removeDuplicates()
@@ -369,9 +377,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 self?.lifecycleManager.handleDashboardTypeChange()
             }
             .store(in: &cancellables)
+    }
 
-        // React to product type switching from the header dropdown
-        productTypeStore.$availableItems
+    private func setupProductTypeStoreSubscriptions() {
+        productTypeStore.availableItemsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
                 self?.availableProductItems = items
@@ -413,7 +422,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     var productTypeSelectorStore: ProductTypeStore {
-        productTypeStore
+        ProductTypeStore.shared
     }
 
     var dashboardEntryService: EntryService {
