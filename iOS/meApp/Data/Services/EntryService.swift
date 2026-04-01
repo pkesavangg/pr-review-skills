@@ -1592,8 +1592,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             let notification = EntryNotification(from: entry)
             entrySaved.send(notification)
-
-            await syncUnsyncedBpmEntries()
         } catch {
             logger.log(
                 level: .error,
@@ -1643,6 +1641,42 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     func exportBpmCSV() async throws {
         _ = try await remoteRepo.exportBpmCsv()
+    }
+
+    // MARK: - Baby Entry CRUD
+
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws {
+        let accountId = try getAccountId()
+
+        let entry = Entry(
+            entryTimestamp: entryTimestamp,
+            accountId: accountId,
+            operationType: OperationType.create.rawValue,
+            deviceType: DeviceType.babyScale.rawValue,
+            isSynced: false,
+            babyId: babyId
+        )
+        entry.attempts = 0
+        entry.babyEntry = BabyEntry(babyId: babyId, length: length, weight: weight, note: note)
+
+        do {
+            try await localRepo.saveEntry(entry)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Baby entry saved locally: entryId=\(entry.id.uuidString), accountId=\(accountId), babyId=\(babyId)"
+            )
+
+            let notification = EntryNotification(from: entry)
+            entrySaved.send(notification)
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to save baby entry: accountId=\(accountId), babyId=\(babyId), error=\(error.localizedDescription)"
+            )
+            throw error
+        }
     }
 
     /// Pushes unsynced BPM entries to the remote API and pulls remote BPM operations.
