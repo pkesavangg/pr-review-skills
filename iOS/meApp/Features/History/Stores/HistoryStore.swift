@@ -67,7 +67,7 @@ final class HistoryStore: ObservableObject {
     
     /// Logger tag for this store
     private let tag = "HistoryStore"
-    private var hasLoadedMonths = false
+    private var loadedProductTypes: Set<String> = []
     private var monthsLoadTask: Task<Void, Never>?
     
     // MARK: - Init ------------------------------------------------------
@@ -77,6 +77,7 @@ final class HistoryStore: ObservableObject {
             .sink { [weak self] entry in
                 guard let self = self else { return }
                 Task {
+                    self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
@@ -100,6 +101,7 @@ final class HistoryStore: ObservableObject {
             .sink { [weak self] entry in
                 guard let self = self else { return }
                 Task {
+                    self.invalidateCacheForCurrentType()
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
@@ -123,10 +125,11 @@ final class HistoryStore: ObservableObject {
         // Reload history when the user switches product type in the header dropdown
         productTypeStore.selectedItemPublisher
             .dropFirst()
-            .receive(on: DispatchQueue.main)
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                self.hasLoadedMonths = false
+                self.monthsLoadTask?.cancel()
+                self.monthsLoadTask = nil
                 self.loadMonths()
             }
             .store(in: &cancellables)
@@ -135,8 +138,12 @@ final class HistoryStore: ObservableObject {
     // MARK: - Public API --------------------------------------------------
     /// Call onAppear of History list screen.
     func loadMonths() {
-        guard !hasLoadedMonths else { return }
-        hasLoadedMonths = true
+        let currentId = productTypeStore.selectedItem.id
+        guard !loadedProductTypes.contains(currentId) else {
+            updateEmptyStateFromCache()
+            return
+        }
+        loadedProductTypes.insert(currentId)
         Task { [weak self] in await self?.loadMonthsInternal() }
     }
     
@@ -164,6 +171,7 @@ final class HistoryStore: ObservableObject {
     }
     
     func refreshAllEntries() async {
+        invalidateCacheForCurrentType()
         // Refresh account data to ensure we have latest unit settings
         _ = try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
@@ -220,7 +228,22 @@ final class HistoryStore: ObservableObject {
     }
     
     // MARK: - Internal helpers -------------------------------------------
-    
+
+    private func updateEmptyStateFromCache() {
+        if isBloodPressureMode {
+            isEmptyState = bpMonths.isEmpty
+        } else if isBabyMode {
+            isEmptyState = babyWeeks.isEmpty
+        } else {
+            isEmptyState = months.isEmpty
+        }
+    }
+
+    private func invalidateCacheForCurrentType() {
+        let currentId = productTypeStore.selectedItem.id
+        loadedProductTypes.remove(currentId)
+    }
+
     private func loadMonthsInternal(canShowLoader: Bool = true) async {
         guard monthsLoadTask == nil else { return }            // prevent overlap
 
