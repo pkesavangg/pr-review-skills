@@ -17,12 +17,12 @@ interface BabyProfileDao {
     @Update
     suspend fun update(profile: BabyProfileEntity)
 
-    @Query("DELETE FROM baby_profiles WHERE id = :profileId")
+    @Query("DELETE FROM baby WHERE babyId = :profileId")
     suspend fun delete(profileId: String)
 
-    @Query("SELECT * FROM baby_profiles WHERE accountId = :accountId")
+    @Query("SELECT * FROM baby WHERE accountId = :accountId")
     fun observeByAccountId(accountId: String): Flow<List<BabyProfileEntity>>
 
-    @Query("SELECT * FROM baby_profiles WHERE id = :profileId")
+    @Query("SELECT * FROM baby WHERE babyId = :profileId")
     suspend fun getById(profileId: String): BabyProfileEntity?
 }

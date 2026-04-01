@@ -20,12 +20,12 @@ interface BabyEntryDao {
     @Query("DELETE FROM baby_entry WHERE id = :entryId")
     suspend fun delete(entryId: Long)
 
-    @Query("SELECT * FROM baby_entry WHERE babyProfileId = :babyProfileId")
-    fun observeByBabyProfileId(babyProfileId: String): Flow<List<BabyEntryEntity>>
+    @Query("SELECT * FROM baby_entry WHERE babyId = :babyId")
+    fun observeByBabyId(babyId: String): Flow<List<BabyEntryEntity>>
 
     @Query("SELECT * FROM baby_entry WHERE id = :entryId")
     suspend fun getById(entryId: Long): BabyEntryEntity?
 
-    @Query("DELETE FROM baby_entry WHERE babyProfileId = :babyProfileId")
-    suspend fun deleteByBabyProfileId(babyProfileId: String)
+    @Query("DELETE FROM baby_entry WHERE babyId = :babyId")
+    suspend fun deleteByBabyId(babyId: String)
 }
