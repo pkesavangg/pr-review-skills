@@ -78,4 +78,8 @@ final class MockHealthKitServiceForIntegrations: HealthKitServiceProtocol {
     func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool {
         checkIfPermissionsRestoredResult
     }
+
+    var expectedPermissionCountResult = 5
+    func requestAdditionalPermissionsIfNeeded() async {}
+    func expectedPermissionCount() async -> Int { expectedPermissionCountResult }
 }
