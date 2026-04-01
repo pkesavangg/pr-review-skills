@@ -44,7 +44,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 @Composable
-fun SwipeableListItemScope.HistoryDetailItem(
+fun SwipeableListItemScope.WeightHistoryDetailItem(
     item: ScaleEntry,
     isExpanded: Boolean = false,
     onItemOpen: (Long) -> Unit = {},
@@ -53,7 +53,7 @@ fun SwipeableListItemScope.HistoryDetailItem(
     val bodyMetric = fromScaleEntry(item)
 
     Swipeable {
-        HistoryDetailItemHeader(
+        WeightHistoryDetailItemHeader(
             item = item,
             canExpand = getMetrics(bodyMetric).isNotEmpty(),
             isExpanded = isExpanded,
@@ -68,7 +68,7 @@ fun SwipeableListItemScope.HistoryDetailItem(
             visible = isExpanded,
             modifier = modifier.fillMaxWidth(),
         ) {
-            HistoryDetailItemDetails(
+            WeightHistoryDetailItemDetails(
                 item = item,
             )
         }
@@ -79,7 +79,7 @@ fun SwipeableListItemScope.HistoryDetailItem(
 }
 
 @Composable
-fun HistoryDetailItemHeader(
+fun WeightHistoryDetailItemHeader(
     item: ScaleEntry,
     canExpand: Boolean,
     isExpanded: Boolean,
@@ -179,15 +179,15 @@ fun HistoryDetailItemHeader(
 
 @PreviewTheme
 @Composable
-private fun SwipeableListItemScope.HistoryDetailItemPreview() {
+private fun SwipeableListItemScope.WeightHistoryDetailItemPreview() {
     MeAppTheme {
         AppScaffold("") {
-            HistoryDetailItem(
+            WeightHistoryDetailItem(
                 item = sampleScaleEntry,
                 isExpanded = false,
                 onItemOpen = {},
             )
-            HistoryDetailItem(
+            WeightHistoryDetailItem(
                 item = sampleScaleEntry,
                 isExpanded = true,
                 onItemOpen = {},

@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.features.history.viewmodel
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekGroup
+import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import androidx.compose.runtime.Stable
 import kotlinx.collections.immutable.ImmutableList
@@ -14,7 +16,9 @@ import kotlinx.collections.immutable.toImmutableList
 data class HistoryState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val historyItems: ImmutableList<HistoryMonth> = persistentListOf(), // Replace Any with your model
+    val historyItems: ImmutableList<HistoryMonth> = persistentListOf(),
+    val bpHistoryItems: ImmutableList<BpHistoryMonth> = persistentListOf(),
+    val babyHistoryItems: ImmutableList<BabyWeekGroup> = persistentListOf(),
 ) : IReducer.State
 
 /**
@@ -37,12 +41,12 @@ sealed interface HistoryIntent : IReducer.Intent {
 
     object Refresh : HistoryIntent
 
-    data class getHistory(
-        val start: String,
-    ) : HistoryIntent
+    data class SetBpHistoryItems(val items: List<BpHistoryMonth>) : HistoryIntent
+
+    data class SetBabyHistoryItems(val items: List<BabyWeekGroup>) : HistoryIntent
 
     object Export : HistoryIntent
-  object OnConnectScale : HistoryIntent
+    object OnConnectScale : HistoryIntent
 }
 
 /**
@@ -60,6 +64,20 @@ class HistoryReducer : IReducer<HistoryState, HistoryIntent> {
             is HistoryIntent.SetHistoryItems ->
                 state.copy(
                     historyItems = intent.items.toImmutableList(),
+                    isLoading = false,
+                    errorMessage = null,
+                )
+
+            is HistoryIntent.SetBpHistoryItems ->
+                state.copy(
+                    bpHistoryItems = intent.items.toImmutableList(),
+                    isLoading = false,
+                    errorMessage = null,
+                )
+
+            is HistoryIntent.SetBabyHistoryItems ->
+                state.copy(
+                    babyHistoryItems = intent.items.toImmutableList(),
                     isLoading = false,
                     errorMessage = null,
                 )

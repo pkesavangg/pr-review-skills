@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
 import com.dmdbrands.gurus.weight.features.signup.model.SignupReducer
 import com.dmdbrands.gurus.weight.features.signup.model.SignupState
+import com.dmdbrands.gurus.weight.features.signup.strings.PickDeviceStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -76,52 +77,55 @@ constructor(
       message = SignupStrings.LoaderMessage,
     )
     val stateValue = state.value
-    // Validate form fields based on whether goal was skipped
     val controls = stateValue.form.controls
-    val isFormValid =
-      if (stateValue.goalSkipped) {
-        // When goal is skipped, validate all fields except goal-related ones
-        val basicFieldsValid =
+    val device = controls.device.value
+
+    // Validate common fields + device-specific fields
+    val commonValid = listOf(
+      controls.firstName.validate(),
+      controls.lastName.validate(),
+      controls.email.validate(),
+      controls.password.validate(),
+      controls.confirmPassword.validate(),
+      controls.zipcode.validate(),
+      controls.birthday.validate(),
+    ).all { it }
+
+    val deviceFieldsValid = when (device) {
+      PickDeviceStrings.Devices.WEIGHT_SCALE -> {
+        if (stateValue.goalSkipped) {
+          controls.sex.validate()
+        } else {
           listOf(
-            controls.firstName.validate(),
-            controls.lastName.validate(),
-            controls.email.validate(),
-            controls.password.validate(),
-            controls.confirmPassword.validate(),
-            controls.zipcode.validate(),
-            controls.birthday.validate(),
             controls.sex.validate(),
-            controls.useMetric.validate()
-            // height doesn't have validators, so it's always valid
+            controls.goalType.validate(),
+            controls.goalWeight.validate(),
+            controls.currentWeight.validate(),
           ).all { it }
-
-        basicFieldsValid
-      } else {
-        // When goal is not skipped, validate all fields
-        stateValue.form.validate()
+        }
       }
+      PickDeviceStrings.Devices.BLOOD_PRESSURE -> controls.sex.validate()
+      else -> true // Baby Scale doesn't need additional form validation
+    }
 
-    if (!isFormValid) {
+    if (!commonValid || !deviceFieldsValid) {
       handleIntent(SignupIntent.Error("Something went wrong"))
       dialogQueueService.dismissLoader()
       return
-
     }
+
     val signupData: SignupData = stateValue.form.getValuesAsType()
-    AppLog.d(TAG, "Signup data validated")
+    AppLog.d(TAG, "Signup data validated for device: $device")
     viewModelScope.launch {
       try {
         val isMetric = signupData.useMetric
-
-        // Create the basic account request (similar to newAccount in wgApp4-1)
         val signupRequest =
           SignupRequest(
             signupData.email.trim(),
             signupData.firstName.trim(),
             signupData.lastName.trim(),
             signupData.sex,
-            signupData.zipcode
-              .trim(),
+            signupData.zipcode.trim(),
             signupData.password,
             DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()),
             controls.height.value.toStoredHeight(),
@@ -131,17 +135,27 @@ constructor(
         if (account != null) {
           AppLog.i(TAG, "Account created successfully")
 
-          // Create goal if not skipped - this will complete before proceeding to navigation
-          if (!stateValue.goalSkipped) {
-            AppLog.d(TAG, "Creating goal for new account...")
-            goalService.createGoalForSignup(
-              account = account,
-              goalType = signupData.goalType,
-              startingWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0,
-              goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0,
-            )
-            AppLog.d(TAG, "Goal creation completed, proceeding to navigation")
+          // Device-specific post-signup
+          when (device) {
+            PickDeviceStrings.Devices.WEIGHT_SCALE -> {
+              if (!stateValue.goalSkipped) {
+                AppLog.d(TAG, "Creating goal for Weight Scale account...")
+                goalService.createGoalForSignup(
+                  account = account,
+                  goalType = signupData.goalType,
+                  startingWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0,
+                  goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0,
+                )
+              }
+            }
+            PickDeviceStrings.Devices.BABY_SCALE -> {
+              AppLog.d(TAG, "Baby Scale signup — baby profiles stored locally")
+            }
+            PickDeviceStrings.Devices.BLOOD_PRESSURE -> {
+              AppLog.d(TAG, "Blood Pressure signup — no additional setup")
+            }
           }
+
           navigationService.replaceStack(AppRoute.Init.Loading)
           AppLog.i(TAG, "Navigation to loading screen successful after signup")
           handleIntent(SignupIntent.Success)

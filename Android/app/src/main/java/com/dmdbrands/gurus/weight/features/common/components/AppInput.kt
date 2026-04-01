@@ -237,6 +237,7 @@ fun <T> InputFieldBase(
     showTrailingIconAlways: Boolean = false,
     trailingIconId: Int = AppIcons.Outlined.Close,
     maxLength: Int? = null,
+    singleLine: Boolean = true,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     focusRequester: FocusRequester = remember { FocusRequester() },
@@ -343,6 +344,7 @@ fun <T> InputFieldBase(
         modifier =
             modifier
                 .fillMaxWidth()
+                .then(if (singleLine) Modifier.height(56.dp) else Modifier)
                 .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->
                     if (!focusState.isFocused && isFocused) {
@@ -381,7 +383,7 @@ fun <T> InputFieldBase(
             )
         },
         textStyle = typography.body2,
-        singleLine = true,
+        singleLine = singleLine,
         trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
         keyboardActions =

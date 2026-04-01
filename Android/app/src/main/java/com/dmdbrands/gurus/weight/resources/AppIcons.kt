@@ -34,6 +34,10 @@ object AppIcons {
     val Export = R.drawable.export_info
     val Plus = R.drawable.ic_plus
     val Minus = R.drawable.ic_minus
+    val EditPencil = R.drawable.ic_edit_pencil
+    val BabyScale = R.drawable.ic_baby_scale
+    val BloodPressureMonitor = R.drawable.ic_blood_pressure_monitor
+    val WeightScale = R.drawable.ic_weight_scale
   }
 
   object Outlined {
@@ -165,6 +169,9 @@ object AppIcons {
     val UserNameScale = R.drawable.scale_0412_user_name
     val AppSyncNavBar = R.drawable.app_bottom_bar
     val SetupCompleteCheck = R.drawable.setup_complete_check
+    val BabyScalePairedCheck = R.drawable.ic_baby_scale_paired_check
+    val BabyScaleSearching = R.drawable.ic_searching_indicator
+    val EditPencil = R.drawable.ic_edit_pencil
     val WifiAPMode = R.drawable.wifi_ap_mode
     val WifiSmartConnect = R.drawable.wifi_smart_connect
     val WifiAPModeSelected = R.drawable.wifi_ap_mode_filled
