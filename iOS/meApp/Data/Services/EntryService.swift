@@ -615,17 +615,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
 
     /// Migrates existing baby entry weight from ounces to decigrams and length from inches to millimeters.
-    /// Runs once on app startup; skips if already completed.
+    /// Runs once per account on app startup; skips if already completed for the active account.
     func migrateBabyEntriesToDecigrams() async {
         let kvStorage = KvStorageService.shared
-        let key = KvStorageKeys.babyEntryDecigramsMigrated.rawValue
-        guard (kvStorage.getValue(forKey: key) as? Bool) != true else { return }
-
         do {
             let accountId = try getAccountId()
+            let key = KvStorageKeys.babyEntryDecigramsMigratedKey(for: accountId)
+            guard (kvStorage.getValue(forKey: key) as? Bool) != true else { return }
+
             let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
             let babyEntries = allEntries.filter { $0.deviceType == DeviceType.babyScale.rawValue && $0.babyEntry != nil }
 
+            // Idempotency: the heuristic (weight < 2835) skips already-converted entries,
+            // so a crash mid-loop is safely re-runnable on next launch.
             for entry in babyEntries {
                 guard let baby = entry.babyEntry else { continue }
                 // Old format: weight in total ounces, length in whole inches.
@@ -642,11 +644,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             logger.log(level: .info, tag: tag, message: "Baby entry decigram migration completed: \(babyEntries.count) entries")
+            kvStorage.setValue(true, forKey: key)
         } catch {
             logger.log(level: .error, tag: tag, message: "Baby entry decigram migration failed: \(error.localizedDescription)")
         }
-
-        kvStorage.setValue(true, forKey: key)
     }
 
     // MARK: - Sync Logic

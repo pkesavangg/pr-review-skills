@@ -493,6 +493,11 @@ final class EntryStore: ObservableObject {
             weight = ConversionTools.convertBabyLbsOzToDecigrams(lbs: pounds, oz: ounces)
         }
 
+        guard weight > 0 else {
+            logger.log(level: .info, tag: tag, message: "Baby entry save skipped: weight is zero")
+            return
+        }
+
         let length: Int
         switch babyLengthUnit {
         case .cm:

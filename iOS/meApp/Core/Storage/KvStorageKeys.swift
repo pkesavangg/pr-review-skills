@@ -160,4 +160,11 @@ public enum KvStorageKeys: String {
     public static func fcmTokenKey(for accountId: String) -> String {
         return "\(Self.fcmToken.rawValue)_\(accountId)"
     }
+
+    /// Creates an account-scoped key for baby entry decigrams migration
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for baby entry decigrams migration flag
+    public static func babyEntryDecigramsMigratedKey(for accountId: String) -> String {
+        return "\(Self.babyEntryDecigramsMigrated.rawValue)_\(accountId)"
+    }
 }
