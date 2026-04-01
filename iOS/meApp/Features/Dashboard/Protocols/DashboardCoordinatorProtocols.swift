@@ -20,8 +20,10 @@ import SwiftUI
 protocol DashboardStateProviding: AnyObject {
     var state: DashboardState { get set }
     var productType: EntryType { get }
+    var isBabySelection: Bool { get }
     func scheduleUIUpdate()
     func forceImmediateUIUpdate()
+    func yAxisScale(for operations: [BathScaleWeightSummary], chartHeight: CGFloat) -> YAxisScale
 }
 
 // MARK: - Chart Management

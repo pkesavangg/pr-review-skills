@@ -28,8 +28,8 @@ struct MultiDeviceSnapshotView: View {
                     }
                 case .baby(let profile):
                     BabySnapshotCard(
-                        babyName: profile.name,
-                        summaries: viewModel.babySummaries(for: profile.id)
+                        babyProfile: profile,
+                        summaries: viewModel.babySummaries(for: profile)
                     ) {
                         onSelectItem(item)
                     }
