@@ -16,4 +16,5 @@ data class BabyProfile(
     val lastUpdated: String? = null,
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false,
+    val activeBabyId: String? = null,
 )
