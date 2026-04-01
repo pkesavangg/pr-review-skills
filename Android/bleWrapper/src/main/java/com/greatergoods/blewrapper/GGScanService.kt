@@ -25,7 +25,7 @@ abstract class GGScanService {
 
     ggBluetooth.scan(
       userProfile,
-      GGAppType.SMART_BABY,
+      appType,
     ) { response ->
       when (response) {
         is GGScanResponse.Permission -> {

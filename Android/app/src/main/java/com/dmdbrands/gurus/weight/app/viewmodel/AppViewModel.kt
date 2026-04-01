@@ -887,7 +887,7 @@ constructor(
             ),
           )
           if (!_state.value.hasScanStarted) {
-            ggPermissionService.startScan(GGAppType.WEIGHT_GURUS, updatedProfile)
+            ggPermissionService.startScan(GGAppType.SMART_BABY, updatedProfile)
             handleIntent(AppIntent.SetScanStatus(true))
           }
           ggDeviceService.updateProfile(updatedProfile) {}
