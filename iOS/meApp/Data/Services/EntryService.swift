@@ -1017,6 +1017,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     /// Checks if an Entry matches the given entryType.
     /// Entries without an entryType (legacy data) default to `.wg`.
+    /// Note: Baby scale entries use entryType "wg" but are excluded from adult weight queries.
+    /// Baby entries are served through the dedicated baby entry CRUD path (createBabyEntry/getBabyEntries).
     private func matchesEntryType(_ entry: Entry, entryType: EntryType) -> Bool {
         let type = entry.entryType
         if type.isEmpty { return entryType == .wg }

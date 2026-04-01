@@ -74,7 +74,6 @@ struct BabyListStepView: View {
                 }
                 .padding(.top, .spacingSM)
             }
-            // .padding(.horizontal, .spacingMD)
         }
     }
 }

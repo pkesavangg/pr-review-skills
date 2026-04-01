@@ -197,6 +197,10 @@ final class ConversionTools {
     static let graduationThreshold25LbGrams = 11340.0
     /// Precise grams-to-pounds factor used by the 0222 scale.
     static let gramsToPoundsConversionFactor = 2.204623
+    /// 0222 manufacturer calibration numerator for lbs/oz conversion.
+    static let calibration0222Numerator = 369874.0
+    /// 0222 manufacturer calibration denominator for lbs/oz conversion (2^20).
+    static let calibration0222Denominator = 1048576.0
 
     /// Unit selector for baby display graduation routing.
     enum BabyDisplayUnit {
@@ -218,6 +222,7 @@ final class ConversionTools {
         let source = effectiveSource
         switch unit {
         case .kg:
+            // Both 0220 and 0222 share the same kg graduation logic (5g/10g/50g bands)
             let scaleKg = convert0220DecigramsToKg(decigrams)
             return Int(round(Double(convertBabyKgToDecigrams(scaleKg))))
         case .lbDecimal:
@@ -301,7 +306,7 @@ final class ConversionTools {
     /// Converts 0222 scale decigrams to lbs/oz using the manufacturer's calibration factor (369874/1048576).
     static func convert0222DecigramsToLbOz(_ decigrams: Int) -> (lbs: Int, oz: Double) {
         let transmissionWeight = Double(decigrams) / 10.0
-        let converted = Int(round(transmissionWeight * 369874.0 / 1048576.0))
+        let converted = Int(round(transmissionWeight * calibration0222Numerator / calibration0222Denominator))
         let lb = Int(floor(Double(converted) / 160.0))
         let rawOz = converted - (lb * 160)
 
