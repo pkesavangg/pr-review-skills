@@ -5,19 +5,22 @@
 
 import SwiftUI
 
-struct DashboardTrendView<TopContent: View>: View {
+struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
     @State private var localSelectedPeriod: TimePeriod = .week
 
     private let topContent: () -> TopContent
+    private let chartFooter: () -> ChartFooter
 
     init(
         dashboardStore: DashboardStore,
-        @ViewBuilder topContent: @escaping () -> TopContent
+        @ViewBuilder topContent: @escaping () -> TopContent,
+        @ViewBuilder chartFooter: @escaping () -> ChartFooter
     ) {
         self.dashboardStore = dashboardStore
         self.topContent = topContent
+        self.chartFooter = chartFooter
     }
 
     var body: some View {
@@ -25,6 +28,7 @@ struct DashboardTrendView<TopContent: View>: View {
             VStack(alignment: .leading, spacing: 0) {
                 topContent()
                 GraphView(dashboardStore: dashboardStore)
+                chartFooter()
                 SegmentedButtonView(
                     segments: TimePeriod.allCases,
                     selectedSegment: $localSelectedPeriod
@@ -55,5 +59,14 @@ struct DashboardTrendView<TopContent: View>: View {
             }
             dashboardStore.chartManager.updateSelectedPeriod(newValue, anchorDate: anchorDate)
         }
+    }
+}
+
+extension DashboardTrendView where ChartFooter == EmptyView {
+    init(
+        dashboardStore: DashboardStore,
+        @ViewBuilder topContent: @escaping () -> TopContent
+    ) {
+        self.init(dashboardStore: dashboardStore, topContent: topContent, chartFooter: { EmptyView() })
     }
 }

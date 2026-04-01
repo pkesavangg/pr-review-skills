@@ -16,7 +16,7 @@ struct MultiDeviceSnapshotView: View {
 
     var body: some View {
         VStack(spacing: .spacingSM) {
-            ForEach(availableItems) { item in
+            ForEach(viewModel.snapshotItems(from: availableItems)) { item in
                 switch item {
                 case .myWeight:
                     WeightSnapshotCard(summaries: viewModel.dailySummaries) {
@@ -26,9 +26,13 @@ struct MultiDeviceSnapshotView: View {
                     BpmSnapshotCard(summaries: viewModel.bpmDailySummaries) {
                         onSelectItem(item)
                     }
-                case .baby:
-                    // Baby snapshot cards will be added in baby scale phase
-                    EmptyView()
+                case .baby(let profile):
+                    BabySnapshotCard(
+                        babyProfile: profile,
+                        summaries: viewModel.babySummaries(for: profile)
+                    ) {
+                        onSelectItem(item)
+                    }
                 }
             }
         }

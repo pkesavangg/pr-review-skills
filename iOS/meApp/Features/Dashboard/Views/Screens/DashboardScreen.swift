@@ -26,15 +26,28 @@ struct DashboardScreen: View {
     private let weightEmptyStateOffset: CGFloat = 650
     private let bpmEmptyStateOffset: CGFloat = 400
 
+    private var hasBabySnapshotItem: Bool {
+        store.availableProductItems.contains { item in
+            if case .baby = item { return true }
+            return false
+        }
+    }
+
+    private var canShowSnapshotOverview: Bool {
+        store.availableProductItems.count > 1 || hasBabySnapshotItem
+    }
+
+    private var shouldShowSnapshotOverview: Bool {
+        canShowSnapshotOverview && !isInProductDashboard
+    }
+
     var body: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
-                if store.availableProductItems.count > 1 && !isInProductDashboard {
+                if shouldShowSnapshotOverview {
                     snapshotLogo()
                     ScrollView(showsIndicators: false) {
                         MultiDeviceSnapshotView(availableItems: store.availableProductItems) { selectedItem in
-                            let newType: EntryType = selectedItem == .myBloodPressure ? .bpm : .wg
-                            store.switchProductType(to: newType)
                             store.selectProductItem(selectedItem)
                             isInProductDashboard = true
                         }
@@ -55,7 +68,10 @@ struct DashboardScreen: View {
             await store.lifecycleManager.refreshAll()
         }
         .onAppear(perform: store.lifecycleManager.onAppearActions)
-        .ignoresSafeArea(.all, edges: store.availableProductItems.count > 1 ? .bottom : .all)
+        .onChange(of: canShowSnapshotOverview) { _, isAvailable in
+            if isAvailable { isInProductDashboard = false }
+        }
+        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
@@ -168,7 +184,9 @@ struct DashboardScreen: View {
     private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                if store.productType == .bpm {
+                if case .baby(let profile) = store.selectedProductItem {
+                    babyDashboardContent(babyProfile: profile)
+                } else if store.productType == .bpm {
                     bpmDashboardContent(availableHeight: availableHeight)
                 } else {
                     weightDashboardContent(availableHeight: availableHeight)
@@ -224,6 +242,11 @@ struct DashboardScreen: View {
         } else {
             bpmEmptyState(availableHeight: availableHeight)
         }
+    }
+
+    @ViewBuilder
+    private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
+        BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
     }
 
     @ViewBuilder
