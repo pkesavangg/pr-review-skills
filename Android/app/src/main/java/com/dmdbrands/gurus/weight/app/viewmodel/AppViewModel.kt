@@ -557,7 +557,7 @@ constructor(
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
-          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
+          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value)) {
             val currentRoute = navigationService.getCurrentRoute()
             val isSetupInProgress = deviceService.isSetupInProgress()
             val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
