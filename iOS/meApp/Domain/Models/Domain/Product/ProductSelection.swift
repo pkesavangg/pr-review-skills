@@ -89,4 +89,12 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         case .baby:               return .babyScale
         }
     }
+
+    /// The dashboard entry type this selection maps to.
+    var entryType: EntryType {
+        switch self {
+        case .myBloodPressure: return .bpm
+        case .myWeight, .baby: return .wg
+        }
+    }
 }

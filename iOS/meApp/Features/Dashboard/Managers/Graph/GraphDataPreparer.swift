@@ -75,6 +75,22 @@ struct GraphDataPreparer {
         }
     }
 
+    // MARK: - Baby Weight Series
+
+    /// Convenience entry point for baby weight charts. Delegates to `buildWeightSeries`
+    /// with weightless mode disabled (baby charts never use weightless anchoring).
+    func buildBabyWeightSeries(
+        from operations: [BathScaleWeightSummary],
+        convertWeight: (Int) -> Double
+    ) -> [GraphSeries] {
+        buildWeightSeries(
+            from: operations,
+            isWeightlessMode: false,
+            anchorWeight: nil,
+            convertWeight: convertWeight
+        )
+    }
+
     // MARK: - BPM Series
 
     /// Builds three named chart series (systolic, diastolic, pulse) from BP summary data.

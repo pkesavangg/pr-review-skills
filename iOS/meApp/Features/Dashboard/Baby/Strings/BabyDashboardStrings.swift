@@ -15,10 +15,20 @@ enum BabyDashboardStrings {
     static let weekAverage = "week average"
     static let weight = "Weight"
     static let height = "Height"
+    static let noHeightData = "No height readings yet"
 
     static func babyWeightLabel(name: String) -> String {
         "\(name.lowercased())'s weight"
     }
+
+    static func babyHeightLabel(name: String) -> String {
+        "\(name.lowercased())'s height"
+    }
+
+    // MARK: - Growth chart (Smart Baby / WHO reference)
+    /// Citation for percentile curves and calculations that follow WHO Child Growth Standards.
+    static let growthChartAttribution =
+        "Growth percentiles use WHO Child Growth Standards (\(BabyPercentileGrowthReference.whoChildGrowthStandardsYear))."
 
     // MARK: - Empty State
     static let noReadingsYet = "No readings yet"
