@@ -26,6 +26,10 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 
 enum class ScaleImageSize { Small, Medium, Large }
 
+object AppScaleImageDefaults {
+    val BABY_SCALE_SKUS = setOf("0220", "0222")
+}
+
 object ScaleImageDefaults {
     fun size(size: ScaleImageSize): Dp =
         when (size) {
@@ -40,7 +44,7 @@ fun AppScaleImage(
   sku: String,
   modifier: Modifier = Modifier,
   scaleImageSize: ScaleImageSize = ScaleImageSize.Small,
-  showShadow: Boolean = true,
+  showShadow: Boolean = sku !in AppScaleImageDefaults.BABY_SCALE_SKUS,
 ) {
   Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
