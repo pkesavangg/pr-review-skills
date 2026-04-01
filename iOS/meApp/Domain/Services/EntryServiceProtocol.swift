@@ -10,6 +10,7 @@ protocol EntryServiceProtocol {
     /// Syncs all entries with the remote backend.
     func syncAllEntriesWithRemote() async
     func migrateFromSQLiteIfNeeded() async
+    func migrateBabyEntriesToDecigrams() async
     func loadDashboardData(entryType: EntryType) async
 
     /// Clears all entry-related data from the service (memory/cache/state).
@@ -33,6 +34,11 @@ protocol EntryServiceProtocol {
     func deleteEntry(_ entry: Entry) async throws
 
     // MARK: - Query
+
+    /// Retrieves a single entry by its UUID.
+    /// - Parameter id: The UUID of the entry.
+    /// - Returns: The entry if found, nil otherwise.
+    func getEntry(byId id: UUID) async throws -> Entry?
 
     /// Retrieves all entries for the current user.
     /// - Returns: An array of all entries.

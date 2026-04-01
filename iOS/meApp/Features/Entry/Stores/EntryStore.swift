@@ -73,7 +73,6 @@ final class EntryStore: ObservableObject {
         updateWeightValidators()
         setupDateTimeObservers()
         subscribeToProductTypeChanges()
-        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
     }
 
     private func subscribeToProductTypeChanges() {
@@ -329,7 +328,6 @@ final class EntryStore: ObservableObject {
             self.weightUnit = unit
             self.babyWeightUnit = unit == .kg ? .kg : .lbsOz
             self.babyLengthUnit = unit == .kg ? .cm : .inches
-            self.babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
             self.updateWeightValidators()
             self.calculateBMI()
             // Force UI update
@@ -562,21 +560,18 @@ final class EntryStore: ObservableObject {
     func updateBabyWeightUnit(_ unit: BabyWeightUnit) {
         guard unit != babyWeightUnit else { return }
         babyWeightUnit = unit
-        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
     }
 
     /// Called when user toggles the baby length unit segmented control.
     func updateBabyLengthUnit(_ unit: BabyLengthUnit) {
         guard unit != babyLengthUnit else { return }
         babyLengthUnit = unit
-        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
     }
 
     @MainActor func resetBabyForm() {
         babyWeightUnit = weightUnit == .kg ? .kg : .lbsOz
         babyLengthUnit = weightUnit == .kg ? .cm : .inches
         babyForm = BabyEntryForm()
-        babyForm.configureForUnit(weightUnit: babyWeightUnit, lengthUnit: babyLengthUnit)
         babyForm.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)

@@ -121,22 +121,31 @@ final class ConversionTools {
     }
     
     // MARK: - Baby Weight Conversion
-    // All baby weight functions store/read in tenths-of-ounces (Int).
-    // e.g. 85 lbs 2.5 oz = (85*16 + 2.5) * 10 = 13,625
+    // All baby weight functions store/read in decigrams (Int).
+    // 1 kg = 10,000 decigrams, 1 oz ≈ 283.5 decigrams, 1 lb ≈ 4,535.924 decigrams.
+
+    /// Decigrams per ounce (28.3495 g/oz × 10).
+    static let decigramsPerOunce = 283.5
+    /// Decigrams per pound (453.5924 g/lb × 10).
+    static let decigramsPerPound = 4535.924
+    /// Decigrams per kilogram.
+    static let decigramsPerKg = 10000.0
+    /// Millimeters per inch.
+    static let mmPerInch = 25.4
 
     /// Converts baby weight from kg to decigrams for storage. 1 kg = 10000 decigrams.
     static func convertBabyKgToDecigrams(_ kg: Double) -> Int {
-        return Int(round(kg * 10000.0))
+        return Int(round(kg * decigramsPerKg))
     }
 
     /// Converts baby weight from decigrams to kg for display. Matches baby app `calcDecigramsToKg`.
     static func convertBabyDecigramsToKg(_ decigrams: Int) -> Double {
-        return rounded(Double(decigrams) / 10000.0, toPlaces: 3)
+        return rounded(Double(decigrams) / decigramsPerKg, toPlaces: 3)
     }
 
     /// Converts decigrams to (lbs, oz) tuple for imperial display. Matches baby app `calcDecigramsToLbOz`.
     static func convertBabyDecigramsToLbsOz(_ decigrams: Int) -> (lbs: Int, oz: Double) {
-        let totalOz = rounded(Double(decigrams) / 283.5, toPlaces: 1)
+        let totalOz = rounded(Double(decigrams) / decigramsPerOunce, toPlaces: 1)
         let lbs = Int(totalOz / 16.0)
         let oz = lbs > 0 ? rounded(totalOz.truncatingRemainder(dividingBy: 16.0), toPlaces: 1) : totalOz
         return (lbs, oz)
@@ -145,29 +154,29 @@ final class ConversionTools {
     /// Converts lbs + fractional oz to decigrams for storage. Matches baby app `calcLbOzToDecigrams`.
     static func convertBabyLbsOzToDecigrams(lbs: Int, oz: Double) -> Int {
         let totalOz = Double(lbs) * 16.0 + oz
-        return Int(round(totalOz * 283.5))
+        return Int(round(totalOz * decigramsPerOunce))
     }
 
-    /// Converts decimal pounds to decigrams for storage. 1 lb = 4535.924 decigrams.
+    /// Converts decimal pounds to decigrams for storage.
     static func convertBabyLbToDecigrams(_ lb: Double) -> Int {
-        return Int(round(lb * 4535.924))
+        return Int(round(lb * decigramsPerPound))
     }
 
     /// Converts decigrams to decimal pounds for display. Matches baby app `calcDecigramsToLbDecimal`.
     static func convertBabyDecigramsToLb(_ decigrams: Int) -> Double {
-        return rounded(Double(decigrams) / 4535.924, toPlaces: 3)
+        return rounded(Double(decigrams) / decigramsPerPound, toPlaces: 3)
     }
 
     // MARK: - Baby Length Conversion (stored in millimeters)
 
     /// Converts inches to millimeters for storage. Matches baby app `calcInchesToMm`.
     static func convertBabyInchesToMm(_ inches: Double) -> Int {
-        return Int(round(inches * 25.4))
+        return Int(round(inches * mmPerInch))
     }
 
     /// Converts millimeters to inches for display. Matches baby app `calcMmToInches`.
     static func convertBabyMmToInches(_ mm: Int) -> Double {
-        return round(Double(mm) / 25.4 * 10.0) / 10.0
+        return rounded(Double(mm) / mmPerInch, toPlaces: 1)
     }
 
     /// Converts centimeters to millimeters for storage. Matches baby app `calcCmToMm`.

@@ -220,6 +220,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Query
 
+    func getEntry(byId id: UUID) async throws -> Entry? {
+        return try await localRepo.fetchEntry(byId: id.uuidString)
+    }
+
     func getAllEntries() async throws -> [Entry] {
         let accountId = try getAccountId()
         return try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
@@ -608,6 +612,41 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         } catch {
             logger.log(level: .error, tag: tag, message: "SQLite migration failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Migrates existing baby entry weight from ounces to decigrams and length from inches to millimeters.
+    /// Runs once on app startup; skips if already completed.
+    func migrateBabyEntriesToDecigrams() async {
+        let kvStorage = KvStorageService.shared
+        let key = KvStorageKeys.babyEntryDecigramsMigrated.rawValue
+        guard (kvStorage.getValue(forKey: key) as? Bool) != true else { return }
+
+        do {
+            let accountId = try getAccountId()
+            let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+            let babyEntries = allEntries.filter { $0.deviceType == DeviceType.babyScale.rawValue && $0.babyEntry != nil }
+
+            for entry in babyEntries {
+                guard let baby = entry.babyEntry else { continue }
+                // Old format: weight in total ounces, length in whole inches.
+                // New format: weight in decigrams, length in millimeters.
+                // Heuristic: values stored in ounces are typically < 500 (31 lbs max);
+                // decigram values would be > 2,835 for 1 oz. Skip if already migrated.
+                if baby.weight > 0 && baby.weight < 2835 {
+                    baby.weight = Int(round(Double(baby.weight) * ConversionTools.decigramsPerOunce))
+                }
+                if baby.length > 0 && baby.length < 255 {
+                    baby.length = Int(round(Double(baby.length) * ConversionTools.mmPerInch))
+                }
+                try await localRepo.updateEntry(entry)
+            }
+
+            logger.log(level: .info, tag: tag, message: "Baby entry decigram migration completed: \(babyEntries.count) entries")
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Baby entry decigram migration failed: \(error.localizedDescription)")
+        }
+
+        kvStorage.setValue(true, forKey: key)
     }
 
     // MARK: - Sync Logic

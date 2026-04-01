@@ -403,8 +403,7 @@ final class HistoryStore: ObservableObject {
     private func deleteBabyEntryInternal(_ babyEntry: BabyHistoryEntry) async {
         do {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
-            let allEntries = try await entryService.getAllEntries()
-            guard let entry = allEntries.first(where: { $0.id == babyEntry.id }) else {
+            guard let entry = try await entryService.getEntry(byId: babyEntry.id) else {
                 logger.log(level: .error, tag: tag, message: "Baby entry not found for deletion: id=\(babyEntry.id)")
                 notificationService.dismissLoader()
                 return
@@ -492,12 +491,6 @@ final class HistoryStore: ObservableObject {
                     let mm = baby.length
                     let lengthInches = ConversionTools.convertBabyMmToInches(mm)
                     let lengthCm = ConversionTools.convertBabyMmToCm(mm)
-                    let weightDisplay = metric
-                        ? "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
-                        : "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
-                    let lengthDisplay = metric
-                        ? "\(String(format: "%.1f", lengthCm)) \(HistoryListStrings.cm)"
-                        : "\(String(format: "%.1f", lengthInches)) \(HistoryListStrings.inUnit)"
                     return BabyHistoryEntry(
                         id: entry.id,
                         entryTimestamp: entry.entryTimestamp,
@@ -509,8 +502,8 @@ final class HistoryStore: ObservableObject {
                         lengthCm: lengthCm,
                         percentile: 0,
                         notes: baby.note.isEmpty ? nil : baby.note,
-                        weightDisplay: weightDisplay,
-                        lengthDisplay: lengthDisplay
+                        weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, isMetric: metric),
+                        lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
             } catch {
@@ -523,6 +516,30 @@ final class HistoryStore: ObservableObject {
     func resetSelectedBabyDay() {
         selectedBabyDay = nil
         babyEntries = []
+    }
+
+    // MARK: - Baby Display Formatting
+
+    /// Formats baby weight in decigrams as a display string based on unit preference.
+    private func formatBabyWeightDisplay(decigrams: Int, isMetric: Bool) -> String {
+        if isMetric {
+            let kg = ConversionTools.convertBabyDecigramsToKg(decigrams)
+            return "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
+        } else {
+            let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(decigrams)
+            return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
+        }
+    }
+
+    /// Formats baby length in millimeters as a display string based on unit preference.
+    private func formatBabyLengthDisplay(mm: Int, isMetric: Bool) -> String {
+        if isMetric {
+            let cm = ConversionTools.convertBabyMmToCm(mm)
+            return "\(String(format: "%.1f", cm)) \(HistoryListStrings.cm)"
+        } else {
+            let inches = ConversionTools.convertBabyMmToInches(mm)
+            return "\(String(format: "%.1f", inches)) \(HistoryListStrings.inUnit)"
+        }
     }
 
     // MARK: - Date Helpers
@@ -599,12 +616,6 @@ final class HistoryStore: ObservableObject {
             let lbDecimal = ConversionTools.convertBabyDecigramsToLb(avgWeight)
             let lengthInches = ConversionTools.convertBabyMmToInches(avgMm)
             let lengthCm = ConversionTools.convertBabyMmToCm(avgMm)
-            let weightDisplay = metric
-                ? "\(String(format: "%.3f", kg)) \(HistoryListStrings.kg)"
-                : "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
-            let lengthDisplay = metric
-                ? "\(String(format: "%.1f", lengthCm)) \(HistoryListStrings.cm)"
-                : "\(String(format: "%.1f", lengthInches)) \(HistoryListStrings.inUnit)"
             return BabyHistoryDay(
                 id: dayId,
                 entryCount: count,
@@ -615,8 +626,8 @@ final class HistoryStore: ObservableObject {
                 lengthInches: lengthInches,
                 lengthCm: lengthCm,
                 percentile: 0,
-                weightDisplay: weightDisplay,
-                lengthDisplay: lengthDisplay
+                weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, isMetric: metric),
+                lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric)
             )
         }.sorted { $0.id > $1.id }
 

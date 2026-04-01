@@ -208,6 +208,7 @@ final class ContentViewModel: ObservableObject {
         guard let _ = currentAccount else { return }
         // Migration runs before sync so opStack entries are available for first sync.
         await entryService.migrateFromSQLiteIfNeeded()
+        await entryService.migrateBabyEntriesToDecigrams()
         await entryService.syncAllEntriesWithRemote()
         await entryService.loadDashboardData(entryType: .wg)
         bluetoothService.initialize()

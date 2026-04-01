@@ -33,6 +33,8 @@ public enum KvStorageKeys: String {
     case ionicToNativeAppMigrationCompleted = "ionicToNativeAppMigrationCompleted"
     /// Key for tracking if account tokens have been migrated from SwiftData to Keychain
     case tokensMigratedToKeychain = "tokensMigratedToKeychain"
+    /// Key for tracking if baby entry weight/length have been migrated to decigrams/mm
+    case babyEntryDecigramsMigrated = "babyEntryDecigramsMigrated"
     
     // MARK: - Account-Scoped Keys
     /// Goal met flag key suffix (per account)

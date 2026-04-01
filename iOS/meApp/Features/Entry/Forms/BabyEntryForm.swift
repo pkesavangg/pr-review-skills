@@ -39,19 +39,6 @@ class BabyEntryForm: ObservableForm {
         .eraseToAnyPublisher()
     }
 
-    /// Configures validators based on the selected weight and length units.
-    /// Removes `.required` from inactive fields so they don't block form validity.
-    func configureForUnit(weightUnit: BabyWeightUnit, lengthUnit: BabyLengthUnit) {
-        // Weight: remove .required from all — none are required
-        pounds.removeValidator(ofType: .required)
-        kg.removeValidator(ofType: .required)
-        lb.removeValidator(ofType: .required)
-
-        // Length: remove .required from all — none are required
-        inches.removeValidator(ofType: .required)
-        cm.removeValidator(ofType: .required)
-    }
-
     // MARK: - Weight Validation Errors
 
     /// Combined validation error for pounds and ounces fields (lbs/oz mode).
