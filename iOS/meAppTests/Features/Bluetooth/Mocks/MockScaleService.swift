@@ -89,7 +89,8 @@ final class MockScaleService: ScaleServiceProtocol {
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
+        skipDuplicateCheck: Bool,
+        deviceType: DeviceType = .scale
     ) async throws -> Device {
         createBluetoothScaleCalls += 1
         if let createDeviceError { throw createDeviceError }

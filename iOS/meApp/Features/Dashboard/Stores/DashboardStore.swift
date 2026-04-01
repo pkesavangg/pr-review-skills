@@ -44,6 +44,8 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountSettingsSnapshot: AccountSettingsSnapshot?
+    /// Guards against the Combine subscriber double-firing when `selectProductItem` updates state directly.
+    private var isSelectingDirectly = false
 
     // MARK: - UI Update Batching (Performance Optimization)
 
@@ -66,6 +68,21 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)"
             }
         )
+    }
+
+    var isBabySelection: Bool {
+        selectedBabyProfile != nil
+    }
+
+    private var selectedBabyProfile: BabyProfile? {
+        if case .baby(let profile) = selectedProductItem {
+            return profile
+        }
+        return nil
+    }
+
+    private var selectedBabyMetric: BabyMetric {
+        state.ui.selectedMetricLabel == BabyMetric.height.rawValue ? .height : .weight
     }
 
     func scheduleUIUpdate() {
@@ -391,10 +408,15 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] selection in
-                guard let self else { return }
+                guard let self, !self.isSelectingDirectly else { return }
+                let previousSelection = self.selectedProductItem
                 self.selectedProductItem = selection
-                let newType: EntryType = selection == .myBloodPressure ? .bpm : .wg
-                self.switchProductType(to: newType)
+                let newType = selection.entryType
+                if self.productType != newType {
+                    self.switchProductType(to: newType)
+                } else if previousSelection != selection {
+                    self.refreshSelectedProductContext()
+                }
             }
             .store(in: &cancellables)
     }
@@ -405,6 +427,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         guard productType != newType else { return }
         productType = newType
         dataManager.switchDataSource(to: newType)
+        state.ui.selectedMetricLabel = nil
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
         cacheManager.clearAllCaches()
@@ -417,8 +440,46 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
     }
 
+    private func refreshSelectedProductContext() {
+        state.ui.selectedMetricLabel = nil
+        chartManager?.clearSelection()
+        chartManager?.clearAllCaches()
+        cacheManager.clearAllCaches()
+        invalidateContinuousOperationsCache()
+        state.ui.hasInitializedChart = false
+        graphManager.state.isGraphReady = false
+
+        if isBabySelection {
+            // Baby charts use locally-computed data (BabyDashboardChartSupport),
+            // so skip the full initializeDashboard() pipeline with its network
+            // calls and just reinitialize the chart directly.
+            chartManager?.initializeChart()
+            displayManager.updateMetricsForCurrentView()
+            scheduleUIUpdate()
+        } else {
+            Task { [weak self] in
+                guard let self else { return }
+                await self.lifecycleManager.initializeDashboard()
+            }
+        }
+    }
+
     func selectProductItem(_ item: ProductSelection) {
+        let previousSelection = selectedProductItem
+        // Suppress the Combine subscriber while we handle selection directly.
+        isSelectingDirectly = true
+        defer { isSelectingDirectly = false }
+
+        selectedProductItem = item
         productTypeStore.select(item)
+
+        guard previousSelection != item else { return }
+        let newType = item.entryType
+        if productType != newType {
+            switchProductType(to: newType)
+        } else {
+            refreshSelectedProductContext()
+        }
     }
 
     var productTypeSelectorStore: ProductTypeStore {
@@ -539,6 +600,15 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     // MARK: - Cached Operations (Performance Optimization)
 
     var continuousOperations: [BathScaleWeightSummary] {
+        if let babyProfile = selectedBabyProfile {
+            return cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
+                BabyDashboardChartSupport.dummySummaries(
+                    for: babyProfile,
+                    period: state.graph.selectedPeriod
+                )
+            }
+        }
+
         let operations = cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
             dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
         }
@@ -581,6 +651,26 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 graphManager.generateBpmChartData(from: continuousOperations)
             }
         }
+        if let babyProfile = selectedBabyProfile {
+            return cacheManager.getChartSeriesData(
+                isScrolling: state.graph.isScrolling,
+                isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
+                period: state.graph.selectedPeriod,
+                selectedMetric: selectedBabyMetric == .height ? BabyMetric.height.rawValue : nil,
+                operationsCount: continuousOperations.count,
+                yAxisDomain: chartManager.yAxisDomain
+            ) {
+                graphManager.generateBabyChartData(
+                    from: continuousOperations,
+                    visibleOperations: visibleOperations,
+                    babyProfile: babyProfile,
+                    metric: selectedBabyMetric,
+                    convertWeight: goalManager.convertWeightToDisplay,
+                    convertDecigramsToDisplay: convertBabyDecigramsToDisplay,
+                    yAxisDomain: chartManager.yAxisDomain
+                )
+            }
+        }
         return cacheManager.getChartSeriesData(
             isScrolling: state.graph.isScrolling,
             isProcessingScrollEnd: chartManager.isProcessingScrollEnd,
@@ -599,6 +689,38 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 yAxisDomain: chartManager.yAxisDomain
             )
         }
+    }
+
+    func yAxisScale(for operations: [BathScaleWeightSummary], chartHeight: CGFloat) -> YAxisScale {
+        if productType == .bpm {
+            return graphManager.getBpmYAxisScale(from: operations, chartHeight: chartHeight)
+        }
+
+        if let babyProfile = selectedBabyProfile {
+            switch selectedBabyMetric {
+            case .weight:
+                return BabyDashboardChartSupport.yAxisScale(
+                    for: operations,
+                    babyProfile: babyProfile,
+                    convertStoredWeightToDisplay: goalManager.convertWeightToDisplay,
+                    convertDecigramsToDisplay: convertBabyDecigramsToDisplay
+                )
+            case .height:
+                return BabyDashboardChartSupport.heightYAxisScale(
+                    for: operations,
+                    babyProfile: babyProfile
+                )
+            }
+        }
+
+        return graphManager.getYAxisScale(
+            from: operations,
+            goalWeight: goalWeightForDisplay,
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            convertWeight: goalManager.convertWeightToDisplay,
+            chartHeight: chartHeight
+        )
     }
 
     var hasAnyEntries: Bool { state.data.hasAnyEntries }
@@ -626,6 +748,17 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight
         )
+    }
+
+    private func convertBabyDecigramsToDisplay(_ decigrams: Int) -> Double {
+        let isMetric = accountService.activeAccount?.weightSettings?.weightUnit == .kg
+        // TODO: Remove this fallback once baby-scale conversion is confirmed and
+        // implemented separately per SKU type.
+        let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
+        let stored = ConversionTools.convertKgToStored(kg)
+        return isMetric
+            ? ConversionTools.convertStoredToKg(stored)
+            : ConversionTools.convertStoredToLbs(stored)
     }
 
     var selectedBodyMetric: BodyMetric {

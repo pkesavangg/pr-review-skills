@@ -133,7 +133,6 @@ extension BtWifiScaleSetupStore {
             }
             scaleSetupError = .none
             isExiting = true
-            bluetoothService.isSetupInProgress = false
             dismissAction?()
             Task { @MainActor [weak self] in
                 self?.performExitCleanup()
@@ -254,9 +253,9 @@ extension BtWifiScaleSetupStore {
                 NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 500_000_000)
-                    self.bluetoothService.isSetupInProgress = false
                     self.dismissAction?()
                     self.checkGoalModalAfterSetup()
+                    self.bluetoothService.isSetupInProgress = false
                 }
             }
         case .permissions:

@@ -50,6 +50,14 @@ public enum KvStorageKeys: String {
     // MARK: - Product Type Selection
     /// Selected product type key suffix (per account)
     case selectedProductType
+    /// Selected signup device type key suffix (per account)
+    case selectedSignupDeviceType
+    /// HealthKit permission-scope device types key suffix (per account)
+    case healthKitPermissionScopeDeviceTypes
+    /// Backup account id for the most recent signup on this device
+    case recentSignupAccountId
+    /// Backup signup device type for the most recent signup on this device
+    case recentSignupDeviceType
 
     // MARK: - FCM Token Key
     /// FCM token storage key (device-scoped, not account-scoped)
@@ -128,6 +136,20 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for selected product type storage
     public static func selectedProductTypeKey(for accountId: String) -> String {
         return "\(accountId)_\(Self.selectedProductType.rawValue)"
+    }
+
+    /// Creates an account-scoped key for the signup-selected device type.
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for signup-selected device type storage
+    public static func selectedSignupDeviceTypeKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.selectedSignupDeviceType.rawValue)"
+    }
+
+    /// Creates an account-scoped key for the device types currently driving HealthKit permissions.
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for HealthKit permission-scope device type storage
+    public static func healthKitPermissionScopeDeviceTypesKey(for accountId: String) -> String {
+        return "\(accountId)_\(Self.healthKitPermissionScopeDeviceTypes.rawValue)"
     }
 
     /// Creates an account-scoped key for FCM token storage

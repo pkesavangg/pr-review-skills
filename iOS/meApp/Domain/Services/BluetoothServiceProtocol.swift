@@ -44,6 +44,9 @@ protocol BluetoothServiceProtocol {
     /// Publisher for new BPM reading events received from a blood pressure monitor.
     var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { get }
 
+    /// Publisher for setup progress changes so cross-cutting services can defer disruptive UI until setup exits.
+    var isSetupInProgressPublisher: AnyPublisher<Bool, Never> { get }
+
     // MARK: - Lifecycle / Initialisation
     /// Initializes the Bluetooth service and subscribes to account changes.
     func initialize()
@@ -187,6 +190,10 @@ protocol BluetoothServiceProtocol {
 }
 
 extension BluetoothServiceProtocol {
+    var isSetupInProgressPublisher: AnyPublisher<Bool, Never> {
+        Just(isSetupInProgress).eraseToAnyPublisher()
+    }
+
     func getDeviceInfo(for device: Device) async -> Result<DeviceInfo, BluetoothServiceError> {
         await getDeviceInfo(for: device, skipConnectionCheck: false)
     }

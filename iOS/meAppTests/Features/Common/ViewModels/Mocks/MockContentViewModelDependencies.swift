@@ -157,7 +157,8 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
+        skipDuplicateCheck: Bool,
+        deviceType: DeviceType = .scale
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createBluetoothScale")
     }
