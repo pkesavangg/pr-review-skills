@@ -137,18 +137,19 @@ final class IntegrationsService: IntegrationServiceProtocol {
             """
         )
         try await localRepository.setIntegrationData(accountId: accountId, info: info)
-        if let integrationType = info?.type {
-            do {
-                _ = try await accountService.updateIntegrations(integrationType: integrationType)
-            } catch {
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Failed to update account integrations. provider=\(integrationType.rawValue), "
-                        + "accountId=\(accountId), error=\(error.localizedDescription)"
-                )
-            }
-        }
+        // TODO: Re-enable remote sync once backend is ready
+        // if let integrationType = info?.type {
+        //     do {
+        //         _ = try await accountService.updateIntegrations(integrationType: integrationType)
+        //     } catch {
+        //         logger.log(
+        //             level: .error,
+        //             tag: tag,
+        //             message: "Failed to update account integrations. provider=\(integrationType.rawValue), "
+        //                 + "accountId=\(accountId), error=\(error.localizedDescription)"
+        //         )
+        //     }
+        // }
 
         logger.log(
             level: .info,
@@ -177,7 +178,8 @@ final class IntegrationsService: IntegrationServiceProtocol {
         )
         do {
             try await setStoredIntegrationData(integrationInfo)
-            try await accountService.deleteHealthIntegration(integrationType)
+            // TODO: Re-enable remote sync once backend is ready
+            // try await accountService.deleteHealthIntegration(integrationType)
             logger.log(
                 level: .success,
                 tag: tag,

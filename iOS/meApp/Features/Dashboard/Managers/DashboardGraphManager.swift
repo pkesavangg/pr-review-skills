@@ -195,6 +195,48 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     }
 
     // swiftlint:disable:next function_parameter_count
+    func generateBabyChartData(
+        from allOperations: [BathScaleWeightSummary],
+        visibleOperations: [BathScaleWeightSummary],
+        babyProfile: BabyProfile,
+        metric: BabyMetric,
+        convertWeight: @escaping (Int) -> Double,
+        convertDecigramsToDisplay: @escaping (Int) -> Double,
+        yAxisDomain: ClosedRange<Double>
+    ) -> [GraphSeries] {
+        switch metric {
+        case .weight:
+            let weightSeries = generateChartDataWithYAxisDomain(
+                from: allOperations,
+                visibleOperations: visibleOperations,
+                selectedMetric: nil,
+                isWeightlessMode: false,
+                anchorWeight: nil,
+                convertWeight: convertWeight,
+                yAxisDomain: yAxisDomain
+            )
+
+            let percentileSeries = BabyDashboardChartSupport.percentileSeries(
+                for: babyProfile,
+                operations: allOperations,
+                convertDecigramsToDisplay: convertDecigramsToDisplay
+            )
+
+            return weightSeries + percentileSeries
+        case .height:
+            let heightSeries = BabyDashboardChartSupport.dummyHeightSeries(
+                for: babyProfile,
+                operations: allOperations
+            )
+            let percentileSeries = BabyDashboardChartSupport.heightPercentileSeries(
+                for: babyProfile,
+                operations: allOperations
+            )
+            return heightSeries + percentileSeries
+        }
+    }
+
+    // swiftlint:disable:next function_parameter_count
     func generateChartDataWithYAxisDomain(
         from allOperations: [BathScaleWeightSummary],
         visibleOperations: [BathScaleWeightSummary],

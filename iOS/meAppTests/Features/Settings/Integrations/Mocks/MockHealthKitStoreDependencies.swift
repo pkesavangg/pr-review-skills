@@ -108,6 +108,10 @@ final class MockHealthKitStoreHealthKitService: HealthKitServiceProtocol {
     func setWaitingForPermissionsRestored() {}
     func clearWaitingForPermissionsRestored() {}
     func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool { false }
+
+    var expectedPermissionCountResult = 5
+    func requestAdditionalPermissionsIfNeeded() async {}
+    func expectedPermissionCount() async -> Int { expectedPermissionCountResult }
 }
 
 @MainActor
