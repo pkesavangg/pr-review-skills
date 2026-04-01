@@ -41,6 +41,33 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     private var restoredForAccountId: String?
     private let tag = "ProductTypeStore"
 
+    private static func fallbackBabyProfiles(calendar: Calendar = .current) -> [BabyProfile] {
+        let today = calendar.startOfDay(for: Date())
+        let liamBirthday = calendar.date(byAdding: .day, value: -112, to: today)
+        let otherBabyBirthday = calendar.date(byAdding: .day, value: -84, to: today)
+
+        return [
+            BabyProfile(
+                id: "fallback-other-baby",
+                name: "Other Baby",
+                birthday: otherBabyBirthday,
+                biologicalSex: "female",
+                birthLengthInches: 19.0,
+                birthWeightLbs: 6,
+                birthWeightOz: 14
+            ),
+            BabyProfile(
+                id: "fallback-liam",
+                name: "Liam",
+                birthday: liamBirthday,
+                biologicalSex: "male",
+                birthLengthInches: 20.0,
+                birthWeightLbs: 7,
+                birthWeightOz: 8
+            )
+        ]
+    }
+
     // MARK: - Singleton
 
     static let shared = ProductTypeStore()
@@ -176,18 +203,22 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         }
 
         // 3. Individual babies — listed whenever baby profiles exist.
-        for baby in babies {
-            let profile = BabyProfile(
-                id: baby.id,
-                name: baby.name,
-                deviceId: baby.deviceId,
-                birthday: baby.birthday,
-                biologicalSex: baby.biologicalSex,
-                birthLengthInches: baby.birthLengthInches,
-                birthWeightLbs: baby.birthWeightLbs,
-                birthWeightOz: baby.birthWeightOz
-            )
-            items.append(.baby(profile: profile))
+        if babies.isEmpty {
+            Self.fallbackBabyProfiles().forEach { items.append(.baby(profile: $0)) }
+        } else {
+            for baby in babies {
+                let profile = BabyProfile(
+                    id: baby.id,
+                    name: baby.name,
+                    deviceId: baby.deviceId,
+                    birthday: baby.birthday,
+                    biologicalSex: baby.biologicalSex,
+                    birthLengthInches: baby.birthLengthInches,
+                    birthWeightLbs: baby.birthWeightLbs,
+                    birthWeightOz: baby.birthWeightOz
+                )
+                items.append(.baby(profile: profile))
+            }
         }
 
         // Fallback: always show at least "My Weight"

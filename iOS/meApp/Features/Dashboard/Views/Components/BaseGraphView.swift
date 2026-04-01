@@ -101,6 +101,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         return nil
     }
 
+    private var babyChartPlotWidth: CGFloat { 400 }
+    private var babyChartPlotHeight: CGFloat { 457.14208984375 }
+    private var babyChartContainerHeight: CGFloat { 497.14208984375 }
+    private var chartContainerHeight: CGFloat {
+        selectedBabyProfile != nil ? babyChartContainerHeight : 265
+    }
+
     // MARK: - Visibility Helpers
     private var shouldShowYAxisLabels: Bool {
         // Show labels if there are entries regardless of goal presence
@@ -194,10 +201,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                     localSelectedXValue: $localSelectedXValue,
                     dashboardStore: dashboardStore,
                     theme: theme,
-                    getCachedXAxisLabel: getCachedXAxisLabel
+                    getCachedXAxisLabel: getCachedXAxisLabel,
+                    isBabyChart: selectedBabyProfile != nil,
+                    babyBoundaryYAxisTicks: boundaryYAxisTicks,
+                    babyChartPlotWidth: babyChartPlotWidth,
+                    babyChartPlotHeight: babyChartPlotHeight
                 )
-                .frame(height: 265)
-                .frame(maxWidth: .infinity, minHeight: 240)
+                .frame(height: chartContainerHeight)
+                .frame(maxWidth: .infinity, minHeight: chartContainerHeight)
                 .padding(.leading, 0)
                 .background(
                     // Use a neutral view so we don't trigger style/layout side effects
@@ -364,25 +375,45 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             dashboardStore: dashboardStore,
             localSelectedXValue: $localSelectedXValue
         )
-        .graphViewStyle(canAddPadding: !viewModel.hasXAxis, canAddTrailingPadding: !viewModel.chartOperations.isEmpty)
+        .graphViewStyle(
+            canAddPadding: !viewModel.hasXAxis,
+            canAddTrailingPadding: selectedBabyProfile == nil && !viewModel.chartOperations.isEmpty,
+            height: chartContainerHeight
+        )
     }
 
     // MARK: - Chart Content Builders
 
     @ChartContentBuilder
     private var yAxisGridLines: some ChartContent {
-        ForEach(viewModel.yAxisTicks, id: \.self) { tick in
-            // If this is the lowest tick and X-axis is visible, nudge it up by ~1pt
-            // so it doesn't overlap with the axis baseline (which makes it look thicker).
-            let effectiveTick: Double = adjustedTick(tick)
-            RuleMark(y: .value("YGrid", effectiveTick))
-                .lineStyle(StrokeStyle(lineWidth: 1))
-                .foregroundStyle(theme.statusIconSecondaryDisabled)
-                .zIndex(-1)
+        if dashboardStore.isBabySelection && viewModel.hasXAxis {
+            // Scrollable baby charts render their edge Y grid lines from the plot
+            // overlay so the first/last rules don't get clipped at the plot bounds.
+        } else {
+        let ticksToRender = dashboardStore.isBabySelection ? boundaryYAxisTicks : viewModel.yAxisTicks
+
+            ForEach(ticksToRender, id: \.self) { tick in
+                // If this is the lowest tick and X-axis is visible, nudge it up by ~1pt
+                // so it doesn't overlap with the axis baseline (which makes it look thicker).
+                let effectiveTick: Double = adjustedTick(tick)
+                RuleMark(y: .value("YGrid", effectiveTick))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(theme.statusIconSecondaryDisabled)
+                    .zIndex(-1)
+            }
         }
     }
 
-    // Helper: Adjusts a tick value to avoid overlap with axis baselines
+    private var boundaryYAxisTicks: [Double] {
+        guard let first = viewModel.yAxisTicks.first else { return [] }
+        guard let last = viewModel.yAxisTicks.last,
+              abs(last - first) > AppConstants.Precision.doubleEqualityEpsilon else {
+            return [first]
+        }
+        return [first, last]
+    }
+
+    // Helper: Adjusts boundary ticks to avoid overlap with chart edges/baselines.
     private func adjustedTick(_ tick: Double) -> Double {
         guard viewModel.hasXAxis else { return tick }
         let lower = viewModel.yAxisDomain.lowerBound
@@ -392,31 +423,38 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         let xAxisHeight: CGFloat = 18
         let availableHeight = max(1, viewModel.chartFrame.height - xAxisHeight)
         let onePointValue = domainRange / Double(availableHeight)
-        // Only nudge the bottom-most tick when lower domain is negative.
+        let boundaryRuleOffset = onePointValue * 2
+        // Baby charts only render the first/last horizontal rules, so always lift the
+        // bottom rule slightly off the X-axis to keep it visible.
         if abs(tick - lower) <= epsilon {
+            if dashboardStore.isBabySelection {
+                return min(upper, tick + boundaryRuleOffset)
+            }
             return lower < 0 ? (tick + onePointValue) : tick
         }
         if abs(tick - upper) <= epsilon {
-            return tick - onePointValue
+            return max(lower, tick - boundaryRuleOffset)
         }
         return tick
     }
 
     @ChartContentBuilder
     private var xAxisGridLinesSolid: some ChartContent {
-        let referenceDate = viewModel.hasXAxis ?
-        viewModel.xAxisValues.last
-        : viewModel.xAxisValues.first
-        if let referenceDate = referenceDate, viewModel.hasXAxis {
-            let domainLength = viewModel.visibleDomainLength
-            let width = max(1, viewModel.chartFrame.width)
-            let secondsPerPoint = domainLength / Double(width)
-            let halfPointOffset = secondsPerPoint * 0.5
-            let effectiveDate = referenceDate.addingTimeInterval(-halfPointOffset)
+        if !dashboardStore.isBabySelection {
+            let referenceDate = viewModel.hasXAxis ?
+            viewModel.xAxisValues.last
+            : viewModel.xAxisValues.first
+            if let referenceDate = referenceDate, viewModel.hasXAxis {
+                let domainLength = viewModel.visibleDomainLength
+                let width = max(1, viewModel.chartFrame.width)
+                let secondsPerPoint = domainLength / Double(width)
+                let halfPointOffset = secondsPerPoint * 0.5
+                let effectiveDate = referenceDate.addingTimeInterval(-halfPointOffset)
 
-            RuleMark(x: .value("XGrid", effectiveDate))
-                .lineStyle(StrokeStyle(lineWidth: 1))
-                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                RuleMark(x: .value("XGrid", effectiveDate))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(theme.statusIconSecondaryDisabled)
+            }
         }
     }
 
@@ -469,7 +507,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         if BabyDashboardChartSupport.isPercentileSeries(seriesName) {
             return 0
         }
-        if seriesName == DashboardStrings.weight {
+        if seriesName == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(seriesName) {
             return 1
         }
         return 2
@@ -560,7 +598,8 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             return (color, color)
         }
 
-        if selectedBabyProfile != nil, point.series == DashboardStrings.weight {
+        if selectedBabyProfile != nil,
+           point.series == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(point.series) {
             return (BabyDashboardChartStyle.weightColor, BabyDashboardChartStyle.weightColor)
         }
 
@@ -943,7 +982,11 @@ extension View {
         localSelectedXValue: Binding<Date?>,
         dashboardStore: DashboardStore,
         theme: AppColors.Palette,
-        getCachedXAxisLabel: @escaping (Date) -> String?
+        getCachedXAxisLabel: @escaping (Date) -> String?,
+        isBabyChart: Bool,
+        babyBoundaryYAxisTicks: [Double],
+        babyChartPlotWidth: CGFloat,
+        babyChartPlotHeight: CGFloat
     ) -> some View {
         if isScrollable {
             self
@@ -1007,8 +1050,14 @@ extension View {
                         }
                         return allTicks
                     }()
+                    let renderedGridTicks: [Date] = {
+                        if isBabyChart && viewModel.hasXAxis {
+                            return Array(gridTicks.dropLast())
+                        }
+                        return gridTicks
+                    }()
                     // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
-                    AxisMarks(values: gridTicks) { value in
+                    AxisMarks(values: renderedGridTicks) { value in
                         if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
                             // Solid line for start of week/month/year
                             AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
@@ -1065,7 +1114,21 @@ extension View {
                 }
             // Add padding to left side of chart area
                 .chartPlotStyle { plot in
-                    if viewModel.isAtLeftBoundary {
+                    if isBabyChart {
+                        plot
+                            .frame(width: babyChartPlotWidth, height: babyChartPlotHeight)
+                            .overlay {
+                                if viewModel.hasXAxis {
+                                    SnapshotChartPlotBorderView(
+                                        color: theme.statusIconSecondaryDisabled,
+                                        yDomain: viewModel.yAxisDomain,
+                                        yTicks: viewModel.yAxisTicks,
+                                        showHorizontalGridLines: false,
+                                        visibleHorizontalTicks: babyBoundaryYAxisTicks
+                                    )
+                                }
+                            }
+                    } else if viewModel.isAtLeftBoundary {
                         plot.padding(.leading, .spacingXS)
                     } else {
                         plot

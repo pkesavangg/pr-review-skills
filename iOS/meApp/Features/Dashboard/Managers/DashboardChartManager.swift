@@ -87,20 +87,20 @@ final class DashboardChartManager: DashboardChartManaging {
         let continuousOps = getContinuousOperations()
         let operationsForYAxis = stateProvider?.state.graph.selectedPeriod == .total ? continuousOps : visibleOps
 
-        if let store = stateProvider as? DashboardStore {
-            return store.yAxisScale(
-                for: operationsForYAxis,
-                chartHeight: stateProvider?.state.graph.chartHeight ?? 200
+        guard let stateProvider else {
+            return graphManager.getYAxisScale(
+                from: operationsForYAxis,
+                goalWeight: getGoalWeightForDisplay(),
+                isWeightlessMode: getIsWeightlessModeEnabled(),
+                anchorWeight: getWeightlessAnchorWeight(),
+                convertWeight: goalManager.convertWeightToDisplay,
+                chartHeight: 200
             )
         }
 
-        return graphManager.getYAxisScale(
-            from: operationsForYAxis,
-            goalWeight: getGoalWeightForDisplay(),
-            isWeightlessMode: getIsWeightlessModeEnabled(),
-            anchorWeight: getWeightlessAnchorWeight(),
-            convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: stateProvider?.state.graph.chartHeight ?? 200
+        return stateProvider.yAxisScale(
+            for: operationsForYAxis,
+            chartHeight: stateProvider.state.graph.chartHeight
         )
     }
 
@@ -133,30 +133,12 @@ final class DashboardChartManager: DashboardChartManaging {
 
         let previousYAxisDomain = graphManager.state.cachedYAxisDomain ?? stateProvider.state.graph.cachedYAxisDomain
 
-        if let store = stateProvider as? DashboardStore {
-            let resolvedScale = store.yAxisScale(
-                for: operationsForYAxis,
-                chartHeight: stateProvider.state.graph.chartHeight
-            )
-            graphManager.state.cachedYAxisDomain = resolvedScale.domain
-            graphManager.state.cachedYAxisTicks = resolvedScale.ticks
-        } else if stateProvider.productType == .bpm {
-            let bpmScale = graphManager.getBpmYAxisScale(
-                from: operationsForYAxis,
-                chartHeight: stateProvider.state.graph.chartHeight
-            )
-            graphManager.state.cachedYAxisDomain = bpmScale.domain
-            graphManager.state.cachedYAxisTicks = bpmScale.ticks
-        } else {
-            graphManager.calculateAndCacheYAxisDomain(
-                from: operationsForYAxis,
-                goalWeight: getGoalWeightForDisplay(),
-                isWeightlessMode: getIsWeightlessModeEnabled(),
-                anchorWeight: getWeightlessAnchorWeight(),
-                convertWeight: goalManager.convertWeightToDisplay,
-                chartHeight: stateProvider.state.graph.chartHeight
-            )
-        }
+        let resolvedScale = stateProvider.yAxisScale(
+            for: operationsForYAxis,
+            chartHeight: stateProvider.state.graph.chartHeight
+        )
+        graphManager.state.cachedYAxisDomain = resolvedScale.domain
+        graphManager.state.cachedYAxisTicks = resolvedScale.ticks
 
         // Keep store state aligned with the graph manager immediately so cache invalidation
         // sees the freshly computed domain in the same update pass.

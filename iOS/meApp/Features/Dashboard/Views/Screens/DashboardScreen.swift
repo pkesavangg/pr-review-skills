@@ -67,11 +67,9 @@ struct DashboardScreen: View {
         .refreshable {
             await store.lifecycleManager.refreshAll()
         }
-        .onAppear {
-            store.lifecycleManager.onAppearActions()
-            if canShowSnapshotOverview {
-                isInProductDashboard = false
-            }
+        .onAppear(perform: store.lifecycleManager.onAppearActions)
+        .onChange(of: canShowSnapshotOverview) { _, isAvailable in
+            if isAvailable { isInProductDashboard = false }
         }
         .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
         .background(theme.backgroundSecondary)

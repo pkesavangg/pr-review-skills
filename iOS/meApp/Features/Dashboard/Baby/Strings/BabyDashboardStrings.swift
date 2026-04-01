@@ -15,9 +15,14 @@ enum BabyDashboardStrings {
     static let weekAverage = "week average"
     static let weight = "Weight"
     static let height = "Height"
+    static let noHeightData = "No height readings yet"
 
     static func babyWeightLabel(name: String) -> String {
         "\(name.lowercased())'s weight"
+    }
+
+    static func babyHeightLabel(name: String) -> String {
+        "\(name.lowercased())'s height"
     }
 
     // MARK: - Growth chart (Smart Baby / WHO reference)
