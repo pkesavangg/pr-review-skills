@@ -14,10 +14,10 @@ import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import io.mockk.MockKAnnotations
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
-import io.mockk.coVerify
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -316,7 +316,7 @@ class LcbtBLESetupViewModelTest {
         advanceScheduler()
         viewModel.handleIntent(ScaleSetupIntent.Back)
         advanceScheduler()
-        // Should navigate to AddEditScales route
+      // Should navigate to MyDevices route
         coVerify { viewModel.navigationService.navigateTo(any()) }
     }
 

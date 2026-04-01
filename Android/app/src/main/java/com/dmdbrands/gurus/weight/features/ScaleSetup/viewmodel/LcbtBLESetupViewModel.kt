@@ -117,7 +117,7 @@ constructor(
 
     if (currentState.isFirstStep) {
       AppLog.d(TAG, "At first step, navigating back to add/edit scales")
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      navigateTo(AppRoute.AccountSettings.MyDevices)
       return
     }
 
@@ -128,7 +128,7 @@ constructor(
       handleIntent(ScaleSetupIntent.SetNewStep(previousStep))
     } else {
       AppLog.d(TAG, "No previous step available, navigating back to add/edit scales")
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      navigateTo(AppRoute.AccountSettings.MyDevices)
     }
   }
 

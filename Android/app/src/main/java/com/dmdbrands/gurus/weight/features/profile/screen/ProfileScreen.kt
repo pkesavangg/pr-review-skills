@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -24,7 +23,9 @@ import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeUtil
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
@@ -37,9 +38,13 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInputMode
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
+import com.dmdbrands.gurus.weight.features.common.components.HeightInput
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.SettingsSection
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
+import com.dmdbrands.gurus.weight.features.common.model.SettingsItem
+import com.dmdbrands.gurus.weight.features.common.model.SettingsItemType
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileFormControls
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileIntent
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileState
@@ -97,12 +102,13 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
             AppStyledCard {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            onClick = { focusManager.clearFocus() },
-                        ).verticalScroll(scrollState),
+                      .fillMaxWidth()
+                      .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = { focusManager.clearFocus() },
+                      )
+                      .verticalScroll(scrollState),
                     horizontalAlignment = Alignment.Start,
                 ) {
                     Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))
@@ -139,8 +145,8 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         imeAction = ImeAction.Next,
                         nextFocusRequester = zipcodeFocusRequester,
                         modifier = Modifier
-                            .semantics { contentType = ContentType.EmailAddress }
-                            .focusRequester(emailFocusRequester),
+                          .semantics { contentType = ContentType.EmailAddress }
+                          .focusRequester(emailFocusRequester),
                     )
                     // Zipcode Input
                     AppInput(
@@ -151,8 +157,8 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         imeAction = ImeAction.Next,
                         nextFocusRequester = birthdayFocusRequester,
                         modifier = Modifier
-                            .semantics { contentType = ContentType.PostalCode }
-                            .focusRequester(zipcodeFocusRequester),
+                          .semantics { contentType = ContentType.PostalCode }
+                          .focusRequester(zipcodeFocusRequester),
                     )
                     AppText(ProfileStrings.BirthdayLabel, TextType.Title, spacing = MeTheme.spacing.sm)
                     DateTimeInput(
@@ -161,8 +167,51 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         maxValue = DateTimeValue.Date(DateTimeUtil.getMinBirthdayOffsetForDatePicker()),
                         modifier = Modifier.focusRequester(birthdayFocusRequester),
                     )
+                  Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))
+                  // Biological Sex dropdown with note
+                  SettingsSection(
+                    hasBottomSpace = false,
+                    items = listOf(
+                      SettingsItem(
+                        title = ProfileStrings.BiologicalSexLabel,
+                        type = SettingsItemType.Dropdown(
+                          state.form.controls.gender.value
+                            .takeIf { it.isNotEmpty() }
+                            ?.replaceFirstChar { it.uppercase() }
+                            ?: ProfileStrings.NotSet,
+                        ),
+                        onClick = { handleIntent(ProfileIntent.ShowBiologicalSexModal) },
+                      )
+                    ),
+                  )
+                  AppText(
+                    ProfileStrings.BiologicalSexNote,
+                    TextType.SubHeading,
+                  )
+                  Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))
+                  // Height dropdown with note
+                  SettingsSection(
+                    hasBottomSpace = false,
+                    items = listOf(
+                      SettingsItem(
+                        title = ProfileStrings.HeightLabel,
+                        type = SettingsItemType.Dropdown(
+                          HeightInput.formatHeightDisplay(
+                            height = state.form.controls.height.value.takeIf { it > 0 },
+                            isMetric = state.weightUnit == WeightUnit.KG,
+                          ),
+                        ),
+                        onClick = { handleIntent(ProfileIntent.ShowHeightModal) },
+                      ),
+                    ),
+                  )
+                  AppText(
+                    ProfileStrings.HeightNote,
+                    TextType.SubHeading,
+                  )
+                  Spacer(Modifier.padding(bottom = MeTheme.spacing.xl))
+
                 }
-                Spacer(Modifier.padding(bottom = MeTheme.spacing.xl))
             }
     }
 }

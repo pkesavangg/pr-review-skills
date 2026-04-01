@@ -1,10 +1,10 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
@@ -42,14 +42,15 @@ constructor(
     scaleSettingsManager.loadMacAddressSettings(viewModelScope, ::dispatchIntent)
     notificationSettingsManager.initFeedNotificationListener(viewModelScope, ::dispatchIntent)
     dataSettingsManager.observeExportEnabled(viewModelScope, ::dispatchIntent)
+    fetchKids()
   }
 
   override fun handleIntent(intent: SettingsIntent) {
     super.handleIntent(intent)
 
     when (intent) {
-      SettingsIntent.OpenAddScales -> {
-        navigateTo(AppRoute.AccountSettings.AddEditScales)
+      SettingsIntent.OpenMyDevices -> {
+        navigateTo(AppRoute.AccountSettings.MyDevices)
       }
 
       SettingsIntent.OpenHelp -> {
@@ -80,10 +81,6 @@ constructor(
         onSwitchAccountClick()
       }
 
-      SettingsIntent.ShowBiologicalSexModal -> {
-        profileSettingsManager.onBiologicalSexClick(viewModelScope, ::currentState)
-      }
-
       SettingsIntent.ShowActivityLevelModal -> {
         profileSettingsManager.onActivityLevelClick(viewModelScope, ::currentState)
       }
@@ -94,10 +91,6 @@ constructor(
 
       SettingsIntent.ShowNotificationsModal -> {
         notificationSettingsManager.onNotificationsClick(viewModelScope, ::currentState)
-      }
-
-      SettingsIntent.ShowHeightModal -> {
-        profileSettingsManager.onHeightClick(viewModelScope, ::currentState)
       }
 
       SettingsIntent.ShowWeightlessModal -> {
@@ -162,6 +155,11 @@ constructor(
         }
       }
 
+      SettingsIntent.OpenMyKids -> {
+        // TODO: Navigate to My Kids screen when route is available
+        AppLog.d(TAG, "My Kids clicked")
+      }
+
       else -> {}
     }
   }
@@ -181,6 +179,18 @@ constructor(
 
   private fun dispatchIntent(intent: SettingsIntent) {
     handleIntent(intent)
+  }
+
+  /**
+   * Dummy fetch for kids data. Replace with real API call when available.
+   */
+  private fun fetchKids() {
+    viewModelScope.launch {
+      // TODO: Replace with real kids fetch when API is available
+      // Example: val kids = kidsService.getKids()
+      // dispatchIntent(SettingsIntent.SetHasKids(kids.isNotEmpty()))
+      dispatchIntent(SettingsIntent.SetHasKids(false))
+    }
   }
 
   private fun navigateTo(route: AppRoute) {

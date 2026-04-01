@@ -45,14 +45,18 @@ constructor(
     scope: CoroutineScope,
     stateProvider: () -> SettingsState,
   ) {
+    val hasBabyScale = stateProvider().hasKids
+    val options = buildList {
+      add(RadioButtonOption(WeightUnit.LB.value, RadioGroupModalStrings.UnitType.Imperial))
+      add(RadioButtonOption(WeightUnit.KG.value, RadioGroupModalStrings.UnitType.Metric))
+      if (hasBabyScale) {
+        add(RadioButtonOption(WeightUnit.LB_OZ.value, RadioGroupModalStrings.UnitType.ImperialBaby))
+      }
+    }
     showRadioGroupModal(
       dialogService = dialogQueueService,
       title = RadioGroupModalStrings.Titles.UnitType,
-      options =
-        listOf(
-          RadioButtonOption(WeightUnit.LB.value, RadioGroupModalStrings.UnitType.Imperial),
-          RadioButtonOption(WeightUnit.KG.value, RadioGroupModalStrings.UnitType.Metric),
-        ),
+      options = options,
       selectedItem = stateProvider().account?.weightUnit?.value,
       confirmText = RadioGroupModalStrings.Button.Save,
       onConfirm = { selectedUnitType ->
@@ -77,16 +81,8 @@ constructor(
       return
     }
 
-    val newWeightUnit =
-      when (unitTypeValue) {
-        WeightUnit.KG.value -> WeightUnit.KG
-        WeightUnit.LB.value -> WeightUnit.LB
-        else -> {
-          return
-        }
-      }
-
-    if (currentAccount.weightUnit == newWeightUnit) {
+    val newWeightUnit = WeightUnit.from(unitTypeValue)
+    if (newWeightUnit == currentAccount.weightUnit) {
       return
     }
 

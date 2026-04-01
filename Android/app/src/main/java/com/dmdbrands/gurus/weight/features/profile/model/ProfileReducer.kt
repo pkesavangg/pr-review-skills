@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.profile.model
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
@@ -19,6 +20,8 @@ data class ProfileFormControls(
     val email: FormControl<String>,
     val zipcode: FormControl<String>,
     val birthday: FormControl<DateTimeValue>,
+    val gender: FormControl<String>,
+    val height: FormControl<Int>,
 ) {
     companion object {
         fun create(
@@ -28,7 +31,9 @@ data class ProfileFormControls(
             zipcode: String = "",
             birthday: DateTimeValue = DateTimeValue.Date(
                 DateTimeValue.getEpochMillisFromDateString(AppValidatorConfig.DateOfBirth.DEFAULT_VALUE)
-            )
+            ),
+            gender: String = "",
+            height: Int = 0,
         ) = ProfileFormControls(
             firstName = FormControl.create(
               initialValue = firstName,
@@ -67,6 +72,14 @@ data class ProfileFormControls(
                     birthday,
                     listOf(),
                 ),
+            gender = FormControl.create(
+                initialValue = gender,
+                validators = listOf(),
+            ),
+            height = FormControl.create(
+                initialValue = height,
+                validators = listOf(),
+            ),
         )
     }
 }
@@ -82,6 +95,7 @@ data class ProfileState(
     val form: FormGroup<ProfileFormControls>,
     val isLoading: Boolean = false,
     val error: String? = null,
+    val weightUnit: WeightUnit? = null,
 ) : IReducer.State
 
 /**
@@ -100,7 +114,10 @@ sealed class ProfileIntent : IReducer.Intent {
         val lastName: String,
         val email: String,
         val zipcode: String,
-        val birthday: DateTimeValue
+        val birthday: DateTimeValue,
+        val gender: String = "",
+        val height: Int = 0,
+        val weightUnit: WeightUnit? = null,
     ) : ProfileIntent()
 
     /** Show an error message. */
@@ -111,6 +128,12 @@ sealed class ProfileIntent : IReducer.Intent {
 
     /** Profile update was successful. */
     object Success : ProfileIntent()
+
+    /** Show biological sex selection modal. */
+    object ShowBiologicalSexModal : ProfileIntent()
+
+    /** Show height picker modal. */
+    object ShowHeightModal : ProfileIntent()
 
     /** Request to exit/go back from profile screen. */
     object OnRequestBack : ProfileIntent()
@@ -143,16 +166,17 @@ class ProfileReducer : IReducer<ProfileState, ProfileIntent> {
                         lastName = intent.lastName,
                         email = intent.email,
                         zipcode = intent.zipcode,
-                        birthday = intent.birthday
+                        birthday = intent.birthday,
+                        gender = intent.gender,
+                        height = intent.height,
                     )
                 )
-                // Validate all controls after loading to ensure isValid is correct
-                // This ensures all fields are validated and errors are cleared if values are valid
                 updatedForm.validate()
                 state.copy(
                     form = updatedForm,
                     isLoading = false,
-                    error = null
+                    error = null,
+                    weightUnit = intent.weightUnit,
                 )
             }
 
@@ -168,8 +192,10 @@ class ProfileReducer : IReducer<ProfileState, ProfileIntent> {
                 state.copy(isLoading = false, error = null)
             }
 
+            is ProfileIntent.ShowBiologicalSexModal,
+            is ProfileIntent.ShowHeightModal,
             is ProfileIntent.OnRequestBack -> {
-                // No state change needed for back navigation
+                // No state change needed — handled as side effects in ViewModel
                 state
             }
         }

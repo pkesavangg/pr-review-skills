@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileIntent
 import com.dmdbrands.gurus.weight.features.profile.strings.ProfileStrings
@@ -49,6 +50,9 @@ class ProfileViewModelTest {
     @MockK(relaxed = true)
     lateinit var ggDeviceService: GGDeviceService
 
+    @MockK(relaxUnitFun = true)
+    lateinit var bodyCompositionService: IBodyCompositionService
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var viewModel: ProfileViewModel
@@ -65,6 +69,7 @@ class ProfileViewModelTest {
         viewModel = ProfileViewModel(
             accountService = accountService,
             ggDeviceService = ggDeviceService,
+            bodyCompositionService = bodyCompositionService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -110,6 +115,7 @@ class ProfileViewModelTest {
         viewModel = ProfileViewModel(
             accountService = accountService,
             ggDeviceService = ggDeviceService,
+            bodyCompositionService = bodyCompositionService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -132,6 +138,7 @@ class ProfileViewModelTest {
         viewModel = ProfileViewModel(
             accountService = accountService,
             ggDeviceService = ggDeviceService,
+            bodyCompositionService = bodyCompositionService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -430,6 +437,57 @@ class ProfileViewModelTest {
         val state = viewModel.state.value
         assertThat(state.isLoading).isFalse()
         assertThat(state.error).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // Gender & Height form controls
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `LoadProfile populates gender and height in form`() = runTest {
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertThat(state.form.controls.gender.value).isEqualTo(TestFixtures.activeAccount.gender)
+        assertThat(state.form.controls.height.value).isEqualTo(TestFixtures.activeAccount.height)
+    }
+
+    @Test
+    fun `changing gender via form control makes form dirty`() = runTest {
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.form.isDirty).isFalse()
+        viewModel.state.value.form.controls.gender.onValueChange("female")
+        assertThat(viewModel.state.value.form.isDirty).isTrue()
+        assertThat(viewModel.state.value.form.controls.gender.value).isEqualTo("female")
+    }
+
+    @Test
+    fun `changing height via form control makes form dirty`() = runTest {
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.form.isDirty).isFalse()
+        viewModel.state.value.form.controls.height.onValueChange(1800)
+        assertThat(viewModel.state.value.form.isDirty).isTrue()
+        assertThat(viewModel.state.value.form.controls.height.value).isEqualTo(1800)
+    }
+
+    @Test
+    fun `ShowBiologicalSexModal enqueues dialog`() = runTest {
+        advanceUntilIdle()
+
+        viewModel.handleIntent(ProfileIntent.ShowBiologicalSexModal)
+
+        verify { dialogQueueService.enqueue(any()) }
+    }
+
+    @Test
+    fun `ShowHeightModal enqueues dialog`() = runTest {
+        advanceUntilIdle()
+
+        viewModel.handleIntent(ProfileIntent.ShowHeightModal)
+
+        verify { dialogQueueService.enqueue(any()) }
     }
 
     @Test

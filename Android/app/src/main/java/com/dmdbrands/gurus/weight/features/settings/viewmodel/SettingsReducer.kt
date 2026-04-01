@@ -1,8 +1,8 @@
 package com.dmdbrands.gurus.weight.features.settings.viewmodel
 
+import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
-import androidx.compose.runtime.Stable
 
 /**
  * UI state for the settings feature, holding loading state and errors.
@@ -22,6 +22,7 @@ data class SettingsState(
   val unreadFeedCount: Int = 0,
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
+  val hasKids: Boolean = false,
 ) : IReducer.State {
 
   /**
@@ -48,7 +49,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   ) : SettingsIntent
 
   object ClearError : SettingsIntent
-  object OpenAddScales : SettingsIntent
+  object OpenMyDevices : SettingsIntent
   object Logout : SettingsIntent
   object LogoutAllAccounts : SettingsIntent
   object SwitchAccount : SettingsIntent
@@ -65,11 +66,9 @@ sealed interface SettingsIntent : IReducer.Intent {
   object OpenHelp : SettingsIntent
 
   // Modal Selection Intents
-  object ShowBiologicalSexModal : SettingsIntent
   object ShowActivityLevelModal : SettingsIntent
   object ShowUnitTypeModal : SettingsIntent
   object ShowNotificationsModal : SettingsIntent
-  object ShowHeightModal : SettingsIntent
   object ShowWeightlessModal : SettingsIntent
   data class ToggleStreak(val checked: Boolean) : SettingsIntent
   object goalSettingModal : SettingsIntent
@@ -82,6 +81,8 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetUnreadFeedCount(val count: Int) : SettingsIntent
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
+  data class SetHasKids(val hasKids: Boolean) : SettingsIntent
+  object OpenMyKids : SettingsIntent
   object DeleteAccount : SettingsIntent
   object ConfirmDeleteAccount : SettingsIntent
   object TriggerTestCrash : SettingsIntent
@@ -111,6 +112,7 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
       is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       is SettingsIntent.SetExportEnabled -> state.copy(isExportEnabled = intent.enabled)
+      is SettingsIntent.SetHasKids -> state.copy(hasKids = intent.hasKids)
       else -> null
       // Add more intent handling as needed
     }

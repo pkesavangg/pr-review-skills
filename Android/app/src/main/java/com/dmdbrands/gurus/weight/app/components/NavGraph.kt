@@ -68,7 +68,7 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
   entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
   entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
   entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
-  entry<AppRoute.AccountSettings.AddEditScales> { AddScaleScreen() }
+  entry<AppRoute.AccountSettings.MyDevices> { AddScaleScreen() }
   entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
   entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
   entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }

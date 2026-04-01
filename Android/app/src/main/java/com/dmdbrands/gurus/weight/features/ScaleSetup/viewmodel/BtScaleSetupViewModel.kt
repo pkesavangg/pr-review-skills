@@ -146,7 +146,7 @@ constructor(
 
     if (currentState.isFirstStep) {
       AppLog.d(TAG, "At first step, navigating back to add/edit scales")
-      navigateTo(AppRoute.AccountSettings.AddEditScales)
+      navigateTo(AppRoute.AccountSettings.MyDevices)
     } else if (currentState.step == BtScaleSetupStep.SELECT_USER && isPermissionGranted) {
       AppLog.d(TAG, "Moving from select user back to scale info")
       handleIntent(ScaleSetupIntent.SetNewStep(BtScaleSetupStep.SCALE_INFO))

@@ -18,6 +18,11 @@ object HelpScreenStrings {
     const val UserManualSectionTitle = "View Digital Manual"
     const val UserManualSectionSubtitle = "Check the back of your scale for a sticker with your four digit model number."
 
+    // Device Catalogs
+    const val BabyScale = "Baby Scale"
+    const val BloodPressureMonitor = "Blood Pressure Monitor"
+    const val WeightScale = "Weight Scale"
+
     // Footer content
     const val FooterTitle = "Need More Help?"
     const val FooterSubtitle = "Visit our support center for additional resources and troubleshooting guides."

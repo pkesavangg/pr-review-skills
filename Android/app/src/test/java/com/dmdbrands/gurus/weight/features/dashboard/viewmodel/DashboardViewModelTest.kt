@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel
 
-import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
@@ -435,7 +434,7 @@ class DashboardViewModelTest {
     fun `OnConnectScale navigates to AddEditScales`() = runTest {
         viewModel.handleIntent(DashboardIntent.OnConnectScale)
         advanceUntilIdle()
-        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.AddEditScales) }
+      coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
     }
 
     // -------------------------------------------------------------------------

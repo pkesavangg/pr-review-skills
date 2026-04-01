@@ -52,3 +52,19 @@ val SCALES =
     ScaleInfo("Wi-Fi Smart Scale", "0397", ScaleSetupType.EspTouchWifi, false, createdAt = null),
     ScaleInfo("AccuCheck Verve Smart Scale", "0412", ScaleSetupType.BtWifiR4, true, createdAt = null),
   )
+
+val BABY_SCALES =
+  listOf(
+    ScaleInfo("Smart Baby Scale", "0220", ScaleSetupType.Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Baby Scale", "0222", ScaleSetupType.Bluetooth, false, createdAt = null),
+  )
+
+val BPM_DEVICES =
+  listOf(
+    ScaleInfo("Smart Wrist Blood Pressure Monitor", "0603", ScaleSetupType.Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0604", ScaleSetupType.Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Pro-Series Blood Pressure Monitor", "0634", ScaleSetupType.Bluetooth, false, createdAt = null),
+    ScaleInfo("All-In-One Bluetooth Blood Pressure Monitor", "0636", ScaleSetupType.Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0661", ScaleSetupType.Bluetooth, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0663", ScaleSetupType.Bluetooth, false, createdAt = null),
+  )

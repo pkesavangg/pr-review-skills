@@ -17,7 +17,6 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Stat
-import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
@@ -105,7 +104,7 @@ constructor(
       is DashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
       is DashboardIntent.ResetDashboard -> showResetDashboardAlert(intent.onConfirm)
       is DashboardIntent.SetPagerState -> handlePagerStateChange(intent.pagerState)
-      is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+      is DashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.MyDevices)
       is DashboardIntent.SetSelectedStat -> setSelectedStat(intent.stat)
       is DashboardIntent.Refresh -> refresh()
 

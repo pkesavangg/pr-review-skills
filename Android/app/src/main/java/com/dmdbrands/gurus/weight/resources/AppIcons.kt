@@ -177,5 +177,9 @@ object AppIcons {
     val wifiAPModeStepOn = R.drawable.stepon_filled_0396
     val WifiAPModeFilled0384 = R.drawable.ap_filled_0384
     val WifiAPModeOutlined0384 = R.drawable.ap_outlined_0384
+
+    val BabyScale = R.drawable.ic_baby_scale
+    val BpmScale = R.drawable.ic_bpm_scale
+    val WeightScale = R.drawable.ic_weight_scale
   }
 }

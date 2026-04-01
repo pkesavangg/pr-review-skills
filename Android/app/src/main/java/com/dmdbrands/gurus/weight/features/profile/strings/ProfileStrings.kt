@@ -10,6 +10,11 @@ object ProfileStrings {
     const val EmailLabel = "EMAIL"
     const val ZipcodeLabel = "ZIPCODE"
     const val BirthdayLabel = "Birthday"
+    const val BiologicalSexLabel = "Biological Sex"
+    const val BiologicalSexNote = "Note: Used by your devices for weight and bp readings."
+    const val HeightLabel = "Height"
+    const val HeightNote = "Note: Used by your devices for weight readings."
+    const val NotSet = "Not Set"
     const val SaveButton = "SAVE"
     const val LoaderMessage = "Saving..."
 

@@ -1,11 +1,21 @@
 package com.dmdbrands.gurus.weight.features.profile.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.Gender
+import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
+import com.dmdbrands.gurus.weight.features.common.components.DialogType
+import com.dmdbrands.gurus.weight.features.common.components.HeightInput
+import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
+import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
@@ -17,6 +27,7 @@ import com.dmdbrands.gurus.weight.features.profile.model.ProfileIntent
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileReducer
 import com.dmdbrands.gurus.weight.features.profile.model.ProfileState
 import com.dmdbrands.gurus.weight.features.profile.strings.ProfileStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUserProfile
 import com.greatergoods.blewrapper.GGDeviceService
@@ -26,21 +37,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
-/**
- * ViewModel for the Profile screen. Handles form state, validation, profile update logic.
- * @property accountService Service for account operations.
- */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
   private val accountService: IAccountService,
-  private val ggDeviceService: GGDeviceService
+  private val ggDeviceService: GGDeviceService,
+  private val bodyCompositionService: IBodyCompositionService,
 ) : BaseIntentViewModel<ProfileState, ProfileIntent>(
   reducer = ProfileReducer(),
 ) {
   private val TAG = "ProfileViewModel"
 
   init {
-    // Load profile data when ViewModel is created
     handleIntent(ProfileIntent.LoadProfile)
   }
 
@@ -50,24 +57,19 @@ class ProfileViewModel @Inject constructor(
     )
   }
 
-  /**
-   * Handles incoming intents and updates the state accordingly.
-   * @param intent The intent to handle.
-   */
   override fun handleIntent(intent: ProfileIntent) {
     super.handleIntent(intent)
     when (intent) {
       is ProfileIntent.LoadProfile -> loadProfile()
       is ProfileIntent.Submit -> onSubmit()
       is ProfileIntent.Success -> onUpdateSuccess()
+      is ProfileIntent.ShowBiologicalSexModal -> showBiologicalSexModal()
+      is ProfileIntent.ShowHeightModal -> showHeightModal()
       is ProfileIntent.OnRequestBack -> onRequestBack()
       else -> Unit
     }
   }
 
-  /**
-   * Loads the current user's profile data.
-   */
   private fun loadProfile() {
     viewModelScope.launch {
       try {
@@ -82,6 +84,9 @@ class ProfileViewModel @Inject constructor(
               birthday = DateTimeValue.Date(
                 DateTimeValue.getEpochMillisFromIsoString(currentAccount.dob),
               ),
+              gender = currentAccount.gender ?: "",
+              height = currentAccount.height ?: 0,
+              weightUnit = currentAccount.weightUnit,
             ),
           )
           AppLog.i(TAG, "Profile data loaded successfully")
@@ -96,10 +101,51 @@ class ProfileViewModel @Inject constructor(
     }
   }
 
-  /**
-   * Handles the profile form submission. Validates the form, shows loading, and attempts to update profile.
-   * On success, shows success message. On failure, shows an error message.
-   */
+  private fun showBiologicalSexModal() {
+    val currentGender = state.value.form.controls.gender.value
+    showRadioGroupModal(
+      dialogService = dialogQueueService,
+      title = RadioGroupModalStrings.Titles.BiologicalSex,
+      options = listOf(
+        RadioButtonOption(Gender.MALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Male),
+        RadioButtonOption(Gender.FEMALE.name.lowercase(), RadioGroupModalStrings.BiologicalSex.Female),
+      ),
+      selectedItem = currentGender.ifEmpty { null },
+      confirmText = RadioGroupModalStrings.Button.Save,
+      onConfirm = { selected ->
+        selected?.let { gender ->
+          state.value.form.controls.gender.onValueChange(gender.toString())
+        }
+      },
+    )
+  }
+
+  private fun showHeightModal() {
+    val currentHeight = state.value.form.controls.height.value
+    val isMetric = state.value.weightUnit == WeightUnit.KG
+
+    val currentHeightInput = HeightInput.fromStoredHeight(
+      storedHeight = if (currentHeight > 0) currentHeight else 1700,
+      isMetric = isMetric,
+    )
+
+    dialogQueueService.enqueue(
+      DialogModel.Custom(
+        contentKey = DialogType.HeightPicker,
+        params = mapOf("value" to currentHeightInput, "confirmText" to RadioGroupModalStrings.Button.Save),
+        onConfirm = { selectedHeight ->
+          if (selectedHeight is HeightInput) {
+            state.value.form.controls.height.onValueChange(selectedHeight.toStoredHeight())
+          }
+        },
+        onDismiss = {
+          dialogQueueService.dismissCurrent()
+        },
+        dismissOnBackPress = true,
+      ),
+    )
+  }
+
   private fun onSubmit() {
     dialogQueueService.showLoader(
       message = ProfileStrings.LoaderMessage,
@@ -113,24 +159,52 @@ class ProfileViewModel @Inject constructor(
 
     val formControls = state.value.form.controls
     viewModelScope.launch {
-      // its an flow
       val currentAccount = accountService.getCurrentAccount() ?: return@launch
+
+      val newGender = formControls.gender.value.ifEmpty { null }
+      val newHeight = formControls.height.value.takeIf { it > 0 }
+
       val profileUpdateRequest = ProfileUpdateRequest(
         id = currentAccount.id,
         firstName = formControls.firstName.value.trim(),
         lastName = formControls.lastName.value.trim(),
         email = formControls.email.value.trim(),
         zipcode = formControls.zipcode.value.trim(),
-        gender = currentAccount.gender,
+        gender = newGender ?: currentAccount.gender,
         dob = DateTimeValue.getDateFormatFromMilliseconds(formControls.birthday.value.getTimestamp()),
       )
       try {
         var scaleResult: GGUserActionResponseType? = null
-        // Use offline handler service similar to Angular implementation
         accountService.updateProfile(profileUpdateRequest, true, showToast = false)
-        if (profileUpdateRequest.dob != currentAccount.dob || profileUpdateRequest.firstName != currentAccount.firstName) {
-          scaleResult = updateR4Profile(currentAccount.toGGBTUserProfile())
+
+        // Update height via body composition if changed
+        val heightChanged = newHeight != null && newHeight != currentAccount.height
+        if (heightChanged) {
+          val bodyComposition = BodyCompUpdateRequest(
+            height = newHeight ?: currentAccount.height ?: 1700,
+            activityLevel = currentAccount.activityLevel ?: "normal",
+            weightUnit = currentAccount.weightUnit.value,
+          )
+          bodyCompositionService.updateBodyComposition(BodyCompUpdateType.HEIGHT, bodyComposition)
         }
+
+        // Update scale profile if gender, dob, name, or height changed
+        val genderChanged = newGender != null && newGender != currentAccount.gender
+        val dobChanged = profileUpdateRequest.dob != currentAccount.dob
+        val nameChanged = profileUpdateRequest.firstName != currentAccount.firstName
+
+        if (dobChanged || nameChanged || genderChanged || heightChanged) {
+          val updatedProfile = currentAccount.toGGBTUserProfile().let { profile ->
+            var updated = profile
+            if (genderChanged) updated = updated.copy(sex = newGender)
+            if (heightChanged) updated = updated.copy(
+              height = ConversionTools.convertStoredHeightToCm(newHeight ?: 1700).toDouble(),
+            )
+            updated
+          }
+          scaleResult = updateR4Profile(updatedProfile)
+        }
+
         if (scaleResult != null) {
           when (scaleResult) {
             GGUserActionResponseType.USER_SELECTION_IN_PROGRESS -> {
@@ -167,25 +241,16 @@ class ProfileViewModel @Inject constructor(
     }
   }
 
-  /**
-   * Called when profile update is successful.
-   */
   private fun onUpdateSuccess() {
-    // Show success message
-    // You might want to navigate back or show a success dialog
     AppLog.i(TAG, "Profile update completed successfully")
   }
 
-  /**
-   * Handles request to exit the profile screen with confirmation dialog.
-   */
   private fun onRequestBack() {
-    // Check if form has been modified to show appropriate dialog
     val hasChanges = state.value.form.isDirty
 
     if (hasChanges) {
       dialogQueueService.enqueue(
-        com.dmdbrands.gurus.weight.features.common.model.DialogModel.Confirm(
+        DialogModel.Confirm(
           title = ProfileStrings.ExitDialog.Title,
           message = ProfileStrings.ExitDialog.Message,
           confirmText = ProfileStrings.ExitDialog.ConfirmText,
@@ -200,15 +265,10 @@ class ProfileViewModel @Inject constructor(
         ),
       )
     } else {
-      // No changes, exit directly
       navigateBack()
     }
   }
 
-  /**
-   * Handles navigation back/exit from profile screen.
-   * Call this when user wants to exit the profile screen.
-   */
   private fun navigateBack() {
     viewModelScope.launch {
       try {

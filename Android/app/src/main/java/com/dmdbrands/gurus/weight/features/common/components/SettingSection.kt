@@ -43,7 +43,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun SettingsSection(
     title: String? = null,
-    items: List<SettingsItem>,
+    hasBottomSpace: Boolean = true,
+    items: List<SettingsItem>
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         if (title != null) {
@@ -66,6 +67,7 @@ fun SettingsSection(
             Column {
                 items.forEachIndexed { index, item ->
                     SettingsItemRow(item)
+
                     if (index < items.size - 1) {
                         HorizontalDivider(
                             thickness = 0.5.dp,
@@ -76,7 +78,10 @@ fun SettingsSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+        Spacer(  modifier = Modifier.then(
+          if (hasBottomSpace) Modifier.height(MeTheme.spacing.lg)
+          else Modifier
+        ))
     }
 }
 
@@ -217,6 +222,7 @@ private fun SettingsItemRow(
                 }
             }
         }
+
     }
 }
 

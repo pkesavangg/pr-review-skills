@@ -119,12 +119,21 @@ class SettingsReducerTest {
     }
 
     @Test
+    fun `SetHasKids updates hasKids`() {
+        val state = SettingsState(hasKids = false)
+
+        val result = reducer.reduce(state, SettingsIntent.SetHasKids(hasKids = true))
+
+        assertThat(result?.hasKids).isTrue()
+    }
+
+    @Test
     fun `navigation-only intents return null — state is unchanged by reducer`() {
         val state = SettingsState()
 
         // Navigation/side-effect intents must not alter state in the reducer
         assertThat(reducer.reduce(state, SettingsIntent.Logout)).isNull()
-        assertThat(reducer.reduce(state, SettingsIntent.OpenAddScales)).isNull()
+      assertThat(reducer.reduce(state, SettingsIntent.OpenMyDevices)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.SwitchAccount)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.OpenPrivacyPolicy)).isNull()
     }
@@ -143,6 +152,7 @@ class SettingsReducerTest {
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
+        assertThat(state.hasKids).isFalse()
     }
 
     @Test
@@ -214,7 +224,7 @@ class SettingsReducerTest {
         assertThat(reducer.reduce(state, SettingsIntent.ConfirmDeleteAccount)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.OpenTermsOfService)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.OpenHelp)).isNull()
-        assertThat(reducer.reduce(state, SettingsIntent.ShowBiologicalSexModal)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.ShowNotificationsModal)).isNull()
+        assertThat(reducer.reduce(state, SettingsIntent.OpenMyKids)).isNull()
     }
 }

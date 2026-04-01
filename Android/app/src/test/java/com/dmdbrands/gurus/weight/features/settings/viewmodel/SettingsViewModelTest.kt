@@ -103,6 +103,7 @@ class SettingsViewModelTest {
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
+        assertThat(state.hasKids).isFalse()
     }
 
     // -------------------------------------------------------------------------
@@ -209,6 +210,17 @@ class SettingsViewModelTest {
         assertThat(viewModel.state.value.isExportEnabled).isTrue()
     }
 
+    @Test
+    fun `SetHasKids updates hasKids`() {
+        viewModel.handleIntent(SettingsIntent.SetHasKids(true))
+        assertThat(viewModel.state.value.hasKids).isTrue()
+    }
+
+    @Test
+    fun `SetHasKids defaults to false`() {
+        assertThat(viewModel.state.value.hasKids).isFalse()
+    }
+
     // -------------------------------------------------------------------------
     // Computed — currentNotificationStatus
     // -------------------------------------------------------------------------
@@ -251,9 +263,9 @@ class SettingsViewModelTest {
 
     @Test
     fun `OpenAddScales navigates to AddEditScales`() = runTest {
-        viewModel.handleIntent(SettingsIntent.OpenAddScales)
+      viewModel.handleIntent(SettingsIntent.OpenMyDevices)
         advanceUntilIdle()
-        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.AddEditScales) }
+      coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
     }
 
     @Test
@@ -334,12 +346,6 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `ShowBiologicalSexModal delegates to profileSettingsManager`() {
-        viewModel.handleIntent(SettingsIntent.ShowBiologicalSexModal)
-        verify { profileSettingsManager.onBiologicalSexClick(any(), any()) }
-    }
-
-    @Test
     fun `ShowActivityLevelModal delegates to profileSettingsManager`() {
         viewModel.handleIntent(SettingsIntent.ShowActivityLevelModal)
         verify { profileSettingsManager.onActivityLevelClick(any(), any()) }
@@ -355,12 +361,6 @@ class SettingsViewModelTest {
     fun `ShowNotificationsModal delegates to notificationSettingsManager`() {
         viewModel.handleIntent(SettingsIntent.ShowNotificationsModal)
         verify { notificationSettingsManager.onNotificationsClick(any(), any()) }
-    }
-
-    @Test
-    fun `ShowHeightModal delegates to profileSettingsManager`() {
-        viewModel.handleIntent(SettingsIntent.ShowHeightModal)
-        verify { profileSettingsManager.onHeightClick(any(), any()) }
     }
 
     @Test
