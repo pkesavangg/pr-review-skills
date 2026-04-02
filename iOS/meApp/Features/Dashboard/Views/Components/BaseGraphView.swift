@@ -969,13 +969,11 @@ extension View {
                         }
                     }
                 }
-            // Add padding to left side of chart area
+            // Always add leading padding so the leftmost visible grid line
+            // never renders flush against the chart edge, regardless of scroll
+            // speed or position.
                 .chartPlotStyle { plot in
-                    if viewModel.isAtLeftBoundary {
-                        plot.padding(.leading, .spacingXS)
-                    } else {
-                        plot
-                    }
+                    plot.padding(.leading, .spacingXS)
                 }
                 .chartXSelection(value: Binding(
                     get: { localSelectedXValue.wrappedValue },
