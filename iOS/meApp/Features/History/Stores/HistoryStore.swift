@@ -11,24 +11,24 @@ import SwiftUI
 /// Store / ViewModel that powers the History feature (monthly summaries, month detail, entry detail, metric info).
 @MainActor
 final class HistoryStore: ObservableObject {
-    
+
     // MARK: - Dependencies
     @Injector var entryService: EntryServiceProtocol
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var productTypeStore: ProductTypeStoreProtocol
-    
+
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
-    
+
     // MARK: - Month Detail State
     @Published private(set) var selectedMonth: HistoryMonth?
     @Published private(set) var entries: [Entry] = []
-    
+
     /// Set of entry ids that are currently expanded in the Month Detail screen.
     @Published var expandedEntries: Set<String> = []
-    
+
     // MARK: - Metric Info State
     @Published private(set) var selectedMetric: BodyMetric?
 
@@ -57,21 +57,21 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
-    
+
     private var cancellables = Set<AnyCancellable>()
-    
+
     // MARK: - Language Strings
     private let alertLang = AlertStrings.self
     private let loaderLang = LoaderStrings.self
     private let toastLang = ToastStrings.self
-    
+
     /// Logger tag for this store
     private let tag = "HistoryStore"
     private var loadedProductTypes: Set<String> = []
     private var monthsLoadTask: Task<Void, Never>?
-    
+
     // MARK: - Init ------------------------------------------------------
-    
+
     init() {
         entryService.entrySaved
             .sink { [weak self] entry in
@@ -134,7 +134,7 @@ final class HistoryStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     // MARK: - Public API --------------------------------------------------
     /// Call onAppear of History list screen.
     func loadMonths() {
@@ -146,7 +146,7 @@ final class HistoryStore: ObservableObject {
         loadedProductTypes.insert(currentId)
         Task { [weak self] in await self?.loadMonthsInternal() }
     }
-    
+
     /// User tapped a month row.
     func selectMonth(_ month: HistoryMonth) {
         selectedMonth = month
@@ -154,22 +154,22 @@ final class HistoryStore: ObservableObject {
             await self?.loadEntries(for: month)
         }
     }
-    
+
     func setSelectedMonth(selectedMonth: HistoryMonth) {
         self.selectedMonth = selectedMonth
         entries = []
     }
-    
+
     func resetSelectedMonth() {
         selectedMonth = nil
         entries = []
     }
-    
+
     /// User tapped a metric inside an expanded entry.
     func selectMetric(_ metric: BodyMetric) {
         selectedMetric = metric
     }
-    
+
     func refreshAllEntries() async {
         invalidateCacheForCurrentType()
         // Refresh account data to ensure we have latest unit settings
@@ -180,7 +180,7 @@ final class HistoryStore: ObservableObject {
             await loadEntries(for: selectedMonth, showLoader: false)
         }
     }
-    
+
     /// Presents a delete entry confirmation alert.
     /// - Parameters:
     ///   - entry: The entry to be deleted.
@@ -205,7 +205,7 @@ final class HistoryStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     // MARK: - Handle export
     func handleExport() {
         let title = isBabyMode
@@ -226,7 +226,7 @@ final class HistoryStore: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     // MARK: - Internal helpers -------------------------------------------
 
     private func updateEmptyStateFromCache() {
@@ -316,7 +316,7 @@ final class HistoryStore: ObservableObject {
         }
         await monthsLoadTask?.value
     }
-    
+
     func loadEntries(for month: HistoryMonth? = nil, showLoader: Bool = true) async {
         let selectedMonth = month ?? self.selectedMonth
         guard let selectedMonth else { return }
@@ -343,7 +343,7 @@ final class HistoryStore: ObservableObject {
             self.entries = []
         }
     }
-    
+
     private func deleteEntryInternal(_ entry: Entry) async {
         do {
             notificationService.showLoader(LoaderModel(text: loaderLang.deletingEntry))
@@ -353,7 +353,7 @@ final class HistoryStore: ObservableObject {
         }
         notificationService.dismissLoader()
     }
-    
+
     // MARK: - Export Data
     private func exportData() {
         Task {
@@ -375,7 +375,7 @@ final class HistoryStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-    
+
     // MARK: - Blood Pressure API
 
     /// User tapped a BP month row.

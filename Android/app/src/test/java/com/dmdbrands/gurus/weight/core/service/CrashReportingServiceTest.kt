@@ -10,9 +10,9 @@ import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.mockk.verify
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 class CrashReportingServiceTest {
 
@@ -21,7 +21,7 @@ class CrashReportingServiceTest {
 
     private lateinit var service: CrashReportingService
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -34,7 +34,7 @@ class CrashReportingServiceTest {
         service = CrashReportingService()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }

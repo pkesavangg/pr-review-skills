@@ -34,3 +34,6 @@ credentials.json
 secrets.json
 GoogleService-Info.plist
 **/GoogleService-Info.plist
+
+# Lefthook local overrides (developer-specific)
+lefthook-local.yml

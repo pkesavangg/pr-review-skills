@@ -214,7 +214,7 @@ final class EntryStore: ObservableObject {
             }
         }
     }
-    
+
     /// Refreshes the weight unit from the active account.
     /// Call this when the view appears to ensure the unit is up-to-date after sync.
     func refreshWeightUnit() {
@@ -307,7 +307,7 @@ final class EntryStore: ObservableObject {
                 self.updateWeightUnitFromAccount(account)
             }
             .store(in: &cancellables)
-        
+
         // Observe NotificationCenter for weightUnit changes (catches cases where @Published doesn't emit)
         NotificationCenter.default.publisher(for: .accountWeightUnitChanged)
             .receive(on: DispatchQueue.main)
@@ -318,10 +318,10 @@ final class EntryStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     @MainActor private func updateWeightUnitFromAccount(_ account: Account?) {
         let unit = account?.weightSettings?.weightUnit ?? .lb
-        
+
         if self.weightUnit != unit {
             self.weightUnit = unit
             self.updateWeightValidators()
@@ -359,7 +359,7 @@ final class EntryStore: ObservableObject {
             case .kg:
                 return weightDouble
             case .lb:
-                return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble))) 
+                return ConversionTools.convertStoredToKg((ConversionTools.convertDisplayToStored(weightDouble)))
             }
         }()
 
@@ -370,7 +370,7 @@ final class EntryStore: ObservableObject {
         manualEntryForm.bmi.value = bmi == 0 ? "" : bmi > maxBmiValue ? String(99.9) : String(bmi)
         if bmi < maxBmiValue { manualEntryForm.bmi.markAsPristine() }
         manualEntryForm.bmi.validate()
-        
+
         // Force UI update to ensure MetricInputField reflects the new BMI value immediately
         self.objectWillChange.send()
     }
