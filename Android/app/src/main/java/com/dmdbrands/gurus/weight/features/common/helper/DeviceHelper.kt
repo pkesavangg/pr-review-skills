@@ -72,6 +72,7 @@ object DeviceHelper {
     "gG BS 0220" to SKU_0220,
     "BS1711-B" to SKU_0220,
     "Smart Blood Pressure Monitor" to SKU_0663,
+    "gG BPM 0663" to SKU_0663,
     "gG BPM 0667" to SKU_0661,
     "gG BPM 0634" to SKU_0634,
     "gG BS 0351" to DEFAULT_SKU,

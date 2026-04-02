@@ -53,4 +53,5 @@ val SCALES =
     ScaleInfo("AccuCheck Verve Smart Scale", "0412", ScaleSetupType.BtWifiR4, true, createdAt = null),
     ScaleInfo("Smart Baby Scale", "0220", ScaleSetupType.BabyScale, false, createdAt = null),
     ScaleInfo("Smart Baby Scale", "0222", ScaleSetupType.BabyScale, false, createdAt = null),
+    ScaleInfo("Smart Blood Pressure Monitor", "0663", ScaleSetupType.Bluetooth, false, createdAt = null),
   )
