@@ -5,7 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
+import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 
 /**
  * Intent for graph actions, defining all possible user interactions and state updates.
@@ -45,4 +45,7 @@ sealed interface GraphIntent : IReducer.Intent {
   object ResetGraph : GraphIntent
 
   data class SetScrollRange(val min: Long, val max: Long, val onFallback: () -> Unit = {}) : GraphIntent
+
+  /** Update visible Y range from ScrollAwareRangeProvider (drives normalization) */
+  data class UpdateVisibleYRange(val minY: Double, val maxY: Double) : GraphIntent
 }

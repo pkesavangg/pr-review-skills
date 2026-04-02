@@ -2,7 +2,9 @@ package com.dmdbrands.gurus.weight.features.common.components.chart.axis
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
@@ -12,20 +14,16 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLabelComponent
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberTop
-import com.patrykandpatrick.vico.compose.common.fill
-import com.patrykandpatrick.vico.core.cartesian.axis.Axis
-import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.core.common.Position
-import android.graphics.Typeface
+import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.compose.common.Fill
 
 @Composable
 internal fun topAxis() = HorizontalAxis.rememberTop(
   label = null,
   line = rememberAxisLineComponent(
-    fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+    fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
     thickness = 1.dp,
   ),
   guideline = null,
@@ -38,8 +36,7 @@ internal fun bottomAxis(
   separators: List<Double> = emptyList(),
   horizontalItemPlacer: HorizontalAxis.ItemPlacer = HorizontalAxis.ItemPlacer.aligned()
 ): Axis<Axis.Position.Horizontal.Bottom> {
-  val resources = LocalResources.current
-  val openSans: Typeface = resources.getFont(R.font.open_sans_semi_bold)
+  val openSansFamily = FontFamily(Font(R.font.open_sans_semi_bold))
 
   return if (segment != GraphSegment.TOTAL)
     HorizontalAxis.rememberBottom(
@@ -48,49 +45,46 @@ internal fun bottomAxis(
           if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
             value.toLong(),
             segment,
-          ).lowercase() else " "
+          ).lowercase() else "–"
         },
       itemPlacer = horizontalItemPlacer,
       guideline = rememberAxisGuidelineComponent(
-        fill = fill(MeTheme.colorScheme.utility),
+        fill = Fill(MeTheme.colorScheme.utility),
         thickness = 1.dp,
       ),
       label = rememberAxisLabelComponent(
-        typeface = openSans,
-        color = MeTheme.colorScheme.textSubheading,
-        textSize = 14.sp,
+        style = TextStyle(
+          fontFamily = openSansFamily,
+          color = MeTheme.colorScheme.textSubheading,
+          fontSize = 14.sp,
+        ),
       ),
       tick = rememberAxisGuidelineComponent(),
       tickLength = 20.dp,
-      horizontalLabelPosition = Position.Horizontal.End,
       line = rememberAxisLineComponent(
-        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+        fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
-      separators = { separators },
+      separators = HorizontalAxis.Separators(
+        values = separators,
+        line = rememberAxisLineComponent(
+          fill = Fill(MeTheme.colorScheme.utility),
+          thickness = 1.dp,
+        ),
+      ),
     )
   else
     HorizontalAxis.rememberBottom(
       guideline = null,
       itemPlacer = horizontalItemPlacer,
-      valueFormatter =
-        CartesianValueFormatter { _, value, _ ->
-          " "
-        },
-      label = rememberAxisLabelComponent(
-        typeface = openSans,
-        color = Color.Transparent,
-        textSize = 14.sp,
-      ),
+      label = null,
       tickLength = 20.dp,
       tick = rememberAxisGuidelineComponent(
-        fill = fill(Color.Transparent),
+        fill = Fill(Color.Transparent),
       ),
-      horizontalLabelPosition = Position.Horizontal.End,
       line = rememberAxisLineComponent(
-        fill = fill(MeTheme.colorScheme.iconSecondaryDisabled),
+        fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
     )
 }
-

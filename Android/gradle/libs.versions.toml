@@ -44,7 +44,7 @@ googleService = "4.4.4"
 protobuf = "0.9.6"
 timber = "5.0.1"
 browser = "1.10.0"
-vico = "3.0.3"
+vico = "4.0.9"
 workRuntimeKtx = "2.11.1"
 ktlint = "14.2.0"
 play-review = "2.0.2"
@@ -62,9 +62,7 @@ owaspDependencyCheck = "12.2.0"
 leakcanary = "2.14"
 
 [libraries]
-vico-core = { module = "com.dmdbrands.lib:vico-core", version.ref = "vico" }
-lib-vico-compose = { module = "com.dmdbrands.lib:vico-compose", version.ref = "vico" }
-lib-vico-compose-m3 = { module = "com.dmdbrands.lib:vico-compose-m3", version.ref = "vico" }
+vico-gg = { module = "com.dmdbrands.lib:compose-android", version.ref = "vico" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activityKtx" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCore" }

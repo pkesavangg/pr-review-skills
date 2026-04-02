@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -22,13 +23,16 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
+import com.patrykandpatrick.vico.compose.cartesian.rememberChartSnapFlingBehavior
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import com.patrykandpatrick.vico.core.cartesian.InterpolationType
-import com.patrykandpatrick.vico.core.cartesian.Scroll
+import com.patrykandpatrick.vico.compose.cartesian.marker.rememberScrubMarkerController
+import com.patrykandpatrick.vico.compose.cartesian.InterpolationType
+import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import android.util.Log
@@ -67,7 +71,7 @@ fun GraphView(
 
   val scope = rememberCoroutineScope()
   val currentDeviceType = getDeviceType()
-  val chartHeight = remember(state.markerIndex) {
+  val chartHeight = remember(currentDeviceType) {
     when (currentDeviceType) {
       DeviceType.Tablet -> 400.dp
       DeviceType.Phone -> 300.dp
@@ -95,28 +99,36 @@ fun GraphView(
     Scroll.Absolute.xWithPadding(initialStartX, startPaddingXStep)
   }
 
-  val snapToLabelFunction: ((Double?, Boolean, Boolean) -> Double)? = remember {
-    { scrolledX, isDrag, isForward ->
-      if (isDrag) {
-        GraphSnapHelper.getSnappedPositionOnDrag(xLabel = scrolledX, segment = segment)
-      } else {
-        GraphSnapHelper.getSnapPositionOnFling(timeStamp = scrolledX, segment = segment, isForward = isForward)
-      }
-    }
-  }
-
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
     initialScroll = initialScroll,
-    snapBehaviorConfig = SnapBehaviorConfig(
-      snapToLabelFunction = snapToLabelFunction,
+  )
+
+  val snapConfig = remember(segment, startPaddingXStep) {
+    SnapBehaviorConfig(
+      snapToLabel = { currentXLabel, projectedXLabel, isDrag, isForward ->
+        if (isDrag) {
+          GraphSnapHelper.getSnappedPositionOnDrag(xLabel = currentXLabel, segment = segment)
+        } else {
+          // Use projectedXLabel for fling — it's where momentum would carry the scroll
+          GraphSnapHelper.getSnapPositionOnFling(
+            timeStamp = projectedXLabel,
+            segment = segment,
+            isForward = isForward,
+          )
+        }
+      },
+      scrollPaddingXStep = startPaddingXStep,
       animation = SnapBehaviorConfig.SnapAnimation(
         snapDurationMillis = 500,
       ),
-    ),
-    scrollStartPaddingXStep = startPaddingXStep,
-    key = segment,
+    )
+  }
+  val flingBehavior = rememberChartSnapFlingBehavior(
+    scrollState = scrollState,
+    config = snapConfig,
   )
+
   val horizontalItemPlacer =
     rememberHorizontalAxisItemPlacer(
       segment = segment,
@@ -137,7 +149,7 @@ fun GraphView(
             val fallbackData = state.createFallBackData(
               segment = segment,
               timeStamps = visibleLabels.map { it.toLong() },
-              fallbackValues = fallbackValues.map { it.map { it.toDouble() } },
+              fallbackValues = fallbackValues.map { list -> list.mapNotNull { it?.toDouble() } },
             )
             viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
           }
@@ -178,17 +190,12 @@ fun GraphView(
     },
   )
 
-  val chart = rememberGraphChart(
-    state = state,
-    defaultMarker = defaultMarker,
-    segment = segment,
-    horizontalItemPlacer = horizontalItemPlacer,
-    fadingEdges = fadingEdges,
-    handleIntent = viewModel::handleIntent,
-    onChartClick = { targets, click ->
-      if (click == null || state.isEmptyGraph) {
+  val scrubController = rememberScrubMarkerController(
+    scrollState = scrollState,
+    onMarkerIndexChanged = { clickX, targets ->
+      if (clickX == null || state.isEmptyGraph) {
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
-        return@rememberGraphChart
+        return@rememberScrubMarkerController null
       }
       val visibleLabels =
         scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
@@ -200,13 +207,13 @@ fun GraphView(
       var markerIndex: Double? = null
       val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
       val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
-      val outOfBoundaryCondition = click !in paddedMinCondition..paddedMaxCondition
+      val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
       if (!outOfBoundaryCondition) {
         val targetMarkerIndex =
           getTargetPoints(
             visibleLabels,
             targets,
-            click,
+            clickX,
             segment,
             paddedMinCondition,
             paddedMaxCondition,
@@ -223,20 +230,27 @@ fun GraphView(
       }
       if (state.markerIndex != markerIndex)
         viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+      markerIndex
     },
   )
-  CartesianChartHost(
-    chart = chart,
-    modelProducer = state.modelProducer,
-    modifier = modifier.height(chartHeight),
-    scrollState = scrollState,
-    animateIn = true,
-    consumeMoveEvents = true,
-    zoomState = rememberVicoZoomState(zoomEnabled = false),
-    onScrollStopped = { range ->
-      if (range != null && segment != GraphSegment.TOTAL) {
-        val min = range.visibleXRange.start.toLong()
-        val max = range.visibleXRange.endInclusive.toLong()
+
+  val chart = rememberGraphChart(
+    state = state,
+    defaultMarker = defaultMarker,
+    segment = segment,
+    horizontalItemPlacer = horizontalItemPlacer,
+    fadingEdges = fadingEdges,
+    handleIntent = viewModel::handleIntent,
+    scrubController = scrubController,
+  )
+  LaunchedEffect(scrollState, segment) {
+    snapshotFlow { scrollState.value }
+      .debounce(100)
+      .collect {
+        if (segment == GraphSegment.TOTAL) return@collect
+        val range = scrollState.visibleXRange ?: return@collect
+        val min = range.start.toLong()
+        val max = range.endInclusive.toLong()
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
@@ -249,9 +263,18 @@ fun GraphView(
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!state.isEmptyGraph)
           viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
+        onChartConsuming(false)
       }
-      onChartConsuming(false)
-    },
+  }
+
+  CartesianChartHost(
+    chart = chart,
+    modelProducer = state.modelProducer,
+    modifier = modifier.height(chartHeight),
+    scrollState = scrollState,
+    animateIn = true,
+    zoomState = rememberVicoZoomState(zoomEnabled = false),
+    flingBehavior = flingBehavior,
   )
 }
 

@@ -60,5 +60,10 @@ class GraphReducer : IReducer<GraphState, GraphIntent> {
       minTarget = intent.min,
       maxTarget = intent.max,
     )
+
+    is GraphIntent.UpdateVisibleYRange -> state.copy(
+      visibleMinY = intent.minY,
+      visibleMaxY = intent.maxY,
+    )
   }
 }

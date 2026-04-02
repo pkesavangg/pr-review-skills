@@ -10,8 +10,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraph
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toWeightGraphPoints
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianRangeValues
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -70,6 +70,8 @@ data class GraphState(
   val isUpdating: Boolean = false,
   val isLoading: Boolean = false,
   val isSingleWindow: Boolean = false,
+  val visibleMinY: Double? = null,
+  val visibleMaxY: Double? = null,
 ) : IReducer.State {
   val graphKey: Int = data.hashCode()
   val graphLines: List<GraphLine> = listOf(this.data.getWeightGraphPoints())
