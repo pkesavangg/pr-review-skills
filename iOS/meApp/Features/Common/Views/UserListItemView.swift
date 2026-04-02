@@ -28,7 +28,7 @@ struct UserListItemView: View {
             .swipeableActions(
                 buttonWidth: swipeButtonWidth,
                 buttons:
-                    !user.canShowSelection || onDelete == nil ? [] : [
+                    onDelete == nil ? [] : [
                         SwipeButton(
                             tint: theme.textError,
                             action: { onDelete?(user.accountID) },
