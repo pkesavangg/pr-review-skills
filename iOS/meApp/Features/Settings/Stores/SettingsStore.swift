@@ -423,6 +423,24 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    // Edit profile form specific display values
+    var editBiologicalSexText: String {
+        editProfileForm.gender.value.rawValue.capitalized
+    }
+
+    var editHeightText: String {
+        let heightStr = editProfileForm.height.value
+        guard !heightStr.isEmpty,
+              let storedDouble = Double(heightStr)
+        else {
+            return ""
+        }
+
+        let storedHeight = Int(round(storedDouble))
+        let isMetric = activeAccount?.weightSettings?.weightUnit == .kg
+        return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
+    }
+
     var weightlessText: String {
         let isOn = activeAccount?.weightlessSettings?.isWeightlessOn ?? false
         let storedWeight = activeAccount?.weightlessSettings?.weightlessWeight
@@ -536,15 +554,25 @@ class SettingsStore: ObservableObject {
             editProfileForm.lastName.value = account.lastName ?? ""
             editProfileForm.email.value = account.email
             editProfileForm.zipcode.value = account.zipcode ?? ""
+            editProfileForm.gender.value = account.gender ?? .male
 
             if let dobString = account.dob, let dob = DateTimeTools.parse(dobString) {
                 editProfileForm.birthday.value = dob
             }
+
+            // Populate height from account (convert to displayed format)
+            if let heightStr = account.weightSettings?.height,
+               let heightDouble = Double(heightStr) {
+                editProfileForm.height.value = String(Int(heightDouble))
+            }
+
             editProfileForm.firstName.markAsPristine()
             editProfileForm.lastName.markAsPristine()
             editProfileForm.email.markAsPristine()
             editProfileForm.zipcode.markAsPristine()
             editProfileForm.birthday.markAsPristine()
+            editProfileForm.gender.markAsPristine()
+            editProfileForm.height.markAsPristine()
             editProfileForm.validate()
         }
     }
@@ -562,22 +590,32 @@ class SettingsStore: ObservableObject {
         let dobChanged = dobValue != (activeAccount?.dob ?? "")
         let shouldUpdateR4Profile = firstNameChanged || dobChanged
 
+        // Convert form height to Double for the profile
+        let formHeightDouble = Double(editProfileForm.height.value) ?? (activeAccount?.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0)
+
         let profile = Profile(
             firstName: firstNameValue,
             lastName: removeWhiteSpace(editProfileForm.lastName.value),
             email: removeWhiteSpace(editProfileForm.email.value),
-            gender: activeAccount?.gender ?? .male,
+            gender: editProfileForm.gender.value,
             zipcode: removeWhiteSpace(editProfileForm.zipcode.value),
             dob: dobValue,
             weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
-            height: activeAccount?.weightSettings.flatMap { Double($0.height ?? "0") } ?? 0.0,
+            height: formHeightDouble,
             activityLevel: activeAccount?.weightSettings?.activityLevel ?? .normal
         )
         Task {
             notificationService.showLoader(LoaderModel(text: LoaderStrings.saving))
             do {
+                logger.log(level: .info, tag: tag, message: "SettingStore_ Saving profile: \(profile)")
                 _ = try await accountService.updateProfile(profile)
-
+                // Also update body composition (height, weightUnit, activityLevel)
+                let bodyComp = BodyComp(
+                    weightUnit: activeAccount?.weightSettings?.weightUnit ?? .lb,
+                    height: formHeightDouble,
+                    activityLevel: activeAccount?.weightSettings?.activityLevel ?? .normal
+                )
+                _ = try await accountService.updateBodyComp(bodyComp)
                 // Only update R4 scales profile if firstName or dob changed
                 if shouldUpdateR4Profile {
                     // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
@@ -981,6 +1019,47 @@ class SettingsStore: ObservableObject {
             notificationService.dismissLoader()
             httpClient.skipCheckNetwork = false
         }
+    }
+
+    // MARK: - Form-Only Update Helpers (for Edit Profile)
+
+    /// Updates gender in the edit form only – does NOT make an API call.
+    /// The API call happens during saveProfile() when the user clicks the Save button.
+    func updateGenderInForm(_ sex: Sex) {
+        editProfileForm.gender.value = sex
+        editProfileForm.gender.markAsDirty()
+    }
+
+    /// Updates height in the edit form only – does NOT make an API call.
+    /// The API call happens during saveProfile() when the user clicks the Save button.
+    func updateHeightInForm(fromMetric: Bool, values: [String]) {
+        // Validate height before updating
+        guard ConversionTools.isValidHeightPickerValues(fromMetric: fromMetric, values: values) else {
+            logger.log(level: .error, tag: tag, message: "Invalid height values rejected: \(values)")
+            return
+        }
+
+        let storedHeight: Int
+        if fromMetric {
+            let cm = Int(values.joined()) ?? 178
+            guard ConversionTools.isValidHeightCm(cm) else {
+                logger.log(level: .error, tag: tag, message: "Invalid cm height rejected: \(cm)")
+                return
+            }
+            storedHeight = ConversionTools.convertCmToStoredHeight(cm)
+        } else {
+            let feet = Int(values[0]) ?? 5
+            let inches = Int(values[1]) ?? 10
+            guard ConversionTools.isValidHeightInches(feet: feet, inches: inches) else {
+                logger.log(level: .error, tag: tag, message: "Invalid feet/inches height rejected: \(feet)'\(inches)\"")
+                return
+            }
+            let totalInches = (feet * 12) + inches
+            storedHeight = ConversionTools.convertInchesToStoredHeight(totalInches)
+        }
+
+        editProfileForm.height.value = String(storedHeight)
+        editProfileForm.height.markAsDirty()
     }
 
     // MARK: - Gender Helpers
