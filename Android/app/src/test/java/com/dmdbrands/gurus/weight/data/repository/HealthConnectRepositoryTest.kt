@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
+import kotlin.test.assertFailsWith
 import java.io.IOException
 
 class HealthConnectRepositoryTest {
@@ -86,14 +87,9 @@ class HealthConnectRepositoryTest {
         val entry = mockk<HealthConnectSyncEntry>(relaxed = true)
         coEvery { healthConnectAPI.sync(entry) } throws IOException("Network error")
 
-        var threw = false
-        try {
+        assertFailsWith<IOException> {
             repository.syncEntry(entry)
-        } catch (e: IOException) {
-            threw = true
         }
-
-        assertThat(threw).isTrue()
     }
 
     // -----------------------------------------------------------------------

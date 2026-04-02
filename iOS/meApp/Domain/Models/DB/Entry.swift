@@ -113,8 +113,8 @@ final class Entry {
             pulse: self.bpmEntry.map { Double($0.pulse) },
             meanArterial: self.bpmEntry?.meanArterial,
             note: self.bpmEntry?.note,
-            source: nil,
-            unit: nil,
+            source: self.scaleEntry?.source,
+            unit: self.scaleEntryMetric?.unit,
             entryTimestamp: self.entryTimestamp,
             operationType: self.operationType,
             serverTimestamp: self.serverTimestamp

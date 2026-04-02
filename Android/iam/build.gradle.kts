@@ -1,11 +1,3 @@
-import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
-import org.gradle.kotlin.dsl.android
-import org.gradle.kotlin.dsl.kotlin
-import org.gradle.kotlin.dsl.libs
-import org.gradle.kotlin.dsl.`maven-publish`
-import org.gradle.kotlin.dsl.protobuf
-import org.gradle.kotlin.dsl.publishing
-
 plugins {
   alias(libs.plugins.android.library)
   alias(libs.plugins.kotlin.android)
@@ -15,6 +7,12 @@ plugins {
   alias(libs.plugins.hilt)
   alias(libs.plugins.ksp)
   `maven-publish`
+}
+
+kotlin {
+  compilerOptions {
+    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+  }
 }
 
 android {
@@ -47,17 +45,9 @@ android {
     targetCompatibility = JavaVersion.VERSION_11
   }
 
-  kotlinOptions {
-    jvmTarget = "11"
-  }
-
   buildFeatures {
     compose = true
     buildConfig = true
-  }
-
-  composeOptions {
-    kotlinCompilerExtensionVersion = "1.5.8"
   }
 
   publishing {
@@ -131,7 +121,7 @@ tasks.withType<Test> {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.3"
+    artifact = "com.google.protobuf:protoc:${libs.versions.protoc.get()}"
   }
   generateProtoTasks {
     all().forEach {

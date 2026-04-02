@@ -9,7 +9,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import android.content.Context
 
-private val Context.goalAlertDataStore: DataStore<GoalAlertProto> by dataStore(
+internal val Context.goalAlertDataStore: DataStore<GoalAlertProto> by dataStore(
   fileName = "goal_alert.pb",
   serializer = GoalAlertProtoSerializer,
 )

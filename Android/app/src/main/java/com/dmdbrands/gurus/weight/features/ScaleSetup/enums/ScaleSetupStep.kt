@@ -75,6 +75,21 @@ enum class LcbtScaleSetupStep : ScaleSetupStep {
 }
 
 /**
+ * Enum for Baby Scale setup flow steps.
+ */
+enum class BabyScaleSetupStep : ScaleSetupStep {
+  SCALE_INFO,
+  PERMISSIONS,
+  WAKEUP,
+  CONNECTING_BLUETOOTH,
+  SCALE_NAME,
+  PAIRED_SUCCESS,
+  BABY_PROFILE_FORM,
+  BABY_LIST,
+  SETUP_FINISHED,
+}
+
+/**
  * Enum for Appsync scale setup flow steps.
  */
 enum class AppsyncScaleSetupStep {

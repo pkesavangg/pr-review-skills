@@ -35,6 +35,10 @@ import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummaries
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.getSourceFromSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -72,6 +76,7 @@ fun DashboardScreen() {
 
   DashboardScreenContent(
     state,
+    productSelectionManager = viewmodel.productSelectionManager,
     showDialog = viewmodel.dialogQueueService::showDialog,
     handleIntent = viewmodel::handleIntent,
   )
@@ -80,9 +85,12 @@ fun DashboardScreen() {
 @Composable
 private fun DashboardScreenContent(
   state: DashboardState,
+  productSelectionManager: IProductSelectionManager? = null,
   showDialog: (DialogModel) -> Unit,
   handleIntent: (DashboardIntent) -> Unit
 ) {
+  val selectedProduct = productSelectionManager?.selectedProduct
+      ?.collectAsStateWithLifecycle()
   val scrollState = rememberScrollState()
   val navBackStack = LocalNavBackStack.current
   var inEditMode by remember { mutableStateOf(false) }
@@ -130,6 +138,14 @@ private fun DashboardScreenContent(
 
   AppScaffold(
     title = null,
+    topBarContent = if (productSelectionManager != null) {
+      {
+        ProductTypeHeader(
+          selectedProduct = selectedProduct?.value,
+          onClick = { productSelectionManager.showProductSheet("Dashboard") },
+        )
+      }
+    } else null,
     onRefresh = {
       handleIntent(DashboardIntent.Refresh)
     },

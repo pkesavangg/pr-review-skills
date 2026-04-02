@@ -352,14 +352,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         }
         
         // Get Y-axis scale from graph manager using the calculated operations (visible + bracketing)
-        let yAxisScale = store.graphManager.getYAxisScale(
-            from: operations,
-            goalWeight: goalWeight,
-            isWeightlessMode: store.isWeightlessModeEnabled,
-            anchorWeight: store.weightlessAnchorWeight,
-            convertWeight: store.goalManager.convertWeightToDisplay,
-            chartHeight: chartFrame.height
-        )
+        let yAxisScale = store.yAxisScale(for: operations, chartHeight: chartFrame.height)
         
         // Animate domain changes smoothly
         self.yAxisDomain = yAxisScale.domain

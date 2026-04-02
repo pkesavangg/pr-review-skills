@@ -106,9 +106,11 @@ final class MockContentViewModelFeedService: FeedServiceProtocol {
 }
 
 @MainActor
-final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'MockContentViewModelScaleService' does not conform to protocol 'ScaleServiceProtocol'
+final class MockContentViewModelScaleService: ScaleServiceProtocol {
     @Published var scales: [Device] = []
     var scalesPublisher: AnyPublisher<[Device], Never> { $scales.eraseToAnyPublisher() }
+
+    func syncDevices(tempDevice: Device?) async throws {}
 
     private(set) var syncAllScalesWithRemoteCalls = 0
 
@@ -117,7 +119,6 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'Mo
     func getConnectedDevices() async -> [String: Any] { [:] }
     func updateConnectedDevices(device: Any, isConnected: Bool) async {}
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {}
-    func syncDevices(tempDevice: Device?) async throws {}
     func createDevice(_ device: Device, _ skipDuplicateCheck: Bool) async throws -> Device { device }
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device {
         throw UnexpectedCallError.methodCalled("editDevice")
@@ -156,7 +157,8 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'Mo
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
+        skipDuplicateCheck: Bool,
+        deviceType: DeviceType = .scale
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createBluetoothScale")
     }
@@ -177,6 +179,7 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'Mo
         syncAllScalesWithRemoteCalls += 1
     }
 
+    func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func pushLocalChangesToServer() async {}
     func getDevice(by deviceId: String) async throws -> Device? { nil }
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {}

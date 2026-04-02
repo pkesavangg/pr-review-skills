@@ -27,15 +27,16 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 import android.content.Context
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DeviceServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -97,7 +98,7 @@ class DeviceServiceTest {
         )
     }
 
-    @Before
+    @BeforeEach
     fun setUp() {
         every { connectivityObserver.getCurrentNetworkState() } returns
             NetworkState(available = true, unAvailable = false)

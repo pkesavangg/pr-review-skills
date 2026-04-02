@@ -69,4 +69,15 @@ object EntryScreenStrings {
 
   const val EntryErrorTitle = "Error saving new entry!"
   const val EntryErrorMessage = "Please try again."
+
+  // Blood pressure
+  const val SYSTOLIC_LABEL = "systolic"
+  const val DIASTOLIC_LABEL = "diastolic"
+  const val PULSE_LABEL = "pulse"
+  const val NOTES_LABEL = "notes"
+
+  // Baby
+  const val POUNDS_LABEL = "pounds"
+  const val OUNCES_LABEL = "ounces"
+  const val INCHES_LABEL = "inches"
 }

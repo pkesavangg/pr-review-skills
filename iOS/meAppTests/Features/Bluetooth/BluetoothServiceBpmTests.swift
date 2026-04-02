@@ -118,15 +118,21 @@ struct BluetoothServiceBpmTests {
         #expect(bpmSkus.contains("0661"))
         #expect(bpmSkus.contains("0634"))
         #expect(bpmSkus.contains("0663"))
-        #expect(bpmSkus.count == 4)
+        #expect(bpmSkus.contains("0604"))
+        #expect(bpmSkus.contains("0636"))
+        #expect(bpmSkus.contains("0664"))
+        #expect(bpmSkus.contains("0665"))
+        #expect(bpmSkus.contains("0667"))
+        #expect(bpmSkus.contains("0639"))
+        #expect(bpmSkus.count == 10)
     }
 
     @Test("BPMS array has correct entries")
     func bpmsArrayEntries() {
-        #expect(BPMS.count == 4)
+        #expect(BPMS.count == 6)
         #expect(BPMS.allSatisfy { $0.setupType == .bpm })
         #expect(BPMS.allSatisfy { $0.bodyComp == false })
-        #expect(BPMS.map(\.sku).sorted() == ["0603", "0634", "0661", "0663"])
+        #expect(BPMS.map(\.sku).sorted() == ["0603", "0604", "0634", "0636", "0661", "0663"])
     }
 
     // MARK: - ScaleInfoUtils BPM Lookup Tests
@@ -138,7 +144,7 @@ struct BluetoothServiceBpmTests {
 
         #expect(bpmInfo != nil)
         #expect(bpmInfo?.setupType == .bpm)
-        #expect(bpmInfo?.productName == "Blood Pressure Monitor")
+        #expect(bpmInfo?.productName == "Smart Wrist Blood Pressure Monitor")
     }
 
     @Test("ScaleInfoUtils isBpmDevice returns true for BPM SKUs")

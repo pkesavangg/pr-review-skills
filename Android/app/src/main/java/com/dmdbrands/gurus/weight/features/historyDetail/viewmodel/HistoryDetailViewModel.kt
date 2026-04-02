@@ -2,9 +2,12 @@ package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -21,39 +24,45 @@ import kotlinx.coroutines.launch
 class HistoryDetailViewModel @AssistedInject constructor(
     private val entryService: IEntryService,
     private val healthConnectService: IHealthConnectService,
+    private val historyService: IHistoryService,
     @Assisted val month: String,
+    @Assisted val productType: ProductType,
 ) : BaseIntentViewModel<HistoryDetailState, HistoryDetailIntent>(HistoryDetailReducer()) {
 
     @AssistedFactory
     interface Factory {
-        fun create(month: String): HistoryDetailViewModel
+        fun create(month: String, productType: ProductType): HistoryDetailViewModel
     }
 
     override fun provideInitialState(): HistoryDetailState = HistoryDetailState()
 
-    init {
-        AppLog.d(TAG, "HistoryDetailViewModel initialized for month: $month")
-        loadHistoryDetail()
+    override fun onDependenciesReady() {
+        AppLog.d(TAG, "HistoryDetailViewModel ready for month: $month")
+        loadDetail()
     }
 
-    private fun loadHistoryDetail() {
-        AppLog.d(TAG, "Loading history details for month: $month")
+    private fun loadDetail() {
+        val product = productSelectionManager.selectedProduct.value
+        AppLog.d(TAG, "Loading ${product.productType} details for key: $month")
         viewModelScope.launch {
             try {
-                entryService.monthDetails(month).collect { entries ->
-                    AppLog.d(TAG, "Received ${entries.size} entries for month: $month")
+                historyService.getDetail(product, month).collect { detail ->
+                    val entries: List<Entry> = when (detail) {
+                        is HistoryDetail.Weight -> detail.entries
+                        is HistoryDetail.BloodPressure -> detail.entries
+                        is HistoryDetail.Baby -> detail.entries
+                    }
                     if (entries.isNotEmpty()) {
-                        val scaleEntries = entries.filterIsInstance<ScaleEntry>()
-                        AppLog.d(TAG, "Filtered to ${scaleEntries.size} scale entries")
-                        handleIntent(HistoryDetailIntent.SetHistoryItems(month, scaleEntries))
+                        AppLog.d(TAG, "Loaded ${entries.size} entries")
+                        handleIntent(HistoryDetailIntent.SetHistoryItems(month, entries))
                     } else {
-                        AppLog.w(TAG, "No entries found for month: $month, navigating back")
-                        navigationService.navigateBack()
+                        AppLog.w(TAG, "No entries found for key: $month")
+                        handleIntent(HistoryDetailIntent.SetError("No entries found"))
                     }
                 }
             } catch (e: Exception) {
-                AppLog.e(TAG, "Error loading history details for month: $month", e)
-                navigationService.navigateBack()
+                AppLog.e(TAG, "Error loading details for key: $month", e)
+                handleIntent(HistoryDetailIntent.SetError(e.message ?: "Unknown error"))
             }
         }
     }
@@ -91,7 +100,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
         }
     }
 
-    private fun showDeleteEntryDialog(entry: ScaleEntry) {
+    private fun showDeleteEntryDialog(entry: Entry) {
         viewModelScope.launch {
             dialogQueueService.showDialog(
                 DialogModel.Confirm(

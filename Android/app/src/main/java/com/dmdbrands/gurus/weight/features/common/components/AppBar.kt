@@ -4,8 +4,10 @@
 package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -39,6 +41,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.typography
 fun AppBar(
     modifier: Modifier = Modifier,
     title: String? = null,
+    topBarContent: (@Composable (() -> Unit))? = null,
     borderColor: Color = colorScheme.utility,
     containerColor: Color = colorScheme.primaryBackground,
     enable: Boolean = false,
@@ -69,14 +72,23 @@ fun AppBar(
                 actionIconContentColor = colorScheme.primaryAction,
             ),
         title = {
-            Text(
-                text = title ?: "",
-                style = typography.heading5,
-                color = colorScheme.textHeading,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { contentDescription = AppBarStrings.AppBarTitleContentDescription },
-            )
+            if (topBarContent != null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) {
+                    topBarContent()
+                }
+            } else {
+                Text(
+                    text = title ?: "",
+                    style = typography.heading5,
+                    color = colorScheme.textHeading,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { contentDescription = AppBarStrings.AppBarTitleContentDescription },
+                )
+            }
         },
         navigationIcon = { navigationIcon?.invoke() },
         actions = { actions?.invoke() },

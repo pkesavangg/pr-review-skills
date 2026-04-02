@@ -28,6 +28,9 @@ enum class ScaleSetupType(
 
   /** AppSync setup type. */
   AppSync("appsync"),
+
+  /** Baby Scale Bluetooth setup type. */
+  BabyScale("babyScale"),
   ;
 
   companion object {
@@ -42,7 +45,7 @@ enum class ScaleSetupType(
     fun toLabel(value: String?): String = when (fromString(value)) {
       Wifi, EspTouchWifi -> ScaleStrings.Wifi
       BtWifiR4 -> ScaleStrings.BluetoothWifi
-      Bluetooth, Lcbt -> ScaleStrings.Bluetooth
+      Bluetooth, Lcbt, BabyScale -> ScaleStrings.Bluetooth
       AppSync -> ScaleStrings.AppSync
       null -> ScaleStrings.Bluetooth // Default fallback
     }
@@ -50,7 +53,7 @@ enum class ScaleSetupType(
     fun toSource(value: String): String = when (fromString(value)) {
       Wifi, EspTouchWifi -> ScaleSourceStrings.Wifi
       BtWifiR4 -> ScaleSourceStrings.BluetoothWifi
-      Bluetooth, Lcbt -> ScaleSourceStrings.Bluetooth
+      Bluetooth, Lcbt, BabyScale -> ScaleSourceStrings.Bluetooth
       AppSync -> ScaleSourceStrings.Appsync
       null -> ScaleSourceStrings.Bluetooth // Default fallback
     }

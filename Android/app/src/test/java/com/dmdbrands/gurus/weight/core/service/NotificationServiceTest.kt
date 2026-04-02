@@ -23,15 +23,16 @@ import io.mockk.slot
 import io.mockk.unmockkAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationServiceTest {
 
-  @get:Rule
+  @JvmField
+  @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
   // --- Mocks ---
@@ -90,7 +91,7 @@ class NotificationServiceTest {
     ),
   )
 
-  @Before
+  @BeforeEach
   fun setUp() {
     mockkObject(AppLog)
     every { AppLog.d(any(), any(), any<String>()) } just Runs
@@ -110,7 +111,7 @@ class NotificationServiceTest {
     )
   }
 
-  @After
+  @AfterEach
   fun tearDown() {
     unmockkAll()
   }
