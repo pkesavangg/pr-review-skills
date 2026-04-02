@@ -59,6 +59,16 @@ For each acceptance criterion (or implicit requirement):
 
 ---
 
+### 3b — Test Coverage Minimum for New Functions
+
+Count the number of new function/method definitions added in the diff (lines matching `^\+.*func ` in non-test files). If **5 or more new functions** are added and the diff contains **zero new test functions** (no `@Test`, no `func test` additions in `meAppTests/`):
+
+Flag as `[High] {N} new functions added with no unit tests. Pure static functions and conversion utilities are the highest-priority candidates for unit testing (roundtrip fidelity, boundary conditions, negative inputs). Recommend adding a test file at meAppTests/Features/{Feature}/{TypeName}Tests.swift`.
+
+This check is **in addition to** the AC-driven coverage check — it catches test debt even when the Jira ticket doesn't explicitly list "write unit tests" as an acceptance criterion.
+
+---
+
 ### 4 — Assess Completeness
 
 After mapping all criteria:
