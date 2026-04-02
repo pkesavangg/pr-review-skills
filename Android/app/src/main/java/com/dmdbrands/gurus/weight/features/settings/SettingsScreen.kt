@@ -78,7 +78,7 @@ fun SettingsScreenContent(
               },
             ),
           )
-          if (state.hasKids) {
+          if (state.isBabyProduct) {
             add(
               SettingsItem(
                 title = SettingsScreenStrings.MyKids,

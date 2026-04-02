@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.services.ICrashReportingService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
@@ -42,7 +43,10 @@ constructor(
     scaleSettingsManager.loadMacAddressSettings(viewModelScope, ::dispatchIntent)
     notificationSettingsManager.initFeedNotificationListener(viewModelScope, ::dispatchIntent)
     dataSettingsManager.observeExportEnabled(viewModelScope, ::dispatchIntent)
-    fetchKids()
+  }
+
+  override fun onDependenciesReady() {
+    observeProductSelection()
   }
 
   override fun handleIntent(intent: SettingsIntent) {
@@ -181,15 +185,11 @@ constructor(
     handleIntent(intent)
   }
 
-  /**
-   * Dummy fetch for kids data. Replace with real API call when available.
-   */
-  private fun fetchKids() {
+  private fun observeProductSelection() {
     viewModelScope.launch {
-      // TODO: Replace with real kids fetch when API is available
-      // Example: val kids = kidsService.getKids()
-      // dispatchIntent(SettingsIntent.SetHasKids(kids.isNotEmpty()))
-      dispatchIntent(SettingsIntent.SetHasKids(false))
+      productSelectionManager.selectedProduct.collect { selection ->
+        dispatchIntent(SettingsIntent.SetIsBabyProduct(selection.productType == ProductType.BABY))
+      }
     }
   }
 

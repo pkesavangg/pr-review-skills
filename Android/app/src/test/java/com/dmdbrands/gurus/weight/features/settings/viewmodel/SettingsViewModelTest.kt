@@ -103,7 +103,7 @@ class SettingsViewModelTest {
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
-        assertThat(state.hasKids).isFalse()
+        assertThat(state.isBabyProduct).isFalse()
     }
 
     // -------------------------------------------------------------------------
@@ -211,14 +211,14 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `SetHasKids updates hasKids`() {
-        viewModel.handleIntent(SettingsIntent.SetHasKids(true))
-        assertThat(viewModel.state.value.hasKids).isTrue()
+    fun `SetIsBabyProduct updates isBabyProduct`() {
+        viewModel.handleIntent(SettingsIntent.SetIsBabyProduct(true))
+        assertThat(viewModel.state.value.isBabyProduct).isTrue()
     }
 
     @Test
-    fun `SetHasKids defaults to false`() {
-        assertThat(viewModel.state.value.hasKids).isFalse()
+    fun `SetIsBabyProduct defaults to false`() {
+        assertThat(viewModel.state.value.isBabyProduct).isFalse()
     }
 
     // -------------------------------------------------------------------------

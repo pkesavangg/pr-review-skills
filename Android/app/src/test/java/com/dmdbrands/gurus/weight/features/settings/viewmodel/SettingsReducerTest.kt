@@ -119,12 +119,12 @@ class SettingsReducerTest {
     }
 
     @Test
-    fun `SetHasKids updates hasKids`() {
-        val state = SettingsState(hasKids = false)
+    fun `SetIsBabyProduct updates isBabyProduct`() {
+        val state = SettingsState(isBabyProduct = false)
 
-        val result = reducer.reduce(state, SettingsIntent.SetHasKids(hasKids = true))
+        val result = reducer.reduce(state, SettingsIntent.SetIsBabyProduct(isBabyProduct = true))
 
-        assertThat(result?.hasKids).isTrue()
+        assertThat(result?.isBabyProduct).isTrue()
     }
 
     @Test
@@ -152,7 +152,7 @@ class SettingsReducerTest {
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
         assertThat(state.isExportEnabled).isFalse()
-        assertThat(state.hasKids).isFalse()
+        assertThat(state.isBabyProduct).isFalse()
     }
 
     @Test

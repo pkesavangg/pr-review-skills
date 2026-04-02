@@ -22,7 +22,7 @@ data class SettingsState(
   val unreadFeedCount: Int = 0,
   val showUnreadFeedIndication: Boolean = false,
   val isExportEnabled: Boolean = false,
-  val hasKids: Boolean = false,
+  val isBabyProduct: Boolean = false,
 ) : IReducer.State {
 
   /**
@@ -81,7 +81,7 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class SetUnreadFeedCount(val count: Int) : SettingsIntent
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
   data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
-  data class SetHasKids(val hasKids: Boolean) : SettingsIntent
+  data class SetIsBabyProduct(val isBabyProduct: Boolean) : SettingsIntent
   object OpenMyKids : SettingsIntent
   object DeleteAccount : SettingsIntent
   object ConfirmDeleteAccount : SettingsIntent
@@ -112,7 +112,7 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
       is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
       is SettingsIntent.SetExportEnabled -> state.copy(isExportEnabled = intent.enabled)
-      is SettingsIntent.SetHasKids -> state.copy(hasKids = intent.hasKids)
+      is SettingsIntent.SetIsBabyProduct -> state.copy(isBabyProduct = intent.isBabyProduct)
       else -> null
       // Add more intent handling as needed
     }

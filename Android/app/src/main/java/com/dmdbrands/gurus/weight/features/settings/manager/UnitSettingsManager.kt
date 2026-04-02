@@ -45,7 +45,7 @@ constructor(
     scope: CoroutineScope,
     stateProvider: () -> SettingsState,
   ) {
-    val hasBabyScale = stateProvider().hasKids
+    val hasBabyScale = stateProvider().isBabyProduct
     val options = buildList {
       add(RadioButtonOption(WeightUnit.LB.value, RadioGroupModalStrings.UnitType.Imperial))
       add(RadioButtonOption(WeightUnit.KG.value, RadioGroupModalStrings.UnitType.Metric))
