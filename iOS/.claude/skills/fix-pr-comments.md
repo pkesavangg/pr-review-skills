@@ -149,7 +149,68 @@ If the build fails after applying a fix:
 
 ---
 
-## Step 5 — Report Results
+## Step 5 — Ask to Commit, Reply, and Resolve
+
+After applying all auto-fixes, ask the user:
+
+> "I've applied N fix(es) across M file(s). Would you like me to:
+> 1. Commit the changes
+> 2. Reply to each PR comment with what was done (or why it was deferred)
+> 3. Resolve the conversation threads
+>
+> Shall I go ahead with all three?"
+
+Wait for the user's answer before proceeding.
+
+### If the user says yes
+
+**Commit** — follow `.claude/skills/commit.md` to stage and commit only the changed files. Do not commit anything else.
+
+**Reply to each comment** — post a reply to every non-skipped comment thread using:
+```bash
+gh api repos/{OWNER}/{REPO}/pulls/{PR_NUMBER}/comments \
+  -X POST \
+  -f body="{REPLY_BODY}" \
+  -F in_reply_to={COMMENT_ID}
+```
+
+Reply content rules:
+- **Auto-fixed:** One sentence describing exactly what changed (e.g. "Implemented — replaced the log with a redacted version logging only `weightUnit` and `activityLevel`; fixed tag typo `SettingStore_` → `SettingsStore`.")
+- **Needs discussion:** One sentence explaining why it was deferred (e.g. "Deferred — `updateGender()` still has callers at lines 1820, 1882, and 1900 for the iPad modal path; needs clarification before removing.")
+- **Auto-fix reverted:** One sentence noting the build failure (e.g. "Reverted — build failed after applying fix; manual review required.")
+
+**Resolve threads** — after posting the reply, resolve each thread using the GraphQL API:
+
+```bash
+# Step 1: get thread IDs
+gh api graphql -f query='
+{
+  repository(owner: "{OWNER}", name: "{REPO}") {
+    pullRequest(number: {PR_NUMBER}) {
+      reviewThreads(first: 50) {
+        nodes { id isResolved comments(first: 1) { nodes { id } } }
+      }
+    }
+  }
+}'
+
+# Step 2: resolve each unresolved thread
+gh api graphql -f query='mutation {
+  resolveReviewThread(input: {threadId: "{THREAD_ID}"}) {
+    thread { isResolved }
+  }
+}'
+```
+
+Match each thread to its comment using the first comment's ID against the comment IDs collected in Step 2. Only resolve threads that received a reply in this session.
+
+### If the user says no
+
+Skip commit, reply, and resolve. Leave everything as unstaged working-tree edits.
+
+---
+
+## Step 6 — Report Results
 
 Output a summary table followed by a deferred-items explanation.
 
@@ -174,15 +235,13 @@ For each "Needs discussion" item, give one sentence explaining why it was deferr
 Auto-fixed: N comments across M files
 Needs discussion: P comments (listed above)
 Skipped: Q comments (bots, praise, resolved)
-
-No changes have been committed. Review the diff with `git diff` before committing.
 ```
 
 ---
 
 ## Guardrails
 
-- **Never commit.** Leave all changes as unstaged working-tree edits for the developer to review.
+- **Never commit without asking.** Always present the summary first and wait for the user's confirmation before committing, replying, or resolving threads.
 - **Never change public protocols.** If a comment touches a `*Protocol.swift` file, it's always "Needs discussion".
 - **Never change test assertions.** Comments in `meAppTests/` or `meAppUITests/` that request assertion changes are always "Needs discussion".
 - **Never change business logic.** If unsure whether something is "business logic", defer it.
