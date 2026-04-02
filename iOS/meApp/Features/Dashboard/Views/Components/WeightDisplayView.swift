@@ -10,14 +10,15 @@ import SwiftUI
 struct WeightDisplayView: View {
     let weightText: String
     let unitText: String
+    var weightColor: Color?
     @Environment(\.appTheme) private var theme
-    
+
     var body: some View {
         HStack(alignment: .lastTextBaseline, spacing: 4) {
             Text(weightText)
                 .fontWeight(.heavy)
                 .fontOpenSans(.heading1)
-                .foregroundColor(theme.textHeading)
+                .foregroundColor(weightColor ?? theme.textHeading)
             Text(unitText)
                 .fontOpenSans(.subHeading2)
                 .foregroundColor(theme.textSubheading)

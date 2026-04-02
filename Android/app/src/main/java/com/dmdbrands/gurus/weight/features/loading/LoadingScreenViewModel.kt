@@ -14,6 +14,8 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -38,10 +40,11 @@ constructor(
   private val entryService: IEntryService,
   private val dashboardService: IDashboardService,
   private val deviceService: IDeviceService,
-  private val deviceInfoService: IDeviceInfoService
+  private val deviceInfoService: IDeviceInfoService,
+  private val productSelectionManager: IProductSelectionManager,
+  private val historyService: IHistoryService,
 ) : ViewModel() {
   private val TAG = "Loadingscreenviewmodel"
-
   init {
     start()
   }
@@ -127,7 +130,9 @@ constructor(
         async { dashboardService.setAccountId(account.id) },
         async { deviceService.setAccountId(account.id) },
         async { deviceInfoService.updateLocalIntegrationInfo() },
+        async { productSelectionManager.loadAvailableProducts(account.id) },
       )
+      historyService.setAccountId(account.id)
     }
   }
 

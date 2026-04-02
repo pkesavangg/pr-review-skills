@@ -30,10 +30,11 @@ import io.mockk.unmockkAll
 import io.mockk.verify
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WifiScaleServiceTest {
@@ -81,7 +82,7 @@ class WifiScaleServiceTest {
         token = testToken,
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -91,11 +92,14 @@ class WifiScaleServiceTest {
 
         every { activity.getSystemService(Context.WIFI_SERVICE) } returns wifiManager
 
-        service = WifiScaleService(wifiSmartConnectManager, deviceService, context, TestScope())
+        service = WifiScaleService(
+            wifiSmartConnectManager, deviceService, context,
+            TestScope(UnconfinedTestDispatcher()),
+        )
         service.initialise(activity)
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }
@@ -125,7 +129,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.Esptouch(EsptouchResult.Success("device", "mac"))
 
         service.connect(validEsptouchInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.Esptouch
         assertThat(captured.params.ssid).isEqualTo(testSsid)
@@ -147,7 +151,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.SmartConfig(SmartConfigResult.Success)
 
         service.connect(validFirstInfo, WifiSetupType.FIRST, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.SmartConfig
         assertThat(captured.params.ssid).isEqualTo(testSsid)
@@ -169,7 +173,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.SmartConfig(SmartConfigResult.Success)
 
         service.connect(joinInfo, WifiSetupType.JOIN, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.SmartConfig
         assertThat(captured.params.ssid).isEqualTo("")
@@ -189,7 +193,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.ApMode(ApConnectResult.Success(byteArrayOf()))
 
         service.connect(validChangeInfo, WifiSetupType.CHANGE, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.ApMode
         assertThat(captured.params.ssid).isEqualTo(testSsid)
@@ -207,7 +211,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.ApMode(ApConnectResult.Success(byteArrayOf()))
 
         service.connect(changeInfo, WifiSetupType.CHANGE, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.ApMode
         assertThat(captured.params.userNumber).isEqualTo(1)
@@ -220,7 +224,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(info, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
     }
@@ -232,7 +236,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(info, WifiSetupType.FIRST, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
     }
@@ -249,7 +253,7 @@ class WifiScaleServiceTest {
 
         var successCalled = false
         service.connect(validEsptouchInfo, WifiSetupType.ESP_TOUCH_WIFI, { successCalled = true }, {})
-        Thread.sleep(300)
+
 
         assertThat(successCalled).isTrue()
     }
@@ -262,7 +266,7 @@ class WifiScaleServiceTest {
 
         var successCalled = false
         service.connect(validFirstInfo, WifiSetupType.FIRST, { successCalled = true }, {})
-        Thread.sleep(300)
+
 
         assertThat(successCalled).isTrue()
     }
@@ -275,7 +279,7 @@ class WifiScaleServiceTest {
 
         var successCalled = false
         service.connect(validChangeInfo, WifiSetupType.CHANGE, { successCalled = true }, {})
-        Thread.sleep(300)
+
 
         assertThat(successCalled).isTrue()
     }
@@ -292,7 +296,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(validEsptouchInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Esptouch connection failed")
         assertThat(errorMsg).contains("timeout")
@@ -306,7 +310,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(validFirstInfo, WifiSetupType.FIRST, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("SmartConfig connection failed")
         assertThat(errorMsg).contains("no response")
@@ -322,7 +326,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.FIRST, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
         assertThat(errorMsg).contains("FIRST")
@@ -334,7 +338,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.JOIN, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
         assertThat(errorMsg).contains("JOIN")
@@ -346,7 +350,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.JOIN, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
     }
@@ -357,7 +361,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.CHANGE, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
         assertThat(errorMsg).contains("CHANGE")
@@ -369,7 +373,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
         assertThat(errorMsg).contains("ESP_TOUCH_WIFI")
@@ -381,7 +385,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
     }
@@ -398,7 +402,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(validEsptouchInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
         assertThat(errorMsg).contains("Connection crashed")
@@ -417,7 +421,7 @@ class WifiScaleServiceTest {
         var successCalled = false
         var errorCalled = false
         service.connect(validEsptouchInfo, WifiSetupType.ESP_TOUCH_WIFI, { successCalled = true }, { errorCalled = true })
-        Thread.sleep(300)
+
 
         assertThat(successCalled).isFalse()
         assertThat(errorCalled).isFalse()
@@ -685,7 +689,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.Esptouch(EsptouchResult.Success("d", "m"))
 
         service.connect(info, WifiSetupType.ESP_TOUCH_WIFI, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.Esptouch
         assertThat(captured.params.password).isEqualTo("")
@@ -700,7 +704,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.SmartConfig(SmartConfigResult.Success)
 
         service.connect(info, WifiSetupType.FIRST, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.SmartConfig
         assertThat(captured.params.password).isEqualTo("")
@@ -715,7 +719,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.ApMode(ApConnectResult.Success(byteArrayOf()))
 
         service.connect(info, WifiSetupType.CHANGE, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.ApMode
         assertThat(captured.params.password).isEqualTo("")
@@ -733,7 +737,7 @@ class WifiScaleServiceTest {
 
         var successCalled = false
         service.connect(validChangeInfo, WifiSetupType.CHANGE, { successCalled = true }, {})
-        Thread.sleep(300)
+
 
         // ApMode branch calls onSuccess unconditionally — caller inspects the buffer/result
         assertThat(successCalled).isTrue()
@@ -749,7 +753,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.FIRST, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
         assertThat(errorMsg).contains("FIRST")
@@ -761,7 +765,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(invalidInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("Connect failed")
     }
@@ -779,7 +783,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.SmartConfig(SmartConfigResult.Success)
 
         service.connect(joinWithSsid, WifiSetupType.JOIN, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.SmartConfig
         assertThat(captured.params.ssid).isEqualTo("JoinNet")
@@ -797,7 +801,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(validJoinInfo, WifiSetupType.JOIN, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("SmartConfig connection failed")
         assertThat(errorMsg).contains("join failed")
@@ -868,7 +872,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.Esptouch(EsptouchResult.Success("d", "m"))
 
         service.connect(validEsptouchInfo, WifiSetupType.ESP_TOUCH_WIFI, {}, {})
-        Thread.sleep(300)
+
 
         coVerify { wifiSmartConnectManager.connect(any(), activity) }
     }
@@ -886,7 +890,7 @@ class WifiScaleServiceTest {
         } returns WifiConnectResult.ApMode(ApConnectResult.Success(byteArrayOf()))
 
         service.connect(info, WifiSetupType.CHANGE, {}, {})
-        Thread.sleep(300)
+
 
         val captured = requestSlot.captured as WifiConnectRequest.ApMode
         assertThat(captured.params.tokenHexString).isEqualTo("")
@@ -920,7 +924,7 @@ class WifiScaleServiceTest {
 
         var errorCalled = false
         service.connect(info, WifiSetupType.FIRST, {}, { errorCalled = true })
-        Thread.sleep(300)
+
 
         assertThat(errorCalled).isFalse()
     }
@@ -934,7 +938,7 @@ class WifiScaleServiceTest {
 
         var errorCalled = false
         service.connect(info, WifiSetupType.JOIN, {}, { errorCalled = true })
-        Thread.sleep(300)
+
 
         assertThat(errorCalled).isFalse()
     }
@@ -948,7 +952,7 @@ class WifiScaleServiceTest {
 
         var errorCalled = false
         service.connect(info, WifiSetupType.CHANGE, {}, { errorCalled = true })
-        Thread.sleep(300)
+
 
         assertThat(errorCalled).isFalse()
     }
@@ -962,7 +966,7 @@ class WifiScaleServiceTest {
 
         var errorCalled = false
         service.connect(info, WifiSetupType.ESP_TOUCH_WIFI, {}, { errorCalled = true })
-        Thread.sleep(300)
+
 
         assertThat(errorCalled).isFalse()
     }
@@ -977,7 +981,7 @@ class WifiScaleServiceTest {
 
         var errorMsg: String? = null
         service.connect(info, WifiSetupType.FIRST, {}, { errorMsg = it })
-        Thread.sleep(300)
+
 
         assertThat(errorMsg).contains("first")
     }

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.testutil
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.viewmodel.BaseViewModel
 import io.mockk.mockk
 
@@ -26,12 +27,14 @@ fun <T : BaseViewModel> T.initTestDependencies(
     navigationService: IAppNavigationService = mockk(relaxed = true),
     dialogQueueService: IDialogQueueService = mockk(relaxed = true),
     customTabManager: ICustomTabManager = mockk(relaxed = true),
+    productSelectionManager: IProductSelectionManager = mockk(relaxed = true),
 ): T {
     val baseClass = BaseViewModel::class.java
     listOf(
         "navigationService" to navigationService,
         "dialogQueueService" to dialogQueueService,
         "customTabManager" to customTabManager,
+        "productSelectionManager" to productSelectionManager,
     ).forEach { (name, mock) ->
         baseClass.getDeclaredField(name).apply {
             isAccessible = true

@@ -702,16 +702,11 @@ final class WifiScaleSetupStore: ObservableObject {
                 Task {
                     await self.pushNotificationService.setupPushNotifications(isFromScaleSetup: true)
                 }
-                
-                // Clear setup in progress flag after scale is saved
-                bluetoothService.isSetupInProgress = false
-                
+                NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
                 logger.log(level: .info, tag: tag, message: "Scale saved successfully with ID: \(response.id) \(scaleItem.sku)")
             } catch {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
-                // Clear setup in progress flag even on error
-                bluetoothService.isSetupInProgress = false
             }
         }
     }

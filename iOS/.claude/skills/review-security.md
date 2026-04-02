@@ -49,6 +49,13 @@ Check new `+` lines for:
 
 Flag as **FAIL** if sensitive data bypasses `KeychainService`.
 
+**For comprehensive storage decision logic, classification of sensitive vs non-sensitive data, and implementation patterns, reference the `/keychain-pattern` skill.** It includes:
+- Storage decision tree (Keychain vs SwiftData vs KvStorage)
+- Tier 1-3 sensitive data classification
+- ✅ correct and ❌ wrong implementation patterns
+- Multi-account Keychain access patterns
+- Security checklist for code review
+
 ---
 
 ### 4. Insecure HTTP URLs

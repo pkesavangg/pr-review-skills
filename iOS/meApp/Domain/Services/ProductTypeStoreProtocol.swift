@@ -17,6 +17,9 @@ protocol ProductTypeStoreProtocol: AnyObject {
     /// Publisher for observing selection changes.
     var selectedItemPublisher: Published<ProductSelection>.Publisher { get }
 
+    /// Publisher for observing item list changes.
+    var availableItemsPublisher: Published<[ProductSelection]>.Publisher { get }
+
     /// Ordered list of items for the dropdown.
     var availableItems: [ProductSelection] { get }
 

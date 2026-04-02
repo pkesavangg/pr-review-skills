@@ -14,6 +14,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Always run `./gradlew assembleDebug` after making changes to verify the build succeeds before considering a task done.
 
+## Pre-commit Hooks (Lefthook)
+
+Pre-commit hooks enforce code quality before every commit. Setup:
+
+```bash
+# Install tools (macOS)
+brew install lefthook detekt
+
+# Activate hooks (run from repo root, one-time setup)
+cd /path/to/meApp && lefthook install
+```
+
+**What runs on commit:**
+- **Detekt CLI** — static analysis on staged `.kt` files (<10s)
+- **Gitleaks** — secrets detection on all staged files (warns if not installed)
+- **JIRA ticket** — validates commit message contains `MA-XXXX`
+
+To bypass in emergencies: `git commit --no-verify`
+
 ## Modules
 
 | Module | Purpose |
@@ -177,3 +196,24 @@ analyticsService.logEvent(
     Bundle().apply { putString(IAnalyticsService.Params.ERROR_TYPE, "http_401") },
 )
 ```
+
+## Room Query Rules
+
+- `PopulatedActiveEntry` queries MUST use `SELECT *` (not `SELECT e.*`) — Room's `@Transaction` + `@Relation` needs full parent columns
+- Filter by related table using subquery (`id IN (SELECT id FROM child_table WHERE ...)`) instead of INNER JOIN when returning `PopulatedActiveEntry`
+- Aggregated queries (returning `HistoryMonth`, `BpHistoryMonth`, etc.) CAN use JOINs and aliases
+- When existing DAO is large (>500 lines), create a separate read-only DAO (e.g., `HistoryDao`)
+
+## Hilt ViewModel Rules
+
+- **Never access `BaseViewModel` `lateinit` fields in `init {}`** — `navigationService`, `dialogQueueService`, `productSelectionManager`, `customTabManager` are field-injected AFTER constructor
+- Use `onDependenciesReady()` override for code that needs BaseViewModel services
+- `viewModelScope.launch` in `init` runs synchronously via `Dispatchers.Main.immediate` — `lateinit` access inside also crashes
+- Don't duplicate-inject services already in `BaseViewModel` — use `onDependenciesReady()` instead
+
+## Data Layer Patterns
+
+- Conversion functions go in `ConversionTools` — not in composables or repositories
+- Sample/mock data lives in **Repository** layer with `USE_SAMPLE_DATA` companion flag — never in ViewModel or Composable
+- Sealed types at service boundary: Repository returns typed, Service wraps in sealed, ViewModel unwraps
+- Prefer `ProductSelection` over `ProductType` + separate params when passing product context

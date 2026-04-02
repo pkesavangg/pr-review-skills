@@ -207,7 +207,8 @@ final class MockPushScaleService: ScaleServiceProtocol {
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
+        skipDuplicateCheck: Bool,
+        deviceType: DeviceType = .scale
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createBluetoothScale")
     }
@@ -223,6 +224,7 @@ final class MockPushScaleService: ScaleServiceProtocol {
     }
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
+    func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
     func pushLocalChangesToServer() async {}
     func getDevice(by deviceId: String) async throws -> Device? { nil }

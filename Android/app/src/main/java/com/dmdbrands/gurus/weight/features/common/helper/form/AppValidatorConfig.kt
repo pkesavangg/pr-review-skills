@@ -89,4 +89,34 @@ class AppValidatorConfig {
     object SKU {
         val PATTERN = Regex("^[0-9]{4}$")
     }
+
+    object Systolic {
+        const val MIN = 60
+        const val MAX = 250
+    }
+
+    object Diastolic {
+        const val MIN = 40
+        const val MAX = 150
+    }
+
+    object Pulse {
+        const val MIN = 30
+        const val MAX = 250
+    }
+
+    object BabyWeightLb {
+        const val MIN = 0
+        const val MAX = 50
+    }
+
+    object BabyWeightOz {
+        const val MIN = 0
+        const val MAX = 15
+    }
+
+    object BabyHeight {
+        const val MIN = 0
+        const val MAX = 60
+    }
 }

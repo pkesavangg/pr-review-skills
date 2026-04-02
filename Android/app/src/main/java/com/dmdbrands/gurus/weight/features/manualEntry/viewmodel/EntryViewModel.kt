@@ -8,6 +8,11 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -45,60 +50,30 @@ constructor(
   reducer = EntryReducer(),
 ) {
   private val TAG = "EntryViewModel"
-  override fun provideInitialState(): EntryState =
-    EntryState(
-      form =
-        MultiFormGroup.create(
-          forms = EntryForm.create(),
-        ),
-    )
+  override fun provideInitialState(): EntryState = EntryState()
 
   init {
+    // Set up continuous flows
     viewModelScope.launch {
-      // Step 1: Check for AppSync data
-      val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
-
-      // Step 2: Create initial form only if no AppSync data
-      if (!hasAppSyncData) {
-        val entryForm = EntryForm.create(
-          includeR4ScaleMetrics = true,
-          weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
-          height = accountService.activeAccountFlow.first()?.height,
-          isValueChangeAllowed = { _, _ ->
-            !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
-          },
-        )
-        handleIntent(
-          EntryIntent.UpdateForm(
-            form = MultiFormGroup.create(forms = entryForm),
-          ),
-        )
-      } else {
-        handleIntent(EntryIntent.UpdateMetricFieldsExpandedStatus(true))
-      }
-
-      // Step 3: Set up continuous flows
-      launch {
-        accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
-          if (it != null) {
-            handleIntent(EntryIntent.UpdateWeightUnit(it))
-          }
-        }
-      }
-
-      launch {
-        deviceService.hasBluetoothWifiScale.collectLatest { hasBluetoothWifiScale ->
-          val dashboardType = if (hasBluetoothWifiScale) {
-            DashboardType.DASHBOARD_12_METRICS
-          } else {
-            DashboardType.DASHBOARD_4_METRICS
-          }
-          handleIntent(EntryIntent.UpdateDashboardType(dashboardType))
+      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
+        if (it != null) {
+          handleIntent(EntryIntent.UpdateWeightUnit(it))
         }
       }
     }
 
-    // Keep AppSync data collection separate
+    viewModelScope.launch {
+      deviceService.hasBluetoothWifiScale.collectLatest { hasBluetoothWifiScale ->
+        val dashboardType = if (hasBluetoothWifiScale) {
+          DashboardType.DASHBOARD_12_METRICS
+        } else {
+          DashboardType.DASHBOARD_4_METRICS
+        }
+        handleIntent(EntryIntent.UpdateDashboardType(dashboardType))
+      }
+    }
+
+    // AppSync data collection
     viewModelScope.launch {
       appSyncService.appSyncDataForEditing.collectLatest { scaleEntry ->
         if (scaleEntry != null) {
@@ -108,11 +83,69 @@ constructor(
     }
   }
 
+  /**
+   * Start observing product selection changes. Called from EntryScreen's
+   * LaunchedEffect so productSelectionManager (field-injected by Hilt
+   * via BaseViewModel) is guaranteed to be initialized.
+   */
+  fun observeProductSelection() {
+    viewModelScope.launch {
+      productSelectionManager.selectedProduct.collectLatest { product ->
+        initProductForm(product)
+      }
+    }
+  }
+
+  private suspend fun initProductForm(product: ProductSelection) {
+    when (product) {
+      is ProductSelection.MyWeight -> {
+        val hasAppSyncData = appSyncService.appSyncDataForEditing.first() != null
+        if (!hasAppSyncData) {
+          val entryForm = EntryForm.create(
+            includeR4ScaleMetrics = true,
+            weightUnit = accountService.activeAccountFlow.first()?.weightUnit,
+            height = accountService.activeAccountFlow.first()?.height,
+            isValueChangeAllowed = { _, _ ->
+              !_state.value.form.forms.generalMetrics.controls.bodyMassIndex.touched
+            },
+          )
+          handleIntent(
+            EntryIntent.UpdateForm(form = MultiFormGroup.create(forms = entryForm)),
+          )
+        } else {
+          handleIntent(EntryIntent.UpdateMetricFieldsExpandedStatus(true))
+        }
+      }
+      is ProductSelection.BloodPressure -> {
+        handleIntent(
+          EntryIntent.UpdateActiveForm(
+            ActiveEntryForm.BloodPressure(
+              form = MultiFormGroup.create(forms = BloodPressureEntryForm.create()),
+            ),
+          ),
+        )
+      }
+      is ProductSelection.Baby -> {
+        handleIntent(
+          EntryIntent.UpdateActiveForm(
+            ActiveEntryForm.Baby(
+              form = MultiFormGroup.create(forms = BabyEntryForm.create()),
+            ),
+          ),
+        )
+      }
+    }
+  }
+
   override fun handleIntent(intent: EntryIntent) {
     super.handleIntent(intent)
     when (intent) {
       is EntryIntent.Save -> {
-        saveEntry()
+        when (_state.value.activeForm) {
+          is ActiveEntryForm.Weight -> saveEntry()
+          is ActiveEntryForm.BloodPressure -> saveBloodPressureEntry()
+          is ActiveEntryForm.Baby -> saveBabyEntry()
+        }
       }
 
       is EntryIntent.UpdateOnRelaunch -> {
@@ -149,7 +182,7 @@ constructor(
   fun initDeactivate(onConfirm: () -> Unit) {
     viewModelScope.launch {
       navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
-        if (state.value.form.isDirty || state.value.form.isTouched) {
+        if (state.value.activeForm.isDirty) {
           return@registerOnDeactivate suspendCancellableCoroutine { cont ->
             var isResumed = false
 
@@ -186,7 +219,7 @@ constructor(
   fun Exit() {
     viewModelScope.launch {
       navigationService.registerOnDeactivate(AppRoute.Main.Entry) {
-        if (state.value.form.isDirty || state.value.form.isTouched) {
+        if (state.value.activeForm.isDirty) {
           return@registerOnDeactivate suspendCancellableCoroutine { cont ->
             var isResumed = false
 
@@ -282,6 +315,105 @@ constructor(
     }
   }
 
+  private fun saveBloodPressureEntry() {
+    val bpForm = (_state.value.activeForm as? ActiveEntryForm.BloodPressure)?.form ?: return
+    dialogQueueService.showLoader(message = DashboardString.Loader.save)
+    viewModelScope.launch {
+      val accountId = accountService.activeAccountFlow.first()?.id ?: return@launch
+      try {
+        val controls = bpForm.forms.bloodPressure.controls
+        val systolic = controls.systolic.value.toIntOrNull() ?: 0
+        val diastolic = controls.diastolic.value.toIntOrNull() ?: 0
+        val pulse = controls.pulse.value.toIntOrNull() ?: 0
+        val meanArterial = ((systolic + 2 * diastolic) / 3).toString()
+        val note = controls.notes.value.ifBlank { null }
+
+        val bpmEntryEntity = BpmEntryEntity(
+          id = 0L,
+          systolic = systolic,
+          diastolic = diastolic,
+          pulse = pulse,
+          meanArterial = meanArterial,
+          note = note,
+        )
+        val entryEntity = EntryEntity(
+          accountId = accountId,
+          entryTimestamp = DateTimeConverter.timestampToIso(System.currentTimeMillis()),
+          operationType = "create",
+          deviceType = "manual",
+          deviceId = "",
+        )
+        val bpmEntry = BpmEntry(
+          entry = entryEntity,
+          bpmEntry = bpmEntryEntity,
+        )
+        entryService.addEntry(entry = bpmEntry)
+        analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
+        dialogQueueService.showToast(
+          Toast(
+            title = EntryScreenStrings.EntryAddedTitle,
+            message = EntryScreenStrings.EntryAdded,
+          ),
+        )
+        // Reset form
+        handleIntent(
+          EntryIntent.UpdateActiveForm(
+            ActiveEntryForm.BloodPressure(
+              form = MultiFormGroup.create(forms = BloodPressureEntryForm.create()),
+            ),
+          ),
+        )
+        deactivate()
+        navigationService.navigateBack(AppRoute.Home)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error saving BP entry: ${e.message}", e)
+        dialogQueueService.showToast(
+          Toast(
+            title = EntryScreenStrings.EntryErrorTitle,
+            message = EntryScreenStrings.EntryErrorMessage,
+          ),
+        )
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
+    }
+  }
+
+  private fun saveBabyEntry() {
+    val babyForm = (_state.value.activeForm as? ActiveEntryForm.Baby)?.form ?: return
+    dialogQueueService.showLoader(message = DashboardString.Loader.save)
+    viewModelScope.launch {
+      try {
+        analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
+        dialogQueueService.showToast(
+          Toast(
+            title = EntryScreenStrings.EntryAddedTitle,
+            message = EntryScreenStrings.EntryAdded,
+          ),
+        )
+        handleIntent(
+          EntryIntent.UpdateActiveForm(
+            ActiveEntryForm.Baby(
+              form = MultiFormGroup.create(forms = BabyEntryForm.create()),
+            ),
+          ),
+        )
+        deactivate()
+        navigationService.navigateBack(AppRoute.Home)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error saving baby entry: ${e.message}", e)
+        dialogQueueService.showToast(
+          Toast(
+            title = EntryScreenStrings.EntryErrorTitle,
+            message = EntryScreenStrings.EntryErrorMessage,
+          ),
+        )
+      } finally {
+        dialogQueueService.dismissLoader()
+      }
+    }
+  }
+
   /**
    * Loads AppSync data into the form for editing, following ProfileViewModel pattern.
    */
@@ -294,7 +426,8 @@ constructor(
         val currentAccount = accountService.activeAccountFlow.first()
         val finalHeight = height ?: currentAccount?.height
 
-        // Dispatch intent with height parameter
+        // Expand metrics and dispatch intent with height parameter
+        handleIntent(EntryIntent.UpdateMetricFieldsExpandedStatus(true))
         handleIntent(
           EntryIntent.LoadAppSyncData(
             scaleEntry = scaleEntry,

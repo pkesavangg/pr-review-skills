@@ -67,7 +67,7 @@ fun SignupScreenContent(
             windowSize.width.toDp() > 600.dp
         }
     val cardAlignment = if (isTablet) CardAlignmentType.TopCenter else CardAlignmentType.TopStart
-    val pagerState = rememberPagerState { state.steps.size }
+    val pagerState = rememberPagerState(pageCount = { state.steps.size })
     // Track if we're currently animating to prevent conflicts
     val isAnimating = remember { mutableStateOf(false) }
     // Sync ViewModel state to Pager state (when ViewModel changes, update pager)
@@ -131,6 +131,7 @@ fun SignupScreenContent(
                     onSkip = { handleIntent(SignupIntent.Skip) },
                     onUrlOpen = { handleIntent(SignupIntent.OpenURL(it)) },
                     onMetricToggle = { handleIntent(SignupIntent.ToggleMetric(it)) },
+                    onIntent = handleIntent,
                 )
                 Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
             }

@@ -26,11 +26,14 @@ import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
+import com.dmdbrands.gurus.weight.features.common.components.ProductSelectionBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.example.nav3integration.rememberTopLevelBackStack
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Main app composable. Sets up theme, navigation, and global dialog queue host.
@@ -64,6 +67,29 @@ fun MeApp() {
         NavHost(topLevelBackStack, appViewModel)
       }
     }
+    // Product Selection Bottom Sheet — controlled by ProductSelectionManager
+    val productManager = appViewModel.productSelectionManager
+    val showProductSheet by productManager.showSheet.collectAsStateWithLifecycle()
+    val productSheetTitle by productManager.sheetTitle.collectAsStateWithLifecycle()
+    val availableProducts by productManager.availableProducts
+        .collectAsStateWithLifecycle()
+    val selectedProduct by productManager.selectedProduct
+        .collectAsStateWithLifecycle()
+
+    if (showProductSheet) {
+      ProductSelectionBottomSheet(
+        title = productSheetTitle,
+        availableProducts = availableProducts,
+        selectedProduct = selectedProduct,
+        onSelect = { selection ->
+          appViewModel.viewModelScope.launch {
+            productManager.selectProduct(selection)
+          }
+        },
+        onDismiss = { productManager.dismissProductSheet() },
+      )
+    }
+
     if (uiState.isScaleDiscovered && uiState.hasScanStarted) {
       val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
       val discoveryTimestamp = uiState.scaleDiscoveredTimestamp

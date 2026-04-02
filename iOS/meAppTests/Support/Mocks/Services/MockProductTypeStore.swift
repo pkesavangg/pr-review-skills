@@ -10,8 +10,10 @@ import Foundation
 @MainActor
 final class MockProductTypeStore: ProductTypeStoreProtocol {
     @Published var selectedItem: ProductSelection = .myWeight
+    @Published var availableItems: [ProductSelection] = [.myWeight]
+
     var selectedItemPublisher: Published<ProductSelection>.Publisher { $selectedItem }
-    var availableItems: [ProductSelection] = [.myWeight]
+    var availableItemsPublisher: Published<[ProductSelection]>.Publisher { $availableItems }
 
     private(set) var selectCalls = 0
     private(set) var autoSelectBabyCalls = 0
