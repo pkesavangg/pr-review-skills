@@ -13,4 +13,7 @@ enum class Gender(
 
     /** Female gender option */
     FEMALE("female"),
+
+    /** Other gender option */
+    OTHER("other"),
 }

@@ -152,14 +152,7 @@ extension BpmSetupStoreTests {
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 
-            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
-            device.broadcastIdString = "ABCD"
-            store.testSetInternalState(
-                discoveredDevice: device,
-                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device)
-            )
-
-            await store.testStartPairing()
+            store.currentStepIndex = BpmSetupStep.measureSetup.index
 
             // Simulate BPM reading received
             bluetooth.newBpmReadingReceivedSubject.send(

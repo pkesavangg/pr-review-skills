@@ -39,7 +39,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onAppearActions: triggers entry data and goal card load")
     func onAppearActionsTriggersDataLoad() async throws {
-        let (store, accountService, entryService, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService
         try await accountService.setActiveAccount(
             DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-load")
         )
@@ -62,7 +62,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onAppearActions: syncs removal state after config load")
     func onAppearActionsSyncsRemovalState() async throws {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         try await accountService.setActiveAccount(
             DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-removal")
         )
@@ -81,7 +81,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onAppearActions: schedules UI update")
     func onAppearActionsSchedulesUIUpdate() async throws {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         try await accountService.setActiveAccount(
             DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-ui-update")
         )
@@ -98,7 +98,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("initializeDashboard: loads dashboard state and exits reset mode")
     func initializeDashboardLoadsState() async {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         await store.lifecycleManager.initializeDashboard()
@@ -115,7 +115,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleActiveAccountChanged: clears chart caches and resets chart init flag")
     func handleActiveAccountChangedClearsCaches() async {
-        let (store, accountService, entryService, cacheManager) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService; let cacheManager = sut.cacheManager
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         let daily = DashboardTestFixtures.makeSortedDailySummaries()
@@ -132,7 +132,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleActiveAccountChanged: clears graph selection")
     func handleActiveAccountChangedClearsSelection() async {
-        let (store, accountService, entryService, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         let daily = DashboardTestFixtures.makeSortedDailySummaries()
@@ -148,7 +148,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleActiveAccountChanged: resets graph ready flag")
     func handleActiveAccountChangedResetsGraphReady() {
-        let (store, _, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store
 
         store.graphManager.state.isGraphReady = true
 
@@ -161,7 +161,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleDashboardTypeChange: propagates dashboard4 type from account")
     func handleDashboardTypeChangePropagatesDashboard4() {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             dashboardType: "dashboard4"
         )
@@ -174,7 +174,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleDashboardTypeChange: propagates dashboard12 type from account")
     func handleDashboardTypeChangePropagatesDashboard12() {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             dashboardType: "dashboard12"
         )
@@ -187,7 +187,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleDashboardTypeChange: defaults to dashboard12 for unknown type")
     func handleDashboardTypeChangeDefaultsToDashboard12() {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             dashboardType: "unknown"
         )
@@ -199,7 +199,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleDashboardTypeChange: defaults to dashboard12 when no account")
     func handleDashboardTypeChangeNoAccount() {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = nil
 
         store.lifecycleManager.handleDashboardTypeChange()
@@ -211,7 +211,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onEntryAdded: invalidates continuous operations cache")
     func onEntryAddedInvalidatesCache() {
-        let (store, _, _, cacheManager) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
         let before = cacheManager.invalidateContinuousOpsCalls
@@ -223,7 +223,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onEntryUpdated: invalidates continuous operations cache")
     func onEntryUpdatedInvalidatesCache() {
-        let (store, _, _, cacheManager) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
         let before = cacheManager.invalidateContinuousOpsCalls
@@ -235,7 +235,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onEntryDeleted: invalidates continuous operations cache")
     func onEntryDeletedInvalidatesCache() {
-        let (store, _, _, cacheManager) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
         let before = cacheManager.invalidateContinuousOpsCalls
@@ -247,7 +247,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onEntryAdded: updates display metrics when chart is initialized")
     func onEntryAddedUpdatesDisplayWhenChartReady() async {
-        let (store, accountService, entryService, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         let daily = DashboardTestFixtures.makeSortedDailySummaries()
@@ -269,7 +269,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onEntryUpdated: keeps matching selected graph point")
     func onEntryUpdatedKeepsMatchingSelectedPoint() async {
-        let (store, accountService, entryService, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         let daily = DashboardTestFixtures.makeSortedDailySummaries()
@@ -290,7 +290,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onEntryDeleted: clears selected point when it no longer exists")
     func onEntryDeletedClearsMissingSelectedPoint() async {
-        let (store, accountService, entryService, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         let daily = Array(DashboardTestFixtures.makeSortedDailySummaries().prefix(2))
@@ -317,7 +317,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleSettingsChange: syncs removal state")
     func handleSettingsChangeSyncsRemovalState() async {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         store.lifecycleManager.handleSettingsChange(shouldRefreshStreak: false)
@@ -333,7 +333,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleUnitChange: triggers streak refresh and UI update")
     func handleUnitChangeTriggers() async throws {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let accountId = "unit-change-success"
         try await accountService.setActiveAccount(
             DashboardStoreTestSupport.makeActiveAccount(id: accountId)
@@ -365,7 +365,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("loadDashboardConfigurationFromAPI: sets hasLoadedDashboardConfig on error with empty metrics")
     func loadConfigSetsLoadedFlagOnError() async {
-        let (store, _, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store
         // No active account, so API calls will fail
         store.metricsManager.state.metrics = []
 
@@ -376,7 +376,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("loadDashboardConfigurationFromAPI: sets up initial metrics on error when metrics are empty")
     func loadConfigSetsUpInitialMetricsOnError() async {
-        let (store, _, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store
         store.metricsManager.state.metrics = []
 
         await store.lifecycleManager.loadDashboardConfigurationFromAPI()
@@ -387,7 +387,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("loadDashboardConfigurationFromAPI: sets hasLoadedProgressMetrics on error")
     func loadConfigSetsProgressMetricsLoadedOnError() async {
-        let (store, _, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store
 
         await store.lifecycleManager.loadDashboardConfigurationFromAPI()
 
@@ -396,7 +396,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("loadDashboardConfigurationFromAPI: sets up initial streak items on error when streaks are empty")
     func loadConfigSetsUpInitialStreakItemsOnError() async {
-        let (store, _, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store
 
         // Clear streak items
         store.streakManager.state.streakItems = []
@@ -411,7 +411,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("refreshDashboardState: schedules UI update")
     func refreshDashboardStateSchedulesUpdate() {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         store.lifecycleManager.refreshDashboardState()
@@ -422,7 +422,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("refreshDashboardState: resets grid layout")
     func refreshDashboardStateResetsGrid() {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         store.lifecycleManager.refreshDashboardState()
@@ -435,7 +435,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("saveChanges: clears selected metric label and drag state")
     func saveChangesClearsSelection() {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         store.state.ui.selectedMetricLabel = DashboardStrings.weight
@@ -447,7 +447,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("saveChanges: success flow exits edit mode and clears snapshot")
     func saveChangesSuccessFlow() async throws {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "lifecycle-save-success")
         try await accountService.setActiveAccount(activeAccount)
 
@@ -468,7 +468,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("saveProgressMetricsToAPI: persists goal and streak order from UI state")
     func saveProgressMetricsToAPIPersistsOrder() async throws {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "lifecycle-progress-save")
         try await accountService.setActiveAccount(activeAccount)
 
@@ -490,7 +490,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("resetDashboard: success flow restores UI defaults and clears snapshot")
     func resetDashboardSuccessFlow() async throws {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let accountId = "reset-success"
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: accountId)
         try await accountService.setActiveAccount(activeAccount)
@@ -531,7 +531,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("resetDashboard: failure flow still clears loading state and snapshot")
     func resetDashboardFailureFlow() async {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = nil
         let notification = makeNotification()
 
@@ -554,7 +554,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("showResetDashboardAlert: presents reset alert and primary action starts reset flow")
     func showResetDashboardAlertPresentsAlert() async {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "reset-alert")
         let notification = makeNotification()
 
@@ -572,7 +572,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("reloadDashboardConfiguration: delegates through sync coordinator and updates state")
     func reloadDashboardConfigurationUpdatesState() async {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "reload-config")
 
         await store.lifecycleManager.reloadDashboardConfiguration(fullRefresh: true, updateMetrics: true)
@@ -582,7 +582,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("onAppearActions: updates display metrics when chart is already initialized")
     func onAppearActionsUpdatesDisplayWhenChartReady() async {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "on-appear-chart")
         store.state.ui.hasInitializedChart = true
 
@@ -598,7 +598,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("refreshAll: re-runs on-appear flow")
     func refreshAllRerunsOnAppearFlow() async {
-        let (store, accountService, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "refresh-all")
 
         await store.lifecycleManager.refreshAll()
@@ -612,7 +612,7 @@ struct DashboardLifecycleManagerTests {
 
     @Test("metric info handlers update UI selection and bindings")
     func metricInfoHandlersUpdateBindings() async {
-        let (store, _, _, _) = makeSUT()
+        let sut = makeSUT(); let store = sut.store
         var selectedEntry: Entry?
         var selectedMetric: BodyMetric?
 

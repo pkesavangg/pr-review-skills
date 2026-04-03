@@ -29,6 +29,7 @@ object ScaleDataHelper {
       when (this.deviceType?.lowercase()) {
         "wifi", "esptouchwifi" -> ScaleSetupType.Wifi
         "bluetooth", "lcbt" -> ScaleSetupType.Bluetooth
+        "babyscale" -> ScaleSetupType.BabyScale
         "btwifir4" -> ScaleSetupType.BtWifiR4
         "appsync" -> ScaleSetupType.AppSync
         else -> ScaleSetupType.Bluetooth // Default fallback
@@ -62,7 +63,7 @@ object ScaleDataHelper {
   fun scaleTypeIcon(setupType: ScaleSetupType): Int =
     when (setupType) {
       ScaleSetupType.Wifi, ScaleSetupType.EspTouchWifi -> AppIcons.Connection.Wifi
-      ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt -> AppIcons.Connection.Bluetooth
+      ScaleSetupType.Bluetooth, ScaleSetupType.Lcbt, ScaleSetupType.BabyScale -> AppIcons.Connection.Bluetooth
       ScaleSetupType.BtWifiR4 -> AppIcons.Connection.BluetoothWifi
       ScaleSetupType.AppSync -> AppIcons.Connection.AppSync
     }

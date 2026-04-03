@@ -46,4 +46,6 @@ data class DeviceEntity(
   val isSynced: Boolean = false,
   val hasServerID: Boolean = false,
   val token: String?,
+  val productType: String? = null,
+  val lastModified: Long? = null,
 )

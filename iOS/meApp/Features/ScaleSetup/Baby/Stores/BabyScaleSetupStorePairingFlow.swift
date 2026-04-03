@@ -20,13 +20,10 @@ extension BabyScaleSetupStore {
         case .wakeup:
             startBluetoothScan()
         case .connectingBluetooth:
-            connectionState = .loading
-            Task {
-                if discoveredScale != nil && discoveryEvent != nil {
-                    await confirmPair()
-                } else {
-                    connectionState = .failure
-                }
+            // Only reached for error display (timeout or pairing failure).
+            // Pairing is triggered directly from device discovery.
+            if discoveredScale == nil || discoveryEvent == nil {
+                connectionState = .failure
             }
         }
     }
@@ -76,7 +73,10 @@ extension BabyScaleSetupStore {
         self.discoveredScale = event.device
 
         if event.isNew {
-            moveToNextStep()
+            Task {
+                connectionState = .loading
+                await confirmPair()
+            }
         } else {
             showKnownScaleAlert()
         }
@@ -108,19 +108,18 @@ extension BabyScaleSetupStore {
                 await saveScale()
                 connectionState = .success
                 scaleSetupError = .none
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    self.navigateToStep(.scaleName)
-                }
+                navigateToStep(.scaleName)
             default:
                 LoggerService.shared.log(level: .error, tag: tag, message: "Baby scale pairing response: \(response)")
                 connectionState = .failure
                 scaleSetupError = .pairingFailed
+                navigateToStep(.connectingBluetooth)
             }
         case .failure(let error):
             LoggerService.shared.log(level: .error, tag: tag, message: "Baby scale pairing failed: \(error)")
             connectionState = .failure
             scaleSetupError = .connectionFailed
+            navigateToStep(.connectingBluetooth)
         }
     }
 

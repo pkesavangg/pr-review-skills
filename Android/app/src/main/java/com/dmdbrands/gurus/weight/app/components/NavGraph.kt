@@ -1,11 +1,11 @@
 package com.dmdbrands.gurus.weight.app.components
 
-import androidx.navigation3.runtime.EntryProviderBuilder
+import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entry
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.features.MyAccounts.screen.MyAccountsScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.AppsyncScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BabyScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtWifiScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.LcbtScaleSetupScreen
@@ -46,7 +46,7 @@ import com.dmdbrands.gurus.weight.features.weightless.screen.WeightlessScreen
  * Registers the entries for the authentication screens.
  *
  */
-fun EntryProviderBuilder<NavKey>.authEntries() {
+fun EntryProviderScope<NavKey>.authEntries() {
   entry<AppRoute.Auth.Landing> { LandingScreen() }
   entry<AppRoute.Auth.Login> { credentials ->
     LoginScreen(credentials.email)
@@ -55,7 +55,7 @@ fun EntryProviderBuilder<NavKey>.authEntries() {
   entry<AppRoute.Auth.MultiAccountLanding> { MultiAccountLandingScreen() }
 }
 
-fun EntryProviderBuilder<NavKey>.topLevelEntries() {
+fun EntryProviderScope<NavKey>.topLevelEntries() {
   entry<AppRoute.Main.Dashboard> { DashboardScreen() }
   entry<AppRoute.Main.History> { HistoryScreen() }
   entry<AppRoute.Main.Entry> { EntryScreen() } // Placeholder for EntryScreen
@@ -63,7 +63,7 @@ fun EntryProviderBuilder<NavKey>.topLevelEntries() {
   entry<AppRoute.Main.AppSync> { AppSync() } // Placeholder for AppSyncScreen
 }
 
-fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
+fun EntryProviderScope<NavKey>.accountSettingsEntries() {
   entry<AppRoute.AccountSettings.Profile> { ProfileScreen() }
   entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
   entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
@@ -80,7 +80,7 @@ fun EntryProviderBuilder<NavKey>.accountSettingsEntries() {
   entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
 }
 
-fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
+fun EntryProviderScope<NavKey>.scaleDetailEntries() {
   entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
     ScaleModeScreen(scaleInfo.scaleId)
   }
@@ -92,12 +92,12 @@ fun EntryProviderBuilder<NavKey>.scaleDetailEntries() {
   }
 }
 
-fun EntryProviderBuilder<NavKey>.integrationEntries() {
+fun EntryProviderScope<NavKey>.integrationEntries() {
   entry<AppRoute.Integration.IntegrationList> { IntegrationScreen() }
   entry<AppRoute.Integration.HealthConnect> { HealthConnectIntegrationScreen() }
 }
 
-fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
+fun EntryProviderScope<NavKey>.scaleSetupEntries() {
   entry<AppRoute.ScaleSetup.BtWifiScaleSetup> { scaleInfo ->
     BtWifiScaleSetupScreen(scaleInfo.sku, scaleInfo.initialStep, scaleInfo.broadcastId, scaleInfo.userList)
   }
@@ -113,9 +113,12 @@ fun EntryProviderBuilder<NavKey>.scaleSetupEntries() {
   entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
     AppsyncScaleSetupScreen(scaleInfo.sku)
   }
+  entry<AppRoute.ScaleSetup.BabyScaleSetup> { scaleInfo ->
+    BabyScaleSetupScreen(scaleInfo.sku, scaleInfo.scaleInfo, scaleInfo.broadcastId, scaleInfo.initialStep)
+  }
 }
 
-fun EntryProviderBuilder<NavKey>.dashboardEntries() {
+fun EntryProviderScope<NavKey>.dashboardEntries() {
   entry<AppRoute.Dashboard.MetricInfo> { metricInfo ->
     MetricInfoScreen(
       info = metricInfo.info,
@@ -125,13 +128,13 @@ fun EntryProviderBuilder<NavKey>.dashboardEntries() {
   }
 }
 
-fun EntryProviderBuilder<NavKey>.historyEntries() {
+fun EntryProviderScope<NavKey>.historyEntries() {
   entry<AppRoute.History.MonthDetails> { monthDetails ->
-    HistoryDetailScreen(monthDetails.month)
+    HistoryDetailScreen(monthDetails.month, monthDetails.productType)
   }
 }
 
-fun EntryProviderBuilder<NavKey>.feedMessagesEntries() {
+fun EntryProviderScope<NavKey>.feedMessagesEntries() {
   entry<AppRoute.Feed.FeedMessages> { AppFeedMessagesScreen() }
   entry<AppRoute.Feed.FeedMessageSetting> { AppFeedMessagesSettingsScreen() }
   entry<AppRoute.Feed.FeedLanding> { FeedLandingScreen() }

@@ -66,6 +66,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             month = month,
+            productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -454,6 +455,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             month = TEST_MONTH,
+            productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -491,6 +493,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             month = TEST_MONTH,
+            productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

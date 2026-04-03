@@ -8,9 +8,11 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
@@ -90,6 +92,7 @@ interface EntryDao {
           insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
           entry.scale.scaleEntryMetric?.let { insertBodyScaleMetric(it.copy(id = entryId)) }
         }
+        is BabyEntry -> insertBabyEntry(entry.babyEntry.copy(id = entryId))
       }
     }
   }
@@ -291,6 +294,9 @@ interface EntryDao {
    */
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun insertBpmList(bpm: List<BpmEntryEntity>)
+
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertBabyEntry(babyEntry: BabyEntryEntity): Long
 
   /**
    * Insert a new BodyScaleEntry entity into the database.

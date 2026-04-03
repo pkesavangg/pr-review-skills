@@ -98,6 +98,13 @@ enum EntryTestFixtures {
             pulse: pulse,
             unit: unit
         )
+        entry.bpmEntry = BPMEntry(
+            systolic: systolic ?? 0,
+            diastolic: diastolic ?? 0,
+            meanArterial: meanArterial ?? "",
+            pulse: pulse ?? 0,
+            note: note ?? ""
+        )
         return entry
     }
 

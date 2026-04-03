@@ -89,6 +89,16 @@ final class EntryRepository: EntryRepositoryProtocol {
                 unit: metric.unit
             )
         }
+        let bpmSystolic = entry.bpmEntry?.systolic
+        let bpmDiastolic = entry.bpmEntry?.diastolic
+        let bpmMeanArterial = entry.bpmEntry?.meanArterial
+        let bpmPulse = entry.bpmEntry?.pulse
+        let bpmNote = entry.bpmEntry?.note
+        let babyEntryBabyId = entry.babyEntry?.babyId
+        let babyEntryLength = entry.babyEntry?.length
+        let babyEntryWeight = entry.babyEntry?.weight
+        let babyEntryNote = entry.babyEntry?.note
+        let babyId = entry.babyId
 
         try await performBackgroundTask { ctx in
             let newEntry = Entry(
@@ -98,7 +108,8 @@ final class EntryRepository: EntryRepositoryProtocol {
                 operationType: operationType,
                 serverTimestamp: serverTimestamp,
                 deviceType: deviceType,
-                isSynced: isSynced
+                isSynced: isSynced,
+                babyId: babyId
             )
             newEntry.isFailedToSync = isFailedToSync
             newEntry.attempts = attempts
@@ -127,6 +138,27 @@ final class EntryRepository: EntryRepositoryProtocol {
                     boneMass: data.boneMass,
                     impedance: data.impedance,
                     unit: data.unit
+                )
+            }
+
+            if let systolic = bpmSystolic, let diastolic = bpmDiastolic,
+               let meanArterial = bpmMeanArterial, let pulse = bpmPulse, let note = bpmNote {
+                newEntry.bpmEntry = BPMEntry(
+                    systolic: systolic,
+                    diastolic: diastolic,
+                    meanArterial: meanArterial,
+                    pulse: pulse,
+                    note: note
+                )
+            }
+
+            if let entryBabyId = babyEntryBabyId, let length = babyEntryLength,
+               let weight = babyEntryWeight, let note = babyEntryNote {
+                newEntry.babyEntry = BabyEntry(
+                    babyId: entryBabyId,
+                    length: length,
+                    weight: weight,
+                    note: note
                 )
             }
 
@@ -565,46 +597,9 @@ final class EntryRepository: EntryRepositoryProtocol {
     }
     
     // MARK: - Sync Helpers
-    
-    /// Sendable data structures for crossing actor boundaries
-    private struct EntryData: Sendable {
-        let id: UUID
-        let accountId: String
-        let entryTimestamp: String
-        let serverTimestamp: String?
-        let operationType: String
-        let deviceType: String
-        let isSynced: Bool
-        let isFailedToSync: Bool
-        let attempts: Int
-        let scaleEntry: ScaleEntryData?
-        let scaleEntryMetric: ScaleMetricData?
-    }
 
-    private struct ScaleEntryData: Sendable {
-        let weight: Int?
-        let bodyFat: Int?
-        let muscleMass: Int?
-        let water: Int?
-        let bmi: Int?
-        let source: String?
-    }
-
-    private struct ScaleMetricData: Sendable {
-        let bmr: Int?
-        let metabolicAge: Int?
-        let proteinPercent: Int?
-        let pulse: Int?
-        let skeletalMusclePercent: Int?
-        let subcutaneousFatPercent: Int?
-        let visceralFatLevel: Int?
-        let boneMass: Int?
-        let impedance: Int?
-        let unit: String?
-    }
-    
     /// Extracts entry data into Sendable structures before crossing actor boundary
-    private func extractEntryData(from entries: [Entry]) -> [EntryData] {
+    private func extractEntryData(from entries: [Entry]) -> [EntrySyncData] {
         return entries.map { entry in
             let scaleEntryData = entry.scaleEntry.map { scaleEntry in
                 ScaleEntryData(
@@ -630,7 +625,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                     unit: metric.unit
                 )
             }
-            return EntryData(
+            return EntrySyncData(
                 id: entry.id,
                 accountId: entry.accountId,
                 entryTimestamp: entry.entryTimestamp,
@@ -640,14 +635,24 @@ final class EntryRepository: EntryRepositoryProtocol {
                 isSynced: entry.isSynced,
                 isFailedToSync: entry.isFailedToSync,
                 attempts: entry.attempts,
+                babyId: entry.babyId,
                 scaleEntry: scaleEntryData,
-                scaleEntryMetric: metricData
+                scaleEntryMetric: metricData,
+                bpmSystolic: entry.bpmEntry?.systolic,
+                bpmDiastolic: entry.bpmEntry?.diastolic,
+                bpmMeanArterial: entry.bpmEntry?.meanArterial,
+                bpmPulse: entry.bpmEntry?.pulse,
+                bpmNote: entry.bpmEntry?.note,
+                babyEntryBabyId: entry.babyEntry?.babyId,
+                babyEntryLength: entry.babyEntry?.length,
+                babyEntryWeight: entry.babyEntry?.weight,
+                babyEntryNote: entry.babyEntry?.note
             )
         }
     }
     
     /// Creates entries in background context from extracted data
-    private func createEntriesInBackground(entriesData: [EntryData]) async throws {
+    private func createEntriesInBackground(entriesData: [EntrySyncData]) async throws {
         try await performBackgroundTask { [self] ctx in
             for data in entriesData {
                 let newEntry = self.createEntry(from: data)
@@ -658,8 +663,8 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
     
-    /// Creates an Entry instance from EntryData
-    private func createEntry(from data: EntryData) -> Entry {
+    /// Creates an Entry instance from EntrySyncData
+    private func createEntry(from data: EntrySyncData) -> Entry {
         let newEntry = Entry(
             id: data.id,
             entryTimestamp: data.entryTimestamp,
@@ -667,7 +672,8 @@ final class EntryRepository: EntryRepositoryProtocol {
             operationType: data.operationType,
             serverTimestamp: data.serverTimestamp,
             deviceType: data.deviceType,
-            isSynced: data.isSynced
+            isSynced: data.isSynced,
+            babyId: data.babyId
         )
         newEntry.isFailedToSync = data.isFailedToSync
         newEntry.attempts = data.attempts
@@ -697,7 +703,28 @@ final class EntryRepository: EntryRepositoryProtocol {
                 unit: mData.unit
             )
         }
-        
+
+        if let systolic = data.bpmSystolic, let diastolic = data.bpmDiastolic,
+           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse, let note = data.bpmNote {
+            newEntry.bpmEntry = BPMEntry(
+                systolic: systolic,
+                diastolic: diastolic,
+                meanArterial: meanArterial,
+                pulse: pulse,
+                note: note
+            )
+        }
+
+        if let entryBabyId = data.babyEntryBabyId, let length = data.babyEntryLength,
+           let weight = data.babyEntryWeight, let note = data.babyEntryNote {
+            newEntry.babyEntry = BabyEntry(
+                babyId: entryBabyId,
+                length: length,
+                weight: weight,
+                note: note
+            )
+        }
+
         return newEntry
     }
 }

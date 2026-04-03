@@ -180,6 +180,11 @@ extension BabyScaleSetupStore {
     // MARK: - Finish
 
     func handleFinish() {
+        guard discoveredScale != nil, discoveryEvent != nil, !isScaleSaved else {
+            performExitCleanup()
+            return
+        }
+
         Task {
             await saveScale()
             performExitCleanup()

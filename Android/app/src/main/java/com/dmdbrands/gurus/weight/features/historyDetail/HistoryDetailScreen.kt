@@ -15,12 +15,17 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEnt
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
-import com.dmdbrands.gurus.weight.features.historyDetail.components.HistoryDetailList
+import com.dmdbrands.gurus.weight.features.historyDetail.components.BabyDayHistoryList
+import com.dmdbrands.gurus.weight.features.historyDetail.components.BpHistoryDetailList
+import com.dmdbrands.gurus.weight.features.historyDetail.components.WeightHistoryDetailList
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailIntent
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailState
 import com.dmdbrands.gurus.weight.features.historyDetail.viewmodel.HistoryDetailViewModel
@@ -30,10 +35,14 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @Composable
-fun HistoryDetailScreen(monthKey: String) {
+fun HistoryDetailScreen(
+    monthKey: String,
+    productType: ProductType =
+        ProductType.MY_WEIGHT,
+) {
     val viewModel: HistoryDetailViewModel = hiltViewModel<HistoryDetailViewModel, HistoryDetailViewModel.Factory>(
         creationCallback = { factory ->
-            factory.create(monthKey)
+            factory.create(monthKey, productType)
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -41,6 +50,7 @@ fun HistoryDetailScreen(monthKey: String) {
 
     HistoryDetailScreenContent(
         state = state,
+        productType = productType,
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.handleIntent(HistoryDetailIntent.Refresh) },
         handleIntent = viewModel::handleIntent,
@@ -50,6 +60,8 @@ fun HistoryDetailScreen(monthKey: String) {
 @Composable
 fun HistoryDetailScreenContent(
     state: HistoryDetailState,
+    productType: ProductType =
+        ProductType.MY_WEIGHT,
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     handleIntent: (HistoryDetailIntent) -> Unit,
@@ -75,16 +87,39 @@ fun HistoryDetailScreenContent(
                 }
 
                 else -> {
-                    HistoryDetailList(
-                        historyDetails = state.historyItems,
-                        itemsOpened = state.itemsOpened,
-                        onItemsOpen = {
-                            handleIntent(HistoryDetailIntent.SetItemsOpened(it))
-                        },
-                        onItemDelete = {
-                            handleIntent(HistoryDetailIntent.DeleteEntry(it))
+                    when (productType) {
+                        ProductType.BLOOD_PRESSURE -> {
+                            BpHistoryDetailList(
+                                entries = state.historyItems.filterIsInstance<BpmEntry>(),
+                                expandedIds = state.itemsOpened,
+                                onToggleExpand = { id ->
+                                    val newIds = if (state.itemsOpened.contains(id)) {
+                                        state.itemsOpened.filter { it != id }
+                                    } else {
+                                        state.itemsOpened + id
+                                    }
+                                    handleIntent(HistoryDetailIntent.SetItemsOpened(newIds))
+                                },
+                            )
                         }
-                    )
+                        ProductType.BABY -> {
+                            BabyDayHistoryList(
+                                entries = state.historyItems.filterIsInstance<BabyEntry>(),
+                            )
+                        }
+                        else -> {
+                            WeightHistoryDetailList(
+                                historyDetails = state.historyItems.filterIsInstance<ScaleEntry>(),
+                                itemsOpened = state.itemsOpened,
+                                onItemsOpen = {
+                                    handleIntent(HistoryDetailIntent.SetItemsOpened(it))
+                                },
+                                onItemDelete = {
+                                    handleIntent(HistoryDetailIntent.DeleteEntry(it))
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }

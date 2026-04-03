@@ -133,7 +133,7 @@ private fun AnimatedMetricItem(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HistoryDetailItemDetails(
+fun WeightHistoryDetailItemDetails(
   item: ScaleEntry,
 ) {
   val metrics = getMetrics(fromScaleEntry(item), showMetricIcon = true)

@@ -32,7 +32,14 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(MockWifiScaleService() as WifiScaleServiceProtocol)
         DependencyContainer.shared.register(MockPushNotificationService() as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelAccountFlagService() as AccountFlagServiceProtocol)
-        DependencyContainer.shared.register(MockProductTypeStore() as ProductTypeStoreProtocol)
+        DependencyContainer.shared.register(MockKvStorageService() as KvStorageServiceProtocol)
+        DependencyContainer.shared.register(MockBabyService() as BabyServiceProtocol)
+        let mockProductTypeStore = MockProductTypeStore()
+        DependencyContainer.shared.register(mockProductTypeStore as ProductTypeStoreProtocol)
+        DependencyContainer.shared.register(mockProductTypeStore)
+        // Also register under the concrete class name for direct injection
+        DependencyContainer.shared.dependencies["ProductTypeStore"] = mockProductTypeStore
+        DependencyContainer.shared.dependencies["meApp.ProductTypeStore"] = mockProductTypeStore
         // Some stores/managers inject concrete dashboard services.
         // Register mock-backed concrete instances to keep tests isolated and avoid DI fatals.
         _ = registerDashboardConcreteDependencies()

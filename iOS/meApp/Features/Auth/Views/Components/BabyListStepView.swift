@@ -26,7 +26,8 @@ struct BabyListStepView: View {
                 Text(title)
                     .fontOpenSans(.heading4)
                     .foregroundColor(theme.textHeading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, .spacingLG)
 
                 // Baby list
                 VStack(spacing: 0) {
@@ -71,6 +72,7 @@ struct BabyListStepView: View {
                 ) {
                     onAddBaby()
                 }
+                .padding(.top, .spacingSM)
             }
         }
     }

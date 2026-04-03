@@ -36,6 +36,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     @Published private(set) var selectedItem: ProductSelection = .myWeight
 
     var selectedItemPublisher: Published<ProductSelection>.Publisher { $selectedItem }
+    var availableItemsPublisher: Published<[ProductSelection]>.Publisher { $availableItems }
 
     private var cancellables = Set<AnyCancellable>()
     private var restoredForAccountId: String?

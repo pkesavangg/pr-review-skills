@@ -521,8 +521,10 @@ struct SignupStoreTests {
     }
 }
 
+// swiftlint:disable large_tuple
 @MainActor
 private func makeSUT() -> (SignupStore, MockAccountService, MockNotificationHelperService, MockLoggerService) {
+    // swiftlint:enable large_tuple
     TestDependencyContainer.reset()
 
     let accountService = MockAccountService()

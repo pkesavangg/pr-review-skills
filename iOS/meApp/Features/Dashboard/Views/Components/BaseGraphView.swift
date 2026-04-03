@@ -8,6 +8,7 @@
 // This file intentionally aggregates common graph rendering logic for all time periods.
 // Breaking it into smaller files would lead to significant code duplication and reduce maintainability.
 // The function body length is justified by the complexity of chart rendering and interaction logic.
+// swiftlint:disable type_body_length function_body_length
 
 import Charts
 import SwiftUI
@@ -881,3 +882,431 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
 }
+
+// MARK: - View Extensions for Conditional Modifiers
+
+extension View {
+
+    // swiftlint:disable cyclomatic_complexity
+    // This function has high complexity due to multiple conditional modifier application
+    // based on scrollability and time period. Splitting would fragment the modifier
+    // application logic and reduce maintainability.
+    @ViewBuilder
+// swiftlint:disable:next function_parameter_count
+    func conditionalModifiers<ViewModel: SectionViewModelProtocol>(
+        isScrollable: Bool,
+        viewModel: ViewModel,
+        localSelectedXValue: Binding<Date?>,
+        dashboardStore: DashboardStore,
+        theme: AppColors.Palette,
+        getCachedXAxisLabel: @escaping (Date) -> String?,
+        isBabyChart: Bool,
+        babyBoundaryYAxisTicks: [Double],
+        babyChartPlotWidth: CGFloat,
+        babyChartPlotHeight: CGFloat
+    ) -> some View {
+        if isScrollable {
+            self
+                .chartXVisibleDomain(length: viewModel.visibleDomainLength)
+                // When there are no operations (empty-state), explicitly pin the
+                // X-axis domain to the current period tick range so labels render
+                // left-to-right (sun → mon → … → sat for week).
+                .conditionalEmptyDomain(viewModel: viewModel)
+                .chartScrollableAxes(.horizontal)
+                .chartScrollPosition(x: Binding(
+                    get: {
+                        viewModel.scrollPosition
+                    },
+                    set: { (newPosition: Date?) in
+                        guard let newPosition = newPosition else { return }
+                        // Throttling is handled in handleScrollPositionChange
+                        viewModel.handleScrollPositionChange(newPosition)
+                    }
+                ))
+                .chartXAxis {
+                    let allTicks = viewModel.xAxisValues
+                    let nonLastTicks = Array(allTicks.dropLast())
+                    let gridTicks: [Date] = {
+                        guard viewModel.timePeriod == .month, !nonLastTicks.isEmpty else {
+                            return nonLastTicks
+                        }
+                        let calendar = Calendar.current
+                        let sortedTicks = nonLastTicks.sorted()
+                        guard let firstTick = sortedTicks.first,
+                              let lastTick = sortedTicks.last else {
+                            return nonLastTicks
+                        }
+
+                        // Ensure month starts are always present as grid ticks so the solid
+                        // month-start line appears for every visible month.
+                        var monthStartTicks: [Date] = []
+                        var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
+                        while currentMonthStart <= lastTick {
+                            let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
+                            monthStartTicks.append(monthStartNoon)
+                            guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
+                            currentMonthStart = next
+                        }
+                        // Deduplicate by calendar day to avoid double lines when two ticks
+                        // represent the same day with different time components.
+                        let combined = nonLastTicks + monthStartTicks
+                        var uniqueByDay: [Date] = []
+                        var seenDays: Set<Date> = []
+                        for tick in combined.sorted() {
+                            let day = calendar.startOfDay(for: tick)
+                            if seenDays.insert(day).inserted {
+                                uniqueByDay.append(tick)
+                            }
+                        }
+                        return uniqueByDay
+                    }()
+                    // Use ticks as-is; we keep Saturday visible via a phantom extra tick in data
+                    let adjustedLabelTicks: [Date] = {
+                        if viewModel.timePeriod == .year {
+                            return nonLastTicks
+                        }
+                        return allTicks
+                    }()
+                    let renderedGridTicks: [Date] = {
+                        if isBabyChart && viewModel.hasXAxis {
+                            return Array(gridTicks.dropLast())
+                        }
+                        return gridTicks
+                    }()
+                    // Grid lines and ticks for all but the last value (to avoid the trailing thick edge)
+                    AxisMarks(values: renderedGridTicks) { value in
+                        if let date = value.as(Date.self), viewModel.shouldShowSolidLine(for: date) {
+                            // Solid line for start of week/month/year
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            // For month-start lines, show the tick below X-axis only when
+                            // the 1st day of month is also Sunday.
+                            if viewModel.timePeriod == .month {
+                                let calendar = Calendar.current
+                                let comps = calendar.dateComponents([.day, .weekday], from: date)
+                                let isMonthStartSunday = (comps.day == 1 && comps.weekday == 1)
+                                if isMonthStartSunday {
+                                    AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                        .foregroundStyle(theme.statusIconSecondaryDisabled)
+                                } else {
+                                    AxisTick().foregroundStyle(.clear)
+                                }
+                            } else {
+                                AxisTick(stroke: StrokeStyle(lineWidth: 1, dash: []))
+                                    .foregroundStyle(theme.statusIconSecondaryDisabled)
+                            }
+                        } else {
+                            // Default dotted line for other grid lines
+                            AxisGridLine()
+                            AxisTick()
+                        }
+                    }
+
+                    // Labels for all tick values
+                    AxisMarks(values: adjustedLabelTicks) { value in
+                        if viewModel.timePeriod == .month {
+                            // Hide default tick/gridline for month label marks so
+                            // month-start solid lines do not appear below the X-axis.
+                            AxisGridLine().foregroundStyle(.clear)
+                            AxisTick().foregroundStyle(.clear)
+                        }
+                        AxisValueLabel {
+                            if let date = value.as(Date.self),
+                               let labelString = getCachedXAxisLabel(date) {
+                                if viewModel.timePeriod == .month {
+                                    Text(labelString)
+                                        .font(.caption)
+                                        .foregroundColor(theme.textSubheading)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                        .padding(.horizontal, 2)
+                                        .background(theme.textInverse)
+                                } else {
+                                    Text(labelString)
+                                        .font(.caption)
+                                        .foregroundColor(theme.textSubheading)
+                                }
+                            }
+                        }
+                    }
+                }
+            // Always add leading padding so the leftmost visible grid line
+            // never renders flush against the chart edge, regardless of scroll
+            // speed or position.
+                .chartPlotStyle { plot in
+                    if isBabyChart {
+                        plot
+                            .frame(width: babyChartPlotWidth, height: babyChartPlotHeight)
+                            .overlay {
+                                if viewModel.hasXAxis {
+                                    SnapshotChartPlotBorderView(
+                                        color: theme.statusIconSecondaryDisabled,
+                                        yDomain: viewModel.yAxisDomain,
+                                        yTicks: viewModel.yAxisTicks,
+                                        showHorizontalGridLines: false,
+                                        visibleHorizontalTicks: babyBoundaryYAxisTicks
+                                    )
+                                }
+                            }
+                    } else {
+                        plot.padding(.leading, .spacingXS)
+                    }
+                }
+                .chartXSelection(value: Binding(
+                    get: { localSelectedXValue.wrappedValue },
+                    set: { newValue in
+                        // Disable selection when there's no data
+                        if viewModel.chartOperations.isEmpty {
+                            localSelectedXValue.wrappedValue = nil
+                            viewModel.clearSelection()
+                            return
+                        }
+                        // Only handle selection if not actively scrolling
+                        guard !viewModel.isScrolling else { return }
+                        // Only update selection if we have a valid value
+                        if let selectedDate = newValue {
+                            localSelectedXValue.wrappedValue = newValue
+                            viewModel.handleChartSelection(at: newValue)
+                            // If the view-model decided there is no value at this position,
+                            // do not show crosshair nor propagate a selection to the store.
+                            if viewModel.showCrosshair {
+                                // Use view model's preferredSelectedDate if provided, else fallback to raw selection
+                                let dateToSend = viewModel.preferredSelectedDate ?? selectedDate
+                                Task {
+                                    await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
+                                }
+                            } else {
+                                // Clear any previous selection in the store
+                                Task {
+                                    await dashboardStore.chartManager.handleChartSelection(at: nil)
+                                }
+                            }
+                        }
+                    }
+                ))
+                // Immediate tap selection - bypasses scroll/selection disambiguation delay
+                .chartGesture { proxy in
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            guard !viewModel.chartOperations.isEmpty else { return }
+                            guard !viewModel.isScrolling else { return }
+                            if let date: Date = proxy.value(atX: value.location.x) {
+                                localSelectedXValue.wrappedValue = date
+                                viewModel.handleChartSelection(at: date)
+                                if viewModel.showCrosshair {
+                                    let dateToSend = viewModel.preferredSelectedDate ?? date
+                                    Task {
+                                        await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
+                                    }
+                                } else {
+                                    // Clear any previous selection in the store
+                                    Task {
+                                        await dashboardStore.chartManager.handleChartSelection(at: nil)
+                                    }
+                                }
+                            }
+                        }
+                }
+        } else {
+            // For non-scrollable (Total) view
+            self
+                .chartXScale(domain: viewModel.dateRange)
+                .chartXAxis {
+                    // Reserve space for X-axis to keep chart height consistent with other sections
+                    AxisMarks(position: .bottom) { _ in
+                        // Hide grid/ticks but keep label height via an invisible label
+                        AxisGridLine().foregroundStyle(.clear)
+                        AxisTick().foregroundStyle(.clear)
+                        AxisValueLabel {
+                            Text("00")
+                                .font(.caption)
+                                .opacity(0) // invisible but reserves height
+                        }
+                    }
+                }
+                .chartXSelection(value: Binding(
+                    get: { localSelectedXValue.wrappedValue },
+                    set: { newValue in
+
+                        // Disable selection when there's no data
+                        if viewModel.chartOperations.isEmpty {
+                            localSelectedXValue.wrappedValue = nil
+                            viewModel.clearSelection()
+                            return
+                        }
+                        viewModel.handleChartSelection(at: newValue)
+
+                        // Update dashboard store selection using snapped date when available
+                        if let rawDate = newValue {
+                            if viewModel.showCrosshair {
+                                let dateToSend = viewModel.preferredSelectedDate ?? rawDate
+                                localSelectedXValue.wrappedValue = dateToSend
+                                Task {
+                                    await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
+                                }
+                            } else {
+                                localSelectedXValue.wrappedValue = nil
+                                Task { await dashboardStore.chartManager.handleChartSelection(at: nil) }
+                            }
+                        } else {
+                            localSelectedXValue.wrappedValue = nil
+                        }
+                    }
+                ))
+                // Immediate tap selection - bypasses scroll/selection disambiguation delay
+                .chartGesture { proxy in
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            guard !viewModel.chartOperations.isEmpty else { return }
+                            if let date: Date = proxy.value(atX: value.location.x) {
+                                viewModel.handleChartSelection(at: date)
+                                if viewModel.showCrosshair {
+                                    let dateToSend = viewModel.preferredSelectedDate ?? date
+                                    localSelectedXValue.wrappedValue = dateToSend
+                                    Task {
+                                        await dashboardStore.chartManager.handleChartSelection(at: dateToSend)
+                                    }
+                                } else {
+                                    localSelectedXValue.wrappedValue = nil
+                                    // Clear any previous selection in the store
+                                    Task {
+                                        await dashboardStore.chartManager.handleChartSelection(at: nil)
+                                    }
+                                }
+                            }
+                        }
+                }
+        }
+    }
+    // swiftlint:enable cyclomatic_complexity
+
+    /// Applies a fixed X-axis domain using the period tick range when there are no operations.
+    /// This ensures labels render left-to-right (e.g., Sun → Sat) with no plotted data.
+    @ViewBuilder
+    func conditionalEmptyDomain<ViewModel: SectionViewModelProtocol>(viewModel: ViewModel) -> some View {
+        if viewModel.hasXAxis && viewModel.chartOperations.isEmpty {
+            let ticks = viewModel.xAxisValues.sorted()
+            if let first = ticks.first, let last = ticks.last, first < last {
+                self.chartXScale(domain: first...last)
+            } else {
+                self
+            }
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func conditionalPreferenceChange(isScrollable: Bool, dashboardStore: DashboardStore) -> some View {
+        if isScrollable {
+            self.onPreferenceChange(AnnotationHeightKey.self) { height in
+                dashboardStore.state.graph.annotationHeight = height
+            }
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func conditionalTouchModifiers(
+        isScrollable: Bool,
+        localSelectedXValue: Binding<Date?>,
+        dashboardStore: DashboardStore
+    ) -> some View {
+        if isScrollable {
+            self
+                .modifier(
+                    ScrollDetectionModifier(
+                        dashboardStore: dashboardStore,
+                        selectedXValue: localSelectedXValue
+                    )
+                )
+        } else {
+            self
+        }
+    }
+
+    /// Returns the appropriate chart scroll target behavior based on the time period
+    /// - Parameter period: The time period for the chart
+    /// - Returns: PagedChartScrollBehavior with paging support + date alignment
+    func getChartScrollBehavior(for period: TimePeriod) -> PagedChartScrollBehavior {
+        switch period {
+        case .week:
+            // For week view: align to start of week (Sunday)
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(hour: 6, weekday: 1) // Sunday = 1
+            )
+        case .month:
+            // For month view: align to start of month (1st day)
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(day: 31, hour: 12)
+            )
+        case .year:
+            // For year view: align strictly to month ticks (1st day, local noon)
+            // so snapping always lands on month grid lines (e.g., Oct 2025, Nov 2025).
+            return PagedChartScrollBehavior(
+                matching: DateComponents(day: 1, hour: 12),
+                majorAlignment: DateComponents(month: 1, day: 1, hour: 12)
+            )
+        case .total:
+            // For total view: no specific alignment needed (non-scrollable)
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 0),
+                majorAlignment: DateComponents(hour: 0)
+            )
+        }
+    }
+
+    @ViewBuilder
+    func conditionalScrollSyncing<ViewModel: SectionViewModelProtocol>(
+        isScrollable: Bool,
+        viewModel: ViewModel,
+        dashboardStore: DashboardStore,
+        localSelectedXValue: Binding<Date?>
+    ) -> some View {
+        if isScrollable {
+            self
+                .onChange(of: dashboardStore.state.graph.xScrollPosition) { _, newPosition in
+                    // Only sync if position actually changed (programmatic navigation)
+                    // Skip if viewModel already has this position to avoid redundant updates
+                    guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.1 else { return }
+                    viewModel.updateScrollPosition(to: newPosition)
+                }
+                .onChange(of: dashboardStore.state.graph.isScrolling) { _, newValue in
+                    viewModel.isScrolling = newValue
+                    // Immediately clear local selection when scrolling starts to remove crosshair and label
+                    if newValue {
+                        localSelectedXValue.wrappedValue = nil
+                        // Also clear the view model's selection state immediately
+                        viewModel.clearSelection()
+                    }
+                }
+                .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
+                    // Clear local selection when period changes (similar to scrolling behavior)
+                    localSelectedXValue.wrappedValue = nil
+                    viewModel.clearSelection()
+                }
+            // CRITICAL: Sync Y-axis domain and ticks from dashboard store cache
+                .onChange(of: dashboardStore.state.graph.cachedYAxisDomain) { _, _ in
+                    viewModel.syncYAxisFromStore()
+                }
+                .onChange(of: dashboardStore.state.graph.cachedYAxisTicks) { _, _ in
+                    viewModel.syncYAxisFromStore()
+                }
+        } else {
+            self
+        }
+    }
+}
+
+#Preview {
+    BaseGraphView(
+        viewModel: WeekSectionViewModel(),
+        dashboardStore: DashboardStore()
+    )
+    .frame(height: 265)
+    .padding()
+}
+// swiftlint:disable:next file_length
+// swiftlint:enable type_body_length function_body_length

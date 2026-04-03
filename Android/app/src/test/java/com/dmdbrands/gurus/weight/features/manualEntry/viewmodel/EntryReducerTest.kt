@@ -33,7 +33,7 @@ class EntryReducerTest {
 
     @Test
     fun `UpdateWeightUnit sets weightMode to KG`() {
-        val state = EntryState(form = mockForm, weightMode = WeightUnit.LB)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm), weightMode = WeightUnit.LB)
 
         val result = reducer.reduce(state, EntryIntent.UpdateWeightUnit(WeightUnit.KG))
 
@@ -42,7 +42,7 @@ class EntryReducerTest {
 
     @Test
     fun `UpdateWeightUnit sets weightMode to LB`() {
-        val state = EntryState(form = mockForm, weightMode = WeightUnit.KG)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm), weightMode = WeightUnit.KG)
 
         val result = reducer.reduce(state, EntryIntent.UpdateWeightUnit(WeightUnit.LB))
 
@@ -52,7 +52,7 @@ class EntryReducerTest {
     @Test
     fun `UpdateWeightUnit preserves other state fields`() {
         val state = EntryState(
-            form = mockForm,
+            activeForm = ActiveEntryForm.Weight(form = mockForm),
             weightMode = WeightUnit.LB,
             isLoading = true,
             isMetricFieldsExpandedInitially = true,
@@ -72,7 +72,7 @@ class EntryReducerTest {
 
     @Test
     fun `UpdateDashboardType sets dashboardType to 12 metrics`() {
-        val state = EntryState(form = mockForm)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm))
 
         val result = reducer.reduce(state, EntryIntent.UpdateDashboardType(DashboardType.DASHBOARD_12_METRICS))
 
@@ -82,7 +82,7 @@ class EntryReducerTest {
     @Test
     fun `UpdateDashboardType sets dashboardType to 4 metrics`() {
         val state = EntryState(
-            form = mockForm,
+            activeForm = ActiveEntryForm.Weight(form = mockForm),
             dashboardType = DashboardType.DASHBOARD_12_METRICS,
         )
 
@@ -94,7 +94,7 @@ class EntryReducerTest {
     @Test
     fun `UpdateDashboardType preserves other state fields`() {
         val state = EntryState(
-            form = mockForm,
+            activeForm = ActiveEntryForm.Weight(form = mockForm),
             weightMode = WeightUnit.KG,
             isLoading = true,
         )
@@ -111,7 +111,7 @@ class EntryReducerTest {
 
     @Test
     fun `UpdateMetricFieldsExpandedStatus sets expanded to true`() {
-        val state = EntryState(form = mockForm, isMetricFieldsExpandedInitially = false)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm), isMetricFieldsExpandedInitially = false)
 
         val result = reducer.reduce(state, EntryIntent.UpdateMetricFieldsExpandedStatus(true))
 
@@ -120,7 +120,7 @@ class EntryReducerTest {
 
     @Test
     fun `UpdateMetricFieldsExpandedStatus sets expanded to false`() {
-        val state = EntryState(form = mockForm, isMetricFieldsExpandedInitially = true)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm), isMetricFieldsExpandedInitially = true)
 
         val result = reducer.reduce(state, EntryIntent.UpdateMetricFieldsExpandedStatus(false))
 
@@ -134,7 +134,7 @@ class EntryReducerTest {
     @Test
     fun `UpdateForm replaces form in state`() {
         val newForm: MultiFormGroup<EntryForm> = mockk(relaxed = true)
-        val state = EntryState(form = mockForm)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm))
 
         val result = reducer.reduce(state, EntryIntent.UpdateForm(newForm))
 
@@ -145,7 +145,7 @@ class EntryReducerTest {
     fun `UpdateForm preserves other state fields`() {
         val newForm: MultiFormGroup<EntryForm> = mockk(relaxed = true)
         val state = EntryState(
-            form = mockForm,
+            activeForm = ActiveEntryForm.Weight(form = mockForm),
             weightMode = WeightUnit.KG,
             dashboardType = DashboardType.DASHBOARD_12_METRICS,
             isMetricFieldsExpandedInitially = true,
@@ -164,7 +164,7 @@ class EntryReducerTest {
 
     @Test
     fun `Save returns state unchanged`() {
-        val state = EntryState(form = mockForm, weightMode = WeightUnit.KG)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm), weightMode = WeightUnit.KG)
 
         val result = reducer.reduce(state, EntryIntent.Save)
 
@@ -173,7 +173,7 @@ class EntryReducerTest {
 
     @Test
     fun `EarlyExit returns state unchanged`() {
-        val state = EntryState(form = mockForm)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm))
 
         val result = reducer.reduce(state, EntryIntent.EarlyExit)
 
@@ -182,7 +182,7 @@ class EntryReducerTest {
 
     @Test
     fun `UpdateOnRelaunch returns state unchanged`() {
-        val state = EntryState(form = mockForm)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm))
 
         val result = reducer.reduce(state, EntryIntent.UpdateOnRelaunch)
 
@@ -195,7 +195,7 @@ class EntryReducerTest {
 
     @Test
     fun `default EntryState has expected initial values`() {
-        val state = EntryState(form = mockForm)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = mockForm))
 
         assertThat(state.weightMode).isEqualTo(WeightUnit.LB)
         assertThat(state.isLoading).isFalse()
@@ -212,7 +212,7 @@ class EntryReducerTest {
         val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
             mockk(relaxed = true)
         val realForm = MultiFormGroup.create(forms = EntryForm.create())
-        val state = EntryState(form = realForm, weightMode = WeightUnit.LB)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = realForm), weightMode = WeightUnit.LB)
 
         val result = reducer.reduce(
             state,
@@ -230,7 +230,7 @@ class EntryReducerTest {
         val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
             mockk(relaxed = true)
         val realForm = MultiFormGroup.create(forms = EntryForm.create())
-        val state = EntryState(form = realForm, weightMode = WeightUnit.KG)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = realForm), weightMode = WeightUnit.KG)
 
         val result = reducer.reduce(
             state,
@@ -245,7 +245,7 @@ class EntryReducerTest {
         val mockScaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry =
             mockk(relaxed = true)
         val realForm = MultiFormGroup.create(forms = EntryForm.create())
-        val state = EntryState(form = realForm)
+        val state = EntryState(activeForm = ActiveEntryForm.Weight(form = realForm))
 
         val result = reducer.reduce(
             state,

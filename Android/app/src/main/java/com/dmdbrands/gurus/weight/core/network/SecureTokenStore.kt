@@ -169,6 +169,7 @@ class SecureTokenStore(context: Context) : ISecureTokenStore {
         return try {
             prefs.getInt(MIGRATION_RETRY_COUNT_KEY, 0)
         } catch (e: Exception) {
+            AppLog.w(TAG, "Failed to read migration retry count, defaulting to 0: ${e.message}")
             0
         }
     }

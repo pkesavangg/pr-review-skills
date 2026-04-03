@@ -187,7 +187,7 @@ struct MyKidsStoreTests {
         let store = sut.store
         let babyService = sut.babyService
         let account = sut.accountService
-        account.activeAccount = Account(from: AccountTestFixtures.makeAccountDTO(email: "test@test.com"))
+        account.activeAccount = AccountTestFixtures.makeAccountModel(email: "test@test.com")
         store.babyProfileForm.name.value = "  Baby Name  "
         store.babyProfileForm.birthday.value = Date()
         store.babyProfileForm.biologicalSex.value = "female"
@@ -279,7 +279,7 @@ struct MyKidsStoreTests {
         let store = sut.store
         let babyService = sut.babyService
         let account = sut.accountService
-        account.activeAccount = Account(from: AccountTestFixtures.makeAccountDTO(email: "test@test.com"))
+        account.activeAccount = AccountTestFixtures.makeAccountModel(email: "test@test.com")
 
         await store.loadBabies()
 

@@ -20,14 +20,14 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
- * List of history detail items, using HistoryDetailItem for each row.
+ * List of history detail items, using WeightHistoryDetailItem for each row.
  * @param historyDetails List of history detail item models
  * @param itemsOpened List of opened item IDs
  * @param onItemsOpen Callback when items are opened/closed
  * @param onItemDelete Callback when an item's "Delete" is clicked
  */
 @Composable
-fun HistoryDetailList(
+fun WeightHistoryDetailList(
   historyDetails: List<ScaleEntry>,
   itemsOpened: List<Long> = emptyList(),
   onItemsOpen: (List<Long>) -> Unit,
@@ -56,7 +56,7 @@ fun HistoryDetailList(
       }
     },
   ) { item ->
-    HistoryDetailItem(
+    WeightHistoryDetailItem(
       item = item,
       isExpanded = expandedItems.contains(item.entry.id),
       onItemOpen = { itemId ->
@@ -154,7 +154,7 @@ fun HistoryDetailListPreview() {
           ),
         ),
       )
-    HistoryDetailList(
+    WeightHistoryDetailList(
       historyDetails = sampleItems,
       itemsOpened = emptyList(),
       onItemsOpen = {},
