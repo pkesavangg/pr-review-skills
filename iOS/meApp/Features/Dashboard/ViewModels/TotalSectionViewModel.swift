@@ -118,14 +118,7 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         let operations = chartOperations
         
         // Get Y-axis scale from graph manager
-        let yAxisScale = store.graphManager.getYAxisScale(
-            from: operations,
-            goalWeight: goalWeight,
-            isWeightlessMode: store.isWeightlessModeEnabled,
-            anchorWeight: store.weightlessAnchorWeight,
-            convertWeight: store.goalManager.convertWeightToDisplay,
-            chartHeight: chartFrame.height
-        )
+        let yAxisScale = store.yAxisScale(for: operations, chartHeight: chartFrame.height)
         
         self.yAxisDomain = yAxisScale.domain
         self.yAxisTicks = yAxisScale.ticks
@@ -147,15 +140,16 @@ final class TotalSectionViewModel: BaseSectionViewModel {
     /// - Clear selection if tapping in padded areas outside data (domain padding exists in total view).
     override func handleChartSelection(at date: Date?) {
         guard let date = date else { return }
-        guard !chartOperations.isEmpty else {
+        guard !chartSeriesData.isEmpty else {
             selectedDate = nil
             showCrosshair = false
             return
         }
 
-        // Determine actual plotted data bounds (without padded domain)
-        let ops = chartOperations.sorted { $0.date < $1.date }
-        guard let first = ops.first?.date, let last = ops.last?.date else {
+        // Snap against the actual plotted X values, not the raw operation dates.
+        // This matters for BPM total/year charts where the chart renders month aggregates.
+        let plottedDates = Array(Set(chartSeriesData.map { plotXDate(for: $0.date) })).sorted()
+        guard let first = plottedDates.first, let last = plottedDates.last else {
             selectedDate = nil
             showCrosshair = false
             return
@@ -177,10 +171,10 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         let clampedDate = min(max(date, first), last)
 
         // Snap to the nearest real data point date
-        if let nearest = ops.min(by: { first, second in
-            abs(first.date.timeIntervalSince(clampedDate)) < abs(second.date.timeIntervalSince(clampedDate))
+        if let nearest = plottedDates.min(by: { firstDate, secondDate in
+            abs(firstDate.timeIntervalSince(clampedDate)) < abs(secondDate.timeIntervalSince(clampedDate))
         }) {
-            selectedDate = nearest.date
+            selectedDate = nearest
             showCrosshair = true
             // Let DashboardStore update metrics via handleChartSelection(at:)
         } else {
@@ -195,9 +189,10 @@ final class TotalSectionViewModel: BaseSectionViewModel {
         // Use the padded dateRange to align overlay positions with Chart plotting
         let domain = self.dateRange
         let totalTimeRange = domain.upperBound.timeIntervalSince(domain.lowerBound)
+        let effectiveDate = plotXDate(for: date)
         let xPosition: CGFloat
         if totalTimeRange > 0 {
-            let timeFromStart = date.timeIntervalSince(domain.lowerBound)
+            let timeFromStart = effectiveDate.timeIntervalSince(domain.lowerBound)
             let xRatio = timeFromStart / totalTimeRange
             xPosition = chartFrame.width * xRatio
         } else {

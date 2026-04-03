@@ -105,7 +105,7 @@ guard let account = activeAccount else {
 
 - Keep messages short and machine-parseable: `"<action> <state>. <key>=<value> <key>=<value>"`
 - Always log errors **before** rethrowing — `throw error` must come after the `.error` log call
-- Do NOT log sensitive data: auth tokens, passwords, full email addresses, raw weight arrays
+- **Do NOT log sensitive data: auth tokens, passwords, full email addresses, raw weight arrays** — see `/keychain-pattern` skill for comprehensive PII/health data classification and logging safety rules
 - Log IDs (`accountId`, `entryId`) and counts — not PII content fields
 - `.debug` is safe for verbose output — it is never persisted, console-only
 - Do not add `data:` if the values would contain sensitive fields
@@ -122,11 +122,55 @@ rg -n "logger.log" meApp/Features/Entry/Stores -g '*.swift'
 
 ---
 
-### 6 — Report
+### 6 — Add Crashlytics Non-Fatal Error Reporting (When Applicable)
+
+For **critical error paths** (auth failures, data corruption, sync failures, payment errors), add Crashlytics non-fatal error recording alongside the `LoggerService` `.error` log:
+
+**First, check if Crashlytics is available:**
+```bash
+rg -n "import FirebaseCrashlytics\|Crashlytics" meApp -g '*.swift' | head -5
+```
+
+**If Crashlytics is imported in the project, add non-fatal recording for critical errors:**
+
+```swift
+import FirebaseCrashlytics
+
+// Inside the catch block, after the LoggerService .error log:
+logger.log(level: .error, tag: tag, message: "fetchAccount failed. error=\(error.localizedDescription)")
+Crashlytics.crashlytics().record(error: error, userInfo: [
+    "tag": tag,
+    "method": "fetchAccount",
+    "accountId": accountId
+])
+throw error
+```
+
+**When to add Crashlytics (critical paths only):**
+- Auth token refresh failures
+- Account data fetch/save failures
+- SwiftData migration errors
+- Keychain read/write failures
+- Scale sync data corruption
+
+**When NOT to add Crashlytics:**
+- Network timeout / connectivity errors (too noisy)
+- Validation errors (user input, expected)
+- Debug-level logging
+- Non-critical UI state errors
+
+**If Crashlytics is NOT imported in the project yet:**
+- Do NOT add it — report as a follow-up recommendation
+- Continue with `LoggerService` only
+
+---
+
+### 7 — Report
 
 ```
 Logging added to: {ClassName}
 Methods instrumented: {list}
 Log calls added: {count} (info: N, success: N, error: N, debug: N)
+Crashlytics non-fatal: {count added, or "N/A — not a critical path" or "N/A — Crashlytics not configured"}
 Sensitive data avoided: confirmed
 ```

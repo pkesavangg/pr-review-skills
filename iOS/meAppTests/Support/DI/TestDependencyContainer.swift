@@ -3,12 +3,12 @@ import Foundation
 
 @MainActor
 enum TestDependencyContainer {
-    typealias DashboardConcreteDependencies = (
-        account: AccountService,
-        logger: LoggerService,
-        scale: ScaleService,
-        entry: EntryService
-    )
+    struct DashboardConcreteDependencies {
+        let account: AccountService
+        let logger: LoggerService
+        let scale: ScaleService
+        let entry: EntryService
+    }
 
     static func reset() {
         DependencyContainer.shared.dependencies.removeAll()
@@ -30,6 +30,14 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(MockWifiScaleService() as WifiScaleServiceProtocol)
         DependencyContainer.shared.register(MockPushNotificationService() as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelAccountFlagService() as AccountFlagServiceProtocol)
+        DependencyContainer.shared.register(MockKvStorageService() as KvStorageServiceProtocol)
+        DependencyContainer.shared.register(MockBabyService() as BabyServiceProtocol)
+        let mockProductTypeStore = MockProductTypeStore()
+        DependencyContainer.shared.register(mockProductTypeStore as ProductTypeStoreProtocol)
+        DependencyContainer.shared.register(mockProductTypeStore)
+        // Also register under the concrete class name for direct injection
+        DependencyContainer.shared.dependencies["ProductTypeStore"] = mockProductTypeStore
+        DependencyContainer.shared.dependencies["meApp.ProductTypeStore"] = mockProductTypeStore
         // Some stores/managers inject concrete dashboard services.
         // Register mock-backed concrete instances to keep tests isolated and avoid DI fatals.
         _ = registerDashboardConcreteDependencies()
@@ -75,7 +83,7 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(entryService as EntryService)
         DependencyContainer.shared.register(goalAlertService as GoalAlertService)
 
-        return (
+        return DashboardConcreteDependencies(
             account: accountService,
             logger: loggerService,
             scale: scaleService,

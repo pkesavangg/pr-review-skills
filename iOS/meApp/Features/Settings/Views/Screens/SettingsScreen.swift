@@ -33,8 +33,10 @@ struct SettingsScreen: View {
                         List {
                             profileHeader()
                             accountSettingsSection()
-                            profileSettingsSection()
                             appSettingsSection()
+                            if settingsStore.shouldShowWeightScaleSection {
+                                weightScaleSection()
+                            }
                             supportSection()
                             accountActionSection()
                         }
@@ -106,41 +108,6 @@ struct SettingsScreen: View {
             }
         )
 
-        // Height picker sheets
-        .pickerSheet(
-            isPresented: $settingsStore.showHeightInchesPicker,
-            selectedValues: settingsStore.selectedHeightInches,
-            options: settingsStore.heightInchesOptions,
-            displayValue: { $0 },
-            pickerType: .heightInches,
-            title: settingsLang.height,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                settingsStore.updateHeight(fromMetric: false, values: newValues)
-            }
-        )
-        .pickerSheet(
-            isPresented: $settingsStore.showHeightCmPicker,
-            selectedValues: settingsStore.selectedHeightCm,
-            options: settingsStore.heightCmOptions,
-            displayValue: { $0 },
-            pickerType: .heightCm,
-            title: settingsLang.height,
-            onUpdate: { newValues in // swiftlint:disable:this trailing_closure
-                settingsStore.updateHeight(fromMetric: true, values: newValues)
-            }
-        )
-        .pickerSheet(
-            isPresented: $settingsStore.showGenderPicker,
-            selectedValues: [settingsStore.activeAccount?.gender ?? .male],
-            options: [Sex.allCases],
-            displayValue: { $0.rawValue.capitalized },
-            title: settingsLang.biologicalSex,
-            onUpdate: { vals in // swiftlint:disable:this trailing_closure
-                if let sex = vals.first {
-                    settingsStore.updateGender(sex)
-                }
-            }
-        )
         // Unit picker
         .pickerSheet(
             isPresented: $settingsStore.showUnitPicker,
@@ -196,71 +163,27 @@ struct SettingsScreen: View {
     
     private func accountSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.accountSettings)) {
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
-            .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations) {
-                router.navigate(to: .integrations)
-            })
-            .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.exportData,
-                chevronType: .none,
-                isDisabled: !settingsStore.hasEntries
-            ) {
-                    settingsStore.handleExport()
-                })
-            .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword) {
-                router.navigate(to: .changePassword)
-            })
-            .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.userProfile) {
                 router.navigate(to: .editProfile)
             })
             .listRowInsets()
-        }
-        .listRowBackground(theme.backgroundPrimary)
-        .listRowSeparatorTint(theme.statusUtilityPrimary)
-    }
-    
-    private func profileSettingsSection() -> some View {
-        Section(header: sectionHeader(title: settingsLang.profileSettings)) {
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.goalSetting) {
-                    router.navigate(to: .goal)
+            if settingsStore.shouldShowMyKids {
+                ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
+                    router.navigate(to: .myKids)
                 })
+                .listRowInsets()
+            }
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
             .listRowInsets()
-            
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.biologicalSex,
-                value: settingsStore.biologicalSexText,
-                chevronType: .upDown) { settingsStore.presentGenderPicker() })
-            .listRowInsets()
-            
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.activityLevel,
-                value: settingsStore.activityLevelText,
-                chevronType: .upDown) { settingsStore.presentActivityPicker() })
-            .listRowInsets()
-            
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.height,
-                value: settingsStore.heightText,
-                chevronType: .upDown
-            ) { settingsStore.presentHeightPicker() })
-            .listRowInsets()
-            
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.unitType,
-                value: settingsStore.unitTypeText,
-                chevronType: .upDown) { settingsStore.presentUnitPicker() })
-            .listRowInsets()
-            
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.weightless,
-                value: settingsStore.weightlessText) {
-                    router.navigate(to: .weightless)
+            if settingsStore.shouldShowIntegrations {
+                ActionListItemView(config: ActionListItemConfig(title: settingsLang.integrations) {
+                    router.navigate(to: .integrations)
                 })
+                .listRowInsets()
+            }
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.changePassword) {
+                router.navigate(to: .changePassword)
+            })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -269,11 +192,24 @@ struct SettingsScreen: View {
     
     private func appSettingsSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.appSettings)) {
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.notifications,
-                value: settingsStore.notificationsOnText,
-                chevronType: .upDown) { settingsStore.presentNotificationPicker() })
+            if settingsStore.shouldShowUnitType {
+                ActionListItemView(config: ActionListItemConfig(
+                    title: settingsLang.unitType,
+                    value: settingsStore.unitTypeText,
+                    chevronType: .upDown) { settingsStore.presentUnitPicker() })
+                .listRowInsets()
+            }
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions) {
+                router.navigate(to: .appPermissions)
+            })
             .listRowInsets()
+            if settingsStore.shouldShowNotifications {
+                ActionListItemView(config: ActionListItemConfig(
+                    title: settingsLang.notifications,
+                    value: settingsStore.notificationsOnText,
+                    chevronType: .upDown) { settingsStore.presentNotificationPicker() })
+                .listRowInsets()
+            }
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsStore.messagesTitleText,
                 showDot: settingsStore.canShowFeedNotificationBadge
@@ -282,14 +218,33 @@ struct SettingsScreen: View {
             })
             .id(settingsStore.canShowFeedNotificationBadge)
             .listRowInsets()
-            ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions) {
-                router.navigate(to: .appPermissions)
-            })
-            .listRowInsets()
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown) { settingsStore.presentAppearancePicker() })
+            .listRowInsets()
+        }
+        .listRowBackground(theme.backgroundPrimary)
+        .listRowSeparatorTint(theme.statusUtilityPrimary)
+    }
+
+    private func weightScaleSection() -> some View {
+        Section(header: sectionHeader(title: settingsLang.weightScaleSettings)) {
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.goalSetting) {
+                    router.navigate(to: .goal)
+                })
+            .listRowInsets()
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.activityLevel,
+                value: settingsStore.activityLevelText,
+                chevronType: .upDown) { settingsStore.presentActivityPicker() })
+            .listRowInsets()
+            ActionListItemView(config: ActionListItemConfig(
+                title: settingsLang.weightless,
+                value: settingsStore.weightlessText) {
+                    router.navigate(to: .weightless)
+                })
             .listRowInsets()
         }
         .listRowBackground(theme.backgroundPrimary)

@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.features.MyAccounts.screen.MyAccountsScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.AppsyncScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BabyScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtWifiScaleSetupScreen
 import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.LcbtScaleSetupScreen
@@ -112,6 +113,9 @@ fun EntryProviderScope<NavKey>.scaleSetupEntries() {
   entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
     AppsyncScaleSetupScreen(scaleInfo.sku)
   }
+  entry<AppRoute.ScaleSetup.BabyScaleSetup> { scaleInfo ->
+    BabyScaleSetupScreen(scaleInfo.sku, scaleInfo.scaleInfo, scaleInfo.broadcastId, scaleInfo.initialStep)
+  }
 }
 
 fun EntryProviderScope<NavKey>.dashboardEntries() {
@@ -126,7 +130,7 @@ fun EntryProviderScope<NavKey>.dashboardEntries() {
 
 fun EntryProviderScope<NavKey>.historyEntries() {
   entry<AppRoute.History.MonthDetails> { monthDetails ->
-    HistoryDetailScreen(monthDetails.month)
+    HistoryDetailScreen(monthDetails.month, monthDetails.productType)
   }
 }
 

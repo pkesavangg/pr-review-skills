@@ -30,6 +30,7 @@ internal object LightColorToken {
   val streak = ColorPalette.Yellow200 // #EDB53A
   val utility = ColorPalette.Neutral400 // #D0CCCA
   val glow = ColorPalette.Neutral450 // 25% of #000000
+  val baby = ColorPalette.Purple300 // #8841A4
 
   // Text
   val heading = ColorPalette.Neutral1000 // #2C2827
@@ -101,6 +102,7 @@ internal object DarkColorToken {
   val streak = ColorPalette.Yellow100 // #FDD663
   val utility = ColorPalette.Neutral800 // #565F68
   val glow = ColorPalette.Neutral550 // 25% of #FFFFFF
+  val baby = ColorPalette.Purple300 // #8841A4
 
   // Text
   val heading = ColorPalette.Neutral700 // #E0E1E1

@@ -23,10 +23,11 @@ struct EntryRepositoryAPITests {
 
         let operation = BathScaleOperationDTO(
             accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: "2026-03-01T08:00:00Z", impedance: nil, metabolicAge: nil,
+            entryTimestamp: "2026-03-01T08:00:00Z", entryType: nil, impedance: nil, metabolicAge: nil,
             muscleMass: nil, operationType: "create", proteinPercent: nil, pulse: nil,
             serverTimestamp: nil, skeletalMusclePercent: nil, source: nil,
-            subcutaneousFatPercent: nil, unit: "lb", visceralFatLevel: nil, water: nil, weight: 75.0
+            subcutaneousFatPercent: nil, systolic: nil, diastolic: nil, meanArterial: nil,
+            unit: "lb", visceralFatLevel: nil, water: nil, weight: 75.0
         )
         try await sut.syncOperation(operation: operation)
 
@@ -46,9 +47,10 @@ struct EntryRepositoryAPITests {
 
         let operation = BathScaleOperationDTO(
             accountId: nil, bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: nil, impedance: nil, metabolicAge: nil, muscleMass: nil,
+            entryTimestamp: nil, entryType: nil, impedance: nil, metabolicAge: nil, muscleMass: nil,
             operationType: nil, proteinPercent: nil, pulse: nil, serverTimestamp: nil,
             skeletalMusclePercent: nil, source: nil, subcutaneousFatPercent: nil,
+            systolic: nil, diastolic: nil, meanArterial: nil,
             unit: nil, visceralFatLevel: nil, water: nil, weight: nil
         )
         await #expect(throws: HTTPError.serverError) {
@@ -64,10 +66,11 @@ struct EntryRepositoryAPITests {
         let (sut, http) = makeSUT()
         let operation = BathScaleOperationDTO(
             accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: "2026-03-01T08:00:00Z", impedance: nil, metabolicAge: nil,
+            entryTimestamp: "2026-03-01T08:00:00Z", entryType: nil, impedance: nil, metabolicAge: nil,
             muscleMass: nil, operationType: "create", proteinPercent: nil, pulse: nil,
             serverTimestamp: nil, skeletalMusclePercent: nil, source: nil,
-            subcutaneousFatPercent: nil, unit: "lb", visceralFatLevel: nil, water: nil, weight: 75.0
+            subcutaneousFatPercent: nil, systolic: nil, diastolic: nil, meanArterial: nil,
+            unit: "lb", visceralFatLevel: nil, water: nil, weight: 75.0
         )
         http.getResult = BathScaleOperationListResponse(
             operations: [operation],
@@ -169,9 +172,10 @@ struct EntryRepositoryAPITests {
 
         let operation = BathScaleOperationDTO(
             accountId: nil, bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: nil, impedance: nil, metabolicAge: nil, muscleMass: nil,
+            entryTimestamp: nil, entryType: nil, impedance: nil, metabolicAge: nil, muscleMass: nil,
             operationType: nil, proteinPercent: nil, pulse: nil, serverTimestamp: nil,
             skeletalMusclePercent: nil, source: nil, subcutaneousFatPercent: nil,
+            systolic: nil, diastolic: nil, meanArterial: nil,
             unit: nil, visceralFatLevel: nil, water: nil, weight: nil
         )
         await #expect(throws: HTTPError.noInternet) {

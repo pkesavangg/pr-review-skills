@@ -10,7 +10,7 @@ struct PermissionListView: View {
     /// – `bluetooth`➜ needs Bluetooth access only (BT scale).
     /// – `wifi`     ➜ needs Location access only (Wi-Fi scale).
     enum SetupType {
-        case all, appSync, btWifi, bluetooth, wifi
+        case all, appSync, btWifi, bluetooth, wifi, bpm
     }
     
     // MARK: Dependencies
@@ -19,6 +19,7 @@ struct PermissionListView: View {
     // MARK: Configuration
     private let categories: Set<PermissionCategory>
     private let requiredCategories: Set<PermissionCategory>
+    private let headerTitle: String?
     private let headerDescription: String?
     private var setupType: SetupType = .all
     
@@ -29,6 +30,7 @@ struct PermissionListView: View {
     ) {
         self.categories = categories
         self.requiredCategories = requiredCategories
+        self.headerTitle = nil
         self.headerDescription = nil
     }
     
@@ -39,25 +41,32 @@ struct PermissionListView: View {
     /// - Parameter setupType: The high-level scale setup variant.
     init(setupType: SetupType) {
         // Determine configuration based on setup type.
-        let config: (Set<PermissionCategory>, String)
+        let config: (Set<PermissionCategory>, String, String?)
         self.setupType = setupType
         switch setupType {
         case .all:
-            config = (Set(PermissionCategory.allCases), "") // no header; will be ignored via nil below
+            config = (Set(PermissionCategory.allCases), "", nil) // no header; will be ignored via nil below
         case .appSync:
-            config = ([.camera], PermissionsStrings.cameraPermissionDescription)
+            config = ([.camera], PermissionsStrings.cameraPermissionDescription, nil)
         case .btWifi:
-            config = ([.bluetooth, .internet], PermissionsStrings.locationPermissionDescription)
+            config = ([.bluetooth, .internet], PermissionsStrings.locationPermissionDescription, nil)
         case .bluetooth:
-            config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription)
+            config = ([.bluetooth], PermissionsStrings.bluetoothPermissionDescription, nil)
         case .wifi:
-            config = ([.location], PermissionsStrings.locationPermissionDescription)
+            config = ([.location], PermissionsStrings.locationPermissionDescription, nil)
+        case .bpm:
+            config = (
+                [.bluetooth, .location],
+                BpmSetupStrings.A3Permissions.description,
+                BpmSetupStrings.A3Permissions.title
+            )
         }
-        
-        let (resolvedCategories, description) = config
-        
+
+        let (resolvedCategories, description, title) = config
+
         self.categories = resolvedCategories
         self.requiredCategories = [] // Initialize with no required categories to avoid showing red indicators when permissions are disabled
+        self.headerTitle = title
         self.headerDescription = description.isEmpty ? nil : description
     }
     
@@ -66,7 +75,10 @@ struct PermissionListView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading) {
                 if let headerDescription = headerDescription {
-                    pageHeader(description: headerDescription)
+                    pageHeader(
+                        title: headerTitle ?? PermissionsStrings.pageHeaderTitle,
+                        description: headerDescription
+                    )
                         .padding([.top, .bottom], .spacingMD)
                 }
                 if categories.contains(.bluetooth) { bluetoothSection }
@@ -80,9 +92,26 @@ struct PermissionListView: View {
     
     // MARK: Sections
     private var bluetoothSection: some View {
-        sectionView(
-            title: PermissionsStrings.bluetooth,
-            rows: [
+        let rows: [(String, Bool, PermissionType)]
+        if setupType == .bpm {
+            rows = [
+                (
+                    viewModel.bluetoothAuthorized
+                        ? PermissionsStrings.bluetoothAccessAuthorized
+                        : BpmSetupStrings.A3Permissions.authorizeBluetoothAccess,
+                    viewModel.bluetoothAuthorized,
+                    .bluetooth
+                ),
+                (
+                    viewModel.bluetoothPoweredOn
+                        ? PermissionsStrings.bluetoothTurnedOn
+                        : BpmSetupStrings.A3Permissions.bluetoothTurnedOff,
+                    viewModel.bluetoothPoweredOn,
+                    .bluetoothSwitch
+                )
+            ]
+        } else {
+            rows = [
                 (
                     viewModel.bluetoothPoweredOn
                         ? PermissionsStrings.bluetoothTurnedOn
@@ -96,31 +125,54 @@ struct PermissionListView: View {
                         : PermissionsStrings.authorizeBluetoothAccess,
                     viewModel.bluetoothAuthorized,
                     .bluetooth
-                )                
-            ],
+                )
+            ]
+        }
+
+        return sectionView(
+            title: PermissionsStrings.bluetooth,
+            rows: rows,
             category: .bluetooth
         )
     }
-    
+
     private var locationSection: some View {
         // Base rows for location services
 // swiftlint:disable:next large_tuple
-        var rows: [(String, Bool, PermissionType)] = [
-            (
-                viewModel.locationServicesEnabled
-                    ? PermissionsStrings.locationAccessEnabled
-                    : PermissionsStrings.enableLocationServices,
-                viewModel.locationServicesEnabled,
-                .locationSwitch
-            ),
-            (
-                viewModel.locationAuthorized
-                    ? PermissionsStrings.locationAccessAuthorized
-                    : PermissionsStrings.authorizeLocationAccess,
-                viewModel.locationAuthorized,
-                .location
-            )
-        ]
+        var rows: [(String, Bool, PermissionType)] =
+            setupType == .bpm
+            ? [
+                (
+                    viewModel.locationAuthorized
+                        ? PermissionsStrings.locationAccessAuthorized
+                        : BpmSetupStrings.A3Permissions.authorizeLocationAccess,
+                    viewModel.locationAuthorized,
+                    .location
+                ),
+                (
+                    viewModel.locationServicesEnabled
+                        ? PermissionsStrings.locationAccessEnabled
+                        : BpmSetupStrings.A3Permissions.locationTurnedOff,
+                    viewModel.locationServicesEnabled,
+                    .locationSwitch
+                )
+            ]
+            : [
+                (
+                    viewModel.locationServicesEnabled
+                        ? PermissionsStrings.locationAccessEnabled
+                        : PermissionsStrings.enableLocationServices,
+                    viewModel.locationServicesEnabled,
+                    .locationSwitch
+                ),
+                (
+                    viewModel.locationAuthorized
+                        ? PermissionsStrings.locationAccessAuthorized
+                        : PermissionsStrings.authorizeLocationAccess,
+                    viewModel.locationAuthorized,
+                    .location
+                )
+            ]
         
         // For Wi-Fi–only setup flows add an extra Wi-Fi status row
         if setupType == .wifi {
@@ -198,9 +250,9 @@ struct PermissionListView: View {
             .padding(.top, .spacingSM)
     }
     
-    private func pageHeader(description: String) -> some View {
+    private func pageHeader(title: String, description: String) -> some View {
         VStack(alignment: .leading, spacing: .spacingXS) {
-            Text(PermissionsStrings.pageHeaderTitle)
+            Text(title)
                 .fontOpenSans(.heading4)
                 .foregroundColor(theme.textHeading)
             Text(description)

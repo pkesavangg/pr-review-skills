@@ -74,7 +74,7 @@ final class MockPushEntryService: EntryServiceProtocol {
     }
 
     func migrateFromSQLiteIfNeeded() async {}
-    func loadDashboardData() async {}
+    func loadDashboardData(entryType: EntryType) async {}
     func clearAllData() async {}
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntry(_ entry: Entry) async throws {}
@@ -86,12 +86,12 @@ final class MockPushEntryService: EntryServiceProtocol {
     func getEntryCount() async throws -> Int { 0 }
     func getOldestEntry() async throws -> Entry? { nil }
     func getLatestEntry() async throws -> Entry? { nil }
-    func getEntries(lastNDays: Int) async throws -> [Entry] { [] }
-    func getEntries(forMonth month: String) async throws -> [Entry] { [] }
-    func getMonthsAll() async throws -> [HistoryMonth] { [] }
-    func getMonthDetail(month: String) async throws -> [Entry] { [] }
+    func getEntries(lastNDays: Int, entryType: EntryType) async throws -> [Entry] { [] }
+    func getEntries(forMonth month: String, entryType: EntryType) async throws -> [Entry] { [] }
+    func getMonthsAll(entryType: EntryType) async throws -> [HistoryMonth] { [] }
+    func getMonthDetail(month: String, entryType: EntryType) async throws -> [Entry] { [] }
     func getMonthYear() async throws -> [HistoryMonth] { [] }
-    func getProgress() async throws -> meApp.Progress {
+    func getProgress(entryType: EntryType) async throws -> meApp.Progress {
         meApp.Progress(
             count: 0,
             currentStreak: 0,
@@ -108,8 +108,12 @@ final class MockPushEntryService: EntryServiceProtocol {
             year: 2024
         )
     }
-    func getStreak() async throws -> Streak { Streak(current: 0, max: 0) }
+    func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
+    func deleteBpmEntry(entryTimestamp: String) async throws {}
+    func exportBpmCSV() async throws {}
 }
 
 @MainActor
@@ -203,7 +207,8 @@ final class MockPushScaleService: ScaleServiceProtocol {
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
+        skipDuplicateCheck: Bool,
+        deviceType: DeviceType = .scale
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createBluetoothScale")
     }
@@ -219,6 +224,7 @@ final class MockPushScaleService: ScaleServiceProtocol {
     }
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
+    func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func syncAllScalesWithRemote() async { syncAllScalesCalls += 1 }
     func pushLocalChangesToServer() async {}
     func getDevice(by deviceId: String) async throws -> Device? { nil }

@@ -26,10 +26,20 @@ class SignupForm: ObservableForm {
     var password = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var confirmPassword = FormControl("", validators: [.required, .minLength(6), .maxLength(50)])
     var zipcode = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(20)])
+
+    // Baby form controls (used in Add Baby step)
+    var babyName = FormControl("", validators: [.required, .noWhiteSpace, .maxLength(100)])
+    var babyBirthday: FormControl<Date> = {
+        let defaultDate = Date()
+        return FormControl(defaultDate)
+    }()
+    var babySex = FormControl("")
+    var babyBirthLength = FormControl("", validators: [.required, .numericOnly])
+    var babyBirthWeight = FormControl("", validators: [.required, .numericOnly])
     
     /// Publisher that merges all value changes in the form
     var formDidChange: AnyPublisher<Void, Never> {
-        Publishers.MergeMany([
+        let accountFields: [AnyPublisher<Void, Never>] = [
             firstName.$value.map { _ in () }.eraseToAnyPublisher(),
             lastName.$value.map { _ in () }.eraseToAnyPublisher(),
             birthday.$value.map { _ in () }.eraseToAnyPublisher(),
@@ -38,13 +48,23 @@ class SignupForm: ObservableForm {
             useMetric.$value.map { _ in () }.eraseToAnyPublisher(),
             currentWeight.$value.map { _ in () }.eraseToAnyPublisher(),
             goalWeight.$value.map { _ in () }.eraseToAnyPublisher(),
-            height.$value.map { _ in () }.eraseToAnyPublisher(),
+            height.$value.map { _ in () }.eraseToAnyPublisher()
+        ]
+        let authFields: [AnyPublisher<Void, Never>] = [
             email.$value.map { _ in () }.eraseToAnyPublisher(),
             password.$value.map { _ in () }.eraseToAnyPublisher(),
             confirmPassword.$value.map { _ in () }.eraseToAnyPublisher(),
             zipcode.$value.map { _ in () }.eraseToAnyPublisher()
-        ])
-        .eraseToAnyPublisher()
+        ]
+        let babyFields: [AnyPublisher<Void, Never>] = [
+            babyName.$value.map { _ in () }.eraseToAnyPublisher(),
+            babyBirthday.$value.map { _ in () }.eraseToAnyPublisher(),
+            babySex.$value.map { _ in () }.eraseToAnyPublisher(),
+            babyBirthLength.$value.map { _ in () }.eraseToAnyPublisher(),
+            babyBirthWeight.$value.map { _ in () }.eraseToAnyPublisher()
+        ]
+        return Publishers.MergeMany(accountFields + authFields + babyFields)
+            .eraseToAnyPublisher()
     }
     
     override func validateForm() {
@@ -155,6 +175,7 @@ class SignupForm: ObservableForm {
             }
         }
         if control.errors[.noWhiteSpace] { return FormErrorMessages.noWhiteSpace }
+        if control.errors[.numericOnly] { return FormErrorMessages.numericOnly }
         if control.errors[.futureDate] { return FormErrorMessages.futureDate }
         if control === confirmPassword && formErrors[.passwordMatch] {
             return FormErrorMessages.passwordMatch
@@ -170,6 +191,20 @@ class SignupForm: ObservableForm {
         return nil
     }
     
+    /// Resets the baby-related form fields to their default state.
+    func resetBaby() {
+        babyName.value = ""
+        babyBirthday.value = Date()
+        babySex.value = ""
+        babyBirthLength.value = ""
+        babyBirthWeight.value = ""
+        babyName.resetInteractionState()
+        babyBirthday.resetInteractionState()
+        babySex.resetInteractionState()
+        babyBirthLength.resetInteractionState()
+        babyBirthWeight.resetInteractionState()
+    }
+
     /// Resets the goal-related form fields to their default state.
     func resetGoal() {
         goalType.value = GoalTypeSegment.losegainValue

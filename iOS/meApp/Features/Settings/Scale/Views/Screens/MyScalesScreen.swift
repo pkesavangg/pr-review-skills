@@ -13,15 +13,15 @@ struct MyScalesScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject private var scaleStore = ScaleStore()
     let lang = MyScaleStrings.self
-    
+
     @FocusState private var focusedField: FocusField?
     @State private var shouldMaintainKeyboardFocus = false
-    
+
     // Consolidated sheet presentation state
     private enum ActiveSheet: Identifiable, Equatable {
         case scaleList
         case setupFlow(ScaleItemInfo)
-        
+
         var id: String {
             switch self {
             case .scaleList:
@@ -30,7 +30,7 @@ struct MyScalesScreen: View {
                 return scale.sku
             }
         }
-        
+
         // Custom Equatable conformance is required because `ScaleItemInfo`
         // itself may not conform to Equatable or may need to be compared using specific logic.
         // This implementation allows SwiftUI to compare two ActiveSheet values properly.
@@ -49,28 +49,30 @@ struct MyScalesScreen: View {
             }
         }
     }
-    
+
     @State private var activeSheet: ActiveSheet?
-    
+
     private var focusBinding: Binding<FocusField?> {
         Binding(
             get: { focusedField },
             set: { focusedField = $0 }
         )
     }
-    
+
     private func scaleIcon(for sku: String?) -> Image {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku ?? "")
-        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath ?? AppAssets.meLogoDark
+        let imagePath = SCALES.first { $0.sku == lookupSku }?.imgPath
+            ?? bpmCatalogItem(forEnteredCode: sku ?? "")?.imgPath
+            ?? AppAssets.meLogoDark
         return Image(imagePath)
     }
-    
+
     /// Determines the scale type based on the scale's SKU and other properties
     private func determineScaleType(for scale: Device) -> ScaleType {
         return ScaleTypeHelper.determineScaleType(for: scale)
     }
-    
+
     /// Centralised handler that encapsulates duplicate-check & navigation logic for a selected **scale**.
     /// - Parameters:
     ///   - scale: The `ScaleItemInfo` that the user selected / submitted.
@@ -85,14 +87,14 @@ struct MyScalesScreen: View {
             activeSheet = .setupFlow(scale)
             hideKeyboard()
         }
-        
+
         switch scale.setupType {
         case .appSync:
             // Prevent adding duplicate AppSync scales unless the user explicitly confirms.
             // Map SKU for comparison (e.g., 0022 -> 0383) so 0022 and 0383 are treated as duplicates
             let scaleLookupSku = DeviceHelper.mapSkuForDisplay(scale.sku)
-            let isDuplicate = scaleStore.scales.contains { 
-                DeviceHelper.mapSkuForDisplay($0.sku ?? "") == scaleLookupSku 
+            let isDuplicate = scaleStore.scales.contains {
+                DeviceHelper.mapSkuForDisplay($0.sku ?? "") == scaleLookupSku
             }
             if isDuplicate {
                 scaleStore.handleDuplicateScale(sku: scale.sku, onPair: proceed)
@@ -104,7 +106,7 @@ struct MyScalesScreen: View {
             proceed()
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             NavbarHeaderView(
@@ -115,7 +117,7 @@ struct MyScalesScreen: View {
                 onTrailingTap: {},
                 canShowBorder: true
             )
-            
+
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(lang.addAScale)
@@ -129,7 +131,7 @@ struct MyScalesScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingLG)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                
+
                 VStack(alignment: .center, spacing: 0) {
                     MetricInputField(
                         config: TextInputConfig(
@@ -161,10 +163,12 @@ struct MyScalesScreen: View {
                             // Map SKU for SCALES lookup only (0022 is not in SCALES, but 0383 is)
                             let enteredValue = scaleStore.addScaleForm.modelNumberValue
                             let lookupSku = DeviceHelper.mapSkuForDisplay(enteredValue)
-                            
-                            // Find the scale matching the mapped SKU.
-                            guard let scaleInfo = SCALES.first(where: { $0.sku == lookupSku }) else { return }
-                            
+
+                            // Find the scale or BPM matching the SKU.
+                            let scaleInfo = SCALES.first(where: { $0.sku == lookupSku })
+                                ?? bpmCatalogItem(forEnteredCode: enteredValue)
+                            guard let scaleInfo else { return }
+
                             // Create a modified scale info with original SKU for navigation
                             // Pass original SKU to routes (not mapped), setup will save original SKU
                             let scaleWithOriginalSku = ScaleItemInfo(
@@ -174,11 +178,11 @@ struct MyScalesScreen: View {
                                 setupType: scaleInfo.setupType,
                                 bodyComp: scaleInfo.bodyComp
                             )
-                            
+
                             handleScaleSelection(scaleWithOriginalSku, clearUI: true)
                         }
                     .padding(.bottom, .spacingSM)
-                    
+
                     ButtonView(
                         text: lang.cantFindModelNumber,
                         type: .textPrimary,
@@ -224,6 +228,11 @@ struct MyScalesScreen: View {
                         case .espTouchWifi, .wifi:
                             WifiScaleSetupScreen(sku: scale.sku)
                                 .interactiveDismissDisabled(true)
+                        case .babyScale:
+                            BabyScaleSetupScreen(sku: scale.sku)
+                        case .bpm:
+                            BpmSetupScreen(sku: scale.sku)
+                                .interactiveDismissDisabled(true)
                         }
                     }
                     }
@@ -242,7 +251,7 @@ struct MyScalesScreen: View {
                         break
                     }
                 }
-                
+
                 if !scaleStore.scales.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(lang.myScales)
@@ -250,7 +259,7 @@ struct MyScalesScreen: View {
                             .fontWeight(.bold)
                             .multilineTextAlignment(.leading)
                             .padding(.horizontal, .spacingSM)
-                        
+
                         ForEach(scaleStore.scales, id: \.id) { scale in
                             let scaleType = determineScaleType(for: scale)
                             ScaleItemView(
@@ -259,11 +268,15 @@ struct MyScalesScreen: View {
                                 scaleName: scale.nickname ?? scale.deviceName ?? lang.unknownScale,
                                 status: scaleStore.determineConnectionStatus(for: scale),
                                 onTap: {
-                                    router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
+                                    if scaleType == .bpm {
+                                        router.navigate(to: .bpmDeviceSettings(device: scale))
+                                    } else {
+                                        router.navigate(to: .scaleSettings(scale: scale, scaleType: scaleType))
+                                    }
                                 },
                                 scaleType: scaleType
                             )
-                            
+
                             Divider()
                         }
                     }
@@ -293,7 +306,7 @@ struct MyScalesScreen: View {
             }
         }
     }
-    
+
 }
 
 #Preview {

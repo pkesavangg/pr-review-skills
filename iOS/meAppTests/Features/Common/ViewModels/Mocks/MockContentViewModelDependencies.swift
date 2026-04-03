@@ -31,7 +31,7 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
         migrateFromSQLiteCalls += 1
     }
 
-    func loadDashboardData() async {
+    func loadDashboardData(entryType: EntryType) async {
         loadDashboardDataCalls += 1
     }
 
@@ -50,12 +50,12 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
     func getEntryCount() async throws -> Int { 0 }
     func getOldestEntry() async throws -> Entry? { nil }
     func getLatestEntry() async throws -> Entry? { nil }
-    func getEntries(lastNDays: Int) async throws -> [Entry] { [] }
-    func getEntries(forMonth month: String) async throws -> [Entry] { [] }
-    func getMonthsAll() async throws -> [HistoryMonth] { [] }
-    func getMonthDetail(month: String) async throws -> [Entry] { [] }
+    func getEntries(lastNDays: Int, entryType: EntryType) async throws -> [Entry] { [] }
+    func getEntries(forMonth month: String, entryType: EntryType) async throws -> [Entry] { [] }
+    func getMonthsAll(entryType: EntryType) async throws -> [HistoryMonth] { [] }
+    func getMonthDetail(month: String, entryType: EntryType) async throws -> [Entry] { [] }
     func getMonthYear() async throws -> [HistoryMonth] { [] }
-    func getProgress() async throws -> meApp.Progress {
+    func getProgress(entryType: EntryType) async throws -> meApp.Progress {
         meApp.Progress(
             count: 0,
             currentStreak: 0,
@@ -73,8 +73,12 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
         )
     }
 
-    func getStreak() async throws -> Streak { Streak(current: 0, max: 0) }
+    func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
+    func deleteBpmEntry(entryTimestamp: String) async throws {}
+    func exportBpmCSV() async throws {}
 }
 
 @MainActor
@@ -102,9 +106,11 @@ final class MockContentViewModelFeedService: FeedServiceProtocol {
 }
 
 @MainActor
-final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'MockContentViewModelScaleService' does not conform to protocol 'ScaleServiceProtocol'
+final class MockContentViewModelScaleService: ScaleServiceProtocol {
     @Published var scales: [Device] = []
     var scalesPublisher: AnyPublisher<[Device], Never> { $scales.eraseToAnyPublisher() }
+
+    func syncDevices(tempDevice: Device?) async throws {}
 
     private(set) var syncAllScalesWithRemoteCalls = 0
 
@@ -113,7 +119,6 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'Mo
     func getConnectedDevices() async -> [String: Any] { [:] }
     func updateConnectedDevices(device: Any, isConnected: Bool) async {}
     func updateConnectedDeviceWifiStatus(broadcastId: String, isConfigured: Bool) async {}
-    func syncDevices(tempDevice: Device?) async throws {}
     func createDevice(_ device: Device, _ skipDuplicateCheck: Bool) async throws -> Device { device }
     func editDevice(_ deviceId: String, properties: [String: Any]) async throws -> Device {
         throw UnexpectedCallError.methodCalled("editDevice")
@@ -152,7 +157,8 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'Mo
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
+        skipDuplicateCheck: Bool,
+        deviceType: DeviceType = .scale
     ) async throws -> Device {
         throw UnexpectedCallError.methodCalled("createBluetoothScale")
     }
@@ -173,6 +179,7 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol { // Type 'Mo
         syncAllScalesWithRemoteCalls += 1
     }
 
+    func createScaleInLocal(_ device: Device) async throws -> Device { device }
     func pushLocalChangesToServer() async {}
     func getDevice(by deviceId: String) async throws -> Device? { nil }
     func updateConnectedDeviceWeightOnlyMode(broadcastId: String, isWeightOnlyModeEnabledByOthers: Bool) async {}
@@ -196,6 +203,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     var newEntryReceivedPublisher: AnyPublisher<EntryNotification, Never> { Empty().eraseToAnyPublisher() }
     var firmwareUpdateProgressPublisher: AnyPublisher<FirmwareUpdateStatus, Never> { Empty().eraseToAnyPublisher() }
     var liveMeasurementPublisher: AnyPublisher<GGWeightEntry, Never> { Empty().eraseToAnyPublisher() }
+    var newBpmReadingReceivedPublisher: AnyPublisher<BpmMeasurement, Never> { Empty().eraseToAnyPublisher() }
 
     func initialize() { initializeCalls += 1 }
     func stopScan() {}
@@ -211,6 +219,9 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func pauseSmartScan() {}
     func resumeSmartScan(clearOnlyPairing: Bool) {}
     func scanForPairing() {}
+    func scanForBpm() {}
+    func connectBpm(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func syncDevices(_ devices: [Device]) {}

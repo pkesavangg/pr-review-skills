@@ -141,6 +141,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             }
         }()
         if let exact {
+            state.selectedXValue = exact.date
             state.selectedPoint = exact
             do { try await updateMetrics(exact) } catch {
                 logger.log(level: .error, tag: "DashboardGraphManager", message: "updateMetrics failed: \(error)")
@@ -186,6 +187,53 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             yAxisDomain: nil,
             period: state.selectedPeriod
         )
+    }
+
+    /// Generates BPM chart data (3 series: systolic, diastolic, pulse).
+    func generateBpmChartData(from operations: [BathScaleWeightSummary]) -> [GraphSeries] {
+        dataPreparer.buildBpmChartSeries(from: operations, period: state.selectedPeriod)
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func generateBabyChartData(
+        from allOperations: [BathScaleWeightSummary],
+        visibleOperations: [BathScaleWeightSummary],
+        babyProfile: BabyProfile,
+        metric: BabyMetric,
+        convertWeight: @escaping (Int) -> Double,
+        convertDecigramsToDisplay: @escaping (Int) -> Double,
+        yAxisDomain: ClosedRange<Double>
+    ) -> [GraphSeries] {
+        switch metric {
+        case .weight:
+            let weightSeries = generateChartDataWithYAxisDomain(
+                from: allOperations,
+                visibleOperations: visibleOperations,
+                selectedMetric: nil,
+                isWeightlessMode: false,
+                anchorWeight: nil,
+                convertWeight: convertWeight,
+                yAxisDomain: yAxisDomain
+            )
+
+            let percentileSeries = BabyDashboardChartSupport.percentileSeries(
+                for: babyProfile,
+                operations: allOperations,
+                convertDecigramsToDisplay: convertDecigramsToDisplay
+            )
+
+            return weightSeries + percentileSeries
+        case .height:
+            let heightSeries = BabyDashboardChartSupport.dummyHeightSeries(
+                for: babyProfile,
+                operations: allOperations
+            )
+            let percentileSeries = BabyDashboardChartSupport.heightPercentileSeries(
+                for: babyProfile,
+                operations: allOperations
+            )
+            return heightSeries + percentileSeries
+        }
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -257,6 +305,16 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             chartHeight: chartHeight,
             lastScale: lastYAxisScale
         )
+        lastYAxisScale = scale
+        return scale
+    }
+
+    /// Calculates Y-axis for BPM data (systolic, diastolic, pulse — all in mmHg/bpm).
+    func getBpmYAxisScale(
+        from operations: [BathScaleWeightSummary],
+        chartHeight: CGFloat
+    ) -> YAxisScale {
+        let scale = DashboardChartScaleProvider.bpmScale(from: operations)
         lastYAxisScale = scale
         return scale
     }

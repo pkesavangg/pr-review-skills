@@ -42,6 +42,27 @@ struct SignupStrings {
         static let subtitle = "Be sure to use a valid email. You'll use this to login and it's where we'll send any reports."
     }
     
+    struct PickDeviceStep {
+        static let title = "What will you use with meApp?"
+        static let babyScaleTitle = "Baby Scale"
+        static let bpmTitle = "Blood Pressure Monitor"
+        static let weightScaleTitle = "Weight Scale"
+        static let babyScaleSubtitle = "Track baby growth"
+        static let bpmSubtitle = "BP trends & reminders"
+        static let weightScaleSubtitle = "BMI & weight insights"
+    }
+
+    struct AddBabyStep {
+        static let title = "Add a Baby"
+        static let subtitle = "Let's add a baby. If you don't know their info, take your best guess. You can always update it later."
+        static let birthdayLabel = "baby's Birthday"
+    }
+
+    struct BabyListStep {
+        static let title = "Your baby has been added!"
+        static let addBabyButton = "ADD A BABY"
+    }
+
     struct PasswordStep {
         static let title = "Create a password."
         static let subtitle = "Your password must be at least six characters."

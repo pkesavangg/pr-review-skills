@@ -10,19 +10,21 @@ import SwiftUI
 // MARK: - Scale Manual List Row View
 struct ScaleManualListRowView: View {
     let scale: ScaleItemInfo
+    var showConnectivityIcon: Bool = true
+    var showBottomBorder: Bool = true
     @Environment(\.appTheme) private var theme
     let rowHeight: CGFloat = 139
-    
+
     var body: some View {
-        HStack(spacing: .spacingSM) {
-            Image(scale.imgPath)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 75, height: 75)
-                .themeDropShadow()
-            
+    HStack(spacing: .spacingSM) {
+    Image(scale.imgPath)
+    .resizable()
+    .scaledToFit()
+    .frame(width: 75, height: 75)
+    .themeDropShadow()
+
             VStack(alignment: .leading, spacing: 0) {
-                Text(scale.sku)
+                Text(scale.setupType == .bpm ? bpmListModelLabel(primarySku: scale.sku) : scale.sku)
                     .fontOpenSans(.heading5)
                     .foregroundColor(theme.textHeading)
                 Text(scale.productName.lowercased())
@@ -30,26 +32,28 @@ struct ScaleManualListRowView: View {
                     .foregroundColor(theme.textSubheading)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                
-            }
-            .frame(height: 75)
+
+    }
+    .frame(height: 75)
 
             Spacer()
-            AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 32, height: 32))
-                .foregroundColor(theme.actionPrimary)
+            if showConnectivityIcon {
+                AppIconView(icon: iconName(for: scale.setupType), size: IconSize(width: 32, height: 32))
+                    .foregroundColor(theme.actionPrimary)
+            }
             AppIconView(icon: AppAssets.chevronRight, size: IconSize(width: 32, height: 32))
                 .foregroundColor(theme.actionPrimary)
         }
         .padding(.vertical, .spacingSM)
         .padding(.horizontal, .spacingSM)
         .frame(height: rowHeight)
-        .border(sides: [.bottom], thickness: 0.5)
+        .border(sides: [.bottom], thickness: showBottomBorder ? 0.5 : 0)
     }
 
     /// Returns human-readable connectivity label for a given setup type.
     private func connectivityText(for type: ScaleSetupType) -> String {
         switch type {
-        case .bluetooth, .lcbt:
+        case .bluetooth, .lcbt, .babyScale:
             return "Bluetooth"
         case .wifi, .espTouchWifi:
             return "WiFi"
@@ -57,9 +61,11 @@ struct ScaleManualListRowView: View {
             return "AppSync"
         case .btWifiR4:
             return "BtWifi"
+        case .bpm:
+            return "BPM"
         }
     }
-    
+
     private func iconName(for type: ScaleSetupType) -> String {
         switch type {
         case .bluetooth, .lcbt:
@@ -70,6 +76,10 @@ struct ScaleManualListRowView: View {
             return AppAssets.appSync
         case .btWifiR4:
             return AppAssets.btWifi
+        case .babyScale:
+            return AppAssets.babyAppIcon
+        case .bpm:
+            return AppAssets.bpmIcon
         }
     }
 }

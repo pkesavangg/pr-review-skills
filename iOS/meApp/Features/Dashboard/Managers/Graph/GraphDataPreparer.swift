@@ -75,6 +75,48 @@ struct GraphDataPreparer {
         }
     }
 
+    // MARK: - Baby Weight Series
+
+    /// Convenience entry point for baby weight charts. Delegates to `buildWeightSeries`
+    /// with weightless mode disabled (baby charts never use weightless anchoring).
+    func buildBabyWeightSeries(
+        from operations: [BathScaleWeightSummary],
+        convertWeight: (Int) -> Double
+    ) -> [GraphSeries] {
+        buildWeightSeries(
+            from: operations,
+            isWeightlessMode: false,
+            anchorWeight: nil,
+            convertWeight: convertWeight
+        )
+    }
+
+    // MARK: - BPM Series
+
+    /// Builds three named chart series (systolic, diastolic, pulse) from BP summary data.
+    /// Mirrors the weight graph's period granularity:
+    /// - week/month use day averages
+    /// - year/total use month averages
+    func buildBpmChartSeries(
+        from operations: [BathScaleWeightSummary],
+        period: TimePeriod
+    ) -> [GraphSeries] {
+        let aggregatedOperations = aggregatedBpmOperationsForPeriod(from: operations, period: period)
+        var series: [GraphSeries] = []
+        for op in aggregatedOperations {
+            if let sys = op.systolic {
+                series.append(GraphSeries(date: op.date, value: sys, series: "systolic"))
+            }
+            if let dia = op.diastolic {
+                series.append(GraphSeries(date: op.date, value: dia, series: "diastolic"))
+            }
+            if let pulse = op.pulse {
+                series.append(GraphSeries(date: op.date, value: pulse, series: "pulse"))
+            }
+        }
+        return series
+    }
+
     // MARK: - Normalized Metric Series
 
     /// Normalizes metric values into the visible weight range for co-plotting.
@@ -472,6 +514,76 @@ struct GraphDataPreparer {
         return cal.date(byAdding: .hour, value: 12, to: dayStart) ?? date
     }
 
+    func aggregatedBpmOperationsForPeriod(
+        from operations: [BathScaleWeightSummary],
+        period: TimePeriod
+    ) -> [BathScaleWeightSummary] {
+        guard !operations.isEmpty else { return [] }
+
+        switch period {
+        case .week, .month:
+            return aggregateBpmOperations(operations, by: .day)
+        case .year, .total:
+            return aggregateBpmOperations(operations, by: .month)
+        }
+    }
+
+    private enum BpmAggregationUnit {
+        case day
+        case month
+    }
+
+    private func aggregateBpmOperations(
+        _ operations: [BathScaleWeightSummary],
+        by unit: BpmAggregationUnit
+    ) -> [BathScaleWeightSummary] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = Calendar.current.timeZone
+
+        let grouped = Dictionary(grouping: operations) { summary -> Date in
+            switch unit {
+            case .day:
+                return calendar.startOfDay(for: summary.date)
+            case .month:
+                let components = calendar.dateComponents([.year, .month], from: summary.date)
+                return calendar.date(from: components) ?? calendar.startOfDay(for: summary.date)
+            }
+        }
+
+        return grouped.keys.sorted().compactMap { groupDate in
+            guard let summaries = grouped[groupDate], !summaries.isEmpty else { return nil }
+
+            func average(_ values: [Double?]) -> Double? {
+                let validValues = values.compactMap { $0 }
+                guard !validValues.isEmpty else { return nil }
+                return validValues.reduce(0, +) / Double(validValues.count)
+            }
+
+            let latestTimestamp = summaries.map(\.entryTimestamp).max() ?? ""
+            let periodKey: String
+            switch unit {
+            case .day:
+                periodKey = calendar.formattedDate(groupDate, format: "yyyy-MM-dd")
+            case .month:
+                periodKey = calendar.formattedDate(groupDate, format: "yyyy-MM")
+            }
+
+            return BathScaleWeightSummary(
+                accountId: summaries[0].accountId,
+                period: periodKey,
+                entryTimestamp: latestTimestamp,
+                date: groupDate,
+                count: summaries.reduce(0) { $0 + $1.count },
+                weight: 0,
+                pulse: average(summaries.map(\.pulse)),
+                systolic: average(summaries.map(\.systolic)),
+                diastolic: average(summaries.map(\.diastolic)),
+                meanArterial: average(summaries.map(\.meanArterial)),
+                entryType: EntryType.bpm.rawValue
+            )
+        }
+    }
+
     // MARK: - Hermite Math
 
     private func segmentIndex(for target: Double, in xs: [Double]) -> Int {
@@ -536,4 +648,14 @@ struct GraphDataPreparer {
 
 private extension ClosedRange where Bound == Double {
     var mid: Double { (lowerBound + upperBound) / 2 }
+}
+
+private extension Calendar {
+    func formattedDate(_ date: Date, format: String) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = self
+        formatter.timeZone = timeZone
+        formatter.dateFormat = format
+        return formatter.string(from: date)
+    }
 }

@@ -245,6 +245,14 @@ struct HKIntegrationModalStrings {
         primaryButtonTitle: "CONNECT",
         secondaryButtonTitle: nil
     )
+
+    static let updatePermissions = HKIntegrationModalContent(
+        imageName: AppAssets.hkLogoLarge,
+        title: "Update Apple Health Permissions",
+        message: "You paired a new device that can sync additional health data. Update Apple Health permissions for Weight Gurus now?",
+        primaryButtonTitle: "UPDATE",
+        secondaryButtonTitle: "NOT NOW"
+    )
 }
 
 /// Constants for form validation error messages
@@ -278,6 +286,7 @@ struct FormErrorMessages {
     static let namePattern = "please enter a valid name"
     static let validInput = "please enter valid input"
     static let userNameUnavailable = "user name unavailable"
+    static let numericOnly = "only numbers are allowed"
 }
 
 /// Constants for input field labels used in the app
@@ -322,6 +331,10 @@ struct InputFieldLabels {
     static let skeletalMuscles = "skeletal muscles (%)"
     static let basalMetabolicRate = "basal metabolic rate (kcal)"
     static let metabolicAge = "metabolic age (yrs)"
+    static let babyName = "name"
+    static let babyBirthLength = "birth length"
+    static let babyBirthWeight = "birth weight"
+    static let biologicalSex = "Biological sex"
 }
 
 // Constants for Alert strings used in the app
@@ -700,19 +713,26 @@ struct AlertStrings {
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
-    
+
     struct DuplicateUserAlert {
         static let header = "Duplicate Scale User Name"
         static let message = "Reconnect the scale with a new user name."
         static let reconnectButton = "Reconnect"
         static let cancelButton = "Cancel"
     }
-    
+
     struct UpdatesPendingAlert {
         static let title = "Updates Pending..."
         static let message = "Scale settings can't be updated at this time. "
             + "Weight Gurus will save changes and update the scale next time it connects."
         static let okButton = "OK"
+    }
+
+    struct RemoveBabyAlert {
+        static let title = "Remove Baby"
+        static let message = "Are you sure you want to remove this baby? You will not be able to get it back."
+        static let deleteButton = "Delete"
+        static let cancelButton = "Cancel"
     }
 }
 
@@ -853,6 +873,7 @@ struct AppAssets {
     static let scale = "scale"
     static let metric = "metric"
     static let export = "export"
+    static let editIcon = "edit"
 
     // MARK: - Scale images
     // MARK: - AppSync series
@@ -885,6 +906,31 @@ struct AppAssets {
 
     // MARK: - Bluetooth wifi series
     static let scale0412 = "0412"
+
+    // MARK: - Signup device icons
+    static let babyAppIcon = "babyAppIcon"
+    static let bpmIcon = "bpmIcon"
+    static let weightScaleIcon = "weightScaleIcon"
+
+    // MARK: - Baby scale series
+    static let scale0220 = "0220"
+    static let scale0222 = "0222"
+    static let babyAppLoaderGif = "BabyAppLoader"
+    static let checkmarkSuccessGif = "gg_checkmark_success"
+    // MARK: - BPM series
+    static let bpm0603 = "0603"
+    static let bpm0604 = "0604"
+    static let bpm0634 = "0634"
+    static let bpm0636 = "0636"
+    static let bpm0661 = "0661"
+    static let bpm0663 = "0663"
+    static let bpm0664 = "0664"
+    static let bpm0665 = "0665"
+    static let bpm0667 = "0667"
+    static let a3BpmUser1 = "A3bpmUser1"
+    static let a3BpmUser2 = "A3bpmUser2"
+    static let a6BpmUserA = "A6bpmUserA"
+    static let a6BpmUserB = "A6bpmUserB"
     static let streak = "streak"
     static let longestStreak = "longestStreak"
     static let plusCircle = "plusCircle"
@@ -915,7 +961,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_Err_\(errorCode)_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates AP mode image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - sku: Scale SKU (e.g., "0384", "0396")
@@ -927,7 +973,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_AP_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates complete setup image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - isFilled: Whether to use filled or outlined version
@@ -938,7 +984,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "0396_Complete_\(fillType)\(themeVariant)"
     }
-    
+
     /// Generates step on image asset names based on SKU, filled state, and theme
     /// - Parameters:
     ///   - sku: Scale SKU (e.g., "0396")
@@ -950,7 +996,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "\(sku)_StepOn_\(fillType)\(themeVariant)"
     }
-    
+
     // MARK: - Bluetooth Setup
     static let setupPressUnitButtonGifName: (String) -> String = { sku in
         "\(sku)-Setup-PressUnitButton"
@@ -978,7 +1024,7 @@ struct AppAssets {
         let themeVariant = isDarkMode ? "_dark" : ""
         return "0384_U\(user)_\(fillType)\(themeVariant)"
     }
-    
+
     /// Legacy function for backward compatibility - generates step on GIF name
     /// Parameters:
     ///   - isFilled: Whether to use filled or outlined version

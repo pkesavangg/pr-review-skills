@@ -29,7 +29,7 @@ final class MockEntryService: EntryServiceProtocol {
 
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
-    func loadDashboardData() async {}
+    func loadDashboardData(entryType: EntryType) async {}
     func clearAllData() async { clearAllDataCalls += 1 }
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntry(_ entry: Entry) async throws {
@@ -61,19 +61,19 @@ final class MockEntryService: EntryServiceProtocol {
         getLatestEntryCalls += 1
         return try getLatestEntryResult.get()
     }
-    func getEntries(lastNDays: Int) async throws -> [Entry] { [] }
-    func getEntries(forMonth month: String) async throws -> [Entry] { [] }
-    func getMonthsAll() async throws -> [HistoryMonth] {
+    func getEntries(lastNDays: Int, entryType: EntryType) async throws -> [Entry] { [] }
+    func getEntries(forMonth month: String, entryType: EntryType) async throws -> [Entry] { [] }
+    func getMonthsAll(entryType: EntryType) async throws -> [HistoryMonth] {
         getMonthsAllCalls += 1
         return try getMonthsAllResult.get()
     }
-    func getMonthDetail(month: String) async throws -> [Entry] {
+    func getMonthDetail(month: String, entryType: EntryType) async throws -> [Entry] {
         getMonthDetailCalls += 1
         getMonthDetailLastMonth = month
         return try getMonthDetailResult.get()
     }
     func getMonthYear() async throws -> [HistoryMonth] { [] }
-    func getProgress() async throws -> meApp.Progress {
+    func getProgress(entryType: EntryType) async throws -> meApp.Progress {
         meApp.Progress(
             count: 0,
             currentStreak: 0,
@@ -90,9 +90,23 @@ final class MockEntryService: EntryServiceProtocol {
             year: 2024
         )
     }
-    func getStreak() async throws -> Streak { Streak(current: 0, max: 0) }
+    func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {
         exportCSVCalls += 1
         _ = try exportCSVResult.get()
     }
+
+    private(set) var createBpmEntryCalls = 0
+    private(set) var fetchBpmEntriesCalls = 0
+    private(set) var deleteBpmEntryCalls = 0
+    private(set) var exportBpmCSVCalls = 0
+    var fetchBpmEntriesResult: Result<[BpmOperationDTO], Error> = .success([])
+
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws { createBpmEntryCalls += 1 }
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] {
+        fetchBpmEntriesCalls += 1
+        return try fetchBpmEntriesResult.get()
+    }
+    func deleteBpmEntry(entryTimestamp: String) async throws { deleteBpmEntryCalls += 1 }
+    func exportBpmCSV() async throws { exportBpmCSVCalls += 1 }
 }

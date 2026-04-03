@@ -54,7 +54,7 @@ Repeat for all PRs before moving to Step 3.
 
 ## STEP 3 — Review Each PR
 
-For each PR in sequence, run all four review skills. Pass to each skill:
+For each PR in sequence, run all six review skills. Pass to each skill:
 - PR_META: `{PR_NUMBER, PR_TITLE, BRANCH, BASE_BRANCH, PR_BODY, JIRA_ID}`
 - DIFF
 - CHANGED_FILES
@@ -71,7 +71,13 @@ Read and execute the skill at `.claude/skills/review-lint.md`
 **3c — Regression**
 Read and execute the skill at `.claude/skills/review-regression.md`
 
-**3d — Issue Coverage**
+**3d — Code Standards**
+Read and execute the skill at `.claude/skills/review-code-standards.md`
+
+**3e — UI Standards**
+Read and execute the skill at `.claude/skills/review-ui-standards.md`
+
+**3f — Issue Coverage**
 Read and execute the skill at `.claude/skills/review-issue-fix.md`
 
 Collect the output of each skill for this PR before moving to the next PR.
@@ -99,7 +105,7 @@ Repeat for each PR.
 
 ## STEP 5 — Determine Verdicts
 
-For each PR, derive the overall verdict from the four skill outputs:
+For each PR, derive the overall verdict from the six skill outputs:
 
 | Condition | Overall Verdict |
 |-----------|----------------|
@@ -123,9 +129,9 @@ Write the file with the following structure:
 
 ## Summary
 
-| PR | Title | Branch | Jira | Security | Lint | Regression | Issue Coverage | Verdict |
-|----|-------|--------|------|----------|------|------------|----------------|---------|
-| #{n} | {title} | {branch} | {MA-XXXX or —} | PASS/WARN/FAIL | PASS/WARN/FAIL | Low/Med/High | Complete/Partial/Missing | APPROVED/NEEDS CHANGES/BLOCKED |
+| PR | Title | Branch | Jira | Security | Lint | Regression | Code Standards | UI Standards | Issue Coverage | Verdict |
+|----|-------|--------|------|----------|------|------------|----------------|--------------|----------------|---------|
+| #{n} | {title} | {branch} | {MA-XXXX or —} | PASS/WARN/FAIL | PASS/WARN/FAIL | Low/Med/High | PASS/WARN/FAIL | PASS/WARN/FAIL | Complete/Partial/Missing | APPROVED/NEEDS CHANGES/BLOCKED |
 
 ---
 
@@ -142,12 +148,16 @@ Write the file with the following structure:
 
 {full output from review-regression.md}
 
+{full output from review-code-standards.md}
+
+{full output from review-ui-standards.md}
+
 {full output from review-issue-fix.md}
 
 ### Overall Verdict
 **{APPROVED / NEEDS CHANGES / BLOCKED}**
 
-{2–4 sentence summary: most important findings across all four dimensions}
+{2–4 sentence summary: most important findings across all six dimensions}
 
 ---
 

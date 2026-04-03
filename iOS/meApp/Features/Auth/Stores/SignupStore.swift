@@ -19,11 +19,12 @@ final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var logger: LoggerServiceProtocol
+    @Injector var kvStorage: KvStorageServiceProtocol
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     var commonLang = CommonStrings.self
     
-    @Published var currentStepIndex: Int = SignupStep.name.index {
+    @Published var currentStepIndex: Int = 0 {
         didSet {
             currentStep = steps[currentStepIndex]
             updateNextButtonState()
@@ -33,7 +34,16 @@ final class SignupStore: ObservableObject {
     @Published var signupForm = SignupForm()
     @Published var isNextEnabled = false
     @Published var isGoalSkipped = false
-    
+
+    // Device type selection
+    @Published var selectedDeviceType: SignupDeviceType?
+
+    // Baby management
+    @Published var babies: [SignupBaby] = []
+    @Published var isEditingBabyIndex: Int?
+    @Published var showBabySexPicker = false
+    @Published var showBabyDatePicker = false
+
     // Height-related published properties
     @Published var selectedHeightInches: [String] = ["5", "10"]  // Default 5'10"
     @Published var selectedHeightCm: [String] = ["1", "7", "8"]  // Default 178cm
@@ -60,6 +70,7 @@ final class SignupStore: ObservableObject {
         _ = notificationService
         _ = accountService
         _ = logger
+        _ = kvStorage
 
         previousMetricValue = signupForm.useMetric.value
         setupFormObservers()
@@ -68,15 +79,24 @@ final class SignupStore: ObservableObject {
         self.updateWeightValidators(isMetric: self.signupForm.useMetric.value)
     }
     
-    let steps: [SignupStep] = [
-        .name,
-        .dateOfBirth,
-        .sex,
-        .height,
-        .goal,
-        .email,
-        .password
-    ]
+    /// The ordered steps for the current signup flow.
+    /// Dynamically computed based on the selected device type.
+    var steps: [SignupStep] {
+        var result: [SignupStep] = [.name, .dateOfBirth, .pickDevice]
+        switch selectedDeviceType {
+        case .babyScale:
+            // Baby: add baby → baby list → straight to email/password
+            result += [.addBaby, .babyList]
+        case .bpm:
+            // BPM: only sex selection, no height/goal
+            result.append(.sex)
+        default:
+            // Weight scale (default): full flow
+            result += [.sex, .height, .goal]
+        }
+        result += [.email, .password]
+        return result
+    }
     
     var progressValue: Double {
         Double(currentStepIndex + 1) / Double(steps.count)
@@ -134,30 +154,109 @@ final class SignupStore: ObservableObject {
     }
     
     // MARK: - Navigation
-    
+
     func handleSkip() {
-        isGoalSkipped = true
-        signupForm.resetGoal()
-        objectWillChange.send()
-        moveToNextStep()
+        switch currentStep {
+        case .goal:
+            isGoalSkipped = true
+            signupForm.resetGoal()
+            objectWillChange.send()
+            moveToNextStep()
+        case .addBaby:
+            // Skip baby flow entirely — jump to email step
+            signupForm.resetBaby()
+            objectWillChange.send()
+            if let emailIndex = steps.firstIndex(of: .email) {
+                currentStepIndex = emailIndex
+            }
+        default:
+            objectWillChange.send()
+            moveToNextStep()
+        }
     }
-    
+
     func moveToNextStep() {
         if currentStep == .password {
             Task {
                 await createUser()
             }
         }
+        // When leaving addBaby, save the baby and move to babyList
+        if currentStep == .addBaby {
+            saveBabyFromForm()
+        }
         guard currentStepIndex < steps.count - 1 else { return }
         currentStepIndex += 1
     }
-    
+
     func moveToPreviousStep() {
         guard currentStepIndex > 0 else { return }
         currentStepIndex -= 1
         if currentStep == .goal {
             isGoalSkipped = false
         }
+    }
+
+    /// Called when user changes device type on the Pick a Device step.
+    func selectDeviceType(_ type: SignupDeviceType) {
+        selectedDeviceType = type
+        updateNextButtonState()
+    }
+
+    // MARK: - Baby Management
+
+    /// Saves the current baby form fields as a new baby (or updates an existing one).
+    func saveBabyFromForm() {
+        let baby = SignupBaby(
+            name: signupForm.babyName.value,
+            birthday: signupForm.babyBirthday.value,
+            sex: Sex(rawValue: signupForm.babySex.value),
+            birthLength: signupForm.babyBirthLength.value,
+            birthWeight: signupForm.babyBirthWeight.value
+        )
+        if let editIndex = isEditingBabyIndex {
+            babies[editIndex] = baby
+            isEditingBabyIndex = nil
+        } else {
+            babies.append(baby)
+        }
+        signupForm.resetBaby()
+    }
+
+    /// Navigates to the addBaby step to add another baby from the baby list.
+    func addAnotherBaby() {
+        signupForm.resetBaby()
+        isEditingBabyIndex = nil
+        guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
+        currentStepIndex = addBabyIndex
+    }
+
+    /// Loads a baby into the form for editing and navigates to the addBaby step.
+    func editBaby(at index: Int) {
+        guard index < babies.count else { return }
+        let baby = babies[index]
+        signupForm.babyName.value = baby.name
+        signupForm.babyBirthday.value = baby.birthday
+        signupForm.babySex.value = baby.sex?.rawValue ?? ""
+        signupForm.babyBirthLength.value = baby.birthLength
+        signupForm.babyBirthWeight.value = baby.birthWeight
+        isEditingBabyIndex = index
+        guard let addBabyIndex = steps.firstIndex(of: .addBaby) else { return }
+        currentStepIndex = addBabyIndex
+    }
+
+    /// Shows a confirmation alert before removing a baby at the given index.
+    func confirmDeleteBaby(at index: Int) {
+        notificationService.showDeleteBabyConfirmation { [weak self] in
+            self?.deleteBaby(at: index)
+        }
+    }
+
+    /// Removes a baby at the given index.
+    func deleteBaby(at index: Int) {
+        guard index < babies.count else { return }
+        babies.remove(at: index)
+        updateNextButtonState()
     }
     
     func updateNextButtonState() {
@@ -166,6 +265,14 @@ final class SignupStore: ObservableObject {
             isNextEnabled = (signupForm.firstName.isValid && signupForm.lastName.isValid)
         case .dateOfBirth:
             isNextEnabled = (signupForm.birthday.isValid)
+        case .pickDevice:
+            isNextEnabled = selectedDeviceType != nil
+        case .addBaby:
+            isNextEnabled = signupForm.babyName.isValid
+                && signupForm.babyBirthLength.isValid
+                && signupForm.babyBirthWeight.isValid
+        case .babyList:
+            isNextEnabled = !babies.isEmpty
         case .sex:
             isNextEnabled = signupForm.gender.isValid
         case .height:
@@ -239,6 +346,15 @@ final class SignupStore: ObservableObject {
             signupForm.goalWeight.markAsTouched()
             signupForm.goalWeight.validate()
             signupForm.validate()
+        case .babyName:
+            signupForm.babyName.markAsTouched()
+            signupForm.babyName.validate()
+        case .babyBirthLength:
+            signupForm.babyBirthLength.markAsTouched()
+            signupForm.babyBirthLength.validate()
+        case .babyBirthWeight:
+            signupForm.babyBirthWeight.markAsTouched()
+            signupForm.babyBirthWeight.validate()
         default:
             didUpdate = false
         }
@@ -301,11 +417,12 @@ final class SignupStore: ObservableObject {
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            _ = try await accountService.signUp(
+            let account = try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
+            persistSelectedSignupDeviceType(for: account.accountId)
             // Create the goal if it's not skipped
             if let goal = goal {
                 logger.log(
@@ -392,6 +509,19 @@ final class SignupStore: ObservableObject {
                 goalType: derivedType
             )
         }
+    }
+
+    private func persistSelectedSignupDeviceType(for accountId: String) {
+        guard let selectedDeviceType else { return }
+        let key = KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)
+        kvStorage.setValue(selectedDeviceType.rawValue, forKey: key)
+        kvStorage.setValue(accountId, forKey: KvStorageKeys.recentSignupAccountId.rawValue)
+        kvStorage.setValue(selectedDeviceType.rawValue, forKey: KvStorageKeys.recentSignupDeviceType.rawValue)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Persisted signup-selected device type. accountId=\(accountId), deviceType=\(selectedDeviceType.rawValue)"
+        )
     }
     
     private func handleSignupError(_ error: Error) {
@@ -525,7 +655,12 @@ final class SignupStore: ObservableObject {
         signupForm = SignupForm()
 
         // Reset navigation/UI state.
-        currentStepIndex = SignupStep.name.index
+        selectedDeviceType = nil
+        babies.removeAll()
+        isEditingBabyIndex = nil
+        showBabySexPicker = false
+        showBabyDatePicker = false
+        currentStepIndex = 0
         isGoalSkipped = false
         isNextEnabled = false
         showHeightInchesPicker = false

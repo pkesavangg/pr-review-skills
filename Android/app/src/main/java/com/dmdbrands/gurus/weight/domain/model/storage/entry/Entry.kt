@@ -20,6 +20,7 @@ sealed class Entry : IUnitProcessable<Entry> {
         return when (this) {
             is ScaleEntry -> this.copy(entry = entry)
             is BpmEntry -> this.copy(entry = entry)
+            is BabyEntry -> this.copy(entry = entry)
         }
     }
 
@@ -47,6 +48,7 @@ sealed class Entry : IUnitProcessable<Entry> {
             }
 
             is BpmEntry -> this
+            is BabyEntry -> this
         }
     }
 }
@@ -77,6 +79,7 @@ fun Entry.toPeriodBodyScaleSummary(): PeriodBodyScaleSummary? {
             )
         }
         is BpmEntry -> null
+        is BabyEntry -> null
     }
 }
 

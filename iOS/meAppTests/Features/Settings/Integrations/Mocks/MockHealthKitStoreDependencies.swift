@@ -108,6 +108,10 @@ final class MockHealthKitStoreHealthKitService: HealthKitServiceProtocol {
     func setWaitingForPermissionsRestored() {}
     func clearWaitingForPermissionsRestored() {}
     func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool { false }
+
+    var expectedPermissionCountResult = 5
+    func requestAdditionalPermissionsIfNeeded() async {}
+    func expectedPermissionCount() async -> Int { expectedPermissionCountResult }
 }
 
 @MainActor
@@ -123,7 +127,7 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
 
     func syncAllEntriesWithRemote() async {}
     func migrateFromSQLiteIfNeeded() async {}
-    func loadDashboardData() async {}
+    func loadDashboardData(entryType: EntryType) async {}
     func clearAllData() async {}
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntry(_ entry: Entry) async throws {}
@@ -145,13 +149,13 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
         return latestEntry
     }
 
-    func getEntries(lastNDays: Int) async throws -> [Entry] { [] }
-    func getEntries(forMonth month: String) async throws -> [Entry] { [] }
-    func getMonthsAll() async throws -> [HistoryMonth] { [] }
-    func getMonthDetail(month: String) async throws -> [Entry] { [] }
+    func getEntries(lastNDays: Int, entryType: EntryType) async throws -> [Entry] { [] }
+    func getEntries(forMonth month: String, entryType: EntryType) async throws -> [Entry] { [] }
+    func getMonthsAll(entryType: EntryType) async throws -> [HistoryMonth] { [] }
+    func getMonthDetail(month: String, entryType: EntryType) async throws -> [Entry] { [] }
     func getMonthYear() async throws -> [HistoryMonth] { [] }
 
-    func getProgress() async throws -> meApp.Progress {
+    func getProgress(entryType: EntryType) async throws -> meApp.Progress {
         meApp.Progress(
             count: 0,
             currentStreak: 0,
@@ -169,6 +173,10 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
         )
     }
 
-    func getStreak() async throws -> Streak { Streak(current: 0, max: 0) }
+    func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
+    func deleteBpmEntry(entryTimestamp: String) async throws {}
+    func exportBpmCSV() async throws {}
 }

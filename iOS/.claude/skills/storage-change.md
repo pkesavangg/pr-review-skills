@@ -35,7 +35,7 @@ Assess whether the change can cause:
 ### 3 — Implement Using Existing Patterns
 
 Apply the current repo approach:
-- keep secrets/tokens in Keychain, not SwiftData or KvStorage
+- **keep secrets/tokens in Keychain, not SwiftData or KvStorage** — reference `/keychain-pattern` skill for comprehensive storage decision tree, sensitive data classification, and implementation patterns
 - use in-memory containers in tests
 - preserve account-scoped storage semantics
 - document one-time migration behavior where needed
@@ -55,7 +55,7 @@ If the change touches persistent schemas, secure storage behavior, or migration 
 - Is a migration or backfill needed?
 - Is rollback possible without data loss?
 - Are there partial migration states that could leave data corrupted?
-- Are secrets/tokens stored in the wrong place?
+- **Are secrets/tokens stored in the wrong place?** — reference `/keychain-pattern` skill for storage location decision logic and migration patterns
 - Does a doc need updating in `docs/`?
 - Which tests should prove the migration path?
 - Are there missing tests for one-time migration logic?

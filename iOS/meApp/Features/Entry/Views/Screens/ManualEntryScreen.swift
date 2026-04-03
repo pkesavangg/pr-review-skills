@@ -61,7 +61,78 @@ struct ManualEntryScreen: View {
             }
             
             ScrollView(.vertical) {
-                VStack(spacing: .spacingLG) {
+                // Body: switch between entry types based on product selection
+                switch productTypeStore.selectedItem {
+                case .baby:
+                    BabyEntryView(
+                        entryStore: entryStore,
+                        focusedField: $focusedField
+                    ) {
+                        performTabSwitchAndHideKeyboard()
+                    }
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.vertical, .spacingLG)
+                    .padding(.bottom, keyboard.currentHeight)
+                case .myBloodPressure:
+                    BloodPressureEntryView(
+                        entryStore: entryStore,
+                        focusedField: $focusedField
+                    ) {
+                        performTabSwitchAndHideKeyboard()
+                    }
+                    .padding(.horizontal, .spacingSM)
+                    .padding(.vertical, .spacingLG)
+                    .padding(.bottom, keyboard.currentHeight)
+                case .myWeight:
+                    weightEntryContent
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .background(theme.backgroundSecondary)
+        .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(commonLang.done) {
+                    withAnimation {
+                        focusedField = nil
+                    }
+                }
+            }
+        }
+        .onAppear {
+            entryStore.refreshTimeOnTabSelected()
+            entryStore.refreshWeightUnit()
+            entryStore.startAutoTimeSync()
+            tabViewModel.registerReselectHandler(for: .entry) { }
+            registerDeactivation {
+                guard entryStore.manualEntryForm.isDirty else { return true }
+                return await entryStore.confirmDiscardChanges()
+            }
+        }
+        .onDisappear {
+            entryStore.stopAutoTimeSync()
+        }
+        .onChange(of: tabViewModel.selectedTab) { _, newValue in
+            if newValue == .entry {
+                entryStore.refreshTimeOnTabSelected()
+                entryStore.refreshWeightUnit()
+                entryStore.startAutoTimeSync()
+            } else {
+                entryStore.stopAutoTimeSync()
+            }
+        }
+        .onReceive(tabViewModel.$pendingAppSyncEditMetrics) { metrics in
+            guard let metrics = metrics, tabViewModel.selectedTab == .entry else { return }
+            entryStore.populateFromAppSync(metrics: metrics)
+            tabViewModel.pendingAppSyncEditMetrics = nil
+        }
+    }
+
+    // MARK: - Weight Entry Content (existing UI extracted)
+    private var weightEntryContent: some View {
+        VStack(spacing: .spacingLG) {
                     VStack(alignment: .leading, spacing: .spacingXS) {
                         // Weight Input Field
                         MetricInputField(
@@ -72,11 +143,11 @@ struct ManualEntryScreen: View {
                             focusedField = nil
                         }
                         .id(entryStore.weightUnit)
-                        
+
                         Text(labels.date)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)
-                        
+
                         HStack(spacing: .spacingSM) {
                             DateLabelView(date: entryStore.manualEntryForm.date.value,
                                           isSelected: entryStore.showDatePicker
@@ -88,7 +159,7 @@ struct ManualEntryScreen: View {
                                 toggleTimePicker()
                             }
                         }
-                        
+
                         // Pickers
                         DatePickerView(isPresented: $entryStore.showDatePicker,
                                        date: $entryStore.manualEntryForm.date.value,
@@ -100,7 +171,7 @@ struct ManualEntryScreen: View {
                                 dismissOtherPicker(for: .date)
                             }
                         }
-                        
+
                         TimePickerView(isPresented: $entryStore.showTimePicker,
                                        time: $entryStore.manualEntryForm.time.value,
                                        selectedDate: entryStore.manualEntryForm.date.value,
@@ -112,7 +183,7 @@ struct ManualEntryScreen: View {
                             }
                         }
                     }
-                    
+
                     // Accordion header
                     VStack(spacing: 0) {
                         VStack {
@@ -125,7 +196,7 @@ struct ManualEntryScreen: View {
                                             size: IconSize(width: 32, height: 32))
                                 .foregroundColor(theme.actionPrimary)
                             }
-                            
+
                             Text("(\(commonLang.optional))")
                                 .fontOpenSans(.body2)
                                 .foregroundColor(theme.textSubheading)
@@ -138,11 +209,11 @@ struct ManualEntryScreen: View {
                             }
                         }
                         .padding(.bottom, .spacingXS)
-                        
+
                         if entryStore.showMetrics {
                             VStack(spacing: .spacingSM) {
                                 // Input fields for body metrics
-                                
+
                                 // BMI field
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.bmi,
@@ -161,7 +232,7 @@ struct ManualEntryScreen: View {
                                         entryStore.disableBmiAutoCalculation()
                                     }
                                 }
-                                
+
                                 // Body Fat field
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.bodyFat,
@@ -175,7 +246,7 @@ struct ManualEntryScreen: View {
                                 ) {
                                     focusedField = .muscleMass
                                 }
-                                
+
                                 // Muscle Mass field
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.muscleMass,
@@ -189,7 +260,7 @@ struct ManualEntryScreen: View {
                                 ) {
                                     focusedField = .bodyWater
                                 }
-                                
+
                                 MetricInputField(
                                     config: TextInputConfig(label: labels.bodyWater,
                                                             inputType: .metric,
@@ -202,7 +273,7 @@ struct ManualEntryScreen: View {
                                 ) {
                                     focusedField = nil
                                 }
-                                
+
                                 // Other body metrics fields
                                 if entryStore.canShowOtherBodyMetrics {
                                     // Heart Rate field
@@ -218,7 +289,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = .boneMass
                                     }
-                                    
+
                                     // Bone Mass field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.boneMass,
@@ -232,7 +303,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = .visceralFat
                                     }
-                                    
+
                                     // Visceral Fat field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.visceralFat,
@@ -246,7 +317,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = .subcutaneousFat
                                     }
-                                    
+
                                     // Subcutaneous Fat field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.subcutaneousFat,
@@ -260,7 +331,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = .protein
                                     }
-                                    
+
                                     // Protein field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.protein,
@@ -274,7 +345,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = .skeletalMuscles
                                     }
-                                    
+
                                     // Skeletal Muscles field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.skeletalMuscles,
@@ -288,7 +359,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = .bmr
                                     }
-                                    
+
                                     // Basal Metabolic Rate field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.basalMetabolicRate,
@@ -302,7 +373,7 @@ struct ManualEntryScreen: View {
                                     ) {
                                         focusedField = .metabolicAge
                                     }
-                                    
+
                                     // Metabolic Age field
                                     MetricInputField(
                                         config: TextInputConfig(label: labels.metabolicAge,
@@ -326,7 +397,7 @@ struct ManualEntryScreen: View {
                             .padding(.top, .spacingSM)
                         }
                     }
-                    
+
                     // Save button
                     ButtonView(
                         text: commonLang.save,
@@ -340,67 +411,13 @@ struct ManualEntryScreen: View {
                             performTabSwitchAndHideKeyboard()
                         }
                     }
-                    
+
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
                 .padding(.bottom, keyboard.currentHeight)
-                .onAppear {
-                    // Ensure time defaults to current when landing on this tab
-                    entryStore.refreshTimeOnTabSelected()
-                    // Refresh weight unit to catch any sync updates from other devices
-                    entryStore.refreshWeightUnit()
-                    // Start periodic time sync while on this screen
-                    entryStore.startAutoTimeSync()
-                    // Register a reselect handler for same-tab clicks (do nothing)
-                    tabViewModel.registerReselectHandler(for: .entry) {
-                        // Do nothing when clicking the same tab - just stay on it
-                    }
-                    // Register a handler that decides whether the tab can be left.
-                    registerDeactivation {
-                        // If the form is clean we can leave immediately.
-                        guard entryStore.manualEntryForm.isDirty else { return true }
-                        // Ask the user via the store's confirmation helper.
-                        return await entryStore.confirmDiscardChanges()
-                    }
-                }
-                .onDisappear {
-                    // Stop periodic time sync when leaving screen
-                    entryStore.stopAutoTimeSync()
-                }
-                .onChange(of: tabViewModel.selectedTab) { _, newValue in
-                    // Update time every time Entry tab becomes active
-                    if newValue == .entry {
-                        entryStore.refreshTimeOnTabSelected()
-                        entryStore.refreshWeightUnit()
-                        entryStore.startAutoTimeSync()
-                    } else {
-                        entryStore.stopAutoTimeSync()
-                    }
-                }
-                // Observe AppSync edit metrics reactively for navigation and in-tab updates
-                .onReceive(tabViewModel.$pendingAppSyncEditMetrics) { metrics in
-                    guard let metrics = metrics, tabViewModel.selectedTab == .entry else { return }
-                    entryStore.populateFromAppSync(metrics: metrics)
-                    tabViewModel.pendingAppSyncEditMetrics = nil
-                }
-            }
-            .scrollDismissesKeyboard(.interactively)
-        }
-        .background(theme.backgroundSecondary)
-        .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button(commonLang.done) {
-                    withAnimation {
-                        focusedField = nil
-                    }
-                }
-            }
-        }
     }
-    
+
     private func dismissKeyboardAndUnfocus() {
         focusedField = nil
         hideKeyboard()

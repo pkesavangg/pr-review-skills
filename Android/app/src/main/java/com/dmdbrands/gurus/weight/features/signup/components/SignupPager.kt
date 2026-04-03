@@ -13,6 +13,8 @@ import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.HorizontalPagerWithBottomNavigation
+import com.dmdbrands.gurus.weight.features.signup.model.BabyFormControls
+import com.dmdbrands.gurus.weight.features.signup.model.SignupIntent
 import com.dmdbrands.gurus.weight.features.signup.model.SignupState
 import com.dmdbrands.gurus.weight.features.signup.model.SignupStep
 import com.dmdbrands.gurus.weight.features.signup.strings.SignupStrings
@@ -27,9 +29,9 @@ fun SignupPager(
   onSkip: () -> Unit,
   onUrlOpen: (String) -> Unit,
   onMetricToggle: (Boolean) -> Unit = {},
+  onIntent: (SignupIntent) -> Unit = {},
 ) {
   val focusManager = LocalFocusManager.current
-  // Ensure IME Next/Done actions only advance when the current step is valid
   val guardedOnNext: () -> Unit = {
     if (state.isCurrentStepValid) {
       focusManager.clearFocus()
@@ -70,71 +72,88 @@ fun SignupPager(
         onClick = guardedOnNext,
       )
     },
-    pageContent =
-      {
-        Crossfade(targetState = state.currentStep) { step ->
-          val formControls = state.form.controls
+    pageContent = {
+      Crossfade(targetState = state.currentStep) { step ->
+        val formControls = state.form.controls
 
-          Column(
-            modifier =
-              Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-          ) {
-            when (step) {
-              SignupStep.NAME ->
-                NameStep(
-                  firstNameControl = formControls.firstName,
-                  lastNameControl = formControls.lastName,
-                  onNext = guardedOnNext,
-                )
+        Column(
+          modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        ) {
+          when (step) {
+            SignupStep.NAME ->
+              NameStep(
+                firstNameControl = formControls.firstName,
+                lastNameControl = formControls.lastName,
+                onNext = guardedOnNext,
+              )
 
-              SignupStep.BIRTHDAY ->
-                BirthdayStep(
-                  birthdayControl = formControls.birthday,
-                )
+            SignupStep.EMAIL ->
+              EmailStep(
+                emailControl = formControls.email,
+                onNext = guardedOnNext,
+              )
 
-              SignupStep.GENDER ->
-                GenderStep(
-                  genderControl = formControls.sex,
-                )
+            SignupStep.BIRTHDAY ->
+              BirthdayStep(
+                birthdayControl = formControls.birthday,
+              )
 
-              SignupStep.HEIGHT ->
-                HeightStep(
-                  heightControl = formControls.height,
-                  useMetricControl = formControls.useMetric,
-                  onMetricToggle = onMetricToggle,
-                )
+            SignupStep.PICK_DEVICE ->
+              PickDeviceStep(
+                deviceControl = formControls.device,
+                onDeviceSelected = { device -> onIntent(SignupIntent.SelectDevice(device)) },
+              )
 
-              SignupStep.GOAL ->
-                GoalStep(
-                  title = SignupStrings.goalStepTitle,
-                  goalTypeControl = formControls.goalType,
-                  currentWeightControl = formControls.currentWeight,
-                  goalWeightControl = formControls.goalWeight,
-                  isMetric = formControls.useMetric.value,
-                  onGoalTypeChange = {}, // Empty callback for signup flow
-                  onNext = guardedOnNext,
-                  showCurrentWeightForMaintain = false,
-                )
+            SignupStep.GENDER ->
+              GenderStep(
+                genderControl = formControls.sex,
+              )
 
-              SignupStep.EMAIL ->
-                EmailStep(
-                  emailControl = formControls.email,
-                  onNext = guardedOnNext,
-                )
+            SignupStep.HEIGHT ->
+              HeightStep(
+                heightControl = formControls.height,
+                useMetricControl = formControls.useMetric,
+                onMetricToggle = onMetricToggle,
+              )
 
-              SignupStep.PASSWORD ->
-                PasswordStep(
-                  passwordControl = formControls.password,
-                  confirmPasswordControl = formControls.confirmPassword,
-                  zipcodeControl = formControls.zipcode,
-                  onUrlOpen = onUrlOpen,
-                  onSubmit = guardedOnNext,
-                )
-            }
+            SignupStep.GOAL ->
+              GoalStep(
+                title = SignupStrings.goalStepTitle,
+                goalTypeControl = formControls.goalType,
+                currentWeightControl = formControls.currentWeight,
+                goalWeightControl = formControls.goalWeight,
+                isMetric = formControls.useMetric.value,
+                onGoalTypeChange = {},
+                onNext = guardedOnNext,
+                showCurrentWeightForMaintain = false,
+              )
+
+            SignupStep.ADD_BABY ->
+              AddBabyStep(
+                babyForm = state.babyState?.babyForm ?: BabyFormControls.create(),
+              )
+
+            SignupStep.BABY_ADDED ->
+              BabyAddedStep(
+                babies = state.babyState?.babies ?: emptyList(),
+                onEditBaby = { baby -> onIntent(SignupIntent.EditBaby(baby)) },
+                onDeleteBaby = { baby -> onIntent(SignupIntent.DeleteBaby(baby.id)) },
+                onAddBaby = { onIntent(SignupIntent.AddAnotherBaby) },
+              )
+
+            SignupStep.PASSWORD ->
+              PasswordStep(
+                passwordControl = formControls.password,
+                confirmPasswordControl = formControls.confirmPassword,
+                zipcodeControl = formControls.zipcode,
+                onUrlOpen = onUrlOpen,
+                onSubmit = guardedOnNext,
+              )
           }
         }
-      },
+      }
+    },
   )
 }

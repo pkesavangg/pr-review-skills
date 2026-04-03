@@ -27,6 +27,51 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     @Injector var accountService: AccountService
     @Injector var logger: LoggerService
 
+    // MARK: - BPM State
+
+    /// The current AHA classification, driven by point selection or last entry. Defaults to `.normal`.
+    var currentBpmClassification: AhaPressureClass = .normal
+
+    /// Updates the AHA classification based on a selected/tapped data point.
+    func handleBpmPointSelection(_ point: BathScaleWeightSummary) {
+        guard let sys = point.systolic, let dia = point.diastolic else { return }
+        currentBpmClassification = AhaPressureClass.classify(systolic: Int(sys), diastolic: Int(dia))
+    }
+
+    /// Returns the BPM display values — either from the selected point or the visible window average.
+    func getBpmDisplayValues() -> BpmDisplayData? {
+        // 1. If a point is selected, show that point's values
+        if let selected = stateProvider?.state.graph.selectedPoint,
+           let sys = selected.systolic, let dia = selected.diastolic {
+            let pulse = Int(selected.pulse ?? 0)
+            let classification = AhaPressureClass.classify(systolic: Int(sys), diastolic: Int(dia))
+            let dateLabel = formatChartDate(selected.date)
+            return BpmDisplayData(systolic: Int(sys), diastolic: Int(dia), pulse: pulse, classification: classification, label: dateLabel)
+        }
+
+        // 2. Fallback to visible window average
+        let visible = getVisibleOperations()
+        let validOps = visible.filter { $0.systolic != nil }
+        guard !validOps.isEmpty else { return nil }
+
+        let avgSys = Int(round(validOps.compactMap(\.systolic).reduce(0, +) / Double(validOps.count)))
+        let avgDia = Int(round(validOps.compactMap(\.diastolic).reduce(0, +) / Double(validOps.count)))
+        let avgPulse = Int(round(validOps.compactMap(\.pulse).reduce(0, +) / Double(validOps.count)))
+        let classification = AhaPressureClass.classify(systolic: avgSys, diastolic: avgDia)
+
+        // Build a date range label for the visible window
+        let label: String
+        if let first = validOps.first, let last = validOps.last, first.date != last.date {
+            label = "\(formatChartDate(first.date)) - \(formatChartDate(last.date))"
+        } else if let first = validOps.first {
+            label = formatChartDate(first.date)
+        } else {
+            label = ""
+        }
+
+        return BpmDisplayData(systolic: avgSys, diastolic: avgDia, pulse: avgPulse, classification: classification, label: label)
+    }
+
     /// Closures for store-level computed properties
     let getContinuousOperations: () -> [BathScaleWeightSummary]
     let getVisibleOperations: () -> [BathScaleWeightSummary]
@@ -122,7 +167,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     var weightLabel: String {
         guard let stateProvider else { return "" }
 
-        if !stateProvider.state.data.hasAnyEntries {
+        if !stateProvider.state.data.hasAnyEntries && getContinuousOperations().isEmpty {
             return emptyStatePeriodLabel(for: stateProvider.state.graph.selectedPeriod)
         }
 

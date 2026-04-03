@@ -271,13 +271,72 @@ For detailed test patterns, mock usage, and assertion examples → `meAppTests/d
 | Mock HTTP client | `meAppTests/Support/Mocks/Network/MockHTTPClient.swift` |
 | Unit test guide | `meAppTests/docs/UNIT_TESTING.md` |
 | Coverage guide | `docs/COVERAGE_REPORTING.md` |
+| Architecture overview | `architecture.md` |
+| Theme system guide | `.claude/skills/theme-guide.md` |
+| Notification layer guide | `.claude/skills/notification-guide.md` |
+| API call patterns | `.claude/skills/api-guide.md` |
+| Form validation guide | `.claude/skills/form-guide.md` |
+| Logging system guide | `.claude/skills/logging-guide.md` |
 | Workflow orchestration | `.claude/orchestra.md` |
 
 ---
 
 ## Workflow Orchestration
 
-For end-to-end workflow sequences, skill composition, review pipelines, and task management protocols, follow the orchestration guide at `.claude/orchestra.md`. It defines:
+**For every task — whether invoked via a slash command or natural language — consult `.claude/orchestra.md` Section 4 and follow the matching workflow sequence.** Read and execute each referenced skill file (`.claude/skills/*.md`) step-by-step as part of the task, even when no slash command was used.
+
+### Skill Auto-Matching Rules
+
+When the user describes a task in natural language, match it to the appropriate skill(s) using the `description` field in each `.claude/skills/*.md` file. Examples:
+
+| User says | Skill(s) to read and execute |
+|-----------|------------------------------|
+| "commit the code", "save my changes" | `.claude/skills/commit.md` |
+| "add an API call", "wire a new endpoint" | `.claude/skills/add-endpoint.md` → `.claude/skills/wire-service.md` |
+| "fix this bug" | `.claude/skills/debug-issue.md` → `.claude/skills/fix-bug.md` |
+| "refactor X", "rename Y" | `.claude/skills/refactor.md` |
+| "add logging", "instrument this" | `.claude/skills/analytics.md` |
+| "run tests", "do tests pass" | `.claude/skills/run-tests.md` |
+| "check coverage", "verify tests" | `.claude/skills/verify-tests.md` |
+| "review my changes", "self review" | `.claude/skills/self-review.md` |
+| "code standards review", "check conventions", "architecture review" | `.claude/skills/review-code-standards.md` |
+| "UI review", "check theme usage", "design standards review" | `.claude/skills/review-ui-standards.md` |
+| "raise a PR", "open a PR" | `.claude/skills/raise-pr.md` |
+| "write a PR description", "draft a PR description", "describe this PR", "what should I put in the PR description" | `.claude/skills/pr-description.md` |
+| "log time", "log work" | `.claude/skills/log-work.md` |
+| "create a branch", "start working on MA-XXXX" | `.claude/skills/create-branch.md` |
+| "scaffold this feature", "new feature" | `.claude/skills/feature-slice.md` |
+| "generate tests for X", "add unit tests" | `.claude/skills/gen-test-file.md` |
+| "generate a mock", "mock this protocol" | `.claude/skills/gen-mock-single.md` |
+| "add string for X", "add text for Y" | `.claude/skills/add-strings.md` |
+| "wire this screen", "add route for X" | `.claude/skills/wire-navigation.md` |
+| "register this in DI", "inject this" | `.claude/skills/wire-service.md` |
+| "does this build", "build check" | `.claude/skills/build.md` |
+| "graph bug", "chart issue", "fix graph" | `.claude/skills/graph.md` |
+| "security review", "check for secrets" | `.claude/skills/review-security.md` |
+| "fetch ticket", "show me the ticket" | `.claude/skills/fetch-ticket.md` |
+| "create a PRD", "plan this ticket" | `.claude/skills/create-prd.md` |
+| "update architecture" | `.claude/skills/update-architecture.md` |
+| "update mock", "mock is outdated" | `.claude/skills/update-mock.md` |
+| "storage change", "migration" | `.claude/skills/storage-change.md` |
+| "concurrency issue", "async bug" | `.claude/skills/swift-concurrency.md` |
+| "SwiftData issue" | `.claude/skills/swiftdata.md` |
+| "config change", "environment change" | `.claude/skills/config-change.md` |
+| "fix lint", "run swiftlint", "lint fix", "swiftlint errors", "clean up lint" | `.claude/skills/swiftlint.md` |
+| "run the guard", "post-change check", "check my changes", "guard", "quality check", "fix and check", "mid-session review", "check before self-review", "fix and review" | `.claude/skills/post-change-guard.md` |
+| "add accessibility to X", "make this screen accessible", "VoiceOver support" | `.claude/skills/add-accessibility.md` |
+| "add preview for X", "scaffold preview", "create #Preview" | `.claude/skills/add-preview.md` |
+| "how does theming work", "apply a color", "use a font", "add spacing", "dark mode", "use theme token" | `.claude/skills/theme-guide.md` |
+| "show a toast", "show an alert", "show a loader", "show a modal", "in-app notification", "notification layer" | `.claude/skills/notification-guide.md` |
+| "how do API calls work", "what's the DTO pattern", "HTTP client usage", "how do I call the API" | `.claude/skills/api-guide.md` |
+| "how does form validation work", "add a form", "validate a field", "form error message" | `.claude/skills/form-guide.md` |
+| "instrument this code", "add logging", "log this", "how does logging work", "send logs to server" | `.claude/skills/logging-guide.md` |
+
+When a task spans multiple skills, chain them in the order defined by `.claude/orchestra.md` Section 4. After implementation tasks, always follow the verification checklist in Section 6.
+
+### Orchestration Reference
+
+The full orchestration guide at `.claude/orchestra.md` defines:
 
 - **Workflow sequences** for common task types (full ticket SDLC, new feature, bug fix, refactoring, API endpoint, test coverage, etc.)
 - **Review pipeline** — the 5-step self-review sequence to run before every commit
@@ -285,3 +344,35 @@ For end-to-end workflow sequences, skill composition, review pipelines, and task
 - **Verification checklist** — pre-commit quality gates
 - **Parallelization opportunities** — which skills can run concurrently
 - **Error recovery** — what to do when builds fail, tests fail, or plans go sideways
+
+---
+
+## Post-Change Guard
+
+The `post-change-guard` is a mid-session quality fix-and-check pass. Run it after finishing a batch of implementation work and **before** running `/self-review`.
+
+**What it does (in parallel):**
+- Auto-fixes SwiftLint violations (lint + HIPAA compliance + force ops)
+- Auto-fixes accessibility issues (labels, identifiers, Dynamic Type)
+- Reports security findings — no auto-fix (requires human review)
+- Reports code standards deviations — no auto-fix (requires context)
+- Applies Swift concurrency pattern corrections (after parallel block)
+- Triggers full build check when vital infrastructure files are changed
+
+**When to run:**
+- After implementing a feature or fixing a bug — before `/self-review`
+- When the hook reminds you ("N Swift files edited this session")
+- Any time you want a fast mid-session quality pass
+
+**When NOT to use:**
+- Instead of `/self-review` — guard is "fix as you go"; self-review is the final commit gate
+- On a single file — the per-file SwiftLint hook already handles that
+- Before `/verify-tests` — tests are separate; the guard does not run tests
+
+**Workflow position:**
+```
+[Implementation complete] → /post-change-guard → /self-review → /commit
+```
+
+**Vital files that trigger build check:**
+`Core/DI/`, `Core/Services/ServiceRegistry.swift`, `Domain/Repositories/*Protocol.swift`, `Domain/Services/*Protocol.swift`, `Data/Services/`, `Data/API/`, `Core/Network/`, `Domain/Models/DB/`, `meApp.xcodeproj/`

@@ -10,7 +10,7 @@ protocol EntryServiceProtocol {
     /// Syncs all entries with the remote backend.
     func syncAllEntriesWithRemote() async
     func migrateFromSQLiteIfNeeded() async
-    func loadDashboardData() async
+    func loadDashboardData(entryType: EntryType) async
 
     /// Clears all entry-related data from the service (memory/cache/state).
     func clearAllData() async
@@ -57,23 +57,30 @@ protocol EntryServiceProtocol {
     func getLatestEntry() async throws -> Entry?
 
     /// Retrieves entries from the last N days for the current user.
-    /// - Parameter lastNDays: The number of days to look back.
+    /// - Parameters:
+    ///   - lastNDays: The number of days to look back.
+    ///   - entryType: Filter by entry type. Defaults to `.wg`.
     /// - Returns: An array of entries from the last N days.
-    func getEntries(lastNDays: Int) async throws -> [Entry]
+    func getEntries(lastNDays: Int, entryType: EntryType) async throws -> [Entry]
 
     /// Retrieves entries for a specific month for the current user.
-    /// - Parameter month: The month in 'YYYY-MM' format.
+    /// - Parameters:
+    ///   - month: The month in 'YYYY-MM' format.
+    ///   - entryType: Filter by entry type. Defaults to `.wg`.
     /// - Returns: An array of entries for the specified month.
-    func getEntries(forMonth month: String) async throws -> [Entry]
+    func getEntries(forMonth month: String, entryType: EntryType) async throws -> [Entry]
 
     /// Retrieves summary data for all months (e.g., for history or charting).
+    /// - Parameter entryType: Filter by entry type. Defaults to `.wg`.
     /// - Returns: An array of HistoryMonth objects representing each month.
-    func getMonthsAll() async throws -> [HistoryMonth]
+    func getMonthsAll(entryType: EntryType) async throws -> [HistoryMonth]
 
     /// Retrieves detailed entries for a specific month.
-    /// - Parameter month: The month in 'YYYY-MM' format.
+    /// - Parameters:
+    ///   - month: The month in 'YYYY-MM' format.
+    ///   - entryType: Filter by entry type. Defaults to `.wg`.
     /// - Returns: An array of entries for the specified month.
-    func getMonthDetail(month: String) async throws -> [Entry]
+    func getMonthDetail(month: String, entryType: EntryType) async throws -> [Entry]
 
     /// Retrieves summary data for the last year, grouped by month.
     /// - Returns: An array of HistoryMonth objects for the last year.
@@ -82,14 +89,50 @@ protocol EntryServiceProtocol {
     // MARK: - Progress/Stats
 
     /// Calculates and retrieves the user's progress statistics (e.g., weight change, streaks).
+    /// - Parameter entryType: Filter by entry type. Defaults to `.wg`.
     /// - Returns: A Progress object containing progress data.
-    func getProgress() async throws -> Progress
+    func getProgress(entryType: EntryType) async throws -> Progress
 
     /// Calculates and retrieves the user's current streak (consecutive days with entries).
+    /// - Parameter entryType: Filter by entry type. Defaults to `.wg`.
     /// - Returns: The current streak count.
-    func getStreak() async throws -> Streak
+    func getStreak(entryType: EntryType) async throws -> Streak
         
     // MARK: - Export
     /// Exports all entries to a CSV file.
     func exportCSV() async throws
+
+    // MARK: - BPM Entry CRUD
+
+    /// Creates a new BPM entry, persists it locally, and syncs with the backend.
+    /// - Parameter dto: The BPM operation data to save.
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws
+
+    /// Fetches all BPM entries for the current user as DTOs.
+    /// - Returns: An array of BpmOperationDTO objects.
+    func fetchBpmEntries() async throws -> [BpmOperationDTO]
+
+    /// Deletes a BPM entry by its entry timestamp.
+    /// - Parameter entryTimestamp: The timestamp identifying the BPM entry to delete.
+    func deleteBpmEntry(entryTimestamp: String) async throws
+
+    /// Exports BPM entries as CSV.
+    func exportBpmCSV() async throws
+
+    // MARK: - Baby Entry CRUD
+
+    /// Creates a new baby entry, persists it locally.
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String) async throws
+}
+
+// MARK: - Default Parameter Values
+
+extension EntryServiceProtocol {
+    func loadDashboardData() async { await loadDashboardData(entryType: .wg) }
+    func getEntries(lastNDays: Int) async throws -> [Entry] { try await getEntries(lastNDays: lastNDays, entryType: .wg) }
+    func getEntries(forMonth month: String) async throws -> [Entry] { try await getEntries(forMonth: month, entryType: .wg) }
+    func getMonthsAll() async throws -> [HistoryMonth] { try await getMonthsAll(entryType: .wg) }
+    func getMonthDetail(month: String) async throws -> [Entry] { try await getMonthDetail(month: month, entryType: .wg) }
+    func getProgress() async throws -> Progress { try await getProgress(entryType: .wg) }
+    func getStreak() async throws -> Streak { try await getStreak(entryType: .wg) }
 }

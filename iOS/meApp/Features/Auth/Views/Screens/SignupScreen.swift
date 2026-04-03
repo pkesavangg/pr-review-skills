@@ -15,29 +15,40 @@ struct SignupScreen: View {
     var commonLang = CommonStrings.self
     var isFromAccountSwitching: Bool = false
     private var stepViews: [AnyView] {
-        [
-            AnyView(
-                NameStepView(signupStore: signupStore)
-            ),
-            AnyView(
-                DateOfBirthStepView(signupStore: signupStore)
-            ),
-            AnyView(
-                SexStepView(signupStore: signupStore)
-            ),
-            AnyView(
-                HeightStepView(signupStore: signupStore)
-            ),
-            AnyView(
-                GoalStepView(signupStore: signupStore)
-            ),
-            AnyView(
-                EmailStepView(signupStore: signupStore)
-            ),
-            AnyView(
-                PasswordStepView(signupStore: signupStore)
-            )
-        ]
+        signupStore.steps.map { step in
+            switch step {
+            case .name:
+                AnyView(NameStepView(signupStore: signupStore))
+            case .dateOfBirth:
+                AnyView(DateOfBirthStepView(signupStore: signupStore))
+            case .pickDevice:
+                AnyView(PickDeviceStepView(signupStore: signupStore))
+            case .addBaby:
+                AnyView(AddBabyStepView(signupStore: signupStore))
+            case .babyList:
+                AnyView(BabyListStepView(
+                    title: SignupStrings.BabyListStep.title,
+                    addButtonText: SignupStrings.BabyListStep.addBabyButton,
+                    babies: signupStore.babies.map {
+                        BabyListItem(id: $0.id, accountID: $0.id.uuidString, name: $0.name)
+                    },
+                    onTapBaby: { signupStore.editBaby(at: $0) },
+                    onEditBaby: { signupStore.editBaby(at: $0) },
+                    onDeleteBaby: { signupStore.confirmDeleteBaby(at: $0) },
+                    onAddBaby: { signupStore.addAnotherBaby() }
+                ))
+            case .sex:
+                AnyView(SexStepView(signupStore: signupStore))
+            case .height:
+                AnyView(HeightStepView(signupStore: signupStore))
+            case .goal:
+                AnyView(GoalStepView(signupStore: signupStore))
+            case .email:
+                AnyView(EmailStepView(signupStore: signupStore))
+            case .password:
+                AnyView(PasswordStepView(signupStore: signupStore))
+            }
+        }
     }
     
     var body: some View {
@@ -122,7 +133,7 @@ struct SignupScreen: View {
         .overlay {
             HStack {
                 Spacer()
-                if signupStore.currentStep == SignupStep.goal {
+                if signupStore.currentStep == .goal || signupStore.currentStep == .addBaby {
                     ButtonView(text: commonLang.skip, type: .textTertiary, size: .small, isDisabled: false) {
                         withAnimation {
                             hideKeyboard()

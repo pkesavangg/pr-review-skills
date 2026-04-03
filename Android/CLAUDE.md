@@ -196,3 +196,24 @@ analyticsService.logEvent(
     Bundle().apply { putString(IAnalyticsService.Params.ERROR_TYPE, "http_401") },
 )
 ```
+
+## Room Query Rules
+
+- `PopulatedActiveEntry` queries MUST use `SELECT *` (not `SELECT e.*`) — Room's `@Transaction` + `@Relation` needs full parent columns
+- Filter by related table using subquery (`id IN (SELECT id FROM child_table WHERE ...)`) instead of INNER JOIN when returning `PopulatedActiveEntry`
+- Aggregated queries (returning `HistoryMonth`, `BpHistoryMonth`, etc.) CAN use JOINs and aliases
+- When existing DAO is large (>500 lines), create a separate read-only DAO (e.g., `HistoryDao`)
+
+## Hilt ViewModel Rules
+
+- **Never access `BaseViewModel` `lateinit` fields in `init {}`** — `navigationService`, `dialogQueueService`, `productSelectionManager`, `customTabManager` are field-injected AFTER constructor
+- Use `onDependenciesReady()` override for code that needs BaseViewModel services
+- `viewModelScope.launch` in `init` runs synchronously via `Dispatchers.Main.immediate` — `lateinit` access inside also crashes
+- Don't duplicate-inject services already in `BaseViewModel` — use `onDependenciesReady()` instead
+
+## Data Layer Patterns
+
+- Conversion functions go in `ConversionTools` — not in composables or repositories
+- Sample/mock data lives in **Repository** layer with `USE_SAMPLE_DATA` companion flag — never in ViewModel or Composable
+- Sealed types at service boundary: Repository returns typed, Service wraps in sealed, ViewModel unwraps
+- Prefer `ProductSelection` over `ProductType` + separate params when passing product context

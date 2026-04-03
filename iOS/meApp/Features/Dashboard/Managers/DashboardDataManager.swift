@@ -57,6 +57,33 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
             .store(in: &cancellables)
     }
 
+    // MARK: - Product Type Switching
+
+    /// Re-binds publishers to the correct EntryService data source for the given entry type.
+    func switchDataSource(to entryType: EntryType) {
+        cancellables.removeAll()
+        switch entryType {
+        case .wg:
+            entryService.$dailySummaries
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] in self?.updateStateFromDailySummaries($0) }
+                .store(in: &cancellables)
+            entryService.$monthlySummaries
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] in self?.updateStateFromMonthlySummaries($0) }
+                .store(in: &cancellables)
+        case .bpm:
+            entryService.$bpmDailySummaries
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] in self?.updateStateFromDailySummaries($0) }
+                .store(in: &cancellables)
+            entryService.$bpmMonthlySummaries
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] in self?.updateStateFromMonthlySummaries($0) }
+                .store(in: &cancellables)
+        }
+    }
+
     // MARK: - Data Loading
     func loadInitialData() async throws {
         logger.log(

@@ -19,8 +19,11 @@ import SwiftUI
 @MainActor
 protocol DashboardStateProviding: AnyObject {
     var state: DashboardState { get set }
+    var productType: EntryType { get }
+    var isBabySelection: Bool { get }
     func scheduleUIUpdate()
     func forceImmediateUIUpdate()
+    func yAxisScale(for operations: [BathScaleWeightSummary], chartHeight: CGFloat) -> YAxisScale
 }
 
 // MARK: - Chart Management
@@ -102,6 +105,11 @@ protocol DashboardDisplayManaging {
     func updateMetricsForCurrentView()
     func updateMetricsWithVisibleRegionAverage()
     func resetMetricsToLatestEntry()
+
+    // BPM
+    var currentBpmClassification: AhaPressureClass { get }
+    func handleBpmPointSelection(_ point: BathScaleWeightSummary)
+    func getBpmDisplayValues() -> BpmDisplayData?
 }
 
 // MARK: - Grid Editing Management

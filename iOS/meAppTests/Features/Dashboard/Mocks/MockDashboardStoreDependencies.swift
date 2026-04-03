@@ -11,6 +11,7 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
     var parsedEntryDate: Date?
     var dashboardEntryResult = true
     var formattedMetricValueResult: String?
+    // swiftlint:disable:next large_tuple
     private(set) var lastMetricInfoDateLabelArgs: (
         entryDate: Date?,
         isFromHistory: Bool,
@@ -64,6 +65,7 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
     private(set) var getChartSeriesDataCalls = 0
     private(set) var getLabelDateRangeOperationsCalls = 0
     private(set) var lastVisibleIsScrolling: Bool?
+    // swiftlint:disable:next large_tuple
     private(set) var lastChartSeriesRequest: (
         isScrolling: Bool,
         isProcessingScrollEnd: Bool,
@@ -139,6 +141,8 @@ final class MockDashboardDisplayManager: DashboardDisplayManaging {
     var displayUnitText: String = ""
     var activeMonthInterval: DateInterval?
     var operationsForLabelDateRange: [BathScaleWeightSummary] = []
+    var currentBpmClassification: AhaPressureClass = .normal
+    var bpmDisplayData: BpmDisplayData?
 
     func getCurrentAverageWeight() -> Double { 0 }
     func updateVisibleDataAfterScroll() {}
@@ -159,4 +163,6 @@ final class MockDashboardDisplayManager: DashboardDisplayManaging {
     func updateMetricsForCurrentView() { updateMetricsForCurrentViewCalls += 1 }
     func updateMetricsWithVisibleRegionAverage() { updateMetricsWithVisibleRegionAverageCalls += 1 }
     func resetMetricsToLatestEntry() { resetMetricsToLatestEntryCalls += 1 }
+    func handleBpmPointSelection(_ point: BathScaleWeightSummary) {}
+    func getBpmDisplayValues() -> BpmDisplayData? { bpmDisplayData }
 }

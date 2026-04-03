@@ -1,4 +1,4 @@
-/// Stores additional scale metrics for each entry.
+/// Stores additional scale and BPM metrics for each entry.
 ///
 /// | Column Name              | Type   | Description                    |
 /// |--------------------------|--------|--------------------------------|
@@ -13,6 +13,7 @@
 /// | boneMass                 | int    | Bone mass                      |
 /// | impedance                | int    | Bioelectrical impedance        |
 /// | unit                     | string | Unit of measurement            |
+
 
 import Foundation
 import SwiftData
@@ -40,7 +41,6 @@ final class BathScaleMetric {
     var impedance: Int?
     /// Unit of measurement
     var unit: String?
-
     init(
          bmr: Int? = nil,
          metabolicAge: Int? = nil,
@@ -75,6 +75,13 @@ final class BathScaleMetric {
             visceralFatLevel: dto.visceralFatLevel.map { Int($0) },
             boneMass: dto.boneMass.map { Int($0) },
             impedance: dto.impedance.map { Int($0) },
+            unit: dto.unit
+        )
+    }
+
+    convenience init(from dto: BpmOperationDTO) {
+        self.init(
+            pulse: dto.pulse.map { Int($0) },
             unit: dto.unit
         )
     }

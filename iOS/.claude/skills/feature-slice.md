@@ -38,11 +38,91 @@ Use when: top-level module, no nested subflows, not a settings subsection, not s
 
 Generate:
 - `Routes/<FeatureName>Route.swift` — enum with `case root`, conforming to `Routable`
-- `Stores/<FeatureName>Store.swift` — `@MainActor final class`, `@Published isLoading`, `@Published errorMessage`
-- `Views/Screens/<FeatureName>Screen.swift` — `struct` with `@ObservedObject store`
+- `Stores/<FeatureName>Store.swift` — `@MainActor final class`, `@Published isLoading`, `@Published errorMessage`, plus `#if DEBUG` preview factory
+- `Views/Screens/<FeatureName>Screen.swift` — `struct` with `@ObservedObject store`, accessibility identifiers on all interactive elements, and `#Preview` blocks
 - `Views/Components/` — empty directory
 - `Strings/<FeatureName>Strings.swift` — PascalCase struct with `static let title`
 - `meAppTests/Features/<FeatureName>/` — empty test directory
+
+**Screen file must include:**
+
+1. **Theme environment injection** at the top of the struct body:
+```swift
+struct <FeatureName>Screen: View {
+    @ObservedObject var store: <FeatureName>Store
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        // Use theme.textHeading, theme.backgroundPrimary, .spacingMD, .radiusMD, etc.
+    }
+}
+```
+
+2. **Accessibility identifiers** on every interactive element using `AccessibilityID`:
+```swift
+Button(action: { store.doAction() }) {
+    Text(<FeatureName>Strings.ActionButton)
+}
+.accessibilityIdentifier(AccessibilityID.<featureName>ActionButton)
+```
+
+2. **Accessibility labels** on icon-only buttons and decorative image hiding:
+```swift
+Image(systemName: "gear")
+    .accessibilityLabel("Settings")
+Image("decorative_bg")
+    .accessibilityHidden(true)
+```
+
+3. **`#Preview` blocks** at the bottom of the screen file:
+```swift
+// MARK: - Previews
+
+#Preview("Default") {
+    <FeatureName>Screen(store: <FeatureName>Store.preview())
+        .appTheme()
+}
+
+#Preview("Loading") {
+    <FeatureName>Screen(store: <FeatureName>Store.preview(isLoading: true))
+        .appTheme()
+}
+
+#Preview("Error") {
+    <FeatureName>Screen(store: <FeatureName>Store.preview(errorMessage: "Something went wrong"))
+        .appTheme()
+}
+
+#Preview("Dark Mode") {
+    <FeatureName>Screen(store: <FeatureName>Store.preview())
+        .appTheme()
+        .environment(\.colorScheme, .dark)
+}
+```
+
+**Store file must include** a `#if DEBUG` preview factory:
+```swift
+#if DEBUG
+extension <FeatureName>Store {
+    static func preview(
+        isLoading: Bool = false,
+        errorMessage: String? = nil
+    ) -> <FeatureName>Store {
+        let store = <FeatureName>Store()
+        store.isLoading = isLoading
+        store.errorMessage = errorMessage
+        return store
+    }
+}
+#endif
+```
+
+**Also add AccessibilityID constants** to `meApp/Core/Utilities/AccessibilityIdentifiers.swift`:
+```swift
+// MARK: - <FeatureName> Screen
+static let <featureName>ScreenRoot = "<feature_name>_screen_root"
+// ... one constant per interactive element
+```
 
 After creating files, print this checklist:
 ```
@@ -53,6 +133,8 @@ Manual next steps:
 □ Register any new services in ServiceRegistry (essential vs. session-scoped)
 □ Run: /gen-test-file meApp/Features/<FeatureName>/Stores/<FeatureName>Store.swift
 □ Run: /gen-mock-single for each protocol dependency once defined
+□ Run: /add-accessibility if additional views are added later
+□ Run: /add-preview for any new components added later
 ```
 
 ### 3 — Scaffold Only What Fits

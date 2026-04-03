@@ -3,8 +3,13 @@ package com.dmdbrands.gurus.weight.features.history.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import kotlinx.coroutines.flow.collectLatest
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import kotlinx.coroutines.Job
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
@@ -18,6 +23,7 @@ class HistoryViewModel
 constructor(
   private val entryService: IEntryService,
   private val exportService: IExportService,
+  private val historyService: IHistoryService,
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
   HistoryReducer(),
 ) {
@@ -31,24 +37,21 @@ constructor(
         resync()
       }
 
-      is HistoryIntent.getHistory -> {
-        viewModelScope.launch {
-          entryService.monthDetails(intent.start).collect {
-          }
-        }
-      }
-
       is HistoryIntent.Export -> {
         onExportDataClick()
       }
+
       is HistoryIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
 
       else -> null
     }
   }
 
+  override fun onDependenciesReady() {
+    observeAndLoadHistory()
+  }
+
   init {
-    loadHistory()
     viewModelScope.launch {
       entryService.isUpdating.collect {
         handleIntent(HistoryIntent.Loading(it))
@@ -56,16 +59,41 @@ constructor(
     }
   }
 
-  private fun loadHistory() {
-    viewModelScope.launch {
-      AppLog.d(TAG, "Loading history data")
-      entryService.monthlyAverage.collect { items ->
-        AppLog.d(TAG, "History data updated: ${items.size} month(s)")
-        handleIntent(
-          HistoryIntent.SetHistoryItems(
-            items = items,
-          ),
-        )
+  private val historyJobs = mutableListOf<Job>()
+  private var observeJob: Job? = null
+
+  /**
+   * Start observing availableProducts. When products change,
+   * cancels previous history collectors and reloads all.
+   * Called once from screen's LaunchedEffect.
+   */
+  fun observeAndLoadHistory() {
+    if (observeJob != null) return // already observing
+    observeJob = viewModelScope.launch {
+      productSelectionManager.availableProducts.collectLatest { products ->
+        loadAllHistory(products)
+      }
+    }
+  }
+
+  private fun loadAllHistory(availableProducts: List<ProductSelection>) {
+    if (historyService.accountId == null) return
+
+    // Cancel previous collectors
+    historyJobs.forEach { it.cancel() }
+    historyJobs.clear()
+
+    // Load each available product
+    availableProducts.forEach { product ->
+      historyJobs += viewModelScope.launch {
+        AppLog.d(TAG, "Loading history for ${product.productType}")
+        historyService.getGroupedHistory(product).collect { grouped ->
+          when (grouped) {
+            is GroupedHistory.Weight -> handleIntent(HistoryIntent.SetHistoryItems(grouped.months))
+            is GroupedHistory.BloodPressure -> handleIntent(HistoryIntent.SetBpHistoryItems(grouped.months))
+            is GroupedHistory.Baby -> handleIntent(HistoryIntent.SetBabyHistoryItems(grouped.weeks))
+          }
+        }
       }
     }
   }

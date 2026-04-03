@@ -38,7 +38,7 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
 
     func syncAllEntriesWithRemote() async {}
     func migrateFromSQLiteIfNeeded() async {}
-    func loadDashboardData() async {}
+    func loadDashboardData(entryType: EntryType) async {}
     func clearAllData() async {}
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
@@ -49,14 +49,18 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func getEntryCount() async throws -> Int { 0 }
     func getOldestEntry() async throws -> Entry? { nil }
     func getLatestEntry() async throws -> Entry? { nil }
-    func getEntries(lastNDays: Int) async throws -> [Entry] { [] }
-    func getEntries(forMonth month: String) async throws -> [Entry] { [] }
-    func getMonthsAll() async throws -> [HistoryMonth] { [] }
-    func getMonthDetail(month: String) async throws -> [Entry] { [] }
+    func getEntries(lastNDays: Int, entryType: EntryType) async throws -> [Entry] { [] }
+    func getEntries(forMonth month: String, entryType: EntryType) async throws -> [Entry] { [] }
+    func getMonthsAll(entryType: EntryType) async throws -> [HistoryMonth] { [] }
+    func getMonthDetail(month: String, entryType: EntryType) async throws -> [Entry] { [] }
     func getMonthYear() async throws -> [HistoryMonth] { [] }
-    func getProgress() async throws -> meApp.Progress {
+    func getProgress(entryType: EntryType) async throws -> meApp.Progress {
         meApp.Progress(count: 0, currentStreak: 0, initYear: nil, initMonth: nil, initWeek: nil, initWt: 0, latest: nil, longestStreak: 0, month: 1, percent: nil, total: nil, week: 1, year: 2024)
     }
-    func getStreak() async throws -> Streak { Streak(current: 0, max: 0) }
+    func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV() async throws {}
+    func createBpmEntry(_ dto: BpmOperationDTO) async throws {}
+    func fetchBpmEntries() async throws -> [BpmOperationDTO] { [] }
+    func deleteBpmEntry(entryTimestamp: String) async throws {}
+    func exportBpmCSV() async throws {}
 }

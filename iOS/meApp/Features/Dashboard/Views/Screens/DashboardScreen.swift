@@ -21,23 +21,57 @@ struct DashboardScreen: View {
     @State private var openMetricInfoWithoutSelection: MetricInfoWrapper?
     @State private var suppressOutsideCancel = false
     @State private var metricInfoEntry: Entry?
-    
+    @State private var isProductTypeSelectorPresented = false
+    @State private var isInProductDashboard = false
+    private let weightEmptyStateOffset: CGFloat = 650
+    private let bpmEmptyStateOffset: CGFloat = 400
+
+    private var hasBabySnapshotItem: Bool {
+        store.availableProductItems.contains { item in
+            if case .baby = item { return true }
+            return false
+        }
+    }
+
+    private var canShowSnapshotOverview: Bool {
+        store.availableProductItems.count > 1 || hasBabySnapshotItem
+    }
+
+    private var shouldShowSnapshotOverview: Bool {
+        canShowSnapshotOverview && !isInProductDashboard
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            navbarHeader()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if store.state.ui.isEditMode {
-                        store.cancelEdit()
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                if shouldShowSnapshotOverview {
+                    snapshotLogo()
+                    ScrollView(showsIndicators: false) {
+                        MultiDeviceSnapshotView(availableItems: store.availableProductItems) { selectedItem in
+                            store.selectProductItem(selectedItem)
+                            isInProductDashboard = true
+                        }
                     }
+                } else {
+                    navbarHeader()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if store.state.ui.isEditMode {
+                                store.cancelEdit()
+                            }
+                        }
+                    dashboardScroll(availableHeight: proxy.size.height)
                 }
-              dashboardScroll()
+            }
         }
         .refreshable {
             await store.lifecycleManager.refreshAll()
         }
         .onAppear(perform: store.lifecycleManager.onAppearActions)
-        .ignoresSafeArea(.all)
+        .onChange(of: canShowSnapshotOverview) { _, isAvailable in
+            if isAvailable { isInProductDashboard = false }
+        }
+        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
@@ -119,38 +153,43 @@ struct DashboardScreen: View {
         }
     }
     
+    private func snapshotLogo() -> some View {
+        AppIconView(icon: AppAssets.wgLogo, size: IconSize(width: 45, height: 45))
+            .foregroundColor(theme.textSubheading)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, .spacingXS)
+    }
+
     private func navbarHeader() -> some View {
-        NavbarHeaderView<EmptyView, EmptyView>(canShowBorder: false).zIndex(100)
+        NavbarHeaderView<EmptyView, EmptyView>(
+            title: store.availableProductItems.count > 1 && isInProductDashboard
+                ? store.selectedProductItem.dashboardTitle
+                : nil,
+            onTitleTap: store.availableProductItems.count > 1 && isInProductDashboard ? {
+                isProductTypeSelectorPresented = true
+            } : nil,
+            canShowBorder: false,
+            canShowTitleChevron: store.availableProductItems.count > 1 && isInProductDashboard
+        )
+        .sheet(isPresented: $isProductTypeSelectorPresented) {
+            ProductTypeSelectorSheet(
+                store: store.productTypeSelectorStore,
+                isPresented: $isProductTypeSelectorPresented,
+                title: ProductTypeStrings.myDashboard
+            )
+        }
+        .zIndex(100)
     }
     
-    private func dashboardScroll() -> some View {
+    private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                WeightTrendView(dashboardStore: store)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if store.state.ui.isEditMode && store.state.ui.alertData == nil {
-                            store.cancelEdit()
-                        }
-                    }
-                if store.state.ui.isEditMode || (!store.allContentRemoved && store.state.data.hasAnyEntries) {
-                    DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
-                }
-
-                if store.state.data.hasAnyEntries {
-                    let hasNoContentToShow = store.metricsToShow.isEmpty && 
-                                           (!store.streakManager.shouldShowStreakGrid() || store.state.ui.isGoalCardRemoved)
-                    actionButtons()
-                        .padding(.top, (store.allContentRemoved || hasNoContentToShow) ? .spacingLG : .spacingSM)
-                }
-                if !store.state.data.hasAnyEntries {
-                    VStack {
-                        Spacer(minLength: 0)
-                        noEntrySection()
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: UIScreen.main.bounds.height - 650)
+                if case .baby(let profile) = store.selectedProductItem {
+                    babyDashboardContent(babyProfile: profile)
+                } else if store.productType == .bpm {
+                    bpmDashboardContent(availableHeight: availableHeight)
+                } else {
+                    weightDashboardContent(availableHeight: availableHeight)
                 }
             }
         }
@@ -163,6 +202,76 @@ struct DashboardScreen: View {
                 }
         )
         .padding(.top, .zero)
+    }
+
+    @ViewBuilder
+    private func weightDashboardContent(availableHeight: CGFloat) -> some View {
+        WeightTrendView(dashboardStore: store)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if store.state.ui.isEditMode && store.state.ui.alertData == nil {
+                    store.cancelEdit()
+                }
+            }
+        if store.state.ui.isEditMode || (!store.allContentRemoved && store.state.data.hasAnyEntries) {
+            DashboardMetricsSection(store: store, parentView: .dashboard, openMetricInfoWithoutSelection: $openMetricInfoWithoutSelection)
+        }
+
+        if store.state.data.hasAnyEntries {
+            let hasNoContentToShow = store.metricsToShow.isEmpty &&
+                                   (!store.streakManager.shouldShowStreakGrid() || store.state.ui.isGoalCardRemoved)
+            actionButtons()
+                .padding(.top, (store.allContentRemoved || hasNoContentToShow) ? .spacingLG : .spacingSM)
+        }
+        if !store.state.data.hasAnyEntries {
+            VStack {
+                Spacer(minLength: 0)
+                noEntrySection()
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: max(0, availableHeight - weightEmptyStateOffset))
+        }
+    }
+
+    @ViewBuilder
+    private func bpmDashboardContent(availableHeight: CGFloat) -> some View {
+        if store.state.data.hasAnyEntries {
+            BpmTrendView(dashboardStore: store)
+            BpmMetricsSection(store: store)
+        } else {
+            bpmEmptyState(availableHeight: availableHeight)
+        }
+    }
+
+    @ViewBuilder
+    private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
+        BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
+    }
+
+    @ViewBuilder
+    private func bpmEmptyState(availableHeight: CGFloat) -> some View {
+        VStack(spacing: .spacingLG) {
+            Spacer(minLength: .spacingXL)
+            Image(systemName: "heart.text.square")
+                .font(.system(size: 60))
+                .foregroundColor(theme.textSubheading.opacity(0.5))
+                .accessibilityHidden(true)
+            Text(BpmDashboardStrings.noReadingsTitle)
+                .fontOpenSans(.heading4)
+                .foregroundColor(theme.textHeading)
+            Text(BpmDashboardStrings.noReadingsSubtitle)
+                .fontOpenSans(.body2)
+                .foregroundColor(theme.textBody)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, .spacingLG)
+            ButtonView(text: BpmDashboardStrings.addReading, type: .filledPrimary, size: .large, isDisabled: false) {
+                tabViewModel.selectTab(.entry)
+            }
+            Spacer(minLength: .spacingXL)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: max(0, availableHeight - bpmEmptyStateOffset))
     }
 
     private func actionButtons() -> some View {

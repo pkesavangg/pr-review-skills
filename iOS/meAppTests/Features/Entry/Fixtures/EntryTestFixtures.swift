@@ -61,4 +61,78 @@ enum EntryTestFixtures {
         )
         return entry
     }
+
+    static func makeBpmEntry(
+        id: UUID = UUID(),
+        accountId: String = "acct-1",
+        timestamp: String = "2026-03-01T08:00:00Z",
+        systolic: Int? = 120,
+        diastolic: Int? = 80,
+        pulse: Int? = 72,
+        meanArterial: String? = "93.3",
+        note: String? = nil,
+        source: String? = "manual",
+        unit: String? = "mmHg",
+        operationType: OperationType = .create,
+        serverTimestamp: String? = nil,
+        isSynced: Bool = false
+    ) -> Entry {
+        let entry = Entry(
+            id: id,
+            entryTimestamp: timestamp,
+            accountId: accountId,
+            operationType: operationType.rawValue,
+            serverTimestamp: serverTimestamp,
+            deviceType: DeviceType.bpm.rawValue,
+            entryType: EntryType.bpm.rawValue,
+            isSynced: isSynced
+        )
+        entry.scaleEntry = BathScaleEntry(
+            source: source,
+            systolic: systolic,
+            diastolic: diastolic,
+            meanArterial: meanArterial,
+            note: note
+        )
+        entry.scaleEntryMetric = BathScaleMetric(
+            pulse: pulse,
+            unit: unit
+        )
+        entry.bpmEntry = BPMEntry(
+            systolic: systolic ?? 0,
+            diastolic: diastolic ?? 0,
+            meanArterial: meanArterial ?? "",
+            pulse: pulse ?? 0,
+            note: note ?? ""
+        )
+        return entry
+    }
+
+    static func makeBpmDTO(
+        accountId: String? = "acct-1",
+        systolic: Double? = 120.0,
+        diastolic: Double? = 80.0,
+        pulse: Double? = 72.0,
+        meanArterial: String? = "93.3",
+        note: String? = nil,
+        source: String? = "manual",
+        unit: String? = "mmHg",
+        entryTimestamp: String? = "2026-03-01T08:00:00Z",
+        operationType: String? = "create",
+        serverTimestamp: String? = nil
+    ) -> BpmOperationDTO {
+        BpmOperationDTO(
+            accountId: accountId,
+            systolic: systolic,
+            diastolic: diastolic,
+            pulse: pulse,
+            meanArterial: meanArterial,
+            note: note,
+            source: source,
+            unit: unit,
+            entryTimestamp: entryTimestamp,
+            operationType: operationType,
+            serverTimestamp: serverTimestamp
+        )
+    }
 }

@@ -3,7 +3,14 @@ package com.dmdbrands.gurus.weight.core.di
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.AccountFlagService
 import com.dmdbrands.gurus.weight.core.service.AccountService
+import com.dmdbrands.gurus.weight.core.service.BabyProfileService
+import com.dmdbrands.gurus.weight.core.service.ProductSelectionManager
+import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.core.service.AnalyticsService
+import com.dmdbrands.gurus.weight.data.services.HistoryService
+import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.core.service.AppNavigationService
 import com.dmdbrands.gurus.weight.core.service.AppStatusService
 import com.dmdbrands.gurus.weight.core.service.AppSyncService
@@ -567,4 +574,22 @@ object ServiceModule {
   fun provideCrashReportingService(
     crashReportingService: CrashReportingService,
   ): ICrashReportingService = crashReportingService
+
+  @Provides
+  @Singleton
+  fun provideBabyProfileService(
+    babyProfileService: BabyProfileService,
+  ): IBabyProfileService = babyProfileService
+
+  @Provides
+  @Singleton
+  fun provideProductSelectionManager(
+    productSelectionManager: ProductSelectionManager,
+  ): IProductSelectionManager = productSelectionManager
+
+  @Provides
+  @Singleton
+  fun provideHistoryService(
+    historyRepository: IHistoryRepository,
+  ): IHistoryService = HistoryService(historyRepository)
 }

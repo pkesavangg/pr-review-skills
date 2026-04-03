@@ -147,6 +147,11 @@ constructor(
           AppRoute.ScaleSetup.LcbtScaleSetup(sku, scaleInfo = scaleInfo)
         }
 
+        ScaleSetupType.BabyScale -> {
+          AppLog.d(TAG, "Navigating to Baby Scale setup")
+          AppRoute.ScaleSetup.BabyScaleSetup(sku)
+        }
+
         ScaleSetupType.BtWifiR4 -> {
           AppLog.d(TAG, "Navigating to BtWifiR4 scale setup")
           AppRoute.ScaleSetup.BtWifiScaleSetup(sku)
