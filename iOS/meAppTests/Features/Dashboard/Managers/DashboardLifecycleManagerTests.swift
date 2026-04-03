@@ -10,12 +10,12 @@ struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory
 
-    private struct SUTBundle {
-        let store: DashboardStore
-        let accountService: AccountService
-        let entryService: EntryService
-        let cacheManager: MockDashboardCacheManager
-    }
+    private typealias SUTBundle = (
+        store: DashboardStore,
+        accountService: AccountService,
+        entryService: EntryService,
+        cacheManager: MockDashboardCacheManager
+    )
 
     private func makeSUT() -> SUTBundle {
         let cacheManager = MockDashboardCacheManager()
@@ -23,7 +23,7 @@ struct DashboardLifecycleManagerTests {
             cacheManager: cacheManager,
             formatter: MockDashboardFormatter()
         )
-        return SUTBundle(
+        return (
             store: sut.store,
             accountService: sut.accountService,
             entryService: sut.entryService,
