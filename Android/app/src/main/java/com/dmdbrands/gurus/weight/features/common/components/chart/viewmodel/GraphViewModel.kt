@@ -67,6 +67,8 @@ class GraphViewModel @AssistedInject constructor(
       is GraphIntent.UpdateVisibleYRange -> handleRenormalizationOnYAxisChange(
         minY = intent.minY,
         maxY = intent.maxY,
+        visibleMinX = intent.minX.toLong(),
+        visibleMaxX = intent.maxX.toLong(),
       )
       else -> null
     }
@@ -86,6 +88,9 @@ class GraphViewModel @AssistedInject constructor(
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
   private var renormalizationJob: Job? = null
+  private var currentMinY: Double = Double.NaN
+  private var currentMaxY: Double = Double.NaN
+  private var animateRenormalization: Boolean = false
   private var isInitialized: Boolean = false
 
   init {
@@ -226,7 +231,7 @@ class GraphViewModel @AssistedInject constructor(
         if (isActive) {
           // Y-axis range is now handled by ScrollAwareRangeProvider at the composable level
           withContext(Dispatchers.Main) {
-            currentState.modelProducer.runTransaction {
+            currentState.modelProducer.runTransaction(animate = false) {
               lineSeries {
                 series(
                   listOf(0.0), listOf(0.0),
@@ -252,6 +257,8 @@ class GraphViewModel @AssistedInject constructor(
   ) {
     // Cancel any existing model producer job
     currentModelProducerJob?.cancel()
+    animateRenormalization = false
+    // Keep currentMinY/currentMaxY — on revisit, use previous nice-scale for initial normalization
     val currentState = state.value
     val graphLines = data.getWeightGraphPoints()
     val secondaryStat = secondaryKey ?: _state.value.secondaryKey
@@ -292,6 +299,23 @@ class GraphViewModel @AssistedInject constructor(
 
     handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
     super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
+
+    // Compute chart X range (matches v3's CartesianRangeValues.minX/maxX)
+    val chartMinX = if (segment == GraphSegment.TOTAL) {
+      startX.toDouble()
+    } else {
+      GraphUtil.getStartRange(segment, initialTimeStamp)?.toDouble() ?: startX.toDouble()
+    }
+    val chartMaxX = if (segment == GraphSegment.TOTAL) {
+      endX.toDouble()
+    } else if (segment == GraphSegment.MONTH) {
+      val paddedStart = GraphUtil.getStartRange(segment, calendar.timeInMillis) ?: calendar.timeInMillis
+      Calendar.getInstance().apply { timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30) }
+        .timeInMillis.toDouble()
+    } else {
+      GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
+    }
+    super.handleIntent(GraphIntent.UpdateChartXRange(chartMinX, chartMaxX))
     val filteredData = data.filter {
       it.getTimeStamp() in startX..endX
     }
@@ -312,14 +336,15 @@ class GraphViewModel @AssistedInject constructor(
         val primaryXDataFiltered = primaryYDataPairs.map { it.first }
         val primaryYDataFiltered = primaryYDataPairs.map { it.second }
 
-        // Normalize secondary metrics to primary weight range (raw min/max, no axis calc)
-        val primaryMinY = primaryYDataFiltered.minOrNull()
-        val primaryMaxY = primaryYDataFiltered.maxOrNull()
+        // Compute Y-axis range the same way as v3 — ViewModel-driven, always consistent
+        val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
+        val axisMeta = calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
+        val primaryMinY = axisMeta.axisRange.minY
+        val primaryMaxY = axisMeta.axisRange.maxY
         val normalizedSecondaryGraphLines = if (secondaryGraphLines != null &&
           secondaryGraphLines.points.isNotEmpty() &&
           primaryMinY != null && primaryMaxY != null &&
-          primaryMinY.isFinite() && primaryMaxY.isFinite() &&
-          primaryMinY < primaryMaxY
+          primaryMinY.isFinite() && primaryMaxY.isFinite() && primaryMinY < primaryMaxY
         ) {
           GraphUtil.normalizeMetricToWeightRange(
             metricGraphLine = secondaryGraphLines,
@@ -334,7 +359,7 @@ class GraphViewModel @AssistedInject constructor(
         if (isActive && primaryXDataFiltered.isNotEmpty() && primaryYDataFiltered.isNotEmpty() &&
           primaryXDataFiltered.size == primaryYDataFiltered.size
         ) {
-          currentState.modelProducer.runTransaction {
+          currentState.modelProducer.runTransaction(animate = false) {
             lineSeries {
               series(
                 x = primaryXDataFiltered,
@@ -509,6 +534,8 @@ class GraphViewModel @AssistedInject constructor(
   private fun handleRenormalizationOnYAxisChange(
     minY: Double,
     maxY: Double,
+    visibleMinX: Long,
+    visibleMaxX: Long,
   ) {
     val currentState = _state.value
     val secondaryKey = currentState.secondaryKey
@@ -520,6 +547,10 @@ class GraphViewModel @AssistedInject constructor(
     ) {
       return
     }
+    // Skip if Y range hasn't changed — same range means same normalization
+    if (minY == currentMinY && maxY == currentMaxY) return
+    currentMinY = minY
+    currentMaxY = maxY
     val cachedMinY = minY
     val cachedMaxY = maxY
 
@@ -531,10 +562,10 @@ class GraphViewModel @AssistedInject constructor(
         val graphLines = data.getWeightGraphPoints()
         val secondaryGraphLines = data.toGraphPoints((secondaryKey as DashboardKey.Metric).key)
 
-        val startX = currentState.minTarget ?: graphLines.points.minOfOrNull { it.x.value.toLong() }
-        ?: Calendar.getInstance().timeInMillis
-        val endX = currentState.maxTarget ?: graphLines.points.maxOfOrNull { it.x.value.toLong() }
-        ?: Calendar.getInstance().timeInMillis
+        // Use full data X range so metric range (metricMin/metricMax) is stable across scrolls.
+        // Only weightMin/weightMax changes on scroll (from nice-scale). Metric range stays constant.
+        val startX = graphLines.points.minOfOrNull { it.x.value.toLong() } ?: visibleMinX
+        val endX = graphLines.points.maxOfOrNull { it.x.value.toLong() } ?: visibleMaxX
 
         // Renormalize secondary metrics with cached Y-axis (iOS-style)
         // Y-axis values already validated above, safe to use here
@@ -582,8 +613,7 @@ class GraphViewModel @AssistedInject constructor(
           if (primaryXData.isNotEmpty() && primaryYData.isNotEmpty() &&
             primaryXData.size == primaryYData.size
           ) {
-            currentState.modelProducer.runTransaction {
-              // Update primary series
+            currentState.modelProducer.runTransaction(animate = animateRenormalization) {
               lineSeries {
                 series(
                   x = primaryXData,
@@ -602,6 +632,8 @@ class GraphViewModel @AssistedInject constructor(
                 }
               }
             }
+            // After first instant renormalization, subsequent scroll-driven ones animate
+            if (!animateRenormalization) animateRenormalization = true
           }
         }
       } catch (e: Exception) {

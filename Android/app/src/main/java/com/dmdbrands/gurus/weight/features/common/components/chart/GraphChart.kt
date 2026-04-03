@@ -36,7 +36,7 @@ fun rememberGraphChart(
   // Get weightless mode from goal's account if available
   val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
   val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
-  val markerIndex = state.markerIndex
+  state.markerIndex
   val separators = GraphUtil.periodStarts(
     segment = segment,
     startMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
@@ -57,25 +57,30 @@ fun rememberGraphChart(
 
   // ScrollAwareRangeProvider: single source of truth for Y-axis range + step
   val goalWeight = state.goal?.goalWeight ?: 0.0
-  val scrollAwareRange = rememberScrollAwareRangeProvider { visibleEntries ->
+  val scrollAwareRange = rememberScrollAwareRangeProvider(
+    minX = state.chartMinX ?: Double.NaN,
+    maxX = state.chartMaxX ?: Double.NaN,
+  ) { visibleEntries ->
     if (visibleEntries.isEmpty()) {
       return@rememberScrollAwareRangeProvider (0.0..1.0) to emptyList()
     }
     val yValues = visibleEntries.map { it.second }
     val minY = yValues.min()
     val maxY = yValues.max()
+    android.util.Log.d("ScrollAwareRange", "visibleEntries=${visibleEntries.size} minY=$minY maxY=$maxY")
     val axisMeta = generateNiceScale(
       minValue = minY,
       maxValue = maxY,
       goalWeight = goalWeight,
       isWeightLessMode = isWeightlessOn,
-      targetTickCount = 3,
+      targetTickCount = 4,
     )
     val rangeMinY = axisMeta.min
     val rangeMaxY = axisMeta.max
     val step = axisMeta.step
-    // Dispatch visible Y range to ViewModel for secondary metric normalization
-    handleIntent(GraphIntent.UpdateVisibleYRange(minY, maxY))
+    // Dispatch nice-scale range + visible X range so normalization uses the exact same window
+    val xValues = visibleEntries.map { it.first }
+    handleIntent(GraphIntent.UpdateVisibleYRange(rangeMinY, rangeMaxY, xValues.min(), xValues.max()))
     // Generate tick labels from min to max at step intervals
     val ticks = mutableListOf<Double>()
     var tick = rangeMinY
@@ -92,26 +97,8 @@ fun rememberGraphChart(
     handleIntent = handleIntent,
   )
 
-  // Secondary metrics use their own range provider (each layer needs distinct instance)
-  val secondaryScrollAwareRange = rememberScrollAwareRangeProvider { visibleEntries ->
-    if (visibleEntries.isEmpty()) {
-      return@rememberScrollAwareRangeProvider (0.0..1.0) to emptyList()
-    }
-    val yValues = visibleEntries.map { it.second }
-    val minY = yValues.min()
-    val maxY = yValues.max()
-    val axisMeta = generateNiceScale(
-      minValue = minY,
-      maxValue = maxY,
-      goalWeight = goalWeight,
-      isWeightLessMode = isWeightlessOn,
-      targetTickCount = 3,
-    )
-    (axisMeta.min..axisMeta.max) to emptyList()
-  }
   val secondaryLayer = secondaryLayer(
     segment = segment,
-    rangeProvider = secondaryScrollAwareRange,
     handleIntent = handleIntent,
   )
 

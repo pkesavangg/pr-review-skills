@@ -46,6 +46,9 @@ sealed interface GraphIntent : IReducer.Intent {
 
   data class SetScrollRange(val min: Long, val max: Long, val onFallback: () -> Unit = {}) : GraphIntent
 
-  /** Update visible Y range from ScrollAwareRangeProvider (drives normalization) */
-  data class UpdateVisibleYRange(val minY: Double, val maxY: Double) : GraphIntent
+  /** Update visible range from ScrollAwareRangeProvider (drives normalization) */
+  data class UpdateVisibleYRange(val minY: Double, val maxY: Double, val minX: Double, val maxX: Double) : GraphIntent
+
+  /** Update chart X range (set by ViewModel, used by ScrollAwareRangeProvider) */
+  data class UpdateChartXRange(val minX: Double, val maxX: Double) : GraphIntent
 }
