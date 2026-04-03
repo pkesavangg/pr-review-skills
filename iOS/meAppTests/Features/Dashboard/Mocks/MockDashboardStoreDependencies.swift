@@ -133,12 +133,15 @@ final class MockDashboardDisplayManager: DashboardDisplayManaging {
     private(set) var updateMetricsForCurrentViewCalls = 0
     private(set) var updateMetricsWithVisibleRegionAverageCalls = 0
     private(set) var resetMetricsToLatestEntryCalls = 0
+    private(set) var handleBpmPointSelectionCalls = 0
     var displayWeight: Double?
     var weightLabel: String = ""
     var weightDisplayLabel: String = ""
     var displayUnitText: String = ""
     var activeMonthInterval: DateInterval?
     var operationsForLabelDateRange: [BathScaleWeightSummary] = []
+    var currentBpmClassification: AhaPressureClass = .normal
+    var bpmDisplayValues: BpmDisplayData?
 
     func getCurrentAverageWeight() -> Double { 0 }
     func updateVisibleDataAfterScroll() {}
@@ -159,4 +162,6 @@ final class MockDashboardDisplayManager: DashboardDisplayManaging {
     func updateMetricsForCurrentView() { updateMetricsForCurrentViewCalls += 1 }
     func updateMetricsWithVisibleRegionAverage() { updateMetricsWithVisibleRegionAverageCalls += 1 }
     func resetMetricsToLatestEntry() { resetMetricsToLatestEntryCalls += 1 }
+    func handleBpmPointSelection(_ point: BathScaleWeightSummary) { handleBpmPointSelectionCalls += 1 }
+    func getBpmDisplayValues() -> BpmDisplayData? { bpmDisplayValues }
 }
