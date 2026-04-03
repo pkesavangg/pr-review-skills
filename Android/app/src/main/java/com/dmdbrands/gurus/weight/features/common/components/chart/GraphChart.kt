@@ -35,7 +35,6 @@ fun rememberGraphChart(
 ): CartesianChart {
   // Get weightless mode from goal's account if available
   val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
-  val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
   state.markerIndex
   val separators = GraphUtil.periodStarts(
     segment = segment,
@@ -90,6 +89,8 @@ fun rememberGraphChart(
     }
     (rangeMinY..rangeMaxY) to ticks
   }
+
+  val goalMarker = rememberGoalMarker(goal = state.goal, isWeightlessOn = isWeightlessOn)
 
   val primaryLayer = primaryLayer(
     segment = segment,

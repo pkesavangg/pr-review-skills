@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
 @Composable
 fun rememberGoalMarker(
   goal: Goal? = null,
-  isWeightlessOn: Boolean = false
+  isWeightlessOn: Boolean = false,
 ): VerticalAxis.MarkerDecoration? {
   if (goal == null || goal.goalWeight == 0.0)  {
     return null
@@ -63,7 +63,7 @@ fun rememberGoalMarker(
       markerComponent = labelComponent,
       label = { labelText },
       verticalLabelPosition = Position.Vertical.Center,
-      outsideRangeOffset = 60f
+      outsideRangeOffset = 60f,
     )
   }
 }
