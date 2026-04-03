@@ -34,15 +34,37 @@ class BabyProfileRepository @Inject constructor(
 
     private fun BabyProfileEntity.toDomain() = BabyProfile(
         id = id,
-        name = name,
-        birthDate = birthDate,
         accountId = accountId,
+        name = name,
+        isOwnedByAccount = isOwnedByAccount,
+        babyPermissions = babyPermissions,
+        birthDate = birthDate,
+        dueDate = dueDate,
+        isBorn = isBorn,
+        biologicalSex = biologicalSex,
+        birthWeightDecigrams = birthWeightDecigrams,
+        birthLengthMillimeters = birthLengthMillimeters,
+        lastUpdated = lastUpdated,
+        isSynced = isSynced,
+        isDeleted = isDeleted,
+        activeBabyId = activeBabyId,
     )
 
     private fun BabyProfile.toEntity() = BabyProfileEntity(
         id = id,
-        name = name,
-        birthDate = birthDate,
         accountId = accountId,
+        name = name,
+        isOwnedByAccount = isOwnedByAccount,
+        babyPermissions = babyPermissions,
+        birthDate = birthDate,
+        dueDate = dueDate,
+        isBorn = isBorn,
+        biologicalSex = biologicalSex,
+        birthWeightDecigrams = birthWeightDecigrams,
+        birthLengthMillimeters = birthLengthMillimeters,
+        lastUpdated = lastUpdated,
+        isSynced = isSynced,
+        isDeleted = isDeleted,
+        activeBabyId = activeBabyId,
     )
 }

@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -39,6 +40,9 @@ class HistoryViewModelTest {
     @MockK(relaxed = true)
     lateinit var exportService: IExportService
 
+    @MockK(relaxed = true)
+    lateinit var historyService: IHistoryService
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
 
@@ -53,6 +57,7 @@ class HistoryViewModelTest {
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
+            historyService = historyService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -88,6 +93,7 @@ class HistoryViewModelTest {
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
+            historyService = historyService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -182,6 +188,7 @@ class HistoryViewModelTest {
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
+            historyService = historyService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

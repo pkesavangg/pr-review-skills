@@ -59,7 +59,7 @@ fun BabyAddedStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
-        AppText(BabySignupStrings.babyAddedTitle, TextType.Title, spacing = MeTheme.spacing.lg)
+        AppText(BabySignupStrings.EmptyDescription, TextType.Title, spacing = MeTheme.spacing.lg)
 
         Column(
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.x3s),

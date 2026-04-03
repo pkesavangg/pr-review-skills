@@ -69,7 +69,7 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 3,
+  version = 5,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -101,6 +101,118 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE account ADD COLUMN activeBabyId TEXT DEFAULT NULL")
+      }
+    }
+
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        // Drop and recreate baby_profiles with full schema.
+        // The table was added to the Room entity list in v3 without a corresponding migration,
+        // so existing installs may not have it (or may have an outdated schema). The feature
+        // (Smart Baby Scale) was not yet shipped to users at the time this migration was written,
+        // so no user data is at risk. New fields (activeBabyId, isSynced, isDeleted) are also
+        // added in this version and are not present in any prior schema.
+        db.execSQL("DROP TABLE IF EXISTS `baby_profiles`")
+        db.execSQL(
+          """
+          CREATE TABLE `baby_profiles` (
+            `id` TEXT NOT NULL,
+            `accountId` TEXT NOT NULL,
+            `name` TEXT NOT NULL,
+            `isOwnedByAccount` INTEGER,
+            `babyPermissions` INTEGER,
+            `birthDate` INTEGER,
+            `dueDate` INTEGER,
+            `isBorn` INTEGER,
+            `biologicalSex` TEXT,
+            `birthWeightDecigrams` INTEGER,
+            `birthLengthMillimeters` INTEGER,
+            `lastUpdated` TEXT,
+            `isSynced` INTEGER NOT NULL DEFAULT 0,
+            `isDeleted` INTEGER NOT NULL DEFAULT 0,
+            `activeBabyId` TEXT,
+            PRIMARY KEY(`id`)
+          )
+          """.trimIndent()
+        )
+        db.execSQL(
+          "CREATE INDEX `index_baby_profiles_accountId` ON `baby_profiles` (`accountId`)"
+        )
+
+        // Drop and recreate baby_entry (depends on baby_profiles, same missing-migration issue)
+        db.execSQL("DROP TABLE IF EXISTS `baby_entry`")
+        db.execSQL(
+          """
+          CREATE TABLE `baby_entry` (
+            `id` INTEGER NOT NULL,
+            `babyProfileId` TEXT NOT NULL,
+            `babyWeightDecigrams` INTEGER,
+            `babyLengthMillimeters` INTEGER,
+            `entryNote` TEXT,
+            `entryType` TEXT,
+            `feedingTimeLeft` INTEGER,
+            `feedingTimeRight` INTEGER,
+            `feedingMilliliters` INTEGER,
+            `diaperType` TEXT,
+            `sleepTime` INTEGER,
+            `babyDisplayWeightDecigrams` INTEGER,
+            `photo` TEXT,
+            `isPlaceholder` INTEGER,
+            `source` TEXT,
+            PRIMARY KEY(`id`),
+            FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON DELETE CASCADE,
+            FOREIGN KEY(`babyProfileId`) REFERENCES `baby_profiles`(`id`) ON DELETE CASCADE
+          )
+          """.trimIndent()
+        )
+        db.execSQL(
+          "CREATE INDEX `index_baby_entry_babyProfileId` ON `baby_entry` (`babyProfileId`)"
+        )
+
+        // Recreate account table without activeBabyId column
+        db.execSQL(
+          """
+          CREATE TABLE `account_new` (
+            `accountId` TEXT NOT NULL,
+            `firstName` TEXT NOT NULL,
+            `lastName` TEXT NOT NULL,
+            `dob` TEXT NOT NULL,
+            `email` TEXT NOT NULL,
+            `expiresAt` TEXT,
+            `fcmToken` TEXT,
+            `gender` TEXT NOT NULL,
+            `isActiveAccount` INTEGER NOT NULL DEFAULT 0,
+            `isLoggedIn` INTEGER NOT NULL DEFAULT 0,
+            `isExpired` INTEGER NOT NULL DEFAULT 0,
+            `isSynced` INTEGER NOT NULL DEFAULT 0,
+            `lastActiveTime` TEXT,
+            `zipcode` TEXT NOT NULL,
+            PRIMARY KEY(`accountId`)
+          )
+          """.trimIndent()
+        )
+        db.execSQL(
+          """
+          INSERT INTO `account_new`
+            (`accountId`,`firstName`,`lastName`,`dob`,`email`,`expiresAt`,`fcmToken`,`gender`,
+             `isActiveAccount`,`isLoggedIn`,`isExpired`,`isSynced`,`lastActiveTime`,`zipcode`)
+          SELECT
+            `accountId`,`firstName`,`lastName`,`dob`,`email`,`expiresAt`,`fcmToken`,`gender`,
+            `isActiveAccount`,`isLoggedIn`,`isExpired`,`isSynced`,`lastActiveTime`,`zipcode`
+          FROM `account`
+          """.trimIndent()
+        )
+        db.execSQL("DROP TABLE `account`")
+        db.execSQL("ALTER TABLE `account_new` RENAME TO `account`")
+        db.execSQL("CREATE UNIQUE INDEX `index_account_email` ON `account` (`email`)")
+        db.execSQL("CREATE INDEX `index_account_isActiveAccount` ON `account` (`isActiveAccount`)")
+        db.execSQL("CREATE INDEX `index_account_isLoggedIn` ON `account` (`isLoggedIn`)")
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -128,7 +240,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance

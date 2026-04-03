@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -46,6 +47,9 @@ class HistoryDetailViewModelTest {
     @MockK(relaxUnitFun = true)
     lateinit var healthConnectService: IHealthConnectService
 
+    @MockK(relaxed = true)
+    lateinit var historyService: IHistoryService
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var viewModel: HistoryDetailViewModel
@@ -65,6 +69,7 @@ class HistoryDetailViewModelTest {
         return HistoryDetailViewModel(
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -454,6 +459,7 @@ class HistoryDetailViewModelTest {
         viewModel = HistoryDetailViewModel(
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -492,6 +498,7 @@ class HistoryDetailViewModelTest {
         viewModel = HistoryDetailViewModel(
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(

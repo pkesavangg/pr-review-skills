@@ -140,7 +140,7 @@ class HealthConnectServiceTest {
         appNavigationService = appNavigationService,
         entryRepository = entryRepository,
         integrationRepository = integrationRepository,
-        ioDispatcher = mainDispatcherRule.dispatcher,
+        appScope = kotlinx.coroutines.CoroutineScope(mainDispatcherRule.dispatcher),
     )
 
     // -------------------------------------------------------------------------
