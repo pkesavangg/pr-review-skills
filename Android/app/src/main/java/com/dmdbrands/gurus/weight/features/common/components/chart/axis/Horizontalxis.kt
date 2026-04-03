@@ -18,6 +18,7 @@ import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.Position
 
 @Composable
 internal fun topAxis() = HorizontalAxis.rememberTop(
@@ -72,12 +73,21 @@ internal fun bottomAxis(
           thickness = 1.dp,
         ),
       ),
+      labelVerticalMode = HorizontalAxis.LabelVerticalMode.Inside,
+      labelHorizontalPosition = Position.Horizontal.End,
     )
   else
     HorizontalAxis.rememberBottom(
       guideline = null,
       itemPlacer = horizontalItemPlacer,
-      label = null,
+      valueFormatter = CartesianValueFormatter { _, _, _ -> "\u200B" },
+      label = rememberAxisLabelComponent(
+        style = TextStyle(
+          fontFamily = openSansFamily,
+          color = Color.Transparent,
+          fontSize = 14.sp,
+        ),
+      ),
       tickLength = 20.dp,
       tick = rememberAxisGuidelineComponent(
         fill = Fill(Color.Transparent),
@@ -86,5 +96,7 @@ internal fun bottomAxis(
         fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
         thickness = 1.dp,
       ),
+      labelVerticalMode = HorizontalAxis.LabelVerticalMode.Inside,
+      labelHorizontalPosition = Position.Horizontal.End,
     )
 }
