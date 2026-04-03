@@ -110,17 +110,17 @@ struct BpmMetricsSection: View {
     @MainActor
     private func loadBpmStreaks() async {
         do {
-            let progress = try await store.dashboardEntryService.getProgress(entryType: .bpm)
+            let streak = try await store.dashboardEntryService.getStreak(entryType: .bpm)
             streakCards = [
                 MetricItem(
-                    value: "\(progress.currentStreak)",
+                    value: "\(streak.current)",
                     label: DashboardStrings.currentStreak,
                     unit: nil,
                     preLabel: nil,
                     icon: AppAssets.streak
                 ),
                 MetricItem(
-                    value: "\(progress.longestStreak)",
+                    value: "\(streak.max)",
                     label: DashboardStrings.longestStreak,
                     unit: nil,
                     preLabel: nil,
@@ -132,4 +132,3 @@ struct BpmMetricsSection: View {
         }
     }
 }
-

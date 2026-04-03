@@ -13,6 +13,7 @@ struct BabyTrendView: View {
     @ObservedObject var dashboardStore: DashboardStore
     let babyProfile: BabyProfile
     @Environment(\.appTheme) private var theme
+    @State private var isGrowthPercentilesSheetPresented = false
     private let viewModel = BabyTrendViewModel()
 
     // TODO: Replace with ColorTokens.babyPrimary once color tokens are updated
@@ -33,6 +34,18 @@ struct BabyTrendView: View {
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             viewModel.handlePeriodChange(dashboardStore: dashboardStore)
         }
+        .sheet(isPresented: $isGrowthPercentilesSheetPresented) {
+            BabyGrowthPercentilesSheet(
+                state: viewModel.growthPercentilesSheetState(
+                    dashboardStore: dashboardStore,
+                    babyProfile: babyProfile
+                )
+            )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+                .presentationCornerRadius(.radiusXL)
+                .presentationBackground(theme.backgroundSecondary)
+        }
     }
 
     // MARK: - Baby Info Section
@@ -40,17 +53,22 @@ struct BabyTrendView: View {
     @ViewBuilder
     private var babyInfoSection: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: .zero) {
-                Text(displayState.headlineLabel)
-                    .fontOpenSans(.subHeading1)
-                    .foregroundColor(theme.textSubheading)
+            Button {
+                isGrowthPercentilesSheetPresented = true
+            } label: {
+                VStack(alignment: .leading, spacing: .zero) {
+                    Text(displayState.headlineLabel)
+                        .fontOpenSans(.subHeading1)
+                        .foregroundColor(theme.textSubheading)
 
-                if displayState.selectedMetric == .weight {
-                    babyWeightDisplay
-                } else {
-                    babyHeightDisplay
+                    if displayState.selectedMetric == .weight {
+                        babyWeightDisplay
+                    } else {
+                        babyHeightDisplay
+                    }
                 }
             }
+            .buttonStyle(.plain)
 
             Spacer()
 

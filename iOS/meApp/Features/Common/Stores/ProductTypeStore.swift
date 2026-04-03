@@ -45,13 +45,13 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     private static func fallbackBabyProfiles(calendar: Calendar = .current) -> [BabyProfile] {
         let today = calendar.startOfDay(for: Date())
         let liamBirthday = calendar.date(byAdding: .day, value: -112, to: today)
-        let otherBabyBirthday = calendar.date(byAdding: .day, value: -84, to: today)
+        let stacyBirthday = calendar.date(byAdding: .day, value: -84, to: today)
 
         return [
             BabyProfile(
-                id: "fallback-other-baby",
-                name: "Other Baby",
-                birthday: otherBabyBirthday,
+                id: "fallback-stacy",
+                name: "Stacy",
+                birthday: stacyBirthday,
                 biologicalSex: "female",
                 birthLengthInches: 19.0,
                 birthWeightLbs: 6,
