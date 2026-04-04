@@ -680,13 +680,8 @@ final class BpmSetupStore: ObservableObject {
         return nil
     }
 
-    private func isLocationPermissionEnabled() -> Bool {
-        permissionsService.getPermissionState(.LOCATION) == .ENABLED &&
-        permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
-    }
-
     private func isPermissionStepSatisfied() -> Bool {
-        isBluetoothPermissionEnabled() && isLocationPermissionEnabled()
+        isBluetoothPermissionEnabled()
     }
 
     private func updateNextEnabled() {
@@ -696,17 +691,11 @@ final class BpmSetupStore: ObservableObject {
         case .btPermission:
             let bluetoothEnabled = permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED
             let bluetoothSwitchEnabled = permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
-            let locationEnabled = permissionsService.getPermissionState(.LOCATION) == .ENABLED
-            let locationSwitchEnabled = permissionsService.getPermissionState(.LOCATION_SWITCH) == .ENABLED
 
             if !bluetoothEnabled {
                 Task { await permissionsService.handlePermission(.bluetooth) }
             } else if !bluetoothSwitchEnabled {
                 Task { await permissionsService.handlePermission(.bluetoothSwitch) }
-            } else if !locationEnabled {
-                Task { await permissionsService.handlePermission(.location) }
-            } else if !locationSwitchEnabled {
-                Task { await permissionsService.handlePermission(.locationSwitch) }
             }
 
             isNextEnabled = isPermissionStepSatisfied()

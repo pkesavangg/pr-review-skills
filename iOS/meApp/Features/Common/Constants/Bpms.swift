@@ -87,7 +87,7 @@ let bpmSkus: Set<String> = {
 }()
 
 // A3 BPM monitor SKUs (primary and alternates) — Bluetooth + Location permission flow.
-let a3BpmSkus: Set<String> = ["0603", "0604", "0634", "0636", "0661", "0664", "0667", "0639"]
+let a3BpmSkus: Set<String> = ["0603", "0604", "0634", "0636", "0664", "0639"]
 
 // A6 BPM monitor SKUs — Bluetooth + Location permission flow.
-let a6BpmSkus: Set<String> = ["0663", "0665"]
+let a6BpmSkus: Set<String> = ["0663", "0665", "0661", "0667"]

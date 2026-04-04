@@ -18,7 +18,7 @@ extension BluetoothService {
         guard let accountData = await getProfileInfo(from: activeAccount) else {
             throw BluetoothServiceError.noProfileInfo
         }
-        ggBleSDK.scan(.WEIGHT_GURUS, accountData) { [weak self] result in
+        ggBleSDK.scan(.BALANCE_HEALTH, accountData) { [weak self] result in
             Task { @MainActor in
                 switch result {
                 case .success(let scanResponse):

@@ -16,8 +16,6 @@ struct BpmSetupStrings {
         static let description = "Balance Health needs access to the following permissions to connect to your monitor."
         static let authorizeBluetoothAccess = "Authorize Bluetooth access"
         static let bluetoothTurnedOff = "Bluetooth is turned off"
-        static let authorizeLocationAccess = "Authorize Location access"
-        static let locationTurnedOff = "Location is turned off"
     }
 
     struct ModelSelection {
