@@ -15,6 +15,29 @@ plugins {
     alias(libs.plugins.owasp.dependency.check)
 }
 
+val ensureLefthookInstalled by tasks.registering {
+    onlyIf { System.getenv("CIRCLECI") == null && System.getenv("CI") == null }
+    doLast {
+        val installHint = "Install with: brew install lefthook detekt\nThen re-run your build."
+        try {
+            val process = ProcessBuilder("lefthook", "install")
+                .directory(rootDir.parentFile)
+                .inheritIO()
+                .start()
+            val finished = process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                throw GradleException("Lefthook install timed out after 30 seconds.\n$installHint")
+            }
+            if (process.exitValue() != 0) {
+                throw GradleException("Lefthook failed to install git hooks (exit code ${process.exitValue()}).\n$installHint")
+            }
+        } catch (e: java.io.IOException) {
+            throw GradleException("Lefthook is required for local development but could not be found.\n$installHint")
+        }
+    }
+}
+
 subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
@@ -47,6 +70,10 @@ subprojects {
     tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
         jvmTarget = "11"
         exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+    }
+
+    tasks.matching { it.name == "preBuild" }.configureEach {
+        dependsOn(ensureLefthookInstalled)
     }
 }
 
