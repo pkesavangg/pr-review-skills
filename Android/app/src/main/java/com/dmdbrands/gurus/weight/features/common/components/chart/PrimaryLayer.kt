@@ -28,7 +28,12 @@ internal fun rememberLineLayerWithConnection(
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit
+  handleIntent: (GraphIntent) -> Unit,
+  yTransform: ((
+    series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
+    yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
+    visibleXRange: ClosedFloatingPointRange<Double>,
+  ) -> DoubleArray?)? = null,
 ): LineCartesianLayer {
 
   val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
@@ -60,6 +65,7 @@ internal fun rememberLineLayerWithConnection(
     lineProvider = lineProvider,
     verticalAxisPosition = verticalAxisPosition,
     rangeProvider = rangeProvider,
+    yTransform = yTransform,
   )
 }
 
@@ -89,7 +95,12 @@ internal fun primaryLayer(
 internal fun secondaryLayer(
   segment: GraphSegment,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit
+  handleIntent: (GraphIntent) -> Unit,
+  yTransform: ((
+    series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
+    yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
+    visibleXRange: ClosedFloatingPointRange<Double>,
+  ) -> DoubleArray?)? = null,
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
@@ -97,5 +108,6 @@ internal fun secondaryLayer(
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = rangeProvider,
     handleIntent = handleIntent,
+    yTransform = yTransform,
   )
 }

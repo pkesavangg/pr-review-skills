@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
+import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -19,7 +20,6 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.chart.AxisMeta
 import com.dmdbrands.gurus.weight.features.common.model.chart.GraphLine
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
-import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -64,12 +64,6 @@ class GraphViewModel @AssistedInject constructor(
     super.handleIntent(intent)
     when (intent) {
       is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max, intent.onFallback)
-      is GraphIntent.UpdateVisibleYRange -> handleRenormalizationOnYAxisChange(
-        minY = intent.minY,
-        maxY = intent.maxY,
-        visibleMinX = intent.minX.toLong(),
-        visibleMaxX = intent.maxX.toLong(),
-      )
       else -> null
     }
   }
@@ -87,10 +81,6 @@ class GraphViewModel @AssistedInject constructor(
 
   private var currentModelProducerJob: Job? = null
   private var scrollDebounceJob: Job? = null
-  private var renormalizationJob: Job? = null
-  private var currentMinY: Double = Double.NaN
-  private var currentMaxY: Double = Double.NaN
-  private var animateRenormalization: Boolean = false
   private var isInitialized: Boolean = false
 
   init {
@@ -117,11 +107,11 @@ class GraphViewModel @AssistedInject constructor(
         val weightless = currentAccount.toWeightless()
         goal.process(weightUnit, weightless)
       }
-      val immediateSecondaryKey = dashboardService.getCurrentSelectedKey()
       super.handleIntent(GraphIntent.UpdateData(immediateData))
       super.handleIntent(GraphIntent.UpdateGoal(immediateGoal))
-      super.handleIntent(GraphIntent.SetSecondaryKey(immediateSecondaryKey))
-      initializeGraph(immediateData, immediateGoal, immediateSecondaryKey)
+      // Skip secondary key on immediate init — data is unfiltered/stale.
+      // observeDataChanges handles secondary with correct segment-filtered data.
+      initializeGraph(immediateData, immediateGoal, secondaryKey = null)
     } catch (e: Exception) {
       AppLog.w(TAG, "Failed to initialize immediate data, falling back to async")
     }
@@ -257,8 +247,6 @@ class GraphViewModel @AssistedInject constructor(
   ) {
     // Cancel any existing model producer job
     currentModelProducerJob?.cancel()
-    animateRenormalization = false
-    // Keep currentMinY/currentMaxY — on revisit, use previous nice-scale for initial normalization
     val currentState = state.value
     val graphLines = data.getWeightGraphPoints()
     val secondaryStat = secondaryKey ?: _state.value.secondaryKey
@@ -336,61 +324,28 @@ class GraphViewModel @AssistedInject constructor(
         val primaryXDataFiltered = primaryYDataPairs.map { it.first }
         val primaryYDataFiltered = primaryYDataPairs.map { it.second }
 
-        // Compute Y-axis range the same way as v3 — ViewModel-driven, always consistent
-        val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
-        val axisMeta = calculateYAxisRange(graphLines, goal, isWeightlessMode = isWeightlessMode, min = startX, max = endX)
-        val primaryMinY = axisMeta.axisRange.minY
-        val primaryMaxY = axisMeta.axisRange.maxY
-        val normalizedSecondaryGraphLines = if (secondaryGraphLines != null &&
-          secondaryGraphLines.points.isNotEmpty() &&
-          primaryMinY != null && primaryMaxY != null &&
-          primaryMinY.isFinite() && primaryMaxY.isFinite() && primaryMinY < primaryMaxY
-        ) {
-          GraphUtil.normalizeMetricToWeightRange(
-            metricGraphLine = secondaryGraphLines,
-            weightMin = primaryMinY,
-            weightMax = primaryMaxY,
-            minX = startX,
-            maxX = endX,
-          )
-        } else null
-
-        // Check if job is still active before running transaction
+        // Send raw (unnormalized) data — yTransform handles normalization at render time
         if (isActive && primaryXDataFiltered.isNotEmpty() && primaryYDataFiltered.isNotEmpty() &&
           primaryXDataFiltered.size == primaryYDataFiltered.size
         ) {
           currentState.modelProducer.runTransaction(animate = false) {
             lineSeries {
-              series(
-                x = primaryXDataFiltered,
-                y = primaryYDataFiltered,
-              )
+              series(x = primaryXDataFiltered, y = primaryYDataFiltered)
             }
-            // Secondary metrics normalized to primary weight range
-            if (normalizedSecondaryGraphLines != null && normalizedSecondaryGraphLines.points.isNotEmpty()) {
-              val secondaryDataPairs = normalizedSecondaryGraphLines.points.mapNotNull { point ->
+            // Secondary: send RAW metric values — yTransform normalizes at draw time
+            if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
+              val secondaryDataPairs = secondaryGraphLines.points.mapNotNull { point ->
                 val xValue = point.x.value as? Long
                 val yValue = (point.y.value as? Number)?.toDouble()
-                if (xValue != null && yValue != null && yValue.isFinite()) {
-                  Pair(xValue, yValue)
-                } else null
+                if (xValue != null && yValue != null && yValue.isFinite()) Pair(xValue, yValue) else null
               }
-              val secondaryXDataFiltered = secondaryDataPairs.map { it.first }
-              val secondaryYDataFiltered = secondaryDataPairs.map { it.second }
-
-              if (secondaryXDataFiltered.isNotEmpty() && secondaryYDataFiltered.isNotEmpty() &&
-                secondaryXDataFiltered.size == secondaryYDataFiltered.size
-              ) {
+              if (secondaryDataPairs.isNotEmpty()) {
                 lineSeries {
-                  series(
-                    x = secondaryXDataFiltered,
-                    y = secondaryYDataFiltered,
-                  )
+                  series(x = secondaryDataPairs.map { it.first }, y = secondaryDataPairs.map { it.second })
                 }
               }
             }
           }
-          // Clear loading state after successful update
           super.handleIntent(GraphIntent.UpdateIsLoading(false))
         }
       } catch (e: Exception) {
@@ -502,7 +457,7 @@ class GraphViewModel @AssistedInject constructor(
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
         // Get weightless mode for Y-axis calculations
-        val isWeightlessMode = accountService.activeAccountFlow.first()?.isWeightlessOn == true
+        accountService.activeAccountFlow.first()?.isWeightlessOn == true
 
         val filteredData = currentState.data.filter {
           it.getTimeStamp() in min..max
@@ -524,129 +479,4 @@ class GraphViewModel @AssistedInject constructor(
 
   override fun provideInitialState(): GraphState = GraphState()
 
-  /**
-   * Handles renormalization when visible Y-axis range changes.
-   * Regenerates normalized secondary metric series using the visible weight range.
-   *
-   * @param minY Visible Y-axis minimum from ScrollAwareRangeProvider.
-   * @param maxY Visible Y-axis maximum from ScrollAwareRangeProvider.
-   */
-  private fun handleRenormalizationOnYAxisChange(
-    minY: Double,
-    maxY: Double,
-    visibleMinX: Long,
-    visibleMaxX: Long,
-  ) {
-    val currentState = _state.value
-    val secondaryKey = currentState.secondaryKey
-    val data = currentState.data
-
-    if (secondaryKey == null || data.isEmpty() ||
-      !minY.isFinite() || !maxY.isFinite() ||
-      minY >= maxY
-    ) {
-      return
-    }
-    // Skip if Y range hasn't changed — same range means same normalization
-    if (minY == currentMinY && maxY == currentMaxY) return
-    currentMinY = minY
-    currentMaxY = maxY
-    val cachedMinY = minY
-    val cachedMaxY = maxY
-
-    // Cancel any existing renormalization job
-    renormalizationJob?.cancel()
-
-    renormalizationJob = viewModelScope.launch(Dispatchers.IO) {
-      try {
-        val graphLines = data.getWeightGraphPoints()
-        val secondaryGraphLines = data.toGraphPoints((secondaryKey as DashboardKey.Metric).key)
-
-        // Use full data X range so metric range (metricMin/metricMax) is stable across scrolls.
-        // Only weightMin/weightMax changes on scroll (from nice-scale). Metric range stays constant.
-        val startX = graphLines.points.minOfOrNull { it.x.value.toLong() } ?: visibleMinX
-        val endX = graphLines.points.maxOfOrNull { it.x.value.toLong() } ?: visibleMaxX
-
-        // Renormalize secondary metrics with cached Y-axis (iOS-style)
-        // Y-axis values already validated above, safe to use here
-        val normalizedSecondaryGraphLines = if (secondaryGraphLines.points.isNotEmpty()) {
-          secondaryGraphLines.points.take(3).map { (it.y.value as? Double?) }
-
-          // Extract metric key from secondaryKey for metric-specific static ranges (iOS-style)
-          val normalized = GraphUtil.normalizeMetricToWeightRange(
-            metricGraphLine = secondaryGraphLines,
-            weightMin = cachedMinY,
-            weightMax = cachedMaxY,
-            minX = startX,
-            maxX = endX,
-          )
-
-          normalized.points.take(3).map { (it.y.value as? Double?) }
-          normalized
-        } else null
-
-        // Update chart model producer with renormalized values
-        if (isActive && normalizedSecondaryGraphLines != null && normalizedSecondaryGraphLines.points.isNotEmpty()) {
-          // Filter out NaN/Infinity values from primary Y data (matching iOS defensive checks)
-          val primaryDataPairs = graphLines.points.mapNotNull { point ->
-            val xValue = point.x.value as? Long
-            val yValue = point.y.value as? Double
-            if (xValue != null && yValue != null && yValue.isFinite()) {
-              Pair(xValue, yValue)
-            } else null
-          }
-          val primaryXData = primaryDataPairs.map { it.first }
-          val primaryYData = primaryDataPairs.map { it.second }
-
-          // Filter out NaN/Infinity values from secondary Y data (matching iOS defensive checks)
-          val secondaryDataPairs = normalizedSecondaryGraphLines.points.mapNotNull { point ->
-            val xValue = point.x.value as? Long
-            val yValue = (point.y.value as? Number)?.toDouble()
-            if (xValue != null && yValue != null && yValue.isFinite()) {
-              Pair(xValue, yValue)
-            } else null
-          }
-          val secondaryXData = secondaryDataPairs.map { it.first }
-          val secondaryYData = secondaryDataPairs.map { it.second }
-
-          // Only update chart if we have valid data pairs
-          if (primaryXData.isNotEmpty() && primaryYData.isNotEmpty() &&
-            primaryXData.size == primaryYData.size
-          ) {
-            currentState.modelProducer.runTransaction(animate = animateRenormalization) {
-              lineSeries {
-                series(
-                  x = primaryXData,
-                  y = primaryYData,
-                )
-              }
-              // Update secondary series with renormalized values (only if valid)
-              if (secondaryXData.isNotEmpty() && secondaryYData.isNotEmpty() &&
-                secondaryXData.size == secondaryYData.size
-              ) {
-                lineSeries {
-                  series(
-                    x = secondaryXData,
-                    y = secondaryYData,
-                  )
-                }
-              }
-            }
-            // After first instant renormalization, subsequent scroll-driven ones animate
-            if (!animateRenormalization) animateRenormalization = true
-          }
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error renormalizing on Y-axis change", e)
-      }
-    }
-  }
-
-  override fun onCleared() {
-    super.onCleared()
-    // Cancel any running jobs
-    currentModelProducerJob?.cancel()
-    scrollDebounceJob?.cancel()
-    renormalizationJob?.cancel()
-  }
 }
