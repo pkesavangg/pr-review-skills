@@ -168,12 +168,6 @@ fun GraphView(
     onScrollTargetConsumed(true)
   }
 
-  LaunchedEffect(state.markerIndex == null) {
-    if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
-      onScrollUpdate(state.minTarget, state.maxTarget)
-    }
-  }
-
   val defaultMarker = rememberDefaultMarker(
     state = state,
     segment = segment,
@@ -226,6 +220,15 @@ fun GraphView(
       markerIndex
     },
   )
+
+  LaunchedEffect(state.markerIndex == null) {
+    if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
+      delay(50)
+      if (!scrollState.isScrolling) {
+        onScrollUpdate(state.minTarget, state.maxTarget)
+      }
+    }
+  }
 
   val chart = rememberGraphChart(
     state = state,

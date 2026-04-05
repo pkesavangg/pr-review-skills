@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -13,17 +14,15 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.Gra
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.patrykandpatrick.vico.compose.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisLineComponent
+import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarker
+import com.patrykandpatrick.vico.compose.cartesian.marker.DefaultCartesianMarker
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberDefaultCartesianMarker
 import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.Insets
 import com.patrykandpatrick.vico.compose.common.component.ShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
-import com.patrykandpatrick.vico.compose.cartesian.CartesianDrawingContext
-import com.patrykandpatrick.vico.compose.cartesian.InterpolationType
-import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarker
-import com.patrykandpatrick.vico.compose.cartesian.marker.DefaultCartesianMarker
-import androidx.compose.foundation.shape.CircleShape
 
 @Composable
 internal fun rememberDefaultMarker(
@@ -38,6 +37,7 @@ internal fun rememberDefaultMarker(
     val requiredData = data.ifEmpty {
       state.createFallBackData(segment = segment, fallbackValues = fallbackValues)
     }
+
     onTargetsUpdate(requiredData)
   }
 
@@ -72,6 +72,8 @@ internal fun rememberDefaultMarker(
     },
     indicatorSize = pointSize.dp,
     guideline = guideline,
+    contentPadding = Insets(vertical = 16.dp),
+    yLabelCallback = yLabelCallback(),
   )
 }
 
