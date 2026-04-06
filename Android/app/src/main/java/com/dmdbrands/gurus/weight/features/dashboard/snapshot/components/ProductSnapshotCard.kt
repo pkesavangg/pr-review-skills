@@ -225,12 +225,34 @@ fun BabySnapshotCard(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
 
-        Text(
-            text = chart.label.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
-            color = SnapshotColors.Baby,
-            fontSize = 48.sp,
-            fontWeight = FontWeight.ExtraBold,
-        )
+        if (chart.label.isNotEmpty() && chart.label != "—") {
+            // Parse "8 lbs 14.4 oz" → numbers large, units small inline
+            Text(
+                text = buildAnnotatedString {
+                    val parts = chart.label.split(" ")
+                    parts.forEachIndexed { i, part ->
+                        if (i > 0) append(" ")
+                        if (part.toDoubleOrNull() != null || part.toIntOrNull() != null) {
+                            withStyle(SpanStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold)) {
+                                append(part)
+                            }
+                        } else {
+                            withStyle(SpanStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal)) {
+                                append(part)
+                            }
+                        }
+                    }
+                },
+                color = SnapshotColors.Baby,
+            )
+        } else {
+            Text(
+                text = DashboardSnapshotStrings.PlaceholderDash,
+                color = SnapshotColors.Baby,
+                fontSize = 48.sp,
+                fontWeight = FontWeight.ExtraBold,
+            )
+        }
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 

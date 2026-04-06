@@ -244,16 +244,36 @@ class DashboardSnapshotViewModel @Inject constructor(
     val yValues = sorted.map { (it.avgWeightDecigrams ?: 0) / 283.495 / 16.0 }
 
     if (xValues.isNotEmpty()) {
-      val graphMeta = generateNiceScale(
-        minValue = yValues.min(),
-        maxValue = yValues.max(),
-        goalWeight = 0.0,
-        targetTickCount = 4,
-      )
       val endX = xValues.max().toLong()
       val startX = xValues.min().toLong()
       val startTimestamp = GraphUtil.getStartRange(segment = GraphSegment.WEEK, startX)
       val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
+
+      // Compute percentile lines (p5, p50, p95) for the chart X range
+      val birthDate = profile.birthDate
+      val daysSinceBirth = if (birthDate != null) {
+        xValues.map { x ->
+          ((x.toLong() - birthDate) / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(0)
+        }
+      } else null
+
+      val percentileLines = if (daysSinceBirth != null) {
+        BabyPercentileHelper.getPercentileLines(profile.biologicalSex, daysSinceBirth)
+      } else emptyMap()
+
+      // Convert percentile decigrams to lbs
+      val p5 = percentileLines["p5"]?.map { it / 283.495 / 16.0 }
+      val p50 = percentileLines["p50"]?.map { it / 283.495 / 16.0 }
+      val p95 = percentileLines["p95"]?.map { it / 283.495 / 16.0 }
+
+      // Include percentile values in Y range so they're visible
+      val allYValues = yValues + (p5 ?: emptyList()) + (p95 ?: emptyList())
+      val graphMeta = generateNiceScale(
+        minValue = allYValues.min(),
+        maxValue = allYValues.max(),
+        goalWeight = 0.0,
+        targetTickCount = 4,
+      )
 
       handleIntent(
         DashboardSnapshotIntent.SetBabyChart(
@@ -269,25 +289,8 @@ class DashboardSnapshotViewModel @Inject constructor(
         ),
       )
 
-      // Compute percentile lines (p5, p50, p95) for the chart X range
-      val birthDate = profile.birthDate
-      val daysSinceBirth = if (birthDate != null) {
-        xValues.map { x ->
-          ((x.toLong() - birthDate) / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(0)
-        }
-      } else null
-
-      val percentileLines = if (daysSinceBirth != null) {
-        BabyPercentileHelper.getPercentileLines(profile.biologicalSex, daysSinceBirth)
-      } else emptyMap()
-
       val producer = babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
       try {
-        // Convert percentile decigrams to lbs
-        val p5 = percentileLines["p5"]?.map { it / 283.495 / 16.0 }
-        val p50 = percentileLines["p50"]?.map { it / 283.495 / 16.0 }
-        val p95 = percentileLines["p95"]?.map { it / 283.495 / 16.0 }
-
         producer.runTransaction {
           lineSeries {
             series(x = xValues, y = yValues)
