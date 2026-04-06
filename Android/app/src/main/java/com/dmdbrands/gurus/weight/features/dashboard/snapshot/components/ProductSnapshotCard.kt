@@ -30,6 +30,7 @@ object SnapshotColors {
     val Weight = Color(0xFF1565C0)
     val BloodPressure = Color(0xFF458239)
     val Baby = Color(0xFF8841A4)
+    val PercentileBand = Color(0xFFD0CCCA)
 
     // BP severity colors (from ggBluetoothNativeLibrary)
     val BpNormal = Color(0xFFA9D045)
@@ -237,6 +238,12 @@ fun BabySnapshotCard(
             SnapshotLineChart(
                 modelProducer = viewModel.getBabyModelProducer(product.profile.id),
                 lineColor = SnapshotColors.Baby,
+                lineColors = listOf(
+                    SnapshotColors.Baby,            // weight line
+                    SnapshotColors.PercentileBand,   // p95
+                    SnapshotColors.PercentileBand,   // p50
+                    SnapshotColors.PercentileBand,   // p5
+                ),
                 startTimestamp = chart.startTimestamp,
                 endTimestamp = chart.endTimestamp,
                 yStep = chart.yStep,

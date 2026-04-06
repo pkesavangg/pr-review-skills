@@ -3,8 +3,11 @@ package com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import android.content.Context
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
@@ -27,6 +30,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardSnapshotViewModel @Inject constructor(
+  @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
   private val historyService: IHistoryService,
   private val accountService: IAccountService,
 ) : BaseIntentViewModel<DashboardSnapshotState, DashboardSnapshotIntent>(
@@ -199,28 +203,30 @@ class DashboardSnapshotViewModel @Inject constructor(
   }
 
   private fun loadBabyGraphs() {
+    BabyPercentileHelper.loadIfNeeded(context)
     viewModelScope.launch {
       productSelectionManager.availableProducts.collect { products ->
         products.filterIsInstance<ProductSelection.Baby>().forEach { baby ->
-          loadBabyGraph(baby.profile.id)
+          loadBabyGraph(baby.profile)
         }
       }
     }
   }
 
-  private fun loadBabyGraph(profileId: String) {
+  private fun loadBabyGraph(profile: BabyProfile) {
     viewModelScope.launch {
-      historyService.getBabySnapshotGraphData(profileId)
+      historyService.getBabySnapshotGraphData(profile.id)
         .catch { e ->
-          AppLog.e(TAG, "Failed to load baby graph data for $profileId", e)
+          AppLog.e(TAG, "Failed to load baby graph data for ${profile.id}", e)
         }
         .collect { points ->
-          updateBabyChart(profileId, points)
+          updateBabyChart(profile, points)
         }
     }
   }
 
-  private suspend fun updateBabyChart(profileId: String, points: List<PeriodBabySummary>) {
+  private suspend fun updateBabyChart(profile: BabyProfile, points: List<PeriodBabySummary>) {
+    val profileId = profile.id
     val sorted = points.filter { (it.avgWeightDecigrams ?: 0) > 0 }.sortedBy { it.entryTimestamp }
     if (sorted.isEmpty()) {
       handleIntent(DashboardSnapshotIntent.SetBabyChart(profileId, SnapshotChartData(label = "—")))
@@ -234,7 +240,8 @@ class DashboardSnapshotViewModel @Inject constructor(
     val oz = ConversionTools.convertDecigramsToOz(latestWeight)
     val label = "$lbs lbs ${String.format("%.1f", oz)} oz"
 
-    val yValues = sorted.map { (it.avgWeightDecigrams ?: 0).toDouble() }
+    // Convert decigrams to lbs for chart display (decigrams / 283.495 / 16)
+    val yValues = sorted.map { (it.avgWeightDecigrams ?: 0) / 283.495 / 16.0 }
 
     if (xValues.isNotEmpty()) {
       val graphMeta = generateNiceScale(
@@ -262,11 +269,33 @@ class DashboardSnapshotViewModel @Inject constructor(
         ),
       )
 
+      // Compute percentile lines (p5, p50, p95) for the chart X range
+      val birthDate = profile.birthDate
+      val daysSinceBirth = if (birthDate != null) {
+        xValues.map { x ->
+          ((x.toLong() - birthDate) / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(0)
+        }
+      } else null
+
+      val percentileLines = if (daysSinceBirth != null) {
+        BabyPercentileHelper.getPercentileLines(profile.biologicalSex, daysSinceBirth)
+      } else emptyMap()
+
       val producer = babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
       try {
+        // Convert percentile decigrams to lbs
+        val p5 = percentileLines["p5"]?.map { it / 283.495 / 16.0 }
+        val p50 = percentileLines["p50"]?.map { it / 283.495 / 16.0 }
+        val p95 = percentileLines["p95"]?.map { it / 283.495 / 16.0 }
+
         producer.runTransaction {
           lineSeries {
             series(x = xValues, y = yValues)
+            if (p50 != null && p50.size == xValues.size) {
+              if (p95 != null) series(x = xValues, y = p95)
+              series(x = xValues, y = p50)
+              if (p5 != null) series(x = xValues, y = p5)
+            }
           }
         }
       } catch (e: Exception) {
