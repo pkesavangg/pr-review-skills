@@ -98,6 +98,10 @@ struct ScaleNameScreen: View {
                 await viewModel.allowExit(isFormDirty: scaleNameForm.isDirty, editedName: editedName)
             }
         }
+        .onDisappear {
+            // Clears the tab-level deactivation gate to prevent stale dirty-form alerts on subsequent tab switches.
+            registerDeactivation { true }
+        }
     }
 }
 
