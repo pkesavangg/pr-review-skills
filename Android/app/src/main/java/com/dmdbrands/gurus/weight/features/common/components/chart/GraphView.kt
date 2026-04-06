@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.InterpolationType
+import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberScrubMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.rememberChartSnapFlingBehavior
@@ -76,7 +79,7 @@ fun GraphView(
     }
   }
 
-  GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
+  val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
     ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
 
@@ -92,9 +95,14 @@ fun GraphView(
     startPaddingXStep = startPaddingXStep.takeIf { it > 0.0 },
     visibilityEasing = LinearEasing,
   )
+  val initialScroll = remember(initialStartX, startPaddingXStep) {
+    Scroll.Absolute.xWithPadding(initialStartX, startPaddingXStep)
+  }
 
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
+    initialScroll = initialScroll,
+    key = segment,
   )
 
   val snapConfig = remember(segment, startPaddingXStep) {
@@ -153,18 +161,18 @@ fun GraphView(
   LaunchedEffect(segment) {
     if (scrollTarget == null || !canScrollToAnchor || state.isEmptyGraph) return@LaunchedEffect
     val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
-    GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
+    val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
-    // scrollState.animateScroll(
-    //   Scroll.Absolute.xWithPadding(
-    //     anchoredTarget.toDouble(),
-    //     GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
-    //   ),
-    //   animationSpec = tween(
-    //     durationMillis = 150,
-    //     easing = LinearOutSlowInEasing,
-    //   ),
-    // )
+    scrollState.animateScroll(
+      Scroll.Absolute.xWithPadding(
+        anchoredTarget.toDouble(),
+        GraphSnapHelper.getVisiblePaddingXStepForSegment(segment).first,
+      ),
+      animationSpec = tween(
+        durationMillis = 150,
+        easing = LinearOutSlowInEasing,
+      ),
+    )
     onScrollTargetConsumed(true)
   }
 
