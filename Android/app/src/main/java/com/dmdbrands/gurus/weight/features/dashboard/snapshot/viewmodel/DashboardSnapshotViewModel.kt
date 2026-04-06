@@ -1,0 +1,123 @@
+package com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel
+
+import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class DashboardSnapshotViewModel @Inject constructor(
+  private val historyService: IHistoryService,
+  private val accountService: IAccountService,
+) : BaseIntentViewModel<DashboardSnapshotState, DashboardSnapshotIntent>(
+  DashboardSnapshotReducer(),
+) {
+
+  val weightModelProducer = CartesianChartModelProducer()
+  private var weightGraphJob: Job? = null
+
+  override fun provideInitialState() = DashboardSnapshotState(isLoading = true)
+
+  override fun onDependenciesReady() {
+    observeWeightUnit()
+    loadWeightGraph()
+  }
+
+  private fun observeWeightUnit() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow
+        .map { it?.weightUnit }
+        .distinctUntilChanged()
+        .collect { unit ->
+          if (unit != null) {
+            handleIntent(DashboardSnapshotIntent.SetWeightUnit(unit))
+          }
+        }
+    }
+  }
+
+  private fun loadWeightGraph() {
+    weightGraphJob?.cancel()
+    weightGraphJob = viewModelScope.launch {
+      historyService.getWeightSnapshotGraphData()
+        .catch { e ->
+          AppLog.e(TAG, "Failed to load weight graph data", e)
+          handleIntent(DashboardSnapshotIntent.SetLoading(false))
+        }
+        .collect { points ->
+          updateWeightChart(points)
+          handleIntent(DashboardSnapshotIntent.SetLoading(false))
+        }
+    }
+  }
+
+  private suspend fun updateWeightChart(points: List<WeightSnapshotPoint>) {
+    val entries = points.filter { it.weight > 0 }.sortedBy { it.entryTimestamp }
+    if (entries.isEmpty()) {
+      handleIntent(DashboardSnapshotIntent.SetWeightChart(SnapshotChartData(label = "—")))
+      return
+    }
+
+    // DB stores weight in tenths — divide by 10 for display
+    val displayWeights = entries.map { it.weight / 10.0 }
+    val avgWeight = displayWeights.average()
+
+    val xValues = entries.map { it.getTimeStamp().toDouble() }
+    val yValues = displayWeights
+
+    if (xValues.size == yValues.size && xValues.isNotEmpty()) {
+      val graphMeta = generateNiceScale(
+        minValue = yValues.min(),
+        maxValue = yValues.max(),
+        goalWeight = 0.0,
+        targetTickCount = 4,
+      )
+      val endX = xValues.max().toLong()
+      val startX = xValues.min().toLong()
+      val startTimestamp = GraphUtil.getStartRange(segment = GraphSegment.WEEK, startX)
+      val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
+
+      handleIntent(
+        DashboardSnapshotIntent.SetWeightChart(
+          SnapshotChartData(
+            label = formatWeightValue(avgWeight),
+            yStep = graphMeta.step,
+            yMin = graphMeta.min,
+            yMax = graphMeta.max,
+            startTimestamp = startTimestamp,
+            endTimestamp = endTimestamp,
+          ),
+        ),
+      )
+
+      try {
+        weightModelProducer.runTransaction {
+          lineSeries {
+            series(x = xValues, y = yValues)
+          }
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to update weight chart model", e)
+      }
+    }
+  }
+
+  companion object {
+    private const val TAG = "DashboardSnapshotVM"
+  }
+}
