@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import kotlinx.coroutines.flow.Flow
@@ -91,5 +92,10 @@ class HistoryService @Inject constructor(
             is ProductSelection.Baby -> historyRepository.getBabyDailyGraphData(acctId, product.profile.id)
                 .map { GraphData.Baby(it) }
         }
+    }
+
+    override fun getWeightSnapshotGraphData(): Flow<List<WeightSnapshotPoint>> {
+        val acctId = requireNotNull(_accountId) { "accountId not set" }
+        return historyRepository.getWeightSnapshotGraphData(acctId)
     }
 }

@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedActiveEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -338,6 +339,36 @@ interface HistoryDao {
     """,
   )
   fun getWeightDailyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+
+  // ---------------------------------------------------------------------------
+  // Weight Snapshot Query (Dashboard mini-chart)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Last 10 weight entries for dashboard snapshot mini-chart.
+   * Daily averages ordered by timestamp ascending.
+   */
+  @Query(
+    """
+    SELECT * FROM (
+      SELECT
+        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
+        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
+        AVG(bse.weight) AS weight,
+        MAX(e.unit) AS unit
+      FROM entry_view AS e
+      LEFT JOIN body_scale_entry AS bse ON e.id = bse.id
+      WHERE e.accountId = :accountId
+        AND (e.operationType IS NULL OR e.operationType != 'delete')
+        AND bse.weight > 0
+      GROUP BY period
+      ORDER BY period DESC
+      LIMIT 10
+    )
+    ORDER BY entryTimestamp ASC
+    """,
+  )
+  fun getWeightSnapshotGraphData(accountId: String): Flow<List<WeightSnapshotPoint>>
 
   // ---------------------------------------------------------------------------
   // BPM Graph Queries

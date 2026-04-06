@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -32,6 +33,9 @@ interface IHistoryRepository {
     // Weight Graph
     fun getWeightMonthlyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>>
     fun getWeightDailyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>>
+
+    // Weight Snapshot (Dashboard mini-chart)
+    fun getWeightSnapshotGraphData(accountId: String): Flow<List<WeightSnapshotPoint>>
 
     // BPM Graph
     fun getBpmMonthlyGraphData(accountId: String): Flow<List<PeriodBpmSummary>>

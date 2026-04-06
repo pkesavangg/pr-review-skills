@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSumm
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -95,6 +96,13 @@ class HistoryRepository @Inject constructor(
 
     override fun getWeightDailyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>> =
         historyDao.getWeightDailyGraphData(accountId)
+
+    // ---------------------------------------------------------------------------
+    // Weight Snapshot (Dashboard mini-chart)
+    // ---------------------------------------------------------------------------
+
+    override fun getWeightSnapshotGraphData(accountId: String): Flow<List<WeightSnapshotPoint>> =
+        historyDao.getWeightSnapshotGraphData(accountId)
 
     // ---------------------------------------------------------------------------
     // BPM Graph

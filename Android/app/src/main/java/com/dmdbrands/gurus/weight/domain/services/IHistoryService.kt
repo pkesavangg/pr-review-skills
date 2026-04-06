@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -27,4 +28,6 @@ interface IHistoryService {
     fun getMonthlyGraphData(product: ProductSelection): Flow<GraphData>
 
     fun getDailyGraphData(product: ProductSelection): Flow<GraphData>
+
+    fun getWeightSnapshotGraphData(): Flow<List<WeightSnapshotPoint>>
 }
