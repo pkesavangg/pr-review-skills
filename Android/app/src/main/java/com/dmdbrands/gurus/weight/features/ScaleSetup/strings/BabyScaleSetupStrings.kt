@@ -14,12 +14,6 @@ object BabyScaleSetupStrings {
       else "Searching..."
   }
 
-  object ConnectingBluetooth {
-    fun Title(connectionState: ConnectionState) =
-      if (connectionState is ConnectionState.Failed) "Unable to connect to your device"
-      else "Connecting to Bluetooth"
-  }
-
   object ScaleName {
     const val Title = "Give your scale a name."
     const val Hint = "nickname"
@@ -42,7 +36,6 @@ object BabyScaleSetupStrings {
     const val SexSelectContentDescription = "Select biological sex"
     const val BirthLengthHint = "birth length"
     const val BirthWeightHint = "birth weight"
-    const val SkipButton = "SKIP"
   }
 
   object BabyList {

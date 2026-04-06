@@ -51,6 +51,16 @@ private val NON_PAGER_STEPS = setOf(
 /** Steps rendered in the HorizontalPager — derived from the single source of truth. */
 private val PAGER_STEPS = babyScaleInitialSteps.filter { it !in NON_PAGER_STEPS }
 
+/** Steps that show bottom navigation controls. */
+private val STEPS_WITH_NAV = setOf(
+  BabyScaleSetupStep.SCALE_INFO,
+  BabyScaleSetupStep.PERMISSIONS,
+  BabyScaleSetupStep.SCALE_NAME,
+  BabyScaleSetupStep.PAIRED_SUCCESS,
+  BabyScaleSetupStep.BABY_PROFILE_FORM,
+  BabyScaleSetupStep.BABY_LIST,
+)
+
 @Composable
 fun BabyScaleSetupScreen(
   sku: String,
@@ -77,7 +87,7 @@ fun BabyScaleSetupScreen(
 }
 
 @Composable
-fun BabyScaleSetupScreenContent(
+internal fun BabyScaleSetupScreenContent(
   state: BabyScaleSetupState,
   sku: String,
   onIntent: (ScaleSetupIntent) -> Unit,
@@ -156,14 +166,7 @@ fun BabyScaleSetupScreenContent(
       }
 
       // Bottom navigation
-      val showNav = currentStep in listOf(
-        BabyScaleSetupStep.SCALE_INFO,
-        BabyScaleSetupStep.PERMISSIONS,
-        BabyScaleSetupStep.SCALE_NAME,
-        BabyScaleSetupStep.PAIRED_SUCCESS,
-        BabyScaleSetupStep.BABY_PROFILE_FORM,
-        BabyScaleSetupStep.BABY_LIST,
-      )
+      val showNav = currentStep in STEPS_WITH_NAV
       if (showNav) {
         Row(
           modifier = Modifier

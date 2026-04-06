@@ -186,16 +186,24 @@ constructor(
       ggDeviceService.scanForPairing()
       startObservingDevices { data ->
         viewModelScope.launch {
-          AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
-          discoveredScale = Device(
-            device = data,
-            deviceType = ScaleSetupType.BabyScale.value,
-            sku = sku,
-          )
-          clearBluetoothTimeout()
-          handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-          delay(2000)
-          onNext()
+          try {
+            AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
+            discoveredScale = Device(
+              device = data,
+              deviceType = ScaleSetupType.BabyScale.value,
+              sku = sku,
+            )
+            clearBluetoothTimeout()
+            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+            delay(2000)
+            onNext()
+          } catch (e: CancellationException) {
+            throw e
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Error processing discovered device", e)
+            clearBluetoothTimeout()
+            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
+          }
         }
       }
     } catch (e: CancellationException) {
