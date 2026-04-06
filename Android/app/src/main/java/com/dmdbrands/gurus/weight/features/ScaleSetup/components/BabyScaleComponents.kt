@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -192,6 +193,8 @@ fun BabyProfileFormContent(
     )
   }
 
+  val currentProfile by rememberUpdatedState(profile)
+
   LaunchedEffect(birthdayForm) {
     snapshotFlow { birthdayForm.value }
       .collect { dateValue ->
@@ -199,8 +202,8 @@ fun BabyProfileFormContent(
           is DateTimeValue.Date -> DateTimeValue.getDateFormatFromMilliseconds(dateValue.millis)
           else -> null
         }
-        if (formatted != null) {
-          onProfileChanged(profile.copy(birthday = formatted))
+        if (formatted != null && formatted != currentProfile.birthday) {
+          onProfileChanged(currentProfile.copy(birthday = formatted))
         }
       }
   }
