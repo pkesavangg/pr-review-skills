@@ -43,7 +43,7 @@ struct AppInputField: View {
             VStack(alignment: .leading, spacing: 0) {
                 inputBox
                 Text(config.errorMessage ?? "")
-                    .fontOpenSans(.subHeading2)
+                    .fontOpenSans(.body4)
                     .foregroundColor(theme.textError)
                     .padding(.leading, .spacingSM)
                     .frame(height: 20, alignment: .center)
@@ -86,7 +86,7 @@ struct AppInputField: View {
 
             if let errorMessage = config.errorMessage {
                 Text(errorMessage)
-                    .fontOpenSans(.subHeading2)
+                    .fontOpenSans(.body4)
                     .foregroundColor(theme.textError)
                     .padding(.leading, .spacingSM)
                     .padding(.top, 4)

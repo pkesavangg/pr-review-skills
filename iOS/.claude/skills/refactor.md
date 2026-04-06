@@ -38,13 +38,28 @@ Search for all usages of the type or method being changed:
 rg -n "{TypeOrMethodName}" meApp meAppTests -g '*.swift' | head -30
 ```
 
-If the symbol is used in more than 5 files, spawn the `di-impact-finder` agent to get a full impact map before proceeding.
+**If the symbol is used in MORE THAN 5 files, invoke `di-impact-finder` agent** to automatically map all call sites, dependencies, and registrations. This subagent will:
+- Find all protocol conformances and implementations
+- List all `@Injector` usages and registration points
+- Identify test mocks that need updating
+- Provide a complete impact map and call graph
 
-Flag any usage in:
+**Invocation:**
+```
+Spawn di-impact-finder agent with:
+- Symbol name: {TypeOrMethodName}
+- Refactoring type: {rename|extract|split|move}
+- Scope: meApp + meAppTests
+- Output: Full impact map with call sites, registrations, mocks
+```
+
+After receiving the impact map, flag any usage in:
 - `DependencyContainer.swift` / `ServiceRegistry.swift` registrations
 - `@Injector` call sites
 - existing test files (mock setups, `makeSUT` factories)
 - `Domain/` interfaces (protocol method signatures)
+
+**Note:** If you run the manual search first and count >5 files, proceed directly to di-impact-finder rather than doing partial searches. The agent is faster and more reliable than manual grepping.
 
 ---
 

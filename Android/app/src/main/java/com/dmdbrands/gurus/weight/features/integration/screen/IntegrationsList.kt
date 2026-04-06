@@ -43,7 +43,7 @@ fun IntegrationList(
         .clip(RoundedCornerShape(spacing.sm)),
   ) {
     // All Integrations Section
-    itemsIndexed(state.integrations, key = { _, integration -> integration.provider }) { index, integration ->
+    itemsIndexed(state.integrations, key = { _, integration -> integration.provider.apiValue }) { index, integration ->
       IntegrationListItem(
         integration = integration,
         onToggle = {

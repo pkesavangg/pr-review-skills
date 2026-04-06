@@ -54,4 +54,12 @@ final class MockHealthKitHandler: HealthKitHandlerProtocol {
     func openAppleHealth() async {
         openAppleHealthCalls += 1
     }
+
+    private(set) var updateAppTypeCalls = 0
+    private(set) var lastDeviceTypes: Set<String>?
+
+    func updateAppType(for deviceTypes: Set<String>) {
+        updateAppTypeCalls += 1
+        lastDeviceTypes = deviceTypes
+    }
 }

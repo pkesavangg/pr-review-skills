@@ -10,13 +10,14 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 class AccountFlagServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -31,7 +32,7 @@ class AccountFlagServiceTest {
     private val entryFlag = AccountFlag(id = "flag-2", type = "app-rate-ask entry", trigger = "entry")
     private val unknownFlag = AccountFlag(id = "flag-3", type = "unknown-type", trigger = "login")
 
-    @Before
+    @BeforeEach
     fun setUp() {
         service = AccountFlagService(context, accountFlagRepository, appReviewManager)
     }

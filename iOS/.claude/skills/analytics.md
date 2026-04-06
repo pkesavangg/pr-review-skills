@@ -105,7 +105,7 @@ guard let account = activeAccount else {
 
 - Keep messages short and machine-parseable: `"<action> <state>. <key>=<value> <key>=<value>"`
 - Always log errors **before** rethrowing — `throw error` must come after the `.error` log call
-- Do NOT log sensitive data: auth tokens, passwords, full email addresses, raw weight arrays
+- **Do NOT log sensitive data: auth tokens, passwords, full email addresses, raw weight arrays** — see `/keychain-pattern` skill for comprehensive PII/health data classification and logging safety rules
 - Log IDs (`accountId`, `entryId`) and counts — not PII content fields
 - `.debug` is safe for verbose output — it is never persisted, console-only
 - Do not add `data:` if the values would contain sensitive fields

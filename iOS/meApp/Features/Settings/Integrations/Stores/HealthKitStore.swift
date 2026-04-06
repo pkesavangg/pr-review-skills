@@ -36,7 +36,8 @@ final class HealthKitStore: ObservableObject {
     private let kvStorage: KvStorageServiceProtocol
 
     var cancellables: Set<AnyCancellable> = []
-    static let wgTotalPermissionsCount = 5
+    /// Expected permission count based on paired device types. Updated on `loadStatus()`.
+    private(set) var totalPermissionsCount = 5
 
     /// Duration to wait for sheet dismissal animation to complete before showing subsequent UI.
     private static let sheetDismissalAnimationDurationNanoseconds: UInt64 = 300_000_000 // 0.3 seconds
@@ -130,6 +131,7 @@ final class HealthKitStore: ObservableObject {
 
             self.isIntegrated = isIntegrated
             self.isOutOfSync = isOutOfSync
+            self.totalPermissionsCount = await healthKitService.expectedPermissionCount()
             logger.log(
                 level: .info,
                 tag: tag,
@@ -187,14 +189,14 @@ final class HealthKitStore: ObservableObject {
                     // partial permissions ( >0 & <5 ) ⇒ show *Integration Complete* flow so the user can finish,
                     // no permissions ⇒ proceed with normal *Permissions Not Allowed* flow.
                     switch permissionCount {
-                    case Self.wgTotalPermissionsCount...:
+                    case totalPermissionsCount...:
                         activeState = .permissionsAllowed
                         logger.log(
                             level: .info,
                             tag: tag,
                             message: "HealthKit flow state set. state=permissionsAllowed, permissionCount=\(permissionCount)"
                         )
-                    case 1 ..< Self.wgTotalPermissionsCount:
+                    case 1 ..< totalPermissionsCount:
                         activeState = .integrationComplete
                         logger.log(
                             level: .info,
@@ -495,7 +497,7 @@ final class HealthKitStore: ObservableObject {
         isOutOfSync = await healthKitService.isHKOutOfSync()
 
         // If permissions are now in sync, show a toast notification
-        if permissionsGranted >= Self.wgTotalPermissionsCount, !isOutOfSync {
+        if permissionsGranted >= totalPermissionsCount, !isOutOfSync {
             notificationService.showToast(ToastModel(message: ToastStrings.hkIntegrationSynced))
             logger.log(
                 level: .success,

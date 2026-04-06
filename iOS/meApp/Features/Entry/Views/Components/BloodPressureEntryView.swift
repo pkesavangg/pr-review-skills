@@ -9,6 +9,7 @@ struct BloodPressureEntryView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var entryStore: EntryStore
     @Binding var focusedField: FocusField?
+    var onSaveCompleted: (() -> Void)?
 
     private let bpLang = ManualEntryStrings.self
     private let labels = InputFieldLabels.self
@@ -135,10 +136,8 @@ struct BloodPressureEntryView: View {
             ) {
                 Task {
                     focusedField = nil
-                    entryStore.notificationService.showToast(
-                        ToastModel(title: ToastStrings.success, message: ToastStrings.entryAdded)
-                    )
-                    entryStore.resetBPForm()
+                    await entryStore.saveBPEntry()
+                    onSaveCompleted?()
                 }
             }
         }
