@@ -22,18 +22,20 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.BabyProfile
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.InputFieldBase
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageDefaults
@@ -65,41 +67,15 @@ fun ScaleNameContent(
       textType = TextType.Title,
       modifier = Modifier.fillMaxWidth(),
     )
-    TextField(
+    val focusRequester = remember { FocusRequester() }
+    InputFieldBase<String>(
       value = nickname,
-      onValueChange = onNicknameChanged,
-      label = {
-        Text(
-          text = BabyScaleSetupStrings.ScaleName.Hint,
-          style = MeTheme.typography.body3,
-          color = MeTheme.colorScheme.textSubheading,
-        )
-      },
-      singleLine = true,
-      textStyle = MeTheme.typography.body2,
-      modifier = Modifier.fillMaxWidth().height(56.dp),
-      shape = RoundedCornerShape(MeTheme.borderRadius.sm),
-      trailingIcon = {
-        if (nickname.isNotEmpty()) {
-          IconButton(onClick = { onNicknameChanged("") }) {
-            Icon(
-              painter = painterResource(id = AppIcons.Selection.CircleCloseOutlined),
-              contentDescription = "Clear",
-              modifier = Modifier.size(20.dp),
-              tint = MeTheme.colorScheme.secondaryAction,
-            )
-          }
-        }
-      },
-      colors = TextFieldDefaults.colors(
-        focusedContainerColor = MeTheme.colorScheme.primaryBackground,
-        unfocusedContainerColor = MeTheme.colorScheme.primaryBackground,
-        focusedIndicatorColor = Color.Transparent,
-        unfocusedIndicatorColor = Color.Transparent,
-        focusedTextColor = MeTheme.colorScheme.textBody,
-        unfocusedTextColor = MeTheme.colorScheme.textBody,
-        cursorColor = MeTheme.colorScheme.primaryAction,
-      ),
+      onValueChange = { onNicknameChanged(it ?: "") },
+      label = BabyScaleSetupStrings.ScaleName.Hint,
+      modifier = Modifier.fillMaxWidth(),
+      keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+      onImeAction = { focusRequester.freeFocus() },
+      focusRequester = focusRequester,
     )
   }
 }

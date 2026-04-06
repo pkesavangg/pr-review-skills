@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
@@ -146,8 +147,7 @@ constructor(
     AppLog.d(TAG, "Step changed to: $step")
     viewModelScope.launch {
       when (step) {
-        // TODO: Restore real BLE actions when scale connection is ready
-        BabyScaleSetupStep.WAKEUP -> mockWakeUpScale()
+        BabyScaleSetupStep.WAKEUP -> if (BuildConfig.DEBUG) mockWakeUpScale() else wakeUpScale()
         else -> AppLog.d(TAG, "No specific action for step: $step")
       }
     }

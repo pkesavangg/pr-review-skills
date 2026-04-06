@@ -3,7 +3,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-ADB="$HOME/Library/Android/sdk/platform-tools/adb"
+ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
 
 echo "Building debug APK..."
 ./gradlew assembleDebug

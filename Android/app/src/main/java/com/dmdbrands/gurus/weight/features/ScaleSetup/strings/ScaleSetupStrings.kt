@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.strings
 
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 
 /**
  * Strings for Scale Setup screens.
@@ -10,7 +11,7 @@ object ScaleSetupStrings {
   const val UnknownScale = "Unknown Scale"
 
   fun Header(sku: String) = "Scale Setup – $sku"
-  const val BabyScaleHeader = "Scale Setup – 0220/0222"
+  val BabyScaleHeader = "Scale Setup – ${DeviceHelper.SKU_0220}/${DeviceHelper.SKU_0222}"
 
   const val backButton = "back"
   const val nextButton = "next"
@@ -21,7 +22,7 @@ object ScaleSetupStrings {
 
   object ScaleInfo {
     fun Title(sku: String) = "Model $sku"
-    const val BabyScaleTitle = "Model 0220/0222"
+    val BabyScaleTitle = "Model ${DeviceHelper.SKU_0220}/${DeviceHelper.SKU_0222}"
     const val WifiScaleButtonText = "Get your scale’s MAC address"
     const val Subtitle =
       "If you’re having trouble setting up your scale, press the help button in the top right to connect with our team."
