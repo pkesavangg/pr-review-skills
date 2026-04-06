@@ -118,8 +118,25 @@ class HistoryRepository @Inject constructor(
     // BPM Snapshot (Dashboard mini-chart)
     // ---------------------------------------------------------------------------
 
-    override fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>> =
-        historyDao.getBpmSnapshotGraphData(accountId)
+    override fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBpmSnapshotData())
+        return historyDao.getBpmSnapshotGraphData(accountId)
+    }
+
+    private fun sampleBpmSnapshotData(): List<PeriodBpmSummary> {
+        val now = System.currentTimeMillis()
+        val dayMs = 86_400_000L
+        return listOf(
+            PeriodBpmSummary("2026-03-30", "2026-03-30T08:00:00.000Z", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
+            PeriodBpmSummary("2026-03-31", "2026-03-31T08:00:00.000Z", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
+            PeriodBpmSummary("2026-04-01", "2026-04-01T08:00:00.000Z", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
+            PeriodBpmSummary("2026-04-02", "2026-04-02T08:00:00.000Z", avgSystolic = 112, avgDiastolic = 72, avgPulse = 62),
+            PeriodBpmSummary("2026-04-03", "2026-04-03T08:00:00.000Z", avgSystolic = 116, avgDiastolic = 75, avgPulse = 66),
+            PeriodBpmSummary("2026-04-04", "2026-04-04T08:00:00.000Z", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
+            PeriodBpmSummary("2026-04-05", "2026-04-05T08:00:00.000Z", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
+            PeriodBpmSummary("2026-04-06", "2026-04-06T08:00:00.000Z", avgSystolic = 111, avgDiastolic = 71, avgPulse = 63),
+        )
+    }
 
     // ---------------------------------------------------------------------------
     // Baby Graph

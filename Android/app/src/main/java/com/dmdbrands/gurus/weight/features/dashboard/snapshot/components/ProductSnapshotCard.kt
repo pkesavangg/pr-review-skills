@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,6 +29,37 @@ object SnapshotColors {
     val Weight = Color(0xFF1565C0)
     val BloodPressure = Color(0xFF458239)
     val Baby = Color(0xFF8841A4)
+
+    // BP severity colors (from ggBluetoothNativeLibrary)
+    val BpNormal = Color(0xFFA9D045)
+    val BpElevated = Color(0xFFFFDD00)
+    val BpHyperTension1 = Color(0xFFEB9927)
+    val BpHyperTension2 = Color(0xFFE26203)
+    val BpHyperSensitive = Color(0xFF84000A)
+    val PulseNormal = Color(0xFF00B3E3)
+
+    fun systolicColor(value: Int): Color = when {
+        value > 180 -> BpHyperSensitive
+        value > 139 -> BpHyperTension2
+        value > 129 -> BpHyperTension1
+        value > 119 -> BpElevated
+        else -> BpNormal
+    }
+
+    fun diastolicColor(value: Int): Color = when {
+        value > 120 -> BpHyperSensitive
+        value > 89 -> BpHyperTension2
+        value > 79 -> BpHyperTension1
+        else -> BpNormal
+    }
+
+    fun pulseColor(value: Int): Color = when {
+        value < 50 -> BpHyperSensitive
+        value < 60 -> BpElevated
+        value <= 100 -> PulseNormal
+        value <= 120 -> BpHyperTension1
+        else -> BpHyperSensitive
+    }
 }
 
 @Composable
@@ -106,17 +140,41 @@ fun BpSnapshotCard(
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
 
+        // Parse systolic/diastolic from label "120/80"
+        val parts = chart.label.split("/")
+        val systolic = parts.getOrNull(0)?.toIntOrNull()
+        val diastolic = parts.getOrNull(1)?.toIntOrNull()
+        val pulse = chart.secondaryLabel.toIntOrNull()
+
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = chart.label.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
-                color = SnapshotColors.BloodPressure,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold,
-            )
+            if (systolic != null && diastolic != null) {
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(SpanStyle(color = SnapshotColors.systolicColor(systolic))) {
+                            append("$systolic")
+                        }
+                        withStyle(SpanStyle(color = MeTheme.colorScheme.textSubheading)) {
+                            append("/")
+                        }
+                        withStyle(SpanStyle(color = SnapshotColors.diastolicColor(diastolic))) {
+                            append("$diastolic")
+                        }
+                    },
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            } else {
+                Text(
+                    text = DashboardSnapshotStrings.PlaceholderDash,
+                    color = SnapshotColors.BloodPressure,
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            }
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = chart.secondaryLabel.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
-                color = MeTheme.colorScheme.textSubheading,
+                color = if (pulse != null) SnapshotColors.pulseColor(pulse) else MeTheme.colorScheme.textSubheading,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
@@ -125,9 +183,16 @@ fun BpSnapshotCard(
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
         if (chart.startTimestamp != null && chart.endTimestamp != null) {
+            val chartLineColors = listOfNotNull(
+                systolic?.let { SnapshotColors.systolicColor(it) },
+                diastolic?.let { SnapshotColors.diastolicColor(it) },
+                pulse?.let { SnapshotColors.pulseColor(it) },
+            )
+
             SnapshotLineChart(
                 modelProducer = viewModel.bpModelProducer,
                 lineColor = SnapshotColors.BloodPressure,
+                lineColors = chartLineColors.ifEmpty { null },
                 startTimestamp = chart.startTimestamp,
                 endTimestamp = chart.endTimestamp,
                 yStep = chart.yStep,

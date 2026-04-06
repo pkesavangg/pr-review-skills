@@ -149,6 +149,8 @@ class DashboardSnapshotViewModel @Inject constructor(
     val xValues = sorted.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() }
     val systolicValues = sorted.map { it.avgSystolic.toDouble() }
     val diastolicValues = sorted.map { it.avgDiastolic.toDouble() }
+    val pulseValues = sorted.map { it.avgPulse.toDouble() }
+
 
     if (xValues.isNotEmpty()) {
       val allYValues = systolicValues + diastolicValues
@@ -181,9 +183,8 @@ class DashboardSnapshotViewModel @Inject constructor(
         bpModelProducer.runTransaction {
           lineSeries {
             series(x = xValues, y = systolicValues)
-          }
-          lineSeries {
             series(x = xValues, y = diastolicValues)
+            series(x = xValues, y = pulseValues)
           }
         }
       } catch (e: Exception) {

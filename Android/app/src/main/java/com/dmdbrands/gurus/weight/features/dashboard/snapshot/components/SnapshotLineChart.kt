@@ -49,6 +49,7 @@ import kotlin.math.roundToInt
 fun SnapshotLineChart(
   modelProducer: CartesianChartModelProducer,
   lineColor: Color,
+  lineColors: List<Color>? = null,
   startTimestamp: Long,
   endTimestamp: Long,
   yStep: Double? = null,
@@ -82,24 +83,28 @@ fun SnapshotLineChart(
     )
   }
 
-  val line = LineCartesianLayer.rememberLine(
-    fill = LineCartesianLayer.LineFill.single(Fill(lineColor)),
-    stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 3.dp),
-    interpolator = LineCartesianLayer.Interpolator.monotone(),
-    pointProvider = LineCartesianLayer.PointProvider.single(
-      point = LineCartesianLayer.Point(
-        component = rememberShapeComponent(
-          Fill(lineColor),
-          CircleShape,
-          strokeThickness = 0.dp,
-        ),
-        size = 8f.dp,
-      ),
-    ),
-  )
+  val colors = lineColors ?: listOf(lineColor)
 
-  val lineProvider = remember(line) {
-    LineCartesianLayer.LineProvider.series(listOf(line))
+  val lines = colors.map { color ->
+    LineCartesianLayer.rememberLine(
+      fill = LineCartesianLayer.LineFill.single(Fill(color)),
+      stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 3.dp),
+      interpolator = LineCartesianLayer.Interpolator.monotone(),
+      pointProvider = LineCartesianLayer.PointProvider.single(
+        point = LineCartesianLayer.Point(
+          component = rememberShapeComponent(
+            Fill(color),
+            CircleShape,
+            strokeThickness = 0.dp,
+          ),
+          size = 8f.dp,
+        ),
+      ),
+    )
+  }
+
+  val lineProvider = remember(lines) {
+    LineCartesianLayer.LineProvider.series(lines)
   }
 
   val lineLayer = rememberLineCartesianLayer(
