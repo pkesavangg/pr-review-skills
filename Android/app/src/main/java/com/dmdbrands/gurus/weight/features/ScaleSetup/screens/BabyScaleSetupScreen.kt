@@ -14,18 +14,10 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BabyScaleSetupState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
+import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.babyScaleInitialSteps
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.BabyScaleBLESetupViewModel
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import kotlinx.coroutines.delay
-
-/** Steps rendered in the HorizontalPager — safe from prefetch crashes. */
-private val PAGER_STEPS = listOf(
-  BabyScaleSetupStep.SCALE_INFO,
-  BabyScaleSetupStep.PERMISSIONS,
-  BabyScaleSetupStep.WAKEUP,
-  BabyScaleSetupStep.SCALE_NAME,
-  BabyScaleSetupStep.PAIRED_SUCCESS,
-)
 
 /** Steps rendered outside the pager (form/list with complex composables). */
 private val NON_PAGER_STEPS = setOf(
@@ -33,6 +25,9 @@ private val NON_PAGER_STEPS = setOf(
   BabyScaleSetupStep.BABY_LIST,
   BabyScaleSetupStep.SETUP_FINISHED,
 )
+
+/** Steps rendered in the HorizontalPager — derived from the single source of truth. */
+private val PAGER_STEPS = babyScaleInitialSteps.filter { it !in NON_PAGER_STEPS }
 
 @Composable
 fun BabyScaleSetupScreen(

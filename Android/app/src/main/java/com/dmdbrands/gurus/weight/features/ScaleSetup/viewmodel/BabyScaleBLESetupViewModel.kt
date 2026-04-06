@@ -157,6 +157,11 @@ constructor(
   private fun mockWakeUpScale() {
     AppLog.d(TAG, "Mock: Starting wake up scale process")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    discoveredScale = Device(
+      device = null,
+      deviceType = ScaleSetupType.BabyScale.value,
+      sku = sku,
+    )
     viewModelScope.launch {
       delay(3000)
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
@@ -199,34 +204,6 @@ constructor(
       AppLog.e(TAG, "Error during wake up process", e)
       clearBluetoothTimeout()
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
-    }
-  }
-
-  private fun connectToBluetooth() {
-    if (setupInit.initialStep == BabyScaleSetupStep.CONNECTING_BLUETOOTH) {
-      ggDeviceService.scanForPairing()
-    }
-    AppLog.d(TAG, "Starting Bluetooth connection process")
-    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
-    clearBluetoothTimeout()
-    bluetoothTimeoutJob = viewModelScope.launch {
-      delay(bluetoothTimeout)
-      AppLog.d(TAG, "Bluetooth connection timeout reached")
-      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
-    }
-    viewModelScope.launch {
-      try {
-        delay(3000)
-        clearBluetoothTimeout()
-        saveScale()
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-        delay(1000)
-        onNext()
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during bluetooth connection", e)
-        clearBluetoothTimeout()
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("BT_002")))
-      }
     }
   }
 
