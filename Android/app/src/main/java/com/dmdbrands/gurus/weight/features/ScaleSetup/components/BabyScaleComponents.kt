@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,23 +18,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.BabyProfile
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
@@ -54,6 +56,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeInputMode
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
+import com.dmdbrands.gurus.weight.features.common.components.InputFieldBase
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageDefaults
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
@@ -138,22 +141,20 @@ fun PairedSuccessContent(
   }
 }
 
-/** White card TextField — same style as AppInput (no border, white bg, rounded). */
+/** White card TextField — used for read-only fields (e.g. sex selector) where no keyboard appears. */
 @Composable
 private fun CardTextField(
   value: String,
-  onValueChange: (String) -> Unit,
   label: String,
   modifier: Modifier = Modifier,
-  readOnly: Boolean = false,
   trailingIcon: @Composable (() -> Unit)? = null,
 ) {
   TextField(
     value = value,
-    onValueChange = onValueChange,
+    onValueChange = {},
     label = { Text(text = label, style = typography.body3, color = colorScheme.textSubheading) },
     singleLine = true,
-    readOnly = readOnly,
+    readOnly = true,
     textStyle = typography.body2,
     modifier = modifier.fillMaxWidth().height(56.dp),
     shape = RoundedCornerShape(borderRadius.sm),
@@ -183,15 +184,32 @@ fun BabyProfileFormContent(
   var showSexModal by remember { mutableStateOf(false) }
   val birthdayForm = remember {
     FormControl.create<DateTimeValue>(
-      initialValue = DateTimeValue.Date(System.currentTimeMillis()),
+      initialValue = DateTimeValue.Date(
+        profile.birthday?.let { DateTimeValue.getEpochMillisFromDateString(it) }
+          ?: System.currentTimeMillis(),
+      ),
       validators = emptyList(),
     )
   }
+
+  LaunchedEffect(birthdayForm) {
+    snapshotFlow { birthdayForm.value }
+      .collect { dateValue ->
+        val formatted = when (dateValue) {
+          is DateTimeValue.Date -> DateTimeValue.getDateFormatFromMilliseconds(dateValue.millis)
+          else -> null
+        }
+        if (formatted != null) {
+          onProfileChanged(profile.copy(birthday = formatted))
+        }
+      }
+  }
+
   val sexOptions = remember {
     listOf(
-      RadioButtonOption(id = "Male", label = "Male"),
-      RadioButtonOption(id = "Female", label = "Female"),
-      RadioButtonOption(id = "Other", label = "Other"),
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexMale, label = BabyScaleSetupStrings.BabyProfileForm.SexMale),
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexFemale, label = BabyScaleSetupStrings.BabyProfileForm.SexFemale),
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexOther, label = BabyScaleSetupStrings.BabyProfileForm.SexOther),
     )
   }
 
@@ -208,6 +226,10 @@ fun BabyProfileFormContent(
     )
   }
 
+  val nameFocusRequester = remember { FocusRequester() }
+  val birthLengthFocusRequester = remember { FocusRequester() }
+  val birthWeightFocusRequester = remember { FocusRequester() }
+
   Column(
     modifier = modifier
       .fillMaxSize()
@@ -219,10 +241,14 @@ fun BabyProfileFormContent(
     AppText(text = BabyScaleSetupStrings.BabyProfileForm.Subtitle, textType = TextType.Body, modifier = Modifier.fillMaxWidth())
     Spacer(modifier = Modifier.height(spacing.lg))
 
-    CardTextField(
+    InputFieldBase<String>(
       value = profile.name,
-      onValueChange = { onProfileChanged(profile.copy(name = it)) },
+      onValueChange = { onProfileChanged(profile.copy(name = it ?: "")) },
       label = BabyScaleSetupStrings.BabyProfileForm.NameHint,
+      modifier = Modifier.fillMaxWidth(),
+      focusRequester = nameFocusRequester,
+      keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+      onImeAction = { birthLengthFocusRequester.requestFocus() },
     )
     Spacer(modifier = Modifier.height(spacing.xs))
 
@@ -237,13 +263,11 @@ fun BabyProfileFormContent(
     Box(modifier = Modifier.fillMaxWidth()) {
       CardTextField(
         value = profile.biologicalSex ?: "",
-        onValueChange = {},
         label = BabyScaleSetupStrings.BabyProfileForm.SexHint,
-        readOnly = true,
         trailingIcon = {
           Icon(
             painter = painterResource(id = com.dmdbrands.gurus.weight.R.drawable.ic_chevron_down),
-            contentDescription = "Select",
+            contentDescription = BabyScaleSetupStrings.BabyProfileForm.SexSelectContentDescription,
             tint = colorScheme.textBody,
           )
         },
@@ -259,17 +283,25 @@ fun BabyProfileFormContent(
     }
     Spacer(modifier = Modifier.height(spacing.md))
 
-    CardTextField(
+    InputFieldBase<String>(
       value = profile.birthLength ?: "",
       onValueChange = { onProfileChanged(profile.copy(birthLength = it)) },
       label = BabyScaleSetupStrings.BabyProfileForm.BirthLengthHint,
+      modifier = Modifier.fillMaxWidth(),
+      focusRequester = birthLengthFocusRequester,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+      onImeAction = { birthWeightFocusRequester.requestFocus() },
     )
     Spacer(modifier = Modifier.height(spacing.sm))
 
-    CardTextField(
+    InputFieldBase<String>(
       value = profile.birthWeight ?: "",
       onValueChange = { onProfileChanged(profile.copy(birthWeight = it)) },
       label = BabyScaleSetupStrings.BabyProfileForm.BirthWeightHint,
+      modifier = Modifier.fillMaxWidth(),
+      focusRequester = birthWeightFocusRequester,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+      onImeAction = { birthWeightFocusRequester.freeFocus() },
     )
   }
 }
@@ -290,6 +322,7 @@ fun BabyListContent(
   Column(
     modifier = modifier
       .fillMaxSize()
+      .verticalScroll(rememberScrollState())
       .padding(vertical = spacing.md, horizontal = spacing.sm),
   ) {
     AppText(
@@ -311,20 +344,22 @@ fun BabyListContent(
             AppSwipeableListActions {
               AppSwipeableActionItem(
                 iconId = AppIcons.Default.Delete,
-                contentDescription = "Delete",
+                contentDescription = BabyScaleSetupStrings.BabyList.DeleteContentDescription,
                 backgroundColor = MeTheme.colorScheme.danger,
               ) { onDeleteBaby(index) }
             }
           },
         ) {
           BaseListItem(
-            title = profile.name.ifEmpty { "Baby ${index + 1}" },
-            leadingContent = { BabyAvatar(name = profile.name.ifEmpty { "?" }) },
+            title = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.BabyFallbackName(index) },
+            leadingContent = {
+              BabyAvatar(name = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.AvatarInitialFallback })
+            },
             trailingContent = {
               IconButton(onClick = { onEditBaby(index) }) {
                 Icon(
                   painter = painterResource(AppIcons.Default.EditPencil),
-                  contentDescription = "Edit",
+                  contentDescription = BabyScaleSetupStrings.BabyList.EditContentDescription,
                   tint = MeTheme.colorScheme.textBody,
                   modifier = Modifier.size(20.dp),
                 )
@@ -350,7 +385,7 @@ fun BabyListContent(
 
 @Composable
 private fun BabyAvatar(name: String, modifier: Modifier = Modifier) {
-  val initial = name.firstOrNull()?.uppercase() ?: "?"
+  val initial = name.firstOrNull()?.uppercase() ?: BabyScaleSetupStrings.BabyList.AvatarInitialFallback
   Box(
     modifier = modifier
       .size(40.dp)

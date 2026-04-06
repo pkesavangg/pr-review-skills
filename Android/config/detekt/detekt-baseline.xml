@@ -2,9 +2,12 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>ForbiddenComment:BabyScaleBLESetupViewModel.kt$BabyScaleBLESetupViewModel$// TODO: Remove mock methods and restore real BLE when scale connection is ready</ID>
+    <ID>LargeClass:AppViewModel.kt$AppViewModel : BaseIntentViewModel</ID>
     <ID>SwallowedException:WifiSmartConnectManager.kt$WifiSmartConnectManager$e: Exception</ID>
+    <ID>LongMethod:AppViewModel.kt$AppViewModel$private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail)</ID>
+    <ID>LongMethod:AppViewModel.kt$AppViewModel$private fun initEvents()</ID>
     <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyListContent( babyProfiles: ImmutableList&lt;BabyProfile&gt;, onEditBaby: (Int) -&gt; Unit, onDeleteBaby: (Int) -&gt; Unit, onAddBaby: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyProfileFormContent( profile: BabyProfile, onProfileChanged: (BabyProfile) -&gt; Unit, onSkip: (() -&gt; Unit)? = null, modifier: Modifier = Modifier, )</ID>
+    <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyProfileFormContent( profile: BabyProfile, onProfileChanged: (BabyProfile) -&gt; Unit, modifier: Modifier = Modifier, )</ID>
+    <ID>LongMethod:BabyScaleSetupScreen.kt$@Composable fun BabyScaleSetupScreenContent( state: BabyScaleSetupState, sku: String, onIntent: (ScaleSetupIntent) -&gt; Unit, )</ID>
   </CurrentIssues>
 </SmellBaseline>
