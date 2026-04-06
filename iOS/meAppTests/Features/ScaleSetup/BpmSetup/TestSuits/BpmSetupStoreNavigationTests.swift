@@ -50,8 +50,8 @@ extension BpmSetupStoreTests {
             #expect(store.currentStep == .selectUser)
         }
 
-        @Test("back from selectUser skips btPermission and returns to selectModel")
-        func backFromSelectUserSkipsBtPermissionAndReturnsToSelectModel() {
+        @Test("back from selectUser skips btPermission and returns to intro")
+        func backFromSelectUserSkipsBtPermissionAndReturnsToIntro() {
             let harness = BpmSetupStoreTestFixtures.makeSUT()
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
@@ -59,7 +59,7 @@ extension BpmSetupStoreTests {
             store.currentStepIndex = BpmSetupStep.selectUser.index
             store.moveToPreviousStep()
 
-            #expect(store.currentStep == .selectModel)
+            #expect(store.currentStep == .intro)
         }
 
         @Test("back is disabled on selectModel")

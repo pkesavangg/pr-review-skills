@@ -98,6 +98,13 @@ enum EntryTestFixtures {
             pulse: pulse,
             unit: unit
         )
+        entry.bpmEntry = BPMEntry(
+            systolic: systolic ?? 0,
+            diastolic: diastolic ?? 0,
+            meanArterial: meanArterial ?? "",
+            pulse: pulse ?? 0,
+            note: note ?? ""
+        )
         return entry
     }
 
@@ -108,7 +115,6 @@ enum EntryTestFixtures {
         pulse: Double? = 72.0,
         meanArterial: String? = "93.3",
         note: String? = nil,
-        irregularHb: Bool? = false,
         source: String? = "manual",
         unit: String? = "mmHg",
         entryTimestamp: String? = "2026-03-01T08:00:00Z",
@@ -122,7 +128,6 @@ enum EntryTestFixtures {
             pulse: pulse,
             meanArterial: meanArterial,
             note: note,
-            irregularHb: irregularHb,
             source: source,
             unit: unit,
             entryTimestamp: entryTimestamp,

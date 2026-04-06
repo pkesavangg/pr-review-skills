@@ -63,4 +63,13 @@ protocol HealthKitServiceProtocol {
     /// Returns `true` if we were waiting for permissions and they are now restored.
     /// This should be called on app launch to show the success toast.
     func checkIfPermissionsRestoredAfterOutOfSync() async -> Bool
+
+    /// Requests additional HealthKit permissions if the paired device types have changed
+    /// (e.g., a weight scale was added after BPM-only integration).
+    /// iOS only prompts for types that haven't been requested yet.
+    func requestAdditionalPermissionsIfNeeded() async
+
+    /// Returns the expected total permission count based on the user's paired device types.
+    func expectedPermissionCount() async -> Int
+
 }

@@ -31,19 +31,19 @@ import io.mockk.verify
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class IntegrationServiceTest {
 
-  @get:Rule
+  @JvmField
+  @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
   // --- Mocks ---
@@ -119,14 +119,14 @@ class IntegrationServiceTest {
     every { integrated } returns false
   }
 
-  @Before
+  @BeforeEach
   fun setUp() {
     stubNetworkAvailable()
     every { accountService.checkIntegrations } returns checkIntegrationsFlow
     service = createService()
   }
 
-  @After
+  @AfterEach
   fun tearDown() {
     clearAllMocks()
   }
@@ -343,9 +343,7 @@ class IntegrationServiceTest {
   fun `disconnectIntegration shows network error toast and throws when offline`() = runTest {
     stubNetworkUnavailable()
 
-    assertThrows(Exception::class.java) {
-      runBlocking { service.disconnectIntegration(IntegrationProvider.Fitbit) }
-    }
+    assertFailsWith<Exception> { service.disconnectIntegration(IntegrationProvider.Fitbit) }
     verify {
       dialogQueueService.showToast(withArg<Toast> {
         assertThat(it.message).isNotEmpty()
@@ -358,9 +356,7 @@ class IntegrationServiceTest {
   fun `disconnectIntegration dismisses loader and rethrows on API error`() = runTest {
     coEvery { integrationRepository.removeIntegration(any(), any()) } throws RuntimeException("API error")
 
-    assertThrows(RuntimeException::class.java) {
-      runBlocking { service.disconnectIntegration(IntegrationProvider.Fitbit) }
-    }
+    assertFailsWith<RuntimeException> { service.disconnectIntegration(IntegrationProvider.Fitbit) }
     verify { dialogQueueService.dismissLoader() }
   }
 

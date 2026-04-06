@@ -15,8 +15,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("moveToNextStep advances currentStepIndex and currentStep")
     func moveToNextStep_advancesStep() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, _, _, _, _, _, _) = makeSUT()
         store.scaleItem = makeScaleItem()
         #expect(store.currentStep == .intro)
         store.moveToNextStep()
@@ -25,8 +24,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("moveToPreviousStep decrements step")
     func moveToPreviousStep_decrementsStep() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.permissions.rawValue
         store.moveToPreviousStep()
@@ -35,8 +33,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("moveToPreviousStep does nothing on intro step")
     func moveToPreviousStep_onIntro_doesNothing() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         #expect(store.currentStep == .intro)
         store.moveToPreviousStep()
@@ -45,8 +42,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("navigateToStep jumps to specific step")
     func navigateToStep_jumpsToStep() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.scaleName)
         #expect(store.currentStep == .scaleName)
@@ -59,8 +55,7 @@ struct BabyScaleSetupStoreTests {
             .BLUETOOTH: .ENABLED,
             .BLUETOOTH_SWITCH: .ENABLED
         ]
-        let sut = makeSUT(permissionsService: permissions)
-        let store = sut.store
+        let (store, _, _, _, _, _, _) = makeSUT(permissionsService: permissions)
         store.scaleItem = makeScaleItem()
         // From intro (0), next should skip permissions (1) and land on wakeup (2)
         let adjusted = store.adjustedIndex(from: 1, direction: 1)
@@ -69,8 +64,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("adjustedIndex does not skip permissions when BT permissions not granted")
     func adjustedIndex_doesNotSkipPermissions_whenNotGranted() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         let adjusted = store.adjustedIndex(from: 1, direction: 1)
         #expect(store.steps[adjusted] == .permissions)
@@ -78,8 +72,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("adjustedIndex skips wakeup and connectingBluetooth going backward")
     func adjustedIndex_skipsWakeupAndConnecting_goingBackward() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         // From scaleName (4), going backward should skip connectingBluetooth (3) and wakeup (2)
         let adjusted = store.adjustedIndex(from: 3, direction: -1)
@@ -89,8 +82,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("back button on babyProfile with saved babies navigates to babyAdded")
     func handleBackButtonClick_babyProfile_withSavedBabies_navigatesToBabyAdded() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "Test Baby")
         store.savedBabies = [baby]
@@ -101,8 +93,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("back button on babyProfile with no saved babies navigates to previous step")
     func handleBackButtonClick_babyProfile_noSavedBabies_movesToPreviousStep() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.handleBackButtonClick()
@@ -111,8 +102,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("back button on babyProfile resets form when no saved babies")
     func handleBackButtonClick_babyProfile_noSavedBabies_resetsForm() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = "Some Name"
@@ -122,16 +112,14 @@ struct BabyScaleSetupStoreTests {
 
     @Test("isBackButtonDisabled returns true on intro step")
     func isBackButtonDisabled_onIntro_returnsTrue() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         #expect(store.isBackButtonDisabled() == true)
     }
 
     @Test("isBackButtonDisabled returns false on non-intro step")
     func isBackButtonDisabled_onPermissions_returnsFalse() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.permissions.rawValue
         #expect(store.isBackButtonDisabled() == false)
@@ -139,8 +127,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("shouldShowFooter returns false during wakeup step")
     func shouldShowFooter_wakeup_returnsFalse() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.wakeup.rawValue
         #expect(store.shouldShowFooter() == false)
@@ -148,8 +135,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("shouldShowFooter returns false during connectingBluetooth step")
     func shouldShowFooter_connectingBluetooth_returnsFalse() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.connectingBluetooth.rawValue
         #expect(store.shouldShowFooter() == false)
@@ -157,8 +143,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("shouldShowFooter returns true on other steps")
     func shouldShowFooter_intro_returnsTrue() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         #expect(store.shouldShowFooter() == true)
     }
@@ -167,8 +152,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("permissions step: isNextEnabled is false when BT permissions disabled")
     func updateNextEnabled_permissions_disabled_nextDisabled() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.permissions.rawValue
         store.updateNextEnabled()
@@ -182,8 +166,7 @@ struct BabyScaleSetupStoreTests {
             .BLUETOOTH: .ENABLED,
             .BLUETOOTH_SWITCH: .ENABLED
         ]
-        let sut = makeSUT(permissionsService: permissions)
-        let store = sut.store
+        let (store, notification, _, bluetooth, account, scale, babyService) = makeSUT(permissionsService: permissions)
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.permissions.rawValue
         store.updateNextEnabled()
@@ -197,8 +180,7 @@ struct BabyScaleSetupStoreTests {
             .BLUETOOTH: .ENABLED,
             .BLUETOOTH_SWITCH: .DISABLED
         ]
-        let sut = makeSUT(permissionsService: permissions)
-        let store = sut.store
+        let (store, notification, _, bluetooth, account, scale, babyService) = makeSUT(permissionsService: permissions)
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.permissions.rawValue
         store.updateNextEnabled()
@@ -207,8 +189,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("intro step: isNextEnabled is always true")
     func updateNextEnabled_intro_alwaysTrue() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.updateNextEnabled()
         #expect(store.isNextEnabled == true)
@@ -216,8 +197,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("paired step: isNextEnabled is always true")
     func updateNextEnabled_paired_alwaysTrue() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.paired.rawValue
         store.updateNextEnabled()
@@ -226,8 +206,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("babyAdded step: isNextEnabled is always true")
     func updateNextEnabled_babyAdded_alwaysTrue() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.babyAdded.rawValue
         store.updateNextEnabled()
@@ -236,8 +215,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("scaleName step: isNextEnabled follows scaleNicknameForm.isValid")
     func updateNextEnabled_scaleName_followsFormValidity() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.scaleName.rawValue
         // Default nickname is "Smart Baby Scale" which is valid
@@ -252,18 +230,19 @@ struct BabyScaleSetupStoreTests {
 
     @Test("babyProfile step: isNextEnabled follows babyProfileForm.isProfileValid")
     func updateNextEnabled_babyProfile_followsFormValidity() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.babyProfile.rawValue
 
         // Empty name should be invalid
         store.babyProfileForm.name.value = ""
+        store.babyProfileForm.biologicalSex.value = ""
         store.updateNextEnabled()
         #expect(store.isNextEnabled == false)
 
-        // Valid name should be valid
+        // Valid required fields should be valid
         store.babyProfileForm.name.value = "Baby Name"
+        store.babyProfileForm.biologicalSex.value = "Male"
         store.updateNextEnabled()
         #expect(store.isNextEnabled == true)
     }
@@ -272,7 +251,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("saveBabyProfile creates baby and appends to savedBabies")
     func saveBabyProfile_createsAndAppends() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = "Test Baby"
@@ -287,7 +268,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("saveBabyProfile with editingBaby calls updateBabyProfile")
     func saveBabyProfile_editing_callsUpdate() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "Old Name")
         store.savedBabies = [baby]
@@ -307,7 +290,8 @@ struct BabyScaleSetupStoreTests {
     func saveBabyProfile_failure_setsError() async {
         let babyService = MockBabyService()
         babyService.saveBabyError = BabyScaleSetupTestError.genericFailure
-        let (store, _, _, _, _, _, _) = makeSUT(babyService: babyService)
+        let sut = makeSUT(babyService: babyService)
+        let store = sut.store
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = "Test Baby"
@@ -320,7 +304,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("saveBabyProfile does nothing when name is empty")
     func saveBabyProfile_emptyName_doesNothing() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = ""
@@ -332,8 +318,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("editBaby populates form fields and navigates to babyProfile")
     func editBaby_populatesFormAndNavigates() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "My Baby",
                         birthday: Date(), biologicalSex: "Male",
@@ -353,8 +338,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("addAnotherBaby resets form and navigates to babyProfile")
     func addAnotherBaby_resetsFormAndNavigates() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyAdded)
         store.babyProfileForm.name.value = "Previous Baby"
@@ -367,7 +351,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("deleteBabyFromList removes baby and calls service")
     func deleteBabyFromList_removesAndCallsService() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "Test Baby")
         store.savedBabies = [baby]
@@ -382,8 +368,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("deleteBabyFromList navigates to babyProfile when last baby deleted")
     func deleteBabyFromList_lastBaby_navigatesToBabyProfile() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         let baby = Baby(accountId: "acct-1", name: "Only Baby")
         store.savedBabies = [baby]
@@ -397,8 +382,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("deleteBabyFromList with multiple babies stays on babyAdded")
     func deleteBabyFromList_multipleBabies_staysOnBabyAdded() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         let baby1 = Baby(accountId: "acct-1", name: "Baby 1")
         let baby2 = Baby(accountId: "acct-1", name: "Baby 2")
@@ -415,8 +399,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleNextButtonClick on intro moves to next step")
     func handleNextButtonClick_intro_movesToNextStep() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.handleNextButtonClick()
         #expect(store.currentStep == .permissions)
@@ -424,8 +407,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleNextButtonClick on permissions moves to next step")
     func handleNextButtonClick_permissions_movesToNextStep() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.currentStepIndex = BabyScaleSetupStep.permissions.rawValue
         store.handleNextButtonClick()
@@ -434,7 +416,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleNextButtonClick on babyProfile triggers saveBabyProfile")
     func handleNextButtonClick_babyProfile_triggersSave() async {
-        let (store, _, _, _, _, _, babyService) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let babyService = sut.babyService
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.babyProfile)
         store.babyProfileForm.name.value = "Save Me"
@@ -448,8 +432,7 @@ struct BabyScaleSetupStoreTests {
     @Test("handleNextButtonClick on babyAdded calls handleFinish")
     func handleNextButtonClick_babyAdded_callsFinish() {
         var dismissed = false
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.dismissAction = { dismissed = true }
         store.navigateToStep(.babyAdded)
@@ -461,7 +444,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleExit shows confirmation alert")
     func handleExit_showsAlert() {
-        let (store, notification, _, _, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let notification = sut.notification
         store.scaleItem = makeScaleItem()
         store.handleExit()
         #expect(notification.showAlertCalls == 1)
@@ -470,7 +455,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("handleExit does nothing when already exiting")
     func handleExit_alreadyExiting_doesNothing() {
-        let (store, notification, _, _, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let notification = sut.notification
         store.scaleItem = makeScaleItem()
         store.isExiting = true
         store.handleExit()
@@ -479,8 +466,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("tryAgainButtonHandler resets error and navigates to wakeup")
     func tryAgainButtonHandler_resetsAndNavigates() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.navigateToStep(.connectingBluetooth)
         store.scaleSetupError = .connectionFailed
@@ -497,8 +483,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("nextButtonText returns correct text for each step")
     func nextButtonText_correctPerStep() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         let lang = BabyScaleSetupStrings.self
 
@@ -518,8 +503,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("configure resolves SKU to scaleItem")
     func configure_resolvesSku() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.configure(with: "0220")
         #expect(store.scaleItem != nil)
         #expect(store.scaleItem?.sku == "0220")
@@ -532,8 +516,7 @@ struct BabyScaleSetupStoreTests {
             .BLUETOOTH: .ENABLED,
             .BLUETOOTH_SWITCH: .ENABLED
         ]
-        let sut = makeSUT(permissionsService: permissions)
-        let store = sut.store
+        let (store, notification, _, bluetooth, account, scale, babyService) = makeSUT(permissionsService: permissions)
         let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
         let event = makeDiscoveryEvent(device: device)
 
@@ -544,8 +527,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("configure with discovered scale and permissions not granted goes to permissions")
     func configure_withDiscoveredScale_permissionsNotGranted_goesToPermissions() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
         let event = makeDiscoveryEvent(device: device)
 
@@ -556,15 +538,16 @@ struct BabyScaleSetupStoreTests {
 
     @Test("configure without discovered scale stays on intro")
     func configure_noDiscoveredScale_staysOnIntro() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.configure(with: "0220")
         #expect(store.currentStep == .intro)
     }
 
     @Test("configure sets bluetoothService.isSetupInProgress to true")
     func configure_setsSetupInProgress() {
-        let (store, _, _, bluetooth, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let bluetooth = sut.bluetooth
         store.configure(with: "0220")
         #expect(bluetooth.isSetupInProgress == true)
     }
@@ -573,7 +556,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("performExitCleanup sets isSetupInProgress to false")
     func performExitCleanup_setsSetupInProgressFalse() {
-        let (store, _, _, bluetooth, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let bluetooth = sut.bluetooth
         store.scaleItem = makeScaleItem()
         bluetooth.isSetupInProgress = true
 
@@ -585,8 +570,7 @@ struct BabyScaleSetupStoreTests {
     @Test("performExitCleanup calls dismissAction")
     func performExitCleanup_callsDismissAction() {
         var dismissed = false
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.dismissAction = { dismissed = true }
 
@@ -597,8 +581,7 @@ struct BabyScaleSetupStoreTests {
 
     @Test("cleanup nils out dismissAction and cancels subscriptions")
     func cleanup_clearsReferences() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         store.scaleItem = makeScaleItem()
         store.dismissAction = { }
 
@@ -619,15 +602,13 @@ struct BabyScaleSetupStoreTests {
             .BLUETOOTH: .ENABLED,
             .BLUETOOTH_SWITCH: .ENABLED
         ]
-        let sut = makeSUT(permissionsService: permissions)
-        let store = sut.store
+        let (store, notification, _, bluetooth, account, scale, babyService) = makeSUT(permissionsService: permissions)
         #expect(store.arePermissionsEnabled() == true)
     }
 
     @Test("arePermissionsEnabled returns false when permissions nil")
     func arePermissionsEnabled_nil_returnsFalse() {
-        let sut = makeSUT()
-        let store = sut.store
+        let (store, notification, permissions, bluetooth, account, scale, babyService) = makeSUT()
         #expect(store.arePermissionsEnabled() == false)
     }
 
@@ -638,8 +619,7 @@ struct BabyScaleSetupStoreTests {
             .BLUETOOTH: .ENABLED,
             .BLUETOOTH_SWITCH: .DISABLED
         ]
-        let sut = makeSUT(permissionsService: permissions)
-        let store = sut.store
+        let (store, notification, _, bluetooth, account, scale, babyService) = makeSUT(permissionsService: permissions)
         #expect(store.arePermissionsEnabled() == false)
     }
 
@@ -647,7 +627,9 @@ struct BabyScaleSetupStoreTests {
 
     @Test("showHelpModal presents alert via notification service")
     func showHelpModal_presentsAlert() {
-        let (store, notification, _, _, _, _, _) = makeSUT()
+        let sut = makeSUT()
+        let store = sut.store
+        let notification = sut.notification
         store.scaleItem = makeScaleItem()
         store.showHelpModal()
         #expect(notification.showAlertCalls == 1)
@@ -663,16 +645,7 @@ private enum BabyScaleSetupTestError: Error {
 
 // MARK: - makeSUT
 
-private struct BabyScaleSetupStoreSUT {
-    let store: BabyScaleSetupStore
-    let notification: MockNotificationHelperService
-    let permissions: MockPermissionsService
-    let bluetooth: MockBluetoothService
-    let account: MockAccountService
-    let scale: MockScaleService
-    let babyService: MockBabyService
-}
-
+// swiftlint:disable large_tuple
 @MainActor
 private func makeSUT(
     notificationService: MockNotificationHelperService? = nil,
@@ -681,7 +654,16 @@ private func makeSUT(
     accountService: MockAccountService? = nil,
     scaleService: MockScaleService? = nil,
     babyService: MockBabyService? = nil
-) -> BabyScaleSetupStoreSUT {
+) -> (
+    BabyScaleSetupStore,
+    MockNotificationHelperService,
+    MockPermissionsService,
+    MockBluetoothService,
+    MockAccountService,
+    MockScaleService,
+    MockBabyService
+) {
+    // swiftlint:enable large_tuple
     let notification = notificationService ?? MockNotificationHelperService()
     let permissions = permissionsService ?? MockPermissionsService()
     let bluetooth = bluetoothService ?? MockBluetoothService()
@@ -705,15 +687,7 @@ private func makeSUT(
     store.scaleService = scale
     store.babyService = baby
 
-    return BabyScaleSetupStoreSUT(
-        store: store,
-        notification: notification,
-        permissions: permissions,
-        bluetooth: bluetooth,
-        account: account,
-        scale: scale,
-        babyService: baby
-    )
+    return (store, notification, permissions, bluetooth, account, scale, baby)
 }
 
 // MARK: - Helpers

@@ -12,12 +12,14 @@ extension BabyScaleSetupStore {
 
     var nextButtonText: String {
         switch currentStep {
+        case .paired:
+            return lang.Buttons.continueButton
         case .babyProfile:
-            return commonLang.save
+            return lang.Buttons.save
         case .babyAdded:
-            return commonLang.finish
+            return lang.Buttons.finish
         default:
-            return commonLang.next
+            return lang.Buttons.next
         }
     }
 
@@ -154,9 +156,12 @@ extension BabyScaleSetupStore {
             message: "Baby scale setup started for SKU: \(sku)"
         )
 
-        // If a discovered scale was passed in and permissions are granted, skip to connecting
+        // If a discovered scale was passed in and permissions are granted, pair directly
         if discoveredScale != nil && discoveryEvent != nil && arePermissionsEnabled() {
-            navigateToStep(.connectingBluetooth)
+            Task {
+                connectionState = .loading
+                await confirmPair()
+            }
         } else if discoveredScale != nil && discoveryEvent != nil {
             navigateToStep(.permissions)
         }

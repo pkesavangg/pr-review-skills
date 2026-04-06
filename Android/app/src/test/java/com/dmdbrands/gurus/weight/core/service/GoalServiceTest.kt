@@ -36,10 +36,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GoalServiceTest {
@@ -63,7 +63,8 @@ class GoalServiceTest {
         private const val TEST_MAINTAIN_WEIGHT = 180.0
     }
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -111,7 +112,7 @@ class GoalServiceTest {
         type = "maintain",
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         stubNetworkAvailable()
         every { accountRepository.getActiveAccount() } returns flowOf(fakeAccount)
@@ -120,7 +121,7 @@ class GoalServiceTest {
         service = createService()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         clearAllMocks()
     }

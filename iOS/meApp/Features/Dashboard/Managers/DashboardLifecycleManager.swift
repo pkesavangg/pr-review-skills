@@ -101,8 +101,8 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
             _ = try? await accountService.refreshAccount()
             try await streakManager.refreshStreakData()
             await gridEditingManager.loadProgressMetricsFromAccount()
-            // Goals are weight-only — skip for BPM
-            if stateProvider.productType != .bpm {
+            // Goals are only relevant for the personal weight dashboard.
+            if stateProvider.productType != .bpm && !stateProvider.isBabySelection {
                 try? await goalManager.loadGoalData()
             }
 

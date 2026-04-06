@@ -42,7 +42,11 @@ extension BabyScaleSetupStore {
         case .babyProfile:
             editingBaby = nil
             babyProfileForm.reset()
-            moveToPreviousStep()
+            if savedBabies.isEmpty {
+                moveToPreviousStep()
+            } else {
+                navigateToStep(.babyAdded)
+            }
         default:
             moveToPreviousStep()
         }

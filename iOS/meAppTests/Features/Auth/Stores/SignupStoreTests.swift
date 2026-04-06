@@ -10,7 +10,7 @@ struct SignupStoreTests {
     func initialState() {
         let (store, _, _, _) = makeSUT()
 
-        #expect(store.currentStepIndex == SignupStep.name.index)
+        #expect(store.currentStepIndex == stepIndex(.name, in: store))
         #expect(store.currentStep == .name)
         #expect(store.isNextEnabled == false)
         #expect(store.isGoalSkipped == false)
@@ -31,7 +31,7 @@ struct SignupStoreTests {
     @Test("next button state for date of birth step")
     func nextEnabledAtDateOfBirthStep() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.dateOfBirth.index
+        store.currentStepIndex = stepIndex(.dateOfBirth, in: store)
 
         store.signupForm.birthday.value = Date().addingTimeInterval(60 * 60 * 24)
         store.updateNextButtonState()
@@ -45,7 +45,7 @@ struct SignupStoreTests {
     @Test("next button state for sex step")
     func nextEnabledAtSexStep() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.sex.index
+        store.currentStepIndex = stepIndex(.sex, in: store)
 
         store.signupForm.gender.value = ""
         store.updateNextButtonState()
@@ -59,7 +59,7 @@ struct SignupStoreTests {
     @Test("next button state for height step")
     func nextEnabledAtHeightStep() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.height.index
+        store.currentStepIndex = stepIndex(.height, in: store)
 
         store.signupForm.useMetric.value = true
         store.signupForm.height.value = Double(ConversionTools.convertCmToStoredHeight(99))
@@ -74,7 +74,7 @@ struct SignupStoreTests {
     @Test("next button state for goal step")
     func nextEnabledAtGoalStep() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.goal.index
+        store.currentStepIndex = stepIndex(.goal, in: store)
 
         store.signupForm.goalType.value = GoalTypeSegment.losegainValue
         store.signupForm.currentWeight.value = "150"
@@ -92,7 +92,7 @@ struct SignupStoreTests {
     @Test("next button state for email step")
     func nextEnabledAtEmailStep() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.email.index
+        store.currentStepIndex = stepIndex(.email, in: store)
 
         store.signupForm.email.value = "invalid"
         store.updateNextButtonState()
@@ -115,7 +115,7 @@ struct SignupStoreTests {
     @Test("moveToPreviousStep resets goal skipped when returning to goal")
     func moveToPreviousStepResetsGoalSkipped() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.email.index
+        store.currentStepIndex = stepIndex(.email, in: store)
         store.isGoalSkipped = true
 
         store.moveToPreviousStep()
@@ -127,7 +127,7 @@ struct SignupStoreTests {
     @Test("password step requires password match")
     func passwordStepValidation() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.password.index
+        store.currentStepIndex = stepIndex(.password, in: store)
 
         store.signupForm.password.value = "secret1"
         store.signupForm.confirmPassword.value = "secret2"
@@ -167,7 +167,7 @@ struct SignupStoreTests {
     @Test("handleSkip resets goal and advances")
     func handleSkip() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.goal.index
+        store.currentStepIndex = stepIndex(.goal, in: store)
         store.signupForm.currentWeight.value = "180"
         store.signupForm.goalWeight.value = "150"
 
@@ -176,7 +176,7 @@ struct SignupStoreTests {
         #expect(store.isGoalSkipped == true)
         #expect(store.signupForm.currentWeight.value == "")
         #expect(store.signupForm.goalWeight.value == "")
-        #expect(store.currentStepIndex == SignupStep.email.index)
+        #expect(store.currentStepIndex == stepIndex(.email, in: store))
     }
 
     @Test("showHeightPicker toggles correct picker by unit")
@@ -257,7 +257,7 @@ struct SignupStoreTests {
         let router = Router<AuthRoute>()
         router.navigate(to: .signup)
         store.signupForm.firstName.value = "John"
-        store.currentStepIndex = SignupStep.password.index
+        store.currentStepIndex = stepIndex(.password, in: store)
 
         store.handleExit(router: router)
         notificationService.alertData?.buttons.first?.action(nil)
@@ -270,7 +270,7 @@ struct SignupStoreTests {
     @Test("dirty exit secondary action keeps current state")
     func handleExitDirtySecondaryAction() {
         let (store, _, notificationService, _) = makeSUT()
-        store.currentStepIndex = SignupStep.password.index
+        store.currentStepIndex = stepIndex(.password, in: store)
         store.signupForm.firstName.value = "John"
 
         store.handleExit()
@@ -474,7 +474,7 @@ struct SignupStoreTests {
         accountService.signUpResult = .success(AuthTestFixtures.makeAccount(email: "signup@example.com"))
         fillRequiredSignupFields(store)
         store.isGoalSkipped = true
-        store.currentStepIndex = SignupStep.password.index
+        store.currentStepIndex = stepIndex(.password, in: store)
 
         store.moveToNextStep()
         await waitUntil {
@@ -488,7 +488,7 @@ struct SignupStoreTests {
     @Test("resetForm resets key state")
     func resetFormResetsState() {
         let (store, _, _, _) = makeSUT()
-        store.currentStepIndex = SignupStep.password.index
+        store.currentStepIndex = stepIndex(.password, in: store)
         store.isGoalSkipped = true
         store.showHeightCmPicker = true
         store.signupForm.firstName.value = "John"
@@ -521,8 +521,10 @@ struct SignupStoreTests {
     }
 }
 
+// swiftlint:disable large_tuple
 @MainActor
 private func makeSUT() -> (SignupStore, MockAccountService, MockNotificationHelperService, MockLoggerService) {
+    // swiftlint:enable large_tuple
     TestDependencyContainer.reset()
 
     let accountService = MockAccountService()
@@ -558,6 +560,11 @@ private func fillRequiredSignupFields(_ store: SignupStore) {
     store.signupForm.password.value = "secret123"
     store.signupForm.confirmPassword.value = "secret123"
     store.signupForm.zipcode.value = "10001"
+}
+
+@MainActor
+private func stepIndex(_ step: SignupStep, in store: SignupStore) -> Int {
+    store.steps.firstIndex(of: step) ?? 0
 }
 
 @MainActor

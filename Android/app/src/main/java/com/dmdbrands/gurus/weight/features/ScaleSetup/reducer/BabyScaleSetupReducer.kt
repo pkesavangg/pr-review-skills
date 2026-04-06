@@ -86,6 +86,7 @@ class BabyScaleSetupReducer : ScaleSetupReducer<BabyScaleSetupStep, BabyScaleSet
 
       is BabyScaleSetupIntent.DeleteBabyProfile -> {
         val profiles = state.babyProfiles.toMutableList()
+        if (intent.index !in profiles.indices) return state
         profiles.removeAt(intent.index)
         state.copy(babyProfiles = profiles.toImmutableList())
       }
