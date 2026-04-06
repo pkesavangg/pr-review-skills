@@ -1,8 +1,8 @@
 package com.dmdbrands.gurus.weight.migration.service
 
-import android.content.Context
-import android.database.Cursor
-import android.database.sqlite.SQLiteDatabase
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
+import com.dmdbrands.gurus.weight.core.network.SecureTokenStore
 import com.dmdbrands.gurus.weight.core.shared.utilities.IonicDatabaseHelper
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
@@ -11,10 +11,17 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.migration.helper.CapacitorStorageHelper
 import com.dmdbrands.gurus.weight.migration.helper.IonicDataConverter
+import com.dmdbrands.gurus.weight.migration.helper.toDashboardSettings
 import com.dmdbrands.gurus.weight.migration.helper.toDeviceDetails
+import com.dmdbrands.gurus.weight.migration.helper.toGoalSettings
+import com.dmdbrands.gurus.weight.migration.helper.toIntegrationsSettings
+import com.dmdbrands.gurus.weight.migration.helper.toNotificationSettings
+import com.dmdbrands.gurus.weight.migration.helper.toWeightCompSettings
+import com.dmdbrands.gurus.weight.migration.helper.toWeightlessSettings
 import com.dmdbrands.gurus.weight.migration.model.IonicAccount
 import com.dmdbrands.gurus.weight.migration.model.IonicScale
 import com.dmdbrands.gurus.weight.migration.model.MigrationResult
+import com.dmdbrands.gurus.weight.proto.ThemeMode
 import com.google.common.truth.Truth.assertThat
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -28,9 +35,13 @@ import io.mockk.runs
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import android.content.Context
+import android.content.SharedPreferences
+import android.database.Cursor
+import android.database.sqlite.SQLiteDatabase
 
 class MigrationServiceTest {
 
@@ -106,7 +117,7 @@ class MigrationServiceTest {
   }
 
   // ── Setup / Teardown ───────────────────────────────────────
-  @Before
+  @BeforeEach
   fun setup() {
     mockkObject(AppLog)
     every { AppLog.d(any(), any(), any<String>()) } just runs
@@ -130,16 +141,38 @@ class MigrationServiceTest {
     every { CapacitorStorageHelper.getLastSyncTimestampForAccount(any(), any()) } returns null
 
     mockkObject(IonicDataConverter)
+    every { with(IonicDataConverter) { any<String>().toThemeMode() } } returns ThemeMode.SYSTEM
 
     // Mock extension functions from IonicAccountExtensions.kt
     mockkStatic("com.dmdbrands.gurus.weight.migration.helper.IonicAccountExtensionsKt")
+    every { any<IonicAccount>().toGoalSettings() } returns mockk(relaxed = true)
+    every { any<IonicAccount>().toWeightlessSettings() } returns mockk(relaxed = true)
+    every { any<IonicAccount>().toIntegrationsSettings() } returns mockk(relaxed = true)
+    every { any<IonicAccount>().toWeightCompSettings() } returns mockk(relaxed = true)
+    every { any<IonicAccount>().toNotificationSettings() } returns mockk(relaxed = true)
+    every { any<IonicAccount>().toDashboardSettings() } returns mockk(relaxed = true)
 
     mockkConstructor(UserDataStore::class)
     coEvery { anyConstructed<UserDataStore>().addAccount(any(), any(), any(), any(), any(), any(), any(), any()) } just runs
     coEvery { anyConstructed<UserDataStore>().updateAccountTokens(any(), any(), any(), any(), any()) } just runs
+    coEvery { anyConstructed<UserDataStore>().updateAccount(any(), any(), any(), any(), any(), any(), any()) } just runs
     coEvery { anyConstructed<UserDataStore>().setActiveAccount(any()) } just runs
     coEvery { anyConstructed<UserDataStore>().updateSyncTimestamp(any(), any()) } just runs
     coEvery { anyConstructed<UserDataStore>().containsAccount(any()) } returns false
+
+    mockkStatic(MasterKeys::class)
+    every { MasterKeys.getOrCreate(any()) } returns "fake-master-key"
+    mockkStatic(EncryptedSharedPreferences::class)
+    every {
+      EncryptedSharedPreferences.create(
+        any<String>(), any<String>(), any<Context>(),
+        any<EncryptedSharedPreferences.PrefKeyEncryptionScheme>(),
+        any<EncryptedSharedPreferences.PrefValueEncryptionScheme>(),
+      )
+    } returns mockk<SharedPreferences>(relaxed = true)
+
+    mockkConstructor(SecureTokenStore::class)
+    every { anyConstructed<SecureTokenStore>().saveToken(any(), any()) } just runs
 
     mockkStatic(SQLiteDatabase::class)
 
@@ -149,7 +182,7 @@ class MigrationServiceTest {
     service = MigrationService(migrationRepository)
   }
 
-  @After
+  @AfterEach
   fun tearDown() {
     unmockkAll()
   }
@@ -254,7 +287,8 @@ class MigrationServiceTest {
     service.performIonicMigration(context)
 
     coVerify { anyConstructed<UserDataStore>().addAccount(testAccountId, any(), any(), any(), any(), any(), any(), any()) }
-    coVerify { anyConstructed<UserDataStore>().updateAccountTokens(testAccountId, "refresh", "access", "2099-01-01", true) }
+    verify { anyConstructed<SecureTokenStore>().saveToken(testAccountId, any()) }
+    coVerify { anyConstructed<UserDataStore>().updateAccount(testAccountId, any(), any(), any(), any(), any(), any()) }
     coVerify { anyConstructed<UserDataStore>().setActiveAccount(testAccountId) }
   }
 

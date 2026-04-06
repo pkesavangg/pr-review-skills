@@ -12,9 +12,10 @@ import io.mockk.unmockkAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BluetoothPreferencesServiceTest {
@@ -24,7 +25,7 @@ class BluetoothPreferencesServiceTest {
 
     private lateinit var service: BluetoothPreferencesService
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.d(any(), any()) } returns Unit
@@ -40,7 +41,7 @@ class BluetoothPreferencesServiceTest {
         service = BluetoothPreferencesService(bluetoothPreferencesDataStore)
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }
@@ -85,11 +86,13 @@ class BluetoothPreferencesServiceTest {
     // setSelectedMacAddressLocally — error path
     // -------------------------------------------------------------------------
 
-    @Test(expected = RuntimeException::class)
+    @Test
     fun `setSelectedMacAddressLocally rethrows exception from dataStore`() = runTest {
         coEvery { bluetoothPreferencesDataStore.setSelectedMacAddress(any()) } throws RuntimeException("DataStore error")
 
-        service.setSelectedMacAddressLocally("CF:E7:04:0C:00:1C")
+        assertThrows(RuntimeException::class.java) {
+            kotlinx.coroutines.runBlocking { service.setSelectedMacAddressLocally("CF:E7:04:0C:00:1C") }
+        }
     }
 
     // -------------------------------------------------------------------------

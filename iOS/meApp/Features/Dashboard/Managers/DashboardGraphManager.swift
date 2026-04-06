@@ -17,6 +17,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     let renderConfig  = GraphRenderingConfiguration()
     let interaction   = GraphInteractionHandler()
     let animationMgr  = GraphAnimationManager()
+    let selectionPresentationResolver = GraphSelectionPresentationResolver()
 
     // MARK: - Chart Series Cache (keyed on scrolling state, so lives here)
     private var cachedChartSeries: [GraphSeries] = []
@@ -192,6 +193,48 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     /// Generates BPM chart data (3 series: systolic, diastolic, pulse).
     func generateBpmChartData(from operations: [BathScaleWeightSummary]) -> [GraphSeries] {
         dataPreparer.buildBpmChartSeries(from: operations, period: state.selectedPeriod)
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func generateBabyChartData(
+        from allOperations: [BathScaleWeightSummary],
+        visibleOperations: [BathScaleWeightSummary],
+        babyProfile: BabyProfile,
+        metric: BabyMetric,
+        convertWeight: @escaping (Int) -> Double,
+        convertDecigramsToDisplay: @escaping (Int) -> Double,
+        yAxisDomain: ClosedRange<Double>
+    ) -> [GraphSeries] {
+        switch metric {
+        case .weight:
+            let weightSeries = generateChartDataWithYAxisDomain(
+                from: allOperations,
+                visibleOperations: visibleOperations,
+                selectedMetric: nil,
+                isWeightlessMode: false,
+                anchorWeight: nil,
+                convertWeight: convertWeight,
+                yAxisDomain: yAxisDomain
+            )
+
+            let percentileSeries = BabyDashboardChartSupport.percentileSeries(
+                for: babyProfile,
+                operations: allOperations,
+                convertDecigramsToDisplay: convertDecigramsToDisplay
+            )
+
+            return weightSeries + percentileSeries
+        case .height:
+            let heightSeries = BabyDashboardChartSupport.dummyHeightSeries(
+                for: babyProfile,
+                operations: allOperations
+            )
+            let percentileSeries = BabyDashboardChartSupport.heightPercentileSeries(
+                for: babyProfile,
+                operations: allOperations
+            )
+            return heightSeries + percentileSeries
+        }
     }
 
     // swiftlint:disable:next function_parameter_count
@@ -450,6 +493,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             anchorWeight: anchorWeight,
             period: period,
             convertWeight: convertWeight
+        )
+    }
+
+    func resolveBabySelectionPresentation(
+        babyProfile: BabyProfile?,
+        metric: BabyMetric,
+        selectedCrosshairDate: Date?,
+        plottedPoints: [PlottedGraphSeries],
+        plotXDate: (Date) -> Date,
+        currentUnit: WeightUnit,
+        displayWeight: Double?
+    ) -> BabyGraphSelectionPresentation? {
+        selectionPresentationResolver.babySelectionPresentation(
+            babyProfile: babyProfile,
+            metric: metric,
+            selectedCrosshairDate: selectedCrosshairDate,
+            plottedPoints: plottedPoints,
+            plotXDate: plotXDate,
+            currentUnit: currentUnit,
+            displayWeight: displayWeight
         )
     }
 

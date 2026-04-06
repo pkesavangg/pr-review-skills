@@ -27,7 +27,7 @@ object LoginStrings {
     }
 
     object Errors {
-        const val emailBlank = "must not leave blank"
+        const val emailBlank = "this field is required"
         const val invalidemail = "must use a valid email"
         const val maxLengthEmail = "email should not exceed 100 characters"
         const val passwordlen = "password must be 6 characters long"

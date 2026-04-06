@@ -1166,7 +1166,8 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData? = nil,
-        skipDuplicateCheck _: Bool = false
+        skipDuplicateCheck _: Bool = false,
+        deviceType: DeviceType = .scale
     ) async throws -> Device {
         // Set up device properties (matching BluetoothService.addNewDevice logic)
         // device.id should already be set, but ensure it's not empty
@@ -1175,10 +1176,10 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
         }
         device.accountId = accountId
         device.sku = sku
-        device.deviceType = DeviceType.scale.rawValue
+        device.deviceType = deviceType.rawValue
         device.userNumber = userNumber
         device.createdAt = DateTimeTools.getCurrentDatetimeIsoString()
-        device.nickname = device.nickname ?? "Bluetooth Smart Scale"
+        device.nickname = device.nickname ?? (deviceType == .bpm ? "Blood Pressure Monitor" : "Bluetooth Smart Scale")
         device.metaData = deviceMetadata
         // Note: password is already set on the device from the pairing process
 

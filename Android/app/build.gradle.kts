@@ -21,6 +21,12 @@ ksp {
   arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+kotlin {
+  compilerOptions {
+    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+  }
+}
+
 android {
   namespace = "com.dmdbrands.gurus.weight"
   compileSdk = 36
@@ -91,9 +97,6 @@ release {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
-  kotlinOptions {
-    jvmTarget = "11"
-  }
   buildFeatures {
     compose = true
     buildConfig = true
@@ -144,6 +147,7 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
   testImplementation(libs.mockk)
   testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(kotlin("test"))
   testImplementation(libs.turbine)
   testImplementation(libs.truth)
   testImplementation(libs.mockwebserver)
@@ -156,7 +160,7 @@ dependencies {
   androidTestImplementation(libs.truth)
   debugImplementation(libs.androidx.ui.tooling)
   debugImplementation(libs.androidx.ui.test.manifest)
-  debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+  debugImplementation(libs.leakcanary.android)
   implementation(libs.hilt.navigation.compose)
 
   // browser
@@ -236,7 +240,7 @@ dependencies {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.25.3"
+    artifact = "com.google.protobuf:protoc:${libs.versions.protoc.get()}"
   }
   generateProtoTasks {
     all().forEach {

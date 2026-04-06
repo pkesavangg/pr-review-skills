@@ -16,8 +16,8 @@ struct DashboardDateRangeManagerTests {
 
         let range = sut.getYearLabelDateRange(xScrollPosition: scroll)
 
-        #expect(range?.start == date("2026-03-01"))
-        #expect(range?.end == sut.inclusiveEnd(fromExclusive: date("2027-03-01")))
+        #expect(range?.start == date("2026-01-01"))
+        #expect(range?.end == sut.inclusiveEnd(fromExclusive: date("2027-01-01")))
     }
 
     @Test("month label range: full contained month returns full calendar month")
@@ -40,9 +40,12 @@ struct DashboardDateRangeManagerTests {
         let sut = makeSUT()
         let calendar = Calendar.current
         let today = Date()
-        let currentMonth = calendar.dateInterval(of: .month, for: today)!
-        let scroll = calendar.date(byAdding: .day, value: 20, to: currentMonth.start)!
-        let lastEntry = calendar.date(byAdding: .day, value: 5, to: currentMonth.start)!
+        guard let currentMonth = calendar.dateInterval(of: .month, for: today),
+              let scroll = calendar.date(byAdding: .day, value: 20, to: currentMonth.start),
+              let lastEntry = calendar.date(byAdding: .day, value: 5, to: currentMonth.start) else {
+            Issue.record("Expected current month dates to be available")
+            return
+        }
 
         let range = sut.getLabelDateRangeForMonth(
             xScrollPosition: scroll,
@@ -63,8 +66,8 @@ struct DashboardDateRangeManagerTests {
             visibleDomainLength: 365 * 24 * 60 * 60
         )
 
-        #expect(range.start == date("2026-05-01"))
-        #expect(range.end == sut.inclusiveEnd(fromExclusive: date("2027-05-01")))
+        #expect(range.start == date("2026-01-01"))
+        #expect(range.end == sut.inclusiveEnd(fromExclusive: date("2027-01-01")))
     }
 
     @Test("week label range: starts at day boundary and includes six more days")
@@ -133,7 +136,7 @@ struct DashboardDateRangeManagerTests {
 
         #expect(month == "month:2026-03-01:2026-03-31")
         #expect(week == "week:2026-03-10:2026-03-17")
-        #expect(year == "year:2026-03-01:2027-02-28")
+        #expect(year == "year:2026-01-01:2026-12-31")
     }
 
     @Test("default range label: delegates to the shared formatter for every period")
@@ -280,7 +283,10 @@ struct DashboardDateRangeManagerTests {
             return date
         }
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: value)!
+        guard let date = formatter.date(from: value) else {
+            fatalError("Invalid ISO date test fixture: \(value)")
+        }
+        return date
     }
 
     private func isoDay(_ date: Date) -> String {

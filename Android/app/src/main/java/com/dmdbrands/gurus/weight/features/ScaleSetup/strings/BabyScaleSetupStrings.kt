@@ -36,6 +36,10 @@ object BabyScaleSetupStrings {
     const val NameHint = "name"
     const val BirthdayHint = "baby's birthday"
     const val SexHint = "Biological Sex"
+    const val SexMale = "Male"
+    const val SexFemale = "Female"
+    const val SexOther = "Other"
+    const val SexSelectContentDescription = "Select biological sex"
     const val BirthLengthHint = "birth length"
     const val BirthWeightHint = "birth weight"
     const val SkipButton = "SKIP"
@@ -44,6 +48,10 @@ object BabyScaleSetupStrings {
   object BabyList {
     const val Title = "Your Baby Has Been Added!"
     const val AddBabyButton = "ADD A BABY"
+    const val EditContentDescription = "Edit baby"
+    const val DeleteContentDescription = "Delete baby"
+    fun BabyFallbackName(index: Int) = "Baby ${index + 1}"
+    const val AvatarInitialFallback = "?"
   }
 
   object SkipDialog {

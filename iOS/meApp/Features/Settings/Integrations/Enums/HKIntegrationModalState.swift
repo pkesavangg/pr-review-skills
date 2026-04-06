@@ -9,4 +9,5 @@ public enum HKIntegrationModalState {
     case outOfSync
     case finishAdding
     case addIntegration
+    case updatePermissions
 }

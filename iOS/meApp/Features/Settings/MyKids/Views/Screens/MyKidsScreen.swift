@@ -56,6 +56,7 @@ struct MyKidsScreen: View {
             ) {
                 store.addBaby()
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, .spacingSM)
 
             Spacer()

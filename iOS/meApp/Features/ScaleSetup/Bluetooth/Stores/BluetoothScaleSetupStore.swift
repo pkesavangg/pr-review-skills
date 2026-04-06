@@ -540,7 +540,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 userNumber: deviceToSave.userNumber ?? "1",
                 accountId: accountId,
                 deviceMetadata: deviceMetadata,
-                skipDuplicateCheck: false
+                skipDuplicateCheck: false,
+                deviceType: scaleItem?.setupType == .bpm ? .bpm : .scale
             )
             
             await self.scaleService.syncAllScalesWithRemote()
@@ -550,14 +551,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
             
             // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
-            
-            // Clear setup in progress flag after scale is saved
-            bluetoothService.isSetupInProgress = false
-            
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
-            // Clear setup in progress flag even on error
-            bluetoothService.isSetupInProgress = false
         }
         notificationService.dismissLoader()
         // Only dismiss the screen if we're exiting, not when saving immediately after pairing

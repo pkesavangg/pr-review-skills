@@ -37,4 +37,24 @@ final class AppleHealthHandlerAdapter: HealthKitHandlerProtocol {
     func openAppleHealth() async {
         _ = await handler.openAppleHealth()
     }
+
+    func updateAppType(for deviceTypes: Set<String>) {
+        let hasBpm = deviceTypes.contains(DeviceType.bpm.rawValue)
+        let hasScale = deviceTypes.contains(DeviceType.scale.rawValue)
+
+        let appType: GGAppType
+        switch (hasScale, hasBpm) {
+        case (true, true):
+            // Both scale and BPM paired — should use .ALL to request Weight Gurus + Balance Health
+            // permissions together. Using .WEIGHT_GURUS for now since ggHealthKitPackage changes
+            //are not yet merged to main.
+            appType = .WEIGHT_GURUS
+        case (false, true):
+            appType = .BALANCE_HEALTH
+        default:
+            // Scale-only, babyScale-only, or no devices → default to Weight Gurus
+            appType = .WEIGHT_GURUS
+        }
+        handler.setAppType(appType: appType)
+    }
 }
