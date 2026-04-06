@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
@@ -136,8 +137,8 @@ constructor(
   override fun onStepChange(step: ScaleSetupStep) {
     viewModelScope.launch {
       when (step) {
-        BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-        else -> {}
+        BabyScaleSetupStep.WAKEUP -> if (BuildConfig.DEBUG) mockWakeUpScale() else wakeUpScale()
+        else -> AppLog.d(TAG, "No specific action for step: $step")
       }
     }
   }

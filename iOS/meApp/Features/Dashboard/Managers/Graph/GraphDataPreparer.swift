@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Pure data transformation layer for graph rendering.
@@ -73,6 +74,22 @@ struct GraphDataPreparer {
             }
             return GraphSeries(date: summary.date, value: displayWeight, series: DashboardStrings.weight)
         }
+    }
+
+    // MARK: - Baby Weight Series
+
+    /// Convenience entry point for baby weight charts. Delegates to `buildWeightSeries`
+    /// with weightless mode disabled (baby charts never use weightless anchoring).
+    func buildBabyWeightSeries(
+        from operations: [BathScaleWeightSummary],
+        convertWeight: (Int) -> Double
+    ) -> [GraphSeries] {
+        buildWeightSeries(
+            from: operations,
+            isWeightlessMode: false,
+            anchorWeight: nil,
+            convertWeight: convertWeight
+        )
     }
 
     // MARK: - BPM Series

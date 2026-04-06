@@ -23,7 +23,7 @@ final class LandingStore: ObservableObject {
     @Published var userItems: [UserItemInfo] = []
     
     let loadingLang = LoaderStrings.self
-    private let alertStrings = AlertStrings.self
+    let alertStrings = AlertStrings.self
     private let appConstants = AppConstants.self
     private let toastLang = ToastStrings.self
     
@@ -41,33 +41,45 @@ final class LandingStore: ObservableObject {
     // MARK: - Setup Methods
     
     /// Observes account changes and updates the local account list.
+    /// All saved accounts are shown — logged-in, expired, and manually logged-out.
+    /// Accounts disappear only when explicitly removed from the device.
     private func setupAccountObservation() {
         accountService.allAccountsPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] all in
                 guard let self = self else { return }
-                // Only show logged-in accounts
-                let loggedInAccounts = all.filter { 
+
+                // Separate fully-authenticated accounts from those needing re-login.
+                let loggedInAccounts = all.filter {
                     $0.isLoggedIn == true && ($0.isExpired ?? false) == false
                 }
-                
-                // Sort logged-in accounts by last active time
-                let sortedLoggedInAccounts = loggedInAccounts.sorted { lhs, rhs in
+                let loggedOutAccounts = all.filter {
+                    $0.isLoggedIn != true || ($0.isExpired ?? false) == true
+                }
+
+                let sortByLastActive: (Account, Account) -> Bool = { lhs, rhs in
                     let lhsDate = DateTimeTools.parse(lhs.lastActiveTime ?? "") ?? .distantPast
                     let rhsDate = DateTimeTools.parse(rhs.lastActiveTime ?? "") ?? .distantPast
                     return lhsDate > rhsDate
                 }
-                
-                self.accounts = sortedLoggedInAccounts
-                
-                self.userItems = sortedLoggedInAccounts.map { account in
-                    let displayName = account.firstName?.isEmpty == false ? (account.firstName ?? account.email) : account.email
+
+                // Logged-in accounts first, then logged-out accounts — both sorted by recency.
+                let allSorted = loggedInAccounts.sorted(by: sortByLastActive)
+                    + loggedOutAccounts.sorted(by: sortByLastActive)
+
+                self.accounts = allSorted
+
+                self.userItems = allSorted.map { account in
+                    let displayName = account.firstName?.isEmpty == false
+                        ? (account.firstName ?? account.email)
+                        : account.email
+                    let needsLogin = account.isLoggedIn != true || (account.isExpired ?? false)
                     return UserItemInfo(
                         accountID: account.accountId,
                         name: displayName,
                         email: account.email,
                         isSelected: false,
-                        isExpired: false, // Only logged-in accounts are shown
+                        isExpired: needsLogin,
                         canShowSelection: false
                     )
                 }
@@ -145,12 +157,65 @@ final class LandingStore: ObservableObject {
         }
     }
     
-    // MARK: Max Accounts Handling
+    // MARK: - Remove Account
+
+    /// Removes an account from this device. Prompts for confirmation first.
+    func removeAccount(user: UserItemInfo) {
+        let alertLang = alertStrings.DeleteUserAlert
+        let alert = AlertModel(
+            title: alertLang.title(user.name),
+            message: alertLang.message(user.name),
+            buttons: [
+                AlertButtonModel(title: alertLang.removeButton, type: .danger) { [weak self] _ in
+                    self?.performRemoveAccount(user: user)
+                },
+                AlertButtonModel(title: alertLang.cancelButton, type: .secondary) { _ in }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    private func performRemoveAccount(user: UserItemInfo) {
+        guard let account = accounts.first(where: { $0.accountId == user.accountID }) else {
+            logger.log(level: .error, tag: tag, message: "Account with ID \(user.accountID) not found for removal")
+            return
+        }
+
+        // Only require connectivity when the account is still logged in.
+        let isLoggedIn = account.isLoggedIn == true && (account.isExpired ?? false) == false
+        if isLoggedIn && !networkMonitor.isConnected {
+            notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+            return
+        }
+
+        let accountId = account.accountId
+        Task {
+            notificationService.showLoader(LoaderModel(text: "Removing user..."))
+            defer { notificationService.dismissLoader() }
+            do {
+                try await accountService.removeAccountFromDevice(accountId: accountId)
+                logger.log(level: .info, tag: tag, message: "Removed account \(accountId) from device")
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Failed to remove account \(accountId)", data: error.localizedDescription)
+                switch error {
+                case HTTPError.noInternet, HTTPError.timeout:
+                    notificationService.showToast(ToastModel(message: toastLang.unableToConnect))
+                default:
+                    notificationService.showToast(ToastModel(message: toastLang.somethingWentWrong))
+                }
+            }
+        }
+    }
+
+    // MARK: - Max Accounts Handling
     /// Returns `true` if another account can be added. If the maximum number of
     /// accounts has already been reached, shows an alert and returns `false`.
     func canAddMoreAccounts() -> Bool {
-        // accounts array already contains only logged-in, non-expired accounts
-        if accounts.count >= appConstants.Account.maxAccounts {
+        // Only count fully logged-in accounts toward the limit.
+        let loggedInCount = accounts.filter {
+            $0.isLoggedIn == true && ($0.isExpired ?? false) == false
+        }.count
+        if loggedInCount >= appConstants.Account.maxAccounts {
             showMaxUserAccountsAlert()
             return false
         }

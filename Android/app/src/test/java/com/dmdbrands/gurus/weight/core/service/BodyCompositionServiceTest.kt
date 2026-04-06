@@ -21,13 +21,14 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 
 class BodyCompositionServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -88,7 +89,7 @@ class BodyCompositionServiceTest {
         account = fakeApiAccountInfo,
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         coEvery { bodyCompositionRepository.getActiveAccountFromDB() } returns fakeAccount
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), any()) } just Runs

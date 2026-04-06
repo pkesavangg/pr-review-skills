@@ -325,15 +325,9 @@ final class A6ScaleSetupStore: ObservableObject {
             
             // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
-            
-            // Clear setup in progress flag after scale is saved
-            bluetoothService.isSetupInProgress = false
-            
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
             self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
-            // Clear setup in progress flag even on error
-            bluetoothService.isSetupInProgress = false
         }
     }
     

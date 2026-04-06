@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <!--
+        Internal DMD Brands libraries published via GitHub Packages.
+        These are first-party dependencies with source code under the dmdbrands
+        GitHub org. They have no NVD entries and any CVE matches are false positives
+        from CPE name collisions.
+
+        Provenance documented in: docs/solutions/gg-bluetooth-library-provenance.md
+    -->
+    <suppress>
+        <notes><![CDATA[
+            gg-bluetooth-android is an internal DMD Brands BLE library.
+            Source: github.com/dmdbrands/ggBluetoothNativeLibrary
+            Published: maven.pkg.github.com/dmdbrands/ggBluetoothNativeLibrary
+        ]]></notes>
+        <gav regex="true">com\.dmdbrands\.lib:gg-bluetooth-android:.*</gav>
+        <cpe regex="true">.*</cpe>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            vico-core, vico-compose, vico-compose-m3 are internal DMD Brands chart libraries.
+            Source: github.com/dmdbrands/vico
+            Published: maven.pkg.github.com/dmdbrands/vico
+        ]]></notes>
+        <gav regex="true">com\.dmdbrands\.lib:vico-(core|compose|compose-m3):.*</gav>
+        <cpe regex="true">.*</cpe>
+    </suppress>
+
+</suppressions>

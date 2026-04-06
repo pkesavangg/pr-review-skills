@@ -52,6 +52,7 @@ constructor(
   private val deviceService: IDeviceService,
   @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IGoalService {
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
   private val TAG = "GoalService"
   private var isShowingAlert = false
 

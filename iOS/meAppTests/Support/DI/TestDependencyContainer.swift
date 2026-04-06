@@ -18,9 +18,11 @@ enum TestDependencyContainer {
             keychain: MockKeychainService(),
             bluetooth: MockBluetoothService()
         )
+        DependencyContainer.shared.register(KvStorageService.shared as KvStorageServiceProtocol)
         let notification = MockNotificationHelperService()
         DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
         DependencyContainer.shared.register(MockAccountService() as AccountServiceProtocol)
+        DependencyContainer.shared.register(MockBabyService() as BabyServiceProtocol)
         DependencyContainer.shared.register(MockEntryService() as EntryServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelFeedService() as FeedServiceProtocol)
         DependencyContainer.shared.register(MockGoalAlertService() as GoalAlertServiceProtocol)
@@ -30,7 +32,14 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(MockWifiScaleService() as WifiScaleServiceProtocol)
         DependencyContainer.shared.register(MockPushNotificationService() as PushNotificationServiceProtocol)
         DependencyContainer.shared.register(MockContentViewModelAccountFlagService() as AccountFlagServiceProtocol)
-        DependencyContainer.shared.register(MockProductTypeStore() as ProductTypeStoreProtocol)
+        DependencyContainer.shared.register(MockKvStorageService() as KvStorageServiceProtocol)
+        DependencyContainer.shared.register(MockBabyService() as BabyServiceProtocol)
+        let mockProductTypeStore = MockProductTypeStore()
+        DependencyContainer.shared.register(mockProductTypeStore as ProductTypeStoreProtocol)
+        DependencyContainer.shared.register(mockProductTypeStore)
+        // Also register under the concrete class name for direct injection
+        DependencyContainer.shared.dependencies["ProductTypeStore"] = mockProductTypeStore
+        DependencyContainer.shared.dependencies["meApp.ProductTypeStore"] = mockProductTypeStore
         // Some stores/managers inject concrete dashboard services.
         // Register mock-backed concrete instances to keep tests isolated and avoid DI fatals.
         _ = registerDashboardConcreteDependencies()
@@ -75,6 +84,7 @@ enum TestDependencyContainer {
         DependencyContainer.shared.register(scaleService as ScaleService)
         DependencyContainer.shared.register(entryService as EntryService)
         DependencyContainer.shared.register(goalAlertService as GoalAlertService)
+        DependencyContainer.shared.register(ProductTypeStore.shared as ProductTypeStore)
 
         return DashboardConcreteDependencies(
             account: accountService,

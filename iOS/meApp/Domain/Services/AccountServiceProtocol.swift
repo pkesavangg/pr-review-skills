@@ -34,6 +34,12 @@ protocol AccountServiceProtocol {
     func deleteAccount() async throws
     func deleteAllAccounts() async throws
 
+    /// Removes an account from this device without deleting it server-side.
+    /// For logged-in accounts, logs out via API first; for already-logged-out
+    /// accounts, skips the API call. Always clears keychain tokens and the
+    /// local SwiftData record.
+    func removeAccountFromDevice(accountId: String) async throws
+
     /// Switches the active session to the specified account.
     /// - Parameter account: The account to switch to.
     func switchAccount(to account: Account) async throws

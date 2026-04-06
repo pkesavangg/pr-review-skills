@@ -46,7 +46,19 @@ Generate:
 
 **Screen file must include:**
 
-1. **Accessibility identifiers** on every interactive element using `AccessibilityID`:
+1. **Theme environment injection** at the top of the struct body:
+```swift
+struct <FeatureName>Screen: View {
+    @ObservedObject var store: <FeatureName>Store
+    @Environment(\.appTheme) private var theme
+
+    var body: some View {
+        // Use theme.textHeading, theme.backgroundPrimary, .spacingMD, .radiusMD, etc.
+    }
+}
+```
+
+2. **Accessibility identifiers** on every interactive element using `AccessibilityID`:
 ```swift
 Button(action: { store.doAction() }) {
     Text(<FeatureName>Strings.ActionButton)

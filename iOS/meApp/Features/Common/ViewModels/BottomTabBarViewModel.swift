@@ -463,6 +463,8 @@ class BottomTabBarViewModel: ObservableObject {
                         self.presentHKIntegrationModal(for: modalState)
                     case .outOfSync:
                         self.presentHKIntegrationModal(for: .outOfSync)
+                    case .updatePermissions:
+                        break
                     }
                 }
             }
@@ -516,6 +518,14 @@ class BottomTabBarViewModel: ObservableObject {
                     self.notificationService.dismissLoader()
                 }
             }
+
+        case .updatePermissions:
+            onPrimary = { [weak self] in
+                self?.notificationService.dismissModal()
+            }
+            onSecondary = { [weak self] in
+                self?.notificationService.dismissModal()
+            }
         }
 
         let modalView = HKIntegrationModalView(
@@ -543,7 +553,8 @@ class BottomTabBarViewModel: ObservableObject {
             }
 
             let permissionCount = healthKitService.getApprovedPermissionList().count
-            let hasFullPermissions = permissionCount >= HealthKitStore.wgTotalPermissionsCount
+            let expectedCount = await healthKitService.expectedPermissionCount()
+            let hasFullPermissions = permissionCount >= expectedCount
             let entryCount = (try? await entryService.getEntryCount()) ?? 0
 
             if entryCount > 0, hasFullPermissions {

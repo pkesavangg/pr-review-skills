@@ -29,20 +29,20 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Assert.assertThrows
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.Test
 import retrofit2.HttpException
 import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExportServiceTest {
 
-    @get:Rule
+    @JvmField
+    @RegisterExtension
     val mainDispatcherRule = MainDispatcherRule()
 
     // --- Mocks ---
@@ -83,7 +83,7 @@ class ExportServiceTest {
         log = "LogA",
     )
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.i(any(), any()) } returns Unit
@@ -96,7 +96,7 @@ class ExportServiceTest {
         service = createService()
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         clearAllMocks()
     }
@@ -295,9 +295,7 @@ class ExportServiceTest {
     fun `sendScaleLog rethrows exception from deviceService`() = runTest {
         every { deviceService.getDeviceLogs(any(), any()) } throws RuntimeException("BLE error")
 
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.sendScaleLog("broadcast-123") }
-        }
+        assertFailsWith<RuntimeException> { service.sendScaleLog("broadcast-123") }
     }
 
     @Test
@@ -305,9 +303,7 @@ class ExportServiceTest {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog))
         coEvery { logRepository.sendScaleLog(any()) } throws RuntimeException("Network error")
 
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.sendScaleLog("broadcast-123") }
-        }
+        assertFailsWith<RuntimeException> { service.sendScaleLog("broadcast-123") }
     }
 
     @Test
@@ -420,18 +416,14 @@ class ExportServiceTest {
     fun `exportCsvToEmail throws when no current account`() = runTest {
         stubGetCurrentAccount(null)
 
-        assertThrows(IllegalStateException::class.java) {
-            runBlocking { service.exportCsvToEmail() }
-        }
+        assertFailsWith<IllegalStateException> { service.exportCsvToEmail() }
     }
 
     @Test
     fun `exportCsvToEmail throws with descriptive message when no account`() = runTest {
         stubGetCurrentAccount(null)
 
-        val exception = assertThrows(IllegalStateException::class.java) {
-            runBlocking { service.exportCsvToEmail() }
-        }
+        val exception = assertFailsWith<IllegalStateException> { service.exportCsvToEmail() }
         assertThat(exception.message).isEqualTo("No current account available")
     }
 
@@ -444,9 +436,7 @@ class ExportServiceTest {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
 
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.exportCsvToEmail() }
-        }
+        assertFailsWith<HttpException> { service.exportCsvToEmail() }
     }
 
     @Test
@@ -454,9 +444,7 @@ class ExportServiceTest {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws RuntimeException("Network fail")
 
-        assertThrows(RuntimeException::class.java) {
-            runBlocking { service.exportCsvToEmail() }
-        }
+        assertFailsWith<RuntimeException> { service.exportCsvToEmail() }
     }
 
     @Test
@@ -579,9 +567,7 @@ class ExportServiceTest {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
 
-        assertThrows(HttpException::class.java) {
-            runBlocking { service.exportCsvWithPrompt() }
-        }
+        assertFailsWith<HttpException> { service.exportCsvWithPrompt() }
     }
 
     @Test
