@@ -10,8 +10,8 @@ object ScaleUtility {
    */
   fun scaleImageResource(context: Context, sku: String?): Int {
     // Special case: SKU 0397 uses the image for 0396
-    val resolvedSku = if (sku == "0397") "0396" else sku
-    if (resolvedSku.isNullOrEmpty()) return AppIcons.Default.ScalePlaceholder
+    val resolvedSku = if (sku == "0397") "0396" else sku ?: return AppIcons.Default.ScalePlaceholder
+    if (resolvedSku.isEmpty()) return AppIcons.Default.ScalePlaceholder
     val prefix = if (DeviceHelper.isBpmDevice(resolvedSku)) "monitor" else "scale"
     val resId = context.resources.getIdentifier(
       "${prefix}_$resolvedSku",

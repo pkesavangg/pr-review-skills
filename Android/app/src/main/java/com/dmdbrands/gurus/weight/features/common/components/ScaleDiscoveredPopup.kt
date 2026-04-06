@@ -73,7 +73,7 @@ fun ScaleDiscoveredModal(
         textAlign = TextAlign.Center,
       )
       AppButton(
-        label = "Connect",
+        label = AppPopupStrings.ScaleDiscoveredPopup.ConnectButton,
         type = ButtonType.PrimaryFilled,
         onClick = onConnect,
       )
