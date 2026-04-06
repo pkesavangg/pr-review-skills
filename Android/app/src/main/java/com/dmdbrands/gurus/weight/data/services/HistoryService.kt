@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.repository.IHistoryRepository
@@ -103,5 +104,10 @@ class HistoryService @Inject constructor(
     override fun getBpmSnapshotGraphData(): Flow<List<PeriodBpmSummary>> {
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         return historyRepository.getBpmSnapshotGraphData(acctId)
+    }
+
+    override fun getBabySnapshotGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
+        val acctId = requireNotNull(_accountId) { "accountId not set" }
+        return historyRepository.getBabySnapshotGraphData(acctId, babyProfileId)
     }
 }

@@ -149,6 +149,26 @@ class HistoryRepository @Inject constructor(
         historyDao.getBabyDailyGraphData(accountId, babyId)
 
     // ---------------------------------------------------------------------------
+    // Baby Snapshot (Dashboard mini-chart)
+    // ---------------------------------------------------------------------------
+
+    override fun getBabySnapshotGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBabySnapshotData())
+        return historyDao.getBabySnapshotGraphData(accountId, babyProfileId)
+    }
+
+    private fun sampleBabySnapshotData(): List<PeriodBabySummary> = listOf(
+        PeriodBabySummary("2026-03-30", "2026-03-30T08:00:00.000Z", avgWeightDecigrams = 38600, avgLengthMillimeters = 295),
+        PeriodBabySummary("2026-03-31", "2026-03-31T08:00:00.000Z", avgWeightDecigrams = 38800, avgLengthMillimeters = 296),
+        PeriodBabySummary("2026-04-01", "2026-04-01T08:00:00.000Z", avgWeightDecigrams = 39000, avgLengthMillimeters = 297),
+        PeriodBabySummary("2026-04-02", "2026-04-02T08:00:00.000Z", avgWeightDecigrams = 39200, avgLengthMillimeters = 298),
+        PeriodBabySummary("2026-04-03", "2026-04-03T08:00:00.000Z", avgWeightDecigrams = 39600, avgLengthMillimeters = 299),
+        PeriodBabySummary("2026-04-04", "2026-04-04T08:00:00.000Z", avgWeightDecigrams = 39800, avgLengthMillimeters = 301),
+        PeriodBabySummary("2026-04-05", "2026-04-05T08:00:00.000Z", avgWeightDecigrams = 40100, avgLengthMillimeters = 303),
+        PeriodBabySummary("2026-04-06", "2026-04-06T08:00:00.000Z", avgWeightDecigrams = 40360, avgLengthMillimeters = 305),
+    )
+
+    // ---------------------------------------------------------------------------
     // Baby weekly grouping (converts BabyDailySummaryResult → BabyWeekGroup)
     // ---------------------------------------------------------------------------
 

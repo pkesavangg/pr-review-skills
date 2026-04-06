@@ -47,4 +47,7 @@ interface IHistoryRepository {
     // Baby Graph
     fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
     fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
+
+    // Baby Snapshot (Dashboard mini-chart)
+    fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 }

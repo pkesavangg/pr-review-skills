@@ -89,6 +89,7 @@ fun DashboardSnapshotScreen(
 
           is ProductSelection.Baby -> BabySnapshotCard(
             product = product,
+            viewModel = viewModel,
             onTap = {
               scope.launch {
                 viewModel.productSelectionManager.selectProduct(product)

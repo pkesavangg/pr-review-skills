@@ -3,6 +3,9 @@ package com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -32,6 +35,7 @@ class DashboardSnapshotViewModel @Inject constructor(
 
   val weightModelProducer = CartesianChartModelProducer()
   val bpModelProducer = CartesianChartModelProducer()
+  val babyModelProducers = mutableMapOf<String, CartesianChartModelProducer>()
   private var weightGraphJob: Job? = null
   private var bpGraphJob: Job? = null
 
@@ -41,6 +45,7 @@ class DashboardSnapshotViewModel @Inject constructor(
     observeWeightUnit()
     loadWeightGraph()
     loadBpGraph()
+    loadBabyGraphs()
   }
 
   private fun observeWeightUnit() {
@@ -192,6 +197,86 @@ class DashboardSnapshotViewModel @Inject constructor(
       }
     }
   }
+
+  private fun loadBabyGraphs() {
+    viewModelScope.launch {
+      productSelectionManager.availableProducts.collect { products ->
+        products.filterIsInstance<ProductSelection.Baby>().forEach { baby ->
+          loadBabyGraph(baby.profile.id)
+        }
+      }
+    }
+  }
+
+  private fun loadBabyGraph(profileId: String) {
+    viewModelScope.launch {
+      historyService.getBabySnapshotGraphData(profileId)
+        .catch { e ->
+          AppLog.e(TAG, "Failed to load baby graph data for $profileId", e)
+        }
+        .collect { points ->
+          updateBabyChart(profileId, points)
+        }
+    }
+  }
+
+  private suspend fun updateBabyChart(profileId: String, points: List<PeriodBabySummary>) {
+    val sorted = points.filter { (it.avgWeightDecigrams ?: 0) > 0 }.sortedBy { it.entryTimestamp }
+    if (sorted.isEmpty()) {
+      handleIntent(DashboardSnapshotIntent.SetBabyChart(profileId, SnapshotChartData(label = "—")))
+      return
+    }
+
+    val xValues = sorted.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() }
+    // Convert decigrams to lb + oz display
+    val latestWeight = sorted.last().avgWeightDecigrams ?: 0
+    val lbs = ConversionTools.convertDecigramsToLb(latestWeight)
+    val oz = ConversionTools.convertDecigramsToOz(latestWeight)
+    val label = "$lbs lbs ${String.format("%.1f", oz)} oz"
+
+    val yValues = sorted.map { (it.avgWeightDecigrams ?: 0).toDouble() }
+
+    if (xValues.isNotEmpty()) {
+      val graphMeta = generateNiceScale(
+        minValue = yValues.min(),
+        maxValue = yValues.max(),
+        goalWeight = 0.0,
+        targetTickCount = 4,
+      )
+      val endX = xValues.max().toLong()
+      val startX = xValues.min().toLong()
+      val startTimestamp = GraphUtil.getStartRange(segment = GraphSegment.WEEK, startX)
+      val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
+
+      handleIntent(
+        DashboardSnapshotIntent.SetBabyChart(
+          profileId,
+          SnapshotChartData(
+            label = label,
+            yStep = graphMeta.step,
+            yMin = graphMeta.min,
+            yMax = graphMeta.max,
+            startTimestamp = startTimestamp,
+            endTimestamp = endTimestamp,
+          ),
+        ),
+      )
+
+      val producer = babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
+      try {
+        producer.runTransaction {
+          lineSeries {
+            series(x = xValues, y = yValues)
+          }
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to update baby chart model for $profileId", e)
+      }
+    }
+  }
+
+  fun getBabyModelProducer(profileId: String): CartesianChartModelProducer =
+    babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
 
   companion object {
     private const val TAG = "DashboardSnapshotVM"

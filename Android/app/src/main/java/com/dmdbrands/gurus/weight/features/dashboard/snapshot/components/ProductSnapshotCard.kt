@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardSnapshotStrings
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel.DashboardSnapshotViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel.SnapshotChartData
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -207,9 +208,13 @@ fun BpSnapshotCard(
 @Composable
 fun BabySnapshotCard(
     product: ProductSelection.Baby,
+    viewModel: DashboardSnapshotViewModel,
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val state by viewModel.state.collectAsState()
+    val chart = state.baby[product.profile.id] ?: SnapshotChartData()
+
     SnapshotCardContainer(modifier = modifier, onTap = onTap) {
         Text(
             text = "${product.profile.name}'s ${DashboardSnapshotStrings.Weight}",
@@ -220,15 +225,26 @@ fun BabySnapshotCard(
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
 
         Text(
-            text = DashboardSnapshotStrings.PlaceholderDash,
+            text = chart.label.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
             color = SnapshotColors.Baby,
             fontSize = 48.sp,
             fontWeight = FontWeight.ExtraBold,
         )
 
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        PlaceholderGraphBox(text = "Baby graph coming soon")
+        if (chart.startTimestamp != null && chart.endTimestamp != null) {
+            SnapshotLineChart(
+                modelProducer = viewModel.getBabyModelProducer(product.profile.id),
+                lineColor = SnapshotColors.Baby,
+                startTimestamp = chart.startTimestamp,
+                endTimestamp = chart.endTimestamp,
+                yStep = chart.yStep,
+                yMin = chart.yMin,
+                yMax = chart.yMax,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

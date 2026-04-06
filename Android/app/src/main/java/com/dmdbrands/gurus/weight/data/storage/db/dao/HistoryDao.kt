@@ -490,4 +490,29 @@ interface HistoryDao {
     """,
   )
   fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
+
+  /**
+   * Last 10 daily baby weight averages for dashboard snapshot mini-chart.
+   */
+  @Query(
+    """
+    SELECT * FROM (
+      SELECT
+        strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
+        MAX(e.entryTimestamp) AS entryTimestamp,
+        CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
+        CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters
+      FROM entry_view e
+      INNER JOIN baby_entry be ON e.id = be.id
+      WHERE e.accountId = :accountId
+        AND be.babyId = :babyId
+        AND (e.operationType IS NULL OR e.operationType != 'delete')
+      GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
+      ORDER BY period DESC
+      LIMIT 10
+    )
+    ORDER BY entryTimestamp ASC
+    """,
+  )
+  fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 }
