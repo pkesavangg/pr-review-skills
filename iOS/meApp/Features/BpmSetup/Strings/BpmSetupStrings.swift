@@ -29,10 +29,14 @@ struct BpmSetupStrings {
     }
 
     struct SetUser {
-        static let title: (Int) -> String = { userNumber in
-            "Set the monitor to User \(userNumber)."
+        static let title: (String) -> String = { userLabel in
+            "Set the monitor to User \(userLabel)."
         }
-        static let description = "Change the user by tapping the USER button."
+        static let description: (Bool) -> String = { isA6 in
+            isA6
+                ? "Change the user by tapping the A/B button."
+                : "Change the user by tapping the USER button."
+        }
     }
 
     struct ConfirmUser {
@@ -47,6 +51,12 @@ struct BpmSetupStrings {
 
     struct Scanning {
         static let title = "Searching for monitor..."
+    }
+
+    struct ConnectionErrorAlert {
+        static let title = "Unable to Connect"
+        static let message = "This may be caused by interference from another Bluetooth device. Try again or contact customer service."
+        static let tryAgainButton = "TRY AGAIN"
     }
 
     struct Nickname {
@@ -79,4 +89,20 @@ struct BpmSetupStrings {
         static let description = "That's it! When you want to record your next measurement simply open the app, "
             + "put the cuff on, and press start on the monitor."
     }
+
+    struct DeviceConflictAlert {
+        struct DifferentUser {
+            static let title = "Device Already Paired"
+            static let message: (String) -> String = { userLabel in
+                "This monitor is already paired to User \(userLabel). Would you like to replace the existing pairing?"
+            }
+            static let replaceButton = "Replace"
+        }
+
+        struct SameUser {
+            static let title = "Device Already Paired"
+            static let message = "This monitor is already paired to this user. Please dismiss and use the existing pairing."
+        }
+
+}
 }
