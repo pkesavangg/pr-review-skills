@@ -182,9 +182,7 @@ extension BtWifiScaleSetupStore {
         // Post notification to refresh dashboard when setup is dismissed
         NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
         
-        // Clear setup flag and dismiss the sheet FIRST
-        // This ensures the sheet starts dismissing before any state changes
-        bluetoothService.isSetupInProgress = false
+        // Dismiss first so post-setup prompts happen after the setup flow is off-screen.
         dismissAction?()
         
         // Delay state clearing until after sheet has started dismissing
@@ -192,6 +190,7 @@ extension BtWifiScaleSetupStore {
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard let self = self else { return }
+            self.bluetoothService.isSetupInProgress = false
             // Clear error and connection states after sheet dismissal has started
             if wasOnGatheringNetwork || wasOnAvailableWifiList {
                 self.scaleSetupError = .none

@@ -34,8 +34,7 @@ fun BabyScaleLoader(
 ) {
   Column(
     modifier = modifier
-      .fillMaxSize()
-      .then(Modifier),
+      .fillMaxSize(),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center,
   ) {

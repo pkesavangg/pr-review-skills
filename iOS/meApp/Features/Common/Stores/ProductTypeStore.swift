@@ -28,13 +28,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     // MARK: - Public State
 
     /// Ordered list of items for the dropdown, rebuilt whenever devices or baby profiles change.
-    /// - Note: Initialized with sample data until real device registration is in place.
-    @Published private(set) var availableItems: [ProductSelection] = [
-        .myWeight,
-        .myBloodPressure,
-        .baby(profile: BabyProfile(id: "sample_1", name: "Emma", deviceId: nil)),
-        .baby(profile: BabyProfile(id: "sample_2", name: "Liam", deviceId: nil))
-    ]
+    @Published private(set) var availableItems: [ProductSelection] = [.myWeight, .myBloodPressure]
 
     /// The item currently selected in the header dropdown.
     /// Initialized to `.myWeight` as a placeholder; immediately corrected in `init()`
@@ -42,10 +36,38 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
     @Published private(set) var selectedItem: ProductSelection = .myWeight
 
     var selectedItemPublisher: Published<ProductSelection>.Publisher { $selectedItem }
+    var availableItemsPublisher: Published<[ProductSelection]>.Publisher { $availableItems }
 
     private var cancellables = Set<AnyCancellable>()
     private var restoredForAccountId: String?
     private let tag = "ProductTypeStore"
+
+    private static func fallbackBabyProfiles(calendar: Calendar = .current) -> [BabyProfile] {
+        let today = calendar.startOfDay(for: Date())
+        let liamBirthday = calendar.date(byAdding: .day, value: -112, to: today)
+        let stacyBirthday = calendar.date(byAdding: .day, value: -84, to: today)
+
+        return [
+            BabyProfile(
+                id: "fallback-stacy",
+                name: "Stacy",
+                birthday: stacyBirthday,
+                biologicalSex: "female",
+                birthLengthInches: 19.0,
+                birthWeightLbs: 6,
+                birthWeightOz: 14
+            ),
+            BabyProfile(
+                id: "fallback-liam",
+                name: "Liam",
+                birthday: liamBirthday,
+                biologicalSex: "male",
+                birthLengthInches: 20.0,
+                birthWeightLbs: 7,
+                birthWeightOz: 8
+            )
+        ]
+    }
 
     // MARK: - Singleton
 
@@ -57,8 +79,8 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
             selectedItem = first
         }
 
-        // Uncomment once real device registration is in place:
-        // subscribeToChanges()
+        subscribeToChanges()
+        rebuild()
 
         // ProductTypeStore is created inside registerSessionServices(), which is called
         // from AccountService's $activeAccount sink (fires on willSet). At this point the
@@ -66,16 +88,21 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         // initial value are nil. Deferring to the next run-loop iteration ensures
         // activeAccount is fully set.
         DispatchQueue.main.async { [weak self] in
-            guard let self, let accountId = self.accountService.activeAccount?.accountId else { return }
-            self.restorePersistedSelection(for: accountId)
+            guard let self else { return }
+            Task { @MainActor in
+                await self.handleAccountChange(self.accountService.activeAccount?.accountId)
+            }
         }
 
         // Handle future account switches (e.g. multi-account)
         accountService.activeAccountPublisher
-            .compactMap { $0?.accountId }
+            .map { $0?.accountId }
             .removeDuplicates()
             .sink { [weak self] accountId in
-                self?.restorePersistedSelection(for: accountId)
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.handleAccountChange(accountId)
+                }
             }
             .store(in: &cancellables)
     }
@@ -137,26 +164,62 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
             .store(in: &cancellables)
     }
 
+    private func handleAccountChange(_ accountId: String?) async {
+        guard let accountId else {
+            rebuild()
+            return
+        }
+
+        do {
+            try await babyService.loadBabies(for: accountId)
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to load babies for selector: \(error)")
+        }
+
+        rebuild()
+        restorePersistedSelection(for: accountId)
+    }
+
     private func rebuild() {
         let devices = scaleService.scales
         let babies = babyService.currentBabies
 
         var items: [ProductSelection] = []
+        let hasNoLoadedDevices = devices.isEmpty
+        let hasWeightDashboard = hasNoLoadedDevices || devices.contains {
+            $0.deviceType == DeviceType.scale.rawValue || $0.deviceType == DeviceType.babyScale.rawValue
+        }
+        let hasBpmDashboard = hasNoLoadedDevices || devices.contains {
+            $0.deviceType == DeviceType.bpm.rawValue
+        }
 
         // 1. My Weight — present if any scale-type device is registered
-        if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
+        if hasWeightDashboard {
             items.append(.myWeight)
         }
 
         // 2. My Blood Pressure — present if any BPM device is registered
-        if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
+        if hasBpmDashboard {
             items.append(.myBloodPressure)
         }
 
         // 3. Individual babies — listed whenever baby profiles exist.
-        for baby in babies {
-            let profile = BabyProfile(id: baby.id, name: baby.name, deviceId: baby.deviceId)
-            items.append(.baby(profile: profile))
+        if babies.isEmpty {
+            Self.fallbackBabyProfiles().forEach { items.append(.baby(profile: $0)) }
+        } else {
+            for baby in babies {
+                let profile = BabyProfile(
+                    id: baby.id,
+                    name: baby.name,
+                    deviceId: baby.deviceId,
+                    birthday: baby.birthday,
+                    biologicalSex: baby.biologicalSex,
+                    birthLengthInches: baby.birthLengthInches,
+                    birthWeightLbs: baby.birthWeightLbs,
+                    birthWeightOz: baby.birthWeightOz
+                )
+                items.append(.baby(profile: profile))
+            }
         }
 
         // Fallback: always show at least "My Weight"

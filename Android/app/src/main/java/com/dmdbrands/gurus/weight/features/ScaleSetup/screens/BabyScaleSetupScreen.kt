@@ -108,8 +108,6 @@ fun BabyScaleSetupScreenContent(
             }
           }
 
-          BabyScaleSetupStep.CONNECTING_BLUETOOTH -> {}
-
           BabyScaleSetupStep.SCALE_NAME ->
             ScaleNameContent(
               nickname = state.nickname,

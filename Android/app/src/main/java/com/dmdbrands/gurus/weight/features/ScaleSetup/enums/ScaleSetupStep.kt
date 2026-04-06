@@ -81,7 +81,6 @@ enum class BabyScaleSetupStep : ScaleSetupStep {
   SCALE_INFO,
   PERMISSIONS,
   WAKEUP,
-  CONNECTING_BLUETOOTH,
   SCALE_NAME,
   PAIRED_SUCCESS,
   BABY_PROFILE_FORM,

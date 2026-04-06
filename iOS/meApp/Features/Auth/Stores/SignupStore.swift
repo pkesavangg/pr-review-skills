@@ -19,6 +19,7 @@ final class SignupStore: ObservableObject {
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var logger: LoggerServiceProtocol
+    @Injector var kvStorage: KvStorageServiceProtocol
     var alertLang = AlertStrings.self
     var loaderLang = LoaderStrings.self
     var commonLang = CommonStrings.self
@@ -69,6 +70,7 @@ final class SignupStore: ObservableObject {
         _ = notificationService
         _ = accountService
         _ = logger
+        _ = kvStorage
 
         previousMetricValue = signupForm.useMetric.value
         setupFormObservers()
@@ -415,11 +417,12 @@ final class SignupStore: ObservableObject {
         let profile = generateProfile()
         let goal = generateGoalRequest()
         do {
-            _ = try await accountService.signUp(
+            let account = try await accountService.signUp(
                 email: email,
                 password: password,
                 profile: profile
             )
+            persistSelectedSignupDeviceType(for: account.accountId)
             // Create the goal if it's not skipped
             if let goal = goal {
                 logger.log(
@@ -506,6 +509,19 @@ final class SignupStore: ObservableObject {
                 goalType: derivedType
             )
         }
+    }
+
+    private func persistSelectedSignupDeviceType(for accountId: String) {
+        guard let selectedDeviceType else { return }
+        let key = KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)
+        kvStorage.setValue(selectedDeviceType.rawValue, forKey: key)
+        kvStorage.setValue(accountId, forKey: KvStorageKeys.recentSignupAccountId.rawValue)
+        kvStorage.setValue(selectedDeviceType.rawValue, forKey: KvStorageKeys.recentSignupDeviceType.rawValue)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Persisted signup-selected device type. accountId=\(accountId), deviceType=\(selectedDeviceType.rawValue)"
+        )
     }
     
     private func handleSignupError(_ error: Error) {

@@ -56,7 +56,8 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
         userNumber: String,
         accountId: String,
         deviceMetadata: DeviceMetaData?,
-        skipDuplicateCheck: Bool
+        skipDuplicateCheck: Bool,
+        deviceType: DeviceType
     ) async throws -> Device
 
     func createA6Scale(

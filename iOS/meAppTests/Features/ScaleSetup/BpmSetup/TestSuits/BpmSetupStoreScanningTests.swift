@@ -58,7 +58,7 @@ extension BpmSetupStoreTests {
 
         @Test("non-BPM discovery events are ignored during scanning")
         func nonBpmDiscoveryEventsAreIgnored() async {
-            let harness = BpmSetupStoreTestFixtures.makeSUT()
+            let harness = BpmSetupStoreTestFixtures.makeSUT(scanTimeoutNs: 500_000_000)
             let store = harness.store
             BpmSetupStoreTestFixtures.configureA3Bpm(store)
 

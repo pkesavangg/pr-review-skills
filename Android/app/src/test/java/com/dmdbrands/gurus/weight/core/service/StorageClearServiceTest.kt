@@ -14,9 +14,9 @@ import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorageClearServiceTest {
@@ -31,7 +31,7 @@ class StorageClearServiceTest {
 
     private lateinit var service: StorageClearService
 
-    @Before
+    @BeforeEach
     fun setUp() {
         mockkObject(AppLog)
         every { AppLog.i(any(), any()) } returns Unit
@@ -41,7 +41,7 @@ class StorageClearServiceTest {
         service = createServiceWith(setOf(dataStore1, dataStore2, dataStore3))
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }

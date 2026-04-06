@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
+import kotlin.test.assertFailsWith
 import java.io.IOException
 
 class IntegrationRepositoryTest {
@@ -83,14 +84,9 @@ class IntegrationRepositoryTest {
     fun `getAccount rethrows exception when API fails`() = runTest {
         coEvery { authAPI.getAccountWithToken(ACCOUNT_ID) } throws IOException("Network error")
 
-        var threw = false
-        try {
+        assertFailsWith<IOException> {
             repository.getAccount(ACCOUNT_ID)
-        } catch (e: IOException) {
-            threw = true
         }
-
-        assertThat(threw).isTrue()
     }
 
     // -----------------------------------------------------------------------
@@ -112,14 +108,9 @@ class IntegrationRepositoryTest {
     fun `removeIntegration rethrows exception when API fails`() = runTest {
         coEvery { integrationAPI.removeIntegration(any(), any()) } throws IOException("Network error")
 
-        var threw = false
-        try {
+        assertFailsWith<IOException> {
             repository.removeIntegration(PROVIDER_FITBIT, emptyMap())
-        } catch (e: IOException) {
-            threw = true
         }
-
-        assertThat(threw).isTrue()
     }
 
     // -----------------------------------------------------------------------

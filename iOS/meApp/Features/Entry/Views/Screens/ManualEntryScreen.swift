@@ -67,7 +67,9 @@ struct ManualEntryScreen: View {
                     BabyEntryView(
                         entryStore: entryStore,
                         focusedField: $focusedField
-                    )
+                    ) {
+                        performTabSwitchAndHideKeyboard()
+                    }
                     .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingLG)
                     .padding(.bottom, keyboard.currentHeight)
@@ -75,7 +77,9 @@ struct ManualEntryScreen: View {
                     BloodPressureEntryView(
                         entryStore: entryStore,
                         focusedField: $focusedField
-                    )
+                    ) {
+                        performTabSwitchAndHideKeyboard()
+                    }
                     .padding(.horizontal, .spacingSM)
                     .padding(.vertical, .spacingLG)
                     .padding(.bottom, keyboard.currentHeight)

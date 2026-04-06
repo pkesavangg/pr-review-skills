@@ -9,6 +9,7 @@ struct BabyEntryView: View {
     @Environment(\.appTheme) private var theme
     @ObservedObject var entryStore: EntryStore
     @Binding var focusedField: FocusField?
+    var onSaveCompleted: (() -> Void)?
 
     private let babyLang = ManualEntryStrings.self
     private let labels = InputFieldLabels.self
@@ -51,7 +52,7 @@ struct BabyEntryView: View {
 
                     if let weightError = entryStore.babyWeightError {
                         Text(weightError)
-                            .fontOpenSans(.subHeading2)
+                            .fontOpenSans(.body4)
                             .foregroundColor(theme.textError)
                             .padding(.leading, .spacingSM)
                             .padding(.top, -20)
@@ -144,10 +145,8 @@ struct BabyEntryView: View {
             ) {
                 Task {
                     focusedField = nil
-                    entryStore.notificationService.showToast(
-                        ToastModel(title: ToastStrings.success, message: ToastStrings.entryAdded)
-                    )
-                    entryStore.resetBabyForm()
+                    await entryStore.saveBabyEntry()
+                    onSaveCompleted?()
                 }
             }
         }

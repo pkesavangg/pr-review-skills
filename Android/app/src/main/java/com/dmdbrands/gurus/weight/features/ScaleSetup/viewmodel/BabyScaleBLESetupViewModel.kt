@@ -19,6 +19,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -54,8 +55,8 @@ constructor(
     lazyInit()
   }
 
-  private suspend fun saveScale() {
-    try {
+  private suspend fun saveScale(): Boolean {
+    return try {
       val scale = discoveredScale
       if (scale != null) {
         val nickname = state.value.nickname
@@ -71,11 +72,17 @@ constructor(
         )
         discoveredScale = updatedScale
         deviceService.saveScale(updatedScale)
+        AppLog.d(TAG, "Baby Scale saved: nickname=$nickname, sku=$sku")
+        true
       } else {
         AppLog.w(TAG, "No discovered Baby Scale to save")
+        false
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
       AppLog.e(TAG, "Error saving Baby Scale", e)
+      false
     }
   }
 
@@ -97,6 +104,8 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
+    AppLog.d(TAG, "Setup finished — saving scale with final nickname: ${state.value.nickname}")
+    saveScale()
   }
 
   override fun onBack() {
@@ -134,6 +143,7 @@ constructor(
   }
 
   override fun onStepChange(step: ScaleSetupStep) {
+    AppLog.d(TAG, "Step: $step")
     viewModelScope.launch {
       when (step) {
         BabyScaleSetupStep.WAKEUP -> wakeUpScale()
@@ -159,21 +169,24 @@ constructor(
     }
 
     try {
+      AppLog.d(TAG, "BLE scan started for baby scale (sku=$sku)")
       ggDeviceService.scanForPairing()
       startObservingDevices { data ->
         viewModelScope.launch {
+          AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
           discoveredScale = Device(
             device = data,
             deviceType = ScaleSetupType.BabyScale.value,
             sku = sku,
           )
           clearBluetoothTimeout()
-          saveScale()
           handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
           delay(2000)
           onNext()
         }
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during BLE scan", e)
       clearBluetoothTimeout()
@@ -198,6 +211,8 @@ constructor(
           }
           handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
         }
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         AppLog.e(TAG, "Error observing permissions", e)
       }

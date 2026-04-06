@@ -107,49 +107,31 @@ struct BabyProfileFormView: View {
                         .cornerRadius(.spacingXS)
 
                     // Birth Length
-                    AppInputField(
+                    MetricInputField(
                         config: TextInputConfig(
                             label: labels.babyBirthLength,
-                            inputType: .number,
+                            inputType: .metric,
                             errorMessage: store.babyProfileForm.getBirthLengthError(),
-                            focusField: .babyBirthLength
+                            focusField: .babyBirthLength,
+                            maxLength: 3,
+                            clearZeroValue: true
                         ),
                         value: $store.babyProfileForm.birthLengthInches.value,
-                        focusedField: focusBinding,
-                        onCommit: {
-                            store.babyProfileForm.birthLengthInches.markAsTouched()
-                            store.babyProfileForm.birthLengthInches.validate()
-                            focusedField = .babyBirthWeight
-                        },
-                        onEditingChanged: { isEditing in
-                            if !isEditing {
-                                store.babyProfileForm.birthLengthInches.markAsTouched()
-                                store.babyProfileForm.birthLengthInches.validate()
-                            }
-                        }
-                    )
+                        focusedField: focusBinding
+                    ) {
+                        store.babyProfileForm.birthLengthInches.markAsTouched()
+                        store.babyProfileForm.birthLengthInches.validate()
+                        focusedField = .babyBirthWeight
+                    }
+                    .padding(.top, .spacingSM)
 
-                    // Birth Weight
-                    AppInputField(
-                        config: TextInputConfig(
-                            label: labels.babyBirthWeight,
-                            inputType: .number,
-                            errorMessage: store.babyProfileForm.getBirthWeightError(),
-                            focusField: .babyBirthWeight
-                        ),
-                        value: $store.babyProfileForm.birthWeightLbs.value,
+                    // Birth Weight (lb + oz) — single compound field
+                    BirthWeightInputField(
+                        lbsValue: $store.babyProfileForm.birthWeightLbs.value,
+                        ozValue: $store.babyProfileForm.birthWeightOz.value,
                         focusedField: focusBinding,
-                        onCommit: {
-                            store.babyProfileForm.birthWeightLbs.markAsTouched()
-                            store.babyProfileForm.birthWeightLbs.validate()
-                            focusedField = nil
-                        },
-                        onEditingChanged: { isEditing in
-                            if !isEditing {
-                                store.babyProfileForm.birthWeightLbs.markAsTouched()
-                                store.babyProfileForm.birthWeightLbs.validate()
-                            }
-                        }
+                        label: lang.birthWeightLabel,
+                        errorMessage: store.babyProfileForm.getBirthWeightError()
                     )
                 }
                 .padding(.top, .spacingLG)

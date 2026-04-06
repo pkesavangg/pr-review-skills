@@ -1,6 +1,6 @@
 ---
 name: review-ui-standards
-description: Audit new/changed SwiftUI views against the project's UI and theme standards — theme token usage (colors, spacing, radii, typography), hardcoded magic numbers, accessibility labels, reusable component patterns, and SwiftUI best practices. Use when reviewing a PR for UI quality, or when the user says "UI review", "check theme usage", "design standards review". Also called automatically by /review-pr.
+description: Audit new/changed SwiftUI views against the project's UI and theme standards — theme token usage (colors, spacing, radii, typography), accessibility labels, reusable components, SwiftUI best practices, state management correctness (ForEach identity, @State/@StateObject), deprecated API patterns (iOS 16+ modernization), and iOS 26+ readiness. Use when reviewing a PR for UI quality, or when the user says "UI review", "check theme usage", "design standards review". Also called automatically by /review-pr.
 ---
 
 Audit new and changed SwiftUI views against the project's UI and theme standards.
@@ -110,15 +110,49 @@ Check if new view files duplicate patterns that already exist:
 
 ---
 
-### 5 — SwiftUI Best Practices
+### 5 — SwiftUI Best Practices & State Management
 
 Check for common SwiftUI issues:
+
+#### 5a — View Composition & Performance
 
 - **Nested vertical ScrollViews** — breaks gesture handling → **FAIL**
 - **`UIScreen.main.bounds`** — deprecated in iOS 16+; use `GeometryReader` → **WARNING**
 - **Object creation in `body`** — expensive objects created on every render → **WARNING**
-- **`@ObservedObject` for owned state** — should be `@StateObject` if the view creates it → **FAIL**
-- **`@StateObject` for injected state** — should be `@ObservedObject` if passed from parent → **WARNING**
+- **Heavy computation in view body** — logic that should be in computed properties → **WARNING**
+- **Multiple expensive operations chained** — suggest extracting to subviews → **WARNING**
+
+#### 5b — ForEach Identity (Critical for List Diffing)
+
+Check all `ForEach` loops in new `+` lines:
+
+- **`ForEach(items, id: \.self)` with mutable/non-Hashable content** → **FAIL**
+  - Only acceptable if items are immutable, Hashable value types (String, Int, UUID)
+  - Flag if items array is mutated or if type is custom non-Hashable class
+- **`ForEach(items.indices)` for dynamic content** → **FAIL**
+  - `.indices` breaks SwiftUI diffing when array content changes
+  - Recommend: explicit `.id()` on items (e.g., `ForEach(items, id: \.id)`)
+- **Missing `.id()` on list items** in dynamic lists → **WARNING**
+  - If items lack a stable identity property, add `.id(item.uuid)` or similar
+- **Constant number of views per ForEach element** — verify each element renders fixed number of children (variable children per element → **WARNING**)
+
+#### 5c — State Management Correctness
+
+- **`@State` properties not marked `private`** → **WARNING**
+  - All `@State` should be `private` unless they're Binding sources
+- **`@StateObject` for injected dependencies** → **FAIL**
+  - Should be `@ObservedObject` if passed from parent
+  - `@StateObject` only for view-owned objects created in `init`
+- **`@ObservedObject` for owned state** → **FAIL**
+  - Should be `@StateObject` if the view creates the object
+  - `@ObservedObject` only for injected dependencies
+- **`@Binding` without parent state update** → **WARNING**
+  - Bindings should only exist when child modifies parent state
+  - Misuse indicates unnecessary coupling
+- **iOS 17+ `@Observable` adoption** → **INFO** (not required, but modern)
+  - For new code: prefer `@Observable` over `@ObservedObject`
+  - Requires `@Bindable` for Binding sources (iOS 17+)
+  - Check: `@Observable` classes paired with `@Bindable` when binding needed
 
 ---
 
@@ -130,6 +164,57 @@ Scan view files for inline string literals in `Text("...")` calls that should be
 - Not acceptable: user-facing labels, descriptions, titles, button text, accessibility labels with prose
 
 Flag as **WARNING** per instance, **FAIL** if >3 in a single file.
+
+---
+
+### 7 — Deprecated API Detection
+
+Check new `+` lines against modern iOS 16+ / 17+ API patterns. Consult latest Apple SwiftUI documentation and this project's patterns.
+
+**Common iOS 16+ modernizations:**
+- `.onAppear { Task { ... } }` — **iOS 17+ preferred** over bare `.onAppear { ... }`
+  - Flag: `.onAppear` doing async work without `Task` wrapper → **WARNING**
+- `Text(.init(item.date, format: .date.abbreviated))` — prefer `.formatted()` → **WARNING**
+- `Image(uiImage:)` with `UIImage(data:)` — consider `AsyncImage` for network loads → **WARNING**
+- `.listStyle(.insetGrouped)` — ensure `ListStyle` is appropriate for iOS version → **INFO**
+
+**Deprecated patterns (iOS 16+ replacements):**
+- `UIActivityViewController` → suggest `ShareLink` (iOS 16+) → **WARNING**
+- `.onReceive(timer)` — consider `Timer.publish().autoconnect()` + `.onReceive()` OR use `Task` with `Clock.sleep()` → **WARNING**
+- `.navigationBarBackButtonHidden(true)` without custom back button → **WARNING** (accessibility risk)
+
+**iOS 17+ only:**
+- `@Observable` classes without `@Bindable` when creating bindings → **WARNING**
+- Phase-based animations (`.phaseAnimation` vs `.animation`) → **INFO** (good pattern, not required)
+- `matchedGeometryEffect` without transition context → **WARNING** (performance issue)
+
+Flag deprecated patterns as **WARNING**. No **FAIL** (not breaking, just outdated).
+
+---
+
+### 8 — iOS 26+ Patterns (Future-Ready)
+
+For views targeting iOS 26+, check for adoption of new patterns:
+
+**Liquid Glass integration:**
+- Views using `.background()` with complex gradients should consider `.liquidGlass()` (iOS 26+) if design allows
+- Fallback with `#available(iOS 26, *)` required
+- Flag: Complex glass morphism without Liquid Glass → **INFO** (optimization opportunity)
+
+**Chart3D patterns (iOS 26+):**
+- If charts are used, verify Swift Charts 3D patterns are adopted
+- Must gate with `#available(iOS 26, *)` 
+- Flag: 3D chart data without Chart3D support → **INFO**
+
+**Animation improvements (iOS 26+):**
+- `@Animatable` macro for custom animatable types → **INFO** (convenience)
+- Keyframe animations (iOS 17+) for sequential effects → **INFO** (consider vs explicit animation)
+
+**Modern layout system (iOS 26+):**
+- New layout primitives (if available) offer better performance
+- Flag: Complex `GeometryReader` + manual layout → **INFO** (check for iOS 26+ alternative)
+
+**Note:** iOS 26+ is future-ready optimization only. Not required; flag as **INFO** suggestions, not blockers.
 
 ---
 
@@ -146,15 +231,28 @@ Flag as **WARNING** per instance, **FAIL** if >3 in a single file.
 | Accessibility | PASS / WARNING / FAIL | … |
 | Reusable Components | PASS / WARNING / N/A | … |
 | SwiftUI Best Practices | PASS / WARNING / FAIL | … |
+| ForEach Identity (Diffing) | PASS / WARNING / FAIL | … |
+| State Management Correctness | PASS / WARNING / FAIL | … |
+| Deprecated API Usage | PASS / WARNING | … |
 | Hardcoded Strings | PASS / WARNING / FAIL | … |
+| iOS 26+ Readiness | PASS / INFO | … |
 
 **UI standards verdict:** PASS / WARNING / FAIL
 
 Findings:
-- [file:line] Value `N` → recommended token/constant and fix
+- [file:line] Description of issue and recommended fix
+
+### Critical Issues Found
+- [file:line] ForEach identity error or state management bug (if any)
+- [file:line] Deprecated API pattern (if any)
+
+### Optimization Suggestions
+- [file:line] iOS 26+ pattern opportunity (if applicable)
 ```
 
 Overall verdict rules:
-- Any **FAIL** → UI standards verdict = FAIL
-- Any **WARNING**, no FAIL → UI standards verdict = WARNING
-- All **PASS** → UI standards verdict = PASS
+- Any **FAIL** (theme, accessibility, ForEach identity, state management) → UI standards verdict = **FAIL**
+- Any **WARNING**, no FAIL → UI standards verdict = **WARNING**
+- All **PASS** → UI standards verdict = **PASS**
+- **INFO** findings (iOS 26+) do not affect verdict (future-ready suggestions only)
+- **Deprecated API WARNING** does not block (non-breaking modernization)
