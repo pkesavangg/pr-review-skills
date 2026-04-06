@@ -683,7 +683,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/dmdbrands/ggBluetoothNativeLibrary";
 			requirement = {
-				branch = "MA-3592-add-baby-scale-support-for-entry-syncing-and-measurement-processing";
+				branch = "dev";
 				kind = branch;
 			};
 		};
@@ -723,7 +723,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/dmdbrands/ggHealthKitPackage";
 			requirement = {
-				branch = "MA-3607-fix-main-actor-isolation-warning-in-apple-health-handler-save-data-with-xcode-26-4";
+				branch = main;
 				kind = branch;
 			};
 		};
