@@ -6,8 +6,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -71,7 +71,7 @@ fun AppProfileAvatar(
         Modifier
     }
 
-    if (!isInfoIcon) {
+  if (!isInfoIcon) {
         val avatarText = text.trim().takeIf { it.isNotEmpty() }?.let { input ->
             var index = 0
             while (index < input.length) {
@@ -101,38 +101,52 @@ fun AppProfileAvatar(
             )
         }
     } else {
-        // Combined "K" + profile icon
+    // Combined name initial letter avatar + profile icon
         Box(
             modifier = modifier
-              .width(size * 1.6f) // adjusted width for better centering
-                .height(size)
+              .width(size * 1.7f)
+              .height(size)
+              .background(MeTheme.colorScheme.primaryBackground)
               .then(gestureModifier),
             contentAlignment = Alignment.Center,
         ) {
             // Profile icon - overlapping on the right (rendered first, lower z-index)
+          Box(
+            modifier = Modifier
+              .align(Alignment.CenterEnd)
+              .size(size)
+              .border(3.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
+              .clip(CircleShape)
+              .background(Color.Transparent),
+            contentAlignment = Alignment.Center,
+          ) {
             AppIcon(
-                id = AppIcons.Default.profile,
-                contentDescription = "Profile",
-                type = AppIconType.Primary,
-                modifier = Modifier
-                  .align(Alignment.CenterEnd)
-                  .size(size),
+              id = AppIcons.Filled.Profile,
+              contentDescription = "Profile",
+              type = AppIconType.Primary,
+              modifier = Modifier
+                .padding(start = 2.dp)
+                .align(Alignment.Center)
+                .size(24.dp),
             )
+          }
 
-            // Letter box - positioned on the left (rendered second, higher z-index)
+          // Letter box - positioned on the left (rendered second, higher z-index)
+          // Border extends outward in Figma (node 7453:121594), so size includes border
             Box(
                 modifier = Modifier
                   .align(Alignment.CenterStart)
-                  .size(size / 1.06f)
-                  .border(3.dp, MeTheme.colorScheme.inverseAction, CircleShape)
+                  .size(size)
                   .clip(CircleShape)
-                  .background(backgroundColor),
+                  .background(backgroundColor)
+                  .padding(3.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = text.firstOrNull()?.uppercase() ?: "",
-                    style = MeTheme.typography.heading4,
-                    color = textColor,
+                  text = text.firstOrNull()?.uppercase() ?: "",
+                  style = MeTheme.typography.heading4,
+                  color = textColor,
+                  modifier = Modifier.padding(0.dp),
                 )
             }
         }
@@ -153,6 +167,20 @@ fun AppProfileImagePreview() {
             }
         }
     }
+}
+
+@PreviewTheme
+@Composable
+fun AppProfileInfoIconPreview() {
+  MeAppTheme {
+    AppProfileAvatar(
+      text = "Kevin",
+      size = 100.dp,
+      isInfoIcon = true,
+      isActive = true,
+      enabled = true,
+    )
+  }
 }
 
 private fun String.isEmoji(): Boolean {
