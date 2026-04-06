@@ -249,25 +249,20 @@ class DashboardSnapshotViewModel @Inject constructor(
       val startTimestamp = GraphUtil.getStartRange(segment = GraphSegment.WEEK, startX)
       val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
 
-      // Compute percentile lines (p5, p50, p95) for the chart X range
-      val birthDate = profile.birthDate
-      val daysSinceBirth = if (birthDate != null) {
-        xValues.map { x ->
-          ((x.toLong() - birthDate) / (1000 * 60 * 60 * 24)).toInt().coerceAtLeast(0)
-        }
+      // Percentile curves with their own dense X timestamps
+      val pSeries = if (profile.birthDate != null) {
+        BabyPercentileHelper.getPercentileSeries(
+          sex = profile.biologicalSex,
+          birthDateMillis = profile.birthDate,
+          visibleMinX = xValues.min(),
+          visibleMaxX = xValues.max(),
+        )
       } else null
 
-      val percentileLines = if (daysSinceBirth != null) {
-        BabyPercentileHelper.getPercentileLines(profile.biologicalSex, daysSinceBirth)
-      } else emptyMap()
-
-      // Convert percentile decigrams to lbs
-      val p5 = percentileLines["p5"]?.map { it / 283.495 / 16.0 }
-      val p50 = percentileLines["p50"]?.map { it / 283.495 / 16.0 }
-      val p95 = percentileLines["p95"]?.map { it / 283.495 / 16.0 }
-
       // Include percentile values in Y range so they're visible
-      val allYValues = yValues + (p5 ?: emptyList()) + (p95 ?: emptyList())
+      val allYValues = yValues +
+        (pSeries?.p5 ?: emptyList()) +
+        (pSeries?.p95 ?: emptyList())
       val graphMeta = generateNiceScale(
         minValue = allYValues.min(),
         maxValue = allYValues.max(),
@@ -294,10 +289,11 @@ class DashboardSnapshotViewModel @Inject constructor(
         producer.runTransaction {
           lineSeries {
             series(x = xValues, y = yValues)
-            if (p50 != null && p50.size == xValues.size) {
-              if (p95 != null) series(x = xValues, y = p95)
-              series(x = xValues, y = p50)
-              if (p5 != null) series(x = xValues, y = p5)
+            // Percentile lines with their own X values (dense, from birth date)
+            if (pSeries != null) {
+              series(x = pSeries.xTimestamps, y = pSeries.p95)
+              series(x = pSeries.xTimestamps, y = pSeries.p50)
+              series(x = pSeries.xTimestamps, y = pSeries.p5)
             }
           }
         }

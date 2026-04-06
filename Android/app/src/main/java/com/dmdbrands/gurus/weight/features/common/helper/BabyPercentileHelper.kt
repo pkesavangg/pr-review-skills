@@ -31,35 +31,55 @@ object BabyPercentileHelper {
         if (girlData == null) girlData = parseCsv(context, R.raw.girl_weight_percentiles)
     }
 
+    data class PercentileSeries(
+        val xTimestamps: List<Double>,
+        val p5: List<Double>,
+        val p50: List<Double>,
+        val p95: List<Double>,
+    )
+
     /**
-     * Returns interpolated percentile values for given days since birth.
+     * Returns full percentile curves as timestamp-keyed series.
+     * Filters to the visible X range and converts decigrams to lbs.
      * @param sex "male" or "female"
-     * @param daysSinceBirth list of days to look up
-     * @return map of percentile key ("p50", "p5", etc.) to list of values in decigrams
+     * @param birthDateMillis baby's birth date in millis
+     * @param visibleMinX visible chart start timestamp
+     * @param visibleMaxX visible chart end timestamp
      */
-    fun getPercentileLines(
+    fun getPercentileSeries(
         sex: String?,
-        daysSinceBirth: List<Int>,
-    ): Map<String, List<Double>> {
+        birthDateMillis: Long,
+        visibleMinX: Double,
+        visibleMaxX: Double,
+    ): PercentileSeries? {
         val data = when (sex?.lowercase()) {
             "male" -> boyData
             "female" -> girlData
             else -> null
-        } ?: return emptyMap()
+        } ?: return null
 
-        val keys = listOf("p5", "p50", "p95")
-        val result = keys.associateWith { mutableListOf<Double>() }
+        val dayMs = 86_400_000L
+        val xTimestamps = mutableListOf<Double>()
+        val p5 = mutableListOf<Double>()
+        val p50 = mutableListOf<Double>()
+        val p95 = mutableListOf<Double>()
 
-        for (day in daysSinceBirth) {
-            val row = interpolateRow(data, day)
-            if (row != null) {
-                result["p5"]?.add(row.p5)
-                result["p50"]?.add(row.p50)
-                result["p95"]?.add(row.p95)
-            }
+        // Expand range slightly for smooth curve edges
+        val paddedMin = visibleMinX - 2 * dayMs
+        val paddedMax = visibleMaxX + 2 * dayMs
+
+        for (row in data) {
+            val timestamp = (birthDateMillis + row.day.toLong() * dayMs).toDouble()
+            if (timestamp < paddedMin) continue
+            if (timestamp > paddedMax) break
+
+            xTimestamps.add(timestamp)
+            p5.add(row.p5 / 283.495 / 16.0)   // decigrams to lbs
+            p50.add(row.p50 / 283.495 / 16.0)
+            p95.add(row.p95 / 283.495 / 16.0)
         }
 
-        return result
+        return if (xTimestamps.isNotEmpty()) PercentileSeries(xTimestamps, p5, p50, p95) else null
     }
 
     private fun interpolateRow(data: List<PercentileRow>, day: Int): PercentileRow? {
