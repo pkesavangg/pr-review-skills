@@ -3,6 +3,9 @@ package com.dmdbrands.gurus.weight.app.viewmodel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -258,6 +261,52 @@ class AppViewModelTest {
         advanceUntilIdle()
 
         verify { dialogQueueService.clear() }
+    }
+
+    @Test
+    fun `OnPopUpConnect with baby scale SKU navigates to BabyScaleSetup with WAKEUP step`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Set private sku field to a baby scale SKU
+        AppViewModel::class.java.getDeclaredField("sku").apply {
+            isAccessible = true
+            set(viewModel, SKU_0220)
+        }
+
+        viewModel.handleIntent(AppIntent.OnPopUpConnect)
+        advanceUntilIdle()
+
+        coVerify {
+            navigationService.navigateTo(
+                match<AppRoute.ScaleSetup.BabyScaleSetup> {
+                    it.sku == SKU_0220 && it.initialStep == BabyScaleSetupStep.WAKEUP
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `OnPopUpConnect with LCBT SKU navigates to LcbtScaleSetup`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val lcbtSku = "0500"
+        AppViewModel::class.java.getDeclaredField("sku").apply {
+            isAccessible = true
+            set(viewModel, lcbtSku)
+        }
+
+        viewModel.handleIntent(AppIntent.OnPopUpConnect)
+        advanceUntilIdle()
+
+        coVerify {
+            navigationService.navigateTo(
+                match<AppRoute.ScaleSetup.LcbtScaleSetup> {
+                    it.sku == lcbtSku && it.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH
+                },
+            )
+        }
     }
 
     // -------------------------------------------------------------------------

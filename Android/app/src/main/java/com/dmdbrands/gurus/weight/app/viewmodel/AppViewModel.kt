@@ -574,7 +574,7 @@ constructor(
 
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
-              val shouldShow = if (deviceSku == "0412") {
+              val shouldShow = if (deviceSku == SKU_0412) {
                 val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
                 isAllow
               } else {
@@ -602,12 +602,12 @@ constructor(
                   DeviceHelper.isBabyScale(deviceSku) -> Device(
                     device = data,
                     deviceType = ScaleSetupType.BabyScale.value,
-                    sku = sku,
+                    sku = deviceSku,
                   )
                   else -> Device(
                     device = data,
                     deviceType = ScaleSetupType.Lcbt.value,
-                    sku = sku,
+                    sku = deviceSku,
                   )
                 }
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)

@@ -152,10 +152,23 @@ constructor(
     }
   }
 
-  /**
-   * Starts BLE scan for baby scale. When device is found, saves it and advances to SCALE_NAME.
-   * Handles like A6 scale — scan + connect in one step.
-   */
+  // TODO: Remove mock methods and restore real BLE when scale connection is ready
+  private fun mockWakeUpScale() {
+    AppLog.d(TAG, "Mock: Starting wake up scale process")
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    discoveredScale = Device(
+      device = null,
+      deviceType = ScaleSetupType.BabyScale.value,
+      sku = sku,
+    )
+    viewModelScope.launch {
+      delay(3000)
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+      delay(1000)
+      onNext()
+    }
+  }
+
   private fun wakeUpScale() {
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     clearBluetoothTimeout()
@@ -173,16 +186,24 @@ constructor(
       ggDeviceService.scanForPairing()
       startObservingDevices { data ->
         viewModelScope.launch {
-          AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
-          discoveredScale = Device(
-            device = data,
-            deviceType = ScaleSetupType.BabyScale.value,
-            sku = sku,
-          )
-          clearBluetoothTimeout()
-          handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-          delay(2000)
-          onNext()
+          try {
+            AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
+            discoveredScale = Device(
+              device = data,
+              deviceType = ScaleSetupType.BabyScale.value,
+              sku = sku,
+            )
+            clearBluetoothTimeout()
+            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+            delay(2000)
+            onNext()
+          } catch (e: CancellationException) {
+            throw e
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Error processing discovered device", e)
+            clearBluetoothTimeout()
+            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
+          }
         }
       }
     } catch (e: CancellationException) {
