@@ -39,7 +39,7 @@ data class DashboardState(
   val isRefreshing: Boolean = false,
   val weightless: Weightless? = null,
   val isConsuming: Boolean = false,
-  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS
+  val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS,
 ) : IReducer.State
 
 /**
