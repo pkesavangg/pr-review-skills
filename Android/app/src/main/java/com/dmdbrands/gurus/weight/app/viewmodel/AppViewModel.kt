@@ -602,12 +602,12 @@ constructor(
                   DeviceHelper.isBabyScale(deviceSku) -> Device(
                     device = data,
                     deviceType = ScaleSetupType.BabyScale.value,
-                    sku = sku,
+                    sku = deviceSku,
                   )
                   else -> Device(
                     device = data,
                     deviceType = ScaleSetupType.Lcbt.value,
-                    sku = sku,
+                    sku = deviceSku,
                   )
                 }
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
