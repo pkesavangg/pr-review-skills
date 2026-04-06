@@ -152,10 +152,23 @@ constructor(
     }
   }
 
-  /**
-   * Starts BLE scan for baby scale. When device is found, saves it and advances to SCALE_NAME.
-   * Handles like A6 scale — scan + connect in one step.
-   */
+  // TODO: Remove mock methods and restore real BLE when scale connection is ready
+  private fun mockWakeUpScale() {
+    AppLog.d(TAG, "Mock: Starting wake up scale process")
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    discoveredScale = Device(
+      device = null,
+      deviceType = ScaleSetupType.BabyScale.value,
+      sku = sku,
+    )
+    viewModelScope.launch {
+      delay(3000)
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+      delay(1000)
+      onNext()
+    }
+  }
+
   private fun wakeUpScale() {
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     clearBluetoothTimeout()
