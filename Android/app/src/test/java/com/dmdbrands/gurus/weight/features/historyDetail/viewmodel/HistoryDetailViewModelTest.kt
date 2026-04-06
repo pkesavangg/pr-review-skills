@@ -3,9 +3,14 @@ package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -41,20 +46,29 @@ class HistoryDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @MockK(relaxUnitFun = true)
+    lateinit var accountService: IAccountService
+
+    @MockK(relaxUnitFun = true)
     lateinit var entryService: IEntryService
 
     @MockK(relaxUnitFun = true)
     lateinit var healthConnectService: IHealthConnectService
 
+    @MockK(relaxUnitFun = true)
+    lateinit var historyService: IHistoryService
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var viewModel: HistoryDetailViewModel
+
+    private val activeAccountFlow = MutableStateFlow<Account?>(null)
 
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
+        every { accountService.activeAccount } returns activeAccountFlow
     }
 
     private fun createViewModel(
@@ -63,8 +77,10 @@ class HistoryDetailViewModelTest {
     ): HistoryDetailViewModel {
         coEvery { entryService.monthDetails(month) } returns flowOf(entries)
         return HistoryDetailViewModel(
+            accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -452,8 +468,10 @@ class HistoryDetailViewModelTest {
         coEvery { entryService.monthDetails(TEST_MONTH) } returns entriesFlow
 
         viewModel = HistoryDetailViewModel(
+            accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -490,8 +508,10 @@ class HistoryDetailViewModelTest {
         coEvery { entryService.monthDetails(any()) } returns entriesFlow
 
         viewModel = HistoryDetailViewModel(
+            accountService = accountService,
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(

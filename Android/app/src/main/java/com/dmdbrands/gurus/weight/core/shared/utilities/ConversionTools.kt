@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.core.shared.utilities
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.round
 
 /**
@@ -111,6 +112,21 @@ object ConversionTools {
   private const val DECIGRAMS_PER_OZ = 283.495
   private const val OZ_PER_LB = 16
   private const val MM_PER_INCH = 25.4
+  private const val DECIGRAMS_PER_KG = 10_000.0
+  private const val DECIGRAMS_PER_GRAM = 10.0
+  private const val MM_PER_CM = 10.0
+
+  // Baby scale graduation thresholds (in grams, matching babyApp)
+  private const val GRADUATION_THRESHOLD_18_LB_GRAMS = 8165
+  private const val GRADUATION_THRESHOLD_25_LB_GRAMS = 11340
+
+  // Conversion factors per SKU
+  private const val GRAMS_TO_LBS_FACTOR_0220 = 2.2046
+  private const val GRAMS_TO_LBS_FACTOR_0222 = 2.204623
+  private const val CALIBRATION_NUMERATOR_0222 = 369874.0
+  private const val CALIBRATION_DENOMINATOR_0222 = 1048576.0
+
+  // ---- Imperial display (existing) ----
 
   /**
    * Converts baby weight from decigrams to pounds (whole number).
@@ -135,6 +151,219 @@ object ConversionTools {
    */
   fun convertMmToInches(millimeters: Int): Double =
       round(millimeters / MM_PER_INCH * 10.0) / 10.0
+
+  // ---- Metric display ----
+
+  /**
+   * Converts baby weight from decigrams to kilograms (2 decimal places).
+   * @param decigrams Weight in decigrams
+   * @return Weight in kilograms
+   */
+  fun convertDecigramsToKg(decigrams: Int): Double =
+      round(decigrams / DECIGRAMS_PER_KG * 100.0) / 100.0
+
+  /**
+   * Converts baby weight from decigrams to grams (1 decimal place).
+   * @param decigrams Weight in decigrams
+   * @return Weight in grams
+   */
+  fun convertDecigramsToGrams(decigrams: Int): Double =
+      round(decigrams / DECIGRAMS_PER_GRAM * 10.0) / 10.0
+
+  /**
+   * Converts baby length from millimeters to centimeters (1 decimal place).
+   * @param millimeters Length in millimeters
+   * @return Length in centimeters
+   */
+  fun convertMmToCm(millimeters: Int): Double =
+      round(millimeters / MM_PER_CM * 10.0) / 10.0
+
+  // ---- Reverse / save conversions ----
+
+  /**
+   * Converts lb + oz input to decigrams for storage.
+   * @param lbs Whole pounds
+   * @param oz Ounces (fractional)
+   * @return Weight in decigrams
+   */
+  fun convertLbOzToDecigrams(lbs: Int, oz: Double): Int {
+    val totalOz = (lbs * OZ_PER_LB) + oz
+    return round(totalOz * DECIGRAMS_PER_OZ).toInt()
+  }
+
+  /**
+   * Converts kilograms to decigrams for storage.
+   * @param kg Weight in kilograms
+   * @return Weight in decigrams
+   */
+  fun convertKgToDecigrams(kg: Double): Int =
+      round(kg * DECIGRAMS_PER_KG).toInt()
+
+  /**
+   * Converts inches to millimeters for storage.
+   * @param inches Length in inches
+   * @return Length in millimeters
+   */
+  fun convertInchesToMm(inches: Double): Int =
+      round(inches * MM_PER_INCH).toInt()
+
+  /**
+   * Converts centimeters to millimeters for storage.
+   * @param cm Length in centimeters
+   * @return Length in millimeters
+   */
+  fun convertCmToMm(cm: Double): Int =
+      round(cm * MM_PER_CM).toInt()
+
+  // ========== Baby Scale SKU 0220 Graduation ==========
+
+  /**
+   * Converts decigrams to kg with 0220 scale graduation rounding.
+   * <18 lb → 5 g steps, 18–25 lb → 10 g steps, ≥25 lb → 50 g steps.
+   */
+  fun convert0220DecigramsToKg(decigrams: Int): Double {
+    val grams = decigrams / DECIGRAMS_PER_GRAM
+    return when {
+      grams >= GRADUATION_THRESHOLD_25_LB_GRAMS -> (round(grams / 50) * 50) / 1000.0
+      grams >= GRADUATION_THRESHOLD_18_LB_GRAMS -> round(grams / 10) / 100.0
+      else -> (round(grams / 5) * 5) / 1000.0
+    }
+  }
+
+  /**
+   * Converts decigrams to decimal lbs with 0220 scale graduation rounding.
+   * <18 lb → 0.01 lb, 18–25 lb → 0.02 lb, ≥25 lb → 0.1 lb.
+   */
+  fun convert0220DecigramsToLbDecimal(decigrams: Int): Double {
+    val grams = decigrams / DECIGRAMS_PER_GRAM
+    val unroundedLbs = (grams / 1000.0) * GRAMS_TO_LBS_FACTOR_0220
+    return when {
+      grams >= GRADUATION_THRESHOLD_25_LB_GRAMS ->
+        round(unroundedLbs * 10.0) / 10.0
+      grams >= GRADUATION_THRESHOLD_18_LB_GRAMS ->
+        round(unroundedLbs / 2.0 * 100.0) / 100.0 * 2.0
+      else ->
+        round(unroundedLbs * 100.0) / 100.0
+    }
+  }
+
+  /**
+   * Converts decigrams to [lbs, oz] with 0220 scale graduation rounding.
+   * <18 lb → 0.1 oz, 18–25 lb → 0.2 oz, ≥25 lb → 2 oz.
+   * @return Pair(pounds, ounces)
+   */
+  fun convert0220DecigramsToLbOz(decigrams: Int): Pair<Int, Double> {
+    val grams = decigrams / DECIGRAMS_PER_GRAM
+    val totalOz = when {
+      grams >= GRADUATION_THRESHOLD_25_LB_GRAMS ->
+        round(grams / 2.0 / 28.35) * 2.0
+      grams >= GRADUATION_THRESHOLD_18_LB_GRAMS ->
+        round(grams * 5.0 / 28.35) / 5.0
+      else ->
+        round(grams / 28.35 * 10.0) / 10.0
+    }
+    val lbs = (totalOz / OZ_PER_LB).toInt()
+    val oz = if (lbs > 0) round((totalOz % OZ_PER_LB) * 10.0) / 10.0 else round(totalOz * 10.0) / 10.0
+    return Pair(lbs, oz)
+  }
+
+  // ========== Baby Scale SKU 0222 Graduation ==========
+
+  /**
+   * Converts decigrams to decimal lbs with 0222 scale graduation rounding.
+   * Uses precise 2.204623 conversion factor.
+   */
+  fun convert0222DecigramsToLbDecimal(decigrams: Int): Double {
+    val grams = decigrams / DECIGRAMS_PER_GRAM
+    val unroundedLbs = (grams / 1000.0) * GRAMS_TO_LBS_FACTOR_0222
+    return when {
+      grams >= GRADUATION_THRESHOLD_25_LB_GRAMS ->
+        round(unroundedLbs * 10.0) / 10.0
+      grams >= GRADUATION_THRESHOLD_18_LB_GRAMS ->
+        round(unroundedLbs / 2.0 * 100.0) / 100.0 * 2.0
+      else ->
+        round(unroundedLbs * 100.0) / 100.0
+    }
+  }
+
+  /**
+   * Converts decigrams to [lbs, oz] with 0222 scale manufacturer calibration formula.
+   * Uses Transtek transmission formula: weight * 369874 / 1048576.
+   * @return Pair(pounds, ounces)
+   */
+  fun convert0222DecigramsToLbOz(decigrams: Int): Pair<Int, Double> {
+    val transmissionWeight = decigrams / DECIGRAMS_PER_GRAM
+    val converted = round(transmissionWeight * CALIBRATION_NUMERATOR_0222 / CALIBRATION_DENOMINATOR_0222)
+    val lbs = (converted / 160).toInt()
+    val rawOz = converted - (lbs * 160)
+
+    val indexing = when {
+      transmissionWeight >= GRADUATION_THRESHOLD_25_LB_GRAMS -> 50
+      transmissionWeight >= GRADUATION_THRESHOLD_18_LB_GRAMS -> 10
+      else -> 5
+    }
+
+    val adjustedOz = when (indexing) {
+      50 -> round(rawOz / 20) * 20 / 10.0
+      10 -> round(rawOz / 2) * 2 / 10.0
+      else -> round(rawOz * 10.0 / 10.0) / 10.0
+    }
+    return Pair(lbs, round(adjustedOz * 10.0) / 10.0)
+  }
+
+  // ========== Baby Source-Aware Router ==========
+
+  /**
+   * Routes baby weight conversion based on scale source (SKU) and user unit preference.
+   * For scale entries (0220/0222), applies graduation rounding.
+   * For manual entries, uses simple conversion.
+   *
+   * @param decigrams Raw weight in decigrams
+   * @param source Entry source (e.g., "0220", "0222", "manual")
+   * @param isMetric Whether user prefers metric units
+   * @return Pair(pounds, ounces) for imperial or Pair(kg-whole, kg-fraction) for metric
+   */
+  fun convertBabyWeightToDisplay(decigrams: Int, source: String?, isMetric: Boolean): String {
+    if (source != null && (source.contains("0220") || source.contains("0222"))) {
+      return if (isMetric) {
+        val kg = convert0220DecigramsToKg(decigrams)
+        formatKg(kg)
+      } else {
+        val (lbs, oz) = if (source.contains("0222")) {
+          convert0222DecigramsToLbOz(decigrams)
+        } else {
+          convert0220DecigramsToLbOz(decigrams)
+        }
+        formatLbOz(lbs, oz)
+      }
+    }
+    // Manual or unknown source — simple conversion
+    return if (isMetric) {
+      formatKg(convertDecigramsToKg(decigrams))
+    } else {
+      formatLbOz(convertDecigramsToLb(decigrams), convertDecigramsToOz(decigrams))
+    }
+  }
+
+  /**
+   * Routes baby length conversion based on user unit preference.
+   * @param millimeters Raw length in millimeters
+   * @param isMetric Whether user prefers metric units
+   * @return Formatted length string
+   */
+  fun convertBabyLengthToDisplay(millimeters: Int, isMetric: Boolean): String {
+    return if (isMetric) {
+      "${String.format(Locale.US, "%.1f", convertMmToCm(millimeters))} cm"
+    } else {
+      "${String.format(Locale.US, "%.0f", convertMmToInches(millimeters))} in"
+    }
+  }
+
+  private fun formatLbOz(lbs: Int, oz: Double): String =
+      "$lbs lbs ${String.format(Locale.US, "%.1f", oz)} oz"
+
+  private fun formatKg(kg: Double): String =
+      "${String.format(Locale.US, "%.2f", kg)} kg"
 
   // ========== BMI Calculations ==========
 

@@ -51,6 +51,7 @@ fun HistoryDetailScreen(
     HistoryDetailScreenContent(
         state = state,
         productType = productType,
+        isMetric = viewModel.isMetric,
         isRefreshing = isRefreshing,
         onRefresh = { viewModel.handleIntent(HistoryDetailIntent.Refresh) },
         handleIntent = viewModel::handleIntent,
@@ -62,6 +63,7 @@ fun HistoryDetailScreenContent(
     state: HistoryDetailState,
     productType: ProductType =
         ProductType.MY_WEIGHT,
+    isMetric: Boolean = false,
     isRefreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     handleIntent: (HistoryDetailIntent) -> Unit,
@@ -105,6 +107,7 @@ fun HistoryDetailScreenContent(
                         ProductType.BABY -> {
                             BabyDayHistoryList(
                                 entries = state.historyItems.filterIsInstance<BabyEntry>(),
+                                isMetric = isMetric,
                             )
                         }
                         else -> {

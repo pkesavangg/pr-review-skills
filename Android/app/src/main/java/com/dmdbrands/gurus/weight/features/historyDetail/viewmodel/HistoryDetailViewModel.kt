@@ -5,9 +5,11 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -22,12 +24,16 @@ import kotlinx.coroutines.launch
     assistedFactory = HistoryDetailViewModel.Factory::class,
 )
 class HistoryDetailViewModel @AssistedInject constructor(
+    private val accountService: IAccountService,
     private val entryService: IEntryService,
     private val healthConnectService: IHealthConnectService,
     private val historyService: IHistoryService,
     @Assisted val month: String,
     @Assisted val productType: ProductType,
 ) : BaseIntentViewModel<HistoryDetailState, HistoryDetailIntent>(HistoryDetailReducer()) {
+
+    val isMetric: Boolean
+        get() = accountService.activeAccount.value?.isMetricUnit() ?: false
 
     @AssistedFactory
     interface Factory {
