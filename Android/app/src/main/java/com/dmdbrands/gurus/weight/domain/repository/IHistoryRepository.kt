@@ -41,6 +41,9 @@ interface IHistoryRepository {
     fun getBpmMonthlyGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
     fun getBpmDailyGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
 
+    // BPM Snapshot (Dashboard mini-chart)
+    fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
+
     // Baby Graph
     fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
     fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>

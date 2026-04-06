@@ -1,7 +1,9 @@
 package com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
@@ -29,13 +31,16 @@ class DashboardSnapshotViewModel @Inject constructor(
 ) {
 
   val weightModelProducer = CartesianChartModelProducer()
+  val bpModelProducer = CartesianChartModelProducer()
   private var weightGraphJob: Job? = null
+  private var bpGraphJob: Job? = null
 
   override fun provideInitialState() = DashboardSnapshotState(isLoading = true)
 
   override fun onDependenciesReady() {
     observeWeightUnit()
     loadWeightGraph()
+    loadBpGraph()
   }
 
   private fun observeWeightUnit() {
@@ -113,6 +118,76 @@ class DashboardSnapshotViewModel @Inject constructor(
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to update weight chart model", e)
+      }
+    }
+  }
+
+  private fun loadBpGraph() {
+    bpGraphJob?.cancel()
+    bpGraphJob = viewModelScope.launch {
+      historyService.getBpmSnapshotGraphData()
+        .catch { e ->
+          AppLog.e(TAG, "Failed to load BP graph data", e)
+        }
+        .collect { points ->
+          updateBpChart(points)
+        }
+    }
+  }
+
+  private suspend fun updateBpChart(points: List<PeriodBpmSummary>) {
+    if (points.isEmpty()) {
+      handleIntent(DashboardSnapshotIntent.SetBpChart(SnapshotChartData(label = "—")))
+      return
+    }
+
+    val sorted = points.sortedBy { it.entryTimestamp }
+    val avgSystolic = sorted.map { it.avgSystolic }.average().toInt()
+    val avgDiastolic = sorted.map { it.avgDiastolic }.average().toInt()
+    val avgPulse = sorted.map { it.avgPulse }.average().toInt()
+
+    val xValues = sorted.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() }
+    val systolicValues = sorted.map { it.avgSystolic.toDouble() }
+    val diastolicValues = sorted.map { it.avgDiastolic.toDouble() }
+
+    if (xValues.isNotEmpty()) {
+      val allYValues = systolicValues + diastolicValues
+      val graphMeta = generateNiceScale(
+        minValue = allYValues.min(),
+        maxValue = allYValues.max(),
+        goalWeight = 0.0,
+        targetTickCount = 4,
+      )
+      val endX = xValues.max().toLong()
+      val startX = xValues.min().toLong()
+      val startTimestamp = GraphUtil.getStartRange(segment = GraphSegment.WEEK, startX)
+      val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
+
+      handleIntent(
+        DashboardSnapshotIntent.SetBpChart(
+          SnapshotChartData(
+            label = "$avgSystolic/$avgDiastolic",
+            secondaryLabel = "$avgPulse",
+            yStep = graphMeta.step,
+            yMin = graphMeta.min,
+            yMax = graphMeta.max,
+            startTimestamp = startTimestamp,
+            endTimestamp = endTimestamp,
+          ),
+        ),
+      )
+
+      try {
+        bpModelProducer.runTransaction {
+          lineSeries {
+            series(x = xValues, y = systolicValues)
+          }
+          lineSeries {
+            series(x = xValues, y = diastolicValues)
+          }
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to update BP chart model", e)
       }
     }
   }

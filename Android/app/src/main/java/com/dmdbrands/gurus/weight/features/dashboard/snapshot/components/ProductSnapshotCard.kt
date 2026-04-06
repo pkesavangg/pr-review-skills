@@ -82,9 +82,13 @@ fun WeightSnapshotCard(
 
 @Composable
 fun BpSnapshotCard(
+    viewModel: DashboardSnapshotViewModel,
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val state by viewModel.state.collectAsState()
+    val chart = state.bp
+
     SnapshotCardContainer(modifier = modifier, onTap = onTap) {
         Row {
             Text(
@@ -104,23 +108,34 @@ fun BpSnapshotCard(
 
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
-                text = DashboardSnapshotStrings.PlaceholderDash,
+                text = chart.label.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
                 color = SnapshotColors.BloodPressure,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = DashboardSnapshotStrings.PlaceholderDash,
+                text = chart.secondaryLabel.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
                 color = MeTheme.colorScheme.textSubheading,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
         }
 
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+        Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        PlaceholderGraphBox(text = "BP graph coming soon")
+        if (chart.startTimestamp != null && chart.endTimestamp != null) {
+            SnapshotLineChart(
+                modelProducer = viewModel.bpModelProducer,
+                lineColor = SnapshotColors.BloodPressure,
+                startTimestamp = chart.startTimestamp,
+                endTimestamp = chart.endTimestamp,
+                yStep = chart.yStep,
+                yMin = chart.yMin,
+                yMax = chart.yMax,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
@@ -156,6 +171,6 @@ fun BabySnapshotCard(
 @Composable
 private fun BpSnapshotCardPreview() {
     MeAppTheme {
-        BpSnapshotCard(onTap = {})
+        BpSnapshotCard(viewModel = hiltViewModel(), onTap = {})
     }
 }

@@ -77,6 +77,7 @@ fun DashboardSnapshotScreen(
           )
 
           is ProductSelection.BloodPressure -> BpSnapshotCard(
+            viewModel = viewModel,
             onTap = {
               scope.launch {
                 viewModel.productSelectionManager.selectProduct(product)

@@ -115,6 +115,13 @@ class HistoryRepository @Inject constructor(
         historyDao.getBpmDailyGraphData(accountId)
 
     // ---------------------------------------------------------------------------
+    // BPM Snapshot (Dashboard mini-chart)
+    // ---------------------------------------------------------------------------
+
+    override fun getBpmSnapshotGraphData(accountId: String): Flow<List<PeriodBpmSummary>> =
+        historyDao.getBpmSnapshotGraphData(accountId)
+
+    // ---------------------------------------------------------------------------
     // Baby Graph
     // ---------------------------------------------------------------------------
 
