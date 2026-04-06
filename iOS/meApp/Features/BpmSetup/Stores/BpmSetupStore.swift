@@ -74,6 +74,14 @@ final class BpmSetupStore: ObservableObject {
         return a6BpmSkus.contains(sku)
     }
 
+    /// The BLE protocol type expected for the selected SKU.
+    private var expectedProtocolType: ProtocolType? {
+        guard let sku = selectedSku else { return nil }
+        if a6BpmSkus.contains(sku) { return .A6 }
+        if a3BpmSkus.contains(sku) { return .A3 }
+        return nil
+    }
+
     private let tag = "BpmSetupStore"
     private let scanTimeoutNs: UInt64
     private let stepTransitionDelayNs: UInt64
@@ -367,6 +375,16 @@ final class BpmSetupStore: ObservableObject {
     private func handleDeviceDiscovery(_ event: DeviceDiscoveryEvent) {
         guard currentStep == .scanning else { return }
         guard event.deviceInfo.setupType == .bpm else { return }
+
+        // Only accept devices whose protocol matches the selected SKU (A3 vs A6).
+        // Mismatched devices are silently ignored so scanning continues.
+        guard event.protocolType == expectedProtocolType else {
+            LoggerService.shared.log(
+                level: .info, tag: tag,
+                message: "Ignoring BPM device — protocol \(event.protocolType) does not match expected \(String(describing: expectedProtocolType))"
+            )
+            return
+        }
 
         deviceDiscoveryCancellable?.cancel()
         scanTimerTask?.cancel()
