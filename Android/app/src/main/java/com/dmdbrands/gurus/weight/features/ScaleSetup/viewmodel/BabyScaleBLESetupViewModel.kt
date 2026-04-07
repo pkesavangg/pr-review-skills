@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
@@ -102,6 +101,7 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
+    saveScale()
   }
 
   override fun onBack() {
@@ -147,7 +147,7 @@ constructor(
     AppLog.d(TAG, "Step changed to: $step")
     viewModelScope.launch {
       when (step) {
-        BabyScaleSetupStep.WAKEUP -> if (BuildConfig.DEBUG) mockWakeUpScale() else wakeUpScale()
+        BabyScaleSetupStep.WAKEUP -> if (MOCK_BLE) mockWakeUpScale() else wakeUpScale()
         else -> AppLog.d(TAG, "No specific action for step: $step")
       }
     }
@@ -233,5 +233,7 @@ constructor(
 
   companion object {
     private const val TAG = "BabyScaleBLESetupVM"
+    // Toggle manually for local dev testing — must be false before merge
+    private const val MOCK_BLE = false
   }
 }
