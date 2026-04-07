@@ -114,11 +114,11 @@ fun SnapshotLineChart(
     rangeProvider = rangeProvider,
   )
 
-  // Secondary layer for percentile bands
+  // Secondary layer (behind) — thin lines, no dots, alpha. Same X values, same range.
   val secondaryLayer = if (secondaryLayerColor != null) {
     val secLine = LineCartesianLayer.rememberLine(
       fill = LineCartesianLayer.LineFill.single(Fill(secondaryLayerColor.copy(alpha = 0.5f))),
-      stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
+      stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 1.5.dp),
       interpolator = LineCartesianLayer.Interpolator.cubic(1f),
     )
     rememberLineCartesianLayer(
@@ -141,7 +141,7 @@ fun SnapshotLineChart(
       line = rememberAxisLineComponent(fill = Fill(lineStyle), thickness = 1.dp),
       guideline = null,
       tick = null,
-      size = BaseAxis.Size.Scroll(0.dp, isLabelsScrollable = true),
+      size = BaseAxis.Size.Scroll(8.dp, isLabelsScrollable = true),
       tickLength = 0.dp,
     ),
     endAxis = VerticalAxis.rememberEnd(

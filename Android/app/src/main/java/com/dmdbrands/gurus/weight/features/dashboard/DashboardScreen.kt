@@ -128,9 +128,7 @@ private fun DashboardScreenContent(
   }
 
   BackHandler {
-    if (hasMultipleProducts && !inEditMode) {
-      goBackToSnapshot()
-    } else if (!inEditMode && activity != null) {
+    if (!inEditMode && activity != null) {
       showDialog(
         DialogModel.Confirm(
           title = "Exit Dashboard",
