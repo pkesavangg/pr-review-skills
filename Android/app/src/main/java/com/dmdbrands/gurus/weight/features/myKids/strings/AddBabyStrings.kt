@@ -27,4 +27,7 @@ object AddBabyStrings {
         const val Title = "Birth Length"
         const val InchSuffix = "in"
     }
+
+    const val ModalConfirm = "OK"
+    const val ModalCancel = "CANCEL"
 }

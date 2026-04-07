@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.myKids.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -160,7 +161,7 @@ private fun BabyAvatar(name: String, modifier: Modifier = Modifier) {
             .background(MeTheme.colorScheme.secondaryBackground),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text(
+        Text(
             text = initial,
             style = MeTheme.typography.heading5,
             color = MeTheme.colorScheme.textBody,

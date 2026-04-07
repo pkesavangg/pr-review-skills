@@ -286,11 +286,11 @@ private fun BirthWeightPickerModal(
         BaseModal(
             title = AddBabyStrings.BirthWeightModal.Title,
             primaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = "OK",
+                text = AddBabyStrings.ModalConfirm,
                 action = { onOk(lbsState.item, ozState.item) },
             ),
             secondaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = "CANCEL",
+                text = AddBabyStrings.ModalCancel,
                 action = onCancel,
             ),
         ) {
@@ -339,11 +339,11 @@ private fun BirthLengthPickerModal(
         BaseModal(
             title = AddBabyStrings.BirthLengthModal.Title,
             primaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = "OK",
+                text = AddBabyStrings.ModalConfirm,
                 action = { onOk(inchState.item) },
             ),
             secondaryAction = com.dmdbrands.gurus.weight.features.common.model.ActionButton(
-                text = "CANCEL",
+                text = AddBabyStrings.ModalCancel,
                 action = onCancel,
             ),
         ) {
@@ -363,13 +363,13 @@ private fun parseWeightToDecigrams(value: String): Int? {
     val parts = value.split(" ")
     val lbs = parts.getOrNull(0)?.toIntOrNull() ?: return null
     val oz = parts.getOrNull(2)?.toIntOrNull() ?: 0
-    return (lbs * 4535.92 + oz * 283.495).toInt()
+    return Math.round(lbs * 4535.92 + oz * 283.495).toInt()
 }
 
 private fun parseLengthToMm(value: String): Int? {
     if (value.isBlank()) return null
     val inches = value.split(" ").getOrNull(0)?.toIntOrNull() ?: return null
-    return (inches * 25.4).toInt()
+    return Math.round(inches * 25.4).toInt()
 }
 
 @PreviewTheme
