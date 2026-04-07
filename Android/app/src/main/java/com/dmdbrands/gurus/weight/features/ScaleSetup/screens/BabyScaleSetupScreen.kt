@@ -31,7 +31,6 @@ import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.BabyScaleSetupStat
 import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.babyScaleInitialSteps
 import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.BabyScaleBLESetupViewModel
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -39,18 +38,6 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
 import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import kotlinx.coroutines.delay
-
-/** Steps rendered outside the pager (form/list with complex composables). */
-private val NON_PAGER_STEPS = setOf(
-  BabyScaleSetupStep.BABY_PROFILE_FORM,
-  BabyScaleSetupStep.BABY_LIST,
-  BabyScaleSetupStep.SETUP_FINISHED,
-)
-
-/** Steps rendered in the HorizontalPager — derived from the single source of truth. */
-private val PAGER_STEPS = babyScaleInitialSteps.filter { it !in NON_PAGER_STEPS }
-
 /** Steps that show bottom navigation controls. */
 private val STEPS_WITH_NAV = setOf(
   BabyScaleSetupStep.SCALE_INFO,
