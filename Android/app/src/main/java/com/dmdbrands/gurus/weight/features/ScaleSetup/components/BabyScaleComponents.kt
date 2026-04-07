@@ -223,7 +223,7 @@ fun BabyProfileFormContent(
       selectedItem = profile.biologicalSex?.ifEmpty { null },
       onCancel = { showSexModal = false },
       onOk = { selected ->
-        if (selected != null) onProfileChanged(profile.copy(biologicalSex = selected))
+        if (selected != null) onProfileChanged(currentProfile.copy(biologicalSex = selected))
         showSexModal = false
       },
     )

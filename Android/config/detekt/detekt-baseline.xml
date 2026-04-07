@@ -2,7 +2,6 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>ForbiddenComment:BabyScaleBLESetupViewModel.kt$BabyScaleBLESetupViewModel$// TODO: Remove mock methods and restore real BLE when scale connection is ready</ID>
     <ID>ForbiddenImport:AccountServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:AuthTokenInterceptor.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:ExportServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
