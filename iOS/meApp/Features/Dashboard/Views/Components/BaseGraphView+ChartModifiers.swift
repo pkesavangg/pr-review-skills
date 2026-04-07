@@ -117,14 +117,14 @@ extension BaseGraphView {
                         if viewModel.timePeriod == .month {
                             Text(labelString)
                                 .font(.caption)
-                                .foregroundColor(theme.textSubheading)
+                                .foregroundStyle(theme.textSubheading)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .padding(.horizontal, 2)
                                 .background(theme.textInverse)
                         } else {
                             Text(labelString)
                                 .font(.caption)
-                                .foregroundColor(theme.textSubheading)
+                                .foregroundStyle(theme.textSubheading)
                         }
                     }
                 }

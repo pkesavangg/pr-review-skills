@@ -23,7 +23,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @Environment(\.babyGrowthChartCalloutDateStyle) private var babyGrowthChartCalloutDateStyle
 
     // MARK: - Local State
-    @State var localSelectedXValue: Date?
+    @State private var localSelectedXValue: Date?
     // Enable Y-axis animation only after first render to avoid blank-first-frame
     @State private var enableYAxisAnimation: Bool = false
     // Scroll position debouncing
@@ -552,7 +552,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
                         .multilineTextAlignment(.leading)
                         .fontWeight(.regular)
                         .monospacedDigit()
-                        .foregroundColor(theme.textSubheading)
+                        .foregroundStyle(theme.textSubheading)
                         .frame(width: yAxisLabelWidth, alignment: .center)
                         .opacity(shouldShowYAxisLabels ? 1 : 0)
                 }
