@@ -105,9 +105,9 @@ constructor(
     private const val TAG = "AppViewModel"
     /** BLE protocol types eligible for the discovery popup. */
     private val DISCOVERY_ELIGIBLE_PROTOCOLS = setOf(
-      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value,
-      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,
-      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value,
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value,     // WiFi+BT scales (0412)
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,     // LCBT/Baby scales
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value, // Blood pressure monitors
     )
   }
 
@@ -233,7 +233,8 @@ constructor(
           )
         }
         else -> {
-          // BPM and LCBT devices both route through LcbtScaleSetup (BLE discovery flow)
+          // BPM and LCBT devices both route through LcbtScaleSetup for now.
+          // TODO(MA-3481): Add dedicated BPM setup route once BPM pairing flow is implemented.
           navigationService.navigateTo(
             AppRoute.ScaleSetup.LcbtScaleSetup(
               localSku,
