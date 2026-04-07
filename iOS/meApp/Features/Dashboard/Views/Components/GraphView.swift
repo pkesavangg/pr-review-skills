@@ -54,7 +54,10 @@ struct GraphView: View {
     }
 
     var body: some View {
-        ZStack {
+        #if DEBUG
+        let _ = Self._printChanges()
+        #endif
+        return ZStack {
             // Skeleton loader shown only during initial graph load
             if shouldShowSkeleton {
                 GraphSkeletonView()

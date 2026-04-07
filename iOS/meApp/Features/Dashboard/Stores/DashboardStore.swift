@@ -618,13 +618,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
         // Tests and a few initialization paths seed summaries directly onto state before
         // DashboardDataManager's published-cache bindings have populated. Fall back to the
-        // state-backed arrays so selection and chart rendering remain consistent.
-        switch state.graph.selectedPeriod {
-        case .week, .month:
-            return state.data.dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
-        case .year, .total:
-            return state.data.monthlySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
-        }
+        // manager's pre-sorted cache so selection and chart rendering remain consistent
+        // without performing an uncached O(n log n) sort on every access.
+        return dataManager.getContinuousOperations(for: state.graph.selectedPeriod)
     }
 
     func invalidateContinuousOperationsCache() {

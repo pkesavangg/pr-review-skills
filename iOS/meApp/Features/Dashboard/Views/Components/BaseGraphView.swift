@@ -193,7 +193,10 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
     var body: some View {
-        conditionalScrollSyncing(
+        #if DEBUG
+        let _ = Self._printChanges()
+        #endif
+        return conditionalScrollSyncing(
             GeometryReader { _ in
                 ZStack {
                     // Main Chart

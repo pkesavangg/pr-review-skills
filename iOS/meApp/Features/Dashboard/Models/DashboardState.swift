@@ -178,8 +178,4 @@ struct DataState {
     var hasAnyEntries: Bool {
         !dailySummaries.isEmpty || !monthlySummaries.isEmpty
     }
-
-    var continuousOperations: [BathScaleWeightSummary] {
-        dailySummaries.compactMap { $0 }.sorted { $0.date < $1.date }
-    }
 }
