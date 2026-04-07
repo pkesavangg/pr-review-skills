@@ -257,10 +257,16 @@ class DashboardSnapshotViewModel @Inject constructor(
         )
       } else null
 
-      // Include percentile values in Y range so they're visible
-      val allYValues = yValues +
-        (pSeries?.p5 ?: emptyList()) +
-        (pSeries?.p95 ?: emptyList())
+      // Include visible percentile values in Y range (only points within the weight X range)
+      val xMin = xValues.min()
+      val xMax = xValues.max()
+      val visibleP5 = pSeries?.let { s ->
+        s.p5.filterIndexed { i, _ -> s.xTimestamps[i] in xMin..xMax }
+      } ?: emptyList()
+      val visibleP95 = pSeries?.let { s ->
+        s.p95.filterIndexed { i, _ -> s.xTimestamps[i] in xMin..xMax }
+      } ?: emptyList()
+      val allYValues = yValues + visibleP5 + visibleP95
       val graphMeta = generateNiceScale(
         minValue = allYValues.min(),
         maxValue = allYValues.max(),
@@ -278,6 +284,7 @@ class DashboardSnapshotViewModel @Inject constructor(
             yMax = graphMeta.max,
             startTimestamp = startTimestamp,
             endTimestamp = endTimestamp,
+            hasPercentile = pSeries != null,
           ),
         ),
       )

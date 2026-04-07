@@ -13,6 +13,7 @@ data class SnapshotChartData(
     val yMax: Double? = null,
     val startTimestamp: Long? = null,
     val endTimestamp: Long? = null,
+    val hasPercentile: Boolean = false,
 )
 
 @Stable

@@ -46,6 +46,11 @@ object BabyPercentileHelper {
    * @param visibleMinX visible chart start timestamp
    * @param visibleMaxX visible chart end timestamp
    */
+  /**
+   * Returns percentile curves from birth to currentAge + padding.
+   * Same approach as babyApp: draw from day 0 to age + 120 days,
+   * chart viewport clips to visible range.
+   */
   fun getPercentileSeries(
     sex: String?,
     birthDateMillis: Long,
@@ -57,22 +62,25 @@ object BabyPercentileHelper {
     } ?: return null
 
     val dayMs = 86_400_000L
+    val now = System.currentTimeMillis()
+    val ageDays = ((now - birthDateMillis) / dayMs).toInt()
+    val maxDay = ageDays + 120 // padding same as babyApp
+
     val xTimestamps = mutableListOf<Double>()
     val p5 = mutableListOf<Double>()
     val p50 = mutableListOf<Double>()
     val p95 = mutableListOf<Double>()
 
-
     for (row in data) {
+      if (row.day > maxDay) break
       val timestamp = (birthDateMillis + row.day.toLong() * dayMs).toDouble()
-
       xTimestamps.add(timestamp)
-      p5.add(row.p5 / 283.495 / 16.0)   // decigrams to lbs
+      p5.add(row.p5 / 283.495 / 16.0)
       p50.add(row.p50 / 283.495 / 16.0)
       p95.add(row.p95 / 283.495 / 16.0)
     }
 
-    return if (xTimestamps.isNotEmpty()) PercentileSeries(xTimestamps, p5, p50, p95) else null
+    return if (xTimestamps.size >= 2) PercentileSeries(xTimestamps, p5, p50, p95) else null
   }
 
   private fun interpolateRow(data: List<PercentileRow>, day: Int): PercentileRow? {

@@ -260,7 +260,7 @@ fun BabySnapshotCard(
             SnapshotLineChart(
                 modelProducer = viewModel.getBabyModelProducer(product.profile.id),
                 lineColor = SnapshotColors.Baby,
-                secondaryLayerColor = SnapshotColors.PercentileBand,
+                secondaryLayerColor = if (chart.hasPercentile) SnapshotColors.PercentileBand else null,
                 startTimestamp = chart.startTimestamp,
                 endTimestamp = chart.endTimestamp,
                 yStep = chart.yStep,

@@ -119,11 +119,10 @@ fun SnapshotLineChart(
     val secondaryLine = LineCartesianLayer.rememberLine(
       fill = LineCartesianLayer.LineFill.single(Fill(secondaryLayerColor.copy(alpha = 0.5f))),
       stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
-      interpolator = LineCartesianLayer.Interpolator.monotone(),
+      interpolator = LineCartesianLayer.Interpolator.cubic(1f),
     )
     rememberLineCartesianLayer(
       lineProvider = remember(secondaryLine) { LineCartesianLayer.LineProvider.series(listOf(secondaryLine)) },
-      rangeProvider = rangeProvider,
     )
   } else null
 
