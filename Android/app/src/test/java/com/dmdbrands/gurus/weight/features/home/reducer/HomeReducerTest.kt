@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.home.reducer
 
 import com.google.common.truth.Truth.assertThat
+import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -237,5 +238,23 @@ class HomeReducerTest {
         val result = reducer.reduce(state, HomeIntent.OnWeightOnlyModeAlertDismiss)
 
         assertThat(result?.openWeightOnlyModePopup).isTrue()
+    }
+
+    @Test
+    fun `HandleAppSyncResult returns state unchanged`() {
+        val state = HomeState(showAppsync = true)
+
+        val result = reducer.reduce(state, HomeIntent.HandleAppSyncResult(mockk(relaxed = true)))
+
+        assertThat(result?.showAppsync).isTrue()
+    }
+
+    @Test
+    fun `LaunchAppReview returns state unchanged`() {
+        val state = HomeState(shouldAskForReview = true)
+
+        val result = reducer.reduce(state, HomeIntent.LaunchAppReview(mockk(relaxed = true)))
+
+        assertThat(result?.shouldAskForReview).isTrue()
     }
 }

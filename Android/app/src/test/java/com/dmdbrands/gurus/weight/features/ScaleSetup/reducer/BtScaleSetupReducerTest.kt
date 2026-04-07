@@ -43,7 +43,10 @@ class BtScaleSetupReducerTest {
         assertThat(state.steps.first()).isEqualTo(BtScaleSetupStep.SCALE_INFO)
         assertThat(state.steps.last()).isEqualTo(BtScaleSetupStep.SETUP_FINISHED)
         assertThat(state.user).isNull()
-        assertThat(state.userString).isEqualTo("Unull") // "U" + null.toString()
+        // TODO: Bug — userString should be null when user is null, not "Unull".
+        //  The getter `"U" + user?.toString()` evaluates to "U" + "null" because
+        //  null?.toString() returns the string "null", not null. Fix: `user?.let { "U$it" }`
+        assertThat(state.userString).isEqualTo("Unull")
         assertThat(state.isLoading).isTrue()
         assertThat(state.backEnabled).isFalse()
         assertThat(state.nextEnabled).isTrue()

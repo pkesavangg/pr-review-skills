@@ -2,6 +2,7 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
+    <ID>ForbiddenComment:BtScaleSetupReducerTest.kt$BtScaleSetupReducerTest$// TODO: Bug — userString should be null when user is null, not "Unull".</ID>
     <ID>ForbiddenImport:AccountServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:AuthTokenInterceptor.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:ExportServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>

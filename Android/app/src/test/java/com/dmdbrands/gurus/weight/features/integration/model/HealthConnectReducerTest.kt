@@ -102,7 +102,7 @@ class HealthConnectReducerTest {
 
         val result = reducer.reduce(state, HealthConnectIntent.ConnectError)
 
-        assertThat(result.errorMessage).isNotNull()
+        assertThat(result.errorMessage).isEqualTo("Failed to connect to Health Connect")
         assertThat(result.errorMessage).isNotEmpty()
     }
 
