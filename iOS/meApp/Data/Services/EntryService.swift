@@ -371,8 +371,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let weekDelta = latestWeight - (weekStartWeight ?? latestWeight)
         let monthDelta = latestWeight - (monthStartWeight ?? latestWeight)
 
-        // -- Year delta logic, extracted to a helper for clarity --
-        let monthSeries = try await getMonthYear()
+        // PERFORMANCE: Use pre-fetched allEntries to compute month series and streak
+        // instead of issuing two more full-table fetchEntries calls.
+        let monthSeries = getMonthYear(from: fetchResult.allEntries)
         let yearDeltaResult = try await calculateYearDelta(latestWeight: latestWeight, monthStartWeight: monthStartWeight, monthSeries: monthSeries)
         let yearDelta = yearDeltaResult.yearDelta
         let yearStartDTO = yearDeltaResult.yearStartDTO
@@ -387,7 +388,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
         let totalDelta = latestWeight - (initialWeight ?? latestWeight)
 
-        let streak = try await getStreak(entryType: entryType)
+        let streak = getStreak(entryType: entryType, from: fetchResult.allEntries)
 
         logger.log(
             level: .debug,
@@ -542,6 +543,125 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 guard let previousDate = calendar.date(byAdding: .day, value: -1, to: dateToCheck) else {
                     break
                 }
+                currentStreak += 1
+                dateToCheck = previousDate
+            } else {
+                break
+            }
+        }
+
+        let longestStreak = Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar)
+        return Streak(current: currentStreak, max: longestStreak)
+    }
+
+    // PERFORMANCE: Overloads that accept pre-fetched EntryData to avoid redundant full-table fetches.
+    // Called from getProgress which already has allEntries from fetchProgressData.
+
+    private func getMonthYear(from allEntries: [EntryData]) -> [HistoryMonth] {
+        let calendar = Calendar.current
+        let now = Date()
+        let oneYearAgo = calendar.date(byAdding: .day, value: -365, to: now) ?? now
+
+        let filteredEntries = allEntries.filter { entry in
+            guard let entryDate = DateTimeTools.parse(entry.entryTimestamp) else { return false }
+            return entryDate >= oneYearAgo && entryDate <= now
+        }
+
+        let grouped = Dictionary(grouping: filteredEntries) { entry -> String in
+            DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
+        }
+
+        var result: [HistoryMonth] = []
+        for (monthKey, monthEntries) in grouped {
+            guard !monthEntries.isEmpty else { continue }
+            result.append(Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries))
+        }
+
+        return result.sorted { $0.entryTimestamp > $1.entryTimestamp }
+    }
+
+    private static func buildHistoryMonth(monthKey: String, monthEntries: [EntryData]) -> HistoryMonth {
+        let weightPairs = monthEntries.compactMap { entry -> String? in
+            guard let weight = entry.weight else { return nil }
+            return "\(weight)|\(entry.entryTimestamp)"
+        }
+        let weightsConcat = weightPairs.joined(separator: ",")
+
+        let weightValues = monthEntries.compactMap { $0.weight }.filter { $0 > 0 }.map(Double.init)
+        let avgWeight: Double? = weightValues.isEmpty ? nil : Double(Int(round(weightValues.reduce(0, +) / Double(weightValues.count))))
+        let minWeight = weightValues.min()
+        let maxWeight = weightValues.max()
+
+        let sortedByTime = monthEntries.sorted { $0.entryTimestamp < $1.entryTimestamp }
+        let firstWeight = sortedByTime.first?.weight
+        let lastWeight = sortedByTime.last?.weight
+        let change: String? = {
+            guard let first = firstWeight, let last = lastWeight else { return nil }
+            return String(format: "%.1f", Double(last - first))
+        }()
+
+        return HistoryMonth(
+            id: monthKey,
+            weight: avgWeight,
+            entryTimestamp: monthKey,
+            count: monthEntries.count,
+            weights: weightsConcat,
+            change: change,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            date: nil,
+            time: nil,
+            month: String(monthKey.suffix(2)),
+            year: String(monthKey.prefix(4)),
+            min: minWeight,
+            max: maxWeight
+        )
+    }
+
+    private func getStreak(entryType: EntryType = .wg, from allEntries: [EntryData]) -> Streak {
+        let entries = allEntries.filter { entry in
+            let type = entry.entryType
+            if type.isEmpty { return entryType == .wg }
+            return type == entryType.rawValue
+        }
+        let calendar = Calendar.current
+
+        let uniqueDayStrings = Set(entries.map { DateTimeTools.getLocalDateStringFromUTCDate($0.entryTimestamp) })
+            .filter { $0 != DateTimeTools.invalidString && !$0.isEmpty }
+        let uniqueDaysDescending: [Date] = uniqueDayStrings
+            .compactMap { DateTimeTools.formatter("yyyy-MM-dd").date(from: $0) }
+            .map { calendar.startOfDay(for: $0) }
+            .sorted(by: >)
+
+        guard !uniqueDaysDescending.isEmpty else { return Streak(current: 0, max: 0) }
+
+        let uniqueDaysAscending = uniqueDaysDescending.sorted()
+
+        let todayStart = calendar.startOfDay(for: Date())
+        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart)! // swiftlint:disable:this force_unwrapping
+
+        func isSameDay(_ firstDate: Date, _ secondDate: Date) -> Bool {
+            calendar.isDate(firstDate, inSameDayAs: secondDate)
+        }
+
+        var currentStreak = 0
+        var dateToCheck: Date
+
+        if let first = uniqueDaysDescending.first, isSameDay(first, todayStart) {
+            currentStreak = 1
+            dateToCheck = yesterdayStart
+        } else if let first = uniqueDaysDescending.first, isSameDay(first, yesterdayStart) {
+            currentStreak = 1
+            dateToCheck = calendar.date(byAdding: .day, value: -1, to: yesterdayStart)! // swiftlint:disable:this force_unwrapping
+        } else {
+            return Streak(current: 0, max: Self.computeLongestStreak(from: uniqueDaysAscending, calendar: calendar))
+        }
+
+        for day in uniqueDaysDescending.dropFirst() {
+            if isSameDay(day, dateToCheck) {
+                guard let previousDate = calendar.date(byAdding: .day, value: -1, to: dateToCheck) else { break }
                 currentStreak += 1
                 dateToCheck = previousDate
             } else {

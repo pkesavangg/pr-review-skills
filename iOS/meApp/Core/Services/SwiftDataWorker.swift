@@ -21,6 +21,7 @@ struct EntryData: Sendable {
     let entryTimestamp: String
     let serverTimestamp: String?
     let operationType: String
+    let entryType: String
     let deviceType: String
     let isSynced: Bool
 
@@ -289,6 +290,7 @@ actor SwiftDataWorker {
             entryTimestamp: entry.entryTimestamp,
             serverTimestamp: entry.serverTimestamp,
             operationType: entry.operationType,
+            entryType: entry.entryType,
             deviceType: entry.deviceType,
             isSynced: entry.isSynced,
             // BathScaleEntry relationship - safe to access here

@@ -35,6 +35,9 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     private let editSessionManager: DashboardEditSessionManaging
     private let cacheManager: DashboardCacheManagerProtocol
 
+    // PERFORMANCE: Debounce entry lifecycle changes to coalesce rapid-fire saves/deletes
+    private var entryLifecycleDebounceTask: Task<Void, Never>?
+
     let lang = LoaderStrings.self
 
     // MARK: - Initialization
@@ -286,6 +289,18 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     }
 
     private func handleEntryLifecycleChange() {
+        // PERFORMANCE: Debounce — cancel any pending call and coalesce within 250ms.
+        // Batch syncs can fire dozens of saves in quick succession; without debouncing
+        // each save triggers a full streak fetch + SwiftData queries on the main thread.
+        entryLifecycleDebounceTask?.cancel()
+        entryLifecycleDebounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 250_000_000) // 250ms
+            guard !Task.isCancelled else { return }
+            performEntryLifecycleChange()
+        }
+    }
+
+    private func performEntryLifecycleChange() {
         guard let stateProvider else { return }
 
         loadLatestEntryData()
