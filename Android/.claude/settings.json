@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(./run.sh)",
-      "Bash(\"$HOME/Library/Android/sdk/platform-tools/adb\" shell:*)",
-      "Bash(\"$HOME/Library/Android/sdk/platform-tools/adb\" uninstall:*)"
-    ]
-  }
-}

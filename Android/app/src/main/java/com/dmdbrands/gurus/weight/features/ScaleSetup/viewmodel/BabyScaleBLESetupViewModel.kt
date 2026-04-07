@@ -146,8 +146,8 @@ constructor(
     AppLog.d(TAG, "Step: $step")
     viewModelScope.launch {
       when (step) {
-        BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-        else -> {}
+        BabyScaleSetupStep.WAKEUP -> if (MOCK_BLE) mockWakeUpScale() else wakeUpScale()
+        else -> AppLog.d(TAG, "No specific action for step: $step")
       }
     }
   }
@@ -242,5 +242,7 @@ constructor(
 
   companion object {
     private const val TAG = "BabyScaleBLESetupVM"
+    // Toggle manually for local dev testing — must be false before merge
+    private const val MOCK_BLE = false
   }
 }

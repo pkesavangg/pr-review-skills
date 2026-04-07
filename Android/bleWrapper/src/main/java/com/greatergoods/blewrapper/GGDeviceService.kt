@@ -91,7 +91,7 @@ class GGDeviceService @Inject constructor(
     pairedSKUMonitors: MutableList<GGBTDevice> = mutableListOf(),
     callback: (GGUserActionResponseType) -> Unit
   ) {
-    ggBluetooth.confirmPair(device, replaceUser, pairedSKUMonitors) {
+    ggBluetooth.confirmPair(device) {
       callback(it)
     }
   }

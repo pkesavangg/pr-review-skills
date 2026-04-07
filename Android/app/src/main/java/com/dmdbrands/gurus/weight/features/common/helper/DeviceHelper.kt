@@ -23,6 +23,12 @@ object DeviceHelper {
   const val SKU_0344 = "0344"
   const val SKU_0636 = "0636"
 
+  /** All known Baby Scale SKUs. */
+  val BABY_SCALE_SKUS: Set<String> = setOf(SKU_0220, SKU_0222)
+
+  /** Returns `true` when the given [sku] identifies a Baby Scale. */
+  fun isBabyScale(sku: String): Boolean = sku in BABY_SCALE_SKUS
+
   /** All known Blood Pressure Monitor SKUs. */
   val BPM_SKUS: Set<String> = setOf(SKU_0603, SKU_0661, SKU_0634, SKU_0663)
 
