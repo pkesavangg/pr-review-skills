@@ -105,7 +105,10 @@ constructor(
 
   override suspend fun onSetupFinished() {
     AppLog.d(TAG, "Setup finished — saving scale with final nickname: ${state.value.nickname}")
-    saveScale()
+    val saved = saveScale()
+    if (!saved) {
+      AppLog.w(TAG, "Scale save failed during setup finish")
+    }
   }
 
   override fun onBack() {
@@ -147,25 +150,8 @@ constructor(
     viewModelScope.launch {
       when (step) {
         BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-        else -> {}
+        else -> AppLog.d(TAG, "No specific action for step: $step")
       }
-    }
-  }
-
-  // TODO: Remove mock methods and restore real BLE when scale connection is ready
-  private fun mockWakeUpScale() {
-    AppLog.d(TAG, "Mock: Starting wake up scale process")
-    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
-    discoveredScale = Device(
-      device = null,
-      deviceType = ScaleSetupType.BabyScale.value,
-      sku = sku,
-    )
-    viewModelScope.launch {
-      delay(3000)
-      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-      delay(1000)
-      onNext()
     }
   }
 

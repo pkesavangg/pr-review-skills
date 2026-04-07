@@ -37,3 +37,10 @@ GoogleService-Info.plist
 
 # Lefthook local overrides (developer-specific)
 lefthook-local.yml
+
+# Developer-local Claude Code settings
+.claude/
+Android/.claude/
+
+# Developer convenience scripts
+Android/run.sh
