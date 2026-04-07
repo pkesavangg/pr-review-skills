@@ -115,6 +115,13 @@ release {
   }
 }
 
+configurations.configureEach {
+  resolutionStrategy {
+    force(libs.androidx.junit.get().toString())
+    force(libs.androidx.espresso.core.get().toString())
+  }
+}
+
 dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
