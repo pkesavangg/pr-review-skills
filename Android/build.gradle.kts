@@ -16,15 +16,29 @@ plugins {
 }
 
 val ensureLefthookInstalled by tasks.registering {
+    // CI sets both CI and CIRCLECI — checking CI alone suffices but CIRCLECI is kept for clarity.
     onlyIf { System.getenv("CIRCLECI") == null && System.getenv("CI") == null }
+
+    val repoRoot = rootDir.parentFile
+        ?: error("Cannot determine repo root from $rootDir")
+    val hookFile = File(repoRoot, ".git/hooks/pre-commit")
+    outputs.upToDateWhen {
+        hookFile.exists() && hookFile.readText().contains("lefthook")
+    }
+
     doLast {
-        val installHint = "Install with: brew install lefthook detekt\nThen re-run your build."
+        require(File(repoRoot, ".lefthook.yml").exists()) {
+            "Expected .lefthook.yml at $repoRoot — is this the correct repo root?"
+        }
+        val installHint = "Install with: brew install lefthook\nThen re-run your build."
         try {
             val process = ProcessBuilder("lefthook", "install")
-                .directory(rootDir.parentFile)
-                .inheritIO()
+                .directory(repoRoot)
+                .redirectErrorStream(true)
                 .start()
+            val output = process.inputStream.bufferedReader().readText()
             val finished = process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)
+            if (output.isNotBlank()) logger.lifecycle(output)
             if (!finished) {
                 process.destroyForcibly()
                 throw GradleException("Lefthook install timed out after 30 seconds.\n$installHint")

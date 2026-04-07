@@ -16,13 +16,13 @@ All contributions must follow the [SDLC Policy](https://greatergoods.atlassian.n
 | SwiftLint      | `brew install swiftlint`                                      | iOS static analysis    |
 | Gitleaks       | `brew install gitleaks`                                       | Secrets detection      |
 | Lefthook       | `brew install lefthook`                                       | Git hook manager (pre-commit) |
-| Detekt         | `brew install detekt`                                         | Android static analysis (pre-commit) |
+| Detekt CLI     | `brew install detekt`                                         | Android static analysis (pre-commit hook) |
 
 
-1. **iOS:** Open `iOS/meApp.xcodeproj` in Xcode. Resolve Swift Package dependencies when prompted.
-2. **Android:** Open the `Android/` directory in Android Studio. Gradle sync will run automatically.
-3. **Android:** Run `lefthook install` from the repo root to activate pre-commit hooks (Detekt, Gitleaks, JIRA ticket validation). This is also done automatically on every Gradle build.
-4. Run tests:
+4. **iOS:** Open `iOS/meApp.xcodeproj` in Xcode. Resolve Swift Package dependencies when prompted.
+5. **Android:** Open the `Android/` directory in Android Studio. Gradle sync will run automatically.
+6. **Android:** Run `lefthook install` from the repo root to activate pre-commit hooks (Detekt CLI, Gitleaks, JIRA ticket validation). This is also done automatically on every Gradle build.
+7. Run tests:
   - **iOS:** `cd iOS && xcodebuild test -project meApp.xcodeproj -scheme meApp -destination 'id={DEVICE_ID}' -only-testing:meAppTests`
   - **Android:** `cd Android && ./gradlew test`
 
