@@ -159,6 +159,8 @@ final class BpmSetupStore: ObservableObject {
                         title: BpmSetupStrings.ConfirmUser.title,
                         description: BpmSetupStrings.ConfirmUser.description(for: bpmItem.sku),
                         imagePath: bpmItem.imgPath,
+                        gifName: gifName(for: .confirmUser, sku: bpmItem.sku),
+                        gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
                         resourceImageName: imageName(for: .confirmUser, sku: bpmItem.sku),
                         resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
                         mediaLayout: .top,
@@ -172,7 +174,7 @@ final class BpmSetupStore: ObservableObject {
                         description: BpmSetupStrings.PrePairing.description,
                         imagePath: bpmItem.imgPath,
                         gifName: gifName(for: .prePairing, sku: bpmItem.sku),
-                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
                         mediaLayout: .top,
                         mediaHorizontalPadding: 0
                     )
@@ -893,6 +895,19 @@ final class BpmSetupStore: ObservableObject {
         permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
     }
 
+    /// Subdirectory for `.confirmUser` and `.prePairing` steps that may have per-SKU GIFs.
+    private func confirmUserGifSubdirectory(for sku: String) -> String? {
+        if a3BpmSkus.contains(sku) {
+            // SKUs with their own Pulse GIF use the per-SKU folder.
+            if sku == "0634" { return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku) }
+            return BpmA3MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        if a6BpmSkus.contains(sku) {
+            return BpmA6MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        return nil
+    }
+
     private func gifSubdirectory(for sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
             return BpmA3MonitorSetupAssets.gifBundleSubdirectory(for: sku)
@@ -917,7 +932,11 @@ final class BpmSetupStore: ObservableObject {
         if a3BpmSkus.contains(sku) {
             switch step {
             case .prePairing:
+                if sku == "0634" { return "A3_0634_Pulse" }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.memButton)
+            case .confirmUser:
+                if sku == "0634" { return "A3_0634_Pulse" }
+                return nil
             case .measureSetup:
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.cuff)
             case .measureStart:
