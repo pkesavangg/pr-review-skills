@@ -50,6 +50,7 @@ fun SnapshotLineChart(
   modelProducer: CartesianChartModelProducer,
   lineColor: Color,
   lineColors: List<Color>? = null,
+  secondaryLayerColor: Color? = null,
   startTimestamp: Long,
   endTimestamp: Long,
   yStep: Double? = null,
@@ -113,8 +114,23 @@ fun SnapshotLineChart(
     rangeProvider = rangeProvider,
   )
 
+  // Optional secondary layer (percentile bands — thin lines, no points)
+  val secondaryLayer = if (secondaryLayerColor != null) {
+    val secondaryLine = LineCartesianLayer.rememberLine(
+      fill = LineCartesianLayer.LineFill.single(Fill(secondaryLayerColor.copy(alpha = 0.5f))),
+      stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
+      interpolator = LineCartesianLayer.Interpolator.monotone(),
+    )
+    rememberLineCartesianLayer(
+      lineProvider = remember(secondaryLine) { LineCartesianLayer.LineProvider.series(listOf(secondaryLine)) },
+      rangeProvider = rangeProvider,
+    )
+  } else null
+
+  val layers = listOfNotNull(lineLayer, secondaryLayer)
+
   val chart = rememberCartesianChart(
-    lineLayer,
+    *layers.toTypedArray(),
     topAxis = HorizontalAxis.rememberTop(
       label = null,
       line = rememberAxisLineComponent(fill = Fill(lineStyle), thickness = 1.dp),

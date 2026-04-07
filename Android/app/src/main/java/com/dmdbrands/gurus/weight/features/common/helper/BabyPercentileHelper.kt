@@ -1,9 +1,9 @@
 package com.dmdbrands.gurus.weight.features.common.helper
 
-import android.content.Context
 import com.dmdbrands.gurus.weight.R
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import android.content.Context
 
 /**
  * WHO weight-for-age percentile lookup from CSV data.
@@ -12,125 +12,118 @@ import java.io.InputStreamReader
  */
 object BabyPercentileHelper {
 
-    data class PercentileRow(
-        val day: Int,
-        val p5: Double,
-        val p10: Double,
-        val p25: Double,
-        val p50: Double,
-        val p75: Double,
-        val p90: Double,
-        val p95: Double,
+  data class PercentileRow(
+    val day: Int,
+    val p5: Double,
+    val p10: Double,
+    val p25: Double,
+    val p50: Double,
+    val p75: Double,
+    val p90: Double,
+    val p95: Double,
+  )
+
+  private var boyData: List<PercentileRow>? = null
+  private var girlData: List<PercentileRow>? = null
+
+  fun loadIfNeeded(context: Context) {
+    if (boyData == null) boyData = parseCsv(context, R.raw.boy_weight_percentiles)
+    if (girlData == null) girlData = parseCsv(context, R.raw.girl_weight_percentiles)
+  }
+
+  data class PercentileSeries(
+    val xTimestamps: List<Double>,
+    val p5: List<Double>,
+    val p50: List<Double>,
+    val p95: List<Double>,
+  )
+
+  /**
+   * Returns full percentile curves as timestamp-keyed series.
+   * Filters to the visible X range and converts decigrams to lbs.
+   * @param sex "male" or "female"
+   * @param birthDateMillis baby's birth date in millis
+   * @param visibleMinX visible chart start timestamp
+   * @param visibleMaxX visible chart end timestamp
+   */
+  fun getPercentileSeries(
+    sex: String?,
+    birthDateMillis: Long,
+  ): PercentileSeries? {
+    val data = when (sex?.lowercase()) {
+      "male" -> boyData
+      "female" -> girlData
+      else -> null
+    } ?: return null
+
+    val dayMs = 86_400_000L
+    val xTimestamps = mutableListOf<Double>()
+    val p5 = mutableListOf<Double>()
+    val p50 = mutableListOf<Double>()
+    val p95 = mutableListOf<Double>()
+
+
+    for (row in data) {
+      val timestamp = (birthDateMillis + row.day.toLong() * dayMs).toDouble()
+
+      xTimestamps.add(timestamp)
+      p5.add(row.p5 / 283.495 / 16.0)   // decigrams to lbs
+      p50.add(row.p50 / 283.495 / 16.0)
+      p95.add(row.p95 / 283.495 / 16.0)
+    }
+
+    return if (xTimestamps.isNotEmpty()) PercentileSeries(xTimestamps, p5, p50, p95) else null
+  }
+
+  private fun interpolateRow(data: List<PercentileRow>, day: Int): PercentileRow? {
+    if (data.isEmpty()) return null
+    if (day <= data.first().day) return data.first()
+    if (day >= data.last().day) return data.last()
+
+    val idx = data.indexOfLast { it.day <= day }
+    if (idx < 0) return data.first()
+    if (idx >= data.lastIndex) return data.last()
+
+    val a = data[idx]
+    val b = data[idx + 1]
+    val t = (day - a.day).toDouble() / (b.day - a.day).toDouble()
+
+    return PercentileRow(
+      day = day,
+      p5 = a.p5 + t * (b.p5 - a.p5),
+      p10 = a.p10 + t * (b.p10 - a.p10),
+      p25 = a.p25 + t * (b.p25 - a.p25),
+      p50 = a.p50 + t * (b.p50 - a.p50),
+      p75 = a.p75 + t * (b.p75 - a.p75),
+      p90 = a.p90 + t * (b.p90 - a.p90),
+      p95 = a.p95 + t * (b.p95 - a.p95),
     )
+  }
 
-    private var boyData: List<PercentileRow>? = null
-    private var girlData: List<PercentileRow>? = null
-
-    fun loadIfNeeded(context: Context) {
-        if (boyData == null) boyData = parseCsv(context, R.raw.boy_weight_percentiles)
-        if (girlData == null) girlData = parseCsv(context, R.raw.girl_weight_percentiles)
-    }
-
-    data class PercentileSeries(
-        val xTimestamps: List<Double>,
-        val p5: List<Double>,
-        val p50: List<Double>,
-        val p95: List<Double>,
-    )
-
-    /**
-     * Returns full percentile curves as timestamp-keyed series.
-     * Filters to the visible X range and converts decigrams to lbs.
-     * @param sex "male" or "female"
-     * @param birthDateMillis baby's birth date in millis
-     * @param visibleMinX visible chart start timestamp
-     * @param visibleMaxX visible chart end timestamp
-     */
-    fun getPercentileSeries(
-        sex: String?,
-        birthDateMillis: Long,
-        visibleMinX: Double,
-        visibleMaxX: Double,
-    ): PercentileSeries? {
-        val data = when (sex?.lowercase()) {
-            "male" -> boyData
-            "female" -> girlData
-            else -> null
-        } ?: return null
-
-        val dayMs = 86_400_000L
-        val xTimestamps = mutableListOf<Double>()
-        val p5 = mutableListOf<Double>()
-        val p50 = mutableListOf<Double>()
-        val p95 = mutableListOf<Double>()
-
-        // Expand range slightly for smooth curve edges
-        val paddedMin = visibleMinX - 2 * dayMs
-        val paddedMax = visibleMaxX + 2 * dayMs
-
-        for (row in data) {
-            val timestamp = (birthDateMillis + row.day.toLong() * dayMs).toDouble()
-            if (timestamp < paddedMin) continue
-            if (timestamp > paddedMax) break
-
-            xTimestamps.add(timestamp)
-            p5.add(row.p5 / 283.495 / 16.0)   // decigrams to lbs
-            p50.add(row.p50 / 283.495 / 16.0)
-            p95.add(row.p95 / 283.495 / 16.0)
+  private fun parseCsv(context: Context, resId: Int): List<PercentileRow> {
+    val rows = mutableListOf<PercentileRow>()
+    context.resources.openRawResource(resId).use { stream ->
+      BufferedReader(InputStreamReader(stream)).use { reader ->
+        reader.readLine() // skip header
+        reader.forEachLine { line ->
+          val parts = line.split(",")
+          if (parts.size >= 8) {
+            rows.add(
+              PercentileRow(
+                day = parts[0].toInt(),
+                p5 = parts[1].toDouble(),
+                p10 = parts[2].toDouble(),
+                p25 = parts[3].toDouble(),
+                p50 = parts[4].toDouble(),
+                p75 = parts[5].toDouble(),
+                p90 = parts[6].toDouble(),
+                p95 = parts[7].toDouble(),
+              ),
+            )
+          }
         }
-
-        return if (xTimestamps.isNotEmpty()) PercentileSeries(xTimestamps, p5, p50, p95) else null
+      }
     }
-
-    private fun interpolateRow(data: List<PercentileRow>, day: Int): PercentileRow? {
-        if (data.isEmpty()) return null
-        if (day <= data.first().day) return data.first()
-        if (day >= data.last().day) return data.last()
-
-        val idx = data.indexOfLast { it.day <= day }
-        if (idx < 0) return data.first()
-        if (idx >= data.lastIndex) return data.last()
-
-        val a = data[idx]
-        val b = data[idx + 1]
-        val t = (day - a.day).toDouble() / (b.day - a.day).toDouble()
-
-        return PercentileRow(
-            day = day,
-            p5 = a.p5 + t * (b.p5 - a.p5),
-            p10 = a.p10 + t * (b.p10 - a.p10),
-            p25 = a.p25 + t * (b.p25 - a.p25),
-            p50 = a.p50 + t * (b.p50 - a.p50),
-            p75 = a.p75 + t * (b.p75 - a.p75),
-            p90 = a.p90 + t * (b.p90 - a.p90),
-            p95 = a.p95 + t * (b.p95 - a.p95),
-        )
-    }
-
-    private fun parseCsv(context: Context, resId: Int): List<PercentileRow> {
-        val rows = mutableListOf<PercentileRow>()
-        context.resources.openRawResource(resId).use { stream ->
-            BufferedReader(InputStreamReader(stream)).use { reader ->
-                reader.readLine() // skip header
-                reader.forEachLine { line ->
-                    val parts = line.split(",")
-                    if (parts.size >= 8) {
-                        rows.add(
-                            PercentileRow(
-                                day = parts[0].toInt(),
-                                p5 = parts[1].toDouble(),
-                                p10 = parts[2].toDouble(),
-                                p25 = parts[3].toDouble(),
-                                p50 = parts[4].toDouble(),
-                                p75 = parts[5].toDouble(),
-                                p90 = parts[6].toDouble(),
-                                p95 = parts[7].toDouble(),
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-        return rows
-    }
+    return rows
+  }
 }

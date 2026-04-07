@@ -1,19 +1,18 @@
 package com.dmdbrands.gurus.weight.features.dashboard.snapshot.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import android.content.Context
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -27,6 +26,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.content.Context
 
 @HiltViewModel
 class DashboardSnapshotViewModel @Inject constructor(
@@ -254,8 +254,6 @@ class DashboardSnapshotViewModel @Inject constructor(
         BabyPercentileHelper.getPercentileSeries(
           sex = profile.biologicalSex,
           birthDateMillis = profile.birthDate,
-          visibleMinX = xValues.min(),
-          visibleMaxX = xValues.max(),
         )
       } else null
 
@@ -287,10 +285,13 @@ class DashboardSnapshotViewModel @Inject constructor(
       val producer = babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
       try {
         producer.runTransaction {
+          // Layer 1: baby weight line
           lineSeries {
             series(x = xValues, y = yValues)
-            // Percentile lines with their own X values (dense, from birth date)
-            if (pSeries != null) {
+          }
+          // Layer 2: percentile bands (own dense X timestamps from birth date)
+          if (pSeries != null) {
+            lineSeries {
               series(x = pSeries.xTimestamps, y = pSeries.p95)
               series(x = pSeries.xTimestamps, y = pSeries.p50)
               series(x = pSeries.xTimestamps, y = pSeries.p5)
