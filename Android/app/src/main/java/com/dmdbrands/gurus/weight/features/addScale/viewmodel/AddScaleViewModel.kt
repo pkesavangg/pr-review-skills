@@ -114,7 +114,7 @@ constructor(
           cancelText = PairedScaleExistsAlert.Return,
           onConfirm = {
             AppLog.d(TAG, "User confirmed pairing existing scale")
-            navigateToSelectedScaleSetup(sku)
+            navigateToSelectedScaleSetup(sku, replaceLast)
             dialogQueueService.dismissCurrent()
           },
         ),

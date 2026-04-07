@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
-import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
@@ -196,9 +195,7 @@ constructor(
           cancelText = ScaleSetupStrings.ExitSetupAlert.GoBack,
           onConfirm = {
             AppLog.d(TAG, "User confirmed exit setup")
-            viewModelScope.launch {
-              navigationService.navigateTo(AppRoute.AccountSettings.AddEditScales)
-            }
+            navigateBack()
           },
         ),
       )
