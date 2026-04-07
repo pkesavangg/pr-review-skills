@@ -157,15 +157,16 @@ class HistoryRepository @Inject constructor(
         return historyDao.getBabySnapshotGraphData(accountId, babyProfileId)
     }
 
+    /** Realistic sample: ~90-day-old baby around p50 (~60000 decigrams = 13.2 lbs) */
     private fun sampleBabySnapshotData(): List<PeriodBabySummary> = listOf(
-        PeriodBabySummary("2026-03-30", "2026-03-30T08:00:00.000Z", avgWeightDecigrams = 38600, avgLengthMillimeters = 295),
-        PeriodBabySummary("2026-03-31", "2026-03-31T08:00:00.000Z", avgWeightDecigrams = 38800, avgLengthMillimeters = 296),
-        PeriodBabySummary("2026-04-01", "2026-04-01T08:00:00.000Z", avgWeightDecigrams = 39000, avgLengthMillimeters = 297),
-        PeriodBabySummary("2026-04-02", "2026-04-02T08:00:00.000Z", avgWeightDecigrams = 39200, avgLengthMillimeters = 298),
-        PeriodBabySummary("2026-04-03", "2026-04-03T08:00:00.000Z", avgWeightDecigrams = 39600, avgLengthMillimeters = 299),
-        PeriodBabySummary("2026-04-04", "2026-04-04T08:00:00.000Z", avgWeightDecigrams = 39800, avgLengthMillimeters = 301),
-        PeriodBabySummary("2026-04-05", "2026-04-05T08:00:00.000Z", avgWeightDecigrams = 40100, avgLengthMillimeters = 303),
-        PeriodBabySummary("2026-04-06", "2026-04-06T08:00:00.000Z", avgWeightDecigrams = 40360, avgLengthMillimeters = 305),
+        PeriodBabySummary("2026-03-30", "2026-03-30T08:00:00.000Z", avgWeightDecigrams = 58200, avgLengthMillimeters = 580),
+        PeriodBabySummary("2026-03-31", "2026-03-31T08:00:00.000Z", avgWeightDecigrams = 58500, avgLengthMillimeters = 581),
+        PeriodBabySummary("2026-04-01", "2026-04-01T08:00:00.000Z", avgWeightDecigrams = 58800, avgLengthMillimeters = 582),
+        PeriodBabySummary("2026-04-02", "2026-04-02T08:00:00.000Z", avgWeightDecigrams = 59200, avgLengthMillimeters = 583),
+        PeriodBabySummary("2026-04-03", "2026-04-03T08:00:00.000Z", avgWeightDecigrams = 59500, avgLengthMillimeters = 584),
+        PeriodBabySummary("2026-04-04", "2026-04-04T08:00:00.000Z", avgWeightDecigrams = 59900, avgLengthMillimeters = 585),
+        PeriodBabySummary("2026-04-05", "2026-04-05T08:00:00.000Z", avgWeightDecigrams = 60200, avgLengthMillimeters = 587),
+        PeriodBabySummary("2026-04-06", "2026-04-06T08:00:00.000Z", avgWeightDecigrams = 60500, avgLengthMillimeters = 588),
     )
 
     // ---------------------------------------------------------------------------
