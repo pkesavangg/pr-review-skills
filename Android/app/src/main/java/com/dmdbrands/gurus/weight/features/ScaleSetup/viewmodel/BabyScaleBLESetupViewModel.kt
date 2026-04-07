@@ -150,7 +150,7 @@ constructor(
     viewModelScope.launch {
       when (step) {
         BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-        else -> {}
+        else -> AppLog.d(TAG, "No specific action for step: $step")
       }
     }
   }

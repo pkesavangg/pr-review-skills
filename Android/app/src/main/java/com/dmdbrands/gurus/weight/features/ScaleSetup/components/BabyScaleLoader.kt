@@ -24,7 +24,7 @@ private val LoaderSize = 125.dp
 
 /**
  * Baby scale loader that displays the animated baby app loader GIF
- * with title, subtitle, and "Searching..." text.
+ * with title and subtitle.
  */
 @Composable
 fun BabyScaleLoader(
