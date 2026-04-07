@@ -64,7 +64,8 @@ object AppPopupStrings {
   }
 
   object ScaleDiscoveredPopup {
-    const val Title = "New Scale Discovered"
+    const val Title = "New Device Discovered"
+    const val ConnectButton = "Connect"
     const val CloseContentDescription = "Close"
   }
 

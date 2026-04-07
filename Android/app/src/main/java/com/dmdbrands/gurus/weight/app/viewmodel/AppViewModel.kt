@@ -103,6 +103,12 @@ constructor(
 ) {
   companion object {
     private const val TAG = "AppViewModel"
+    /** BLE protocol types eligible for the discovery popup. */
+    private val DISCOVERY_ELIGIBLE_PROTOCOLS = setOf(
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value,
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value,
+    )
   }
 
   override fun provideInitialState(): AppState = AppState()
@@ -227,7 +233,7 @@ constructor(
           )
         }
         else -> {
-          // Pass original SKU to routes (not mapped), setup will save original SKU
+          // BPM and LCBT devices both route through LcbtScaleSetup (BLE discovery flow)
           navigationService.navigateTo(
             AppRoute.ScaleSetup.LcbtScaleSetup(
               localSku,
@@ -557,7 +563,7 @@ constructor(
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
-          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value)) {
+          if (canShowScaleDiscoveredModal && data.protocolType in DISCOVERY_ELIGIBLE_PROTOCOLS) {
             val currentRoute = navigationService.getCurrentRoute()
             val isSetupInProgress = deviceService.isSetupInProgress()
             val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
@@ -574,7 +580,7 @@ constructor(
 
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
-              val shouldShow = if (deviceSku == "0412") {
+              val shouldShow = if (deviceSku == SKU_0412) {
                 val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
                 isAllow
               } else {
@@ -602,12 +608,17 @@ constructor(
                   DeviceHelper.isBabyScale(deviceSku) -> Device(
                     device = data,
                     deviceType = ScaleSetupType.BabyScale.value,
-                    sku = sku,
+                    sku = deviceSku,
+                  )
+                  DeviceHelper.isBpmDevice(deviceSku) -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.Bluetooth.value,
+                    sku = deviceSku,
                   )
                   else -> Device(
                     device = data,
                     deviceType = ScaleSetupType.Lcbt.value,
-                    sku = sku,
+                    sku = deviceSku,
                   )
                 }
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)

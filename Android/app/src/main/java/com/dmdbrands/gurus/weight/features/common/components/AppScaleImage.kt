@@ -75,7 +75,7 @@ fun AppScaleImage(
           painterResource(
             id = ScaleUtility.scaleImageResource(context, sku),
           ),
-        contentDescription = "$sku scale",
+        contentDescription = if (DeviceHelper.isBpmDevice(sku)) "$sku monitor" else "$sku scale",
       )
     }
   }
