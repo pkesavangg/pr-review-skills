@@ -155,6 +155,17 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
     /// **Critical**: Unsynced local devices are NEVER overwritten by server data.
     /// This ensures local changes are preserved even if sync fails.
     ///
+    func deleteSingleDeviceEntry(_ deviceId: String) async throws {
+        let isPurelyLocal = try await localRepository.isDevicePurelyLocal(deviceId)
+        if isPurelyLocal {
+            try await localRepository.deleteScale(deviceId)
+        } else {
+            try await localRepository.markDeviceAsDeleted(deviceId)
+        }
+        await refreshScalesFromLocal()
+        await pushLocalChangesToServer()
+    }
+
     /// Sync Process:
     /// 1. Push local changes (creates, edits, deletes) to server
     /// 2. Fetch fresh server state
@@ -635,12 +646,15 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             throw ScaleError.deviceNotFound(id: deviceId)
         }
 
-        // Collect duplicates by mac/broadcastIdString (including self)
+        // Collect duplicates by mac/broadcastIdString (including self).
+        // Only include entries with the SAME userNumber — different user slots on the
+        // same physical device (e.g. BPM User A vs User B) are independent entries and
+        // must NOT be deleted together.
         var candidates: [Device] = [target]
         let mac = target.mac
         let bid = target.broadcastIdString
+        let targetUserNumber = target.userNumber
         if let mac = mac, !mac.isEmpty, let bid = bid, !bid.isEmpty {
-            // Both mac and broadcastIdString present: single compound OR fetch
             let compound = #Predicate<Device> { $0.mac == mac || $0.broadcastIdString == bid }
             let descriptor = FetchDescriptor<Device>(predicate: compound)
             if let others = try? localRepository.context.fetch(descriptor) { candidates.append(contentsOf: others) }
@@ -652,12 +666,17 @@ final class ScaleService: ObservableObject, @preconcurrency ScaleServiceProtocol
             if let others = try? localRepository.context.fetch(byBid) { candidates.append(contentsOf: others) }
         }
 
-        // Deduplicate list by id
+        // Deduplicate by id, and exclude entries for a different user slot on the same device
         var seen = Set<String>()
         candidates = candidates.filter { dev in
-            let keep = !seen.contains(dev.id)
+            guard !seen.contains(dev.id) else { return false }
             seen.insert(dev.id)
-            return keep
+            // Keep only entries whose userNumber matches the target (or has no userNumber set)
+            if let targetUser = targetUserNumber, let devUser = dev.userNumber,
+               !targetUser.isEmpty, !devUser.isEmpty, targetUser != devUser {
+                return false
+            }
+            return true
         }
 
         var didChange = false

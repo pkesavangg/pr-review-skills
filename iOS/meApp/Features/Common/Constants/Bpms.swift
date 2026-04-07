@@ -21,42 +21,52 @@ let BPMS: [ScaleItemInfo] = [
         sku: "0603",
         imgPath: AppAssets.bpm0603,
         setupType: .bpm,
-        bodyComp: false
+        bodyComp: false,
+        hasNumericUsers: true,
+        broadcastName: "gG BPM 0603"
     ),
     ScaleItemInfo(
         productName: "Smart Blood Pressure Monitor",
         sku: "0604",
         imgPath: AppAssets.bpm0604,
         setupType: .bpm,
-        bodyComp: false
+        bodyComp: false,
+        toggleButton: true,
+        broadcastName: "1490BT"
     ),
     ScaleItemInfo(
         productName: "Smart Pro-Series Blood Pressure Monitor",
         sku: "0634",
         imgPath: AppAssets.bpm0634,
         setupType: .bpm,
-        bodyComp: false
+        bodyComp: false,
+        broadcastName: "gG BPM 0634"
     ),
     ScaleItemInfo(
         productName: "All-In-One Bluetooth Blood Pressure Monitor",
         sku: "0636",
         imgPath: AppAssets.bpm0636,
         setupType: .bpm,
-        bodyComp: false
+        bodyComp: false,
+        hasStartButton: false,
+        broadcastName: "gG BPM 0636"
     ),
     ScaleItemInfo(
         productName: "Smart Blood Pressure Monitor",
         sku: "0663",
         imgPath: AppAssets.bpm0663,
         setupType: .bpm,
-        bodyComp: false
+        bodyComp: false,
+        broadcastName: "gG BPM 0663"
     ),
     ScaleItemInfo(
         productName: "Smart Blood Pressure Monitor",
         sku: "0661",
         imgPath: AppAssets.bpm0604,
         setupType: .bpm,
-        bodyComp: false
+        bodyComp: false,
+        toggleButton: true,
+        broadcastName: "gG BPM 0661"
     )
 ]
 
