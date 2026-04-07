@@ -186,6 +186,7 @@ private fun DashboardScreenContent(
 
       GraphPagerView(
         state = state,
+        selectedProduct = selectedProduct?.value ?: ProductSelection.MyWeight,
         onSegmentChange = { segment, anchorTimestamp ->
           handleIntent(DashboardIntent.SetSelectedSegment(segment, anchorTimestamp))
         },

@@ -17,10 +17,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
+import com.dmdbrands.gurus.weight.features.common.components.chart.bp.BpChartHeader
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
+import com.dmdbrands.gurus.weight.features.common.components.chart.weight.WeightChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
@@ -45,6 +50,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 @Composable
 fun GraphPagerView(
   state: DashboardState,
+  selectedProduct: ProductSelection = ProductSelection.MyWeight,
   onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
   onPagerStateChange: (Int) -> Unit,
   onSegmentChange: (GraphSegment, Long?) -> Unit = { _, _ -> },
@@ -87,33 +93,37 @@ fun GraphPagerView(
       modifier = Modifier.fillMaxWidth(),
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
-      val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(key = "GraphViewModel-$page") { factory ->
+      val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(
+        key = "GraphViewModel-$page",
+      ) { factory ->
         val anchoredTarget = state.scrollTarget?.let {
           GraphUtil.getStartOnAnchored(currentSegment, it.toLong())
         }
         factory.create(currentSegment, anchoredTarget?.toDouble())
       }
       val graphState by viewmodel.state.collectAsState()
+      val productType = selectedProduct.productType
+      val productState = graphState.forProduct(productType)
 
-      LaunchedEffect(graphState.target) {
-        val averageWeight = if (graphState.target.isEmpty()) 0.0 else graphState.target.map { it.weight }.average()
-        labelData = if (graphState.target.isEmpty()) "000.0" else formatWeightValue(averageWeight)
+      LaunchedEffect(productState.target) {
+        val averageWeight = if (productState.target.isEmpty()) 0.0 else productState.target.map { it.weight }.average()
+        labelData = if (productState.target.isEmpty()) "000.0" else formatWeightValue(averageWeight)
         if (averageWeight > 0 && state.weightless?.isWeightlessOn == true) {
           labelData = ("+").plus(labelData)
         }
         weightValue = averageWeight
-        onSelected(graphState.target)
+        onSelected(productState.target)
       }
 
-      LaunchedEffect(graphState.markerIndex) {
-        onMarkerIndexChange(graphState.markerIndex)
+      LaunchedEffect(productState.markerIndex) {
+        onMarkerIndexChange(productState.markerIndex)
       }
 
-      LaunchedEffect(graphState.minTarget, graphState.maxTarget, pagerState.currentPage, state.isConsuming) {
-        val minTarget = graphState.minTarget
-        val maxTarget = graphState.maxTarget
+      LaunchedEffect(productState.minTarget, productState.maxTarget, pagerState.currentPage, state.isConsuming) {
+        val minTarget = productState.minTarget
+        val maxTarget = productState.maxTarget
         if (minTarget != null && maxTarget != null && !state.isConsuming) {
-          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !graphState.isEmptyGraph) {
+          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !productState.isEmptyGraph) {
             val calendar = java.util.Calendar.getInstance()
             calendar.timeInMillis = minTarget
             calendar.add(java.util.Calendar.MONTH, +6)
@@ -140,24 +150,83 @@ fun GraphPagerView(
         }
       }
       Column {
-        ChartHeader(
-          state = graphState,
-          segment = currentSegment,
-          weightData = labelData,
-          rangeData = subText,
-          weightValue = weightValue,
-        )
-
-        GraphView(
-          modifier = Modifier.fillMaxWidth(),
-          scrollTarget = state.scrollTarget,
-          segment = currentSegment,
-          canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
-          state = graphState,
-          viewModel = viewmodel,
-          onChartConsuming = onChartConsuming,
-          onScrollTargetConsumed = onScrollTargetConsumed,
-        )
+        // Per-product header + GraphView with its own stable producer
+        when (selectedProduct) {
+          is ProductSelection.MyWeight -> {
+            WeightChartHeader(
+              state = graphState,
+              productState = productState,
+              segment = currentSegment,
+              weightData = labelData,
+              rangeData = subText,
+              weightValue = weightValue,
+            )
+            GraphView(
+              modifier = Modifier.fillMaxWidth(),
+              graphState = graphState,
+              productState = productState,
+              productType = productType,
+              product = selectedProduct,
+              scrollTarget = state.scrollTarget,
+              segment = currentSegment,
+              canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
+              viewModel = viewmodel,
+              onChartConsuming = onChartConsuming,
+              onScrollTargetConsumed = onScrollTargetConsumed,
+            )
+          }
+          is ProductSelection.BloodPressure -> {
+            val target = productState.target
+            val avgSys = target.map { it.weight.toInt() }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+            val avgDia = target.map { it.bodyFat?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+            val avgPulse = target.map { it.pulse?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+            BpChartHeader(
+              state = graphState,
+              productState = productState,
+              segment = currentSegment,
+              systolic = avgSys,
+              diastolic = avgDia,
+              pulse = avgPulse,
+              rangeData = subText,
+            )
+            GraphView(
+              modifier = Modifier.fillMaxWidth(),
+              graphState = graphState,
+              productState = productState,
+              productType = productType,
+              product = selectedProduct,
+              scrollTarget = state.scrollTarget,
+              segment = currentSegment,
+              canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
+              viewModel = viewmodel,
+              onChartConsuming = onChartConsuming,
+              onScrollTargetConsumed = onScrollTargetConsumed,
+            )
+          }
+          is ProductSelection.Baby -> {
+            WeightChartHeader(
+              state = graphState,
+              productState = productState,
+              segment = currentSegment,
+              weightData = labelData,
+              rangeData = subText,
+              weightValue = weightValue,
+            ) // TODO: Replace with BabyChartHeader
+            GraphView(
+              modifier = Modifier.fillMaxWidth(),
+              graphState = graphState,
+              productState = productState,
+              productType = productType,
+              product = selectedProduct,
+              scrollTarget = state.scrollTarget,
+              segment = currentSegment,
+              canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
+              viewModel = viewmodel,
+              onChartConsuming = onChartConsuming,
+              onScrollTargetConsumed = onScrollTargetConsumed,
+            )
+          }
+        }
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
       }
     }

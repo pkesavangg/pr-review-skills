@@ -13,9 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.features.common.components.chart.bp.rememberBpChart
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
+import com.dmdbrands.gurus.weight.features.common.components.chart.weight.rememberWeightChart
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
@@ -25,6 +30,7 @@ import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.InterpolationType
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberScrubMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.rememberChartSnapFlingBehavior
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
@@ -41,29 +47,20 @@ private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
 
 /**
  * Composable for displaying a graph/chart with interactive features.
- * Uses GraphViewModel for state management following MVI pattern.
- *
- * @param modifier Modifier for styling.
- * @param graphLines List of GraphLine data to display.
- * @param secondaryGraphLines Optional secondary graph lines.
- * @param segment The segment of the graph (e.g., WEEK, MONTH).
- * @param placeHolder Optional placeholder text if no data is present.
- * @param goal Optional goal for reference.
- * @param onTargetsUpdate Callback for metric updates, returns list of GraphPoint(s).
- * @param onScroll Callback for scroll events, returns formatted date range.
- * @param onLabelUpdate Callback for label updates, returns updated label string.
- * @param viewModel The GraphViewModel instance (injected via Hilt).
- * @param onScrollTargetConsumed Called once after scrolling to [scrollTarget] (so anchor is consumed and not re-applied).
+ * Product-agnostic: receives [productState] for per-product data and
+ * [graphState] for shared fields (goal, weightUnit).
  */
 @OptIn(FlowPreview::class)
 @Composable
 fun GraphView(
   modifier: Modifier = Modifier,
-  state: GraphState,
+  graphState: GraphState,
+  productState: ProductGraphState,
+  productType: ProductType,
+  product: ProductSelection = ProductSelection.MyWeight,
   segment: GraphSegment = GraphSegment.WEEK,
   scrollTarget: Double? = null,
   canScrollToAnchor: Boolean = false,
-  placeHolder: String? = null,
   viewModel: GraphViewModel = hiltViewModel(),
   onChartConsuming: (Boolean) -> Unit = {},
   onScrollTargetConsumed: (Boolean) -> Unit = {},
@@ -79,12 +76,12 @@ fun GraphView(
     }
   }
 
-  val initialStartX = GraphUtil.getRollingWindowStart(segment, state.getEndTimestamp())?.toDouble()
-    ?: GraphUtil.getStartRange(segment, state.getEndTimestamp())?.toDouble()
+  val initialStartX = GraphUtil.getRollingWindowStart(segment, productState.getEndTimestamp())?.toDouble()
+    ?: GraphUtil.getStartRange(segment, productState.getEndTimestamp())?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
 
-  val (startPaddingXStep, _) = remember(state.isEmptyGraph, segment) {
-    if (!state.isEmptyGraph || segment != GraphSegment.TOTAL)
+  val (startPaddingXStep, _) = remember(productState.isEmptyGraph, segment) {
+    if (!productState.isEmptyGraph || segment != GraphSegment.TOTAL)
       GraphSnapHelper.getVisiblePaddingXStepForSegment(segment)
     else
       0.0 to 0.0
@@ -100,7 +97,7 @@ fun GraphView(
   }
 
   val scrollState = rememberVicoScrollState(
-    scrollEnabled = segment != GraphSegment.TOTAL && !state.isSingleWindow,
+    scrollEnabled = segment != GraphSegment.TOTAL && !productState.isSingleWindow,
     initialScroll = initialScroll,
     key = segment,
   )
@@ -111,7 +108,6 @@ fun GraphView(
         if (isDrag) {
           GraphSnapHelper.getSnappedPositionOnDrag(xLabel = currentXLabel, segment = segment)
         } else {
-          // Use projectedXLabel for fling — it's where momentum would carry the scroll
           GraphSnapHelper.getSnapPositionOnFling(
             timeStamp = projectedXLabel,
             segment = segment,
@@ -130,15 +126,12 @@ fun GraphView(
     config = snapConfig,
   )
 
-  val horizontalItemPlacer =
-    rememberHorizontalAxisItemPlacer(
-      segment = segment,
-    )
+  val horizontalItemPlacer = rememberHorizontalAxisItemPlacer(segment = segment)
 
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
       viewModel.handleIntent(
-        GraphIntent.SetScrollRange(min, max) {
+        GraphIntent.SetProductScrollRange(productType, min, max) {
           val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
             it.toLong() in min..max
           }
@@ -147,19 +140,21 @@ fun GraphView(
               xValues = visibleLabels,
               interpolationType = InterpolationType.MONOTONE,
             )
-            val fallbackData = state.createFallBackData(
+            val fallbackData = graphState.createFallBackData(
+              productType = productType,
               segment = segment,
               timeStamps = visibleLabels.map { it.toLong() },
               fallbackValues = fallbackValues.map { list -> list.mapNotNull { it?.toDouble() } },
             )
-            viewModel.handleIntent(GraphIntent.UpdateTarget(fallbackData))
+            viewModel.handleIntent(GraphIntent.UpdateProductTarget(productType, fallbackData))
           }
         },
       )
     }
   }
+
   LaunchedEffect(segment) {
-    if (scrollTarget == null || !canScrollToAnchor || state.isEmptyGraph) return@LaunchedEffect
+    if (scrollTarget == null || !canScrollToAnchor || productState.isEmptyGraph) return@LaunchedEffect
     val updatedScrollTarget = GraphUtil.getRelativeStart(segment, scrollTarget.toLong())
     val anchoredTarget = GraphUtil.getStartOnAnchored(segment, updatedScrollTarget)
     delay(SCROLL_DELAY_AFTER_LAYOUT_MS)
@@ -177,31 +172,32 @@ fun GraphView(
   }
 
   val defaultMarker = rememberDefaultMarker(
-    state = state,
+    state = graphState,
+    productState = productState,
     segment = segment,
     onTargetsUpdate = {
       if (it.isNotEmpty())
-        viewModel.handleIntent(GraphIntent.UpdateTarget(it))
+        viewModel.handleIntent(GraphIntent.UpdateProductTarget(productType, it))
     },
   )
 
   val scrubController = rememberScrubMarkerController(
     scrollState = scrollState,
     onMarkerIndexChanged = { clickX, targets ->
-      if (clickX == null || state.isEmptyGraph) {
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(null))
+      if (clickX == null || productState.isEmptyGraph) {
+        viewModel.handleIntent(GraphIntent.UpdateProductMarkerIndex(productType, null))
         return@rememberScrubMarkerController null
       }
       val visibleLabels =
         scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
-          if (state.minTarget != null && state.maxTarget != null)
-            it.toLong() in state.minTarget..state.maxTarget
+          if (productState.minTarget != null && productState.maxTarget != null)
+            it.toLong() in productState.minTarget..productState.maxTarget
           else
             true
         }
       var markerIndex: Double? = null
-      val paddedMinCondition = state.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
-      val paddedMaxCondition = state.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
+      val paddedMinCondition = productState.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
+      val paddedMaxCondition = productState.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
       val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
       if (!outOfBoundaryCondition) {
         val targetMarkerIndex =
@@ -216,37 +212,61 @@ fun GraphView(
         if (targetMarkerIndex.isNotEmpty()) {
           val targetIndex = targetMarkerIndex.first().toLong()
           markerIndex = when {
-            targetIndex in state.getStartTimestamp()..state.getEndTimestamp() -> targetMarkerIndex.first()
-            targetIndex < state.getStartTimestamp() -> state.getStartTimestamp().toDouble()
-            targetIndex > state.getEndTimestamp() -> state.getEndTimestamp().toDouble()
+            targetIndex in productState.getStartTimestamp()..productState.getEndTimestamp() -> targetMarkerIndex.first()
+            targetIndex < productState.getStartTimestamp() -> productState.getStartTimestamp().toDouble()
+            targetIndex > productState.getEndTimestamp() -> productState.getEndTimestamp().toDouble()
             else -> null
           }
         }
       }
-      if (state.markerIndex != markerIndex)
-        viewModel.handleIntent(GraphIntent.UpdateMarkerIndex(markerIndex))
+      if (productState.markerIndex != markerIndex)
+        viewModel.handleIntent(GraphIntent.UpdateProductMarkerIndex(productType, markerIndex))
       markerIndex
     },
   )
 
-  LaunchedEffect(state.markerIndex == null) {
-    if (state.markerIndex == null && state.minTarget != null && state.maxTarget != null) {
+  LaunchedEffect(productState.markerIndex == null) {
+    if (productState.markerIndex == null && productState.minTarget != null && productState.maxTarget != null) {
       delay(50)
       if (!scrollState.isScrolling) {
-        onScrollUpdate(state.minTarget, state.maxTarget)
+        onScrollUpdate(productState.minTarget, productState.maxTarget)
       }
     }
   }
 
-  val chart = rememberGraphChart(
-    state = state,
-    defaultMarker = defaultMarker,
-    segment = segment,
-    horizontalItemPlacer = horizontalItemPlacer,
-    fadingEdges = fadingEdges,
-    handleIntent = viewModel::handleIntent,
-    scrubController = scrubController,
-  )
+  val chart = when (product) {
+    is ProductSelection.MyWeight -> rememberWeightChart(
+      state = graphState,
+      productState = productState,
+      defaultMarker = defaultMarker,
+      segment = segment,
+      horizontalItemPlacer = horizontalItemPlacer,
+      fadingEdges = fadingEdges,
+      handleIntent = viewModel::handleIntent,
+      scrubController = scrubController,
+    )
+    is ProductSelection.BloodPressure -> rememberBpChart(
+      state = graphState,
+      productState = productState,
+      defaultMarker = defaultMarker,
+      segment = segment,
+      horizontalItemPlacer = horizontalItemPlacer,
+      fadingEdges = fadingEdges,
+      handleIntent = viewModel::handleIntent,
+      scrubController = scrubController,
+    )
+    is ProductSelection.Baby -> rememberWeightChart(
+      state = graphState,
+      productState = productState,
+      defaultMarker = defaultMarker,
+      segment = segment,
+      horizontalItemPlacer = horizontalItemPlacer,
+      fadingEdges = fadingEdges,
+      handleIntent = viewModel::handleIntent,
+      scrubController = scrubController,
+    ) // TODO: Replace with rememberBabyChart
+  }
+
   LaunchedEffect(scrollState, segment) {
     snapshotFlow { scrollState.value }
       .debounce(100)
@@ -260,20 +280,20 @@ fun GraphView(
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
         AppLog.d(
           "GraphView",
-          "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(
-            max,
-          ),
+          "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(max),
         )
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
-        if (!state.isEmptyGraph)
-          viewModel.handleIntent(GraphIntent.UpdateIsEmptyGraph(relativeMin > state.getEndTimestamp()))
+        if (!productState.isEmptyGraph)
+          viewModel.handleIntent(
+            GraphIntent.UpdateProductIsEmptyGraph(productType, relativeMin > productState.getEndTimestamp()),
+          )
         onChartConsuming(false)
       }
   }
 
   CartesianChartHost(
     chart = chart,
-    modelProducer = state.modelProducer,
+    modelProducer = productState.modelProducer,
     modifier = modifier.height(chartHeight),
     scrollState = scrollState,
     animateIn = false,
@@ -284,14 +304,6 @@ fun GraphView(
 
 /**
  * Gets target points based on visible labels, available points, and current window bounds.
- *
- * @param fullList List of visible axis labels (from scrollState).
- * @param points List of all available target points.
- * @param input The clicked position value.
- * @param segment The graph segment type.
- * @param minWindow Optional minimum x value of current window from state.
- * @param maxWindow Optional maximum x value of current window from state.
- * @return List of target points that match the criteria.
  */
 fun getTargetPoints(
   fullList: List<Double>,
@@ -301,93 +313,57 @@ fun getTargetPoints(
   minWindow: Double? = null,
   maxWindow: Double? = null,
 ): List<Double> {
-
-  // For TOTAL segment, find nearest targets from click without considering visible labels
   if (segment == GraphSegment.TOTAL) {
     val nearestTarget = points.minByOrNull { kotlin.math.abs(it - input) }
     return listOfNotNull(nearestTarget)
   }
-
-  // For other segments, use the original logic with visible labels
   if (fullList.isEmpty()) return emptyList()
-
-  // find lower and upper bound from full list (visible labels)
   val lower = fullList.filter { it <= input }.maxOrNull()
   val upper = fullList.filter { it >= input }.minOrNull()
 
-  // Handle edge cases where input is outside fullList range
-  // Use window bounds from state to find points within current window
   if (lower == null) {
-    // Input is below fullList range, find points within window bounds
     val pointsInRange = if (minWindow != null && upper != null) {
       points.filter { it in minWindow..upper }
     } else {
       points.filter { it <= input }
     }
     return if (pointsInRange.isNotEmpty()) {
-      // Return the nearest point to input, not just the max
       val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
       listOfNotNull(nearestTarget)
-    } else {
-      emptyList()
-    }
+    } else emptyList()
   }
 
   if (upper == null) {
-    // Input is above fullList range, find points within window bounds
     val pointsInRange = if (maxWindow != null) {
       points.filter { it in lower..maxWindow }
     } else {
       points.filter { it >= input }
     }
     return if (pointsInRange.isNotEmpty()) {
-      // Return the nearest point to input, not just the min
       val nearestTarget = pointsInRange.minByOrNull { kotlin.math.abs(it - input) }
       listOfNotNull(nearestTarget)
-    } else {
-      emptyList()
-    }
+    } else emptyList()
   }
 
-  // Both lower and upper exist, proceed with original logic
-  // Filter targets within the window bounds if available, otherwise use lower..upper
   val searchRange = if (minWindow != null && maxWindow != null) {
-    // Use intersection of visible labels range and window bounds
     kotlin.math.max(minWindow, lower)..kotlin.math.min(maxWindow, upper)
   } else {
     lower..upper
   }
-
   val filteredTargets = points.filter { it in searchRange }
 
   return when {
     filteredTargets.isEmpty() -> {
       val halfway = (lower + upper) / 2.0
-
-      // check halfway condition to return lower or upper
-      if (input < halfway) {
-        listOf(lower)
-      } else {
-        listOf(upper)
-      }
+      if (input < halfway) listOf(lower) else listOf(upper)
     }
-
     filteredTargets.size == 1 -> {
       val target = filteredTargets.first()
       val halfway = (upper - lower) / 2.0
-
-      // check if rounding of the point meets the target
-      if (kotlin.math.abs(target - input) < halfway) {
-        listOf(target)
-      } else if (target > input) {
-        listOf(lower)
-      } else {
-        listOf(upper)
-      }
+      if (kotlin.math.abs(target - input) < halfway) listOf(target)
+      else if (target > input) listOf(lower) else listOf(upper)
     }
-
     else -> {
-      // return the nearest target to the point
       val nearestTarget = filteredTargets.minByOrNull { kotlin.math.abs(it - input) }
       listOfNotNull(nearestTarget)
     }
