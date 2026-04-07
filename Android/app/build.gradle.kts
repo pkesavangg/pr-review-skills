@@ -115,6 +115,13 @@ release {
   }
 }
 
+configurations.configureEach {
+  resolutionStrategy {
+    force(libs.androidx.junit.get().toString())
+    force(libs.androidx.espresso.core.get().toString())
+  }
+}
+
 dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
@@ -135,7 +142,6 @@ dependencies {
   implementation(libs.androidx.ui.tooling.preview)
   implementation(libs.androidx.material.icons.extended)
   implementation(libs.androidx.material3)
-  implementation(libs.androidx.ui.test.junit4.android)
   implementation(libs.androidx.foundation.layout)
   implementation(libs.androidx.runtime.saveable)
   implementation(libs.androidx.appcompat)
