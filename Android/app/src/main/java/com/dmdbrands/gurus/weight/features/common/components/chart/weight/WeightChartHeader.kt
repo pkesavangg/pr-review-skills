@@ -15,24 +15,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
-/**
- * Returns the appropriate unit label based on the weight value and unit.
- * For LB: returns "lb" if weight <= 1.0, "lbs" if weight > 1.0
- * For KG: always returns "kg"
- * Special case: When weight is 0.0 (no data), returns "lbs" for LB unit to show plural form
- *
- * @param weightUnit The weight unit enum (KG or LB)
- * @param weight The weight value to determine the appropriate unit label
- * @return The formatted unit string
- */
 private fun getDisplayUnit(weightUnit: WeightUnit, weight: Double): String {
   return when (weightUnit) {
     WeightUnit.KG -> "kg"
     WeightUnit.LB -> when {
-      weight == 0.0 -> "lbs" // Default to plural when no data
+      weight == 0.0 -> "lbs"
       weight <= 1.0 -> "lb"
       else -> "lbs"
     }
@@ -42,6 +33,7 @@ private fun getDisplayUnit(weightUnit: WeightUnit, weight: Double): String {
 @Composable
 fun WeightChartHeader(
   state: GraphState,
+  productState: ProductGraphState = ProductGraphState(),
   segment: GraphSegment,
   weightData: String,
   rangeData: String,
@@ -51,9 +43,9 @@ fun WeightChartHeader(
   val displayUnitText = remember(weightUnit, weightValue) {
     getDisplayUnit(weightUnit, weightValue)
   }
-  
+
   val headerText =
-    if (state.markerIndex != null) {
+    if (productState.markerIndex != null) {
       when (segment) {
         GraphSegment.WEEK, GraphSegment.MONTH -> "day"
         else -> "month"
@@ -68,7 +60,7 @@ fun WeightChartHeader(
     ),
   ) {
     Text(
-      text = if (state.isEmptyGraph) "no entries" else "$headerText average",
+      text = if (productState.isEmptyGraph) "no entries" else "$headerText average",
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )
@@ -91,7 +83,7 @@ fun WeightChartHeader(
     Text(
       text = rangeData.lowercase(),
       style = MeTheme.typography.subHeading2,
-      color = if (state.markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
+      color = if (productState.markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
     )
   }
 }

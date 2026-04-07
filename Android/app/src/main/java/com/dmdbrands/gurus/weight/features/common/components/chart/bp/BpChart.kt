@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxi
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -34,17 +35,22 @@ import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import java.util.Calendar
 
-/** BP line colors: systolic (green), diastolic (darker gray-green), pulse (blue). */
+/** BP line colors: systolic (green), diastolic (gray), pulse (blue). */
 private object BpChartColors {
   val Systolic = SnapshotColors.BloodPressure   // #458239
   val Diastolic = Color(0xFF7B726E)              // gray/subheading
   val Pulse = Color(0xFF00B3E3)                  // pulse blue
 }
 
+/**
+ * BP chart builder — single layer with 3 lines (systolic, diastolic, pulse).
+ * ScrollAwareRangeProvider.buildCache merges all series so Y range spans all 3.
+ */
 @SuppressLint("RestrictedApi")
 @Composable
 fun rememberBpChart(
   state: GraphState,
+  productState: ProductGraphState,
   defaultMarker: CartesianMarker,
   segment: GraphSegment,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
@@ -52,36 +58,37 @@ fun rememberBpChart(
   handleIntent: (GraphIntent) -> Unit,
   scrubController: ScrubMarkerController? = null,
 ): CartesianChart {
-  state.markerIndex
+  productState.markerIndex
   val separators = GraphUtil.periodStarts(
     segment = segment,
-    startMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
-    endMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
+    startMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
+    endMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
   ).map { it.toDouble() }
 
   val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
     remember(segment) { segment.visibleLabelsCount() }
   } else {
-    remember(state.minTarget, state.maxTarget) {
+    remember(productState.minTarget, productState.maxTarget) {
       GraphUtil.getTotalMonthsBetweenYears(
-        state.minTarget ?: Calendar.getInstance().timeInMillis,
-        state.maxTarget ?: Calendar.getInstance().timeInMillis,
+        productState.minTarget ?: Calendar.getInstance().timeInMillis,
+        productState.maxTarget ?: Calendar.getInstance().timeInMillis,
       ).toDouble().coerceAtLeast(1.0)
     }
   }
 
   val scrollAwareRange = rememberScrollAwareRangeProvider(
-    minX = state.chartMinX ?: Double.NaN,
-    maxX = state.chartMaxX ?: Double.NaN,
-  ) { visibleEntries, visibleXRange ->
-    if (visibleEntries.isEmpty()) {
+    minX = productState.chartMinX ?: Double.NaN,
+    maxX = productState.chartMaxX ?: Double.NaN,
+  ) { visibleSeriesEntries, visibleXRange ->
+    if (visibleSeriesEntries.all { it.isEmpty() }) {
       return@rememberScrollAwareRangeProvider (0.0..1.0) to emptyList()
     }
     val relativeMin = GraphUtil.getRelativeStart(segment, visibleXRange.start.toLong())
     val relativeMax = GraphUtil.getRelativeEnd(segment, visibleXRange.endInclusive.toLong())
     val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
 
-    val yValues = visibleEntries.map { it.second }
+    // Y range spans ALL series (systolic + diastolic + pulse)
+    val yValues = visibleSeriesEntries.flatMap { series -> series.map { it.second } }
     val axisMeta = generateNiceScale(
       minValue = yValues.min(),
       maxValue = yValues.max(),
@@ -107,7 +114,6 @@ fun rememberBpChart(
     (rangeMinY..rangeMaxY) to ticks
   }
 
-  // 3-line layer: systolic, diastolic, pulse — all in one layer sharing Y axis
   val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
   val pointSize = if (segment == GraphSegment.TOTAL) 5f else 8f
 
@@ -135,9 +141,9 @@ fun rememberBpChart(
   return rememberCartesianChart(
     bpLayer,
     topAxis = topAxis(),
-    startAxis = startAxis(segment, state.isSingleWindow),
+    startAxis = startAxis(segment, productState.isSingleWindow),
     endAxis = endAxis(
-      isEmptyGraph = state.isEmptyGraph,
+      isEmptyGraph = productState.isEmptyGraph,
       ticksProvider = { scrollAwareRange.currentTicks },
     ),
     bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),

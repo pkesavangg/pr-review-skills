@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.rememberGoalM
 import com.dmdbrands.gurus.weight.features.common.components.chart.secondaryLayer
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -29,6 +30,7 @@ import java.util.Calendar
 @Composable
 fun rememberWeightChart(
   state: GraphState,
+  productState: ProductGraphState,
   defaultMarker: CartesianMarker,
   segment: GraphSegment,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
@@ -38,30 +40,29 @@ fun rememberWeightChart(
 ): CartesianChart {
   // Get weightless mode from goal's account if available
   val isWeightlessOn = state.goal?.account?.isWeightlessOn ?: false
-  state.markerIndex
+  productState.markerIndex
   val separators = GraphUtil.periodStarts(
     segment = segment,
-    startMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
-    endMillis = state.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
+    startMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
+    endMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
   ).map { it.toDouble() }
 
-  // Compute visible labels count per segment (same logic as v3)
   val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
     remember(segment) { segment.visibleLabelsCount() }
   } else {
-    remember(state.minTarget, state.maxTarget) {
+    remember(productState.minTarget, productState.maxTarget) {
       GraphUtil.getTotalMonthsBetweenYears(
-        state.minTarget ?: Calendar.getInstance().timeInMillis,
-        state.maxTarget ?: Calendar.getInstance().timeInMillis,
+        productState.minTarget ?: Calendar.getInstance().timeInMillis,
+        productState.maxTarget ?: Calendar.getInstance().timeInMillis,
       ).toDouble().coerceAtLeast(1.0)
     }
   }
 
-  // ScrollAwareRangeProvider: single source of truth for Y-axis range + step
   val scrollAwareRange = rememberScrollAwareRangeProvider(
-    minX = state.chartMinX ?: Double.NaN,
-    maxX = state.chartMaxX ?: Double.NaN,
-  ) { visibleEntries, visibleXRange ->
+    minX = productState.chartMinX ?: Double.NaN,
+    maxX = productState.chartMaxX ?: Double.NaN,
+  ) { visibleSeriesEntries, visibleXRange ->
+    val visibleEntries = visibleSeriesEntries.firstOrNull() ?: emptyList()
     if (visibleEntries.isEmpty()) {
       return@rememberScrollAwareRangeProvider (0.0..1.0) to emptyList()
     }
@@ -133,9 +134,9 @@ fun rememberWeightChart(
       primaryLayer,
       secondaryLayer,
       topAxis = topAxis(),
-      startAxis = startAxis(segment, state.isSingleWindow),
+      startAxis = startAxis(segment, productState.isSingleWindow),
       endAxis = endAxis(
-        isEmptyGraph = state.isEmptyGraph,
+        isEmptyGraph = productState.isEmptyGraph,
         markerDecoration = goalMarker,
         ticksProvider = { scrollAwareRange.currentTicks },
       ),
