@@ -194,99 +194,39 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
     var body: some View {
         #if DEBUG
-        let _ = Self._printChanges()
+        _ = Self._printChanges()
         #endif
         return conditionalScrollSyncing(
-            GeometryReader { _ in
-                ZStack {
-                    // Main Chart
-                    conditionalTouchModifiers(
-                        conditionalPreferenceChange(
-                            conditionalModifiers(
-                                Chart {
-                                    yAxisGridLines
-                                    xAxisGridLinesSolid
-                                    yAxisBaseline
-                                    crosshairContent
-                                    chartSeries
-                                    bpmReferenceLines
-                                }
-                                .chartYScale(domain: viewModel.yAxisDomain)
-                                .chartYAxis { yAxisMarks }
-                                .chartLegend(.hidden)
-                                .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
-                                .transaction { transaction in
-                                    // Disable ALL animations during scroll and scroll-end transition
-                                    if viewModel.isScrolling || isInScrollEndTransition {
-                                        transaction.animation = nil
-                                    }
-                                }
-                            )
-                            .frame(height: chartContainerHeight)
-                            .frame(maxWidth: .infinity, minHeight: chartContainerHeight)
-                            .padding(.leading, 0)
-                            .background(
-                                // Use a neutral view so we don't trigger style/layout side effects
-                                Color.clear
-                                    .background(
-                                        GeometryReader { geo in
-                                            // 1) Do a one-time assignment on first appearance
-                                            Color.clear
-                                                .task {
-                                                    assignHeightIfChanged(geo.size.height)
-                                                    assignFrameIfChanged(geo.frame(in: .local))
-                                                }
-                                            // 2) Gate size changes
-                                                .onChange(of: geo.size) { _, newSize in
-                                                    assignHeightIfChanged(newSize.height)
-                                                }
-                                            // 3) Gate frame changes
-                                                .onChange(of: geo.frame(in: .local)) { _, newFrame in
-                                                    assignFrameIfChanged(newFrame)
-                                                }
-                                        }
-                                    )
-                            )
-                            // Coordinated animation for line and point marks
-                            // - During scroll: no animation
-                            // - During scroll-end transition: no animation (data settling)
-                            // - Domain-only changes: no animation (prevents metrics from elongating unnaturally)
-                            // - Normal state: standard animations
-                            .animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)
-                            .animation(coordinatedChartAnimation, value: seriesAnimationToken)
-                            .animation(coordinatedChartAnimation, value: dashboardStore.state.ui.selectedMetricLabel)
-                            .animation(.none, value: viewModel.scrollPosition) // Never animate scroll position
-                            .animation(.none, value: viewModel.isScrolling) // Never animate scrolling state changes
-                        )
+            ZStack {
+                // Main Chart
+                mainChartView
+
+                // Selection callout overlay — baby charts use manager-resolved selection
+                // presentation so the date label stays aligned with the active crosshair.
+                if let rawDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
+                   viewModel.showCrosshair {
+                    let calloutDate = babySelectionPresentation?.crosshairDate ?? rawDate
+                    if let selectedValue = selectionCalloutValue(for: calloutDate) {
+                        selectionCallout(for: calloutDate, weight: selectedValue)
+                    }
+                }
+
+                if selectedBabyProfile != nil,
+                   viewModel.timePeriod != .total,
+                   let selectedDate = selectedBabyCrosshairDate,
+                   let percentile = selectedBabyPercentile,
+                   let yValue = horizontalBabyCrosshairYValue {
+                    babyPercentileCallout(
+                        for: selectedDate,
+                        value: yValue,
+                        percentile: percentile
                     )
+                }
 
-                    // Selection callout overlay — baby charts use manager-resolved selection
-                    // presentation so the date label stays aligned with the active crosshair.
-                    if let rawDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue),
-                       viewModel.showCrosshair {
-                        let calloutDate = babySelectionPresentation?.crosshairDate ?? rawDate
-                        if let selectedValue = selectionCalloutValue(for: calloutDate) {
-                            selectionCallout(for: calloutDate, weight: selectedValue)
-                        }
-                    }
-
-                    if selectedBabyProfile != nil,
-                       viewModel.timePeriod != .total,
-                       let selectedDate = selectedBabyCrosshairDate,
-                       let percentile = selectedBabyPercentile,
-                       let yValue = horizontalBabyCrosshairYValue {
-                        babyPercentileCallout(
-                            for: selectedDate,
-                            value: yValue,
-                            percentile: percentile
-                        )
-                    }
-
-                    // Goal chip overlay: show when goal is set (non-nil) — hidden for BPM
-                    // In weightless mode, goal of 0 is valid (maintain anchor weight)
-                    if viewModel.goalWeight != nil && dashboardStore.productType != .bpm && selectedBabyProfile == nil {
-                        goalChipCallout()
-                    }
+                // Goal chip overlay: show when goal is set (non-nil) — hidden for BPM
+                // In weightless mode, goal of 0 is valid (maintain anchor weight)
+                if viewModel.goalWeight != nil && dashboardStore.productType != .bpm && selectedBabyProfile == nil {
+                    goalChipCallout()
                 }
             }
         )
@@ -485,171 +425,120 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         }
     }
 
-    @ChartContentBuilder
-    private var chartSeries: some ChartContent {
-        // Use cached grouped data with render-time filtering
-        // This ensures ALL visible points are shown while limiting buffer points
-        ForEach(orderedSeriesNames, id: \.self) { seriesName in
-            if let seriesPoints = cachedPlottedPoints[seriesName] {
-                // Filter to visible + downsampled buffer for this series
-                let pointsToRender = getPointsToRender(from: seriesPoints)
-                chartContentForSeries(seriesName: seriesName, seriesPoints: pointsToRender)
-            }
-        }
-    }
-
-    private var orderedSeriesNames: [String] {
-        cachedPlottedPoints.keys.sorted { lhs, rhs in
-            seriesRenderPriority(lhs) < seriesRenderPriority(rhs)
-        }
-    }
-
-    private func seriesRenderPriority(_ seriesName: String) -> Int {
-        if BabyDashboardChartSupport.isPercentileSeries(seriesName) {
-            return 0
-        }
-        if seriesName == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(seriesName) {
-            return 1
-        }
-        return 2
-    }
-
-    @ChartContentBuilder
-    private var bpmReferenceLines: some ChartContent {
-        if dashboardStore.productType == .bpm {
-            RuleMark(y: .value("SysRef", Double(BpmConstants.normalSystolic)))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                .foregroundStyle(theme.textSubheading.opacity(0.4))
-            RuleMark(y: .value("DiaRef", Double(BpmConstants.normalDiastolic)))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                .foregroundStyle(theme.textSubheading.opacity(0.4))
-        }
-    }
-
-    @ChartContentBuilder
-    private func chartContentForSeries(seriesName: String, seriesPoints: [PlottedGraphSeries]) -> some ChartContent {
-        ForEach(seriesPoints) { plottedPoint in
-            let point = plottedPoint.original
-            let xDate = plottedPoint.xDate  // Use precomputed
-            let percentileLine = BabyDashboardChartSupport.percentileLine(for: point.series)
-            let isBabyPercentileSeries = percentileLine != nil
-
-            // Clamp value to the Y-axis domain so marks never overflow outside
-            // the plot area into the x-axis region during domain transitions.
-            let domainLower = viewModel.yAxisDomain.lowerBound
-            let domainUpper = viewModel.yAxisDomain.upperBound
-            let clampedValue = min(max(point.value, domainLower), domainUpper)
-            let isWithinDomain = point.value >= domainLower && point.value <= domainUpper
-
-            // Only enlarge the point that exactly matches the nearest selected data point
-            let nearestSelectedDate = viewModel.selectedPoint?.date
-            let plottedSelectedDate = nearestSelectedDate.map { viewModel.plotXDate(for: $0) }
-            let isThisPointSelected = viewModel.showCrosshair && (plottedSelectedDate.map { xDate == $0 } ?? false)
-
-            // Check if point is outside the active month interval (should be greyed out)
-            let isOutsideMonthInterval = isPointOutsideActiveMonth(date: point.date)
-
-            let colors = seriesColors(for: point, isOutsideMonthInterval: isOutsideMonthInterval)
-
-            // Line mark — uses clamped value so the line stops at the domain boundary
-            LineMark(
-                x: .value("Date", xDate),
-                y: .value(point.series, clampedValue),
-                series: .value("Series", point.series)
-            )
-            .foregroundStyle(colors.line)
-            .interpolationMethod(.monotone)
-            .lineStyle(StrokeStyle(
-                lineWidth: isBabyPercentileSeries
-                    ? BabyDashboardChartStyle.percentileLineWidth(for: percentileLine)
-                    : viewModel.lineWidth
-            ))
-
-            // Visible point mark — only shown when within domain to avoid
-            // dots sitting on the axis boundary
-            PointMark(
-                x: .value("Date", xDate),
-                y: .value(point.series, isWithinDomain ? point.value : clampedValue)
-            )
-            .symbolSize(
-                isBabyPercentileSeries
-                    ? 0
-                    : (isWithinDomain ? viewModel.pointArea(isSelected: isThisPointSelected) : 0)
-            )
-            .foregroundStyle(colors.point)
-        }
-    }
-
-    /// Checks if a point's date falls outside the active month interval.
-    /// Returns true only when in month period with a full month visible, not scrolling, and the point is outside that month.
-    private func isPointOutsideActiveMonth(date: Date) -> Bool {
-        // Don't grey out points while scrolling
-        guard !viewModel.isScrolling else { return false }
-
-        guard let monthInterval = dashboardStore.displayManager.activeMonthInterval else {
-            return false
-        }
-        // Check if date is before month start or on/after month end
-        return date < monthInterval.start || date >= monthInterval.end
-    }
-
-    /// Computes line and point colors for a chart series, factoring in product type and month interval.
-    private func seriesColors(for point: GraphSeries, isOutsideMonthInterval: Bool) -> (line: Color, point: Color) {
-        if let percentileLine = BabyDashboardChartSupport.percentileLine(for: point.series) {
-            let color = BabyDashboardChartStyle.percentileLineColor(for: percentileLine, theme: theme)
-            return (color, color)
-        }
-
-        if selectedBabyProfile != nil,
-           point.series == DashboardStrings.weight || BabyDashboardChartSupport.isHeightSeries(point.series) {
-            return (BabyDashboardChartStyle.weightColor, BabyDashboardChartStyle.weightColor)
-        }
-
-        return DashboardChartStyleProvider.seriesColors(
-            for: point.series,
-            productType: dashboardStore.productType,
-            theme: theme,
-            bpmClassification: dashboardStore.displayManager?.getBpmDisplayValues()?.classification,
-            isOutsideMonthInterval: isOutsideMonthInterval
-        )
-    }
-
-    /// Y-value for the horizontal baby crosshair — computed outside @ChartContentBuilder
-    /// to avoid complex nested logic inside the result builder, which can silently produce no content.
+    /// Y-value for the horizontal baby crosshair — computed outside Chart { } to avoid
+    /// complex nested logic inside the result builder, which can silently produce no content.
     private var horizontalBabyCrosshairYValue: Double? {
         guard viewModel.showCrosshair else { return nil }
         return babySelectionPresentation?.crosshairValue
     }
 
-    @ChartContentBuilder
-    private var crosshairContent: some ChartContent {
-        // Vertical crosshair — all chart types
-        if let selectedDate = (viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue), viewModel.showCrosshair {
-            // Baby charts use the resolved selection presentation; weight/BPM
-            // charts continue to use the raw tap date.
-            let snappedDate = babySelectionPresentation?.crosshairDate ?? selectedDate
-            let xDate = viewModel.plotXDate(for: snappedDate)
-            RuleMark(x: .value("Date", xDate))
-                .zIndex(-100)
-                .foregroundStyle(theme.actionSecondary)
-                .lineStyle(StrokeStyle(lineWidth: 1))
-        }
-        // Horizontal crosshair — baby charts only, at selected point's Y value
-        if viewModel.showCrosshair, let yValue = horizontalBabyCrosshairYValue {
-            RuleMark(y: .value("SelectedY", yValue))
-                .zIndex(-100)
-                .foregroundStyle(theme.actionSecondary)
-                .lineStyle(StrokeStyle(lineWidth: 1))
-                .annotation(position: .top, alignment: .leading, spacing: 6) {
-                    if viewModel.timePeriod == .total,
-                       let percentile = selectedBabyPercentile {
-                        Text("\(percentile)%")
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
-                            .padding(.leading, 8)
+    private var selectedCrosshairDate: Date? {
+        viewModel.selectedDate ?? viewModel.dashboardStore?.state.graph.selectedXValue
+    }
+
+    private var chartCrosshairContent: CrosshairContent {
+        CrosshairContent(
+            selectedDate: selectedCrosshairDate,
+            showCrosshair: viewModel.showCrosshair,
+            crosshairDate: babySelectionPresentation?.crosshairDate,
+            horizontalYValue: horizontalBabyCrosshairYValue,
+            timePeriod: viewModel.timePeriod,
+            selectedBabyPercentile: selectedBabyPercentile,
+            theme: theme,
+            plotXDate: { viewModel.plotXDate(for: $0) }
+        )
+    }
+
+    private var chartSeriesContent: ChartSeriesContent {
+        ChartSeriesContent(
+            cachedPlottedPoints: cachedPlottedPoints,
+            yAxisDomain: viewModel.yAxisDomain,
+            scrollPosition: viewModel.scrollPosition,
+            visibleDomainLength: viewModel.visibleDomainLength,
+            selectedPoint: viewModel.selectedPoint,
+            showCrosshair: viewModel.showCrosshair,
+            isScrolling: viewModel.isScrolling,
+            lineWidth: viewModel.lineWidth,
+            timePeriod: viewModel.timePeriod,
+            productType: dashboardStore.productType,
+            activeMonthInterval: dashboardStore.displayManager.activeMonthInterval,
+            bpmClassification: dashboardStore.displayManager?.getBpmDisplayValues()?.classification,
+            theme: theme,
+            babyProfile: selectedBabyProfile,
+            plotXDate: { viewModel.plotXDate(for: $0) },
+            pointArea: { viewModel.pointArea(isSelected: $0) }
+        )
+    }
+
+    private var chartBpmReferenceLines: BpmReferenceLines {
+        BpmReferenceLines(
+            productType: dashboardStore.productType,
+            theme: theme
+        )
+    }
+
+    private var mainChartView: some View {
+        let xAxisLabels = cachedXAxisLabels
+        return conditionalTouchModifiers(
+            conditionalPreferenceChange(
+                conditionalModifiers(
+                    Chart {
+                        yAxisGridLines
+                        xAxisGridLinesSolid
+                        yAxisBaseline
+                        chartCrosshairContent
+                        chartSeriesContent
+                        chartBpmReferenceLines
                     }
-                }
-        }
+                    .chartYScale(domain: viewModel.yAxisDomain)
+                    .chartYAxis { yAxisMarks }
+                    .chartLegend(.hidden)
+                    .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))
+                    .transaction { transaction in
+                        // Disable ALL animations during scroll and scroll-end transition
+                        if viewModel.isScrolling || isInScrollEndTransition {
+                            transaction.animation = nil
+                        }
+                    },
+                    xAxisLabels: xAxisLabels
+                )
+                .frame(height: chartContainerHeight)
+                .frame(maxWidth: .infinity, minHeight: chartContainerHeight)
+                .padding(.leading, 0)
+                .background(
+                    // Use a neutral view so we don't trigger style/layout side effects
+                    Color.clear
+                        .background(
+                            GeometryReader { geo in
+                                // 1) Do a one-time assignment on first appearance
+                                Color.clear
+                                    .task {
+                                        assignHeightIfChanged(geo.size.height)
+                                        assignFrameIfChanged(geo.frame(in: .local))
+                                    }
+                                // 2) Gate size changes
+                                    .onChange(of: geo.size) { _, newSize in
+                                        assignHeightIfChanged(newSize.height)
+                                    }
+                                // 3) Gate frame changes
+                                    .onChange(of: geo.frame(in: .local)) { _, newFrame in
+                                        assignFrameIfChanged(newFrame)
+                                    }
+                            }
+                        )
+                )
+                // Coordinated animation for line and point marks
+                // - During scroll: no animation
+                // - During scroll-end transition: no animation (data settling)
+                // - Domain-only changes: no animation (prevents metrics from elongating unnaturally)
+                // - Normal state: standard animations
+                .animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)
+                .animation(coordinatedChartAnimation, value: seriesAnimationToken)
+                .animation(coordinatedChartAnimation, value: dashboardStore.state.ui.selectedMetricLabel)
+                .animation(.none, value: viewModel.scrollPosition)
+                .animation(.none, value: viewModel.isScrolling)
+            )
+        )
     }
 
     // MARK: - Y-Axis Marks
@@ -767,18 +656,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         lastDataHash = cacheUpdate.dataHash
     }
 
-    /// Returns points to render: ALL visible points + downsampled buffer
-    /// Called during render to ensure visible window always shows all points
-    private func getPointsToRender(from points: [PlottedGraphSeries]) -> [PlottedGraphSeries] {
-        let visibleStart = viewModel.scrollPosition
-        let visibleEnd = viewModel.scrollPosition.addingTimeInterval(viewModel.visibleDomainLength)
-        return BaseGraphViewCacheSupport.pointsToRender(
-            from: points,
-            visibleStart: visibleStart,
-            visibleEnd: visibleEnd
-        )
-    }
-
     /// Invalidates cache when data changes externally
     private func invalidateCache() {
         cachedChartPoints = []
@@ -834,11 +711,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         cachedYAxisLabels[value] ?? dashboardStore.displayManager.formatYAxisTickLabel(value)
     }
 
-    /// Returns cached X-axis label (read-only during rendering)
-    func getCachedXAxisLabel(_ date: Date) -> String? {
-        cachedXAxisLabels[date] ?? viewModel.formatXAxisLabel(for: date)
-    }
-
     /// Precomputes and caches all labels before rendering
     private func precomputeLabels() {
         cachedYAxisLabels = BaseGraphViewCacheSupport.precomputedYAxisLabels(
@@ -864,7 +736,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     }
 
     // MARK: - Helpers
-    @inline(__always)
     private func assignFrameIfChanged(_ newFrame: CGRect) {
         let roundedFrame = BaseGraphViewCacheSupport.roundedFrame(newFrame)
         if roundedFrame != lastChartFrame {
@@ -873,7 +744,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         }
     }
 
-    @inline(__always)
     private func assignHeightIfChanged(_ newHeight: CGFloat) {
         let roundedHeight = BaseGraphViewCacheSupport.roundedHeight(newHeight)
         if roundedHeight != lastChartHeight {
@@ -902,7 +772,7 @@ extension View {
         localSelectedXValue: Binding<Date?>,
         dashboardStore: DashboardStore,
         theme: AppColors.Palette,
-        getCachedXAxisLabel: @escaping (Date) -> String?,
+        xAxisLabels: [Date: String],
         isBabyChart: Bool,
         babyBoundaryYAxisTicks: [Double],
         babyChartPlotWidth: CGFloat,
@@ -1015,7 +885,7 @@ extension View {
                         }
                         AxisValueLabel {
                             if let date = value.as(Date.self),
-                               let labelString = getCachedXAxisLabel(date) {
+                               let labelString = xAxisLabels[date] ?? viewModel.formatXAxisLabel(for: date) {
                                 if viewModel.timePeriod == .month {
                                     Text(labelString)
                                         .font(.caption)

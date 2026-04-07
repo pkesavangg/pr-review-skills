@@ -4,9 +4,12 @@ import SwiftUI
 extension BaseGraphView {
 
     @ViewBuilder
-    func conditionalModifiers<Content: View>(_ content: Content) -> some View {
+    func conditionalModifiers<Content: View>(
+        _ content: Content,
+        xAxisLabels: [Date: String]
+    ) -> some View {
         if viewModel.hasXAxis {
-            scrollableChartModifiers(content)
+            scrollableChartModifiers(content, xAxisLabels: xAxisLabels)
         } else {
             nonScrollableChartModifiers(content)
         }
@@ -14,7 +17,7 @@ extension BaseGraphView {
 
     @ViewBuilder
     // swiftlint:disable:next function_body_length cyclomatic_complexity
-    func scrollableChartModifiers<Content: View>(_ content: Content) -> some View {
+    func scrollableChartModifiers<Content: View>(_ content: Content, xAxisLabels: [Date: String]) -> some View {
         babyScrollDomainCap(
             conditionalEmptyDomain(
                 content
@@ -110,7 +113,7 @@ extension BaseGraphView {
                 }
                 AxisValueLabel {
                     if let date = value.as(Date.self),
-                       let labelString = getCachedXAxisLabel(date) {
+                       let labelString = xAxisLabels[date] ?? viewModel.formatXAxisLabel(for: date) {
                         if viewModel.timePeriod == .month {
                             Text(labelString)
                                 .font(.caption)
