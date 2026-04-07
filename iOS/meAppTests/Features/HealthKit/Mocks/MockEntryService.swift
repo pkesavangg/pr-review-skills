@@ -109,4 +109,7 @@ final class MockEntryService: EntryServiceProtocol {
     }
     func deleteBpmEntry(entryTimestamp: String) async throws { deleteBpmEntryCalls += 1 }
     func exportBpmCSV() async throws { exportBpmCSVCalls += 1 }
+    func migrateBabyEntriesToDecigrams() async {}
+    func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }

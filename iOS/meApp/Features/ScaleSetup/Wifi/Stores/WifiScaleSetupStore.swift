@@ -708,6 +708,7 @@ final class WifiScaleSetupStore: ObservableObject {
                 logger.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
                 self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
             }
+            self.bluetoothService.isSetupInProgress = false
         }
     }
     

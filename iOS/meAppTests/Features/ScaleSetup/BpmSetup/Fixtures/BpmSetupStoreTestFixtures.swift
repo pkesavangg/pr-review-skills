@@ -139,6 +139,12 @@ enum BpmSetupStoreTestFixtures {
         )
     }
 
+    /// Returns the actual array index of a step within the store's configured steps.
+    @MainActor
+    static func stepIndex(_ step: BpmSetupStep, in store: BpmSetupStore) -> Int {
+        store.steps.firstIndex(of: step)!
+    }
+
     @MainActor
     static func waitUntil(
         timeoutNanoseconds: UInt64 = 2_000_000_000,

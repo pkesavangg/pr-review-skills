@@ -39,6 +39,10 @@ final class BpmSetupStore: ObservableObject {
     // MARK: - Published State
     @Published var currentStepIndex: Int = 0 {
         didSet {
+            guard currentStepIndex >= 0, currentStepIndex < steps.count else {
+                currentStepIndex = max(0, steps.count - 1)
+                return
+            }
             currentStep = steps[currentStepIndex]
             updateNextEnabled()
         }
@@ -498,6 +502,7 @@ final class BpmSetupStore: ObservableObject {
     private func startPairing() async {
         guard let device = discoveredDevice else {
             LoggerService.shared.log(level: .error, tag: tag, message: "startPairing - no discovered device")
+            connectionState = .failure
             showConnectionErrorAlert()
             return
         }
@@ -549,6 +554,7 @@ final class BpmSetupStore: ObservableObject {
                 tag: tag,
                 message: "BPM pairing failed: \(error.localizedDescription)"
             )
+            connectionState = .failure
             showConnectionErrorAlert()
         }
     }

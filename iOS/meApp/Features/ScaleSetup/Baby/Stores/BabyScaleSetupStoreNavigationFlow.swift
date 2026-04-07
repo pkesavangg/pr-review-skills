@@ -158,8 +158,9 @@ extension BabyScaleSetupStore {
 
         // If a discovered scale was passed in and permissions are granted, pair directly
         if discoveredScale != nil && discoveryEvent != nil && arePermissionsEnabled() {
+            navigateToStep(.connectingBluetooth)
+            connectionState = .loading
             Task {
-                connectionState = .loading
                 await confirmPair()
             }
         } else if discoveredScale != nil && discoveryEvent != nil {

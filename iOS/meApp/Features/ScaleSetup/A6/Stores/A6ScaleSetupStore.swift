@@ -322,13 +322,14 @@ final class A6ScaleSetupStore: ObservableObject {
             bluetoothService.syncDevices([])
             
             LoggerService.shared.log(level: .info, tag: tag, message: "Scale saved successfully: \(savedScale.id)")
-            
+
             // Post notification that scale was added
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save scale: \(error.localizedDescription)")
             self.notificationService.showToast(ToastModel(message: ToastStrings.saveScaleError))
         }
+        bluetoothService.isSetupInProgress = false
     }
     
     // MARK: - Device Discovery Handling
