@@ -135,7 +135,6 @@ dependencies {
   implementation(libs.androidx.ui.tooling.preview)
   implementation(libs.androidx.material.icons.extended)
   implementation(libs.androidx.material3)
-  implementation(libs.androidx.ui.test.junit4.android)
   implementation(libs.androidx.foundation.layout)
   implementation(libs.androidx.runtime.saveable)
   implementation(libs.androidx.appcompat)
