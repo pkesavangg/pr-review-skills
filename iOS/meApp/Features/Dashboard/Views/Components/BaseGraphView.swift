@@ -19,6 +19,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     // MARK: - Dependencies
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var dashboardStore: DashboardStore
+    /// When false, body renders nothing so inactive periods skip all chart work while
+    /// keeping @State storage and @ObservedObject subscriptions alive.
+    var isActive: Bool = true
     @Environment(\.appTheme) var theme
     @Environment(\.babyGrowthChartCalloutDateStyle) private var babyGrowthChartCalloutDateStyle
 
@@ -194,7 +197,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
 
     var body: some View {
         #if DEBUG
-        _ = Self._printChanges()
+            Self._printChanges()
         #endif
         return conditionalScrollSyncing(
             ZStack {
