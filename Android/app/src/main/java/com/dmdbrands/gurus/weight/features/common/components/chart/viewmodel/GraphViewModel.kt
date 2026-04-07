@@ -2,6 +2,9 @@ package com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
+import com.dmdbrands.gurus.weight.domain.model.common.GraphData
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
@@ -10,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.chart.CartesianRangeValues
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
@@ -28,6 +32,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -39,8 +45,10 @@ import kotlinx.coroutines.withContext
 import android.icu.util.Calendar
 
 /**
- * ViewModel for the graph component, managing chart state and business logic.
- * Follows MVI pattern with clear separation of concerns.
+ * ViewModel for the graph component. One instance per segment (4 total).
+ * Holds per-product state in [GraphState.productStates] map.
+ * Each product's [ProductGraphState.modelProducer] is stable and never recreated.
+ * All product flows collect independently in the background.
  */
 @HiltViewModel(
   assistedFactory = GraphViewModel.Factory::class,
@@ -51,7 +59,8 @@ class GraphViewModel @AssistedInject constructor(
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val entryService: IEntryService,
-  private val accountService: IAccountService
+  private val historyService: IHistoryService,
+  private val accountService: IAccountService,
 ) : BaseIntentViewModel<GraphState, GraphIntent>(
   reducer = GraphReducer(),
 ) {
@@ -63,7 +72,9 @@ class GraphViewModel @AssistedInject constructor(
   override fun handleIntent(intent: GraphIntent) {
     super.handleIntent(intent)
     when (intent) {
-      is GraphIntent.SetScrollRange -> handleScroll(intent.min, intent.max, intent.onFallback)
+      is GraphIntent.SetProductScrollRange -> handleScroll(
+        intent.productType, intent.min, intent.max, intent.onFallback,
+      )
       else -> null
     }
   }
@@ -73,190 +84,86 @@ class GraphViewModel @AssistedInject constructor(
     fun create(segment: GraphSegment, anchoredScrollTarget: Double?): GraphViewModel
   }
 
-  private val dataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
+  private val weightDataFlow = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
     entryService.daywiseBodyScaleAverages
   } else {
     entryService.monthlyBodyScaleAverages
   }
 
-  private var currentModelProducerJob: Job? = null
+  private var currentWeightModelJob: Job? = null
   private var scrollDebounceJob: Job? = null
   private var isInitialized: Boolean = false
+  private val productDataJobs = mutableMapOf<ProductType, Job>()
 
   init {
-    // Set loading state immediately to prevent blank screen
+    // Ensure weight product state exists immediately
+    super.handleIntent(GraphIntent.AddProductState(ProductType.MY_WEIGHT))
     initializeWeightUnit()
     initializeImmediateData()
-    observeDataChanges()
+    observeWeightDataChanges()
     subscribeWeightUnit()
   }
 
-  /**
-   * Initializes the graph with immediate data from services without suspension.
-   * This provides instant initialization while the async flows are being set up.
-   */
-  private fun initializeImmediateData() {
-    try {
-      // Get immediate data from services (excluding EntryService and AccountService as requested)
-      val immediateData = dataFlow.value
-      val currentAccount = accountService.activeAccount.value
-      val rawGoal = currentAccount?.toGoal()
-      // Process goal with current unit and weightless mode to ensure correct unit conversion
-      val immediateGoal = rawGoal?.let { goal ->
-        val weightUnit = currentAccount.weightUnit
-        val weightless = currentAccount.toWeightless()
-        goal.process(weightUnit, weightless)
-      }
-      super.handleIntent(GraphIntent.UpdateData(immediateData))
-      super.handleIntent(GraphIntent.UpdateGoal(immediateGoal))
-      // Skip secondary key on immediate init — data is unfiltered/stale.
-      // observeDataChanges handles secondary with correct segment-filtered data.
-      initializeGraph(immediateData, immediateGoal, secondaryKey = null)
-    } catch (e: Exception) {
-      AppLog.w(TAG, "Failed to initialize immediate data, falling back to async")
-    }
+  override fun onDependenciesReady() {
+    observeAvailableProducts()
   }
 
-  private fun subscribeWeightUnit() {
+  // ── Product-aware data collection (lazy) ──
+
+  private fun observeAvailableProducts() {
     viewModelScope.launch {
-      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().drop(1).collect { weightUnit ->
-        if (weightUnit != null)
-          handleIntent(
-            GraphIntent.UpdateWeightUnit(weightUnit),
-          )
-      }
-    }
-  }
-
-  /**
-   * Initializes the weight unit from the current account settings immediately.
-   * This ensures the correct unit is displayed on app launch.
-   */
-  private fun initializeWeightUnit() {
-    try {
-      val currentAccount = accountService.activeAccount.value
-      val weightUnit = currentAccount?.weightUnit
-      if (weightUnit != null) {
-        handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
-      }
-    } catch (e: Exception) {
-      AppLog.w(TAG, "Failed to initialize weight unit, using default KG")
-    }
-  }
-
-  private fun observeDataChanges() {
-    viewModelScope.launch {
-      // Start observing combined updates immediately
-      // The immediate data initialization already handled the initial state
-      combine(
-        dataFlow,
-        dashboardService.selectedKey,
-        goalService.getCurrentGoal(),
-      ) { data, secondaryKey, goal ->
-        Triple(data, secondaryKey, goal)
-      }
-        .drop(1)
-        .collect { (data, secondaryKey) ->
-          val currentAccount = accountService.activeAccount.value
-          val changedGoal = currentAccount?.toGoal()
-          // Process goal with current unit and weightless mode to ensure correct unit conversion
-          val goal = changedGoal?.let { goal ->
-            val weightUnit = currentAccount.weightUnit
-            val weightless = currentAccount.toWeightless()
-            goal.process(weightUnit, weightless)
-          }
-          handleIntent(GraphIntent.UpdateData(data))
-          handleIntent(GraphIntent.UpdateGoal(goal))
-          handleIntent(GraphIntent.SetSecondaryKey(secondaryKey))
-          initializeGraph(data, goal, secondaryKey = secondaryKey)
+      productSelectionManager.availableProducts.collectLatest { products ->
+        for (product in products) {
+          val pt = product.productType
+          if (pt == ProductType.MY_WEIGHT) continue // handled by weight-specific flow
+          if (productDataJobs.containsKey(pt)) continue
+          // Add product state entry (with fresh producer)
+          super.handleIntent(GraphIntent.AddProductState(pt))
+          startProductDataCollection(product)
         }
+      }
     }
   }
 
-  /**
-   * Initializes the graph with new data and sets up initial state.
-   */
-  private fun initializeGraph(
-    data: List<PeriodBodyScaleSummary>? = null,
-    goal: Goal? = null,
-    secondaryKey: DashboardKey? = null
-  ) {
-    val data = data ?: _state.value.data
-    val goal = goal ?: _state.value.goal
-    val secondaryKey = secondaryKey ?: _state.value.secondaryKey
-    scrollDebounceJob?.cancel()
-
-    // Setup chart model producer
-    if (data.isNotEmpty()) {
-      setupChartModelProducer(data, secondaryKey, goal)
+  private fun startProductDataCollection(product: ProductSelection) {
+    val pt = product.productType
+    val adapter = GraphDataAdapter.forProduct(product)
+    val graphDataFlow: Flow<GraphData> = if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) {
+      historyService.getDailyGraphData(product)
     } else {
-      setupEmptyModelProducer(goal)
+      historyService.getMonthlyGraphData(product)
     }
-  }
-
-  /**
-   * Sets up an empty chart model producer when no data is available.
-   * Optimized to set empty state immediately and update model producer asynchronously.
-   */
-  private fun setupEmptyModelProducer(goal: Goal?) {
-    val currentState = state.value
-    // Cancel any existing model producer job
-    currentModelProducerJob?.cancel()
-
-    // Set empty state immediately to avoid blank screen
-    handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = true))
-    val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
-    val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
-    val isSingleWindow = GraphUtil.isSingleWindow(segment, startx, endx)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
-    if (startx != null && endx != null) {
-      super.handleIntent(GraphIntent.SetScrollRange(startx, endx))
-    }
-    super.handleIntent(GraphIntent.UpdateTarget(emptyList()))
-
-    // Set empty model producer asynchronously
-    currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
-      try {
-        // Check if job is still active before running transaction
-        if (isActive) {
-          // Y-axis range is now handled by ScrollAwareRangeProvider at the composable level
-          withContext(Dispatchers.Main) {
-            currentState.modelProducer.runTransaction(animate = false) {
-              lineSeries {
-                series(
-                  listOf(0.0), listOf(0.0),
-                )
-              }
-            }
-          }
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error setting up empty chart model producer", e)
+    productDataJobs[pt] = viewModelScope.launch {
+      graphDataFlow.collect { graphData ->
+        pushProductData(pt, adapter, graphData)
       }
     }
   }
 
-  /**
-   * Sets up the chart model producer with primary and secondary graph lines.
-   * Optimized to run heavy computations on background thread.
-   */
-  private fun setupChartModelProducer(
-    data: List<PeriodBodyScaleSummary>,
-    secondaryKey: DashboardKey? = null,
-    goal: Goal?
+  private suspend fun pushProductData(
+    productType: ProductType,
+    adapter: GraphDataAdapter,
+    graphData: GraphData,
   ) {
-    // Cancel any existing model producer job
-    currentModelProducerJob?.cancel()
-    val currentState = state.value
-    val graphLines = data.getWeightGraphPoints()
-    val secondaryStat = secondaryKey ?: _state.value.secondaryKey
-    val secondaryGraphLines = secondaryStat?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
-    val xLabels = graphLines.points.map { point -> point.x }
-    val ySeries = graphLines.points.map { it.y }
-    val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
-    val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
+    val seriesList = adapter.toLineSeries(graphData)
+    val producer = _state.value.forProduct(productType).modelProducer
+
+    if (seriesList.isEmpty() || seriesList.all { it.xValues.isEmpty() }) {
+      super.handleIntent(GraphIntent.UpdateProductIsEmptyGraph(productType, true))
+      withContext(Dispatchers.Main) {
+        producer.runTransaction(animate = false) {
+          lineSeries { series(listOf(0.0), listOf(0.0)) }
+        }
+      }
+      return
+    }
+
+    // Compute ranges from adapter data
+    val timestamps = adapter.getTimestamps(graphData).sorted()
+    val initialTimeStamp = timestamps.minOrNull()
+    val endTimeStamp = timestamps.maxOrNull()
     val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
-    super.handleIntent(GraphIntent.UpdateIsSingleWindow(isSingleWindow))
+    super.handleIntent(GraphIntent.UpdateProductIsSingleWindow(productType, isSingleWindow))
     val calendar = Calendar.getInstance()
 
     val (startX, endX) = if (segment == GraphSegment.TOTAL) {
@@ -268,27 +175,19 @@ class GraphViewModel @AssistedInject constructor(
       }
       start to end
     } else {
-      val anchoredScrollTargetConsideration = anchoredScrollTarget != null && !isInitialized
-      val start: Long =
-        anchoredScrollTarget?.toLong()
-          ?.takeIf { anchoredScrollTargetConsideration }
-          ?: _state.value.minTarget ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
-          ?: GraphUtil.getStartRange(segment, endTimeStamp)
-          ?: calendar.timeInMillis
-
-      val end =
-        GraphUtil.getRollingWindowEnd(segment, anchoredScrollTarget?.toLong())
-          ?.takeIf { anchoredScrollTargetConsideration }
-          ?: _state.value.maxTarget ?: endTimeStamp ?: calendar.timeInMillis
-
+      val start = GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+        ?: GraphUtil.getStartRange(segment, endTimeStamp)
+        ?: calendar.timeInMillis
+      val end = endTimeStamp ?: calendar.timeInMillis
       start to end
     }
 
+    super.handleIntent(GraphIntent.UpdateProductIsEmptyGraph(productType, false))
+    super.handleIntent(GraphIntent.SetProductScrollRange(productType, startX, endX))
 
-    handleIntent(GraphIntent.UpdateIsEmptyGraph(isEmptyGraph = false))
-    super.handleIntent(GraphIntent.SetScrollRange(startX, endX))
+    val targetData = adapter.toTargetData(graphData)
+    super.handleIntent(GraphIntent.UpdateProductData(productType, targetData))
 
-    // Compute chart X range (matches v3's CartesianRangeValues.minX/maxX)
     val chartMinX = if (segment == GraphSegment.TOTAL) {
       startX.toDouble()
     } else {
@@ -303,36 +202,193 @@ class GraphViewModel @AssistedInject constructor(
     } else {
       GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
     }
-    super.handleIntent(GraphIntent.UpdateChartXRange(chartMinX, chartMaxX))
-    val filteredData = data.filter {
-      it.getTimeStamp() in startX..endX
-    }
-    if (filteredData.isNotEmpty())
-      super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+    super.handleIntent(GraphIntent.UpdateProductChartXRange(productType, chartMinX, chartMaxX))
 
-    currentModelProducerJob = viewModelScope.launch(Dispatchers.IO) {
+    val filteredTarget = targetData.filter { it.getTimeStamp() in startX..endX }
+    if (filteredTarget.isNotEmpty()) {
+      super.handleIntent(GraphIntent.UpdateProductTarget(productType, filteredTarget))
+    }
+
+    withContext(Dispatchers.Main) {
+      producer.runTransaction(animate = false) {
+        lineSeries {
+          seriesList.forEach { s -> series(x = s.xValues, y = s.yValues) }
+        }
+      }
+    }
+  }
+
+  // ── Weight-specific (original logic, uses product-scoped intents) ──
+
+  private fun initializeImmediateData() {
+    try {
+      val immediateData = weightDataFlow.value
+      val currentAccount = accountService.activeAccount.value
+      val rawGoal = currentAccount?.toGoal()
+      val immediateGoal = rawGoal?.let { goal ->
+        val weightUnit = currentAccount.weightUnit
+        val weightless = currentAccount.toWeightless()
+        goal.process(weightUnit, weightless)
+      }
+      super.handleIntent(GraphIntent.UpdateProductData(ProductType.MY_WEIGHT, immediateData))
+      super.handleIntent(GraphIntent.UpdateGoal(immediateGoal))
+      initializeWeightGraph(immediateData, immediateGoal, secondaryKey = null)
+    } catch (e: Exception) {
+      AppLog.w(TAG, "Failed to initialize immediate data, falling back to async")
+    }
+  }
+
+  private fun observeWeightDataChanges() {
+    viewModelScope.launch {
+      combine(
+        weightDataFlow,
+        dashboardService.selectedKey,
+        goalService.getCurrentGoal(),
+      ) { data, secondaryKey, goal ->
+        Triple(data, secondaryKey, goal)
+      }
+        .drop(1)
+        .collect { (data, secondaryKey) ->
+          val currentAccount = accountService.activeAccount.value
+          val changedGoal = currentAccount?.toGoal()
+          val goal = changedGoal?.let { goal ->
+            val weightUnit = currentAccount.weightUnit
+            val weightless = currentAccount.toWeightless()
+            goal.process(weightUnit, weightless)
+          }
+          handleIntent(GraphIntent.UpdateProductData(ProductType.MY_WEIGHT, data))
+          handleIntent(GraphIntent.UpdateGoal(goal))
+          handleIntent(GraphIntent.SetSecondaryKey(secondaryKey))
+          initializeWeightGraph(data, goal, secondaryKey = secondaryKey)
+        }
+    }
+  }
+
+  private fun initializeWeightGraph(
+    data: List<PeriodBodyScaleSummary>? = null,
+    goal: Goal? = null,
+    secondaryKey: DashboardKey? = null,
+  ) {
+    val ps = _state.value.forProduct(ProductType.MY_WEIGHT)
+    val data = data ?: ps.data
+    val goal = goal ?: _state.value.goal
+    val secondaryKey = secondaryKey ?: _state.value.secondaryKey
+    scrollDebounceJob?.cancel()
+    if (data.isNotEmpty()) {
+      setupWeightChartModelProducer(data, secondaryKey, goal)
+    } else {
+      setupEmptyWeightModelProducer()
+    }
+  }
+
+  private fun setupEmptyWeightModelProducer() {
+    val producer = _state.value.forProduct(ProductType.MY_WEIGHT).modelProducer
+    currentWeightModelJob?.cancel()
+    handleIntent(GraphIntent.UpdateProductIsEmptyGraph(ProductType.MY_WEIGHT, true))
+    val startx = GraphUtil.getStartRange(segment, Calendar.getInstance().timeInMillis)
+    val endx = GraphUtil.getEndRange(segment, Calendar.getInstance().timeInMillis)
+    val isSingleWindow = GraphUtil.isSingleWindow(segment, startx, endx)
+    super.handleIntent(GraphIntent.UpdateProductIsSingleWindow(ProductType.MY_WEIGHT, isSingleWindow))
+    if (startx != null && endx != null) {
+      super.handleIntent(GraphIntent.SetProductScrollRange(ProductType.MY_WEIGHT, startx, endx))
+    }
+    super.handleIntent(GraphIntent.UpdateProductTarget(ProductType.MY_WEIGHT, emptyList()))
+    currentWeightModelJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-        // Pre-calculate series data on background thread
-        // Y-axis range/step is handled by ScrollAwareRangeProvider at the composable level
+        if (isActive) {
+          withContext(Dispatchers.Main) {
+            producer.runTransaction(animate = false) {
+              lineSeries { series(listOf(0.0), listOf(0.0)) }
+            }
+          }
+        }
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error setting up empty chart model producer", e)
+      }
+    }
+  }
+
+  private fun setupWeightChartModelProducer(
+    data: List<PeriodBodyScaleSummary>,
+    secondaryKey: DashboardKey? = null,
+    goal: Goal?,
+  ) {
+    val producer = _state.value.forProduct(ProductType.MY_WEIGHT).modelProducer
+    currentWeightModelJob?.cancel()
+    val graphLines = data.getWeightGraphPoints()
+    val secondaryStat = secondaryKey ?: _state.value.secondaryKey
+    val secondaryGraphLines = secondaryStat?.let { data.toGraphPoints((it as DashboardKey.Metric).key) }
+    val xLabels = graphLines.points.map { point -> point.x }
+    val ySeries = graphLines.points.map { it.y }
+    val initialTimeStamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
+    val endTimeStamp = graphLines.points.maxOfOrNull { it.x.value.toLong() }
+    val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
+    super.handleIntent(GraphIntent.UpdateProductIsSingleWindow(ProductType.MY_WEIGHT, isSingleWindow))
+    val calendar = Calendar.getInstance()
+
+    val (startX, endX) = if (segment == GraphSegment.TOTAL) {
+      val start = (initialTimeStamp ?: calendar.timeInMillis).let {
+        Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
+      }
+      val end = (endTimeStamp ?: calendar.timeInMillis).let {
+        Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
+      }
+      start to end
+    } else {
+      val anchoredScrollTargetConsideration = anchoredScrollTarget != null && !isInitialized
+      val ps = _state.value.forProduct(ProductType.MY_WEIGHT)
+      val start: Long =
+        anchoredScrollTarget?.toLong()
+          ?.takeIf { anchoredScrollTargetConsideration }
+          ?: ps.minTarget ?: GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+          ?: GraphUtil.getStartRange(segment, endTimeStamp)
+          ?: calendar.timeInMillis
+      val end =
+        GraphUtil.getRollingWindowEnd(segment, anchoredScrollTarget?.toLong())
+          ?.takeIf { anchoredScrollTargetConsideration }
+          ?: ps.maxTarget ?: endTimeStamp ?: calendar.timeInMillis
+      start to end
+    }
+
+    handleIntent(GraphIntent.UpdateProductIsEmptyGraph(ProductType.MY_WEIGHT, false))
+    super.handleIntent(GraphIntent.SetProductScrollRange(ProductType.MY_WEIGHT, startX, endX))
+
+    val chartMinX = if (segment == GraphSegment.TOTAL) {
+      startX.toDouble()
+    } else {
+      GraphUtil.getStartRange(segment, initialTimeStamp)?.toDouble() ?: startX.toDouble()
+    }
+    val chartMaxX = if (segment == GraphSegment.TOTAL) {
+      endX.toDouble()
+    } else if (segment == GraphSegment.MONTH) {
+      val paddedStart = GraphUtil.getStartRange(segment, calendar.timeInMillis) ?: calendar.timeInMillis
+      Calendar.getInstance().apply { timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30) }
+        .timeInMillis.toDouble()
+    } else {
+      GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
+    }
+    super.handleIntent(GraphIntent.UpdateProductChartXRange(ProductType.MY_WEIGHT, chartMinX, chartMaxX))
+    val filteredData = data.filter { it.getTimeStamp() in startX..endX }
+    if (filteredData.isNotEmpty())
+      super.handleIntent(GraphIntent.UpdateProductTarget(ProductType.MY_WEIGHT, filteredData))
+
+    currentWeightModelJob = viewModelScope.launch(Dispatchers.IO) {
+      try {
         val primaryYDataPairs = xLabels.zip(ySeries).mapNotNull { (xLabel, yLabel) ->
           val xValue = xLabel.value as? Long
           val yValue = yLabel.value as? Double
-          if (xValue != null && yValue != null && yValue.isFinite()) {
-            Pair(xValue, yValue)
-          } else null
+          if (xValue != null && yValue != null && yValue.isFinite()) Pair(xValue, yValue) else null
         }
         val primaryXDataFiltered = primaryYDataPairs.map { it.first }
         val primaryYDataFiltered = primaryYDataPairs.map { it.second }
 
-        // Send raw (unnormalized) data — yTransform handles normalization at render time
         if (isActive && primaryXDataFiltered.isNotEmpty() && primaryYDataFiltered.isNotEmpty() &&
           primaryXDataFiltered.size == primaryYDataFiltered.size
         ) {
-          currentState.modelProducer.runTransaction(animate = false) {
+          producer.runTransaction(animate = false) {
             lineSeries {
               series(x = primaryXDataFiltered, y = primaryYDataFiltered)
             }
-            // Secondary: send RAW metric values — yTransform normalizes at draw time
             if (secondaryGraphLines != null && secondaryGraphLines.points.isNotEmpty()) {
               val secondaryDataPairs = secondaryGraphLines.points.mapNotNull { point ->
                 val xValue = point.x.value as? Long
@@ -355,117 +411,42 @@ class GraphViewModel @AssistedInject constructor(
     this.isInitialized = true
   }
 
-  private fun calculateYAxisRange(
-    graphLines: GraphLine,
-    goal: Goal? = null,
-    min: Long,
-    max: Long,
-    isSecondary: Boolean = false,
-    isWeightlessMode: Boolean = false,
-  ): AxisMeta {
-    // Get the end and start timestamp
-    val graphLines = graphLines.copy(
-      points = graphLines.points.sortedBy { it.x.value.toLong() },
-    )
-    val initialTimestamp = graphLines.points.minOfOrNull { it.x.value.toLong() }
-    val visibleGraphLines = filterXValuesInRange(
-      listOf(graphLines),
-      min,
-      max,
-    )
+  // ── Common ──
 
-    val paddedValues: List<Double> =
-      listOfNotNull(GraphUtil.getPreviousAvailablePoint(graphLines, min)) +
-        visibleGraphLines.flatMap { graphLine -> graphLine.points.map { it.y.value.toDouble() } } +
-        listOfNotNull(GraphUtil.getImmediateAvailablePoint(graphLines, max))
-
-    // Filter out NaN and infinite values before calculating min/max
-    val validPaddedValues = paddedValues.filter { it.isFinite() }
-
-    val goalWeight = goal?.goalWeight ?: 0.0
-
-    val graphMeta = if (validPaddedValues.isNotEmpty()) generateNiceScale(
-      minValue = validPaddedValues.min(),
-      maxValue = validPaddedValues.max(),
-      goalWeight = goalWeight,
-      isWeightLessMode = isWeightlessMode,
-      targetTickCount = 4,
-    ) else generateNiceScale(
-      minValue = goalWeight.div(10) - 10,
-      maxValue = goalWeight.div(10) + 10,
-      goalWeight = goalWeight,
-      isWeightLessMode = isWeightlessMode,
-      targetTickCount = 3,
-    )
-
-    // Validate graphMeta values are finite
-    if (!graphMeta.min.isFinite() || !graphMeta.max.isFinite()) {
-      // Return default range if graphMeta is invalid
-      return AxisMeta(
-        axisRange = CartesianRangeValues(
-          maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else GraphUtil.getEndRange(
-            segment,
-            Calendar.getInstance().timeInMillis,
-          )?.toDouble(),
-          minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
-            segment,
-            initialTimestamp,
-          )
-            ?.toDouble(),
-        ),
-      )
+  private fun subscribeWeightUnit() {
+    viewModelScope.launch {
+      accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().drop(1).collect { weightUnit ->
+        if (weightUnit != null)
+          handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
+      }
     }
-
-    return AxisMeta(
-      axisRange = CartesianRangeValues(
-        minY = graphMeta.min,
-        maxY = graphMeta.max,
-        maxX = if (segment == GraphSegment.TOTAL) max.toDouble() else if (segment == GraphSegment.MONTH) {
-          val paddedEnd_StartRange = GraphUtil.getStartRange(segment, java.util.Calendar.getInstance().timeInMillis)
-            ?: Calendar.getInstance().timeInMillis
-          val paddedEndX = Calendar.getInstance().apply {
-            timeInMillis = paddedEnd_StartRange
-            add(Calendar.DAY_OF_YEAR, 30)
-          }.timeInMillis
-          paddedEndX.toDouble()
-        } else GraphUtil.getEndRange(
-          segment,
-          Calendar.getInstance().timeInMillis,
-        )?.toDouble(),
-        minX = if (segment == GraphSegment.TOTAL) min.toDouble() else GraphUtil.getStartRange(
-          segment,
-          initialTimestamp,
-        )
-          ?.toDouble(),
-      ),
-      axisStep = graphMeta.step,
-    )
   }
 
-  /**
-   * Handles scroll events and updates the visible range.
-   * Optimized with debouncing and background processing.
-   * iOS-style: Caches Y-axis on scroll end to trigger renormalization.
-   */
-  private fun handleScroll(min: Long, max: Long, fallback: () -> Unit = {}) {
+  private fun initializeWeightUnit() {
+    try {
+      val currentAccount = accountService.activeAccount.value
+      val weightUnit = currentAccount?.weightUnit
+      if (weightUnit != null) {
+        handleIntent(GraphIntent.UpdateWeightUnit(weightUnit))
+      }
+    } catch (e: Exception) {
+      AppLog.w(TAG, "Failed to initialize weight unit, using default KG")
+    }
+  }
+
+  private fun handleScroll(productType: ProductType, min: Long, max: Long, fallback: () -> Unit = {}) {
     val min = GraphUtil.getRelativeStart(segment, min)
     val max = GraphUtil.getRelativeEnd(segment, max)
-    val currentState = _state.value
-    // Cancel any existing debounce job
+    val ps = _state.value.forProduct(productType)
     scrollDebounceJob?.cancel()
-    // Debounce heavy computations
     scrollDebounceJob = viewModelScope.launch(Dispatchers.IO) {
       try {
-        val filteredData = currentState.data.filter {
-          it.getTimeStamp() in min..max
-        }
+        val filteredData = ps.data.filter { it.getTimeStamp() in min..max }
         if (filteredData.isEmpty()) {
           fallback()
         } else {
-          super.handleIntent(GraphIntent.UpdateTarget(filteredData))
+          super.handleIntent(GraphIntent.UpdateProductTarget(productType, filteredData))
         }
-        // Y-axis range is now handled by ScrollAwareRangeProvider at the composable level
-        // No ViewModel-driven Y-axis calculation or renormalization needed
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
@@ -475,5 +456,4 @@ class GraphViewModel @AssistedInject constructor(
   }
 
   override fun provideInitialState(): GraphState = GraphState()
-
 }
