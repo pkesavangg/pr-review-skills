@@ -426,7 +426,7 @@ interface HistoryDao {
     SELECT * FROM (
       SELECT
         strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        MAX(e.entryTimestamp) AS entryTimestamp,
+        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
         CAST(AVG(bp.systolic) AS INTEGER) AS avgSystolic,
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
@@ -499,7 +499,7 @@ interface HistoryDao {
     SELECT * FROM (
       SELECT
         strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        MAX(e.entryTimestamp) AS entryTimestamp,
+        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day') AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
         CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters
       FROM entry_view e

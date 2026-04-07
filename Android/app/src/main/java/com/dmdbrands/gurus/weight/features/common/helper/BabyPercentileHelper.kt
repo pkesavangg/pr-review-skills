@@ -34,14 +34,20 @@ object BabyPercentileHelper {
   data class PercentileSeries(
     val xTimestamps: List<Double>,
     val p5: List<Double>,
+    val p10: List<Double>,
+    val p25: List<Double>,
     val p50: List<Double>,
+    val p75: List<Double>,
+    val p90: List<Double>,
     val p95: List<Double>,
-  )
+  ) {
+    /** All 7 bands as a list of series (for passing to lineSeries) */
+    fun allBands(): List<List<Double>> = listOf(p5, p10, p25, p50, p75, p90, p95)
+  }
 
   /**
-   * Returns percentile curves from birth to currentAge + 120 days.
-   * Dense X timestamps (every 7 days from CSV), own coordinate space.
-   * Used as a separate chart layer behind the weight data.
+   * Returns all 7 WHO percentile curves from birth to end of CSV data.
+   * No clipping — full static data. Values converted from decigrams to lbs.
    */
   fun getPercentileSeries(
     sex: String?,
@@ -54,56 +60,28 @@ object BabyPercentileHelper {
     } ?: return null
 
     val dayMs = 86_400_000L
-    val now = System.currentTimeMillis()
-    val ageDays = ((now - birthDateMillis) / dayMs).toInt()
-    val maxDay = ageDays + 120
-
     val xTimestamps = mutableListOf<Double>()
     val p5 = mutableListOf<Double>()
+    val p10 = mutableListOf<Double>()
+    val p25 = mutableListOf<Double>()
     val p50 = mutableListOf<Double>()
+    val p75 = mutableListOf<Double>()
+    val p90 = mutableListOf<Double>()
     val p95 = mutableListOf<Double>()
 
     for (row in data) {
-      if (row.day > maxDay) break
       val timestamp = (birthDateMillis + row.day.toLong() * dayMs).toDouble()
       xTimestamps.add(timestamp)
       p5.add(row.p5 / 283.495 / 16.0)
+      p10.add(row.p10 / 283.495 / 16.0)
+      p25.add(row.p25 / 283.495 / 16.0)
       p50.add(row.p50 / 283.495 / 16.0)
+      p75.add(row.p75 / 283.495 / 16.0)
+      p90.add(row.p90 / 283.495 / 16.0)
       p95.add(row.p95 / 283.495 / 16.0)
     }
 
-    return if (xTimestamps.size >= 2) PercentileSeries(xTimestamps, p5, p50, p95) else null
-  }
-
-  /**
-   * Interpolates p5/p50/p95 values at the given timestamps.
-   * Both layers share the same X values for correct chart alignment.
-   */
-  fun getPercentileAtTimestamps(
-    sex: String?,
-    birthDateMillis: Long,
-    timestamps: List<Double>,
-  ): PercentileSeries? {
-    val data = when (sex?.lowercase()) {
-      "male" -> boyData
-      "female" -> girlData
-      else -> null
-    } ?: return null
-
-    val dayMs = 86_400_000.0
-    val p5 = mutableListOf<Double>()
-    val p50 = mutableListOf<Double>()
-    val p95 = mutableListOf<Double>()
-
-    for (ts in timestamps) {
-      val daysSinceBirth = ((ts - birthDateMillis) / dayMs).toInt().coerceAtLeast(0)
-      val row = interpolateRow(data, daysSinceBirth) ?: continue
-      p5.add(row.p5 / 283.495 / 16.0)
-      p50.add(row.p50 / 283.495 / 16.0)
-      p95.add(row.p95 / 283.495 / 16.0)
-    }
-
-    return if (p5.size == timestamps.size) PercentileSeries(timestamps, p5, p50, p95) else null
+    return if (xTimestamps.size >= 2) PercentileSeries(xTimestamps, p5, p10, p25, p50, p75, p90, p95) else null
   }
 
   private fun interpolateRow(data: List<PercentileRow>, day: Int): PercentileRow? {

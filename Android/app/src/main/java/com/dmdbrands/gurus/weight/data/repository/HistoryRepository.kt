@@ -123,20 +123,16 @@ class HistoryRepository @Inject constructor(
         return historyDao.getBpmSnapshotGraphData(accountId)
     }
 
-    private fun sampleBpmSnapshotData(): List<PeriodBpmSummary> {
-        val now = System.currentTimeMillis()
-        val dayMs = 86_400_000L
-        return listOf(
-            PeriodBpmSummary("2026-03-30", "2026-03-30T08:00:00.000Z", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
-            PeriodBpmSummary("2026-03-31", "2026-03-31T08:00:00.000Z", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
-            PeriodBpmSummary("2026-04-01", "2026-04-01T08:00:00.000Z", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
-            PeriodBpmSummary("2026-04-02", "2026-04-02T08:00:00.000Z", avgSystolic = 112, avgDiastolic = 72, avgPulse = 62),
-            PeriodBpmSummary("2026-04-03", "2026-04-03T08:00:00.000Z", avgSystolic = 116, avgDiastolic = 75, avgPulse = 66),
-            PeriodBpmSummary("2026-04-04", "2026-04-04T08:00:00.000Z", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
-            PeriodBpmSummary("2026-04-05", "2026-04-05T08:00:00.000Z", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
-            PeriodBpmSummary("2026-04-06", "2026-04-06T08:00:00.000Z", avgSystolic = 111, avgDiastolic = 71, avgPulse = 63),
-        )
-    }
+    private fun sampleBpmSnapshotData(): List<PeriodBpmSummary> = listOf(
+            PeriodBpmSummary("2026-03-30", "2026-03-30 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
+            PeriodBpmSummary("2026-03-31", "2026-03-31 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
+            PeriodBpmSummary("2026-04-01", "2026-04-01 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
+            PeriodBpmSummary("2026-04-02", "2026-04-02 00:00:00", avgSystolic = 112, avgDiastolic = 72, avgPulse = 62),
+            PeriodBpmSummary("2026-04-03", "2026-04-03 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 66),
+            PeriodBpmSummary("2026-04-04", "2026-04-04 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
+            PeriodBpmSummary("2026-04-05", "2026-04-05 00:00:00", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
+            PeriodBpmSummary("2026-04-06", "2026-04-06 00:00:00", avgSystolic = 111, avgDiastolic = 71, avgPulse = 63),
+    )
 
     // ---------------------------------------------------------------------------
     // Baby Graph
@@ -159,14 +155,14 @@ class HistoryRepository @Inject constructor(
 
     /** Realistic sample: ~90-day-old baby around p50 (~60000 decigrams = 13.2 lbs) */
     private fun sampleBabySnapshotData(): List<PeriodBabySummary> = listOf(
-        PeriodBabySummary("2026-03-30", "2026-03-30T08:00:00.000Z", avgWeightDecigrams = 58200, avgLengthMillimeters = 580),
-        PeriodBabySummary("2026-03-31", "2026-03-31T08:00:00.000Z", avgWeightDecigrams = 58500, avgLengthMillimeters = 581),
-        PeriodBabySummary("2026-04-01", "2026-04-01T08:00:00.000Z", avgWeightDecigrams = 58800, avgLengthMillimeters = 582),
-        PeriodBabySummary("2026-04-02", "2026-04-02T08:00:00.000Z", avgWeightDecigrams = 59200, avgLengthMillimeters = 583),
-        PeriodBabySummary("2026-04-03", "2026-04-03T08:00:00.000Z", avgWeightDecigrams = 59500, avgLengthMillimeters = 584),
-        PeriodBabySummary("2026-04-04", "2026-04-04T08:00:00.000Z", avgWeightDecigrams = 59900, avgLengthMillimeters = 585),
-        PeriodBabySummary("2026-04-05", "2026-04-05T08:00:00.000Z", avgWeightDecigrams = 60200, avgLengthMillimeters = 587),
-        PeriodBabySummary("2026-04-06", "2026-04-06T08:00:00.000Z", avgWeightDecigrams = 60500, avgLengthMillimeters = 588),
+        PeriodBabySummary("2026-03-30", "2026-03-30 00:00:00", avgWeightDecigrams = 58200, avgLengthMillimeters = 580),
+        PeriodBabySummary("2026-03-31", "2026-03-31 00:00:00", avgWeightDecigrams = 58500, avgLengthMillimeters = 581),
+        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", avgWeightDecigrams = 58800, avgLengthMillimeters = 582),
+        PeriodBabySummary("2026-04-02", "2026-04-02 00:00:00", avgWeightDecigrams = 59200, avgLengthMillimeters = 583),
+        PeriodBabySummary("2026-04-03", "2026-04-03 00:00:00", avgWeightDecigrams = 59500, avgLengthMillimeters = 584),
+        PeriodBabySummary("2026-04-04", "2026-04-04 00:00:00", avgWeightDecigrams = 59900, avgLengthMillimeters = 585),
+        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", avgWeightDecigrams = 60200, avgLengthMillimeters = 587),
+        PeriodBabySummary("2026-04-06", "2026-04-06 00:00:00", avgWeightDecigrams = 60500, avgLengthMillimeters = 588),
     )
 
     // ---------------------------------------------------------------------------

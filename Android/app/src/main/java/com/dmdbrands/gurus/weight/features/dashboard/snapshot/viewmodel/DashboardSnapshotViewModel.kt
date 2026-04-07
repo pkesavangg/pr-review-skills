@@ -272,6 +272,12 @@ class DashboardSnapshotViewModel @Inject constructor(
         targetTickCount = 4,
       )
 
+      // Start from the week of the last percentile point before weight data
+      val percentileWeekStart = pSeries?.xTimestamps
+        ?.lastOrNull { it < (startTimestamp?.toDouble() ?: Double.MAX_VALUE) }
+        ?.toLong()
+        ?.let { GraphUtil.getStartRange(GraphSegment.WEEK, it) }
+
       handleIntent(
         DashboardSnapshotIntent.SetBabyChart(
           profileId,
@@ -280,7 +286,7 @@ class DashboardSnapshotViewModel @Inject constructor(
             yStep = graphMeta.step,
             yMin = graphMeta.min,
             yMax = graphMeta.max,
-            startTimestamp = startTimestamp,
+            startTimestamp = percentileWeekStart ?: startTimestamp,
             endTimestamp = endTimestamp,
             hasPercentile = pSeries != null,
           ),
@@ -290,17 +296,17 @@ class DashboardSnapshotViewModel @Inject constructor(
       val producer = babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
       try {
         producer.runTransaction {
-          // Layer 1: baby weight line
-          lineSeries {
-            series(x = xValues, y = yValues)
-          }
-          // Layer 2: percentile bands (dense X timestamps from birth)
+          // Layer 1 (behind): percentile bands
           if (pSeries != null) {
             lineSeries {
-              series(x = pSeries.xTimestamps, y = pSeries.p95)
-              series(x = pSeries.xTimestamps, y = pSeries.p50)
-              series(x = pSeries.xTimestamps, y = pSeries.p5)
+              pSeries.allBands().forEach { band ->
+                series(x = pSeries.xTimestamps, y = band)
+              }
             }
+          }
+          // Layer 2 (on top): baby weight line
+          lineSeries {
+            series(x = xValues, y = yValues)
           }
         }
       } catch (e: Exception) {

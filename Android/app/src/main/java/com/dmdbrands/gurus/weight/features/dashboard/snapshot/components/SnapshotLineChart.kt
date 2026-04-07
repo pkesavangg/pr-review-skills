@@ -114,12 +114,12 @@ fun SnapshotLineChart(
     rangeProvider = rangeProvider,
   )
 
-  // Secondary layer for percentile bands — same axis position + range as primary
+  // Secondary layer for percentile bands
   val secondaryLayer = if (secondaryLayerColor != null) {
     val secLine = LineCartesianLayer.rememberLine(
       fill = LineCartesianLayer.LineFill.single(Fill(secondaryLayerColor.copy(alpha = 0.5f))),
       stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
-      interpolator = LineCartesianLayer.Interpolator.monotone(),
+      interpolator = LineCartesianLayer.Interpolator.cubic(1f),
     )
     rememberLineCartesianLayer(
       lineProvider = remember(secLine) { LineCartesianLayer.LineProvider.series(listOf(secLine)) },
@@ -129,7 +129,7 @@ fun SnapshotLineChart(
   } else null
 
   val chart = rememberCartesianChart(
-    *listOfNotNull(lineLayer, secondaryLayer).toTypedArray(),
+    *listOfNotNull(secondaryLayer, lineLayer).toTypedArray(),
     topAxis = HorizontalAxis.rememberTop(
       label = null,
       line = rememberAxisLineComponent(fill = Fill(lineStyle), thickness = 1.dp),
@@ -184,7 +184,7 @@ fun SnapshotLineChart(
       labelHorizontalPosition = Position.Horizontal.End,
       line = rememberAxisLineComponent(fill = Fill(lineStyle), thickness = 1.dp),
     ),
-    visibleLabelsCount = 7.0,
+    visibleLabelsCount = 7.0 + startPaddingXStep,
     getXStep = { GraphUtil.calculateXStep(GraphSegment.WEEK) },
   )
 
