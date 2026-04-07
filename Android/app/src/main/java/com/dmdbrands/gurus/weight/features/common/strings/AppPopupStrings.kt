@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.strings
 
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 
 /**
@@ -64,7 +65,7 @@ object AppPopupStrings {
   }
 
   object ScaleDiscoveredPopup {
-    const val Title = "New Device Discovered"
+    fun Title(sku: String) = if (DeviceHelper.isBpmDevice(sku)) "New Monitor Discovered" else "New Scale Discovered"
     const val ConnectButton = "Connect"
     const val CloseContentDescription = "Close"
   }
