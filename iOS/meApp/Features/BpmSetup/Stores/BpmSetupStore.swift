@@ -146,7 +146,7 @@ final class BpmSetupStore: ObservableObject {
                         description: BpmSetupStrings.SetUser.description(for: bpmItem),
                         imagePath: bpmItem.imgPath,
                         gifName: userGifName(for: bpmItem.sku, selectedUserNumber: selectedUserNumber),
-                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        gifSubdirectory: userGifSubdirectory(for: bpmItem.sku),
                         resourceImageName: imageName(for: .setUser, sku: bpmItem.sku),
                         resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
                         mediaLayout: .bottom,
@@ -903,6 +903,16 @@ final class BpmSetupStore: ObservableObject {
         return nil
     }
 
+    private func userGifSubdirectory(for sku: String) -> String? {
+        if a3BpmSkus.contains(sku) {
+            return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku)
+        }
+        if a6BpmSkus.contains(sku) {
+            return BpmA6MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        return nil
+    }
+
     private func gifName(for step: BpmSetupStep, sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
             switch step {
@@ -963,7 +973,7 @@ final class BpmSetupStore: ObservableObject {
             return BpmA3MonitorSetupAssets.userGifName(sku: sku, slot: selectedUserNumber)
         }
         if a6BpmSkus.contains(sku) {
-            return BpmA6MonitorSetupAssets.userGifName(slot: selectedUserNumber)
+            return BpmA6MonitorSetupAssets.userGifName(sku: sku, slot: selectedUserNumber)
         }
         return nil
     }
