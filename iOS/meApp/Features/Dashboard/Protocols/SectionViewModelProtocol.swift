@@ -46,6 +46,8 @@ protocol SectionViewModelProtocol: ObservableObject {
     var displayWeight: Double? { get }
     var weightLabel: String { get }
     var xAxisValues: [Date] { get }
+    var gridTicks: [Date] { get }
+    var adjustedLabelTicks: [Date] { get }
     var isAtLeftBoundary: Bool { get }
     
     // MARK: - Stroke & Point Sizing

@@ -35,45 +35,8 @@ extension BaseGraphView {
             }
         ))
         .chartXAxis {
-            let allTicks = viewModel.xAxisValues
-            let nonLastTicks = Array(allTicks.dropLast())
-            let gridTicks: [Date] = {
-                guard viewModel.timePeriod == .month, !nonLastTicks.isEmpty else {
-                    return nonLastTicks
-                }
-                let calendar = Calendar.current
-                let sortedTicks = nonLastTicks.sorted()
-                guard let firstTick = sortedTicks.first,
-                      let lastTick = sortedTicks.last else {
-                    return nonLastTicks
-                }
-
-                var monthStartTicks: [Date] = []
-                var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
-                while currentMonthStart <= lastTick {
-                    let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
-                    monthStartTicks.append(monthStartNoon)
-                    guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
-                    currentMonthStart = next
-                }
-
-                let combined = nonLastTicks + monthStartTicks
-                var uniqueByDay: [Date] = []
-                var seenDays: Set<Date> = []
-                for tick in combined.sorted() {
-                    let day = calendar.startOfDay(for: tick)
-                    if seenDays.insert(day).inserted {
-                        uniqueByDay.append(tick)
-                    }
-                }
-                return uniqueByDay
-            }()
-            let adjustedLabelTicks: [Date] = {
-                if viewModel.timePeriod == .year {
-                    return nonLastTicks
-                }
-                return allTicks
-            }()
+            let gridTicks = viewModel.gridTicks
+            let adjustedLabelTicks = viewModel.adjustedLabelTicks
             let renderedGridTicks: [Date] = {
                 if dashboardStore.selectedBabyProfile != nil && viewModel.hasXAxis {
                     return Array(gridTicks.dropLast())

@@ -95,6 +95,15 @@ struct GraphView: View {
             monthSectionViewModel.clearSelection()
             weekSectionViewModel.clearSelection()
 
+            // Release caches on all inactive view models to reclaim memory
+            let allViewModels: [BaseSectionViewModel] = [
+                totalSectionViewModel, yearSectionViewModel,
+                monthSectionViewModel, weekSectionViewModel
+            ]
+            for vm in allViewModels where vm.timePeriod != newValue {
+                vm.tearDown()
+            }
+
             // PERFORMANCE: Defer heavy configuration to prevent CPU spike
             // Only configure the active ViewModel after a brief delay
             periodChangeTask = Task { @MainActor in

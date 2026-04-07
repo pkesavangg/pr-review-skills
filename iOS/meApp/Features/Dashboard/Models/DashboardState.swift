@@ -54,7 +54,7 @@ struct UIState {
 }
 
 // MARK: - Metrics State
-struct MetricsState {
+struct MetricsState: Equatable {
     var dashboardType: DashboardType = .dashboard12
     var metrics: [MetricItem] = []
     var activeMetricsCount: Int = 12 {
@@ -86,7 +86,7 @@ struct MetricsState {
 }
 
 // MARK: - Streak State
-struct StreakState {
+struct StreakState: Equatable {
     var streakItems: [MetricItem] = []
     var activeStreakItemsCount: Int = 6 {
         didSet {
@@ -107,7 +107,7 @@ struct StreakState {
 }
 
 // MARK: - Graph State
-struct GraphState {
+struct GraphState: Equatable {
     var selectedEntry: BathScaleOperationDTO?
     var selectedPeriod: TimePeriod = .week
     var xScrollPosition = Date()
@@ -152,10 +152,30 @@ struct GraphState {
             clearSelection()
         }
     }
+
+    static func == (lhs: GraphState, rhs: GraphState) -> Bool {
+        lhs.selectedEntry == rhs.selectedEntry &&
+        lhs.selectedPeriod == rhs.selectedPeriod &&
+        lhs.xScrollPosition == rhs.xScrollPosition &&
+        lhs.selectedWeight == rhs.selectedWeight &&
+        lhs.selectedPoint == rhs.selectedPoint &&
+        lhs.selectedXValue == rhs.selectedXValue &&
+        lhs.chartHeight == rhs.chartHeight &&
+        lhs.annotationHeight == rhs.annotationHeight &&
+        lhs.isGraphReady == rhs.isGraphReady &&
+        lhs.isScrolling == rhs.isScrolling &&
+        lhs.showCrosshair == rhs.showCrosshair &&
+        lhs.dataChangeTrigger == rhs.dataChangeTrigger &&
+        lhs.hasDetectedScrollInCurrentGesture == rhs.hasDetectedScrollInCurrentGesture &&
+        lhs.cachedYAxisDomain == rhs.cachedYAxisDomain &&
+        lhs.cachedYAxisTicks == rhs.cachedYAxisTicks &&
+        lhs.cachedXAxisValues == rhs.cachedXAxisValues
+        // scrollEndTimer is intentionally excluded — it is a scheduling detail, not semantic state
+    }
 }
 
 // MARK: - Goal State
-struct GoalState {
+struct GoalState: Equatable {
     var goalType: GoalType = .gain
     var goalStartWeight: Double = 0.0
     var goalWeight: Double = 0.0
@@ -166,7 +186,7 @@ struct GoalState {
 }
 
 // MARK: - Data State
-struct DataState {
+struct DataState: Equatable {
     var dailySummaries: [BathScaleWeightSummary?] = []
     var monthlySummaries: [BathScaleWeightSummary?] = []
     var latestWeightStored: Int = 0

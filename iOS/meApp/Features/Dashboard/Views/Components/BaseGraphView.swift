@@ -23,7 +23,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @Environment(\.babyGrowthChartCalloutDateStyle) private var babyGrowthChartCalloutDateStyle
 
     // MARK: - Local State
-    @State private var localSelectedXValue: Date?
+    @State var localSelectedXValue: Date?
     // Enable Y-axis animation only after first render to avoid blank-first-frame
     @State private var enableYAxisAnimation: Bool = false
     // Scroll position debouncing
@@ -68,8 +68,20 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     /// When this changes, we need to refresh data and update chart
     private var dataChangeSignature: Int {
         var hasher = Hasher()
-        hasher.combine(dashboardStore.continuousOperations.count)
+        let ops = dashboardStore.continuousOperations
+        hasher.combine(ops.count)
         hasher.combine(dashboardStore.state.ui.selectedMetricLabel)
+        // Sample a spread of entries to detect edits/replacements, not just count changes
+        if !ops.isEmpty {
+            let indices = ops.count <= 3
+                ? Array(0..<ops.count)
+                : [0, ops.count / 2, ops.count - 1]
+            for i in indices {
+                let op = ops[i]
+                hasher.combine(op.entryTimestamp)
+                hasher.combine(op.weight)
+            }
+        }
         return hasher.finalize()
     }
 

@@ -765,6 +765,19 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         cachedGroupedSeries = [:]
         lastCacheUpdateHash = 0
     }
+
+    /// Releases all cached data for this view model.
+    /// Call on inactive view models when the selected period changes to reclaim memory.
+    func tearDown() {
+        cachedSeriesData = []
+        cachedGroupedSeries = [:]
+        lastCacheUpdateHash = 0
+        cachedChartSeriesData = []
+        cachedChartSeriesMetric = nil
+        _cachedXAxisValues = []
+        _lastXAxisScrollPosition = nil
+        _lastXAxisPeriod = nil
+    }
     
     /// Returns cached series data, updating cache if needed
     func getCachedSeriesData() -> [GraphSeries] {
@@ -830,6 +843,53 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         case .total:
             return []
         }
+    }
+
+    // MARK: - Pre-computed X-Axis Grid Ticks
+
+    /// Grid tick dates for the chart X-axis (excludes the phantom trailing tick).
+    /// For month view, also inserts month-start ticks so solid grid lines appear at month boundaries.
+    /// The baby-profile drop-last adjustment is intentionally left to the view, as it depends on the store.
+    var gridTicks: [Date] {
+        let allTicks = xAxisValues
+        let nonLastTicks = Array(allTicks.dropLast())
+        guard timePeriod == .month, !nonLastTicks.isEmpty else {
+            return nonLastTicks
+        }
+        let calendar = Calendar.current
+        let sortedTicks = nonLastTicks.sorted()
+        guard let firstTick = sortedTicks.first,
+              let lastTick = sortedTicks.last else {
+            return nonLastTicks
+        }
+        var monthStartTicks: [Date] = []
+        var currentMonthStart = calendar.dateInterval(of: .month, for: firstTick)?.start ?? firstTick
+        while currentMonthStart <= lastTick {
+            let monthStartNoon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: currentMonthStart) ?? currentMonthStart
+            monthStartTicks.append(monthStartNoon)
+            guard let next = calendar.date(byAdding: .month, value: 1, to: currentMonthStart) else { break }
+            currentMonthStart = next
+        }
+        let combined = nonLastTicks + monthStartTicks
+        var uniqueByDay: [Date] = []
+        var seenDays: Set<Date> = []
+        for tick in combined.sorted() {
+            let day = calendar.startOfDay(for: tick)
+            if seenDays.insert(day).inserted {
+                uniqueByDay.append(tick)
+            }
+        }
+        return uniqueByDay
+    }
+
+    /// Label tick dates for the chart X-axis.
+    /// Year view uses non-last ticks; all other periods use the full tick set (including phantom).
+    var adjustedLabelTicks: [Date] {
+        let allTicks = xAxisValues
+        if timePeriod == .year {
+            return Array(allTicks.dropLast())
+        }
+        return allTicks
     }
 
     /// Returns a fixed X-axis domain for empty-state rendering so labels appear left-to-right.

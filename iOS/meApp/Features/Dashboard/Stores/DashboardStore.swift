@@ -281,6 +281,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         metricsManager.$state
             .sink { [weak self] metricsState in
                 guard let self = self else { return }
+                guard self.state.metrics != metricsState else { return }
                 if !self.state.ui.isResettingDashboard {
                     self.state.metrics = metricsState
                 }
@@ -290,6 +291,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         streakManager.$state
             .sink { [weak self] streakState in
                 guard let self = self else { return }
+                guard self.state.streak != streakState else { return }
                 if !self.state.ui.isResettingDashboard {
                     self.state.streak = streakState
                 }
@@ -298,19 +300,22 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
         goalManager.$state
             .sink { [weak self] goalState in
-                self?.state.goal = goalState
+                guard let self, self.state.goal != goalState else { return }
+                self.state.goal = goalState
             }
             .store(in: &cancellables)
 
         graphManager.$state
             .sink { [weak self] graphState in
-                self?.state.graph = graphState
+                guard let self, self.state.graph != graphState else { return }
+                self.state.graph = graphState
             }
             .store(in: &cancellables)
 
         dataManager.$state
             .sink { [weak self] dataState in
-                self?.state.data = dataState
+                guard let self, self.state.data != dataState else { return }
+                self.state.data = dataState
             }
             .store(in: &cancellables)
 
