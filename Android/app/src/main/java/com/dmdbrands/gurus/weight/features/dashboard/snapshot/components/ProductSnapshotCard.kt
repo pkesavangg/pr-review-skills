@@ -126,7 +126,7 @@ fun BpSnapshotCard(
     val chart = state.bp
 
     SnapshotCardContainer(modifier = modifier, onTap = onTap) {
-        Row {
+        Row(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)) {
             Text(
                 text = DashboardSnapshotStrings.Mmhg,
                 style = MeTheme.typography.subHeading1,
@@ -148,7 +148,10 @@ fun BpSnapshotCard(
         val diastolic = parts.getOrNull(1)?.toIntOrNull()
         val pulse = chart.secondaryLabel.toIntOrNull()
 
-        Row(verticalAlignment = Alignment.Bottom) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+        ) {
             if (systolic != null && diastolic != null) {
                 Text(
                     text = buildAnnotatedString {
@@ -221,6 +224,7 @@ fun BabySnapshotCard(
             text = "${product.profile.name}'s ${DashboardSnapshotStrings.Weight}",
             style = MeTheme.typography.subHeading1,
             color = MeTheme.colorScheme.textSubheading,
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
         )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
@@ -237,13 +241,14 @@ fun BabySnapshotCard(
                                 append(part)
                             }
                         } else {
-                            withStyle(SpanStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal)) {
+                            withStyle(SpanStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal, color = MeTheme.colorScheme.textSubheading)) {
                                 append(part)
                             }
                         }
                     }
                 },
                 color = SnapshotColors.Baby,
+                modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
             )
         } else {
             Text(
@@ -251,6 +256,7 @@ fun BabySnapshotCard(
                 color = SnapshotColors.Baby,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
             )
         }
 
