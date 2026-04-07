@@ -108,11 +108,15 @@ class HistoryRepository @Inject constructor(
     // BPM Graph
     // ---------------------------------------------------------------------------
 
-    override fun getBpmMonthlyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> =
-        historyDao.getBpmMonthlyGraphData(accountId)
+    override fun getBpmMonthlyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBpmMonthlyGraphData())
+        return historyDao.getBpmMonthlyGraphData(accountId)
+    }
 
-    override fun getBpmDailyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> =
-        historyDao.getBpmDailyGraphData(accountId)
+    override fun getBpmDailyGraphData(accountId: String): Flow<List<PeriodBpmSummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBpmDailyGraphData())
+        return historyDao.getBpmDailyGraphData(accountId)
+    }
 
     // ---------------------------------------------------------------------------
     // BPM Snapshot (Dashboard mini-chart)
@@ -132,6 +136,50 @@ class HistoryRepository @Inject constructor(
             PeriodBpmSummary("2026-04-04", "2026-04-04 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
             PeriodBpmSummary("2026-04-05", "2026-04-05 00:00:00", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
             PeriodBpmSummary("2026-04-06", "2026-04-06 00:00:00", avgSystolic = 111, avgDiastolic = 71, avgPulse = 63),
+    )
+
+    /** Sample BP daily data — ~45 days for week/month segments. Start of day. */
+    private fun sampleBpmDailyGraphData(): List<PeriodBpmSummary> = listOf(
+        PeriodBpmSummary("2026-02-22", "2026-02-22 00:00:00", avgSystolic = 124, avgDiastolic = 82, avgPulse = 74),
+        PeriodBpmSummary("2026-02-24", "2026-02-24 00:00:00", avgSystolic = 121, avgDiastolic = 79, avgPulse = 71),
+        PeriodBpmSummary("2026-02-26", "2026-02-26 00:00:00", avgSystolic = 119, avgDiastolic = 78, avgPulse = 70),
+        PeriodBpmSummary("2026-02-28", "2026-02-28 00:00:00", avgSystolic = 122, avgDiastolic = 80, avgPulse = 72),
+        PeriodBpmSummary("2026-03-02", "2026-03-02 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
+        PeriodBpmSummary("2026-03-05", "2026-03-05 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2026-03-08", "2026-03-08 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 67),
+        PeriodBpmSummary("2026-03-11", "2026-03-11 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
+        PeriodBpmSummary("2026-03-14", "2026-03-14 00:00:00", avgSystolic = 117, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2026-03-17", "2026-03-17 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 66),
+        PeriodBpmSummary("2026-03-20", "2026-03-20 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2026-03-22", "2026-03-22 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 67),
+        PeriodBpmSummary("2026-03-24", "2026-03-24 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
+        PeriodBpmSummary("2026-03-26", "2026-03-26 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2026-03-28", "2026-03-28 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
+        PeriodBpmSummary("2026-03-30", "2026-03-30 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2026-03-31", "2026-03-31 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
+        PeriodBpmSummary("2026-04-01", "2026-04-01 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
+        PeriodBpmSummary("2026-04-02", "2026-04-02 00:00:00", avgSystolic = 112, avgDiastolic = 72, avgPulse = 62),
+        PeriodBpmSummary("2026-04-03", "2026-04-03 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 66),
+        PeriodBpmSummary("2026-04-04", "2026-04-04 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
+        PeriodBpmSummary("2026-04-05", "2026-04-05 00:00:00", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
+        PeriodBpmSummary("2026-04-06", "2026-04-06 00:00:00", avgSystolic = 111, avgDiastolic = 71, avgPulse = 63),
+        PeriodBpmSummary("2026-04-07", "2026-04-07 00:00:00", avgSystolic = 113, avgDiastolic = 73, avgPulse = 65),
+    )
+
+    /** Sample BP monthly data — ~12 months for year/total segments. Start of month. */
+    private fun sampleBpmMonthlyGraphData(): List<PeriodBpmSummary> = listOf(
+        PeriodBpmSummary("2025-05", "2025-05-01 00:00:00", avgSystolic = 128, avgDiastolic = 84, avgPulse = 76),
+        PeriodBpmSummary("2025-06", "2025-06-01 00:00:00", avgSystolic = 126, avgDiastolic = 82, avgPulse = 74),
+        PeriodBpmSummary("2025-07", "2025-07-01 00:00:00", avgSystolic = 124, avgDiastolic = 80, avgPulse = 72),
+        PeriodBpmSummary("2025-08", "2025-08-01 00:00:00", avgSystolic = 122, avgDiastolic = 79, avgPulse = 71),
+        PeriodBpmSummary("2025-09", "2025-09-01 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
+        PeriodBpmSummary("2025-10", "2025-10-01 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
+        PeriodBpmSummary("2025-11", "2025-11-01 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2025-12", "2025-12-01 00:00:00", avgSystolic = 117, avgDiastolic = 75, avgPulse = 67),
+        PeriodBpmSummary("2026-01", "2026-01-01 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 66),
+        PeriodBpmSummary("2026-02", "2026-02-01 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
+        PeriodBpmSummary("2026-03", "2026-03-01 00:00:00", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
+        PeriodBpmSummary("2026-04", "2026-04-01 00:00:00", avgSystolic = 113, avgDiastolic = 73, avgPulse = 65),
     )
 
     // ---------------------------------------------------------------------------
