@@ -1169,6 +1169,71 @@ extension BpmSetupStore {
     func testCheckForPrePairingDuplicate() async {
         await checkForPrePairingDuplicate()
     }
+
+    @MainActor
+    func testConfirmUserAndPair(isDifferentUser: Bool) {
+        confirmUserAndPair(isDifferentUser: isDifferentUser)
+    }
+
+    @MainActor
+    func testCheckForUserMismatch(_ deviceInfo: DeviceInfo) async -> Bool {
+        await checkForUserMismatch(deviceInfo)
+    }
+
+    @MainActor
+    func testUserLabel(for userNumber: Int) -> String {
+        userLabel(for: userNumber)
+    }
+
+    @MainActor
+    func testUserLabelForConflict() -> String {
+        userLabelForConflict()
+    }
+
+    @MainActor
+    func testGifName(for step: BpmSetupStep, sku: String) -> String? {
+        gifName(for: step, sku: sku)
+    }
+
+    @MainActor
+    func testImageName(for step: BpmSetupStep, sku: String) -> String? {
+        imageName(for: step, sku: sku)
+    }
+
+    @MainActor
+    func testGifSubdirectory(for sku: String) -> String? {
+        gifSubdirectory(for: sku)
+    }
+
+    @MainActor
+    func testConfirmUserGifSubdirectory(for sku: String) -> String? {
+        confirmUserGifSubdirectory(for: sku)
+    }
+
+    @MainActor
+    func testUserGifSubdirectory(for sku: String) -> String? {
+        userGifSubdirectory(for: sku)
+    }
+
+    @MainActor
+    func testUserGifName(for sku: String, selectedUserNumber: Int?) -> String? {
+        userGifName(for: sku, selectedUserNumber: selectedUserNumber)
+    }
+
+    @MainActor
+    func testApplyDeviceInfo(_ deviceInfo: DeviceInfo, to device: Device, protocolType: String) {
+        applyDeviceInfo(deviceInfo, to: device, protocolType: protocolType)
+    }
+
+    @MainActor
+    func testCheckForDuplicateAndAdvance(_ device: Device) async {
+        await checkForDuplicateAndAdvance(device)
+    }
+
+    @MainActor
+    func testRetryScanning() {
+        retryScanning()
+    }
 }
 #endif
 // swiftlint:enable file_length
