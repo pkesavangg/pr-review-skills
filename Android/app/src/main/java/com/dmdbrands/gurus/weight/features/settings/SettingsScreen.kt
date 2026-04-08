@@ -78,6 +78,14 @@ fun SettingsScreenContent(
               },
             ),
             SettingsItem(
+              title = SettingsScreenStrings.MyKids,
+              onClick = {
+                coroutineScope.launch {
+                  backStack.addRoute(AppRoute.AccountSettings.MyKids)
+                }
+              },
+            ),
+            SettingsItem(
               title = SettingsScreenStrings.Integrations,
               onClick = {
                 coroutineScope.launch {

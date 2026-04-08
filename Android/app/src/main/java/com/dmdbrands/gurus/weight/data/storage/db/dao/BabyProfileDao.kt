@@ -25,4 +25,13 @@ interface BabyProfileDao {
 
     @Query("SELECT * FROM baby WHERE babyId = :profileId")
     suspend fun getById(profileId: String): BabyProfileEntity?
+
+    @Query("UPDATE baby SET activeBabyId = :activeBabyId WHERE accountId = :accountId")
+    suspend fun setActiveBabyId(accountId: String, activeBabyId: String)
+
+    @Query("SELECT activeBabyId FROM baby WHERE accountId = :accountId LIMIT 1")
+    suspend fun getActiveBabyId(accountId: String): String?
+
+    @Query("UPDATE baby SET activeBabyId = NULL WHERE accountId = :accountId")
+    suspend fun clearActiveBabyId(accountId: String)
 }
