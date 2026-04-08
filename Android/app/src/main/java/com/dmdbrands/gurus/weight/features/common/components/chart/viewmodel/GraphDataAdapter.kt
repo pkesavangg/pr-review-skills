@@ -95,7 +95,7 @@ class BpGraphDataAdapter : GraphDataAdapter {
 }
 
 /**
- * Baby adapter: 1 series (weight in decigrams).
+ * Baby weight adapter: 1 series (weight in decigrams → lbs).
  */
 class BabyGraphDataAdapter : GraphDataAdapter {
 
@@ -104,8 +104,35 @@ class BabyGraphDataAdapter : GraphDataAdapter {
     val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
     val pairs = sorted.mapNotNull { entry ->
       val ts = DateTimeConverter.isoToTimestamp(entry.entryTimestamp)
-      val weight = entry.avgWeightDecigrams?.let { it / 10.0 }
+      val weight = entry.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
       if (weight != null) ts to weight else null
+    }
+    if (pairs.isEmpty()) return emptyList()
+    return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
+  }
+
+  override fun toTargetData(graphData: GraphData): List<PeriodSummary> {
+    return (graphData as? GraphData.Baby)?.data ?: emptyList()
+  }
+
+  override fun getTimestamps(graphData: GraphData): List<Long> {
+    return (graphData as? GraphData.Baby)?.data
+      ?.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) } ?: emptyList()
+  }
+}
+
+/**
+ * Baby height adapter: 1 series (length in mm → inches).
+ */
+class BabyHeightGraphDataAdapter : GraphDataAdapter {
+
+  override fun toLineSeries(graphData: GraphData): List<SeriesData> {
+    val entries = (graphData as? GraphData.Baby)?.data ?: return emptyList()
+    val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
+    val pairs = sorted.mapNotNull { entry ->
+      val ts = DateTimeConverter.isoToTimestamp(entry.entryTimestamp)
+      val length = entry.avgLengthMillimeters?.let { it / 25.4 }
+      if (length != null) ts to length else null
     }
     if (pairs.isEmpty()) return emptyList()
     return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))

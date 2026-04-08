@@ -231,60 +231,40 @@ class HistoryRepository @Inject constructor(
         return historyDao.getBabySnapshotGraphData(accountId, babyId)
     }
 
-    /** Sample Baby daily data — month-scale gaps, ~90-day-old baby gaining weight. */
+    /**
+     * Sample Baby daily data — born Jan 1 2026, starts day 10.
+     * WHO p50 boy: birth ~3.3 kg (33000 dg), ~50 cm (500 mm).
+     */
     private fun sampleBabyDailyGraphData(): List<PeriodBabySummary> = listOf(
-        // Cluster 1: Aug 2025 (newborn, ~3.5 kg = 35000 dg, ~50 cm = 500 mm)
-        PeriodBabySummary("2025-08-01", "2025-08-01 00:00:00", avgWeightDecigrams = 34500, avgLengthMillimeters = 498),
-        PeriodBabySummary("2025-08-03", "2025-08-03 00:00:00", avgWeightDecigrams = 34800, avgLengthMillimeters = 499),
-        PeriodBabySummary("2025-08-06", "2025-08-06 00:00:00", avgWeightDecigrams = 35200, avgLengthMillimeters = 500),
-        PeriodBabySummary("2025-08-09", "2025-08-09 00:00:00", avgWeightDecigrams = 35800, avgLengthMillimeters = 502),
-        PeriodBabySummary("2025-08-12", "2025-08-12 00:00:00", avgWeightDecigrams = 36400, avgLengthMillimeters = 504),
-        // ── GAP: ~2 months (Aug 13 – Oct 14 empty) ──
-        // Cluster 2: Oct 2025 (~2 months old, ~5 kg)
-        PeriodBabySummary("2025-10-15", "2025-10-15 00:00:00", avgWeightDecigrams = 48000, avgLengthMillimeters = 545),
-        PeriodBabySummary("2025-10-18", "2025-10-18 00:00:00", avgWeightDecigrams = 48500, avgLengthMillimeters = 547),
-        PeriodBabySummary("2025-10-21", "2025-10-21 00:00:00", avgWeightDecigrams = 49000, avgLengthMillimeters = 549),
-        PeriodBabySummary("2025-10-24", "2025-10-24 00:00:00", avgWeightDecigrams = 49400, avgLengthMillimeters = 550),
-        // ── GAP: ~1 month (Oct 25 – Nov 24 empty) ──
-        // Cluster 3: Late Nov – Dec 2025 (~4 months, ~6 kg)
-        PeriodBabySummary("2025-11-25", "2025-11-25 00:00:00", avgWeightDecigrams = 55000, avgLengthMillimeters = 568),
-        PeriodBabySummary("2025-11-28", "2025-11-28 00:00:00", avgWeightDecigrams = 55400, avgLengthMillimeters = 569),
-        PeriodBabySummary("2025-12-02", "2025-12-02 00:00:00", avgWeightDecigrams = 55900, avgLengthMillimeters = 571),
-        PeriodBabySummary("2025-12-05", "2025-12-05 00:00:00", avgWeightDecigrams = 56300, avgLengthMillimeters = 572),
-        // ── GAP: ~2 months (Dec 6 – Jan 31 empty) ──
-        // Cluster 4: Feb 2026 (~6 months, ~7 kg)
-        PeriodBabySummary("2026-02-01", "2026-02-01 00:00:00", avgWeightDecigrams = 64000, avgLengthMillimeters = 600),
-        PeriodBabySummary("2026-02-04", "2026-02-04 00:00:00", avgWeightDecigrams = 64300, avgLengthMillimeters = 601),
-        PeriodBabySummary("2026-02-08", "2026-02-08 00:00:00", avgWeightDecigrams = 64800, avgLengthMillimeters = 603),
-        PeriodBabySummary("2026-02-12", "2026-02-12 00:00:00", avgWeightDecigrams = 65200, avgLengthMillimeters = 604),
-        // ── GAP: ~1 month (Feb 13 – Mar 19 empty) ──
-        // Cluster 5: Late Mar – Apr 2026 (dense, ~8 months, ~8 kg)
-        PeriodBabySummary("2026-03-20", "2026-03-20 00:00:00", avgWeightDecigrams = 72000, avgLengthMillimeters = 630),
-        PeriodBabySummary("2026-03-23", "2026-03-23 00:00:00", avgWeightDecigrams = 72300, avgLengthMillimeters = 631),
-        PeriodBabySummary("2026-03-26", "2026-03-26 00:00:00", avgWeightDecigrams = 72700, avgLengthMillimeters = 633),
-        PeriodBabySummary("2026-03-30", "2026-03-30 00:00:00", avgWeightDecigrams = 73100, avgLengthMillimeters = 634),
-        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", avgWeightDecigrams = 73500, avgLengthMillimeters = 636),
-        PeriodBabySummary("2026-04-03", "2026-04-03 00:00:00", avgWeightDecigrams = 73800, avgLengthMillimeters = 637),
-        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", avgWeightDecigrams = 74200, avgLengthMillimeters = 638),
-        PeriodBabySummary("2026-04-07", "2026-04-07 00:00:00", avgWeightDecigrams = 74500, avgLengthMillimeters = 639),
+        PeriodBabySummary("2026-01-11", "2026-01-11 00:00:00", avgWeightDecigrams = 33000, avgLengthMillimeters = 500),
+        PeriodBabySummary("2026-01-14", "2026-01-14 00:00:00", avgWeightDecigrams = 33500, avgLengthMillimeters = 502),
+        PeriodBabySummary("2026-01-18", "2026-01-18 00:00:00", avgWeightDecigrams = 34200, avgLengthMillimeters = 505),
+        PeriodBabySummary("2026-01-22", "2026-01-22 00:00:00", avgWeightDecigrams = 35000, avgLengthMillimeters = 508),
+        PeriodBabySummary("2026-01-26", "2026-01-26 00:00:00", avgWeightDecigrams = 36000, avgLengthMillimeters = 511),
+        PeriodBabySummary("2026-01-30", "2026-01-30 00:00:00", avgWeightDecigrams = 37000, avgLengthMillimeters = 514),
+        PeriodBabySummary("2026-02-03", "2026-02-03 00:00:00", avgWeightDecigrams = 38200, avgLengthMillimeters = 518),
+        PeriodBabySummary("2026-02-07", "2026-02-07 00:00:00", avgWeightDecigrams = 39500, avgLengthMillimeters = 522),
+        PeriodBabySummary("2026-02-11", "2026-02-11 00:00:00", avgWeightDecigrams = 40800, avgLengthMillimeters = 526),
+        PeriodBabySummary("2026-02-15", "2026-02-15 00:00:00", avgWeightDecigrams = 42000, avgLengthMillimeters = 530),
+        PeriodBabySummary("2026-02-20", "2026-02-20 00:00:00", avgWeightDecigrams = 43500, avgLengthMillimeters = 535),
+        PeriodBabySummary("2026-02-25", "2026-02-25 00:00:00", avgWeightDecigrams = 45000, avgLengthMillimeters = 540),
+        PeriodBabySummary("2026-03-02", "2026-03-02 00:00:00", avgWeightDecigrams = 46500, avgLengthMillimeters = 545),
+        PeriodBabySummary("2026-03-07", "2026-03-07 00:00:00", avgWeightDecigrams = 48000, avgLengthMillimeters = 550),
+        PeriodBabySummary("2026-03-12", "2026-03-12 00:00:00", avgWeightDecigrams = 49500, avgLengthMillimeters = 555),
+        PeriodBabySummary("2026-03-17", "2026-03-17 00:00:00", avgWeightDecigrams = 51000, avgLengthMillimeters = 560),
+        PeriodBabySummary("2026-03-22", "2026-03-22 00:00:00", avgWeightDecigrams = 52500, avgLengthMillimeters = 565),
+        PeriodBabySummary("2026-03-27", "2026-03-27 00:00:00", avgWeightDecigrams = 54000, avgLengthMillimeters = 570),
+        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", avgWeightDecigrams = 55500, avgLengthMillimeters = 575),
+        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", avgWeightDecigrams = 57000, avgLengthMillimeters = 580),
+        PeriodBabySummary("2026-04-08", "2026-04-08 00:00:00", avgWeightDecigrams = 58000, avgLengthMillimeters = 583),
     )
 
-    /** Sample Baby monthly data — year-scale gaps for fallback testing. */
+    /** Sample Baby monthly data — born Jan 1 2026, starts month 1. */
     private fun sampleBabyMonthlyGraphData(): List<PeriodBabySummary> = listOf(
-        // Cluster 1: Birth period 2024 (newborn ~3.5 kg)
-        PeriodBabySummary("2024-06", "2024-06-01 00:00:00", avgWeightDecigrams = 34000, avgLengthMillimeters = 495),
-        PeriodBabySummary("2024-07", "2024-07-01 00:00:00", avgWeightDecigrams = 38000, avgLengthMillimeters = 520),
-        PeriodBabySummary("2024-08", "2024-08-01 00:00:00", avgWeightDecigrams = 42000, avgLengthMillimeters = 540),
-        // ── GAP: ~8 months (Sep 2024 – Apr 2025 empty) ──
-        // Cluster 2: Spring 2025 (~10 months, ~9 kg)
-        PeriodBabySummary("2025-05", "2025-05-01 00:00:00", avgWeightDecigrams = 85000, avgLengthMillimeters = 710),
-        PeriodBabySummary("2025-06", "2025-06-01 00:00:00", avgWeightDecigrams = 87000, avgLengthMillimeters = 720),
-        PeriodBabySummary("2025-07", "2025-07-01 00:00:00", avgWeightDecigrams = 89000, avgLengthMillimeters = 730),
-        // ── GAP: ~6 months (Aug 2025 – Jan 2026 empty) ──
-        // Cluster 3: Recent (toddler ~18 months, ~11 kg)
-        PeriodBabySummary("2026-02", "2026-02-01 00:00:00", avgWeightDecigrams = 105000, avgLengthMillimeters = 800),
-        PeriodBabySummary("2026-03", "2026-03-01 00:00:00", avgWeightDecigrams = 107000, avgLengthMillimeters = 810),
-        PeriodBabySummary("2026-04", "2026-04-01 00:00:00", avgWeightDecigrams = 109000, avgLengthMillimeters = 815),
+        PeriodBabySummary("2026-01", "2026-01-01 00:00:00", avgWeightDecigrams = 33000, avgLengthMillimeters = 500),
+        PeriodBabySummary("2026-02", "2026-02-01 00:00:00", avgWeightDecigrams = 42000, avgLengthMillimeters = 530),
+        PeriodBabySummary("2026-03", "2026-03-01 00:00:00", avgWeightDecigrams = 50000, avgLengthMillimeters = 555),
+        PeriodBabySummary("2026-04", "2026-04-01 00:00:00", avgWeightDecigrams = 58000, avgLengthMillimeters = 580),
     )
 
     /** Realistic sample: ~90-day-old baby around p50 (~60000 decigrams = 13.2 lbs) */
