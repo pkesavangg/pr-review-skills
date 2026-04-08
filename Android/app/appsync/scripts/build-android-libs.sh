@@ -18,8 +18,12 @@ LOCAL_PROPERTIES="${MODULE_DIR}/../../local.properties"
 if [[ -f "${LOCAL_PROPERTIES}" ]]; then
   LOCAL_SDK_DIR="$(sed -n 's/^sdk\.dir=//p' "${LOCAL_PROPERTIES}" | tail -n 1)"
 fi
-SDK_ROOT="${LOCAL_SDK_DIR:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${HOME}/Library/Android/sdk}}}"
-HOST_TAG="${HOST_TAG:-darwin-x86_64}"
+case "$(uname -s)" in
+  Linux*)  DEFAULT_SDK="${HOME}/Android/Sdk"; DEFAULT_HOST="linux-x86_64" ;;
+  *)       DEFAULT_SDK="${HOME}/Library/Android/sdk"; DEFAULT_HOST="darwin-x86_64" ;;
+esac
+SDK_ROOT="${LOCAL_SDK_DIR:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${DEFAULT_SDK}}}}"
+HOST_TAG="${HOST_TAG:-${DEFAULT_HOST}}"
 NDK_BIN="${SDK_ROOT}/ndk/${NDK_VERSION}/toolchains/llvm/prebuilt/${HOST_TAG}/bin"
 
 if [[ ! -x "${NDK_BIN}/aarch64-linux-android21-clang" ]]; then
@@ -53,22 +57,28 @@ LINK_FLAGS=(
   -Wl,--gc-sections
   -Wl,-z,relro
   -Wl,-z,now
+  -llog
+)
+
+LINK_FLAGS_16KB=(
   -Wl,-z,max-page-size=16384
   -Wl,-z,common-page-size=16384
-  -llog
 )
 
 build_one() {
   local cc="$1"
   local out_file="$2"
-  "${cc}" "${COMMON_FLAGS[@]}" "${COMMON_SRC[@]}" -o "${out_file}" "${LINK_FLAGS[@]}"
+  shift 2
+  "${cc}" "${COMMON_FLAGS[@]}" "${COMMON_SRC[@]}" -o "${out_file}" "${LINK_FLAGS[@]}" "$@"
 }
 
 pushd "${SRC_DIR}" >/dev/null
-build_one "${NDK_BIN}/aarch64-linux-android21-clang" "${JNILIBS_DIR}/arm64-v8a/libappsync.so"
+# 64-bit ABIs: 16KB page alignment required for Android 15+
+build_one "${NDK_BIN}/aarch64-linux-android21-clang" "${JNILIBS_DIR}/arm64-v8a/libappsync.so" "${LINK_FLAGS_16KB[@]}"
+build_one "${NDK_BIN}/x86_64-linux-android21-clang" "${JNILIBS_DIR}/x86_64/libappsync.so" "${LINK_FLAGS_16KB[@]}"
+# 32-bit ABIs: 4KB pages only, no 16KB alignment needed
 build_one "${NDK_BIN}/armv7a-linux-androideabi21-clang" "${JNILIBS_DIR}/armeabi-v7a/libappsync.so"
 build_one "${NDK_BIN}/i686-linux-android21-clang" "${JNILIBS_DIR}/x86/libappsync.so"
-build_one "${NDK_BIN}/x86_64-linux-android21-clang" "${JNILIBS_DIR}/x86_64/libappsync.so"
 popd >/dev/null
 
 READELF="${NDK_BIN}/llvm-readelf"
