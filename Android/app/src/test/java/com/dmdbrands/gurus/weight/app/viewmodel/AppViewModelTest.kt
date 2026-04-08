@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0663
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -304,6 +305,28 @@ class AppViewModelTest {
             navigationService.navigateTo(
                 match<AppRoute.ScaleSetup.LcbtScaleSetup> {
                     it.sku == lcbtSku && it.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `OnPopUpConnect with BPM SKU navigates to LcbtScaleSetup`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        AppViewModel::class.java.getDeclaredField("sku").apply {
+            isAccessible = true
+            set(viewModel, SKU_0663)
+        }
+
+        viewModel.handleIntent(AppIntent.OnPopUpConnect)
+        advanceUntilIdle()
+
+        coVerify {
+            navigationService.navigateTo(
+                match<AppRoute.ScaleSetup.LcbtScaleSetup> {
+                    it.sku == SKU_0663 && it.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH
                 },
             )
         }

@@ -35,12 +35,6 @@ object DeviceHelper {
   /** Returns `true` when the given [sku] identifies a Blood Pressure Monitor. */
   fun isBpmDevice(sku: String): Boolean = sku in BPM_SKUS
 
-  /** All known Baby Scale SKUs. */
-  val BABY_SCALE_SKUS: Set<String> = setOf(SKU_0220, SKU_0222)
-
-  /** Returns `true` when the given [sku] identifies a Baby Scale. */
-  fun isBabyScale(sku: String): Boolean = sku in BABY_SCALE_SKUS
-
   fun GGDeviceDetail.getSKU() = SKU_MAP[deviceName] ?: DEFAULT_SKU
 
   /**
@@ -79,6 +73,7 @@ object DeviceHelper {
     "gG BS 0220" to SKU_0220,
     "BS1711-B" to SKU_0220,
     "Smart Blood Pressure Monitor" to SKU_0663,
+    "gG BPM 0663" to SKU_0663,
     "gG BPM 0667" to SKU_0661,
     "gG BPM 0634" to SKU_0634,
     "gG BS 0351" to DEFAULT_SKU,

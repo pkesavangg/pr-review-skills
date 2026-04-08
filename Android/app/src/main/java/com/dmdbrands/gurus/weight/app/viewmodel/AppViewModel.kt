@@ -103,6 +103,12 @@ constructor(
 ) {
   companion object {
     private const val TAG = "AppViewModel"
+    /** BLE protocol types eligible for the discovery popup. */
+    private val DISCOVERY_ELIGIBLE_PROTOCOLS = setOf(
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value,     // WiFi+BT scales (0412)
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,     // LCBT/Baby scales
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value, // Blood pressure monitors
+    )
   }
 
   override fun provideInitialState(): AppState = AppState()
@@ -227,7 +233,8 @@ constructor(
           )
         }
         else -> {
-          // Pass original SKU to routes (not mapped), setup will save original SKU
+          // BPM and LCBT devices both route through LcbtScaleSetup for now.
+          // TODO(MA-3481): Add dedicated BPM setup route once BPM pairing flow is implemented.
           navigationService.navigateTo(
             AppRoute.ScaleSetup.LcbtScaleSetup(
               localSku,
@@ -557,7 +564,7 @@ constructor(
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
-          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
+          if (canShowScaleDiscoveredModal && data.protocolType in DISCOVERY_ELIGIBLE_PROTOCOLS) {
             val currentRoute = navigationService.getCurrentRoute()
             val isSetupInProgress = deviceService.isSetupInProgress()
             val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
@@ -602,6 +609,11 @@ constructor(
                   DeviceHelper.isBabyScale(deviceSku) -> Device(
                     device = data,
                     deviceType = ScaleSetupType.BabyScale.value,
+                    sku = deviceSku,
+                  )
+                  DeviceHelper.isBpmDevice(deviceSku) -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.Bluetooth.value,
                     sku = deviceSku,
                   )
                   else -> Device(
