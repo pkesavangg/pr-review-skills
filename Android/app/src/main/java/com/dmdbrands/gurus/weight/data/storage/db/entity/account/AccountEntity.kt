@@ -34,4 +34,7 @@ data class AccountEntity(
     val isSynced: Boolean = false,
     val lastActiveTime: String? = null,
     val zipcode: String,
+    val hasSeenAppReview: Boolean = false,
+    val hasSeenScaleReview: Boolean = false,
+    val accountSettings: String? = null,
 )

@@ -690,7 +690,7 @@ class EntryRepositoryTest {
             deviceId = "device2",
         )
         val bpmEntryEntity = BpmEntryEntity(
-            id = 2L,
+            entryId = 2L,
             systolic = 120,
             diastolic = 80,
             pulse = 70,

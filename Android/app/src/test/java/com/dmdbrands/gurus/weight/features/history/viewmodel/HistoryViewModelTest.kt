@@ -4,9 +4,12 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -177,13 +180,16 @@ class HistoryViewModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // monthlyAverage subscription
+    // historyService grouped history subscription
     // -------------------------------------------------------------------------
 
     @Test
-    fun `monthlyAverage flow updates history items`() = runTest {
+    fun `getGroupedHistory updates history items`() = runTest {
         val items = listOf(mockk<com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth>(relaxed = true))
-        every { entryService.monthlyAverage } returns MutableStateFlow(items)
+        every { historyService.accountId } returns "test-account"
+        every { historyService.getGroupedHistory(any()) } returns flowOf(GroupedHistory.Weight(items))
+        val productSelectionManager = mockk<IProductSelectionManager>(relaxed = true)
+        every { productSelectionManager.availableProducts } returns MutableStateFlow(listOf(ProductSelection.MyWeight))
 
         viewModel = HistoryViewModel(
             entryService = entryService,
@@ -192,6 +198,7 @@ class HistoryViewModelTest {
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
         advanceUntilIdle()
 

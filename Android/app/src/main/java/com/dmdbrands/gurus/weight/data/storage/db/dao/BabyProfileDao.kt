@@ -17,21 +17,21 @@ interface BabyProfileDao {
     @Update
     suspend fun update(profile: BabyProfileEntity)
 
-    @Query("DELETE FROM baby_profiles WHERE id = :profileId")
+    @Query("DELETE FROM baby WHERE babyId = :profileId")
     suspend fun delete(profileId: String)
 
-    @Query("SELECT * FROM baby_profiles WHERE accountId = :accountId")
+    @Query("SELECT * FROM baby WHERE accountId = :accountId")
     fun observeByAccountId(accountId: String): Flow<List<BabyProfileEntity>>
 
-    @Query("SELECT * FROM baby_profiles WHERE id = :profileId")
+    @Query("SELECT * FROM baby WHERE babyId = :profileId")
     suspend fun getById(profileId: String): BabyProfileEntity?
 
-    @Query("UPDATE baby_profiles SET activeBabyId = :activeBabyId WHERE accountId = :accountId")
+    @Query("UPDATE baby SET activeBabyId = :activeBabyId WHERE accountId = :accountId")
     suspend fun setActiveBabyId(accountId: String, activeBabyId: String)
 
-    @Query("SELECT activeBabyId FROM baby_profiles WHERE accountId = :accountId LIMIT 1")
+    @Query("SELECT activeBabyId FROM baby WHERE accountId = :accountId LIMIT 1")
     suspend fun getActiveBabyId(accountId: String): String?
 
-    @Query("UPDATE baby_profiles SET activeBabyId = NULL WHERE accountId = :accountId")
+    @Query("UPDATE baby SET activeBabyId = NULL WHERE accountId = :accountId")
     suspend fun clearActiveBabyId(accountId: String)
 }

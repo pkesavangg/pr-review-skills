@@ -111,7 +111,7 @@ class ProductSelectionRepositoryTest {
 
     @Test
     fun `getBabyProfiles returns mapped profiles from DAO`() = runTest {
-        val entity = BabyProfileEntity(id = "baby-1", name = "Luna", birthDate = null, accountId = ACCOUNT_ID)
+        val entity = BabyProfileEntity(babyId = "baby-1", name = "Luna", birthdate = null, accountId = ACCOUNT_ID)
         every { babyProfileDao.observeByAccountId(ACCOUNT_ID) } returns flowOf(listOf(entity))
 
         val result = repository.getBabyProfiles(ACCOUNT_ID)

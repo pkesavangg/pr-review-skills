@@ -26,8 +26,8 @@ interface IHistoryRepository {
     fun getBpmMonthDetail(accountId: String, month: String): Flow<List<BpmEntry>>
 
     // Baby
-    fun getBabyWeeklyHistory(accountId: String, babyProfileId: String): Flow<List<BabyWeekGroup>>
-    fun getBabyDayDetail(accountId: String, babyProfileId: String, date: String): Flow<List<BabyEntry>>
+    fun getBabyWeeklyHistory(accountId: String, babyId: String): Flow<List<BabyWeekGroup>>
+    fun getBabyDayDetail(accountId: String, babyId: String, date: String): Flow<List<BabyEntry>>
 
     // Weight Graph
     fun getWeightMonthlyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>>
@@ -38,6 +38,6 @@ interface IHistoryRepository {
     fun getBpmDailyGraphData(accountId: String): Flow<List<PeriodBpmSummary>>
 
     // Baby Graph
-    fun getBabyMonthlyGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>>
-    fun getBabyDailyGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>>
+    fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
+    fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 }

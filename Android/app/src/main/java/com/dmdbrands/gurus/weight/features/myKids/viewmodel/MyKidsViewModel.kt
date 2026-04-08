@@ -10,6 +10,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
@@ -57,12 +60,14 @@ class MyKidsViewModel @Inject constructor(
                 val activeAccount = accountRepository.getActiveAccount().first()
                 val accountId = activeAccount?.id ?: return@launch
 
+                val birthdateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                    .format(Date(intent.birthdayMillis))
                 val profile = BabyProfile(
                     id = UUID.randomUUID().toString(),
                     accountId = accountId,
                     name = intent.name,
-                    birthDate = intent.birthdayMillis,
-                    biologicalSex = intent.biologicalSex,
+                    birthdate = birthdateStr,
+                    sex = intent.biologicalSex,
                     birthWeightDecigrams = intent.birthWeightDecigrams,
                     birthLengthMillimeters = intent.birthLengthMillimeters,
                 )

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "a88f13e657b90e77003cc806d680cf7c",
+    "identityHash": "ac52c9efba02bd7971f7a2992534b862",
     "entities": [
       {
         "tableName": "account",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `dob` TEXT NOT NULL, `email` TEXT NOT NULL, `expiresAt` TEXT, `fcmToken` TEXT, `gender` TEXT NOT NULL, `isActiveAccount` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL, `isExpired` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `lastActiveTime` TEXT, `zipcode` TEXT NOT NULL, PRIMARY KEY(`accountId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `firstName` TEXT NOT NULL, `lastName` TEXT NOT NULL, `dob` TEXT NOT NULL, `email` TEXT NOT NULL, `expiresAt` TEXT, `fcmToken` TEXT, `gender` TEXT NOT NULL, `isActiveAccount` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL, `isExpired` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `lastActiveTime` TEXT, `zipcode` TEXT NOT NULL, `hasSeenAppReview` INTEGER NOT NULL, `hasSeenScaleReview` INTEGER NOT NULL, `accountSettings` TEXT, PRIMARY KEY(`accountId`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -88,6 +88,23 @@
             "columnName": "zipcode",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "hasSeenAppReview",
+            "columnName": "hasSeenAppReview",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasSeenScaleReview",
+            "columnName": "hasSeenScaleReview",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accountSettings",
+            "columnName": "accountSettings",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -762,11 +779,11 @@
       },
       {
         "tableName": "bpm_entry",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `systolic` INTEGER NOT NULL, `diastolic` INTEGER NOT NULL, `pulse` INTEGER NOT NULL, `meanArterial` TEXT NOT NULL, `note` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryId` INTEGER NOT NULL, `systolic` INTEGER NOT NULL, `diastolic` INTEGER NOT NULL, `pulse` INTEGER NOT NULL, `meanArterial` TEXT NOT NULL, `note` TEXT, PRIMARY KEY(`entryId`), FOREIGN KEY(`entryId`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "id",
-            "columnName": "id",
+            "fieldPath": "entryId",
+            "columnName": "entryId",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -803,7 +820,7 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "id"
+            "entryId"
           ]
         },
         "foreignKeys": [
@@ -812,7 +829,7 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "id"
+              "entryId"
             ],
             "referencedColumns": [
               "id"
@@ -1144,7 +1161,7 @@
       },
       {
         "tableName": "notification_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `shouldSendEntryNotifications` INTEGER NOT NULL, `shouldSendWeightInEntryNotifications` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `shouldSendEntryNotifications` INTEGER NOT NULL, `shouldSendWeightInEntryNotifications` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `willReceiveEmails` INTEGER NOT NULL, PRIMARY KEY(`accountId`), FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "accountId",
@@ -1167,6 +1184,12 @@
           {
             "fieldPath": "isSynced",
             "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "willReceiveEmails",
+            "columnName": "willReceiveEmails",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -1320,12 +1343,12 @@
         ]
       },
       {
-        "tableName": "baby_profiles",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL, `isOwnedByAccount` INTEGER, `babyPermissions` INTEGER, `birthDate` INTEGER, `dueDate` INTEGER, `isBorn` INTEGER, `biologicalSex` TEXT, `birthWeightDecigrams` INTEGER, `birthLengthMillimeters` INTEGER, `lastUpdated` TEXT, `isSynced` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `activeBabyId` TEXT, PRIMARY KEY(`id`))",
+        "tableName": "baby",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`babyId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `name` TEXT NOT NULL, `birthdate` TEXT, `sex` TEXT, `birthWeightDecigrams` INTEGER, `birthLengthMillimeters` INTEGER, `isBorn` INTEGER, `isOwnedByAccount` INTEGER, `permissions` INTEGER, `createdAt` INTEGER, `dueDate` TEXT, `lastUpdated` TEXT, `isSynced` INTEGER NOT NULL, `isDeleted` INTEGER NOT NULL, `activeBabyId` TEXT, PRIMARY KEY(`babyId`))",
         "fields": [
           {
-            "fieldPath": "id",
-            "columnName": "id",
+            "fieldPath": "babyId",
+            "columnName": "babyId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1342,33 +1365,13 @@
             "notNull": true
           },
           {
-            "fieldPath": "isOwnedByAccount",
-            "columnName": "isOwnedByAccount",
-            "affinity": "INTEGER"
+            "fieldPath": "birthdate",
+            "columnName": "birthdate",
+            "affinity": "TEXT"
           },
           {
-            "fieldPath": "babyPermissions",
-            "columnName": "babyPermissions",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "birthDate",
-            "columnName": "birthDate",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "dueDate",
-            "columnName": "dueDate",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "isBorn",
-            "columnName": "isBorn",
-            "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "biologicalSex",
-            "columnName": "biologicalSex",
+            "fieldPath": "sex",
+            "columnName": "sex",
             "affinity": "TEXT"
           },
           {
@@ -1380,6 +1383,31 @@
             "fieldPath": "birthLengthMillimeters",
             "columnName": "birthLengthMillimeters",
             "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isBorn",
+            "columnName": "isBorn",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "isOwnedByAccount",
+            "columnName": "isOwnedByAccount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "permissions",
+            "columnName": "permissions",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dueDate",
+            "columnName": "dueDate",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "lastUpdated",
@@ -1407,24 +1435,24 @@
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "id"
+            "babyId"
           ]
         },
         "indices": [
           {
-            "name": "index_baby_profiles_accountId",
+            "name": "index_baby_accountId",
             "unique": false,
             "columnNames": [
               "accountId"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_baby_profiles_accountId` ON `${TABLE_NAME}` (`accountId`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_baby_accountId` ON `${TABLE_NAME}` (`accountId`)"
           }
         ]
       },
       {
         "tableName": "baby_entry",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `babyProfileId` TEXT NOT NULL, `babyWeightDecigrams` INTEGER, `babyLengthMillimeters` INTEGER, `entryNote` TEXT, `entryType` TEXT, `feedingTimeLeft` INTEGER, `feedingTimeRight` INTEGER, `feedingMilliliters` INTEGER, `diaperType` TEXT, `sleepTime` INTEGER, `babyDisplayWeightDecigrams` INTEGER, `photo` TEXT, `isPlaceholder` INTEGER, `source` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`babyProfileId`) REFERENCES `baby_profiles`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `babyId` TEXT NOT NULL, `babyWeightDecigrams` INTEGER, `babyLengthMillimeters` INTEGER, `entryNote` TEXT, `entryType` TEXT, `feedingTimeLeft` INTEGER, `feedingTimeRight` INTEGER, `feedingMilliliters` INTEGER, `diaperType` TEXT, `sleepTime` INTEGER, `babyDisplayWeightDecigrams` INTEGER, `photoUri` TEXT, `isPlaceholder` INTEGER, `source` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`babyId`) REFERENCES `baby`(`babyId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -1433,8 +1461,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "babyProfileId",
-            "columnName": "babyProfileId",
+            "fieldPath": "babyId",
+            "columnName": "babyId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -1489,8 +1517,8 @@
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "photo",
-            "columnName": "photo",
+            "fieldPath": "photoUri",
+            "columnName": "photoUri",
             "affinity": "TEXT"
           },
           {
@@ -1512,13 +1540,13 @@
         },
         "indices": [
           {
-            "name": "index_baby_entry_babyProfileId",
+            "name": "index_baby_entry_babyId",
             "unique": false,
             "columnNames": [
-              "babyProfileId"
+              "babyId"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_baby_entry_babyProfileId` ON `${TABLE_NAME}` (`babyProfileId`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_baby_entry_babyId` ON `${TABLE_NAME}` (`babyId`)"
           }
         ],
         "foreignKeys": [
@@ -1534,14 +1562,14 @@
             ]
           },
           {
-            "table": "baby_profiles",
+            "table": "baby",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "babyProfileId"
+              "babyId"
             ],
             "referencedColumns": [
-              "id"
+              "babyId"
             ]
           }
         ]
@@ -1555,7 +1583,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a88f13e657b90e77003cc806d680cf7c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ac52c9efba02bd7971f7a2992534b862')"
     ]
   }
 }
