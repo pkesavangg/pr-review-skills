@@ -127,6 +127,12 @@ sealed class AppRoute : NavKey {
     data object AppPermissions : AccountSettings()
 
     @Serializable
+    data object MyKids : AccountSettings()
+
+    @Serializable
+    data object AddBaby : AccountSettings()
+
+    @Serializable
     data class ScaleDetails(
       val scaleId: String,
     ) : AccountSettings()

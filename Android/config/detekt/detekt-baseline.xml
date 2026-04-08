@@ -27,8 +27,10 @@
     <ID>LongMethod:AccountRepository.kt$AccountRepository$override suspend fun addAccount(account: Account): Account</ID>
     <ID>LongMethod:AccountService.kt$AccountService$override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean</ID>
     <ID>LongMethod:AccountSwitchInfoModal.kt$@Composable fun AccountSwitchInfoModal( userInitial: String, onAddAccount: () -&gt; Unit, onClose: () -&gt; Unit )</ID>
+    <ID>LongMethod:AddBabyScreen.kt$@Composable fun AddBabyScreen(viewModel: MyKidsViewModel = hiltViewModel())</ID>
     <ID>LongMethod:AddHealthConnect.kt$@Composable fun AddHealthConnect( modifier: Modifier = Modifier, secondaryActionLabel: String? = null, onClose: () -&gt; Unit, onPrimaryAction: () -&gt; Unit, onSecondaryAction: (() -&gt; Unit)? = null )</ID>
     <ID>LongMethod:AddScaleScreen.kt$@Composable fun AddScaleScreenContent( state: AddScaleState, handleIntent: (AddScaleIntent) -&gt; Unit, )</ID>
+    <ID>LongMethod:BabyAddedStep.kt$@Composable fun BabyAddedStep( babies: List&lt;BabyProfile&gt;, onEditBaby: (BabyProfile) -&gt; Unit, onDeleteBaby: (BabyProfile) -&gt; Unit, onAddBaby: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:AdditionalSettingsScreen.kt$@Composable fun AdditionalSettingsScreen( state: ScaleDetailsState, handleIntent: (ScaleDetailsIntent) -&gt; Unit, onClose: () -&gt; Unit, )</ID>
     <ID>LongMethod:AppBottomBar.kt$@Composable fun PagerBottomAppBar( modifier: Modifier = Modifier, containerColor: Color = Color.Transparent, shouldCenterMiddleContent: Boolean = false, isBottomBarVisible: Boolean = true, hasMiddleContentOnly: Boolean = false, leadingContent: @Composable () -&gt; Unit, middleContent: @Composable () -&gt; Unit, trailingContent: @Composable () -&gt; Unit, content: @Composable (Modifier) -&gt; Unit, )</ID>
     <ID>LongMethod:AppBottomBar.kt$@PreviewTheme @Composable fun BottomAppBarPreview()</ID>
