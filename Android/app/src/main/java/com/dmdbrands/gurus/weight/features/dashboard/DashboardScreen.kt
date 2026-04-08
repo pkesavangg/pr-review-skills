@@ -128,7 +128,7 @@ private fun WeightDashboardScreen(
         selectedProduct = ProductSelection.MyWeight,
         goal = state.goal,
         header = { segment ->
-          DashboardChartHeader(viewModel = vm, segment = segment, product = ProductSelection.MyWeight)
+          DashboardChartHeader(state = state, segment = segment, product = ProductSelection.MyWeight)
         },
         onSegmentChange = { segment ->
           vm.handleIntent(WeightDashboardIntent.SetSelectedSegment(segment))
@@ -190,7 +190,7 @@ private fun BpDashboardScreen(
         viewModel = vm,
         selectedProduct = ProductSelection.BloodPressure,
         header = { segment ->
-          DashboardChartHeader(viewModel = vm, segment = segment, product = ProductSelection.BloodPressure)
+          DashboardChartHeader(state = state, segment = segment, product = ProductSelection.BloodPressure)
         },
         onSegmentChange = { segment ->
           vm.handleIntent(com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent.SetSelectedSegment(segment))
