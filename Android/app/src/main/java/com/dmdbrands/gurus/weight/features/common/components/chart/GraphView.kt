@@ -15,12 +15,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.features.common.components.chart.bp.rememberBpChart
+import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
-import com.dmdbrands.gurus.weight.features.common.components.chart.weight.rememberWeightChart
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
@@ -56,8 +55,8 @@ fun GraphView(
   modifier: Modifier = Modifier,
   graphState: GraphState,
   productState: ProductGraphState,
+  chartConfig: ChartConfig,
   productType: ProductType,
-  product: ProductSelection = ProductSelection.MyWeight,
   segment: GraphSegment = GraphSegment.WEEK,
   scrollTarget: Double? = null,
   canScrollToAnchor: Boolean = false,
@@ -234,38 +233,17 @@ fun GraphView(
     }
   }
 
-  val chart = when (product) {
-    is ProductSelection.MyWeight -> rememberWeightChart(
-      state = graphState,
-      productState = productState,
-      defaultMarker = defaultMarker,
-      segment = segment,
-      horizontalItemPlacer = horizontalItemPlacer,
-      fadingEdges = fadingEdges,
-      handleIntent = viewModel::handleIntent,
-      scrubController = scrubController,
-    )
-    is ProductSelection.BloodPressure -> rememberBpChart(
-      state = graphState,
-      productState = productState,
-      defaultMarker = defaultMarker,
-      segment = segment,
-      horizontalItemPlacer = horizontalItemPlacer,
-      fadingEdges = fadingEdges,
-      handleIntent = viewModel::handleIntent,
-      scrubController = scrubController,
-    )
-    is ProductSelection.Baby -> rememberWeightChart(
-      state = graphState,
-      productState = productState,
-      defaultMarker = defaultMarker,
-      segment = segment,
-      horizontalItemPlacer = horizontalItemPlacer,
-      fadingEdges = fadingEdges,
-      handleIntent = viewModel::handleIntent,
-      scrubController = scrubController,
-    ) // TODO: Replace with rememberBabyChart
-  }
+  val chart = rememberProductChart(
+    config = chartConfig,
+    graphState = graphState,
+    productState = productState,
+    defaultMarker = defaultMarker,
+    segment = segment,
+    horizontalItemPlacer = horizontalItemPlacer,
+    fadingEdges = fadingEdges,
+    handleIntent = viewModel::handleIntent,
+    scrubController = scrubController,
+  )
 
   LaunchedEffect(scrollState, segment) {
     snapshotFlow { scrollState.value }

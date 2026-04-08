@@ -7,228 +7,75 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.domain.enums.ProductType
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
-import com.dmdbrands.gurus.weight.features.common.components.chart.bp.BpChartHeader
+import com.dmdbrands.gurus.weight.features.common.components.chart.config.rememberChartConfig
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
-import com.dmdbrands.gurus.weight.features.common.components.chart.weight.WeightChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
-import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 
 /**
- * Composable for displaying a horizontal pager with 4 graph views for different segments.
- * Each page represents a different time segment (WEEK, MONTH, YEAR, TOTAL).
+ * Horizontal pager with 4 graph segments (WEEK, MONTH, YEAR, TOTAL).
+ * Receives VMs from parent — does not create them.
+ * No data callbacks — parent observes VM state directly.
  *
- * @param state The dashboard state containing data and configuration.
- * @param onSelected Callback when entries are selected from the graph.
- * @param onPagerStateChange Callback when pager state changes.
- * @param onSegmentChange Callback when segment is selected; receives new segment and anchor timestamp (current visible center from previous segment), or null if none.
- * @param onScrollTargetConsumed Callback when the chart has scrolled to [state.scrollTarget] once.
- * @param onRangeChange Callback for date range label updates.
- * @param onMarkerIndexChange Callback when marker selection changes.
- * @param entries List of entries to be used by the graph viewmodels.
+ * @param pagerState Pager state managed by the parent.
+ * @param viewModels 4 GraphViewModels, one per segment (indexed by GraphSegment.entries).
+ * @param selectedProduct Current product selection for chart config and header.
+ * @param state Dashboard state for scroll target and segment info.
+ * @param header Composable slot for the product-specific header (above chart).
+ * @param onSegmentChange Callback when user taps a segment button.
+ * @param onChartConsuming Callback for chart scroll consuming state.
+ * @param onScrollTargetConsumed Callback when scroll target has been applied.
  */
 @Composable
 fun GraphPagerView(
+  pagerState: PagerState,
+  viewModels: List<GraphViewModel>,
+  selectedProduct: ProductSelection,
   state: DashboardState,
-  selectedProduct: ProductSelection = ProductSelection.MyWeight,
-  onSelected: (List<PeriodBodyScaleSummary>) -> Unit,
-  onPagerStateChange: (Int) -> Unit,
+  header: @Composable (GraphViewModel, GraphSegment) -> Unit,
   onSegmentChange: (GraphSegment, Long?) -> Unit = { _, _ -> },
   onChartConsuming: (Boolean) -> Unit = {},
-  onRangeChange: (String) -> Unit = { },
-  onMarkerIndexChange: (Double?) -> Unit = {},
   onScrollTargetConsumed: (Boolean) -> Unit = {},
-  entries: List<PeriodBodyScaleSummary> = emptyList()
 ) {
-  val pagerState = rememberPagerState(
-    initialPage = GraphSegment.entries.indexOf(state.selectedSegment).takeIf { it >= 0 } ?: 0,
-    pageCount = { GraphSegment.entries.size },
-  )
-
-  /** Visible center (midpoint) of the *currently displayed* segment only; used as anchor when user taps another segment. */
-  var currentVisibleCenter by remember { mutableStateOf<Long?>(null) }
-  var subText: String by remember { mutableStateOf("") }
-  var labelData by remember { mutableStateOf("") }
-  var weightValue by remember { mutableStateOf(0.0) }
-
-  LaunchedEffect(state.selectedSegment) {
-    val targetPage = GraphSegment.entries.indexOf(state.selectedSegment)
-    if (targetPage != pagerState.currentPage) {
-      pagerState.scrollToPage(targetPage)
-    }
-  }
-
-  // Handle pager page changes
-  LaunchedEffect(pagerState.currentPage) {
-    onPagerStateChange(pagerState.currentPage)
-  }
-
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
   ) {
-
     HorizontalPager(
       state = pagerState,
       userScrollEnabled = false,
       modifier = Modifier.fillMaxWidth(),
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
-      val viewmodel = hiltViewModel<GraphViewModel, GraphViewModel.Factory>(
-        key = "GraphViewModel-$page",
-      ) { factory ->
-        val anchoredTarget = state.scrollTarget?.let {
-          GraphUtil.getStartOnAnchored(currentSegment, it.toLong())
-        }
-        factory.create(currentSegment, anchoredTarget?.toDouble())
-      }
+      val viewmodel = viewModels.getOrNull(page) ?: return@HorizontalPager
       val graphState by viewmodel.state.collectAsState()
       val productType = selectedProduct.productType
       val productState = graphState.forProduct(productType)
+      val chartConfig = rememberChartConfig(product = selectedProduct, goal = graphState.goal)
 
-      LaunchedEffect(productState.target) {
-        val averageWeight = if (productState.target.isEmpty()) 0.0 else productState.target.map { it.weight }.average()
-        labelData = if (productState.target.isEmpty()) "000.0" else formatWeightValue(averageWeight)
-        if (averageWeight > 0 && state.weightless?.isWeightlessOn == true) {
-          labelData = ("+").plus(labelData)
-        }
-        weightValue = averageWeight
-        onSelected(productState.target)
-      }
-
-      LaunchedEffect(productState.markerIndex) {
-        onMarkerIndexChange(productState.markerIndex)
-      }
-
-      LaunchedEffect(productState.minTarget, productState.maxTarget, pagerState.currentPage, state.isConsuming) {
-        val minTarget = productState.minTarget
-        val maxTarget = productState.maxTarget
-        if (minTarget != null && maxTarget != null && !state.isConsuming) {
-          val (minTarget, maxTarget) = if (currentSegment == GraphSegment.TOTAL && !productState.isEmptyGraph) {
-            val calendar = java.util.Calendar.getInstance()
-            calendar.timeInMillis = minTarget
-            calendar.add(java.util.Calendar.MONTH, +6)
-            val min = calendar.timeInMillis
-
-            val calendar1 = java.util.Calendar.getInstance()
-            calendar1.timeInMillis = maxTarget
-            calendar1.add(java.util.Calendar.MONTH, -6)
-            val max = calendar1.timeInMillis
-            min to max
-          } else {
-            minTarget to maxTarget
-          }
-          val formattedRange = GraphUtil.formatDateRange(minTarget, maxTarget, currentSegment)
-          AppLog.i(
-            "GraphView",
-            "segment : ${currentSegment} minTarget : ${minTarget} maxTarget : ${maxTarget} formattedRange : ${formattedRange}",
-          )
-          subText = formattedRange
-          onRangeChange(formattedRange)
-          if (currentSegment != GraphSegment.TOTAL && page == pagerState.currentPage) {
-            currentVisibleCenter = (minTarget + maxTarget).div(2)
-          }
-        }
-      }
-      Column {
-        // Per-product header + GraphView with its own stable producer
-        when (selectedProduct) {
-          is ProductSelection.MyWeight -> {
-            WeightChartHeader(
-              state = graphState,
-              productState = productState,
-              segment = currentSegment,
-              weightData = labelData,
-              rangeData = subText,
-              weightValue = weightValue,
-            )
-            GraphView(
-              modifier = Modifier.fillMaxWidth(),
-              graphState = graphState,
-              productState = productState,
-              productType = productType,
-              product = selectedProduct,
-              scrollTarget = state.scrollTarget,
-              segment = currentSegment,
-              canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
-              viewModel = viewmodel,
-              onChartConsuming = onChartConsuming,
-              onScrollTargetConsumed = onScrollTargetConsumed,
-            )
-          }
-          is ProductSelection.BloodPressure -> {
-            val target = productState.target
-            val avgSys = target.map { it.weight.toInt() }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-            val avgDia = target.map { it.bodyFat?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-            val avgPulse = target.map { it.pulse?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-            BpChartHeader(
-              state = graphState,
-              productState = productState,
-              segment = currentSegment,
-              systolic = avgSys,
-              diastolic = avgDia,
-              pulse = avgPulse,
-              rangeData = subText,
-            )
-            GraphView(
-              modifier = Modifier.fillMaxWidth(),
-              graphState = graphState,
-              productState = productState,
-              productType = productType,
-              product = selectedProduct,
-              scrollTarget = state.scrollTarget,
-              segment = currentSegment,
-              canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
-              viewModel = viewmodel,
-              onChartConsuming = onChartConsuming,
-              onScrollTargetConsumed = onScrollTargetConsumed,
-            )
-          }
-          is ProductSelection.Baby -> {
-            WeightChartHeader(
-              state = graphState,
-              productState = productState,
-              segment = currentSegment,
-              weightData = labelData,
-              rangeData = subText,
-              weightValue = weightValue,
-            ) // TODO: Replace with BabyChartHeader
-            GraphView(
-              modifier = Modifier.fillMaxWidth(),
-              graphState = graphState,
-              productState = productState,
-              productType = productType,
-              product = selectedProduct,
-              scrollTarget = state.scrollTarget,
-              segment = currentSegment,
-              canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
-              viewModel = viewmodel,
-              onChartConsuming = onChartConsuming,
-              onScrollTargetConsumed = onScrollTargetConsumed,
-            )
-          }
-        }
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-      }
+      GraphPageContent(
+        header = { header(viewmodel, currentSegment) },
+        chartConfig = chartConfig,
+        graphState = graphState,
+        productState = productState,
+        productType = productType,
+        segment = currentSegment,
+        viewModel = viewmodel,
+        page = page,
+        currentPage = pagerState.currentPage,
+        scrollTarget = state.scrollTarget,
+        canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
+        isConsuming = state.isConsuming,
+        onChartConsuming = onChartConsuming,
+        onScrollTargetConsumed = onScrollTargetConsumed,
+      )
     }
 
     SegmentButtonGroup(
@@ -238,23 +85,11 @@ fun GraphPagerView(
       onSelected = { segment ->
         onChartConsuming(true)
         onScrollTargetConsumed(false)
-        onSegmentChange(segment, currentVisibleCenter)
+        onSegmentChange(segment, null)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
     )
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-  }
-}
-
-@PreviewTheme
-@Composable
-private fun GraphPagerViewPreview() {
-  MeAppTheme {
-    GraphPagerView(
-      state = DashboardState(),
-      onSelected = {},
-      onPagerStateChange = {},
-    )
   }
 }

@@ -1,16 +1,16 @@
-package com.dmdbrands.gurus.weight.features.common.components.chart.bp
+package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
+import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
@@ -18,7 +18,6 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
-import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
@@ -35,21 +34,16 @@ import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import java.util.Calendar
 
-/** BP line colors: systolic (green), diastolic (gray), pulse (blue). */
-private object BpChartColors {
-  val Systolic = SnapshotColors.BloodPressure   // #458239
-  val Diastolic = Color(0xFF7B726E)              // gray/subheading
-  val Pulse = Color(0xFF00B3E3)                  // pulse blue
-}
-
 /**
- * BP chart builder — single layer with 3 lines (systolic, diastolic, pulse).
- * ScrollAwareRangeProvider.buildCache merges all series so Y range spans all 3.
+ * Unified chart builder driven by [ChartConfig].
+ * Replaces per-product chart builders (WeightChart, BpChart).
+ * Differences between products are expressed declaratively via config.
  */
 @SuppressLint("RestrictedApi")
 @Composable
-fun rememberBpChart(
-  state: GraphState,
+fun rememberProductChart(
+  config: ChartConfig,
+  graphState: GraphState,
   productState: ProductGraphState,
   defaultMarker: CartesianMarker,
   segment: GraphSegment,
@@ -59,12 +53,15 @@ fun rememberBpChart(
   scrubController: ScrubMarkerController? = null,
 ): CartesianChart {
   productState.markerIndex
+
+  // ── Separators (shared) ──
   val separators = GraphUtil.periodStarts(
     segment = segment,
     startMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
     endMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
   ).map { it.toDouble() }
 
+  // ── Visible labels count (shared) ──
   val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
     remember(segment) { segment.visibleLabelsCount() }
   } else {
@@ -76,23 +73,30 @@ fun rememberBpChart(
     }
   }
 
+  // ── Y-range provider (config-driven) ──
   val scrollAwareRange = rememberScrollAwareRangeProvider(
     minX = productState.chartMinX ?: Double.NaN,
     maxX = productState.chartMaxX ?: Double.NaN,
   ) { visibleSeriesEntries, visibleXRange ->
-    if (visibleSeriesEntries.all { it.isEmpty() }) {
+    // Extract Y values: all series (BP) or first series only (weight/baby)
+    val yValues = if (config.useAllSeriesForYRange) {
+      visibleSeriesEntries.flatMap { series -> series.map { it.second } }
+    } else {
+      visibleSeriesEntries.firstOrNull()?.map { it.second } ?: emptyList()
+    }
+    if (yValues.isEmpty()) {
       return@rememberScrollAwareRangeProvider (0.0..1.0) to emptyList()
     }
+
     val relativeMin = GraphUtil.getRelativeStart(segment, visibleXRange.start.toLong())
     val relativeMax = GraphUtil.getRelativeEnd(segment, visibleXRange.endInclusive.toLong())
     val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
 
-    // Y range spans ALL series (systolic + diastolic + pulse)
-    val yValues = visibleSeriesEntries.flatMap { series -> series.map { it.second } }
     val axisMeta = generateNiceScale(
       minValue = yValues.min(),
       maxValue = yValues.max(),
-      goalWeight = 0.0,
+      goalWeight = config.goalWeight ?: 0.0,
+      isWeightLessMode = config.isWeightlessMode,
       targetTickCount = 4,
     )
     val rangeMinY = axisMeta.min
@@ -114,36 +118,64 @@ fun rememberBpChart(
     (rangeMinY..rangeMaxY) to ticks
   }
 
+  // ── Line layers (config-driven) ──
   val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
   val pointSize = if (segment == GraphSegment.TOTAL) 5f else 8f
 
-  val colors = listOf(BpChartColors.Systolic, BpChartColors.Diastolic, BpChartColors.Pulse)
-  val lines = colors.map { color ->
+  val lines = config.lines.map { spec ->
     LineCartesianLayer.rememberLine(
-      fill = LineCartesianLayer.LineFill.single(Fill(color)),
+      fill = LineCartesianLayer.LineFill.single(Fill(spec.color)),
       stroke = LineCartesianLayer.LineStroke.Continuous(thickness = lineThickness),
       interpolator = LineCartesianLayer.Interpolator.monotone(),
       pointProvider = LineCartesianLayer.PointProvider.single(
         point = LineCartesianLayer.Point(
-          component = rememberShapeComponent(Fill(color), CircleShape, strokeThickness = 0.dp),
+          component = rememberShapeComponent(Fill(spec.color), CircleShape, strokeThickness = 0.dp),
           size = pointSize.dp,
         ),
       ),
     )
   }
   val lineProvider = remember(lines) { LineCartesianLayer.LineProvider.series(lines) }
-  val bpLayer = rememberLineCartesianLayer(
+  val primaryLayer = rememberLineCartesianLayer(
     lineProvider = lineProvider,
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = scrollAwareRange,
   )
 
+  // ── Optional secondary layer (weight metric overlay) ──
+  val layers = if (config.hasSecondaryLayer && config.secondaryLineColor != null) {
+    val secLayer = secondaryLayer(
+      segment = segment,
+      rangeProvider = scrollAwareRange,
+      handleIntent = handleIntent,
+      yTransform = { series, yRange, visibleXRange ->
+        GraphUtil.normalizeYValues(
+          series = series,
+          weightMin = yRange.minY,
+          weightMax = yRange.maxY,
+          minX = visibleXRange.start.toLong(),
+          maxX = visibleXRange.endInclusive.toLong(),
+        )
+      },
+    )
+    arrayOf(primaryLayer, secLayer)
+  } else {
+    arrayOf(primaryLayer)
+  }
+
+  // ── Goal marker (config-driven) ──
+  val goalMarker = if (config.goalWeight != null) {
+    rememberGoalMarker(goal = graphState.goal, isWeightlessOn = config.isWeightlessMode)
+  } else null
+
+  // ── Build chart ──
   return rememberCartesianChart(
-    bpLayer,
+    *layers,
     topAxis = topAxis(),
     startAxis = startAxis(segment, productState.isSingleWindow),
     endAxis = endAxis(
       isEmptyGraph = productState.isEmptyGraph,
+      markerDecoration = goalMarker,
       ticksProvider = { scrollAwareRange.currentTicks },
     ),
     bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
