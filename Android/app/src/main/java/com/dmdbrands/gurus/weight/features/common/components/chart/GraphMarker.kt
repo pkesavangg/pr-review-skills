@@ -8,7 +8,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -29,14 +28,19 @@ internal fun rememberDefaultMarker(
   segmentState: SegmentState,
   segment: GraphSegment,
   markerIndex: Double? = null,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   onTargetsUpdate: (List<PeriodSummary>) -> Unit = {},
 ): CartesianMarker {
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
-    val data = segmentState.data.filter {
-      DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == markerIndex?.toDouble()
+    if (markerIndex == null || fallbackValues.isEmpty()) {
+      onTargetsUpdate(emptyList())
+    } else {
+      val ts = markerIndex.toLong()
+      // fallbackValues = per-layer targets, each containing Y values for points in that layer
+      // e.g. Weight: [[weight]], BP: [[systolic, diastolic, pulse]]
+      val yValues = fallbackValues.flatMap { layerPoints -> layerPoints.map { it.toDouble() } }
+      onTargetsUpdate(listOfNotNull(createFallbackEntry(ts, yValues, segment)))
     }
-    val requiredData = data.ifEmpty { emptyList() }
-    onTargetsUpdate(requiredData)
   }
 
   val openSansFamily = FontFamily(Font(R.font.open_sans_regular))

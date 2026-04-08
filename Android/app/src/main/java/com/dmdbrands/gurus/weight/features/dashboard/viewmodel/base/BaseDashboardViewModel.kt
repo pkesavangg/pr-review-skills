@@ -193,7 +193,6 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
    */
   override fun handleIntent(intent: I) {
     if (intent is BaseGraphIntent.ScrollRange) {
-      // Side effect: filter data to visible range, dispatch UpdateSegmentTarget
       val adjMin = GraphUtil.getRelativeStart(intent.segment, intent.min)
       val adjMax = GraphUtil.getRelativeEnd(intent.segment, intent.max)
       val ss = _state.value.forSegment(intent.segment)
@@ -201,6 +200,8 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
       if (filteredData.isNotEmpty()) {
         @Suppress("UNCHECKED_CAST")
         super.handleIntent(BaseGraphIntent.UpdateSegmentTarget(intent.segment, filteredData) as I)
+      } else {
+        intent.onFallback()
       }
     }
     // Always pass to reducer for state changes

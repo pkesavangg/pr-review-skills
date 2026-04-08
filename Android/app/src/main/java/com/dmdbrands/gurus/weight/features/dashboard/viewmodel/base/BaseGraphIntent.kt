@@ -20,7 +20,7 @@ interface BaseGraphIntent : IReducer.Intent {
   data class SetRefreshing(val isRefreshing: Boolean) : BaseGraphIntent
   data class SetSelectedSegment(val segment: GraphSegment, val anchorTimestamp: Double? = null) : BaseGraphIntent
   data class UpdateMarkerIndex(val markerIndex: Double?) : BaseGraphIntent
-  data class ScrollRange(val segment: GraphSegment, val min: Long, val max: Long) : BaseGraphIntent
+  data class ScrollRange(val segment: GraphSegment, val min: Long, val max: Long, val onFallback: () -> Unit = {}) : BaseGraphIntent
   data class UpdateIsEmptyGraph(val segment: GraphSegment, val isEmpty: Boolean) : BaseGraphIntent
   data class UpdateSegmentTarget(val segment: GraphSegment, val target: List<PeriodSummary>) : BaseGraphIntent
 }

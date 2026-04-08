@@ -11,6 +11,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
@@ -21,6 +25,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboar
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.InterpolationType
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
@@ -54,6 +59,7 @@ fun GraphView(
   scrollTarget: Double? = null,
   canScrollToAnchor: Boolean = false,
   handleGraphIntent: (BaseGraphIntent) -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
   val scope = rememberCoroutineScope()
@@ -115,7 +121,28 @@ fun GraphView(
 
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
-      handleGraphIntent(BaseGraphIntent.ScrollRange(segment, min, max))
+      handleGraphIntent(
+        BaseGraphIntent.ScrollRange(segment, min, max) {
+          // Fallback: no data in visible range — interpolate from chart lines
+          val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
+            val visibleRange = scrollState.visibleXRange
+            visibleRange != null && it in visibleRange
+          }
+          if (visibleLabels.isNotEmpty()) {
+            val fallbackValues = scrollState.getInterpolatedYValues(
+              xValues = visibleLabels,
+              interpolationType = InterpolationType.MONOTONE,
+            )
+            val fallbackData = visibleLabels.mapIndexedNotNull { index, x ->
+              val ts = x.toLong()
+              val yValues = fallbackValues.mapNotNull { series -> series.getOrNull(index)?.toDouble() }
+              if (yValues.isEmpty()) return@mapIndexedNotNull null
+              createFallbackEntry(ts, yValues, segment)
+            }
+            handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, fallbackData))
+          }
+        },
+      )
     }
   }
 
@@ -138,6 +165,7 @@ fun GraphView(
     segmentState = segmentState,
     segment = segment,
     markerIndex = state.markerIndex,
+    createFallbackEntry = createFallbackEntry,
     onTargetsUpdate = { entries ->
       if (entries.isNotEmpty()) {
         handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, entries))

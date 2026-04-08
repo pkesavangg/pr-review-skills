@@ -39,6 +39,11 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -105,6 +110,19 @@ fun DashboardScreen() {
           product = product,
           goal = state.goal,
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
+          createFallbackEntry = { ts, yValues, seg ->
+            val y = yValues.firstOrNull() ?: return@DashboardPage null
+            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            }
+            PeriodBodyScaleSummary(
+              period = period,
+              entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              weight = y,
+              unit = WeightUnit.LB,
+            )
+          },
         ) { s ->
           WeightDashboardContent(
             state = s,
@@ -120,6 +138,20 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
+          createFallbackEntry = { ts, yValues, seg ->
+            if (yValues.size < 3) return@DashboardPage null
+            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            }
+            PeriodBpmSummary(
+              period = period,
+              entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              avgSystolic = yValues[0].toInt(),
+              avgDiastolic = yValues[1].toInt(),
+              avgPulse = yValues[2].toInt(),
+            )
+          },
         ) { s ->
           BpDashboardContent(segmentState = s.forSegment(s.selectedSegment), state = s)
         }
@@ -141,6 +173,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   product: ProductSelection,
   goal: Goal? = null,
   onRefresh: () -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
 ) {
   val state by vm.state.collectAsState()
@@ -166,6 +199,7 @@ private fun <S : BaseDashboardState> DashboardPage(
         selectedProduct = product,
         goal = goal,
         handleGraphIntent = vm::handleIntent,
+        createFallbackEntry = createFallbackEntry,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product) },
         onSegmentChange = {
           val currentSegmentState = state.forSegment(state.selectedSegment)

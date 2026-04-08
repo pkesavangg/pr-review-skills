@@ -138,46 +138,72 @@ class HistoryRepository @Inject constructor(
             PeriodBpmSummary("2026-04-06", "2026-04-06 00:00:00", avgSystolic = 111, avgDiastolic = 71, avgPulse = 63),
     )
 
-    /** Sample BP daily data — ~45 days for week/month segments. Start of day. */
+    /** Sample BP daily data — with month-scale gaps for fallback testing. */
     private fun sampleBpmDailyGraphData(): List<PeriodBpmSummary> = listOf(
-        PeriodBpmSummary("2026-02-22", "2026-02-22 00:00:00", avgSystolic = 124, avgDiastolic = 82, avgPulse = 74),
-        PeriodBpmSummary("2026-02-24", "2026-02-24 00:00:00", avgSystolic = 121, avgDiastolic = 79, avgPulse = 71),
-        PeriodBpmSummary("2026-02-26", "2026-02-26 00:00:00", avgSystolic = 119, avgDiastolic = 78, avgPulse = 70),
-        PeriodBpmSummary("2026-02-28", "2026-02-28 00:00:00", avgSystolic = 122, avgDiastolic = 80, avgPulse = 72),
-        PeriodBpmSummary("2026-03-02", "2026-03-02 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
-        PeriodBpmSummary("2026-03-05", "2026-03-05 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
-        PeriodBpmSummary("2026-03-08", "2026-03-08 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 67),
-        PeriodBpmSummary("2026-03-11", "2026-03-11 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
-        PeriodBpmSummary("2026-03-14", "2026-03-14 00:00:00", avgSystolic = 117, avgDiastolic = 76, avgPulse = 68),
-        PeriodBpmSummary("2026-03-17", "2026-03-17 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 66),
+        // Cluster 1: Aug 2025 (early readings, higher values)
+        PeriodBpmSummary("2025-08-01", "2025-08-01 00:00:00", avgSystolic = 138, avgDiastolic = 90, avgPulse = 82),
+        PeriodBpmSummary("2025-08-03", "2025-08-03 00:00:00", avgSystolic = 135, avgDiastolic = 88, avgPulse = 80),
+        PeriodBpmSummary("2025-08-05", "2025-08-05 00:00:00", avgSystolic = 136, avgDiastolic = 89, avgPulse = 81),
+        PeriodBpmSummary("2025-08-08", "2025-08-08 00:00:00", avgSystolic = 133, avgDiastolic = 87, avgPulse = 79),
+        PeriodBpmSummary("2025-08-10", "2025-08-10 00:00:00", avgSystolic = 134, avgDiastolic = 88, avgPulse = 80),
+        // ── GAP: ~2 months (Aug 11 – Oct 14 empty) ──
+        // Cluster 2: Oct 2025
+        PeriodBpmSummary("2025-10-15", "2025-10-15 00:00:00", avgSystolic = 130, avgDiastolic = 85, avgPulse = 77),
+        PeriodBpmSummary("2025-10-17", "2025-10-17 00:00:00", avgSystolic = 128, avgDiastolic = 84, avgPulse = 76),
+        PeriodBpmSummary("2025-10-20", "2025-10-20 00:00:00", avgSystolic = 126, avgDiastolic = 82, avgPulse = 74),
+        PeriodBpmSummary("2025-10-22", "2025-10-22 00:00:00", avgSystolic = 127, avgDiastolic = 83, avgPulse = 75),
+        // ── GAP: ~1 month (Oct 23 – Nov 24 empty) ──
+        // Cluster 3: Late Nov – early Dec 2025
+        PeriodBpmSummary("2025-11-25", "2025-11-25 00:00:00", avgSystolic = 124, avgDiastolic = 81, avgPulse = 73),
+        PeriodBpmSummary("2025-11-27", "2025-11-27 00:00:00", avgSystolic = 122, avgDiastolic = 80, avgPulse = 72),
+        PeriodBpmSummary("2025-11-30", "2025-11-30 00:00:00", avgSystolic = 123, avgDiastolic = 80, avgPulse = 72),
+        PeriodBpmSummary("2025-12-02", "2025-12-02 00:00:00", avgSystolic = 121, avgDiastolic = 79, avgPulse = 71),
+        PeriodBpmSummary("2025-12-05", "2025-12-05 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
+        // ── GAP: ~2 months (Dec 6 – Jan 31 empty) ──
+        // Cluster 4: Feb 2026
+        PeriodBpmSummary("2026-02-01", "2026-02-01 00:00:00", avgSystolic = 119, avgDiastolic = 78, avgPulse = 70),
+        PeriodBpmSummary("2026-02-04", "2026-02-04 00:00:00", avgSystolic = 118, avgDiastolic = 77, avgPulse = 69),
+        PeriodBpmSummary("2026-02-07", "2026-02-07 00:00:00", avgSystolic = 116, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2026-02-10", "2026-02-10 00:00:00", avgSystolic = 117, avgDiastolic = 76, avgPulse = 68),
+        PeriodBpmSummary("2026-02-14", "2026-02-14 00:00:00", avgSystolic = 115, avgDiastolic = 75, avgPulse = 67),
+        // ── GAP: ~1 month (Feb 15 – Mar 19 empty) ──
+        // Cluster 5: Late Mar – Apr 2026 (dense, daily — recent)
         PeriodBpmSummary("2026-03-20", "2026-03-20 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
         PeriodBpmSummary("2026-03-22", "2026-03-22 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 67),
-        PeriodBpmSummary("2026-03-24", "2026-03-24 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
-        PeriodBpmSummary("2026-03-26", "2026-03-26 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
-        PeriodBpmSummary("2026-03-28", "2026-03-28 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
-        PeriodBpmSummary("2026-03-30", "2026-03-30 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
-        PeriodBpmSummary("2026-03-31", "2026-03-31 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
+        PeriodBpmSummary("2026-03-24", "2026-03-24 00:00:00", avgSystolic = 114, avgDiastolic = 74, avgPulse = 66),
+        PeriodBpmSummary("2026-03-27", "2026-03-27 00:00:00", avgSystolic = 115, avgDiastolic = 75, avgPulse = 67),
+        PeriodBpmSummary("2026-03-30", "2026-03-30 00:00:00", avgSystolic = 113, avgDiastolic = 73, avgPulse = 65),
         PeriodBpmSummary("2026-04-01", "2026-04-01 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
         PeriodBpmSummary("2026-04-02", "2026-04-02 00:00:00", avgSystolic = 112, avgDiastolic = 72, avgPulse = 62),
         PeriodBpmSummary("2026-04-03", "2026-04-03 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 66),
         PeriodBpmSummary("2026-04-04", "2026-04-04 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
         PeriodBpmSummary("2026-04-05", "2026-04-05 00:00:00", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
         PeriodBpmSummary("2026-04-06", "2026-04-06 00:00:00", avgSystolic = 111, avgDiastolic = 71, avgPulse = 63),
-        PeriodBpmSummary("2026-04-07", "2026-04-07 00:00:00", avgSystolic = 113, avgDiastolic = 73, avgPulse = 65),
+        PeriodBpmSummary("2026-04-08", "2026-04-08 00:00:00", avgSystolic = 113, avgDiastolic = 73, avgPulse = 65),
     )
 
-    /** Sample BP monthly data — ~12 months for year/total segments. Start of month. */
+    /** Sample BP monthly data — with year-scale gaps for fallback testing. */
     private fun sampleBpmMonthlyGraphData(): List<PeriodBpmSummary> = listOf(
-        PeriodBpmSummary("2025-05", "2025-05-01 00:00:00", avgSystolic = 128, avgDiastolic = 84, avgPulse = 76),
-        PeriodBpmSummary("2025-06", "2025-06-01 00:00:00", avgSystolic = 126, avgDiastolic = 82, avgPulse = 74),
-        PeriodBpmSummary("2025-07", "2025-07-01 00:00:00", avgSystolic = 124, avgDiastolic = 80, avgPulse = 72),
-        PeriodBpmSummary("2025-08", "2025-08-01 00:00:00", avgSystolic = 122, avgDiastolic = 79, avgPulse = 71),
-        PeriodBpmSummary("2025-09", "2025-09-01 00:00:00", avgSystolic = 120, avgDiastolic = 78, avgPulse = 70),
-        PeriodBpmSummary("2025-10", "2025-10-01 00:00:00", avgSystolic = 119, avgDiastolic = 77, avgPulse = 69),
-        PeriodBpmSummary("2025-11", "2025-11-01 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
-        PeriodBpmSummary("2025-12", "2025-12-01 00:00:00", avgSystolic = 117, avgDiastolic = 75, avgPulse = 67),
+        // Cluster 1: Early 2023 (high readings)
+        PeriodBpmSummary("2023-01", "2023-01-01 00:00:00", avgSystolic = 142, avgDiastolic = 92, avgPulse = 84),
+        PeriodBpmSummary("2023-02", "2023-02-01 00:00:00", avgSystolic = 140, avgDiastolic = 91, avgPulse = 83),
+        PeriodBpmSummary("2023-03", "2023-03-01 00:00:00", avgSystolic = 138, avgDiastolic = 90, avgPulse = 82),
+        PeriodBpmSummary("2023-04", "2023-04-01 00:00:00", avgSystolic = 137, avgDiastolic = 89, avgPulse = 81),
+        // ── GAP: ~1 year (May 2023 – Mar 2024 empty) ──
+        // Cluster 2: Spring 2024
+        PeriodBpmSummary("2024-04", "2024-04-01 00:00:00", avgSystolic = 132, avgDiastolic = 86, avgPulse = 78),
+        PeriodBpmSummary("2024-05", "2024-05-01 00:00:00", avgSystolic = 130, avgDiastolic = 85, avgPulse = 77),
+        PeriodBpmSummary("2024-06", "2024-06-01 00:00:00", avgSystolic = 128, avgDiastolic = 84, avgPulse = 76),
+        // ── GAP: ~8 months (Jul 2024 – Feb 2025 empty) ──
+        // Cluster 3: Spring 2025
+        PeriodBpmSummary("2025-03", "2025-03-01 00:00:00", avgSystolic = 126, avgDiastolic = 82, avgPulse = 74),
+        PeriodBpmSummary("2025-04", "2025-04-01 00:00:00", avgSystolic = 124, avgDiastolic = 81, avgPulse = 73),
+        PeriodBpmSummary("2025-05", "2025-05-01 00:00:00", avgSystolic = 122, avgDiastolic = 80, avgPulse = 72),
+        // ── GAP: ~6 months (Jun – Nov 2025 empty) ──
+        // Cluster 4: Late 2025 – current
+        PeriodBpmSummary("2025-12", "2025-12-01 00:00:00", avgSystolic = 118, avgDiastolic = 76, avgPulse = 68),
         PeriodBpmSummary("2026-01", "2026-01-01 00:00:00", avgSystolic = 116, avgDiastolic = 75, avgPulse = 66),
-        PeriodBpmSummary("2026-02", "2026-02-01 00:00:00", avgSystolic = 115, avgDiastolic = 74, avgPulse = 65),
+        PeriodBpmSummary("2026-02", "2026-02-01 00:00:00", avgSystolic = 115, avgDiastolic = 75, avgPulse = 67),
         PeriodBpmSummary("2026-03", "2026-03-01 00:00:00", avgSystolic = 114, avgDiastolic = 73, avgPulse = 64),
         PeriodBpmSummary("2026-04", "2026-04-01 00:00:00", avgSystolic = 113, avgDiastolic = 73, avgPulse = 65),
     )
@@ -186,20 +212,80 @@ class HistoryRepository @Inject constructor(
     // Baby Graph
     // ---------------------------------------------------------------------------
 
-    override fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> =
-        historyDao.getBabyMonthlyGraphData(accountId, babyId)
+    override fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBabyMonthlyGraphData())
+        return historyDao.getBabyMonthlyGraphData(accountId, babyId)
+    }
 
-    override fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> =
-        historyDao.getBabyDailyGraphData(accountId, babyId)
+    override fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
+        if (USE_SAMPLE_DATA) return flowOf(sampleBabyDailyGraphData())
+        return historyDao.getBabyDailyGraphData(accountId, babyId)
+    }
 
     // ---------------------------------------------------------------------------
     // Baby Snapshot (Dashboard mini-chart)
     // ---------------------------------------------------------------------------
 
-    override fun getBabySnapshotGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>> {
+    override fun getBabySnapshotGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabySnapshotData())
-        return historyDao.getBabySnapshotGraphData(accountId, babyProfileId)
+        return historyDao.getBabySnapshotGraphData(accountId, babyId)
     }
+
+    /** Sample Baby daily data — month-scale gaps, ~90-day-old baby gaining weight. */
+    private fun sampleBabyDailyGraphData(): List<PeriodBabySummary> = listOf(
+        // Cluster 1: Aug 2025 (newborn, ~3.5 kg = 35000 dg, ~50 cm = 500 mm)
+        PeriodBabySummary("2025-08-01", "2025-08-01 00:00:00", avgWeightDecigrams = 34500, avgLengthMillimeters = 498),
+        PeriodBabySummary("2025-08-03", "2025-08-03 00:00:00", avgWeightDecigrams = 34800, avgLengthMillimeters = 499),
+        PeriodBabySummary("2025-08-06", "2025-08-06 00:00:00", avgWeightDecigrams = 35200, avgLengthMillimeters = 500),
+        PeriodBabySummary("2025-08-09", "2025-08-09 00:00:00", avgWeightDecigrams = 35800, avgLengthMillimeters = 502),
+        PeriodBabySummary("2025-08-12", "2025-08-12 00:00:00", avgWeightDecigrams = 36400, avgLengthMillimeters = 504),
+        // ── GAP: ~2 months (Aug 13 – Oct 14 empty) ──
+        // Cluster 2: Oct 2025 (~2 months old, ~5 kg)
+        PeriodBabySummary("2025-10-15", "2025-10-15 00:00:00", avgWeightDecigrams = 48000, avgLengthMillimeters = 545),
+        PeriodBabySummary("2025-10-18", "2025-10-18 00:00:00", avgWeightDecigrams = 48500, avgLengthMillimeters = 547),
+        PeriodBabySummary("2025-10-21", "2025-10-21 00:00:00", avgWeightDecigrams = 49000, avgLengthMillimeters = 549),
+        PeriodBabySummary("2025-10-24", "2025-10-24 00:00:00", avgWeightDecigrams = 49400, avgLengthMillimeters = 550),
+        // ── GAP: ~1 month (Oct 25 – Nov 24 empty) ──
+        // Cluster 3: Late Nov – Dec 2025 (~4 months, ~6 kg)
+        PeriodBabySummary("2025-11-25", "2025-11-25 00:00:00", avgWeightDecigrams = 55000, avgLengthMillimeters = 568),
+        PeriodBabySummary("2025-11-28", "2025-11-28 00:00:00", avgWeightDecigrams = 55400, avgLengthMillimeters = 569),
+        PeriodBabySummary("2025-12-02", "2025-12-02 00:00:00", avgWeightDecigrams = 55900, avgLengthMillimeters = 571),
+        PeriodBabySummary("2025-12-05", "2025-12-05 00:00:00", avgWeightDecigrams = 56300, avgLengthMillimeters = 572),
+        // ── GAP: ~2 months (Dec 6 – Jan 31 empty) ──
+        // Cluster 4: Feb 2026 (~6 months, ~7 kg)
+        PeriodBabySummary("2026-02-01", "2026-02-01 00:00:00", avgWeightDecigrams = 64000, avgLengthMillimeters = 600),
+        PeriodBabySummary("2026-02-04", "2026-02-04 00:00:00", avgWeightDecigrams = 64300, avgLengthMillimeters = 601),
+        PeriodBabySummary("2026-02-08", "2026-02-08 00:00:00", avgWeightDecigrams = 64800, avgLengthMillimeters = 603),
+        PeriodBabySummary("2026-02-12", "2026-02-12 00:00:00", avgWeightDecigrams = 65200, avgLengthMillimeters = 604),
+        // ── GAP: ~1 month (Feb 13 – Mar 19 empty) ──
+        // Cluster 5: Late Mar – Apr 2026 (dense, ~8 months, ~8 kg)
+        PeriodBabySummary("2026-03-20", "2026-03-20 00:00:00", avgWeightDecigrams = 72000, avgLengthMillimeters = 630),
+        PeriodBabySummary("2026-03-23", "2026-03-23 00:00:00", avgWeightDecigrams = 72300, avgLengthMillimeters = 631),
+        PeriodBabySummary("2026-03-26", "2026-03-26 00:00:00", avgWeightDecigrams = 72700, avgLengthMillimeters = 633),
+        PeriodBabySummary("2026-03-30", "2026-03-30 00:00:00", avgWeightDecigrams = 73100, avgLengthMillimeters = 634),
+        PeriodBabySummary("2026-04-01", "2026-04-01 00:00:00", avgWeightDecigrams = 73500, avgLengthMillimeters = 636),
+        PeriodBabySummary("2026-04-03", "2026-04-03 00:00:00", avgWeightDecigrams = 73800, avgLengthMillimeters = 637),
+        PeriodBabySummary("2026-04-05", "2026-04-05 00:00:00", avgWeightDecigrams = 74200, avgLengthMillimeters = 638),
+        PeriodBabySummary("2026-04-07", "2026-04-07 00:00:00", avgWeightDecigrams = 74500, avgLengthMillimeters = 639),
+    )
+
+    /** Sample Baby monthly data — year-scale gaps for fallback testing. */
+    private fun sampleBabyMonthlyGraphData(): List<PeriodBabySummary> = listOf(
+        // Cluster 1: Birth period 2024 (newborn ~3.5 kg)
+        PeriodBabySummary("2024-06", "2024-06-01 00:00:00", avgWeightDecigrams = 34000, avgLengthMillimeters = 495),
+        PeriodBabySummary("2024-07", "2024-07-01 00:00:00", avgWeightDecigrams = 38000, avgLengthMillimeters = 520),
+        PeriodBabySummary("2024-08", "2024-08-01 00:00:00", avgWeightDecigrams = 42000, avgLengthMillimeters = 540),
+        // ── GAP: ~8 months (Sep 2024 – Apr 2025 empty) ──
+        // Cluster 2: Spring 2025 (~10 months, ~9 kg)
+        PeriodBabySummary("2025-05", "2025-05-01 00:00:00", avgWeightDecigrams = 85000, avgLengthMillimeters = 710),
+        PeriodBabySummary("2025-06", "2025-06-01 00:00:00", avgWeightDecigrams = 87000, avgLengthMillimeters = 720),
+        PeriodBabySummary("2025-07", "2025-07-01 00:00:00", avgWeightDecigrams = 89000, avgLengthMillimeters = 730),
+        // ── GAP: ~6 months (Aug 2025 – Jan 2026 empty) ──
+        // Cluster 3: Recent (toddler ~18 months, ~11 kg)
+        PeriodBabySummary("2026-02", "2026-02-01 00:00:00", avgWeightDecigrams = 105000, avgLengthMillimeters = 800),
+        PeriodBabySummary("2026-03", "2026-03-01 00:00:00", avgWeightDecigrams = 107000, avgLengthMillimeters = 810),
+        PeriodBabySummary("2026-04", "2026-04-01 00:00:00", avgWeightDecigrams = 109000, avgLengthMillimeters = 815),
+    )
 
     /** Realistic sample: ~90-day-old baby around p50 (~60000 decigrams = 13.2 lbs) */
     private fun sampleBabySnapshotData(): List<PeriodBabySummary> = listOf(

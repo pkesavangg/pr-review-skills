@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.config.rememb
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -31,6 +32,7 @@ fun GraphPagerView(
   selectedProduct: ProductSelection,
   goal: Goal? = null,
   handleGraphIntent: (BaseGraphIntent) -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   header: @Composable (GraphSegment) -> Unit,
   onSegmentChange: (GraphSegment) -> Unit = {},
   onScrollTargetConsumed: (Boolean) -> Unit = {},
@@ -68,6 +70,7 @@ fun GraphPagerView(
           scrollTarget = state.scrollTarget,
           canScrollToAnchor = state.selectedSegment == currentSegment,
           handleGraphIntent = handleGraphIntent,
+          createFallbackEntry = createFallbackEntry,
           onScrollTargetConsumed = onScrollTargetConsumed,
         )
 
