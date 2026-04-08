@@ -125,7 +125,7 @@ constructor(
     }
   }
 
-  private fun navigateToSelectedScaleSetup(sku: String, replaceLast: Boolean = true) {
+  private fun navigateToSelectedScaleSetup(sku: String, replaceLast: Boolean) {
     AppLog.d(TAG, "Navigating to selected scale setup for SKU: $sku")
     val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
     if (scaleInfo != null) {
