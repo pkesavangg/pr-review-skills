@@ -74,6 +74,7 @@ class EntryViewModelTest {
     }
 
     private fun stubDefaultFlows() {
+        every { accountService.activeAccount } returns MutableStateFlow(TestFixtures.activeAccount)
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(null)
         every { deviceService.hasBluetoothWifiScale } returns flowOf(false)
@@ -102,6 +103,19 @@ class EntryViewModelTest {
         assertThat(state.isLoading).isFalse()
         assertThat(state.isMetricFieldsExpandedInitially).isFalse()
         assertThat(state.dashboardType).isEqualTo(DashboardType.DASHBOARD_4_METRICS)
+    }
+
+    @Test
+    fun `initial weightMode reads from active account synchronously in init`() {
+        val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+
+        viewModel = createViewModel()
+
+        // weightMode should be KG immediately — set synchronously in init, no async delay
+        assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.KG)
     }
 
     // -------------------------------------------------------------------------
@@ -333,6 +347,24 @@ class EntryViewModelTest {
     }
 
     @Test
+    fun `UpdateOnRelaunch uses account weight unit not stale state default`() = runTest {
+        // Account has KG, but EntryState defaults to LB — UpdateOnRelaunch should
+        // read the unit from accountService (source of truth), not state.weightMode.
+        val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(EntryIntent.UpdateOnRelaunch)
+        advanceUntilIdle()
+
+        // The weight mode should be KG, matching the account
+        assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.KG)
+    }
+
+    @Test
     fun `UpdateOnRelaunch does not replace form when appSync data exists`() = runTest {
         val scaleEntry = TestFixtures.weightEntry
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(scaleEntry)
@@ -412,6 +444,7 @@ class EntryViewModelTest {
 
     @Test
     fun `Save returns early when activeAccount id is null`() = runTest {
+        every { accountService.activeAccount } returns MutableStateFlow(null)
         every { accountService.activeAccountFlow } returns flowOf(null)
         viewModel = createViewModel()
         advanceUntilIdle()
