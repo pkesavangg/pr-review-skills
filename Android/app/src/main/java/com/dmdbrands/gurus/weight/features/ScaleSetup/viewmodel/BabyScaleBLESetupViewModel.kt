@@ -101,6 +101,7 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
+    saveScale()
   }
 
   override fun onBack() {
@@ -110,6 +111,12 @@ constructor(
 
     if (currentState.isFirstStep) {
       navigateTo(AppRoute.AccountSettings.AddEditScales)
+      return
+    }
+
+    // Skip WAKEUP when going back — it auto-advances, so go to PERMISSIONS instead
+    if (currentStep == BabyScaleSetupStep.SCALE_NAME) {
+      handleIntent(ScaleSetupIntent.SetNewStep(BabyScaleSetupStep.PERMISSIONS))
       return
     }
 
@@ -132,7 +139,6 @@ constructor(
 
     when (currentStep) {
       BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-      BabyScaleSetupStep.CONNECTING_BLUETOOTH -> connectToBluetooth()
       else -> AppLog.w(TAG, "Try again called on unsupported step: $currentStep")
     }
   }
@@ -141,10 +147,26 @@ constructor(
     AppLog.d(TAG, "Step changed to: $step")
     viewModelScope.launch {
       when (step) {
-        BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-        BabyScaleSetupStep.CONNECTING_BLUETOOTH -> connectToBluetooth()
+        BabyScaleSetupStep.WAKEUP -> if (MOCK_BLE) mockWakeUpScale() else wakeUpScale()
         else -> AppLog.d(TAG, "No specific action for step: $step")
       }
+    }
+  }
+
+  // TODO: Remove mock methods and restore real BLE when scale connection is ready
+  private fun mockWakeUpScale() {
+    AppLog.d(TAG, "Mock: Starting wake up scale process")
+    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
+    discoveredScale = Device(
+      device = null,
+      deviceType = ScaleSetupType.BabyScale.value,
+      sku = sku,
+    )
+    viewModelScope.launch {
+      delay(3000)
+      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+      delay(1000)
+      onNext()
     }
   }
 
@@ -185,34 +207,6 @@ constructor(
     }
   }
 
-  private fun connectToBluetooth() {
-    if (setupInit.initialStep == BabyScaleSetupStep.CONNECTING_BLUETOOTH) {
-      ggDeviceService.scanForPairing()
-    }
-    AppLog.d(TAG, "Starting Bluetooth connection process")
-    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
-    clearBluetoothTimeout()
-    bluetoothTimeoutJob = viewModelScope.launch {
-      delay(bluetoothTimeout)
-      AppLog.d(TAG, "Bluetooth connection timeout reached")
-      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
-    }
-    viewModelScope.launch {
-      try {
-        delay(3000)
-        clearBluetoothTimeout()
-        saveScale()
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-        delay(1000)
-        onNext()
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during bluetooth connection", e)
-        clearBluetoothTimeout()
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("BT_002")))
-      }
-    }
-  }
-
   override fun observePermissions() {
     AppLog.d(TAG, "Starting permission observation for Baby Scale setup")
     viewModelScope.launch {
@@ -239,5 +233,7 @@ constructor(
 
   companion object {
     private const val TAG = "BabyScaleBLESetupVM"
+    // Toggle manually for local dev testing — must be false before merge
+    private const val MOCK_BLE = false
   }
 }

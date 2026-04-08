@@ -40,20 +40,27 @@ fun AppScaleImage(
   sku: String,
   modifier: Modifier = Modifier,
   scaleImageSize: ScaleImageSize = ScaleImageSize.Small,
+  showShadow: Boolean = true,
 ) {
   Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
       modifier =
         Modifier
           .size(ScaleImageDefaults.size(scaleImageSize))
-          .dropShadow(
-            shape = RoundedCornerShape(borderRadius.sm),
-            shadow = Shadow(
-              radius = spacing.sm,
-              spread = (-4).dp,
-              color = MeTheme.colorScheme.glow,
-              offset = DpOffset(x = 0.dp, 0.dp),
-            ),
+          .then(
+            if (showShadow) {
+              Modifier.dropShadow(
+                shape = RoundedCornerShape(borderRadius.sm),
+                shadow = Shadow(
+                  radius = spacing.sm,
+                  spread = (-4).dp,
+                  color = MeTheme.colorScheme.glow,
+                  offset = DpOffset(x = 0.dp, 0.dp),
+                ),
+              )
+            } else {
+              Modifier
+            },
           ).clip(RoundedCornerShape(borderRadius.xs)),
       contentAlignment = Alignment.Center,
     ) {
