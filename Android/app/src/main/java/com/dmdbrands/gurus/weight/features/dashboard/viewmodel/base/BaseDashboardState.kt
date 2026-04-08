@@ -1,0 +1,53 @@
+package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base
+
+import androidx.compose.runtime.Stable
+import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+
+/**
+ * Per-segment chart UI state. Holds range info, markers, and
+ * data/target entries (as PeriodBodyScaleSummary — adapters map product data into this).
+ */
+@Stable
+data class SegmentState(
+  val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
+  val target: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
+  val minTarget: Long? = null,
+  val maxTarget: Long? = null,
+  val chartMinX: Double? = null,
+  val chartMaxX: Double? = null,
+  val markerIndex: Double? = null,
+  val isEmptyGraph: Boolean = false,
+  val isSingleWindow: Boolean = false,
+  val startTimestamp: Long? = null,
+  val endTimestamp: Long? = null,
+) {
+  fun getStartTimestamp(): Long = startTimestamp ?: java.util.Calendar.getInstance().timeInMillis
+  fun getEndTimestamp(): Long = endTimestamp ?: java.util.Calendar.getInstance().timeInMillis
+}
+
+/**
+ * Base dashboard state interface. Pure chart infrastructure.
+ * No product-specific fields (weightUnit, goal, data, target).
+ * Those live in product-specific state subclasses.
+ */
+interface BaseDashboardState : IReducer.State {
+  val dailyProducer: CartesianChartModelProducer
+  val monthlyProducer: CartesianChartModelProducer
+  val segmentStates: Map<GraphSegment, SegmentState>
+  val selectedSegment: GraphSegment
+  val scrollTarget: Double?
+  val isRefreshing: Boolean
+
+  fun forSegment(segment: GraphSegment): SegmentState {
+    return segmentStates[segment] ?: SegmentState()
+  }
+
+  fun producerForSegment(segment: GraphSegment): CartesianChartModelProducer {
+    return if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) dailyProducer else monthlyProducer
+  }
+}
