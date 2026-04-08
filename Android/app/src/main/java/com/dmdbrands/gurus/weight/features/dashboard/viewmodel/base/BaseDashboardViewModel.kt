@@ -47,6 +47,9 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : IReducer.Inten
 
   abstract fun setRefreshing(isRefreshing: Boolean)
 
+  abstract fun refresh()
+  abstract fun setSelectedSegment(segment: GraphSegment)
+
   /**
    * Called when graph data arrives. Subclass handles product-specific data storage
    * (e.g., weight stores PeriodBodyScaleSummary list, BP stores PeriodBpmSummary list).

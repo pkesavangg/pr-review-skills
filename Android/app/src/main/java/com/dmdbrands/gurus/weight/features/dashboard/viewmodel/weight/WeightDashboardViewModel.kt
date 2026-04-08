@@ -95,7 +95,11 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
-  fun refresh() {
+  override fun setSelectedSegment(segment: GraphSegment) {
+    handleIntent(WeightDashboardIntent.SetSelectedSegment(segment))
+  }
+
+  override fun refresh() {
     viewModelScope.launch {
       AppLog.d(TAG, "Dashboard refresh started")
       setRefreshing(true)

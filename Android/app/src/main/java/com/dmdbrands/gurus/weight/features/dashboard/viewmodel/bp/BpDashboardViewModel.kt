@@ -56,7 +56,11 @@ class BpDashboardViewModel @Inject constructor(
     subscribeProgress()
   }
 
-  fun refresh() {
+  override fun setSelectedSegment(segment: GraphSegment) {
+    handleIntent(BpDashboardIntent.SetSelectedSegment(segment))
+  }
+
+  override fun refresh() {
     viewModelScope.launch {
       AppLog.d(TAG, "BP dashboard refresh started")
       setRefreshing(true)
