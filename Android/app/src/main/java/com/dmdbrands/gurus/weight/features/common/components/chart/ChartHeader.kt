@@ -19,9 +19,10 @@ fun ChartHeader(
   segmentState: SegmentState,
   segment: GraphSegment,
   rangeData: String,
+  markerIndex: Double? = null,
   valueContent: @Composable () -> Unit,
 ) {
-  val headerText = if (segmentState.markerIndex != null) {
+  val headerText = if (markerIndex != null) {
     when (segment) {
       GraphSegment.WEEK, GraphSegment.MONTH -> "day"
       else -> "month"
@@ -48,7 +49,7 @@ fun ChartHeader(
     Text(
       text = rangeData.lowercase(),
       style = MeTheme.typography.subHeading2,
-      color = if (segmentState.markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
+      color = if (markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
     )
   }
 }

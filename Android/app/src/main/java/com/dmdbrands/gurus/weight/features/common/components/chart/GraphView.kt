@@ -11,7 +11,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
@@ -30,6 +29,7 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberChartSnapFlingBehavio
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -67,8 +67,9 @@ fun <S : BaseDashboardState> GraphView(
     }
   }
 
-  val initialStartX = GraphUtil.getRollingWindowStart(segment, segmentState.getEndTimestamp())?.toDouble()
-    ?: GraphUtil.getStartRange(segment, segmentState.getEndTimestamp())?.toDouble()
+  val endTs = segmentState.endTimestamp
+  val initialStartX = GraphUtil.getRollingWindowStart(segment, endTs)?.toDouble()
+    ?: GraphUtil.getStartRange(segment, endTs)?.toDouble()
     ?: Calendar.getInstance().timeInMillis.toDouble()
 
   val (startPaddingXStep, _) = remember(segmentState.isEmptyGraph, segment) {
@@ -137,50 +138,58 @@ fun <S : BaseDashboardState> GraphView(
   val defaultMarker = rememberDefaultMarker(
     segmentState = segmentState,
     segment = segment,
-    onTargetsUpdate = { /* marker updates handled via scroll */ },
+    markerIndex = state.markerIndex,
+    onTargetsUpdate = { entries ->
+      if (entries.isNotEmpty()) {
+        viewModel.updateSegmentState(segment) { it.copy(target = entries.toImmutableList()) }
+      }
+    },
   )
 
   val scrubController = rememberScrubMarkerController(
     scrollState = scrollState,
     onMarkerIndexChanged = { clickX, targets ->
       if (clickX == null || segmentState.isEmptyGraph) {
-        viewModel.updateMarkerIndex(segment, null)
+        viewModel.updateMarkerIndex(null)
         return@rememberScrubMarkerController null
       }
+      val visibleRange = scrollState.visibleXRange
       val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
-        if (segmentState.minTarget != null && segmentState.maxTarget != null)
-          it.toLong() in segmentState.minTarget..segmentState.maxTarget
-        else true
+        visibleRange != null && it in visibleRange
       }
       var markerIndex: Double? = null
-      val paddedMinCondition = segmentState.getStartTimestamp() - GraphUtil.calculateXStep(segment = segment)
-      val paddedMaxCondition = segmentState.getEndTimestamp() + GraphUtil.calculateXStep(segment = segment)
-      val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
-      if (!outOfBoundaryCondition) {
-        val targetMarkerIndex = getTargetPoints(
-          visibleLabels, targets, clickX, segment, paddedMinCondition, paddedMaxCondition,
-        )
-        if (targetMarkerIndex.isNotEmpty()) {
-          val targetIndex = targetMarkerIndex.first().toLong()
-          markerIndex = when {
-            targetIndex in segmentState.getStartTimestamp()..segmentState.getEndTimestamp() -> targetMarkerIndex.first()
-            targetIndex < segmentState.getStartTimestamp() -> segmentState.getStartTimestamp().toDouble()
-            targetIndex > segmentState.getEndTimestamp() -> segmentState.getEndTimestamp().toDouble()
-            else -> null
+      val startTs = segmentState.startTimestamp
+      val endTs = segmentState.endTimestamp
+      if (startTs != null && endTs != null) {
+        val paddedMinCondition = startTs - GraphUtil.calculateXStep(segment = segment)
+        val paddedMaxCondition = endTs + GraphUtil.calculateXStep(segment = segment)
+        val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
+        if (!outOfBoundaryCondition) {
+          val targetMarkerIndex = getTargetPoints(
+            visibleLabels, targets, clickX, segment, paddedMinCondition, paddedMaxCondition,
+          )
+          if (targetMarkerIndex.isNotEmpty()) {
+            val targetIndex = targetMarkerIndex.first().toLong()
+            markerIndex = when {
+              targetIndex in startTs..endTs -> targetMarkerIndex.first()
+              targetIndex < startTs -> startTs.toDouble()
+              targetIndex > endTs -> endTs.toDouble()
+              else -> null
+            }
           }
         }
       }
-      if (segmentState.markerIndex != markerIndex) viewModel.updateMarkerIndex(segment, markerIndex)
+      if (state.markerIndex != markerIndex) viewModel.updateMarkerIndex(markerIndex)
       markerIndex
     },
   )
 
-  LaunchedEffect(segmentState.markerIndex == null) {
-    if (segmentState.markerIndex == null && segmentState.minTarget != null && segmentState.maxTarget != null) {
-      delay(50)
-      if (!scrollState.isScrolling) onScrollUpdate(segmentState.minTarget, segmentState.maxTarget)
-    }
-  }
+  // LaunchedEffect(segmentState.markerIndex == null) {
+  //   if (segmentState.markerIndex == null && segmentState.minTarget != null && segmentState.maxTarget != null) {
+  //     delay(50)
+  //     if (!scrollState.isScrolling) onScrollUpdate(segmentState.minTarget, segmentState.maxTarget)
+  //   }
+  // }
 
   val chart = rememberProductChart(
     config = chartConfig,
@@ -194,7 +203,7 @@ fun <S : BaseDashboardState> GraphView(
     scrubController = scrubController,
   )
 
-  LaunchedEffect(scrollState, segment) {
+  LaunchedEffect(scrollState) {
     snapshotFlow { scrollState.value }
       .debounce(100)
       .collect {
@@ -205,13 +214,10 @@ fun <S : BaseDashboardState> GraphView(
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
-        AppLog.d(
-          "GraphView",
-          "start : " + DateTimeConverter.timestampToIso(min) + " end : " + DateTimeConverter.timestampToIso(max),
-        )
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!segmentState.isEmptyGraph) {
-          viewModel.updateIsEmptyGraph(segment, relativeMin > segmentState.getEndTimestamp())
+          val endTs = segmentState.endTimestamp
+          if (endTs != null) viewModel.updateIsEmptyGraph(segment, relativeMin > endTs)
         }
       }
   }
@@ -240,22 +246,30 @@ fun getTargetPoints(
   val lower = fullList.filter { it <= input }.maxOrNull()
   val upper = fullList.filter { it >= input }.minOrNull()
   if (lower == null) {
-    val pointsInRange = if (minWindow != null && upper != null) points.filter { it in minWindow..upper } else points.filter { it <= input }
+    val pointsInRange =
+      if (minWindow != null && upper != null) points.filter { it in minWindow..upper } else points.filter { it <= input }
     return listOfNotNull(pointsInRange.minByOrNull { kotlin.math.abs(it - input) })
   }
   if (upper == null) {
-    val pointsInRange = if (maxWindow != null) points.filter { it in lower..maxWindow } else points.filter { it >= input }
+    val pointsInRange =
+      if (maxWindow != null) points.filter { it in lower..maxWindow } else points.filter { it >= input }
     return listOfNotNull(pointsInRange.minByOrNull { kotlin.math.abs(it - input) })
   }
-  val searchRange = if (minWindow != null && maxWindow != null) kotlin.math.max(minWindow, lower)..kotlin.math.min(maxWindow, upper) else lower..upper
+  val searchRange = if (minWindow != null && maxWindow != null) kotlin.math.max(minWindow, lower)..kotlin.math.min(
+    maxWindow,
+    upper,
+  ) else lower..upper
   val filteredTargets = points.filter { it in searchRange }
   return when {
     filteredTargets.isEmpty() -> if (input < (lower + upper) / 2.0) listOf(lower) else listOf(upper)
     filteredTargets.size == 1 -> {
       val target = filteredTargets.first()
       val halfway = (upper - lower) / 2.0
-      if (kotlin.math.abs(target - input) < halfway) listOf(target) else if (target > input) listOf(lower) else listOf(upper)
+      if (kotlin.math.abs(target - input) < halfway) listOf(target) else if (target > input) listOf(lower) else listOf(
+        upper,
+      )
     }
+
     else -> listOfNotNull(filteredTargets.minByOrNull { kotlin.math.abs(it - input) })
   }
 }

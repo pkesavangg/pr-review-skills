@@ -134,7 +134,7 @@ fun WeightDashboardContent(
           scope.launch { navBackStack.addRoute(AppRoute.AccountSettings.Goal) }
         },
         onMetricInfoClick = {
-          val isSingleEntry = activeSegmentState.markerIndex != null
+          val isSingleEntry = state.markerIndex != null
           val rangeText = activeSegmentState.minTarget?.let { min ->
             activeSegmentState.maxTarget?.let { max ->
               GraphUtil.formatDateRange(min, max, state.selectedSegment)

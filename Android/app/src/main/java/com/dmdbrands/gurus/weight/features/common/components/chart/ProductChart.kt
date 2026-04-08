@@ -50,7 +50,7 @@ fun rememberProductChart(
   handleIntent: (Any) -> Unit = {},
   scrubController: ScrubMarkerController? = null,
 ): CartesianChart {
-  segmentState.markerIndex
+  graphState.markerIndex
 
   // ── Separators (shared) ──
   val separators = GraphUtil.periodStarts(

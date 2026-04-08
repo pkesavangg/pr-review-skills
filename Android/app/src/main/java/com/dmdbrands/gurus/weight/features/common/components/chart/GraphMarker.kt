@@ -28,11 +28,12 @@ import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 internal fun rememberDefaultMarker(
   segmentState: SegmentState,
   segment: GraphSegment,
+  markerIndex: Double? = null,
   onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit = {},
 ): CartesianMarker {
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
     val data = segmentState.data.filter {
-      DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == segmentState.markerIndex?.toDouble()
+      DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == markerIndex?.toDouble()
     }
     val requiredData = data.ifEmpty { emptyList() }
     onTargetsUpdate(requiredData)

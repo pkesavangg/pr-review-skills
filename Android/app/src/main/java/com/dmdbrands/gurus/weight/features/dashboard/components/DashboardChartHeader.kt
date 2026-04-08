@@ -49,6 +49,7 @@ fun DashboardChartHeader(
     segmentState = segmentState,
     segment = segment,
     rangeData = rangeText,
+    markerIndex = state.markerIndex,
   ) {
     when (product) {
       is ProductSelection.MyWeight -> {
