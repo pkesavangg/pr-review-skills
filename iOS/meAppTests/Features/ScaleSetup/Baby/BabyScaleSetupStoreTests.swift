@@ -614,6 +614,362 @@ struct BabyScaleSetupStoreTests {
         #expect(notification.showAlertCalls == 1)
         #expect(notification.alertData?.title == "Need Help?")
     }
+
+    // MARK: - Skip Dialog Flow (MA-3617)
+
+    @Test("showSkipBabyProfileDialog sets showSkipDialog to true")
+    func showSkipBabyProfileDialog_setsFlag() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+
+        store.showSkipBabyProfileDialog()
+
+        #expect(store.showSkipDialog == true)
+    }
+
+    @Test("handleSkipConfirmed dismisses dialog and calls handleFinish")
+    func handleSkipConfirmed_dismissesAndFinishes() {
+        var dismissed = false
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.dismissAction = { dismissed = true }
+        store.showSkipDialog = true
+
+        store.handleSkipConfirmed()
+
+        #expect(store.showSkipDialog == false)
+        #expect(dismissed == true)
+    }
+
+    @Test("handleSkipCancelled dismisses dialog without finishing")
+    func handleSkipCancelled_dismissesOnly() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.showSkipDialog = true
+
+        store.handleSkipCancelled()
+
+        #expect(store.showSkipDialog == false)
+    }
+
+    // MARK: - confirmDeleteBabyFromList (MA-3617)
+
+    @Test("confirmDeleteBabyFromList shows delete confirmation alert")
+    func confirmDeleteBabyFromList_showsAlert() {
+        let (store, notification, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        let baby = Baby(accountId: "acct-1", name: "Delete Me")
+
+        store.confirmDeleteBabyFromList(baby)
+
+        #expect(notification.showAlertCalls == 1)
+    }
+
+    // MARK: - handleFinish (MA-3617)
+
+    @Test("handleFinish when scale already saved calls performExitCleanup directly")
+    func handleFinish_scaleSaved_exitsDirectly() {
+        var dismissed = false
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.isScaleSaved = true
+        store.dismissAction = { dismissed = true }
+
+        store.handleFinish()
+
+        #expect(dismissed == true)
+    }
+
+    @Test("handleFinish when no discovered scale calls performExitCleanup directly")
+    func handleFinish_noDiscoveredScale_exitsDirectly() {
+        var dismissed = false
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.discoveredScale = nil
+        store.discoveryEvent = nil
+        store.dismissAction = { dismissed = true }
+
+        store.handleFinish()
+
+        #expect(dismissed == true)
+    }
+
+    // MARK: - editBaby with nil optional fields (MA-3617)
+
+    @Test("editBaby with nil optional fields sets empty strings for optional form fields")
+    func editBaby_nilOptionalFields_setsEmptyStrings() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        let baby = Baby(accountId: "acct-1", name: "Simple Baby")
+        store.savedBabies = [baby]
+
+        store.editBaby(baby)
+
+        #expect(store.editingBaby?.id == baby.id)
+        #expect(store.babyProfileForm.name.value == "Simple Baby")
+        #expect(store.babyProfileForm.biologicalSex.value == "")
+        #expect(store.babyProfileForm.birthLengthInches.value == "")
+        #expect(store.babyProfileForm.birthWeightLbs.value == "")
+        #expect(store.babyProfileForm.birthWeightOz.value == "")
+        #expect(store.currentStep == .babyProfile)
+    }
+
+    // MARK: - handleStepChange (MA-3627)
+
+    @Test("handleStepChange on wakeup starts bluetooth scan")
+    func handleStepChange_wakeup_startsScan() async {
+        let (store, _, _, bluetooth, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+
+        store.navigateToStep(.wakeup)
+
+        await waitUntil { bluetooth.scanForPairingCalls == 1 }
+        #expect(bluetooth.scanForPairingCalls == 1)
+    }
+
+    @Test("handleStepChange on connectingBluetooth with no discovery sets failure")
+    func handleStepChange_connectingBT_noDiscovery_setsFailure() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.discoveredScale = nil
+        store.discoveryEvent = nil
+
+        store.navigateToStep(.connectingBluetooth)
+
+        #expect(store.connectionState == .failure)
+    }
+
+    @Test("handleStepChange does nothing when isExiting")
+    func handleStepChange_isExiting_doesNothing() {
+        let (store, _, _, bluetooth, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.isExiting = true
+
+        store.currentStepIndex = BabyScaleSetupStep.wakeup.rawValue
+
+        #expect(bluetooth.scanForPairingCalls == 0)
+    }
+
+    // MARK: - handleDeviceDiscovery (MA-3627)
+
+    @Test("handleDeviceDiscovery ignores non-babyScale devices")
+    func handleDeviceDiscovery_nonBabyScale_ignored() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.navigateToStep(.wakeup)
+
+        let device = ScaleTestFixtures.makeDevice(id: "non-baby-1")
+        let scaleInfo = ScaleItemInfo(productName: "Regular Scale", sku: "0100", imgPath: "scale0100", setupType: .bluetooth, bodyComp: false)
+        let event = DeviceDiscoveryEvent(device: device, deviceInfo: scaleInfo, protocolType: .R4, isNew: true)
+
+        store.handleDeviceDiscovery(event)
+
+        #expect(store.discoveredScale == nil)
+    }
+
+    @Test("handleDeviceDiscovery ignores events when not on wakeup step")
+    func handleDeviceDiscovery_notOnWakeup_ignored() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        // Stay on intro step
+        let event = makeDiscoveryEvent()
+
+        store.handleDeviceDiscovery(event)
+
+        #expect(store.discoveredScale == nil)
+    }
+
+    @Test("handleDeviceDiscovery for new baby scale sets discovered state and starts pairing")
+    func handleDeviceDiscovery_newBabyScale_startsPairing() async {
+        let bluetooth = MockBluetoothService()
+        bluetooth.confirmSmartPairResult = .success(.creationCompleted)
+        let (store, _, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
+        store.scaleItem = makeScaleItem()
+        store.navigateToStep(.wakeup)
+
+        let event = makeDiscoveryEvent(isNew: true)
+        store.handleDeviceDiscovery(event)
+
+        #expect(store.discoveredScale != nil)
+        #expect(store.discoveryEvent != nil)
+        #expect(store.connectionState == .loading)
+    }
+
+    @Test("handleDeviceDiscovery for known baby scale shows alert")
+    func handleDeviceDiscovery_knownScale_showsAlert() {
+        let (store, notification, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.navigateToStep(.wakeup)
+
+        let event = makeDiscoveryEvent(isNew: false)
+        store.handleDeviceDiscovery(event)
+
+        #expect(store.discoveredScale != nil)
+        #expect(notification.showAlertCalls == 1)
+        #expect(notification.alertData?.title == "Scale Already Paired")
+    }
+
+    // MARK: - confirmPair (MA-3627)
+
+    @Test("confirmPair success: saves scale, sets connectionState to success, navigates to scaleName")
+    func confirmPair_success_savesAndNavigates() async {
+        let bluetooth = MockBluetoothService()
+        bluetooth.confirmSmartPairResult = .success(.creationCompleted)
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountModel(id: "acct-1", email: "test@test.com", firstName: "Tester")
+        let (store, _, _, _, _, scale, _) = makeSUT(bluetoothService: bluetooth, accountService: account)
+        store.scaleItem = makeScaleItem()
+        let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
+        store.discoveredScale = device
+        store.discoveryEvent = makeDiscoveryEvent(device: device)
+
+        await store.confirmPair()
+
+        #expect(store.connectionState == .success)
+        #expect(store.scaleSetupError == .none)
+        #expect(store.currentStep == .scaleName)
+        #expect(scale.createR4ScaleCalls == 1)
+    }
+
+    @Test("confirmPair failure response: sets failure state and navigates to connectingBluetooth")
+    func confirmPair_failureResponse_setsFailure() async {
+        let bluetooth = MockBluetoothService()
+        bluetooth.confirmSmartPairResult = .success(.creationFailed)
+        let (store, _, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
+        store.scaleItem = makeScaleItem()
+        let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
+        store.discoveredScale = device
+        store.discoveryEvent = makeDiscoveryEvent(device: device)
+
+        await store.confirmPair()
+
+        #expect(store.connectionState == .failure)
+        #expect(store.scaleSetupError == .pairingFailed)
+        #expect(store.currentStep == .connectingBluetooth)
+    }
+
+    @Test("confirmPair error: sets connectionFailed and navigates to connectingBluetooth")
+    func confirmPair_error_setsConnectionFailed() async {
+        let bluetooth = MockBluetoothService()
+        bluetooth.confirmSmartPairResult = .failure(.confirmPairFailed(BabyScaleSetupTestError.genericFailure))
+        let (store, _, _, _, _, _, _) = makeSUT(bluetoothService: bluetooth)
+        store.scaleItem = makeScaleItem()
+        let device = ScaleTestFixtures.makeDevice(id: "baby-scale-1")
+        store.discoveredScale = device
+        store.discoveryEvent = makeDiscoveryEvent(device: device)
+
+        await store.confirmPair()
+
+        #expect(store.connectionState == .failure)
+        #expect(store.scaleSetupError == .connectionFailed)
+        #expect(store.currentStep == .connectingBluetooth)
+    }
+
+    @Test("confirmPair with missing discovery data: sets failure")
+    func confirmPair_missingData_setsFailure() async {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.discoveredScale = nil
+        store.discoveryEvent = nil
+
+        await store.confirmPair()
+
+        #expect(store.connectionState == .failure)
+    }
+
+    // MARK: - resetDiscoveryState (MA-3627)
+
+    @Test("resetDiscoveryState clears all discovery-related state")
+    func resetDiscoveryState_clearsState() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.discoveredScale = ScaleTestFixtures.makeDevice(id: "test-1")
+        store.discoveryEvent = makeDiscoveryEvent()
+
+        store.resetDiscoveryState()
+
+        #expect(store.discoveredScale == nil)
+        #expect(store.discoveryEvent == nil)
+        #expect(store.deviceDiscoveryCancellable == nil)
+        #expect(store.scanTimeoutTask == nil)
+    }
+
+    // MARK: - handleNextButtonClick scaleName (MA-3627)
+
+    @Test("handleNextButtonClick on scaleName updates nickname and moves to next step")
+    func handleNextButtonClick_scaleName_updatesNicknameAndMoves() async {
+        let (store, _, _, _, _, scale, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        let device = Device(id: "scale-1", accountId: "acct-1", deviceType: DeviceType.scale.rawValue, createdAt: "")
+        store.savedScale = device
+        store.navigateToStep(.scaleName)
+        store.scaleNicknameForm.nickname.value = "My Baby Scale"
+
+        store.handleNextButtonClick()
+
+        let called = await waitUntil { scale.editDeviceCalls == 1 }
+        #expect(called == true)
+        #expect(store.currentStep == .paired)
+    }
+
+    // MARK: - handleExit after scaleName with saved scale (MA-3627)
+
+    @Test("handleExit after scaleName with saved scale exits without alert")
+    func handleExit_afterScaleName_savedScale_exitsDirectly() {
+        var dismissed = false
+        let (store, notification, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.isScaleSaved = true
+        store.dismissAction = { dismissed = true }
+        store.navigateToStep(.scaleName)
+
+        store.handleExit()
+
+        #expect(dismissed == true)
+        #expect(notification.showAlertCalls == 0)
+    }
+
+    // MARK: - Back button on babyAdded (MA-3627)
+
+    @Test("handleBackButtonClick on babyAdded navigates to babyProfile")
+    func handleBackButtonClick_babyAdded_navigatesToBabyProfile() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.navigateToStep(.babyAdded)
+
+        store.handleBackButtonClick()
+
+        #expect(store.currentStep == .babyProfile)
+    }
+
+    // MARK: - handleNextButtonClick on paired (MA-3627)
+
+    @Test("handleNextButtonClick on paired moves to babyProfile")
+    func handleNextButtonClick_paired_movesToBabyProfile() {
+        let (store, _, _, _, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.navigateToStep(.paired)
+
+        store.handleNextButtonClick()
+
+        #expect(store.currentStep == .babyProfile)
+    }
+
+    // MARK: - startBluetoothScan (MA-3627)
+
+    @Test("startBluetoothScan resets discovery state and calls scanForPairing")
+    func startBluetoothScan_resetsAndScans() async {
+        let (store, _, _, bluetooth, _, _, _) = makeSUT()
+        store.scaleItem = makeScaleItem()
+        store.discoveredScale = ScaleTestFixtures.makeDevice(id: "old-1")
+
+        store.startBluetoothScan()
+
+        #expect(store.discoveredScale == nil)
+        await waitUntil { bluetooth.scanForPairingCalls == 1 }
+        #expect(bluetooth.scanForPairingCalls == 1)
+        #expect(store.scanTimeoutTask != nil)
+    }
 }
 
 // MARK: - Test Errors
