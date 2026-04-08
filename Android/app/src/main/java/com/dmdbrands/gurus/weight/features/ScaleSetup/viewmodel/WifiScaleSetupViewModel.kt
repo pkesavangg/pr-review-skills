@@ -518,16 +518,6 @@ constructor(
           .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
 
         if (!hasAllRequiredPermissions) {
-          // Permission was revoked (or was never granted).
-          // If the field was previously auto-populated, revert to manual-entry mode.
-          if (currentState.isWifiAutoPopulated) {
-            AppLog.d(TAG, "updateNetworkStatus - Permission revoked; clearing auto-populated SSID and reverting to manual entry")
-            lastSsid = null
-            handleIntent(WifiScaleSetupIntent.SetWifiSsid(""))
-            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
-            // Reset the password form SSID field so the user can type freely
-            clearWifiPasswordFormSsid()
-          }
           handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
           return@launch
         }
