@@ -143,10 +143,27 @@ struct GraphView: View {
                 dashboardStore.chartManager.updateYAxisCache()
             }
         }
+        // Tear down all section VM caches when product type or baby profile changes
+        // to prevent stale data from the previous product appearing in the chart.
+        .onChange(of: dashboardStore.productType) { _, _ in
+            tearDownAllViewModels()
+        }
+        .onChange(of: dashboardStore.selectedProductItem) { _, _ in
+            tearDownAllViewModels()
+        }
         // Immediately react to active account goal updates like GoalProgressView
         .onReceive(accountService.$activeAccount) { _ in
             dashboardStore.lifecycleManager.handleSettingsChange()
         }
+    }
+
+    // MARK: - Cache Management
+
+    private func tearDownAllViewModels() {
+        totalSectionViewModel.tearDown()
+        yearSectionViewModel.tearDown()
+        monthSectionViewModel.tearDown()
+        weekSectionViewModel.tearDown()
     }
 
     // MARK: - Chart View

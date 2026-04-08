@@ -435,7 +435,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         state.ui.selectedMetricLabel = nil
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
+        cacheManager.setProductContext(productType: newType, babyProfileId: selectedBabyProfile?.id)
         cacheManager.clearAllCaches()
+        resetGraphStateForProductSwitch()
         state.ui.hasInitializedChart = false
         graphManager.state.isGraphReady = false
         Task { [weak self] in
@@ -449,18 +451,23 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         state.ui.selectedMetricLabel = nil
         chartManager?.clearSelection()
         chartManager?.clearAllCaches()
+        cacheManager.setProductContext(productType: productType, babyProfileId: selectedBabyProfile?.id)
         cacheManager.clearAllCaches()
         invalidateContinuousOperationsCache()
         state.ui.hasInitializedChart = false
         graphManager.state.isGraphReady = false
 
-        if isBabySelection {
-            // Baby charts use locally-computed data (BabyDashboardChartSupport),
-            // so skip the full initializeDashboard() pipeline with its network
-            // calls and just reinitialize the chart directly.
-            chartManager?.initializeChart()
-            displayManager.updateMetricsForCurrentView()
-            scheduleUIUpdate()
+        if isBabySelection, let babyProfile = selectedBabyProfile {
+            // Load real baby entries, then initialize the chart.
+            // Falls back to dummy data if no real entries exist (handled in continuousOperations).
+            Task { [weak self] in
+                guard let self else { return }
+                await self.entryService.loadBabyDashboardData(babyId: babyProfile.id)
+                self.invalidateContinuousOperationsCache()
+                self.chartManager?.initializeChart()
+                self.displayManager.updateMetricsForCurrentView()
+                self.scheduleUIUpdate()
+            }
         } else {
             Task { [weak self] in
                 guard let self else { return }
@@ -485,6 +492,33 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         } else {
             refreshSelectedProductContext()
         }
+    }
+
+    // MARK: - Baby Data Access
+
+    /// Returns real baby summaries from EntryService for the given profile and period.
+    /// Uses daily summaries for week/month and monthly summaries for year/total.
+    private func babySummaries(for babyProfile: BabyProfile, period: TimePeriod) -> [BathScaleWeightSummary] {
+        switch period {
+        case .week, .month:
+            return entryService.babyDailySummariesByProfile[babyProfile.id] ?? []
+        case .year, .total:
+            return entryService.babyMonthlySummariesByProfile[babyProfile.id] ?? []
+        }
+    }
+
+    /// Clears leftover Y-axis domain, ticks, selection, and scroll state from the
+    /// previous product type so the new chart starts fresh without visual glitches.
+    private func resetGraphStateForProductSwitch() {
+        graphManager.state.cachedYAxisDomain = nil
+        graphManager.state.cachedYAxisTicks = nil
+        graphManager.state.selectedXValue = nil
+        graphManager.state.selectedPoint = nil
+        state.graph.cachedYAxisDomain = nil
+        state.graph.cachedYAxisTicks = nil
+        state.graph.selectedXValue = nil
+        state.graph.selectedPoint = nil
+        BabyDashboardChartSupport.clearDummySummariesCache()
     }
 
     var productTypeSelectorStore: ProductTypeStore {
@@ -607,7 +641,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     var continuousOperations: [BathScaleWeightSummary] {
         if let babyProfile = selectedBabyProfile {
             return cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
-                BabyDashboardChartSupport.dummySummaries(
+                let realSummaries = self.babySummaries(for: babyProfile, period: state.graph.selectedPeriod)
+                if !realSummaries.isEmpty {
+                    return realSummaries
+                }
+                // Fallback to dummy data when no real baby entries exist
+                return BabyDashboardChartSupport.dummySummaries(
                     for: babyProfile,
                     period: state.graph.selectedPeriod
                 )

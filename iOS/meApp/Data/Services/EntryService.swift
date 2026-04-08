@@ -46,6 +46,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     @Published var bpmDailySummaries: [BathScaleWeightSummary] = []
     @Published var bpmMonthlySummaries: [BathScaleWeightSummary] = []
 
+    // MARK: - Dashboard Data (Baby)
+    /// Baby summaries keyed by babyId. Each baby profile has its own entry set.
+    @Published var babyDailySummariesByProfile: [String: [BathScaleWeightSummary]] = [:]
+    @Published var babyMonthlySummariesByProfile: [String: [BathScaleWeightSummary]] = [:]
+
     private var cancellables = Set<AnyCancellable>()
     private var lastAccountId: String?
     private var lastLoggedEntryCountByAccount: [String: Int] = [:]
@@ -1368,6 +1373,128 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 entryType: EntryType.bpm.rawValue
             )
         }.sorted { $0.period < $1.period }
+    }
+
+    // MARK: - Baby Entry Aggregation
+
+    /// Represents baby entry data extracted from Entry + BabyEntry relationships.
+    /// Used for background-thread aggregation (not `@Model`, fully `Sendable`).
+    private struct BabyEntrySnapshot: Sendable {
+        let entryTimestamp: String
+        let babyId: String
+        let weightOunces: Int
+        let lengthInches: Int
+    }
+
+    /// Fetches baby entries for a given babyId and returns snapshots safe for background aggregation.
+    private func fetchBabyEntrySnapshots(accountId: String, babyId: String) async throws -> [BabyEntrySnapshot] {
+        let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
+        let babyDeviceType = DeviceType.babyScale.rawValue
+        return allEntries.compactMap { entry -> BabyEntrySnapshot? in
+            guard entry.deviceType == babyDeviceType,
+                  entry.babyId == babyId,
+                  let babyEntry = entry.babyEntry,
+                  babyEntry.weight > 0
+            else { return nil }
+            return BabyEntrySnapshot(
+                entryTimestamp: entry.entryTimestamp,
+                babyId: babyEntry.babyId,
+                weightOunces: babyEntry.weight,
+                lengthInches: babyEntry.length
+            )
+        }
+    }
+
+    /// Converts baby weight in ounces to the stored weight format (tenths of lbs)
+    /// used by BathScaleWeightSummary and the chart rendering pipeline.
+    private nonisolated func ouncesToStoredWeight(_ ounces: Int) -> Int {
+        let lbs = Double(ounces) / 16.0
+        return ConversionTools.convertLbsToStored(lbs)
+    }
+
+    /// Aggregates baby entry snapshots into daily summaries.
+    private nonisolated func aggregateBabyByDay(
+        _ snapshots: [BabyEntrySnapshot],
+        accountId: String,
+        babyId: String
+    ) -> [BathScaleWeightSummary] {
+        let grouped = Dictionary(grouping: snapshots) { snapshot -> String in
+            DateTimeTools.getLocalDateStringFromUTCDate(snapshot.entryTimestamp)
+        }
+
+        return grouped.compactMap { day, daySnapshots -> BathScaleWeightSummary? in
+            guard !day.isEmpty, !daySnapshots.isEmpty else { return nil }
+
+            let date = DateTimeTools.getDateFromDateString(day, format: "yyyy-MM-dd")
+            let latestTimestamp = daySnapshots.compactMap(\.entryTimestamp).max() ?? ""
+            let storedWeights = daySnapshots.map { ouncesToStoredWeight($0.weightOunces) }
+
+            return BathScaleWeightSummary(
+                accountId: "baby_\(babyId)",
+                period: day,
+                entryTimestamp: latestTimestamp,
+                date: date,
+                count: daySnapshots.count,
+                weight: avgWeight(storedWeights)
+            )
+        }.sorted { $0.period < $1.period }
+    }
+
+    /// Aggregates baby entry snapshots into monthly summaries.
+    private nonisolated func aggregateBabyByMonth(
+        _ snapshots: [BabyEntrySnapshot],
+        accountId: String,
+        babyId: String
+    ) -> [BathScaleWeightSummary] {
+        let grouped = Dictionary(grouping: snapshots) { snapshot -> String in
+            DateTimeTools.getLocalMonthStringFromUTCDate(snapshot.entryTimestamp)
+        }
+
+        return grouped.compactMap { month, monthSnapshots -> BathScaleWeightSummary? in
+            guard !month.isEmpty, !monthSnapshots.isEmpty else { return nil }
+
+            let dateString = "\(month)-01"
+            let date = DateTimeTools.formatter("yyyy-MM-dd").date(from: dateString) ?? Date()
+            let latestTimestamp = monthSnapshots.compactMap(\.entryTimestamp).max() ?? ""
+            let storedWeights = monthSnapshots.map { ouncesToStoredWeight($0.weightOunces) }
+
+            return BathScaleWeightSummary(
+                accountId: "baby_\(babyId)",
+                period: month,
+                entryTimestamp: latestTimestamp,
+                date: date,
+                count: monthSnapshots.count,
+                weight: avgWeight(storedWeights)
+            )
+        }.sorted { $0.period < $1.period }
+    }
+
+    /// Loads baby dashboard data for a specific baby profile.
+    /// Fetches real baby entries, aggregates them into daily/monthly summaries,
+    /// and publishes to `babyDailySummariesByProfile` / `babyMonthlySummariesByProfile`.
+    func loadBabyDashboardData(babyId: String) async {
+        do {
+            let accountId = try getAccountId()
+            let snapshots = try await fetchBabyEntrySnapshots(accountId: accountId, babyId: babyId)
+
+            let (dailyData, monthlyData) = await Task.detached(priority: .userInitiated) { [weak self] in
+                guard let self else { return ([BathScaleWeightSummary](), [BathScaleWeightSummary]()) }
+                let daily = self.aggregateBabyByDay(snapshots, accountId: accountId, babyId: babyId)
+                let monthly = self.aggregateBabyByMonth(snapshots, accountId: accountId, babyId: babyId)
+                return (daily, monthly)
+            }.value
+
+            babyDailySummariesByProfile[babyId] = dailyData
+            babyMonthlySummariesByProfile[babyId] = monthlyData
+
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Baby dashboard data loaded: babyId=\(babyId), daily=\(dailyData.count), monthly=\(monthlyData.count)"
+            )
+        } catch {
+            logger.log(level: .error, tag: tag, message: "loadBabyDashboardData failed (babyId=\(babyId)): \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Helpers ---------------------------------------------------

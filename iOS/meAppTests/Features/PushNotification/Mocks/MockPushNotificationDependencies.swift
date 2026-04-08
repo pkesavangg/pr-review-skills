@@ -75,6 +75,7 @@ final class MockPushEntryService: EntryServiceProtocol {
 
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData(entryType: EntryType) async {}
+    func loadBabyDashboardData(babyId: String) async {}
     func clearAllData() async {}
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntry(_ entry: Entry) async throws {}

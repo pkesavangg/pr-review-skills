@@ -35,6 +35,8 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
         loadDashboardDataCalls += 1
     }
 
+    func loadBabyDashboardData(babyId: String) async {}
+
     func getAllEntries() async throws -> [Entry] {
         getAllEntriesCalls += 1
         return try allEntriesResult.get()

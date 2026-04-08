@@ -25,6 +25,7 @@ final class MockHelpStoreEntryService: EntryServiceProtocol {
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData(entryType: EntryType) async {}
+    func loadBabyDashboardData(babyId: String) async {}
     func saveNewEntry(_ entry: Entry) async throws {}
     func saveNewEntries(_ entries: [Entry]) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}

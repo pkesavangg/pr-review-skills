@@ -26,10 +26,16 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var saveNewEntriesCalls = 0
     private(set) var deleteEntryCalls = 0
     private(set) var getEntryCountCalls = 0
+    private(set) var loadBabyDashboardDataCalls = 0
+    private(set) var lastLoadedBabyDashboardId: String?
 
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
     func loadDashboardData(entryType: EntryType) async {}
+    func loadBabyDashboardData(babyId: String) async {
+        loadBabyDashboardDataCalls += 1
+        lastLoadedBabyDashboardId = babyId
+    }
     func clearAllData() async { clearAllDataCalls += 1 }
     func clearLastSyncTimestamp() async throws {}
     func saveNewEntry(_ entry: Entry) async throws {

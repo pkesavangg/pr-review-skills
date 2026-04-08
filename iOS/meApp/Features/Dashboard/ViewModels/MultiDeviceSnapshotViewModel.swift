@@ -26,9 +26,16 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func loadSnapshots() async {
+    func loadSnapshots(availableItems: [ProductSelection] = []) async {
         await entryService.loadDashboardData(entryType: .wg)
         await entryService.loadDashboardData(entryType: .bpm)
+
+        // Load real baby data for available baby profiles
+        for item in availableItems {
+            if case .baby(let profile) = item {
+                await entryService.loadBabyDashboardData(babyId: profile.id)
+            }
+        }
     }
 
     /// Filters available items to show only one baby snapshot (the latest added / last in list).
@@ -59,8 +66,10 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
     }
 
     func babySummaries(for babyProfile: BabyProfile) -> [BathScaleWeightSummary] {
-        let real = babyDailySummaries[babyProfile.id] ?? []
-        // TODO: Remove dummy data once baby entry pipeline is wired
+        // Use real baby data from EntryService if available, otherwise fall back to dummy data
+        let real = entryService.babyDailySummariesByProfile[babyProfile.id]
+            ?? babyDailySummaries[babyProfile.id]
+            ?? []
         return real.isEmpty
             ? BabyDashboardChartSupport.dummyDailySummaries(for: babyProfile)
             : real
