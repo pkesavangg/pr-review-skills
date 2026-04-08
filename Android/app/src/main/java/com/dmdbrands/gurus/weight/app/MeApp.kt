@@ -26,6 +26,8 @@ import com.dmdbrands.gurus.weight.app.viewmodel.AppIntent
 import com.dmdbrands.gurus.weight.app.viewmodel.AppViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
+import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ProductSelectionBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
@@ -62,7 +64,11 @@ fun MeApp() {
           .imePadding(),
       color = colorScheme.primaryBackground,
     ) {
-      CompositionLocalProvider(LocalNavBackStack provides topLevelBackStack) {
+      CompositionLocalProvider(
+        LocalNavBackStack provides topLevelBackStack,
+        LocalProductSelectionManager provides appViewModel.productSelectionManager,
+        LocalDialogQueueService provides appViewModel.dialogQueueService,
+      ) {
         DialogHost()
         NavHost(topLevelBackStack, appViewModel)
       }

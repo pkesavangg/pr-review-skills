@@ -2,10 +2,8 @@ package com.dmdbrands.gurus.weight.features.dashboard
 
 import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
@@ -16,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -27,9 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.ProductTypeHeader
 import com.dmdbrands.gurus.weight.features.common.components.chart.GraphPagerView
@@ -38,6 +38,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardViewModel
@@ -47,48 +48,61 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen() {
-  // Use a lightweight VM just to access productSelectionManager
-  val weightVm: WeightDashboardViewModel = hiltViewModel()
-  val psm = weightVm.productSelectionManager
-  val selectedProductState = psm.selectedProduct.collectAsStateWithLifecycle()
-  val availableProductsState = psm.availableProducts.collectAsStateWithLifecycle()
-  val product = selectedProductState.value
-  val hasMultipleProducts = availableProductsState.value.size > 1
+  val psm = LocalProductSelectionManager.current
+  val dialogService = LocalDialogQueueService.current
+  val product by psm.selectedProduct.collectAsStateWithLifecycle()
+  val hasMultipleProducts = psm.availableProducts.collectAsStateWithLifecycle().value.size > 1
 
   val navBackStack = LocalNavBackStack.current
   val scope = rememberCoroutineScope()
+  val activity = LocalContext.current as? AppCompatActivity
 
-  fun goBackToSnapshot() {
-    scope.launch {
-      psm.setSnapshotMode(true)
-      navBackStack.addRoute(AppRoute.Main.DashboardSnapshot, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+  BackHandler {
+    if (activity != null) {
+      dialogService.showDialog(
+        DialogModel.Confirm(
+          title = "Exit Dashboard",
+          message = "Are you sure you want to exit the dashboard?",
+          onConfirm = { scope.launch { activity.finishAffinity() } },
+        ),
+      )
     }
   }
 
-  when (product) {
-    is ProductSelection.MyWeight -> WeightDashboardScreen(
-      hasMultipleProducts = hasMultipleProducts,
-      onBackToSnapshot = { goBackToSnapshot() },
-    )
-    is ProductSelection.BloodPressure -> BpDashboardScreen(
-      hasMultipleProducts = hasMultipleProducts,
-      onBackToSnapshot = { goBackToSnapshot() },
-    )
-    is ProductSelection.Baby -> {
-      // TODO: BabyDashboardScreen
-      Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+  AppScaffold(
+    title = null,
+    navigationIcon = if (hasMultipleProducts) {
+      {
+        IconButton(onClick = {
+          scope.launch {
+            psm.setSnapshotMode(true)
+            navBackStack.addRoute(AppRoute.Main.DashboardSnapshot, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+          }
+        }) {
+          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
+        }
+      }
+    } else null,
+    topBarContent = {
+      ProductTypeHeader(
+        selectedProduct = product,
+        onClick = { psm.showProductSheet("Dashboard") },
+      )
+    },
+  ) {
+    when (product) {
+      is ProductSelection.MyWeight -> WeightDashboardPage()
+      is ProductSelection.BloodPressure -> BpDashboardPage()
+      is ProductSelection.Baby -> Spacer(modifier = Modifier.height(MeTheme.spacing.sm)) // TODO
     }
   }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun WeightDashboardScreen(
-  hasMultipleProducts: Boolean,
-  onBackToSnapshot: () -> Unit,
-) {
+private fun WeightDashboardPage() {
   val vm: WeightDashboardViewModel = hiltViewModel()
   val state by vm.state.collectAsState()
-  val scrollState = rememberScrollState()
 
   val pagerState = rememberPagerState(
     initialPage = GraphSegment.entries.indexOf(state.selectedSegment).takeIf { it >= 0 } ?: 0,
@@ -100,61 +114,34 @@ private fun WeightDashboardScreen(
     if (targetPage != pagerState.currentPage) pagerState.scrollToPage(targetPage)
   }
 
-  AppScaffold(
-    title = null,
-    navigationIcon = if (hasMultipleProducts) {
-      {
-        IconButton(onClick = onBackToSnapshot) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
-        }
-      }
-    } else null,
-    topBarContent = {
-      ProductTypeHeader(
-        selectedProduct = ProductSelection.MyWeight,
-        onClick = { vm.productSelectionManager.showProductSheet("Dashboard") },
-      )
-    },
-    onRefresh = { vm.refresh() },
+  PullToRefreshBox(
     isRefreshing = state.isRefreshing,
+    onRefresh = { vm.refresh() },
   ) {
-    Column(
-      modifier = if (state.isEmpty) Modifier.fillMaxHeight() else Modifier.verticalScroll(scrollState),
-      verticalArrangement = if (state.isEmpty) Arrangement.SpaceBetween else Arrangement.Top,
-    ) {
+    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
       GraphPagerView(
         pagerState = pagerState,
         viewModel = vm,
         selectedProduct = ProductSelection.MyWeight,
         goal = state.goal,
-        header = { segment ->
-          DashboardChartHeader(state = state, segment = segment, product = ProductSelection.MyWeight)
-        },
-        onSegmentChange = { segment ->
-          vm.handleIntent(WeightDashboardIntent.SetSelectedSegment(segment))
-        },
+        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = ProductSelection.MyWeight) },
+        onSegmentChange = { segment -> vm.handleIntent(WeightDashboardIntent.SetSelectedSegment(segment)) },
       )
-
-      // Active segment state for below-chart content
-      val activeSegment = state.forSegment(state.selectedSegment)
 
       WeightDashboardContent(
         state = state,
-        activeSegmentState = activeSegment,
+        activeSegmentState = state.forSegment(state.selectedSegment),
         viewModel = vm,
       )
     }
   }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BpDashboardScreen(
-  hasMultipleProducts: Boolean,
-  onBackToSnapshot: () -> Unit,
-) {
+private fun BpDashboardPage() {
   val vm: BpDashboardViewModel = hiltViewModel()
   val state by vm.state.collectAsState()
-  val scrollState = rememberScrollState()
 
   val pagerState = rememberPagerState(
     initialPage = GraphSegment.entries.indexOf(state.selectedSegment).takeIf { it >= 0 } ?: 0,
@@ -166,40 +153,21 @@ private fun BpDashboardScreen(
     if (targetPage != pagerState.currentPage) pagerState.scrollToPage(targetPage)
   }
 
-  AppScaffold(
-    title = null,
-    navigationIcon = if (hasMultipleProducts) {
-      {
-        IconButton(onClick = onBackToSnapshot) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
-        }
-      }
-    } else null,
-    topBarContent = {
-      ProductTypeHeader(
-        selectedProduct = ProductSelection.BloodPressure,
-        onClick = { vm.productSelectionManager.showProductSheet("Dashboard") },
-      )
-    },
-    onRefresh = { vm.refresh() },
+  PullToRefreshBox(
     isRefreshing = state.isRefreshing,
+    onRefresh = { vm.refresh() },
   ) {
-    Column(modifier = Modifier.verticalScroll(scrollState)) {
+    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
       GraphPagerView(
         pagerState = pagerState,
         viewModel = vm,
         selectedProduct = ProductSelection.BloodPressure,
-        header = { segment ->
-          DashboardChartHeader(state = state, segment = segment, product = ProductSelection.BloodPressure)
-        },
-        onSegmentChange = { segment ->
-          vm.handleIntent(com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent.SetSelectedSegment(segment))
-        },
+        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = ProductSelection.BloodPressure) },
+        onSegmentChange = { segment -> vm.handleIntent(BpDashboardIntent.SetSelectedSegment(segment)) },
       )
 
-      val activeSegment = state.forSegment(state.selectedSegment)
       BpDashboardContent(
-        segmentState = activeSegment,
+        segmentState = state.forSegment(state.selectedSegment),
         state = state,
       )
     }
