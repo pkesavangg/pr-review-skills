@@ -18,7 +18,7 @@ interface BaseGraphIntent : IReducer.Intent {
     BaseGraphIntent
 
   data class SetRefreshing(val isRefreshing: Boolean) : BaseGraphIntent
-  data class SetSelectedSegment(val segment: GraphSegment) : BaseGraphIntent
+  data class SetSelectedSegment(val segment: GraphSegment, val anchorTimestamp: Double? = null) : BaseGraphIntent
   data class UpdateMarkerIndex(val markerIndex: Double?) : BaseGraphIntent
   data class ScrollRange(val segment: GraphSegment, val min: Long, val max: Long) : BaseGraphIntent
   data class UpdateIsEmptyGraph(val segment: GraphSegment, val isEmpty: Boolean) : BaseGraphIntent
@@ -62,7 +62,7 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
     )
 
     is BaseGraphIntent.SetRefreshing -> copyBaseFields(state, isRefreshing = intent.isRefreshing)
-    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment)
+    is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp)
     is BaseGraphIntent.UpdateMarkerIndex -> copyBaseFields(state, markerIndex = intent.markerIndex)
     is BaseGraphIntent.ScrollRange -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
