@@ -8,6 +8,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -16,6 +17,9 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphDataAdapter
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
+import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
+import kotlinx.coroutines.Dispatchers
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.WeightGraphDataAdapter
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
@@ -53,11 +57,24 @@ class WeightDashboardViewModel @Inject constructor(
 
   override val adapter: GraphDataAdapter = WeightGraphDataAdapter()
 
+  /** Cached latest daily/monthly data for rebuilding producers when secondaryKey changes. */
+  private var latestDailyData: List<PeriodBodyScaleSummary> = emptyList()
+  private var latestMonthlyData: List<PeriodBodyScaleSummary> = emptyList()
+
   override fun getDailyDataFlow(): Flow<GraphData> =
     entryService.daywiseBodyScaleAverages.map { GraphData.Weight(it) }
 
   override fun getMonthlyDataFlow(): Flow<GraphData> =
     entryService.monthlyBodyScaleAverages.map { GraphData.Weight(it) }
+
+  override fun onGraphDataReceived(graphData: GraphData, segments: List<GraphSegment>) {
+    // Cache data for secondary line rebuild when selectedKey changes
+    val data = (graphData as? GraphData.Weight)?.data ?: return
+    if (segments.contains(GraphSegment.WEEK)) latestDailyData = data
+    if (segments.contains(GraphSegment.YEAR)) latestMonthlyData = data
+    // Rebuild producers with secondary line
+    rebuildProducersWithSecondary()
+  }
 
   override fun handleIntent(intent: BaseGraphIntent) {
     // Weight action intents — side effects
@@ -94,6 +111,7 @@ class WeightDashboardViewModel @Inject constructor(
     subscribeProgressUpdating()
     subscribeLatestWeight()
     subscribeIsEmpty()
+    subscribeSelectedKey()
   }
 
   override fun onResume(owner: LifecycleOwner) {
@@ -129,6 +147,76 @@ class WeightDashboardViewModel @Inject constructor(
     viewModelScope.launch {
       accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect { weightUnit ->
         if (weightUnit != null) handleIntent(WeightDashboardIntent.SetWeightUnit(weightUnit))
+      }
+    }
+  }
+
+  private fun subscribeSelectedKey() {
+    viewModelScope.launch {
+      dashboardService.selectedKey.drop(1).collect { key ->
+        handleIntent(WeightDashboardIntent.SetSecondaryKey(key))
+        rebuildProducersWithSecondary()
+      }
+    }
+  }
+
+  /**
+   * Rebuild daily + monthly producers with secondary metric line.
+   * Called when data arrives or selectedKey changes.
+   */
+  private fun rebuildProducersWithSecondary() {
+    val secondaryKey = _state.value.secondaryKey
+    val secondaryMetricKey = (secondaryKey as? DashboardKey.Metric)?.key
+
+    // Rebuild daily producer (WEEK/MONTH)
+    if (latestDailyData.isNotEmpty()) {
+      val primarySeries = adapter.toLineSeries(GraphData.Weight(latestDailyData))
+      val secondaryGraphLine = secondaryMetricKey?.let { latestDailyData.toGraphPoints(it) }
+
+      viewModelScope.launch(Dispatchers.Main) {
+        getProducerForSegment(GraphSegment.WEEK).runTransaction(animate = false) {
+          lineSeries {
+            primarySeries.forEach { s -> series(x = s.xValues, y = s.yValues) }
+          }
+          if (secondaryGraphLine != null && secondaryGraphLine.points.isNotEmpty()) {
+            val pairs = secondaryGraphLine.points.mapNotNull { point ->
+              val x = point.x.value as? Long
+              val y = (point.y.value as? Number)?.toDouble()
+              if (x != null && y != null && y.isFinite()) x to y else null
+            }
+            if (pairs.isNotEmpty()) {
+              lineSeries {
+                series(x = pairs.map { it.first }, y = pairs.map { it.second })
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Rebuild monthly producer (YEAR/TOTAL)
+    if (latestMonthlyData.isNotEmpty()) {
+      val primarySeries = adapter.toLineSeries(GraphData.Weight(latestMonthlyData))
+      val secondaryGraphLine = secondaryMetricKey?.let { latestMonthlyData.toGraphPoints(it) }
+
+      viewModelScope.launch(Dispatchers.Main) {
+        getProducerForSegment(GraphSegment.YEAR).runTransaction(animate = false) {
+          lineSeries {
+            primarySeries.forEach { s -> series(x = s.xValues, y = s.yValues) }
+          }
+          if (secondaryGraphLine != null && secondaryGraphLine.points.isNotEmpty()) {
+            val pairs = secondaryGraphLine.points.mapNotNull { point ->
+              val x = point.x.value as? Long
+              val y = (point.y.value as? Number)?.toDouble()
+              if (x != null && y != null && y.isFinite()) x to y else null
+            }
+            if (pairs.isNotEmpty()) {
+              lineSeries {
+                series(x = pairs.map { it.first }, y = pairs.map { it.second })
+              }
+            }
+          }
+        }
       }
     }
   }
