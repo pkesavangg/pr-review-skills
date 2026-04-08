@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base
 
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import kotlinx.collections.immutable.ImmutableList
@@ -14,8 +14,8 @@ import kotlinx.collections.immutable.persistentListOf
  */
 @Stable
 data class SegmentState(
-  val data: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
-  val target: ImmutableList<PeriodBodyScaleSummary> = persistentListOf(),
+  val data: ImmutableList<PeriodSummary> = persistentListOf(),
+  val target: ImmutableList<PeriodSummary> = persistentListOf(),
   val minTarget: Long? = null,
   val maxTarget: Long? = null,
   val chartMinX: Double? = null,

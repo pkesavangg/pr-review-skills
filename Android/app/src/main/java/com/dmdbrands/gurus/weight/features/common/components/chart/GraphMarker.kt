@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -29,7 +29,7 @@ internal fun rememberDefaultMarker(
   segmentState: SegmentState,
   segment: GraphSegment,
   markerIndex: Double? = null,
-  onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit = {},
+  onTargetsUpdate: (List<PeriodSummary>) -> Unit = {},
 ): CartesianMarker {
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
     val data = segmentState.data.filter {

@@ -19,6 +19,9 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.ChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
@@ -54,7 +57,7 @@ fun DashboardChartHeader(
     when (product) {
       is ProductSelection.MyWeight -> {
         val weightState = state as? WeightDashboardState
-        val target = segmentState.target
+        val target = segmentState.target.filterIsInstance<PeriodBodyScaleSummary>()
         val avg = if (target.isEmpty()) 0.0 else target.map { it.weight }.average()
         val label = if (target.isEmpty()) "000.0" else formatWeightValue(avg)
         val weightUnit = weightState?.weightUnit ?: WeightUnit.KG
@@ -77,10 +80,10 @@ fun DashboardChartHeader(
       }
 
       is ProductSelection.BloodPressure -> {
-        val target = segmentState.target
-        val avgSys = target.map { it.weight.toInt() }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-        val avgDia = target.map { it.bodyFat?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-        val avgPulse = target.map { it.pulse?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+        val target = segmentState.target.filterIsInstance<PeriodBpmSummary>()
+        val avgSys = target.map { it.avgSystolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+        val avgDia = target.map { it.avgDiastolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+        val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()
 
         Row {
           Text(text = "mmhg", style = MeTheme.typography.subHeading1, color = MeTheme.colorScheme.textSubheading)
@@ -110,8 +113,8 @@ fun DashboardChartHeader(
       }
 
       is ProductSelection.Baby -> {
-        val target = segmentState.target
-        val avg = if (target.isEmpty()) 0.0 else target.map { it.weight }.average()
+        val target = segmentState.target.filterIsInstance<PeriodBabySummary>()
+        val avg = if (target.isEmpty()) 0.0 else target.mapNotNull { it.avgWeightDecigrams?.let { d -> d / 10.0 } }.average()
         val label = if (target.isEmpty()) "000.0" else formatWeightValue(avg)
 
         Row(verticalAlignment = Alignment.Bottom) {

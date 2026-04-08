@@ -67,7 +67,7 @@ fun WeightDashboardContent(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       DashboardMetrics(
-        metricData = activeSegmentState.target,
+        metricData = activeSegmentState.target.filterIsInstance<com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary>(),
         inEditMode = inEditMode,
         visibleKeys = currentVisibleMetrics,
         selectedStat = state.selectedStat,

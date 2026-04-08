@@ -33,10 +33,10 @@ fun BpDashboardContent(
   segmentState: SegmentState,
   state: BaseDashboardState,
 ) {
-  val target = segmentState.target
-  val avgSys = target.map { it.weight.toInt() }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-  val avgDia = target.map { it.bodyFat?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-  val avgPulse = target.map { it.pulse?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+  val target = segmentState.target.filterIsInstance<com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary>()
+  val avgSys = target.map { it.avgSystolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+  val avgDia = target.map { it.avgDiastolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+  val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()
   val entryCount = target.size
 
   Column(

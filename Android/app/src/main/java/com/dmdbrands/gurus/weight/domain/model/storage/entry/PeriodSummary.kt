@@ -8,9 +8,19 @@ import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertWeight
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.rounded
 
+/**
+ * Common interface for all period summary types.
+ * Allows SegmentState to hold any product's data.
+ */
+interface PeriodSummary {
+  val period: String
+  val entryTimestamp: String
+  fun getTimeStamp(): Long
+}
+
 data class PeriodBodyScaleSummary(
-  val period: String, // "YYYY-MM" for month, "YYYY-MM-DD" for day
-  val entryTimestamp: String, // For average: latest timestamp in period; for latest: timestamp of the latest entry
+  override val period: String, // "YYYY-MM" for month, "YYYY-MM-DD" for day
+  override val entryTimestamp: String, // For average: latest timestamp in period; for latest: timestamp of the latest entry
   val weight: Double,
   val bodyFat: Double? = null,
   val muscleMass: Double? = null,
@@ -26,7 +36,7 @@ data class PeriodBodyScaleSummary(
   val boneMass: Double? = null,
   val impedance: Double? = null,
   val unit: WeightUnit
-) : IUnitProcessable<PeriodBodyScaleSummary> {
+) : PeriodSummary, IUnitProcessable<PeriodBodyScaleSummary> {
   @Ignore
   var prefix: String? = null
 
@@ -44,30 +54,32 @@ data class PeriodBodyScaleSummary(
     return result
   }
 
-  fun getTimeStamp(): Long {
+  override fun getTimeStamp(): Long {
     return DateTimeConverter.isoToTimestamp(entryTimestamp)
   }
 }
 
 /**
  * Room query result type for BP graph data points.
- * period = "YYYY-MM" for month, "YYYY-MM-DD" for day.
  */
 data class PeriodBpmSummary(
-    val period: String,
-    val entryTimestamp: String,
+    override val period: String,
+    override val entryTimestamp: String,
     val avgSystolic: Int,
     val avgDiastolic: Int,
     val avgPulse: Int,
-)
+) : PeriodSummary {
+  override fun getTimeStamp(): Long = DateTimeConverter.isoToTimestamp(entryTimestamp)
+}
 
 /**
  * Room query result type for baby graph data points.
- * period = "YYYY-MM" for month, "YYYY-MM-DD" for day.
  */
 data class PeriodBabySummary(
-    val period: String,
-    val entryTimestamp: String,
+    override val period: String,
+    override val entryTimestamp: String,
     val avgWeightDecigrams: Int?,
     val avgLengthMillimeters: Int?,
-)
+) : PeriodSummary {
+  override fun getTimeStamp(): Long = DateTimeConverter.isoToTimestamp(entryTimestamp)
+}

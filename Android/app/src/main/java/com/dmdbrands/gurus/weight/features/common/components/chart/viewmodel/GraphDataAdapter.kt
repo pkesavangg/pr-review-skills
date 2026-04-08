@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 
 /**
  * A single line series: parallel x/y value lists.
@@ -23,8 +24,8 @@ interface GraphDataAdapter {
   /** Convert [GraphData] into x/y pairs per line series. */
   fun toLineSeries(graphData: GraphData): List<SeriesData>
 
-  /** Convert [GraphData] into [PeriodBodyScaleSummary] for target/fallback display. */
-  fun toTargetData(graphData: GraphData): List<PeriodBodyScaleSummary>
+  /** Convert [GraphData] into [PeriodSummary] for target/fallback display. */
+  fun toTargetData(graphData: GraphData): List<PeriodSummary>
 
   /** Extract timestamps from [GraphData] for range computation. */
   fun getTimestamps(graphData: GraphData): List<Long>
@@ -55,7 +56,7 @@ class WeightGraphDataAdapter : GraphDataAdapter {
     return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
   }
 
-  override fun toTargetData(graphData: GraphData): List<PeriodBodyScaleSummary> {
+  override fun toTargetData(graphData: GraphData): List<PeriodSummary> {
     return (graphData as? GraphData.Weight)?.data ?: emptyList()
   }
 
@@ -83,16 +84,8 @@ class BpGraphDataAdapter : GraphDataAdapter {
     )
   }
 
-  override fun toTargetData(graphData: GraphData): List<PeriodBodyScaleSummary> {
-    val entries = (graphData as? GraphData.BloodPressure)?.data ?: return emptyList()
-    return entries.map { bpm ->
-      PeriodBodyScaleSummary(
-        period = bpm.period,
-        entryTimestamp = bpm.entryTimestamp,
-        weight = bpm.avgSystolic.toDouble(),
-        unit = WeightUnit.LB,
-      )
-    }
+  override fun toTargetData(graphData: GraphData): List<PeriodSummary> {
+    return (graphData as? GraphData.BloodPressure)?.data ?: emptyList()
   }
 
   override fun getTimestamps(graphData: GraphData): List<Long> {
@@ -118,16 +111,8 @@ class BabyGraphDataAdapter : GraphDataAdapter {
     return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
   }
 
-  override fun toTargetData(graphData: GraphData): List<PeriodBodyScaleSummary> {
-    val entries = (graphData as? GraphData.Baby)?.data ?: return emptyList()
-    return entries.map { baby ->
-      PeriodBodyScaleSummary(
-        period = baby.period,
-        entryTimestamp = baby.entryTimestamp,
-        weight = baby.avgWeightDecigrams?.let { it / 10.0 } ?: 0.0,
-        unit = WeightUnit.LB,
-      )
-    }
+  override fun toTargetData(graphData: GraphData): List<PeriodSummary> {
+    return (graphData as? GraphData.Baby)?.data ?: emptyList()
   }
 
   override fun getTimestamps(graphData: GraphData): List<Long> {

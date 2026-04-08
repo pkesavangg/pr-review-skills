@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base
 
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import kotlinx.collections.immutable.toImmutableList
@@ -22,7 +22,7 @@ interface BaseGraphIntent : IReducer.Intent {
   data class UpdateMarkerIndex(val markerIndex: Double?) : BaseGraphIntent
   data class ScrollRange(val segment: GraphSegment, val min: Long, val max: Long) : BaseGraphIntent
   data class UpdateIsEmptyGraph(val segment: GraphSegment, val isEmpty: Boolean) : BaseGraphIntent
-  data class UpdateSegmentTarget(val segment: GraphSegment, val target: List<PeriodBodyScaleSummary>) : BaseGraphIntent
+  data class UpdateSegmentTarget(val segment: GraphSegment, val target: List<PeriodSummary>) : BaseGraphIntent
 }
 
 // ── Base Reducer ──
