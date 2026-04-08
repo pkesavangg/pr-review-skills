@@ -73,7 +73,7 @@ fun rememberProductChart(
     minX = segmentState.chartMinX ?: Double.NaN,
     maxX = segmentState.chartMaxX ?: Double.NaN,
   ) { visibleSeriesEntries, visibleXRange ->
-    // Extract Y values: all series (BP) or first series only (weight/baby)
+    // Extract Y values: all series (BP), first series only (weight/baby)
     val yValues = if (config.useAllSeriesForYRange) {
       visibleSeriesEntries.flatMap { series -> series.map { it.second } }
     } else {
@@ -132,8 +132,28 @@ fun rememberProductChart(
     rangeProvider = scrollAwareRange,
   )
 
+  // ── Optional percentile band layer (baby — 7 faded lines behind data) ──
+  val percentileLayer = if (config.hasPercentileLayer && config.percentileBandColor != null) {
+    val bandColor = config.percentileBandColor
+    val bandLines = (1..7).map {
+      LineCartesianLayer.rememberLine(
+        fill = LineCartesianLayer.LineFill.single(Fill(bandColor.copy(alpha = 0.4f))),
+        stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 1.dp),
+        interpolator = LineCartesianLayer.Interpolator.monotone(),
+        pointProvider = null,
+      )
+    }
+    rememberLineCartesianLayer(
+      lineProvider = remember(bandLines) { LineCartesianLayer.LineProvider.series(bandLines) },
+      verticalAxisPosition = Axis.Position.Vertical.End,
+      markerTargetsEnabled = false,
+    )
+  } else null
+
   // ── Optional secondary layer (weight metric overlay) ──
-  val layers = if (config.hasSecondaryLayer && config.secondaryLineColor != null) {
+  val layers = if (percentileLayer != null) {
+    arrayOf(percentileLayer, primaryLayer)
+  } else if (config.hasSecondaryLayer && config.secondaryLineColor != null) {
     val secLayer = secondaryLayer(
       segment = segment,
       rangeProvider = scrollAwareRange,

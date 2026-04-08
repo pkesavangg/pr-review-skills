@@ -41,16 +41,21 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardC
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.components.BabyDashboardContent
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
 
@@ -157,7 +162,37 @@ fun DashboardScreen() {
         }
       }
 
-      is ProductSelection.Baby -> Spacer(modifier = Modifier.height(MeTheme.spacing.sm)) // TODO
+      is ProductSelection.Baby -> {
+        val babyProduct = product as ProductSelection.Baby
+        val vm: BabyDashboardViewModel = hiltViewModel(
+          creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
+        )
+        val state by vm.state.collectAsState()
+        DashboardPage(
+          vm = vm,
+          product = product,
+          hasPercentile = state.activePercentileSeries != null,
+          onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
+          createFallbackEntry = { ts, yValues, seg ->
+            val y = yValues.firstOrNull() ?: return@DashboardPage null
+            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+            }
+            PeriodBabySummary(
+              period = period,
+              entryTimestamp = DateTimeConverter.timestampToIso(ts),
+              avgWeightDecigrams = (y * 10.0).toInt(),
+              avgLengthMillimeters = yValues.getOrNull(1)?.let { (it * 25.4).toInt() },
+            )
+          },
+        ) { s ->
+          BabyDashboardContent(
+            state = s as BabyDashboardState,
+            handleIntent = vm::handleIntent,
+          )
+        }
+      }
     }
   }
 }
@@ -172,6 +207,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   vm: BaseDashboardViewModel<S, BaseGraphIntent>,
   product: ProductSelection,
   goal: Goal? = null,
+  hasPercentile: Boolean = false,
   onRefresh: () -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
@@ -198,6 +234,7 @@ private fun <S : BaseDashboardState> DashboardPage(
         state = state,
         selectedProduct = product,
         goal = goal,
+        hasPercentile = hasPercentile,
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product) },

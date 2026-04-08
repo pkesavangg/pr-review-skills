@@ -6,8 +6,9 @@ import java.io.InputStreamReader
 import android.content.Context
 
 /**
- * WHO weight-for-age percentile lookup from CSV data.
- * CSV format: Day,5th,10th,25th,50th,75th,90th,95th (values in decigrams).
+ * WHO weight-for-age and length-for-age percentile lookup from CSV data.
+ * CSV format: Day,5th,10th,25th,50th,75th,90th,95th.
+ * Weight values in decigrams, length values in mm (tenths of mm).
  * Rows are every 7 days from birth to ~18 years.
  */
 object BabyPercentileHelper {
@@ -23,13 +24,17 @@ object BabyPercentileHelper {
     val p95: Double,
   )
 
-  private var boyData: List<PercentileRow>? = null
-  private var girlData: List<PercentileRow>? = null
+  private var boyWeightData: List<PercentileRow>? = null
+  private var girlWeightData: List<PercentileRow>? = null
+  private var boyLengthData: List<PercentileRow>? = null
+  private var girlLengthData: List<PercentileRow>? = null
 
   @Synchronized
   fun loadIfNeeded(context: Context) {
-    if (boyData == null) boyData = parseCsv(context, R.raw.boy_weight_percentiles)
-    if (girlData == null) girlData = parseCsv(context, R.raw.girl_weight_percentiles)
+    if (boyWeightData == null) boyWeightData = parseCsv(context, R.raw.boy_weight_percentiles)
+    if (girlWeightData == null) girlWeightData = parseCsv(context, R.raw.girl_weight_percentiles)
+    if (boyLengthData == null) boyLengthData = parseCsv(context, R.raw.boy_length_percentiles)
+    if (girlLengthData == null) girlLengthData = parseCsv(context, R.raw.girl_length_percentiles)
   }
 
   data class PercentileSeries(
@@ -47,19 +52,50 @@ object BabyPercentileHelper {
   }
 
   /**
-   * Returns all 7 WHO percentile curves from birth to end of CSV data.
-   * No clipping — full static data. Values converted from decigrams to lbs.
+   * Returns all 7 WHO weight percentile curves from birth to end of CSV data.
+   * Values converted from decigrams to lbs.
    */
-  fun getPercentileSeries(
+  fun getWeightPercentileSeries(
     sex: String?,
     birthDateMillis: Long,
   ): PercentileSeries? {
     val data = when (sex?.lowercase()) {
-      "male" -> boyData
-      "female" -> girlData
+      "male" -> boyWeightData
+      "female" -> girlWeightData
       else -> null
     } ?: return null
 
+    return buildPercentileSeries(data, birthDateMillis) { it / 283.495 / 16.0 }
+  }
+
+  /**
+   * Returns all 7 WHO length percentile curves from birth to end of CSV data.
+   * Values converted from mm to inches.
+   */
+  fun getLengthPercentileSeries(
+    sex: String?,
+    birthDateMillis: Long,
+  ): PercentileSeries? {
+    val data = when (sex?.lowercase()) {
+      "male" -> boyLengthData
+      "female" -> girlLengthData
+      else -> null
+    } ?: return null
+
+    return buildPercentileSeries(data, birthDateMillis) { it / 25.4 }
+  }
+
+  @Deprecated("Use getWeightPercentileSeries instead", ReplaceWith("getWeightPercentileSeries(sex, birthDateMillis)"))
+  fun getPercentileSeries(
+    sex: String?,
+    birthDateMillis: Long,
+  ): PercentileSeries? = getWeightPercentileSeries(sex, birthDateMillis)
+
+  private fun buildPercentileSeries(
+    data: List<PercentileRow>,
+    birthDateMillis: Long,
+    convert: (Double) -> Double,
+  ): PercentileSeries? {
     val dayMs = 86_400_000L
     val xTimestamps = mutableListOf<Double>()
     val p5 = mutableListOf<Double>()
@@ -73,41 +109,16 @@ object BabyPercentileHelper {
     for (row in data) {
       val timestamp = (birthDateMillis + row.day.toLong() * dayMs).toDouble()
       xTimestamps.add(timestamp)
-      p5.add(row.p5 / 283.495 / 16.0)
-      p10.add(row.p10 / 283.495 / 16.0)
-      p25.add(row.p25 / 283.495 / 16.0)
-      p50.add(row.p50 / 283.495 / 16.0)
-      p75.add(row.p75 / 283.495 / 16.0)
-      p90.add(row.p90 / 283.495 / 16.0)
-      p95.add(row.p95 / 283.495 / 16.0)
+      p5.add(convert(row.p5))
+      p10.add(convert(row.p10))
+      p25.add(convert(row.p25))
+      p50.add(convert(row.p50))
+      p75.add(convert(row.p75))
+      p90.add(convert(row.p90))
+      p95.add(convert(row.p95))
     }
 
     return if (xTimestamps.size >= 2) PercentileSeries(xTimestamps, p5, p10, p25, p50, p75, p90, p95) else null
-  }
-
-  private fun interpolateRow(data: List<PercentileRow>, day: Int): PercentileRow? {
-    if (data.isEmpty()) return null
-    if (day <= data.first().day) return data.first()
-    if (day >= data.last().day) return data.last()
-
-    val idx = data.indexOfLast { it.day <= day }
-    if (idx < 0) return data.first()
-    if (idx >= data.lastIndex) return data.last()
-
-    val a = data[idx]
-    val b = data[idx + 1]
-    val t = (day - a.day).toDouble() / (b.day - a.day).toDouble()
-
-    return PercentileRow(
-      day = day,
-      p5 = a.p5 + t * (b.p5 - a.p5),
-      p10 = a.p10 + t * (b.p10 - a.p10),
-      p25 = a.p25 + t * (b.p25 - a.p25),
-      p50 = a.p50 + t * (b.p50 - a.p50),
-      p75 = a.p75 + t * (b.p75 - a.p75),
-      p90 = a.p90 + t * (b.p90 - a.p90),
-      p95 = a.p95 + t * (b.p95 - a.p95),
-    )
   }
 
   private fun parseCsv(context: Context, resId: Int): List<PercentileRow> {

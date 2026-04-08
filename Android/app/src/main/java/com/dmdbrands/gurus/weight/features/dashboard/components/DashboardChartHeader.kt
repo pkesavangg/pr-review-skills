@@ -23,6 +23,9 @@ import com.dmdbrands.gurus.weight.features.dashboard.snapshot.strings.DashboardS
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
@@ -114,19 +117,44 @@ fun DashboardChartHeader(
       }
 
       is ProductSelection.Baby -> {
+        val babyState = state as? BabyDashboardState
+        val selectedMetric = babyState?.selectedMetric ?: BabyMetric.WEIGHT
         val target = segmentState.target.filterIsInstance<PeriodBabySummary>()
-        val avg = if (target.isEmpty()) 0.0 else target.mapNotNull { it.avgWeightDecigrams?.let { d -> d / 10.0 } }.average()
-        val label = if (target.isEmpty()) "000.0" else formatWeightValue(avg)
 
-        Row(verticalAlignment = Alignment.Bottom) {
-          Text(text = label, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(
-            text = DashboardSnapshotStrings.Lbs,
-            style = MeTheme.typography.subHeading2,
-            color = MeTheme.colorScheme.textSubheading,
-            modifier = Modifier.offset(y = (-10).dp),
-          )
+        when (selectedMetric) {
+          BabyMetric.WEIGHT -> {
+            val avgDecigrams = target.mapNotNull { it.avgWeightDecigrams }.takeIf { it.isNotEmpty() }
+              ?.average()?.toInt()
+            if (avgDecigrams != null) {
+              val lbs = ConversionTools.convertDecigramsToLb(avgDecigrams)
+              val oz = ConversionTools.convertDecigramsToOz(avgDecigrams)
+              Row(verticalAlignment = Alignment.Bottom) {
+                Text(text = "$lbs", style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = DashboardSnapshotStrings.Lbs, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = String.format("%.1f", oz), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+              }
+            } else {
+              Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+            }
+          }
+          BabyMetric.HEIGHT -> {
+            val avgMm = target.mapNotNull { it.avgLengthMillimeters }.takeIf { it.isNotEmpty() }
+              ?.average()?.toInt()
+            if (avgMm != null) {
+              val inches = ConversionTools.convertMmToInches(avgMm)
+              Row(verticalAlignment = Alignment.Bottom) {
+                Text(text = String.format("%.1f", inches), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+              }
+            } else {
+              Text(text = DashboardSnapshotStrings.PlaceholderDash, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+            }
+          }
         }
       }
     }

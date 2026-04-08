@@ -31,6 +31,7 @@ fun GraphPagerView(
   state: BaseDashboardState,
   selectedProduct: ProductSelection,
   goal: Goal? = null,
+  hasPercentile: Boolean = false,
   handleGraphIntent: (BaseGraphIntent) -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   header: @Composable (GraphSegment) -> Unit,
@@ -54,6 +55,7 @@ fun GraphPagerView(
         avgSystolic = bpTarget.takeIf { it.isNotEmpty() }?.map { it.avgSystolic }?.average()?.toInt(),
         avgDiastolic = bpTarget.takeIf { it.isNotEmpty() }?.map { it.avgDiastolic }?.average()?.toInt(),
         avgPulse = bpTarget.takeIf { it.isNotEmpty() }?.map { it.avgPulse }?.average()?.toInt(),
+        hasPercentile = hasPercentile,
       )
       val producer = state.producerForSegment(currentSegment)
 
