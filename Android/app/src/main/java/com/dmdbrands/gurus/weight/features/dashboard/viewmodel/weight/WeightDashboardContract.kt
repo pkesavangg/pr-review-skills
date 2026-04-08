@@ -10,6 +10,8 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSumm
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphReducer
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
@@ -43,14 +45,10 @@ data class WeightDashboardState(
   val secondaryKey: DashboardKey? = null,
 ) : BaseDashboardState
 
-// ── Intents ──
+// ── Intents (extends BaseGraphIntent — inherits all shared intents) ──
 
-sealed interface WeightDashboardIntent : IReducer.Intent {
-  data class UpdateSegment(val segment: GraphSegment, val update: (SegmentState) -> SegmentState) : WeightDashboardIntent
-  data class SetProducers(val daily: CartesianChartModelProducer, val monthly: CartesianChartModelProducer) : WeightDashboardIntent
-  data class SetRefreshing(val isRefreshing: Boolean) : WeightDashboardIntent
-  data class SetSelectedSegment(val segment: GraphSegment) : WeightDashboardIntent
-
+sealed interface WeightDashboardIntent : BaseGraphIntent {
+  // Weight-only state intents
   data class SetData(val data: List<PeriodBodyScaleSummary>) : WeightDashboardIntent
   data class SetVisibleKeys(val keys: List<DashboardKey>) : WeightDashboardIntent
   data class SetSelectedStat(val stat: Stat?) : WeightDashboardIntent
@@ -62,9 +60,8 @@ sealed interface WeightDashboardIntent : IReducer.Intent {
   data class SetGoal(val goal: Goal?) : WeightDashboardIntent
   data class SetWeightUnit(val weightUnit: WeightUnit) : WeightDashboardIntent
   data class SetSecondaryKey(val key: DashboardKey?) : WeightDashboardIntent
-  data class UpdateMarkerIndex(val markerIndex: Double?) : WeightDashboardIntent
 
-  // Action intents (side effects handled in VM)
+  // Weight-only action intents (side effects in VM)
   data object Refresh : WeightDashboardIntent
   data object OnConnectScale : WeightDashboardIntent
   data object ResetDashboard : WeightDashboardIntent
@@ -72,34 +69,51 @@ sealed interface WeightDashboardIntent : IReducer.Intent {
   data object NavigateToGoal : WeightDashboardIntent
 }
 
-// ── Reducer ──
+// ── Reducer (extends BaseGraphReducer for shared intents) ──
 
-class WeightDashboardReducer : IReducer<WeightDashboardState, WeightDashboardIntent> {
-  override fun reduce(state: WeightDashboardState, intent: WeightDashboardIntent): WeightDashboardState? = when (intent) {
-    is WeightDashboardIntent.UpdateSegment -> {
-      val current = state.segmentStates[intent.segment] ?: SegmentState()
-      state.copy(segmentStates = state.segmentStates + (intent.segment to intent.update(current)))
+class WeightDashboardReducer : BaseGraphReducer<WeightDashboardState>(), IReducer<WeightDashboardState, BaseGraphIntent> {
+
+  override fun copyBaseFields(
+    state: WeightDashboardState,
+    segmentStates: Map<GraphSegment, SegmentState>,
+    isRefreshing: Boolean,
+    markerIndex: Double?,
+    selectedSegment: GraphSegment,
+    dailyProducer: CartesianChartModelProducer,
+    monthlyProducer: CartesianChartModelProducer,
+    scrollTarget: Double?,
+  ) = state.copy(
+    segmentStates = segmentStates,
+    isRefreshing = isRefreshing,
+    markerIndex = markerIndex,
+    selectedSegment = selectedSegment,
+    dailyProducer = dailyProducer,
+    monthlyProducer = monthlyProducer,
+    scrollTarget = scrollTarget,
+  )
+
+  override fun reduce(state: WeightDashboardState, intent: BaseGraphIntent): WeightDashboardState? = when (intent) {
+    // Weight-specific intents
+    is WeightDashboardIntent -> when (intent) {
+      is WeightDashboardIntent.SetData -> state.copy(data = intent.data.toImmutableList())
+      is WeightDashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys.toImmutableList())
+      is WeightDashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
+      is WeightDashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
+      is WeightDashboardIntent.SetProgress -> state.copy(progress = intent.progress)
+      is WeightDashboardIntent.SetProgressUpdating -> state.copy(isProgressUpdating = intent.isUpdating)
+      is WeightDashboardIntent.SetIsEmpty -> state.copy(isEmpty = intent.isEmpty)
+      is WeightDashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
+      is WeightDashboardIntent.SetGoal -> state.copy(goal = intent.goal)
+      is WeightDashboardIntent.SetWeightUnit -> state.copy(weightUnit = intent.weightUnit)
+      is WeightDashboardIntent.SetSecondaryKey -> state.copy(secondaryKey = intent.key)
+      // Action intents — no state change
+      is WeightDashboardIntent.Refresh -> state
+      is WeightDashboardIntent.OnConnectScale -> state
+      is WeightDashboardIntent.ResetDashboard -> state
+      is WeightDashboardIntent.UpdateVisibleKeys -> state
+      is WeightDashboardIntent.NavigateToGoal -> state
     }
-    is WeightDashboardIntent.SetProducers -> state.copy(dailyProducer = intent.daily, monthlyProducer = intent.monthly)
-    is WeightDashboardIntent.SetRefreshing -> state.copy(isRefreshing = intent.isRefreshing)
-    is WeightDashboardIntent.SetSelectedSegment -> state.copy(selectedSegment = intent.segment)
-    is WeightDashboardIntent.SetData -> state.copy(data = intent.data.toImmutableList())
-    is WeightDashboardIntent.SetVisibleKeys -> state.copy(visibleKeys = intent.keys.toImmutableList())
-    is WeightDashboardIntent.SetSelectedStat -> state.copy(selectedStat = intent.stat)
-    is WeightDashboardIntent.SetLatestWeight -> state.copy(latestWeight = intent.latestWeight)
-    is WeightDashboardIntent.SetProgress -> state.copy(progress = intent.progress)
-    is WeightDashboardIntent.SetProgressUpdating -> state.copy(isProgressUpdating = intent.isUpdating)
-    is WeightDashboardIntent.SetIsEmpty -> state.copy(isEmpty = intent.isEmpty)
-    is WeightDashboardIntent.SetDashboardType -> state.copy(dashboardType = intent.dashboardType)
-    is WeightDashboardIntent.SetGoal -> state.copy(goal = intent.goal)
-    is WeightDashboardIntent.SetWeightUnit -> state.copy(weightUnit = intent.weightUnit)
-    is WeightDashboardIntent.SetSecondaryKey -> state.copy(secondaryKey = intent.key)
-    is WeightDashboardIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
-    // Action intents — no state change (side effects in VM)
-    is WeightDashboardIntent.Refresh -> state
-    is WeightDashboardIntent.OnConnectScale -> state
-    is WeightDashboardIntent.ResetDashboard -> state
-    is WeightDashboardIntent.UpdateVisibleKeys -> state
-    is WeightDashboardIntent.NavigateToGoal -> state
+    // Base graph intents — delegate to BaseGraphReducer
+    else -> reduceBaseIntent(state, intent)
   }
 }

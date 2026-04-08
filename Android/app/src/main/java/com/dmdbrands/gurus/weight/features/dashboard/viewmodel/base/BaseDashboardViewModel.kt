@@ -27,7 +27,7 @@ import android.icu.util.Calendar
  * Subclasses provide data flows and handle product-specific content.
  * Product data (entries, targets) lives in product-specific state, not here.
  */
-abstract class BaseDashboardViewModel<S : BaseDashboardState, I : IReducer.Intent>(
+abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphIntent>(
   reducer: IReducer<S, I>,
 ) : BaseIntentViewModel<S, I>(reducer) {
 
@@ -39,16 +39,23 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : IReducer.Inten
   abstract fun getDailyDataFlow(): Flow<GraphData>
   abstract fun getMonthlyDataFlow(): Flow<GraphData>
 
-  /** Subclass implements — updates a segment state entry via its own intent/reducer. */
-  abstract fun updateSegmentState(segment: GraphSegment, update: (SegmentState) -> SegmentState)
+  /** Dispatches UpdateSegment intent to update a segment state entry. */
+  @Suppress("UNCHECKED_CAST")
+  protected fun updateSegmentState(segment: GraphSegment, update: (SegmentState) -> SegmentState) {
+    super.handleIntent(BaseGraphIntent.UpdateSegment(segment, update) as I)
+  }
 
-  /** Subclass implements — stores the stable producers in its state. */
-  abstract fun setProducers(daily: CartesianChartModelProducer, monthly: CartesianChartModelProducer)
+  /** Dispatches SetProducers intent. */
+  @Suppress("UNCHECKED_CAST")
+  protected fun setProducers(daily: CartesianChartModelProducer, monthly: CartesianChartModelProducer) {
+    super.handleIntent(BaseGraphIntent.SetProducers(daily, monthly) as I)
+  }
 
-  abstract fun setRefreshing(isRefreshing: Boolean)
-
-  // refresh() and setSelectedSegment() are handled via product-specific intents
-  // No abstract methods needed — composables dispatch intents directly
+  /** Dispatches SetRefreshing intent. */
+  @Suppress("UNCHECKED_CAST")
+  protected fun setRefreshing(isRefreshing: Boolean) {
+    super.handleIntent(BaseGraphIntent.SetRefreshing(isRefreshing) as I)
+  }
 
   /**
    * Called when graph data arrives. Subclass handles product-specific data storage
@@ -175,31 +182,28 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : IReducer.Inten
     }
   }
 
-  /** Update marker index — product-level, not segment-level. Subclass dispatches its own intent. */
-  abstract fun updateMarkerIndex(markerIndex: Double?)
-
   fun getProducerForSegment(segment: GraphSegment): CartesianChartModelProducer {
     return if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) _dailyProducer else _monthlyProducer
   }
 
   /**
-   * Handle graph intents from GraphView. Single entry point for all graph interactions.
-   * Composables call this instead of direct VM methods.
+   * Intercepts [BaseGraphIntent] for graph side effects (scroll filtering).
+   * State changes handled by the reducer via super.handleIntent().
+   * Product VMs override this, handle their own side effects, then call super.
    */
-  fun handleGraphIntent(intent: BaseGraphIntent) {
-    when (intent) {
-      is BaseGraphIntent.ScrollRange -> {
-        val adjMin = GraphUtil.getRelativeStart(intent.segment, intent.min)
-        val adjMax = GraphUtil.getRelativeEnd(intent.segment, intent.max)
-        val ss = _state.value.forSegment(intent.segment)
-        val filteredData = ss.data.filter { it.getTimeStamp() in adjMin..adjMax }
-        if (filteredData.isNotEmpty()) {
-          updateSegmentState(intent.segment) { it.copy(target = filteredData.toImmutableList()) }
-        }
+  override fun handleIntent(intent: I) {
+    if (intent is BaseGraphIntent.ScrollRange) {
+      // Side effect: filter data to visible range, dispatch UpdateSegmentTarget
+      val adjMin = GraphUtil.getRelativeStart(intent.segment, intent.min)
+      val adjMax = GraphUtil.getRelativeEnd(intent.segment, intent.max)
+      val ss = _state.value.forSegment(intent.segment)
+      val filteredData = ss.data.filter { it.getTimeStamp() in adjMin..adjMax }
+      if (filteredData.isNotEmpty()) {
+        @Suppress("UNCHECKED_CAST")
+        super.handleIntent(BaseGraphIntent.UpdateSegmentTarget(intent.segment, filteredData) as I)
       }
-      is BaseGraphIntent.UpdateMarkerIndex -> updateMarkerIndex(intent.markerIndex)
-      is BaseGraphIntent.UpdateIsEmptyGraph -> updateSegmentState(intent.segment) { it.copy(isEmptyGraph = intent.isEmpty) }
-      is BaseGraphIntent.UpdateSegmentTarget -> updateSegmentState(intent.segment) { it.copy(target = intent.target.toImmutableList()) }
     }
+    // Always pass to reducer for state changes
+    super.handleIntent(intent)
   }
 }

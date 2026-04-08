@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
@@ -42,7 +43,7 @@ class WeightDashboardViewModel @Inject constructor(
   private val dashboardService: IDashboardService,
   private val goalService: IGoalService,
   private val healthConnectService: IHealthConnectService,
-) : BaseDashboardViewModel<WeightDashboardState, WeightDashboardIntent>(
+) : BaseDashboardViewModel<WeightDashboardState, BaseGraphIntent>(
   reducer = WeightDashboardReducer(),
 ), DefaultLifecycleObserver {
 
@@ -58,33 +59,23 @@ class WeightDashboardViewModel @Inject constructor(
   override fun getMonthlyDataFlow(): Flow<GraphData> =
     entryService.monthlyBodyScaleAverages.map { GraphData.Weight(it) }
 
-  override fun handleIntent(intent: WeightDashboardIntent) {
-    // Action intents — side effects
-    when (intent) {
-      is WeightDashboardIntent.Refresh -> refresh()
-      is WeightDashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
-      is WeightDashboardIntent.ResetDashboard -> showResetDashboardAlert()
-      is WeightDashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
-      is WeightDashboardIntent.NavigateToGoal -> navigateTo(AppRoute.AccountSettings.Goal)
-      is WeightDashboardIntent.SetSelectedStat -> {
-        viewModelScope.launch { dashboardService.setSelectedKey(intent.stat?.key) }
+  override fun handleIntent(intent: BaseGraphIntent) {
+    // Weight action intents — side effects
+    if (intent is WeightDashboardIntent) {
+      when (intent) {
+        is WeightDashboardIntent.Refresh -> refresh()
+        is WeightDashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+        is WeightDashboardIntent.ResetDashboard -> showResetDashboardAlert()
+        is WeightDashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
+        is WeightDashboardIntent.NavigateToGoal -> navigateTo(AppRoute.AccountSettings.Goal)
+        is WeightDashboardIntent.SetSelectedStat -> {
+          viewModelScope.launch { dashboardService.setSelectedKey(intent.stat?.key) }
+        }
+        else -> {}
       }
-      else -> {} // state-only intents handled by reducer
     }
-    // Always pass to reducer for state changes
+    // Base handles graph intents + passes to reducer
     super.handleIntent(intent)
-  }
-
-  override fun updateSegmentState(segment: GraphSegment, update: (SegmentState) -> SegmentState) {
-    handleIntent(WeightDashboardIntent.UpdateSegment(segment, update))
-  }
-
-  override fun setProducers(daily: CartesianChartModelProducer, monthly: CartesianChartModelProducer) {
-    handleIntent(WeightDashboardIntent.SetProducers(daily, monthly))
-  }
-
-  override fun setRefreshing(isRefreshing: Boolean) {
-    handleIntent(WeightDashboardIntent.SetRefreshing(isRefreshing))
   }
 
   override fun provideInitialState(): WeightDashboardState = WeightDashboardState()
@@ -112,13 +103,6 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
-  override fun updateMarkerIndex(markerIndex: Double?) {
-    handleIntent(WeightDashboardIntent.UpdateMarkerIndex(markerIndex))
-  }
-
-  private fun setSelectedSegment(segment: GraphSegment) {
-    handleIntent(WeightDashboardIntent.SetSelectedSegment(segment))
-  }
 
   private fun refresh() {
     viewModelScope.launch {

@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.BpGraphDataAdapter
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphDataAdapter
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
@@ -21,7 +22,7 @@ import javax.inject.Inject
 class BpDashboardViewModel @Inject constructor(
   private val historyService: IHistoryService,
   private val entryService: IEntryService,
-) : BaseDashboardViewModel<BpDashboardState, BpDashboardIntent>(
+) : BaseDashboardViewModel<BpDashboardState, BaseGraphIntent>(
   reducer = BpDashboardReducer(),
 ) {
 
@@ -37,18 +38,6 @@ class BpDashboardViewModel @Inject constructor(
   override fun getMonthlyDataFlow(): Flow<GraphData> =
     historyService.getMonthlyGraphData(ProductSelection.BloodPressure)
 
-  override fun updateSegmentState(segment: GraphSegment, update: (SegmentState) -> SegmentState) {
-    handleIntent(BpDashboardIntent.UpdateSegment(segment, update))
-  }
-
-  override fun setProducers(daily: CartesianChartModelProducer, monthly: CartesianChartModelProducer) {
-    handleIntent(BpDashboardIntent.SetProducers(daily, monthly))
-  }
-
-  override fun setRefreshing(isRefreshing: Boolean) {
-    handleIntent(BpDashboardIntent.SetRefreshing(isRefreshing))
-  }
-
   override fun provideInitialState(): BpDashboardState = BpDashboardState()
 
   override fun onDependenciesReady() {
@@ -56,16 +45,14 @@ class BpDashboardViewModel @Inject constructor(
     subscribeProgress()
   }
 
-  override fun handleIntent(intent: BpDashboardIntent) {
-    when (intent) {
-      is BpDashboardIntent.Refresh -> refresh()
-      else -> {}
+  override fun handleIntent(intent: BaseGraphIntent) {
+    if (intent is BpDashboardIntent) {
+      when (intent) {
+        is BpDashboardIntent.Refresh -> refresh()
+        else -> {}
+      }
     }
     super.handleIntent(intent)
-  }
-
-  override fun updateMarkerIndex(markerIndex: Double?) {
-    handleIntent(BpDashboardIntent.UpdateMarkerIndex(markerIndex))
   }
 
   private fun refresh() {

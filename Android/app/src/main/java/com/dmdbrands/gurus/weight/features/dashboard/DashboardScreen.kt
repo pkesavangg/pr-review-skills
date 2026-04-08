@@ -40,6 +40,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
@@ -105,7 +106,6 @@ fun DashboardScreen() {
           product = product,
           goal = state.goal,
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
-          onSegmentChange = { vm.handleIntent(WeightDashboardIntent.SetSelectedSegment(it)) },
         ) { s ->
           WeightDashboardContent(state = s, activeSegmentState = s.forSegment(s.selectedSegment), handleIntent = vm::handleIntent)
         }
@@ -116,7 +116,6 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
-          onSegmentChange = { vm.handleIntent(BpDashboardIntent.SetSelectedSegment(it)) },
         ) { s ->
           BpDashboardContent(segmentState = s.forSegment(s.selectedSegment), state = s)
         }
@@ -133,11 +132,10 @@ fun DashboardScreen() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <S : BaseDashboardState> DashboardPage(
-  vm: BaseDashboardViewModel<S, *>,
+  vm: BaseDashboardViewModel<S, BaseGraphIntent>,
   product: ProductSelection,
   goal: Goal? = null,
   onRefresh: () -> Unit,
-  onSegmentChange: (GraphSegment) -> Unit,
   belowChart: @Composable (S) -> Unit,
 ) {
   val state by vm.state.collectAsState()
@@ -159,11 +157,12 @@ private fun <S : BaseDashboardState> DashboardPage(
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
       GraphPagerView(
         pagerState = pagerState,
-        viewModel = vm,
+        state = state,
         selectedProduct = product,
         goal = goal,
+        handleGraphIntent = vm::handleIntent,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product) },
-        onSegmentChange = onSegmentChange,
+        onSegmentChange = { vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it)) },
       )
 
       belowChart(state)
