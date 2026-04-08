@@ -29,16 +29,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     @State var localSelectedXValue: Date?
     // Enable Y-axis animation only after first render to avoid blank-first-frame
     @State private var enableYAxisAnimation: Bool = false
-    // Scroll position debouncing
-    @State private var scrollUpdateWorkItem: DispatchWorkItem?
 
     // MARK: - Throttling State (Performance Optimization)
     /// Last time updateCachedChartData was called
     @State private var lastCacheUpdateTime: Date = .distantPast
     /// Minimum interval between cache updates during scroll (50ms)
     private let cacheUpdateThrottle: TimeInterval = 0.05
-    /// Work item for delayed/debounced cache updates
-    @State private var cacheUpdateWorkItem: DispatchWorkItem?
+    /// Task for delayed/debounced cache updates (structured concurrency replacement for DispatchWorkItem)
+    @State private var cacheUpdateTask: Task<Void, Never>?
 
     // MARK: - Scroll End Transition State
     /// Tracks if we're in post-scroll transition (to disable animations)
@@ -271,12 +269,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
             }
         }
         .onDisappear {
-            // Cancel any pending scroll updates to prevent memory leaks
-            scrollUpdateWorkItem?.cancel()
-            scrollUpdateWorkItem = nil
             // Cancel any pending cache updates
-            cacheUpdateWorkItem?.cancel()
-            cacheUpdateWorkItem = nil
+            cacheUpdateTask?.cancel()
+            cacheUpdateTask = nil
         }
         // Track scroll end transition to disable animations during Y-axis recalculation
         .onChange(of: viewModel.isScrolling) { oldValue, newValue in
@@ -699,15 +694,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     /// Schedules a delayed cache update, cancelling any previous pending update.
     /// Ensures cache eventually updates even during rapid changes.
     private func scheduleDelayedCacheUpdate() {
-        cacheUpdateWorkItem?.cancel()
-
-        let workItem = DispatchWorkItem { [self] in
-            self.updateCachedChartData()
-            self.precomputeLabels()
+        cacheUpdateTask?.cancel()
+        cacheUpdateTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(cacheUpdateThrottle * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            updateCachedChartData()
+            precomputeLabels()
         }
-        cacheUpdateWorkItem = workItem
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + cacheUpdateThrottle, execute: workItem)
     }
 
     // MARK: - Animation Token

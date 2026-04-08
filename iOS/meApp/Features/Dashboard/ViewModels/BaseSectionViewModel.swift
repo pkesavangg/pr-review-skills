@@ -32,6 +32,21 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var yAxisDomain: ClosedRange<Double> = 0...100
     var yAxisTicks: [Double] = []
     
+    // MARK: - Shared Calendar (Performance Optimization)
+    /// Pre-configured Gregorian calendar with device timezone and locale.
+    /// Created once and reused by plotXDate implementations to avoid per-call allocation.
+    lazy var localCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+        return cal
+    }()
+
+    // MARK: - plotXDate Cache (Performance Optimization)
+    /// Maps Int(bitPattern: UInt(date.timeIntervalSince1970.bitPattern)) → pre-computed plot X date.
+    /// Avoids repeated Calendar arithmetic in visibleChartSeriesData and chart content builders.
+    private var plotXDateCache: [Int: Date] = [:]
+
     // MARK: - X-Axis Caching (Performance Optimization)
     /// Cached X-axis values to avoid regeneration during scroll
     private var _cachedXAxisValues: [Date] = []
@@ -184,9 +199,11 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         let right = scrollPosition.addingTimeInterval(domainLength / 2)
         let data = chartSeriesData
         
-        // Keep only points whose plotted X-date is within visible window
+        // Keep only points whose plotted X-date is within visible window.
+        // Use cached plot dates to avoid redundant Calendar arithmetic per point.
         let filtered = data.filter { point in
-            let xDate = plotXDate(for: point.date)
+            let cacheKey = Int(bitPattern: UInt(point.date.timeIntervalSince1970.bitPattern))
+            let xDate = plotXDateCached(for: point.date, entryTimestamp: cacheKey)
             return xDate >= left && xDate <= right
         }
         
@@ -426,9 +443,9 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         cachedChartSeriesMetric = nil
         chartManager?.handleScrollEndOptimized()
         
-        // Sync Y-axis values from store cache after scroll end (with delay to allow store to update)
+        // Sync Y-axis values from store cache after scroll end (200ms matches GraphAnimationManager.schedulePeriodTransition default)
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 700_000_000)
+            try? await Task.sleep(nanoseconds: 200_000_000)
             self.syncYAxisFromStore()
         }
     }
@@ -562,6 +579,23 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     /// Default implementation: use the original date for plotting
     func plotXDate(for original: Date) -> Date {
         return original
+    }
+
+    /// Returns the plot X date for an entry, using a cache keyed by `cacheKey`.
+    /// Avoids repeated Calendar arithmetic when the same entry appears in multiple passes
+    /// (e.g., visibleChartSeriesData filter + chart content builder).
+    func plotXDateCached(for original: Date, entryTimestamp cacheKey: Int) -> Date {
+        if let cached = plotXDateCache[cacheKey] {
+            return cached
+        }
+        let computed = plotXDate(for: original)
+        plotXDateCache[cacheKey] = computed
+        return computed
+    }
+
+    /// Invalidates the plotXDate cache. Call when timezone changes or calendar state is stale.
+    func invalidatePlotXDateCache() {
+        plotXDateCache.removeAll()
     }
     
     // MARK: - X-Axis Label Generation
@@ -764,6 +798,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         cachedSeriesData = []
         cachedGroupedSeries = [:]
         lastCacheUpdateHash = 0
+        plotXDateCache.removeAll()
     }
 
     /// Releases all cached data for this view model.
@@ -777,6 +812,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         _cachedXAxisValues = []
         _lastXAxisScrollPosition = nil
         _lastXAxisPeriod = nil
+        plotXDateCache.removeAll()
     }
     
     /// Returns cached series data, updating cache if needed
