@@ -524,6 +524,7 @@ constructor(
 
         // Permissions are granted from here on.
         if (status.ssid.isNotEmpty()) {
+          val previousAutoFilledSsid = lastSsid
           lastSsid = status.ssid
           if (currentState.permissionsSkipped) {
             // User skipped the permission screen but permissions are active.
@@ -531,7 +532,14 @@ constructor(
             // but only if they haven't already started typing their own value.
             // Never set isWifiAutoPopulated=true here — the field must stay editable.
             val ssidField = currentState.wifiPasswordForm.ssid
-            val userIsEditing = (ssidField.dirty || ssidField.touched) && ssidField.value.isNotEmpty()
+            // dirty/touched alone is not reliable because SetWifiPasswordFormSsid
+            // marks the control dirty/touched programmatically during auto-fill.
+            // Compare the field value against the *previous* auto-filled SSID:
+            // if the user hasn't touched it, the field still holds the old auto-filled
+            // value (or is empty), so we can safely overwrite with the new SSID.
+            val userIsEditing = ssidField.value.isNotEmpty() &&
+              ssidField.value != previousAutoFilledSsid &&
+              ssidField.value != status.ssid
             if (!userIsEditing) {
               AppLog.d(TAG, "updateNetworkStatus - permissionsSkipped + untouched field; pre-filling SSID as editable")
               updateFormValuesWithSsid(status.ssid)
@@ -769,10 +777,13 @@ constructor(
     val arePermissionsCurrentlyEnabled = AppPermissionsHelper
       .areRequiredPermissionsEnabled(currentState.permissions, setupType = ScaleSetupType.Wifi)
     val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
-    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field
-    // Treat as "user cleared" only when the SSID control is empty *and* has been interacted with.
+    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field.
+    // We cannot rely on dirty/touched because SetWifiPasswordFormSsid marks the control
+    // dirty/touched programmatically during auto-fill. Instead, treat the field as
+    // "user cleared" when it is empty and lastSsid is non-null (meaning we previously
+    // auto-filled a value that the user then removed).
     val ssidControl = currentState.wifiPasswordForm.ssid
-    val userClearedSsid = ssidControl.value.isEmpty() && (ssidControl.dirty || ssidControl.touched)
+    val userClearedSsid = ssidControl.value.isEmpty() && lastSsid != null
     if (currentState.permissionsSkipped && arePermissionsCurrentlyEnabled &&
       userClearedSsid &&
       currentState.wifiPasswordForm.ssid.value.isEmpty() && ssid.isNotEmpty() && currentStepIndex < 3
