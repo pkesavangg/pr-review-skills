@@ -33,19 +33,14 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     var yAxisTicks: [Double] = []
     
     // MARK: - Shared Calendar (Performance Optimization)
-    /// Pre-configured Gregorian calendar with device timezone and locale.
-    /// Created once and reused by plotXDate implementations to avoid per-call allocation.
+    /// Pre-configured Gregorian calendar with the device's local timezone and locale.
+    /// Stored once to avoid per-call construction in plotXDate and other date calculations.
     lazy var localCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = Calendar.current.timeZone
         cal.locale = Calendar.current.locale
         return cal
     }()
-
-    // MARK: - plotXDate Cache (Performance Optimization)
-    /// Maps Int(bitPattern: UInt(date.timeIntervalSince1970.bitPattern)) → pre-computed plot X date.
-    /// Avoids repeated Calendar arithmetic in visibleChartSeriesData and chart content builders.
-    private var plotXDateCache: [Int: Date] = [:]
 
     // MARK: - X-Axis Caching (Performance Optimization)
     /// Cached X-axis values to avoid regeneration during scroll
@@ -186,7 +181,18 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     private var cachedGroupedSeries: [String: [GraphSeries]] = [:]
     private var lastCacheUpdateHash: Int = 0
 
-    /// Visible series filtered by the current scroll position and visible domain
+    // MARK: - plotXDate Cache (Performance Optimization)
+    /// Pre-computed plotXDate values keyed by original Date, rebuilt when series data changes.
+    private var cachedPlotXDates: [Date: Date] = [:]
+
+    // MARK: - Visible Series Cache (Performance Optimization)
+    /// Cached result of visibleChartSeriesData, keyed by scroll position + data hash.
+    private var cachedVisibleSeriesData: [GraphSeries] = []
+    private var lastVisibleScrollPosition: Date = .distantPast
+    private var lastVisibleDataHash: Int = 0
+
+    /// Visible series filtered by the current scroll position and visible domain.
+    /// Result is cached by (scrollPosition, dataHash) to avoid re-filtering on every render pass.
     var visibleChartSeriesData: [GraphSeries] {
         guard hasXAxis else {
             return chartSeriesData
@@ -195,18 +201,27 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         guard domainLength.isFinite && domainLength > 0 else {
             return chartSeriesData
         }
+
+        // Return cached result if neither scroll position nor underlying data changed
+        if scrollPosition == lastVisibleScrollPosition &&
+           lastCacheUpdateHash == lastVisibleDataHash &&
+           !cachedVisibleSeriesData.isEmpty {
+            return cachedVisibleSeriesData
+        }
+
         let left = scrollPosition.addingTimeInterval(-domainLength / 2)
         let right = scrollPosition.addingTimeInterval(domainLength / 2)
         let data = chartSeriesData
-        
-        // Keep only points whose plotted X-date is within visible window.
-        // Use cached plot dates to avoid redundant Calendar arithmetic per point.
+
+        // Use pre-computed plotXDate cache; fall back to live call for any cache miss
         let filtered = data.filter { point in
-            let cacheKey = Int(bitPattern: UInt(point.date.timeIntervalSince1970.bitPattern))
-            let xDate = plotXDateCached(for: point.date, entryTimestamp: cacheKey)
+            let xDate = cachedPlotXDates[point.date] ?? plotXDate(for: point.date)
             return xDate >= left && xDate <= right
         }
-        
+
+        cachedVisibleSeriesData = filtered
+        lastVisibleScrollPosition = scrollPosition
+        lastVisibleDataHash = lastCacheUpdateHash
         return filtered
     }
     
@@ -581,23 +596,6 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         return original
     }
 
-    /// Returns the plot X date for an entry, using a cache keyed by `cacheKey`.
-    /// Avoids repeated Calendar arithmetic when the same entry appears in multiple passes
-    /// (e.g., visibleChartSeriesData filter + chart content builder).
-    func plotXDateCached(for original: Date, entryTimestamp cacheKey: Int) -> Date {
-        if let cached = plotXDateCache[cacheKey] {
-            return cached
-        }
-        let computed = plotXDate(for: original)
-        plotXDateCache[cacheKey] = computed
-        return computed
-    }
-
-    /// Invalidates the plotXDate cache. Call when timezone changes or calendar state is stale.
-    func invalidatePlotXDateCache() {
-        plotXDateCache.removeAll()
-    }
-    
     // MARK: - X-Axis Label Generation
     
     /// Formats X-axis label (to be overridden by subclasses if needed)
@@ -762,13 +760,28 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         if newHash != lastCacheUpdateHash || cachedSeriesData.isEmpty {
             // Update cache synchronously since these are no longer @Published
             cachedSeriesData = newData
-            
+
             // Group series and pre-sort each series by date
             let grouped = Dictionary(grouping: cachedSeriesData) { $0.series }
             cachedGroupedSeries = grouped.mapValues { seriesPoints in
                 seriesPoints.sorted { $0.date < $1.date }
             }
-            
+
+            // Pre-compute plotXDate for every point so visibleChartSeriesData avoids per-filter calls
+            var plotXMap: [Date: Date] = [:]
+            plotXMap.reserveCapacity(cachedSeriesData.count)
+            for point in cachedSeriesData {
+                if plotXMap[point.date] == nil {
+                    plotXMap[point.date] = plotXDate(for: point.date)
+                }
+            }
+            cachedPlotXDates = plotXMap
+
+            // Invalidate visible-series cache since underlying data changed
+            cachedVisibleSeriesData = []
+            lastVisibleScrollPosition = .distantPast
+            lastVisibleDataHash = 0
+
             lastCacheUpdateHash = newHash
         }
     }
@@ -798,7 +811,10 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         cachedSeriesData = []
         cachedGroupedSeries = [:]
         lastCacheUpdateHash = 0
-        plotXDateCache.removeAll()
+        cachedPlotXDates = [:]
+        cachedVisibleSeriesData = []
+        lastVisibleScrollPosition = .distantPast
+        lastVisibleDataHash = 0
     }
 
     /// Releases all cached data for this view model.
@@ -812,7 +828,10 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         _cachedXAxisValues = []
         _lastXAxisScrollPosition = nil
         _lastXAxisPeriod = nil
-        plotXDateCache.removeAll()
+        cachedPlotXDates = [:]
+        cachedVisibleSeriesData = []
+        lastVisibleScrollPosition = .distantPast
+        lastVisibleDataHash = 0
     }
     
     /// Returns cached series data, updating cache if needed

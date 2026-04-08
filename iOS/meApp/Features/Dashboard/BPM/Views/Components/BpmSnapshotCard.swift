@@ -21,20 +21,16 @@ struct BpmSnapshotCard: View {
     @Environment(\.appTheme) private var theme
     private let yAxisFormatter = DashboardFormatter()
 
-    private var snapshotWindow: DashboardSnapshotChartWindow? {
-        DashboardSnapshotChartWindow.make(summaries: summaries) { $0.systolic != nil }
-    }
+    // MARK: - Cached State (Performance Optimization)
+    // Pre-computed in .task{} so unrelated parent state changes don't re-derive these.
 
-    private var chartSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.chartSummaries ?? []
-    }
-
-    private var recentWeekSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.visibleSummaries ?? []
-    }
+    @State private var cachedSnapshotWindow: DashboardSnapshotChartWindow?
+    @State private var cachedChartSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedRecentWeekSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedChartPoints: [ChartPoint] = []
 
     private var latestClassification: AhaPressureClass? {
-        guard let latest = recentWeekSummaries.last,
+        guard let latest = cachedRecentWeekSummaries.last,
               let sys = latest.systolic,
               let dia = latest.diastolic else { return nil }
         return AhaPressureClass.classify(systolic: Int(sys), diastolic: Int(dia))
@@ -47,7 +43,7 @@ struct BpmSnapshotCard: View {
     }
 
     private var latestReading: LatestReading? {
-        guard let latest = recentWeekSummaries.last,
+        guard let latest = cachedRecentWeekSummaries.last,
               let sys = latest.systolic,
               let dia = latest.diastolic else { return nil }
         return LatestReading(
@@ -64,7 +60,7 @@ struct BpmSnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !recentWeekSummaries.isEmpty {
+                if !cachedRecentWeekSummaries.isEmpty {
                     snapshotChart
                         .frame(height: 240)
                         .padding(.top, .spacingXS)
@@ -79,6 +75,41 @@ struct BpmSnapshotCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+        .task(id: summariesTaskID) {
+            await recomputeCache()
+        }
+    }
+
+    // MARK: - Cache Computation
+
+    private var summariesTaskID: Int {
+        var hasher = Hasher()
+        hasher.combine(summaries.count)
+        if let first = summaries.first { hasher.combine(first.entryTimestamp) }
+        if let last = summaries.last { hasher.combine(last.entryTimestamp) }
+        return hasher.finalize()
+    }
+
+    @MainActor
+    private func recomputeCache() async {
+        let window = DashboardSnapshotChartWindow.make(summaries: summaries) { $0.systolic != nil }
+        let chart = window?.chartSummaries ?? []
+        let recent = window?.visibleSummaries ?? []
+
+        // Derive classification from the latest reading for color assignment
+        let classification: AhaPressureClass? = {
+            guard let latest = recent.last,
+                  let sys = latest.systolic,
+                  let dia = latest.diastolic else { return nil }
+            return AhaPressureClass.classify(systolic: Int(sys), diastolic: Int(dia))
+        }()
+
+        let points = buildChartSeries(from: chart, classification: classification)
+
+        cachedSnapshotWindow = window
+        cachedChartSummaries = chart
+        cachedRecentWeekSummaries = recent
+        cachedChartPoints = points
     }
 
     // MARK: - Headline
@@ -139,13 +170,12 @@ struct BpmSnapshotCard: View {
     // MARK: - Chart
 
     private var snapshotChart: some View {
-        let points = buildChartSeries()
         let yScale = calculateYAxisScale()
         let xDomain = weekXDomain()
         let yRange = yScale.domain
         let yTickValues = yScale.ticks
 
-        return Chart(points, id: \.id) { point in
+        return Chart(cachedChartPoints, id: \.id) { point in
             LineMark(
                 x: .value("Date", point.date),
                 y: .value("Value", point.value),
@@ -226,19 +256,22 @@ struct BpmSnapshotCard: View {
     }
 
     private func weekXDomain() -> ClosedRange<Date> {
-        guard let bounds = snapshotWindow?.bounds else { return Date()...Date() }
+        guard let bounds = cachedSnapshotWindow?.bounds else { return Date()...Date() }
         return bounds.start...bounds.end
     }
 
-    private func buildChartSeries() -> [ChartPoint] {
-        chartSummaries.flatMap { op -> [ChartPoint] in
+    private func buildChartSeries(
+        from ops: [BathScaleWeightSummary],
+        classification: AhaPressureClass?
+    ) -> [ChartPoint] {
+        ops.flatMap { op -> [ChartPoint] in
             var pts: [ChartPoint] = []
             if let sys = op.systolic {
                 let colors = DashboardChartStyleProvider.seriesColors(
                     for: "systolic",
                     productType: .bpm,
                     theme: theme,
-                    bpmClassification: latestClassification
+                    bpmClassification: classification
                 )
                 pts.append(ChartPoint(id: "sys_\(op.period)", date: op.date, value: sys, series: "systolic", color: colors.line))
             }
@@ -247,7 +280,7 @@ struct BpmSnapshotCard: View {
                     for: "diastolic",
                     productType: .bpm,
                     theme: theme,
-                    bpmClassification: latestClassification
+                    bpmClassification: classification
                 )
                 pts.append(ChartPoint(id: "dia_\(op.period)", date: op.date, value: dia, series: "diastolic", color: colors.line))
             }
@@ -256,7 +289,7 @@ struct BpmSnapshotCard: View {
                     for: "pulse",
                     productType: .bpm,
                     theme: theme,
-                    bpmClassification: latestClassification
+                    bpmClassification: classification
                 )
                 pts.append(ChartPoint(id: "pulse_\(op.period)", date: op.date, value: pulse, series: "pulse", color: colors.line))
             }
@@ -265,7 +298,7 @@ struct BpmSnapshotCard: View {
     }
 
     private func calculateYAxisScale() -> YAxisScale {
-        DashboardChartScaleProvider.bpmScale(from: chartSummaries)
+        DashboardChartScaleProvider.bpmScale(from: cachedChartSummaries)
     }
 
     private var accessibilityLabel: String {

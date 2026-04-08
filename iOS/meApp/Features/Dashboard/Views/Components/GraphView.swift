@@ -50,6 +50,11 @@ struct GraphView: View {
         !dashboardStore.state.graph.isGraphReady
     }
 
+    // Match skeleton frame to the actual chart container height (baby charts are taller)
+    private var skeletonHeight: CGFloat {
+        dashboardStore.selectedBabyProfile != nil ? 498 : 265
+    }
+
     var body: some View {
         #if DEBUG
         _ = Self._printChanges()
@@ -57,7 +62,7 @@ struct GraphView: View {
         return ZStack {
             // Skeleton loader shown only during initial graph load
             if shouldShowSkeleton {
-                GraphSkeletonView()
+                GraphSkeletonView(height: skeletonHeight)
             }
 
             // Actual graph content

@@ -137,7 +137,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         babySelectionPresentation?.percentile
     }
 
-    private var babyChartContainerHeight: CGFloat { 497.14208984375 }
+    private var babyChartContainerHeight: CGFloat { 498 }
     private var chartContainerHeight: CGFloat {
         selectedBabyProfile != nil ? babyChartContainerHeight : 265
     }
@@ -695,11 +695,13 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
     /// Ensures cache eventually updates even during rapid changes.
     private func scheduleDelayedCacheUpdate() {
         cacheUpdateTask?.cancel()
+
+        let delay = cacheUpdateThrottle
         cacheUpdateTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: UInt64(cacheUpdateThrottle * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard !Task.isCancelled else { return }
-            updateCachedChartData()
-            precomputeLabels()
+            self.updateCachedChartData()
+            self.precomputeLabels()
         }
     }
 

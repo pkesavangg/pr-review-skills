@@ -21,25 +21,13 @@ struct WeightSnapshotCard: View {
     @Environment(\.appTheme) private var theme
     private let yAxisFormatter = DashboardFormatter()
 
-    private var snapshotWindow: DashboardSnapshotChartWindow? {
-        DashboardSnapshotChartWindow.make(summaries: summaries) { $0.weight > 0 }
-    }
+    // MARK: - Cached State (Performance Optimization)
+    // Pre-computed in .task{} so unrelated parent state changes don't re-derive these.
 
-    private var chartSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.chartSummaries ?? []
-    }
-
-    private var recentWeekSummaries: [BathScaleWeightSummary] {
-        snapshotWindow?.visibleSummaries ?? []
-    }
-
-    private var weekAverage: String {
-        let weights = recentWeekSummaries.map(\.weight).filter { $0 > 0 }
-        guard !weights.isEmpty else { return "--" }
-        let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
-        let avgDisplay = viewModel.convertStoredWeightToDisplay(avgStored)
-        return String(format: "%.1f", avgDisplay)
-    }
+    @State private var cachedSnapshotWindow: DashboardSnapshotChartWindow?
+    @State private var cachedChartSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedRecentWeekSummaries: [BathScaleWeightSummary] = []
+    @State private var cachedWeekAverage: String = "--"
 
     private var unitText: String {
         viewModel.unitText
@@ -52,7 +40,7 @@ struct WeightSnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                if !recentWeekSummaries.isEmpty {
+                if !cachedRecentWeekSummaries.isEmpty {
                     snapshotChart
                         .frame(height: 240)
                         .padding(.top, .spacingXS)
@@ -67,6 +55,41 @@ struct WeightSnapshotCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+        .task(id: summariesTaskID) {
+            await recomputeCache()
+        }
+    }
+
+    // MARK: - Cache Computation
+
+    private var summariesTaskID: Int {
+        var hasher = Hasher()
+        hasher.combine(summaries.count)
+        if let first = summaries.first { hasher.combine(first.entryTimestamp) }
+        if let last = summaries.last { hasher.combine(last.entryTimestamp) }
+        return hasher.finalize()
+    }
+
+    @MainActor
+    private func recomputeCache() async {
+        let window = DashboardSnapshotChartWindow.make(summaries: summaries) { $0.weight > 0 }
+        let chart = window?.chartSummaries ?? []
+        let recent = window?.visibleSummaries ?? []
+
+        let weights = recent.map(\.weight).filter { $0 > 0 }
+        let avg: String
+        if weights.isEmpty {
+            avg = "--"
+        } else {
+            let avgStored = Int((weights.reduce(0, +) / Double(weights.count)).rounded())
+            let avgDisplay = viewModel.convertStoredWeightToDisplay(avgStored)
+            avg = String(format: "%.1f", avgDisplay)
+        }
+
+        cachedSnapshotWindow = window
+        cachedChartSummaries = chart
+        cachedRecentWeekSummaries = recent
+        cachedWeekAverage = avg
     }
 
     // MARK: - Headline
@@ -78,7 +101,7 @@ struct WeightSnapshotCard: View {
                 .foregroundColor(theme.textSubheading)
 
             HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
-                Text(weekAverage)
+                Text(cachedWeekAverage)
                     .fontOpenSans(.heading1)
                     .fontWeight(.heavy)
                     .foregroundColor(theme.textHeading)
@@ -93,7 +116,7 @@ struct WeightSnapshotCard: View {
     // MARK: - Chart
 
     private var snapshotChart: some View {
-        let displayWeights = chartSummaries.map { ($0.date, viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
+        let displayWeights = cachedChartSummaries.map { ($0.date, viewModel.convertStoredWeightToDisplay(Int($0.weight))) }
         let yScale = calculateYAxisScale()
         let xDomain = weekXDomain()
         let yRange = yScale.domain
@@ -171,21 +194,21 @@ struct WeightSnapshotCard: View {
     // MARK: - Helpers
 
     private func weekXDomain() -> ClosedRange<Date> {
-        guard let bounds = snapshotWindow?.bounds else { return Date()...Date() }
+        guard let bounds = cachedSnapshotWindow?.bounds else { return Date()...Date() }
         return bounds.start...bounds.end
     }
 
     private func calculateYAxisScale() -> YAxisScale {
         DashboardChartScaleProvider.weightScale(
-            operations: chartSummaries,
+            operations: cachedChartSummaries,
             goalWeight: viewModel.goalWeightForDisplay(),
             convertStoredWeightToDisplay: viewModel.convertStoredWeightToDisplay
         )
     }
 
     private var accessibilityLabel: String {
-        if weekAverage != "--" {
-            return "Weight snapshot, week average \(weekAverage) \(unitText)"
+        if cachedWeekAverage != "--" {
+            return "Weight snapshot, week average \(cachedWeekAverage) \(unitText)"
         }
         return "Weight snapshot, no readings yet"
     }
