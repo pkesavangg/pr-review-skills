@@ -27,6 +27,7 @@ data class LineSpec(
  */
 data class ChartConfig(
   val lines: List<LineSpec>,
+  val goal: com.dmdbrands.gurus.weight.domain.model.goal.Goal? = null,
   val goalWeight: Double? = null,
   val isWeightlessMode: Boolean = false,
   val hasSecondaryLayer: Boolean = false,
@@ -49,6 +50,7 @@ fun rememberChartConfig(
     when (product) {
       is ProductSelection.MyWeight -> ChartConfig(
         lines = listOf(LineSpec(color = primaryColor)),
+        goal = goal,
         goalWeight = goal?.goalWeight,
         isWeightlessMode = goal?.account?.isWeightlessOn ?: false,
         hasSecondaryLayer = true,

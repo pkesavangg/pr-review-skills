@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
@@ -28,7 +27,7 @@ internal fun rememberLineLayerWithConnection(
   lineColor: Color,
   verticalAxisPosition: Axis.Position.Vertical,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit,
+  handleIntent: (Any) -> Unit,
   yTransform: ((
     series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
     yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,
@@ -76,7 +75,7 @@ internal fun rememberLineLayerWithConnection(
 internal fun primaryLayer(
   segment: GraphSegment,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit
+  handleIntent: (Any) -> Unit
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
@@ -95,7 +94,7 @@ internal fun primaryLayer(
 internal fun secondaryLayer(
   segment: GraphSegment,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
-  handleIntent: (GraphIntent) -> Unit,
+  handleIntent: (Any) -> Unit,
   yTransform: ((
     series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
     yRange: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartRanges.YRange,

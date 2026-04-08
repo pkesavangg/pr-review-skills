@@ -10,8 +10,7 @@ import androidx.compose.ui.unit.sp
 import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -27,19 +26,15 @@ import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 
 @Composable
 internal fun rememberDefaultMarker(
-  state: GraphState,
-  productState: ProductGraphState,
+  segmentState: SegmentState,
   segment: GraphSegment,
-  onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit
+  onTargetsUpdate: (List<PeriodBodyScaleSummary>) -> Unit = {},
 ): CartesianMarker {
   fun yLabelCallback(): (List<List<Double>>) -> Unit = { fallbackValues ->
-    val data = productState.data.filter {
-      DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == productState.markerIndex?.toDouble()
+    val data = segmentState.data.filter {
+      DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() == segmentState.markerIndex?.toDouble()
     }
-    val requiredData = data.ifEmpty {
-      emptyList()
-    }
-
+    val requiredData = data.ifEmpty { emptyList() }
     onTargetsUpdate(requiredData)
   }
 

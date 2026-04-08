@@ -14,8 +14,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -26,15 +25,14 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun BpChartHeader(
-  state: GraphState,
-  productState: ProductGraphState = ProductGraphState(),
+  segmentState: SegmentState = SegmentState(),
   segment: GraphSegment,
   systolic: Int?,
   diastolic: Int?,
   pulse: Int?,
   rangeData: String,
 ) {
-  val headerText = if (productState.markerIndex != null) {
+  val headerText = if (segmentState.markerIndex != null) {
     when (segment) {
       GraphSegment.WEEK, GraphSegment.MONTH -> "day"
       else -> "month"
@@ -49,7 +47,7 @@ fun BpChartHeader(
   ) {
     Row {
       Text(
-        text = if (productState.isEmptyGraph) "no entries" else "mmhg",
+        text = if (segmentState.isEmptyGraph) "no entries" else "mmhg",
         style = MeTheme.typography.subHeading1,
         color = MeTheme.colorScheme.textSubheading,
       )
@@ -95,7 +93,7 @@ fun BpChartHeader(
     Text(
       text = rangeData.lowercase(),
       style = MeTheme.typography.subHeading2,
-      color = if (productState.markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
+      color = if (segmentState.markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
     )
   }
 }

@@ -15,36 +15,35 @@ import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.rememberChartConfig
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphViewModel
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
  * Horizontal pager with 4 graph segments (WEEK, MONTH, YEAR, TOTAL).
- * Receives VMs from parent — does not create them.
+ * Receives one product VM — reads segment states and producers from it.
  * No data callbacks — parent observes VM state directly.
  *
  * @param pagerState Pager state managed by the parent.
- * @param viewModels 4 GraphViewModels, one per segment (indexed by GraphSegment.entries).
+ * @param viewModel The active product's dashboard VM (holds graph state).
  * @param selectedProduct Current product selection for chart config and header.
- * @param state Dashboard state for scroll target and segment info.
  * @param header Composable slot for the product-specific header (above chart).
  * @param onSegmentChange Callback when user taps a segment button.
- * @param onChartConsuming Callback for chart scroll consuming state.
  * @param onScrollTargetConsumed Callback when scroll target has been applied.
  */
 @Composable
-fun GraphPagerView(
+fun <S : BaseDashboardState> GraphPagerView(
   pagerState: PagerState,
-  viewModels: List<GraphViewModel>,
+  viewModel: BaseDashboardViewModel<S, *>,
   selectedProduct: ProductSelection,
-  state: DashboardState,
-  header: @Composable (GraphViewModel, GraphSegment) -> Unit,
-  onSegmentChange: (GraphSegment, Long?) -> Unit = { _, _ -> },
-  onChartConsuming: (Boolean) -> Unit = {},
+  goal: com.dmdbrands.gurus.weight.domain.model.goal.Goal? = null,
+  header: @Composable (GraphSegment) -> Unit,
+  onSegmentChange: (GraphSegment) -> Unit = {},
   onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
+  val state by viewModel.state.collectAsState()
+
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
   ) {
@@ -54,28 +53,28 @@ fun GraphPagerView(
       modifier = Modifier.fillMaxWidth(),
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
-      val viewmodel = viewModels.getOrNull(page) ?: return@HorizontalPager
-      val graphState by viewmodel.state.collectAsState()
-      val productType = selectedProduct.productType
-      val productState = graphState.forProduct(productType)
-      val chartConfig = rememberChartConfig(product = selectedProduct, goal = graphState.goal)
+      val segmentState = state.forSegment(currentSegment)
+      val chartConfig = rememberChartConfig(product = selectedProduct, goal = goal)
+      val producer = viewModel.getProducerForSegment(currentSegment)
 
-      GraphPageContent(
-        header = { header(viewmodel, currentSegment) },
-        chartConfig = chartConfig,
-        graphState = graphState,
-        productState = productState,
-        productType = productType,
-        segment = currentSegment,
-        viewModel = viewmodel,
-        page = page,
-        currentPage = pagerState.currentPage,
-        scrollTarget = state.scrollTarget,
-        canScrollToAnchor = state.selectedSegment == currentSegment && !state.isScrollTargetConsumed,
-        isConsuming = state.isConsuming,
-        onChartConsuming = onChartConsuming,
-        onScrollTargetConsumed = onScrollTargetConsumed,
-      )
+      Column {
+        header(currentSegment)
+
+        GraphView(
+          modifier = Modifier.fillMaxWidth(),
+          state = state,
+          segmentState = segmentState,
+          chartConfig = chartConfig,
+          modelProducer = producer,
+          segment = currentSegment,
+          scrollTarget = state.scrollTarget,
+          canScrollToAnchor = state.selectedSegment == currentSegment,
+          viewModel = viewModel,
+          onScrollTargetConsumed = onScrollTargetConsumed,
+        )
+
+        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+      }
     }
 
     SegmentButtonGroup(
@@ -83,9 +82,8 @@ fun GraphPagerView(
       selectedData = GraphSegment.entries[pagerState.currentPage],
       key = GraphSegment::name,
       onSelected = { segment ->
-        onChartConsuming(true)
         onScrollTargetConsumed(false)
-        onSegmentChange(segment, null)
+        onSegmentChange(segment)
       },
       modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
     )

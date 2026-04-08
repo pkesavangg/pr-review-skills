@@ -14,8 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -32,20 +31,19 @@ private fun getDisplayUnit(weightUnit: WeightUnit, weight: Double): String {
 
 @Composable
 fun WeightChartHeader(
-  state: GraphState,
-  productState: ProductGraphState = ProductGraphState(),
+  segmentState: SegmentState = SegmentState(),
   segment: GraphSegment,
+  weightUnit: WeightUnit = WeightUnit.KG,
   weightData: String,
   rangeData: String,
   weightValue: Double,
 ) {
-  val weightUnit = state.weightUnit
   val displayUnitText = remember(weightUnit, weightValue) {
     getDisplayUnit(weightUnit, weightValue)
   }
 
   val headerText =
-    if (productState.markerIndex != null) {
+    if (segmentState.markerIndex != null) {
       when (segment) {
         GraphSegment.WEEK, GraphSegment.MONTH -> "day"
         else -> "month"
@@ -60,7 +58,7 @@ fun WeightChartHeader(
     ),
   ) {
     Text(
-      text = if (productState.isEmptyGraph) "no entries" else "$headerText average",
+      text = if (segmentState.isEmptyGraph) "no entries" else "$headerText average",
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )
@@ -83,7 +81,7 @@ fun WeightChartHeader(
     Text(
       text = rangeData.lowercase(),
       style = MeTheme.typography.subHeading2,
-      color = if (productState.markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
+      color = if (segmentState.markerIndex == null) MeTheme.colorScheme.textSubheading else Color.Transparent,
     )
   }
 }

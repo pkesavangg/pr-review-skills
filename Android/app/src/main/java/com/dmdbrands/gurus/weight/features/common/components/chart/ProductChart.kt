@@ -5,15 +5,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.bottomAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphIntent
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphState
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -43,40 +41,40 @@ import java.util.Calendar
 @Composable
 fun rememberProductChart(
   config: ChartConfig,
-  graphState: GraphState,
-  productState: ProductGraphState,
+  graphState: BaseDashboardState,
+  segmentState: SegmentState,
   defaultMarker: CartesianMarker,
   segment: GraphSegment,
   horizontalItemPlacer: HorizontalAxis.ItemPlacer,
   fadingEdges: FadingEdges? = null,
-  handleIntent: (GraphIntent) -> Unit,
+  handleIntent: (Any) -> Unit = {},
   scrubController: ScrubMarkerController? = null,
 ): CartesianChart {
-  productState.markerIndex
+  segmentState.markerIndex
 
   // ── Separators (shared) ──
   val separators = GraphUtil.periodStarts(
     segment = segment,
-    startMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
-    endMillis = productState.data.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
+    startMillis = segmentState.data.map { com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
+    endMillis = segmentState.data.map { com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
   ).map { it.toDouble() }
 
   // ── Visible labels count (shared) ──
   val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
     remember(segment) { segment.visibleLabelsCount() }
   } else {
-    remember(productState.minTarget, productState.maxTarget) {
+    remember(segmentState.minTarget, segmentState.maxTarget) {
       GraphUtil.getTotalMonthsBetweenYears(
-        productState.minTarget ?: Calendar.getInstance().timeInMillis,
-        productState.maxTarget ?: Calendar.getInstance().timeInMillis,
+        segmentState.minTarget ?: Calendar.getInstance().timeInMillis,
+        segmentState.maxTarget ?: Calendar.getInstance().timeInMillis,
       ).toDouble().coerceAtLeast(1.0)
     }
   }
 
   // ── Y-range provider (config-driven) ──
   val scrollAwareRange = rememberScrollAwareRangeProvider(
-    minX = productState.chartMinX ?: Double.NaN,
-    maxX = productState.chartMaxX ?: Double.NaN,
+    minX = segmentState.chartMinX ?: Double.NaN,
+    maxX = segmentState.chartMaxX ?: Double.NaN,
   ) { visibleSeriesEntries, visibleXRange ->
     // Extract Y values: all series (BP) or first series only (weight/baby)
     val yValues = if (config.useAllSeriesForYRange) {
@@ -103,12 +101,7 @@ fun rememberProductChart(
     val rangeMaxY = axisMeta.max
     val step = axisMeta.step
 
-    handleIntent(
-      GraphIntent.UpdateVisibleYRange(
-        rangeMinY, rangeMaxY,
-        clipRange.startMillis.toDouble(), clipRange.endMillis.toDouble(),
-      ),
-    )
+    // Y range managed by ScrollAwareRangeProvider — no VM intent needed
     val ticks = mutableListOf<Double>()
     var tick = rangeMinY
     while (tick <= rangeMaxY + step * 0.01) {
@@ -165,16 +158,16 @@ fun rememberProductChart(
 
   // ── Goal marker (config-driven) ──
   val goalMarker = if (config.goalWeight != null) {
-    rememberGoalMarker(goal = graphState.goal, isWeightlessOn = config.isWeightlessMode)
+    rememberGoalMarker(goal = config.goal, isWeightlessOn = config.isWeightlessMode)
   } else null
 
   // ── Build chart ──
   return rememberCartesianChart(
     *layers,
     topAxis = topAxis(),
-    startAxis = startAxis(segment, productState.isSingleWindow),
+    startAxis = startAxis(segment, segmentState.isSingleWindow),
     endAxis = endAxis(
-      isEmptyGraph = productState.isEmptyGraph,
+      isEmptyGraph = segmentState.isEmptyGraph,
       markerDecoration = goalMarker,
       ticksProvider = { scrollAwareRange.currentTicks },
     ),

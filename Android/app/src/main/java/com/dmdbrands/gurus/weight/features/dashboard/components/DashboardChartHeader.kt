@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 
 /**
@@ -29,40 +30,36 @@ fun <S : BaseDashboardState> DashboardChartHeader(
 
   when (product) {
     is ProductSelection.MyWeight -> {
-      val avg = if (segmentState.target.isEmpty()) 0.0 else segmentState.target.map { it.weight }.average()
-      val label = if (segmentState.target.isEmpty()) "000.0" else formatWeightValue(avg)
+      val weightState = state as? WeightDashboardState
+      val target = weightState?.data ?: emptyList()
+      val avg = if (target.isEmpty()) 0.0 else target.map { it.weight }.average()
+      val label = if (target.isEmpty()) "000.0" else formatWeightValue(avg)
       WeightChartHeader(
-        state = state,
         segmentState = segmentState,
         segment = segment,
+        weightUnit = weightState?.weightUnit ?: com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.KG,
         weightData = label,
         rangeData = rangeText,
         weightValue = avg,
       )
     }
     is ProductSelection.BloodPressure -> {
-      val target = segmentState.target
-      val avgSys = target.map { it.weight.toInt() }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-      val avgDia = target.map { it.bodyFat?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
-      val avgPulse = target.map { it.pulse?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
+      // BP header reads from segment target — will be improved when BP has its own data type
       BpChartHeader(
-        state = state,
         segmentState = segmentState,
         segment = segment,
-        systolic = avgSys,
-        diastolic = avgDia,
-        pulse = avgPulse,
+        systolic = null, // TODO: read from BpDashboardState
+        diastolic = null,
+        pulse = null,
         rangeData = rangeText,
       )
     }
     is ProductSelection.Baby -> {
-      val avg = if (segmentState.target.isEmpty()) 0.0 else segmentState.target.map { it.weight }.average()
-      val label = if (segmentState.target.isEmpty()) "000.0" else formatWeightValue(avg)
+      val avg = 0.0 // TODO: read from BabyDashboardState
       WeightChartHeader(
-        state = state,
         segmentState = segmentState,
         segment = segment,
-        weightData = label,
+        weightData = "000.0",
         rangeData = rangeText,
         weightValue = avg,
       )

@@ -19,9 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.ProductGraphState
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.DashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
@@ -30,10 +30,10 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun BpDashboardContent(
-  productState: ProductGraphState,
-  state: DashboardState,
+  segmentState: SegmentState,
+  state: BaseDashboardState,
 ) {
-  val target = productState.target
+  val target = segmentState.target
   val avgSys = target.map { it.weight.toInt() }.takeIf { it.isNotEmpty() }?.average()?.toInt()
   val avgDia = target.map { it.bodyFat?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
   val avgPulse = target.map { it.pulse?.toInt() ?: 0 }.takeIf { it.isNotEmpty() }?.average()?.toInt()
@@ -99,19 +99,7 @@ fun BpDashboardContent(
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
-    // Streaks (reuse milestone streaks if available)
-    DashboardMilestone(
-      progress = state.progress,
-      isProgressUpdating = state.isProgressUpdating,
-      latestWeight = state.latestWeight,
-      inEditMode = false,
-      hasVisibleMetrics = false,
-      visibleKeys = state.visibleKeys.filter { it is com.dmdbrands.gurus.weight.features.common.model.DashboardKey.Milestone },
-      onMilestonesChanged = {},
-      onLongClick = { _, _ -> },
-      onNavigateToGoal = {},
-    )
-
+    // TODO: Add BP-specific streaks when BpDashboardState has progress field
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
   }
 }
