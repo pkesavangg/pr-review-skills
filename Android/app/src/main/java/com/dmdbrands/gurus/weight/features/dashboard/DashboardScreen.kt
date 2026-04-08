@@ -29,7 +29,6 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
-import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -40,9 +39,9 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.dashboard.components.BpDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHeader
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
@@ -107,9 +106,14 @@ fun DashboardScreen() {
           goal = state.goal,
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
         ) { s ->
-          WeightDashboardContent(state = s, activeSegmentState = s.forSegment(s.selectedSegment), handleIntent = vm::handleIntent)
+          WeightDashboardContent(
+            state = s,
+            activeSegmentState = s.forSegment(s.selectedSegment),
+            handleIntent = vm::handleIntent,
+          )
         }
       }
+
       is ProductSelection.BloodPressure -> {
         val vm: BpDashboardViewModel = hiltViewModel()
         DashboardPage(
@@ -120,6 +124,7 @@ fun DashboardScreen() {
           BpDashboardContent(segmentState = s.forSegment(s.selectedSegment), state = s)
         }
       }
+
       is ProductSelection.Baby -> Spacer(modifier = Modifier.height(MeTheme.spacing.sm)) // TODO
     }
   }
@@ -162,7 +167,15 @@ private fun <S : BaseDashboardState> DashboardPage(
         goal = goal,
         handleGraphIntent = vm::handleIntent,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product) },
-        onSegmentChange = { vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it)) },
+        onSegmentChange = {
+          val currentSegmentState = state.forSegment(state.selectedSegment)
+          val anchorTimeStamp = if (currentSegmentState.visibleMin != null && currentSegmentState.visibleMax != null) {
+            (currentSegmentState.visibleMin + currentSegmentState.visibleMax) / 2.0
+          } else {
+            null
+          }
+          vm.handleIntent(BaseGraphIntent.SetSelectedSegment(it, anchorTimeStamp))
+        },
       )
 
       belowChart(state)
