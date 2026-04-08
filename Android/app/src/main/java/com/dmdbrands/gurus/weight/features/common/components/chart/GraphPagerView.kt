@@ -69,7 +69,7 @@ fun <S : BaseDashboardState> GraphPagerView(
           segment = currentSegment,
           scrollTarget = state.scrollTarget,
           canScrollToAnchor = state.selectedSegment == currentSegment,
-          viewModel = viewModel,
+          handleGraphIntent = viewModel::handleGraphIntent,
           onScrollTargetConsumed = onScrollTargetConsumed,
         )
 

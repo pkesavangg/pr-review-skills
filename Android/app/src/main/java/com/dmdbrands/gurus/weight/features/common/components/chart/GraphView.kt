@@ -17,8 +17,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
@@ -45,16 +45,16 @@ private const val SCROLL_DELAY_AFTER_LAYOUT_MS = 50L
  */
 @OptIn(FlowPreview::class)
 @Composable
-fun <S : BaseDashboardState> GraphView(
+fun GraphView(
   modifier: Modifier = Modifier,
-  state: S,
+  state: BaseDashboardState,
   segmentState: SegmentState,
   chartConfig: ChartConfig,
   modelProducer: CartesianChartModelProducer,
   segment: GraphSegment = GraphSegment.WEEK,
   scrollTarget: Double? = null,
   canScrollToAnchor: Boolean = false,
-  viewModel: BaseDashboardViewModel<S, *>,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
   onScrollTargetConsumed: (Boolean) -> Unit = {},
 ) {
   val scope = rememberCoroutineScope()
@@ -116,7 +116,7 @@ fun <S : BaseDashboardState> GraphView(
 
   fun onScrollUpdate(min: Long, max: Long) {
     scope.launch {
-      viewModel.handleGraphScroll(segment, min, max)
+      handleGraphIntent(BaseGraphIntent.ScrollRange(segment, min, max))
     }
   }
 
@@ -141,7 +141,7 @@ fun <S : BaseDashboardState> GraphView(
     markerIndex = state.markerIndex,
     onTargetsUpdate = { entries ->
       if (entries.isNotEmpty()) {
-        viewModel.updateSegmentState(segment) { it.copy(target = entries.toImmutableList()) }
+        handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, entries))
       }
     },
   )
@@ -150,7 +150,7 @@ fun <S : BaseDashboardState> GraphView(
     scrollState = scrollState,
     onMarkerIndexChanged = { clickX, targets ->
       if (clickX == null || segmentState.isEmptyGraph) {
-        viewModel.updateMarkerIndex(null)
+        handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
         return@rememberScrubMarkerController null
       }
       val visibleRange = scrollState.visibleXRange
@@ -179,7 +179,7 @@ fun <S : BaseDashboardState> GraphView(
           }
         }
       }
-      if (state.markerIndex != markerIndex) viewModel.updateMarkerIndex(markerIndex)
+      if (state.markerIndex != markerIndex) handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(markerIndex))
       markerIndex
     },
   )
@@ -217,7 +217,7 @@ fun <S : BaseDashboardState> GraphView(
         onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
         if (!segmentState.isEmptyGraph) {
           val endTs = segmentState.endTimestamp
-          if (endTs != null) viewModel.updateIsEmptyGraph(segment, relativeMin > endTs)
+          if (endTs != null) handleGraphIntent(BaseGraphIntent.UpdateIsEmptyGraph(segment, relativeMin > endTs))
         }
       }
   }

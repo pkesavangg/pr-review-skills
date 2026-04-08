@@ -47,8 +47,8 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : IReducer.Inten
 
   abstract fun setRefreshing(isRefreshing: Boolean)
 
-  abstract fun refresh()
-  abstract fun setSelectedSegment(segment: GraphSegment)
+  // refresh() and setSelectedSegment() are handled via product-specific intents
+  // No abstract methods needed — composables dispatch intents directly
 
   /**
    * Called when graph data arrives. Subclass handles product-specific data storage
@@ -175,29 +175,31 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : IReducer.Inten
     }
   }
 
-  /** Update marker index — product-level, not segment-level. */
+  /** Update marker index — product-level, not segment-level. Subclass dispatches its own intent. */
   abstract fun updateMarkerIndex(markerIndex: Double?)
-
-  fun updateIsEmptyGraph(segment: GraphSegment, isEmpty: Boolean) {
-    updateSegmentState(segment) { it.copy(isEmptyGraph = isEmpty) }
-  }
 
   fun getProducerForSegment(segment: GraphSegment): CartesianChartModelProducer {
     return if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) _dailyProducer else _monthlyProducer
   }
 
   /**
-   * Handle scroll — filters segment data to visible range.
+   * Handle graph intents from GraphView. Single entry point for all graph interactions.
+   * Composables call this instead of direct VM methods.
    */
-  open fun handleGraphScroll(segment: GraphSegment, min: Long, max: Long, fallback: () -> Unit = {}) {
-    val adjMin = GraphUtil.getRelativeStart(segment, min)
-    val adjMax = GraphUtil.getRelativeEnd(segment, max)
-    val ss = _state.value.forSegment(segment)
-    val filteredData = ss.data.filter { it.getTimeStamp() in adjMin..adjMax }
-    if (filteredData.isEmpty()) {
-      fallback()
-    } else {
-      updateSegmentState(segment) { it.copy(target = filteredData.toImmutableList()) }
+  fun handleGraphIntent(intent: BaseGraphIntent) {
+    when (intent) {
+      is BaseGraphIntent.ScrollRange -> {
+        val adjMin = GraphUtil.getRelativeStart(intent.segment, intent.min)
+        val adjMax = GraphUtil.getRelativeEnd(intent.segment, intent.max)
+        val ss = _state.value.forSegment(intent.segment)
+        val filteredData = ss.data.filter { it.getTimeStamp() in adjMin..adjMax }
+        if (filteredData.isNotEmpty()) {
+          updateSegmentState(intent.segment) { it.copy(target = filteredData.toImmutableList()) }
+        }
+      }
+      is BaseGraphIntent.UpdateMarkerIndex -> updateMarkerIndex(intent.markerIndex)
+      is BaseGraphIntent.UpdateIsEmptyGraph -> updateSegmentState(intent.segment) { it.copy(isEmptyGraph = intent.isEmpty) }
+      is BaseGraphIntent.UpdateSegmentTarget -> updateSegmentState(intent.segment) { it.copy(target = intent.target.toImmutableList()) }
     }
   }
 }

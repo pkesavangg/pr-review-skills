@@ -42,7 +42,9 @@ import com.dmdbrands.gurus.weight.features.dashboard.components.DashboardChartHe
 import com.dmdbrands.gurus.weight.features.dashboard.components.WeightDashboardContent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardViewModel
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -98,14 +100,24 @@ fun DashboardScreen() {
       is ProductSelection.MyWeight -> {
         val vm: WeightDashboardViewModel = hiltViewModel()
         val state by vm.state.collectAsState()
-        DashboardPage(vm = vm, product = product, goal = state.goal) { s ->
-          WeightDashboardContent(state = s, activeSegmentState = s.forSegment(s.selectedSegment), viewModel = vm)
+        DashboardPage(
+          vm = vm,
+          product = product,
+          goal = state.goal,
+          onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
+          onSegmentChange = { vm.handleIntent(WeightDashboardIntent.SetSelectedSegment(it)) },
+        ) { s ->
+          WeightDashboardContent(state = s, activeSegmentState = s.forSegment(s.selectedSegment), handleIntent = vm::handleIntent)
         }
       }
       is ProductSelection.BloodPressure -> {
         val vm: BpDashboardViewModel = hiltViewModel()
-        val state by vm.state.collectAsState()
-        DashboardPage(vm = vm, product = product) { s ->
+        DashboardPage(
+          vm = vm,
+          product = product,
+          onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
+          onSegmentChange = { vm.handleIntent(BpDashboardIntent.SetSelectedSegment(it)) },
+        ) { s ->
           BpDashboardContent(segmentState = s.forSegment(s.selectedSegment), state = s)
         }
       }
@@ -124,6 +136,8 @@ private fun <S : BaseDashboardState> DashboardPage(
   vm: BaseDashboardViewModel<S, *>,
   product: ProductSelection,
   goal: Goal? = null,
+  onRefresh: () -> Unit,
+  onSegmentChange: (GraphSegment) -> Unit,
   belowChart: @Composable (S) -> Unit,
 ) {
   val state by vm.state.collectAsState()
@@ -140,7 +154,7 @@ private fun <S : BaseDashboardState> DashboardPage(
 
   PullToRefreshBox(
     isRefreshing = state.isRefreshing,
-    onRefresh = { vm.refresh() },
+    onRefresh = onRefresh,
   ) {
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
       GraphPagerView(
@@ -149,7 +163,7 @@ private fun <S : BaseDashboardState> DashboardPage(
         selectedProduct = product,
         goal = goal,
         header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product) },
-        onSegmentChange = { segment -> vm.setSelectedSegment(segment) },
+        onSegmentChange = onSegmentChange,
       )
 
       belowChart(state)

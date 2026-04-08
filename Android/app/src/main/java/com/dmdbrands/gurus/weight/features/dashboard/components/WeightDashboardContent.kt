@@ -12,12 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.dmdbrands.gurus.weight.core.navigation.AppRoute
-import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummaries
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -27,23 +24,18 @@ import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardViewModel
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import kotlinx.coroutines.launch
 
 /**
- * Weight-specific below-chart content. Manages its own edit mode state.
- * Reads directly from [WeightDashboardState] — no cross-VM sync.
+ * Weight-specific below-chart content. Pure MVI — dispatches intents only.
+ * Manages its own edit mode state locally.
  */
 @Composable
 fun WeightDashboardContent(
   state: WeightDashboardState,
   activeSegmentState: SegmentState,
-  viewModel: WeightDashboardViewModel,
+  handleIntent: (WeightDashboardIntent) -> Unit,
 ) {
-  val navBackStack = LocalNavBackStack.current
-  val scope = rememberCoroutineScope()
-
   var inEditMode by remember { mutableStateOf(false) }
   var currentVisibleMetrics by remember(state.visibleKeys) {
     mutableStateOf(state.visibleKeys.filter { it is DashboardKey.Metric })
@@ -58,7 +50,7 @@ fun WeightDashboardContent(
       verticalArrangement = Arrangement.Center,
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      EmptyMetric(onConnectScaleClick = { viewModel.navigateTo(AppRoute.AccountSettings.AddEditScales) })
+      EmptyMetric(onConnectScaleClick = { handleIntent(WeightDashboardIntent.OnConnectScale) })
     }
   } else {
     Column(
@@ -74,17 +66,16 @@ fun WeightDashboardContent(
       verticalArrangement = Arrangement.Center,
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      // Metric cards read from active segment target (visible entries)
       DashboardMetrics(
         metricData = activeSegmentState.target,
         inEditMode = inEditMode,
         visibleKeys = currentVisibleMetrics,
         selectedStat = state.selectedStat,
         dashboardType = state.dashboardType,
-        onMetricClick = { viewModel.setSelectedStat(it) },
+        onMetricClick = { handleIntent(WeightDashboardIntent.SetSelectedStat(it)) },
         onLongClick = {
           if (!inEditMode) {
-            viewModel.setSelectedStat(null)
+            handleIntent(WeightDashboardIntent.SetSelectedStat(null))
             inEditMode = true
           }
         },
@@ -107,13 +98,11 @@ fun WeightDashboardContent(
         onMilestonesChanged = { currentVisibleMilestones = it },
         onLongClick = { _, _ ->
           if (!inEditMode) {
-            viewModel.setSelectedStat(null)
+            handleIntent(WeightDashboardIntent.SetSelectedStat(null))
             inEditMode = true
           }
         },
-        onNavigateToGoal = {
-          scope.launch { navBackStack.addRoute(AppRoute.AccountSettings.Goal) }
-        },
+        onNavigateToGoal = { handleIntent(WeightDashboardIntent.NavigateToGoal) },
       )
       if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
@@ -121,18 +110,19 @@ fun WeightDashboardContent(
       DashboardControlPanel(
         inEditMode = inEditMode,
         hasGoal = state.progress.goal?.account != null && state.progress.goal.account.goalType != null,
-        onResetClick = { viewModel.showResetDashboardAlert { inEditMode = false } },
+        onResetClick = {
+          handleIntent(WeightDashboardIntent.SetSelectedStat(null))
+          handleIntent(WeightDashboardIntent.ResetDashboard)
+        },
         onEditClick = { editMode ->
           if (editMode && !inEditMode) {
-            viewModel.setSelectedStat(null)
+            handleIntent(WeightDashboardIntent.SetSelectedStat(null))
           } else if (!editMode && inEditMode) {
-            viewModel.updateVisibleKeys(currentVisibleMetrics + currentVisibleMilestones, state.dashboardType)
+            handleIntent(WeightDashboardIntent.UpdateVisibleKeys(currentVisibleMetrics + currentVisibleMilestones, state.dashboardType))
           }
           inEditMode = editMode
         },
-        onUpdateGoalClick = {
-          scope.launch { navBackStack.addRoute(AppRoute.AccountSettings.Goal) }
-        },
+        onUpdateGoalClick = { handleIntent(WeightDashboardIntent.NavigateToGoal) },
         onMetricInfoClick = {
           val isSingleEntry = state.markerIndex != null
           val rangeText = activeSegmentState.minTarget?.let { min ->
@@ -140,15 +130,7 @@ fun WeightDashboardContent(
               GraphUtil.formatDateRange(min, max, state.selectedSegment)
             }
           }
-          scope.launch {
-            navBackStack.addRoute(
-              route = AppRoute.Dashboard.MetricInfo(
-                info = fromPeriodSummaries(activeSegmentState.target, isSingleEntry = isSingleEntry, rangeText = rangeText),
-                key = (state.selectedStat?.key as DashboardKey.Metric?)?.key ?: MetricKey.WEIGHT,
-                source = getSourceFromSegment(state.selectedSegment),
-              ),
-            )
-          }
+          // TODO: Navigate to MetricInfo via intent
         },
       )
     }

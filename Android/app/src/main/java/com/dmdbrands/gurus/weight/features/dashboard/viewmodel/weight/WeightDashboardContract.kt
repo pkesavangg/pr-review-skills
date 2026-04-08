@@ -63,6 +63,13 @@ sealed interface WeightDashboardIntent : IReducer.Intent {
   data class SetWeightUnit(val weightUnit: WeightUnit) : WeightDashboardIntent
   data class SetSecondaryKey(val key: DashboardKey?) : WeightDashboardIntent
   data class UpdateMarkerIndex(val markerIndex: Double?) : WeightDashboardIntent
+
+  // Action intents (side effects handled in VM)
+  data object Refresh : WeightDashboardIntent
+  data object OnConnectScale : WeightDashboardIntent
+  data object ResetDashboard : WeightDashboardIntent
+  data class UpdateVisibleKeys(val keys: List<DashboardKey>, val dashboardType: DashboardType) : WeightDashboardIntent
+  data object NavigateToGoal : WeightDashboardIntent
 }
 
 // ── Reducer ──
@@ -88,5 +95,11 @@ class WeightDashboardReducer : IReducer<WeightDashboardState, WeightDashboardInt
     is WeightDashboardIntent.SetWeightUnit -> state.copy(weightUnit = intent.weightUnit)
     is WeightDashboardIntent.SetSecondaryKey -> state.copy(secondaryKey = intent.key)
     is WeightDashboardIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
+    // Action intents — no state change (side effects in VM)
+    is WeightDashboardIntent.Refresh -> state
+    is WeightDashboardIntent.OnConnectScale -> state
+    is WeightDashboardIntent.ResetDashboard -> state
+    is WeightDashboardIntent.UpdateVisibleKeys -> state
+    is WeightDashboardIntent.NavigateToGoal -> state
   }
 }

@@ -58,6 +58,23 @@ class WeightDashboardViewModel @Inject constructor(
   override fun getMonthlyDataFlow(): Flow<GraphData> =
     entryService.monthlyBodyScaleAverages.map { GraphData.Weight(it) }
 
+  override fun handleIntent(intent: WeightDashboardIntent) {
+    // Action intents — side effects
+    when (intent) {
+      is WeightDashboardIntent.Refresh -> refresh()
+      is WeightDashboardIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.AddEditScales)
+      is WeightDashboardIntent.ResetDashboard -> showResetDashboardAlert()
+      is WeightDashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
+      is WeightDashboardIntent.NavigateToGoal -> navigateTo(AppRoute.AccountSettings.Goal)
+      is WeightDashboardIntent.SetSelectedStat -> {
+        viewModelScope.launch { dashboardService.setSelectedKey(intent.stat?.key) }
+      }
+      else -> {} // state-only intents handled by reducer
+    }
+    // Always pass to reducer for state changes
+    super.handleIntent(intent)
+  }
+
   override fun updateSegmentState(segment: GraphSegment, update: (SegmentState) -> SegmentState) {
     handleIntent(WeightDashboardIntent.UpdateSegment(segment, update))
   }
@@ -99,11 +116,11 @@ class WeightDashboardViewModel @Inject constructor(
     handleIntent(WeightDashboardIntent.UpdateMarkerIndex(markerIndex))
   }
 
-  override fun setSelectedSegment(segment: GraphSegment) {
+  private fun setSelectedSegment(segment: GraphSegment) {
     handleIntent(WeightDashboardIntent.SetSelectedSegment(segment))
   }
 
-  override fun refresh() {
+  private fun refresh() {
     viewModelScope.launch {
       AppLog.d(TAG, "Dashboard refresh started")
       setRefreshing(true)
@@ -196,12 +213,7 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
-  fun setSelectedStat(stat: Stat?) {
-    viewModelScope.launch { dashboardService.setSelectedKey(stat?.key) }
-    handleIntent(WeightDashboardIntent.SetSelectedStat(stat))
-  }
-
-  fun showResetDashboardAlert(onConfirm: () -> Unit) {
+  private fun showResetDashboardAlert() {
     val string = DashboardString.ResetDialog
     dialogQueueService.showDialog(
       DialogModel.Confirm(
@@ -212,7 +224,6 @@ class WeightDashboardViewModel @Inject constructor(
         onConfirm = {
           viewModelScope.launch {
             resetDashboard()
-            onConfirm()
           }
         },
       ),
@@ -234,7 +245,7 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
-  fun updateVisibleKeys(keys: List<DashboardKey>, dashboardType: DashboardType) {
+  private fun updateVisibleKeys(keys: List<DashboardKey>, dashboardType: DashboardType) {
     viewModelScope.launch {
       try {
         dialogQueueService.showLoader(message = DashboardString.Loader.Save)
@@ -249,7 +260,7 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
-  fun navigateTo(route: AppRoute) {
+  private fun navigateTo(route: AppRoute) {
     viewModelScope.launch { navigationService.navigateTo(route) }
   }
 }

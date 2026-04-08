@@ -34,6 +34,9 @@ sealed interface BpDashboardIntent : IReducer.Intent {
   data class SetProgress(val progress: Progress) : BpDashboardIntent
   data class SetIsEmpty(val isEmpty: Boolean) : BpDashboardIntent
   data class UpdateMarkerIndex(val markerIndex: Double?) : BpDashboardIntent
+
+  // Action intents
+  data object Refresh : BpDashboardIntent
 }
 
 // ── Reducer ──
@@ -50,5 +53,6 @@ class BpDashboardReducer : IReducer<BpDashboardState, BpDashboardIntent> {
     is BpDashboardIntent.SetProgress -> state.copy(progress = intent.progress)
     is BpDashboardIntent.SetIsEmpty -> state.copy(isEmpty = intent.isEmpty)
     is BpDashboardIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
+    is BpDashboardIntent.Refresh -> state // side effect only
   }
 }
