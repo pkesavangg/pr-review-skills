@@ -1,7 +1,9 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,36 +15,60 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.BabyProfile
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
-import com.dmdbrands.gurus.weight.features.common.components.InputFieldBase
+import com.dmdbrands.gurus.weight.features.common.components.AppRadioGroupModal
+import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableActionItem
+import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableListActions
+import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableListItem
+import com.dmdbrands.gurus.weight.features.common.components.BaseListItem
+import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
+import com.dmdbrands.gurus.weight.features.common.components.DateTimeInputMode
+import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
+import com.dmdbrands.gurus.weight.features.common.components.InputFieldBase
+import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageDefaults
 import com.dmdbrands.gurus.weight.features.common.components.ScaleImageSize
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.borderRadius
+import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.gurus.weight.theme.MeTheme.typography
 import kotlinx.collections.immutable.ImmutableList
 
 /**
@@ -116,108 +142,175 @@ fun PairedSuccessContent(
   }
 }
 
+/** White card TextField — used for read-only fields (e.g. sex selector) where no keyboard appears. */
+@Composable
+private fun CardTextField(
+  value: String,
+  label: String,
+  modifier: Modifier = Modifier,
+  trailingIcon: @Composable (() -> Unit)? = null,
+) {
+  TextField(
+    value = value,
+    onValueChange = {},
+    label = { Text(text = label, style = typography.body3, color = colorScheme.textSubheading) },
+    singleLine = true,
+    readOnly = true,
+    textStyle = typography.body2,
+    modifier = modifier.fillMaxWidth().height(56.dp),
+    shape = RoundedCornerShape(borderRadius.sm),
+    trailingIcon = trailingIcon,
+    colors = TextFieldDefaults.colors(
+      focusedContainerColor = colorScheme.primaryBackground,
+      unfocusedContainerColor = colorScheme.primaryBackground,
+      focusedIndicatorColor = Color.Transparent,
+      unfocusedIndicatorColor = Color.Transparent,
+      focusedTextColor = colorScheme.textBody,
+      unfocusedTextColor = colorScheme.textBody,
+      cursorColor = colorScheme.primaryAction,
+    ),
+  )
+}
+
 /**
- * Baby profile form — collects name, birthday, sex, birth length, birth weight.
+ * Baby profile form — matches signup AddBabyStep UI:
+ * white card inputs, date picker chip, sex dropdown modal.
  */
 @Composable
 fun BabyProfileFormContent(
   profile: BabyProfile,
   onProfileChanged: (BabyProfile) -> Unit,
-  onSkip: (() -> Unit)? = null,
   modifier: Modifier = Modifier,
 ) {
+  var showSexModal by remember { mutableStateOf(false) }
+  val birthdayForm = remember {
+    FormControl.create<DateTimeValue>(
+      initialValue = DateTimeValue.Date(
+        profile.birthday?.let { DateTimeValue.getEpochMillisFromDateString(it) }
+          ?: System.currentTimeMillis(),
+      ),
+      validators = emptyList(),
+    )
+  }
+
+  val currentProfile by rememberUpdatedState(profile)
+
+  LaunchedEffect(birthdayForm) {
+    snapshotFlow { birthdayForm.value }
+      .collect { dateValue ->
+        val formatted = when (dateValue) {
+          is DateTimeValue.Date -> DateTimeValue.getDateFormatFromMilliseconds(dateValue.millis)
+          else -> null
+        }
+        if (formatted != null && formatted != currentProfile.birthday) {
+          onProfileChanged(currentProfile.copy(birthday = formatted))
+        }
+      }
+  }
+
+  val sexOptions = remember {
+    listOf(
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexMale, label = BabyScaleSetupStrings.BabyProfileForm.SexMale),
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexFemale, label = BabyScaleSetupStrings.BabyProfileForm.SexFemale),
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexOther, label = BabyScaleSetupStrings.BabyProfileForm.SexOther),
+    )
+  }
+
+  if (showSexModal) {
+    AppRadioGroupModal(
+      title = BabyScaleSetupStrings.BabyProfileForm.SexHint,
+      options = sexOptions,
+      selectedItem = profile.biologicalSex?.ifEmpty { null },
+      onCancel = { showSexModal = false },
+      onOk = { selected ->
+        if (selected != null) onProfileChanged(currentProfile.copy(biologicalSex = selected))
+        showSexModal = false
+      },
+    )
+  }
+
+  val nameFocusRequester = remember { FocusRequester() }
+  val birthLengthFocusRequester = remember { FocusRequester() }
+  val birthWeightFocusRequester = remember { FocusRequester() }
+
   Column(
     modifier = modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
       .padding(vertical = spacing.md, horizontal = spacing.sm),
-    verticalArrangement = Arrangement.spacedBy(spacing.md),
   ) {
-    AppText(
-      text = BabyScaleSetupStrings.BabyProfileForm.Title,
-      textType = TextType.Title,
-      modifier = Modifier.fillMaxWidth(),
-    )
-    AppText(
-      text = BabyScaleSetupStrings.BabyProfileForm.Subtitle,
-      textType = TextType.Body,
-      modifier = Modifier.fillMaxWidth(),
-    )
+    AppText(text = BabyScaleSetupStrings.BabyProfileForm.Title, textType = TextType.Title, modifier = Modifier.fillMaxWidth())
+    Spacer(modifier = Modifier.height(spacing.xs))
+    AppText(text = BabyScaleSetupStrings.BabyProfileForm.Subtitle, textType = TextType.Body, modifier = Modifier.fillMaxWidth())
+    Spacer(modifier = Modifier.height(spacing.lg))
 
-    OutlinedTextField(
+    InputFieldBase<String>(
       value = profile.name,
-      onValueChange = { onProfileChanged(profile.copy(name = it)) },
-      label = { Text(BabyScaleSetupStrings.BabyProfileForm.NameHint) },
-      singleLine = true,
+      onValueChange = { onProfileChanged(profile.copy(name = it ?: "")) },
+      label = BabyScaleSetupStrings.BabyProfileForm.NameHint,
       modifier = Modifier.fillMaxWidth(),
-      colors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MeTheme.colorScheme.primaryAction,
-        unfocusedBorderColor = MeTheme.colorScheme.secondaryAction,
-      ),
+      focusRequester = nameFocusRequester,
+      keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+      onImeAction = { birthLengthFocusRequester.requestFocus() },
     )
+    Spacer(modifier = Modifier.height(spacing.xs))
 
-    OutlinedTextField(
-      value = profile.birthday ?: "",
-      onValueChange = { onProfileChanged(profile.copy(birthday = it)) },
-      label = { Text(BabyScaleSetupStrings.BabyProfileForm.BirthdayHint) },
-      singleLine = true,
-      modifier = Modifier.fillMaxWidth(),
-      colors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MeTheme.colorScheme.primaryAction,
-        unfocusedBorderColor = MeTheme.colorScheme.secondaryAction,
-      ),
+    AppText(text = BabyScaleSetupStrings.BabyProfileForm.BirthdayHint, textType = TextType.Subtitle, modifier = Modifier.padding(bottom = spacing.xs))
+    DateTimeInput(
+      formControl = birthdayForm,
+      mode = DateTimeInputMode.Date,
+      maxValue = DateTimeValue.Date(System.currentTimeMillis()),
     )
+    Spacer(modifier = Modifier.height(spacing.sm))
 
-    OutlinedTextField(
-      value = profile.biologicalSex ?: "",
-      onValueChange = { onProfileChanged(profile.copy(biologicalSex = it)) },
-      label = { Text(BabyScaleSetupStrings.BabyProfileForm.SexHint) },
-      singleLine = true,
-      modifier = Modifier.fillMaxWidth(),
-      colors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MeTheme.colorScheme.primaryAction,
-        unfocusedBorderColor = MeTheme.colorScheme.secondaryAction,
-      ),
-    )
-
-    OutlinedTextField(
-      value = profile.birthLength ?: "",
-      onValueChange = { onProfileChanged(profile.copy(birthLength = it)) },
-      label = { Text(BabyScaleSetupStrings.BabyProfileForm.BirthLengthHint) },
-      singleLine = true,
-      modifier = Modifier.fillMaxWidth(),
-      colors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MeTheme.colorScheme.primaryAction,
-        unfocusedBorderColor = MeTheme.colorScheme.secondaryAction,
-      ),
-    )
-
-    OutlinedTextField(
-      value = profile.birthWeight ?: "",
-      onValueChange = { onProfileChanged(profile.copy(birthWeight = it)) },
-      label = { Text(BabyScaleSetupStrings.BabyProfileForm.BirthWeightHint) },
-      singleLine = true,
-      modifier = Modifier.fillMaxWidth(),
-      colors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = MeTheme.colorScheme.primaryAction,
-        unfocusedBorderColor = MeTheme.colorScheme.secondaryAction,
-      ),
-    )
-
-    if (onSkip != null) {
-      Spacer(modifier = Modifier.height(spacing.xs))
-      AppButton(
-        label = BabyScaleSetupStrings.BabyProfileForm.SkipButton,
-        type = ButtonType.InlineTextPrimary,
-        onClick = onSkip,
-        modifier = Modifier.align(Alignment.CenterHorizontally),
+    Box(modifier = Modifier.fillMaxWidth()) {
+      CardTextField(
+        value = profile.biologicalSex ?: "",
+        label = BabyScaleSetupStrings.BabyProfileForm.SexHint,
+        trailingIcon = {
+          Icon(
+            painter = painterResource(id = com.dmdbrands.gurus.weight.R.drawable.ic_chevron_down),
+            contentDescription = BabyScaleSetupStrings.BabyProfileForm.SexSelectContentDescription,
+            tint = colorScheme.textBody,
+          )
+        },
+      )
+      Box(
+        modifier = Modifier
+          .matchParentSize()
+          .clickable(
+            indication = null,
+            interactionSource = remember { MutableInteractionSource() },
+          ) { showSexModal = true },
       )
     }
+    Spacer(modifier = Modifier.height(spacing.md))
+
+    InputFieldBase<String>(
+      value = profile.birthLength ?: "",
+      onValueChange = { onProfileChanged(profile.copy(birthLength = it)) },
+      label = BabyScaleSetupStrings.BabyProfileForm.BirthLengthHint,
+      modifier = Modifier.fillMaxWidth(),
+      focusRequester = birthLengthFocusRequester,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+      onImeAction = { birthWeightFocusRequester.requestFocus() },
+    )
+    Spacer(modifier = Modifier.height(spacing.sm))
+
+    InputFieldBase<String>(
+      value = profile.birthWeight ?: "",
+      onValueChange = { onProfileChanged(profile.copy(birthWeight = it)) },
+      label = BabyScaleSetupStrings.BabyProfileForm.BirthWeightHint,
+      modifier = Modifier.fillMaxWidth(),
+      focusRequester = birthWeightFocusRequester,
+      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+      onImeAction = { birthWeightFocusRequester.freeFocus() },
+    )
   }
 }
 
 /**
- * Baby list step — displays added babies with edit/delete, and an "ADD A BABY" button.
+ * Baby list step — matches signup BabyAddedStep: avatar, swipe-to-delete, edit icon, filled button.
  */
 @Composable
 fun BabyListContent(
@@ -227,67 +320,88 @@ fun BabyListContent(
   onAddBaby: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  var openIndex by remember { mutableStateOf<Int?>(null) }
+
   Column(
     modifier = modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
       .padding(vertical = spacing.md, horizontal = spacing.sm),
-    verticalArrangement = Arrangement.spacedBy(spacing.md),
   ) {
     AppText(
       text = BabyScaleSetupStrings.BabyList.Title,
       textType = TextType.Title,
       modifier = Modifier.fillMaxWidth(),
     )
+    Spacer(modifier = Modifier.height(spacing.lg))
 
-    babyProfiles.forEachIndexed { index, profile ->
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(vertical = spacing.xs),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        AppText(
-          text = profile.name.ifEmpty { "Baby ${index + 1}" },
-          textType = TextType.Body,
-          modifier = Modifier.weight(1f),
-        )
-        Row {
-          IconButton(onClick = { onEditBaby(index) }) {
-            Icon(
-              painter = painterResource(id = AppIcons.Setup.EditPencil),
-              contentDescription = "Edit",
-              tint = MeTheme.colorScheme.primaryAction,
-            )
-          }
-          IconButton(onClick = { onDeleteBaby(index) }) {
-            Icon(
-              painter = painterResource(id = AppIcons.Default.Delete),
-              contentDescription = "Delete",
-              tint = MeTheme.colorScheme.errorAction,
-            )
-          }
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.x3s)) {
+      babyProfiles.forEachIndexed { index, profile ->
+        AppSwipeableListItem(
+          onActionOpened = { openedIdx -> openIndex = openedIdx },
+          isSwipeable = true,
+          index = index,
+          iconWidth = 56.dp,
+          showAction = openIndex == index,
+          actionContent = {
+            AppSwipeableListActions {
+              AppSwipeableActionItem(
+                iconId = AppIcons.Default.Delete,
+                contentDescription = BabyScaleSetupStrings.BabyList.DeleteContentDescription,
+                backgroundColor = MeTheme.colorScheme.danger,
+              ) { onDeleteBaby(index) }
+            }
+          },
+        ) {
+          BaseListItem(
+            title = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.BabyFallbackName(index) },
+            leadingContent = {
+              BabyAvatar(name = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.AvatarInitialFallback })
+            },
+            trailingContent = {
+              IconButton(onClick = { onEditBaby(index) }) {
+                Icon(
+                  painter = painterResource(AppIcons.Default.EditPencil),
+                  contentDescription = BabyScaleSetupStrings.BabyList.EditContentDescription,
+                  tint = MeTheme.colorScheme.textBody,
+                  modifier = Modifier.size(20.dp),
+                )
+              }
+            },
+          )
         }
       }
-      if (index < babyProfiles.lastIndex) {
-        HorizontalDivider(color = MeTheme.colorScheme.secondaryActionDisabled)
-      }
     }
 
-    Spacer(modifier = Modifier.height(spacing.sm))
+    Spacer(modifier = Modifier.height(spacing.lg))
 
-    OutlinedButton(
-      onClick = onAddBaby,
-      modifier = Modifier.align(Alignment.CenterHorizontally),
-      border = BorderStroke(1.dp, MeTheme.colorScheme.primaryAction),
-    ) {
-      Text(
-        text = BabyScaleSetupStrings.BabyList.AddBabyButton,
-        style = MeTheme.typography.button1,
-        color = MeTheme.colorScheme.primaryAction,
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+      AppButton(
+        label = BabyScaleSetupStrings.BabyList.AddBabyButton,
+        onClick = onAddBaby,
+        type = ButtonType.PrimaryFilled,
+        size = ButtonSize.Small,
       )
     }
+  }
+}
+
+@Composable
+private fun BabyAvatar(name: String, modifier: Modifier = Modifier) {
+  val initial = name.firstOrNull()?.uppercase() ?: BabyScaleSetupStrings.BabyList.AvatarInitialFallback
+  Box(
+    modifier = modifier
+      .size(40.dp)
+      .clip(CircleShape)
+      .background(MeTheme.colorScheme.secondaryBackground),
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(
+      text = initial,
+      style = MeTheme.typography.heading5,
+      color = MeTheme.colorScheme.textBody,
+      textAlign = TextAlign.Center,
+    )
   }
 }
 
