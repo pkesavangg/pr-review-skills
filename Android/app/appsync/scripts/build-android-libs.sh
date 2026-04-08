@@ -3,11 +3,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Default: assumes wgApp4 repo is checked out as a sibling of meApp
+#   i.e.  <workspace>/meApp/  and  <workspace>/wgApp4/
 WORK_DIR="$(cd "${MODULE_DIR}/../../../.." && pwd)"
 SRC_DIR="${APPSYNC_SRC_DIR:-${WORK_DIR}/wgApp4/appsync-plugin/src/ios/AppSync/C}"
 
 if [[ ! -d "${SRC_DIR}" ]]; then
   echo "AppSync C source not found at: ${SRC_DIR}" >&2
+  echo "Expected layout: <workspace>/meApp/ and <workspace>/wgApp4/ as siblings." >&2
   echo "Set APPSYNC_SRC_DIR to the directory containing jniBridge.c and retry." >&2
   exit 1
 fi
@@ -84,7 +87,7 @@ popd >/dev/null
 READELF="${NDK_BIN}/llvm-readelf"
 
 echo ""
-echo "Built AppSync Android libraries with 16KB page alignment:"
+echo "Built AppSync Android libraries (64-bit: 16KB alignment, 32-bit: 4KB alignment):"
 for abi in arm64-v8a armeabi-v7a x86 x86_64; do
   echo "  ${JNILIBS_DIR}/${abi}/libappsync.so"
   if [[ -x "${READELF}" ]]; then
