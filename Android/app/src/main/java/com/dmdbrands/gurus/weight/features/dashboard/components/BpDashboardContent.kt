@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
@@ -33,7 +34,7 @@ fun BpDashboardContent(
   segmentState: SegmentState,
   state: BaseDashboardState,
 ) {
-  val target = segmentState.target.filterIsInstance<com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary>()
+  val target = segmentState.target.filterIsInstance<PeriodBpmSummary>()
   val avgSys = target.map { it.avgSystolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
   val avgDia = target.map { it.avgDiastolic }.takeIf { it.isNotEmpty() }?.average()?.toInt()
   val avgPulse = target.map { it.avgPulse }.takeIf { it.isNotEmpty() }?.average()?.toInt()

@@ -43,10 +43,13 @@ data class ChartConfig(
 fun rememberChartConfig(
   product: ProductSelection,
   goal: Goal? = null,
+  avgSystolic: Int? = null,
+  avgDiastolic: Int? = null,
+  avgPulse: Int? = null,
 ): ChartConfig {
   val primaryColor = MeTheme.colorScheme.primaryAction
   val secondaryColor = MeTheme.colorScheme.secondaryAction
-  return remember(product, goal) {
+  return remember(product, goal, avgSystolic, avgDiastolic, avgPulse) {
     when (product) {
       is ProductSelection.MyWeight -> ChartConfig(
         lines = listOf(LineSpec(color = primaryColor)),
@@ -59,9 +62,9 @@ fun rememberChartConfig(
       )
       is ProductSelection.BloodPressure -> ChartConfig(
         lines = listOf(
-          LineSpec(color = SnapshotColors.BloodPressure),
-          LineSpec(color = Color(0xFF7B726E)),
-          LineSpec(color = Color(0xFF00B3E3)),
+          LineSpec(color = avgSystolic?.let { SnapshotColors.systolicColor(it) } ?: SnapshotColors.BloodPressure),
+          LineSpec(color = avgDiastolic?.let { SnapshotColors.diastolicColor(it) } ?: Color(0xFF7B726E)),
+          LineSpec(color = avgPulse?.let { SnapshotColors.pulseColor(it) } ?: Color(0xFF00B3E3)),
         ),
         useAllSeriesForYRange = true,
       )

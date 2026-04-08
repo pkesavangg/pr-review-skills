@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric.Companion.fromPeriodSummaries
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -67,7 +68,7 @@ fun WeightDashboardContent(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       DashboardMetrics(
-        metricData = activeSegmentState.target.filterIsInstance<com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary>(),
+        metricData = activeSegmentState.target.filterIsInstance<PeriodBodyScaleSummary>(),
         inEditMode = inEditMode,
         visibleKeys = currentVisibleMetrics,
         selectedStat = state.selectedStat,
