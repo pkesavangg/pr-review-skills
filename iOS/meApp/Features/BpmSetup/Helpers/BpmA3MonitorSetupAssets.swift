@@ -19,6 +19,8 @@ enum BpmA3MonitorSetupAssets {
         static let setUser = "SetUser"
         static let syncing = "Syncing"
         static let monitorOff = "Monitor_Off"
+        static let pulse = "Pulse"
+        static let powerSwitch = "Power_Switch"
     }
 
     /// Returns the device-type-prefixed resource name, e.g. `"A3_Cuff"`.
@@ -26,9 +28,18 @@ enum BpmA3MonitorSetupAssets {
         "\(deviceType)_\(file)"
     }
 
-    /// Non-user setup GIFs (Cuff, Start, MEM_Button, etc.) all live under `0603`.
+    /// Returns a per-SKU resource name, e.g. `"A3_0634_Cuff"`.
+    static func perSkuResourceName(sku: String, _ file: String) -> String {
+        "\(deviceType)_\(sku)_\(file)"
+    }
+
+    /// SKUs that carry their own full set of setup GIFs/images.
+    private static let skusWithPerSkuAssets: Set<String> = ["0634", "0636"]
+
+    /// Returns the folder SKU for non-user GIFs. SKUs in ``skusWithPerSkuAssets``
+    /// resolve to themselves; all others fall back to the shared `0603` folder.
     static func resolvedAssetSku(_ sku: String) -> String {
-        "0603"
+        skusWithPerSkuAssets.contains(sku) ? sku : "0603"
     }
 
     /// Subdirectory for general setup GIFs (Cuff, Start, etc.), e.g. `Gifs/BpmMonitors/A3/0603`.

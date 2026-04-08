@@ -64,6 +64,7 @@ final class BpmSetupStore: ObservableObject {
             // When user selects a model from the grid, reconfigure steps for that SKU.
             if let sku = selectedSku, oldValue != sku {
                 reconfigureStepsForSku(sku)
+                }
             }
         }
     }
@@ -139,6 +140,8 @@ final class BpmSetupStore: ObservableObject {
                         title: BpmSetupStrings.PowerSwitch.title,
                         description: BpmSetupStrings.PowerSwitch.description,
                         imagePath: bpmItem.imgPath,
+                        resourceImageName: BpmA3MonitorSetupAssets.perSkuResourceName(sku: bpmItem.sku, BpmA3MonitorSetupAssets.ImageFile.powerSwitch),
+                        resourceImageSubdirectory: BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: bpmItem.sku),
                         mediaLayout: .top,
                         mediaHorizontalPadding: 0
                     )
@@ -312,7 +315,7 @@ final class BpmSetupStore: ObservableObject {
         let resolved = BPMS.first { $0.sku == primarySku } ?? BPMS.first
         self.bpmItem = resolved
         self.selectedSku = primarySku
-        self.deviceNickname = BpmSetupStrings.Nickname.defaultName
+        self.deviceNickname = resolved?.productName ?? BpmSetupStrings.Nickname.defaultName
         resetDiscoveryState()
         bluetoothService.isSetupInProgress = true
 
@@ -905,7 +908,9 @@ final class BpmSetupStore: ObservableObject {
     private func confirmUserGifSubdirectory(for sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
             // SKUs with their own Pulse GIF use the per-SKU folder.
-            if sku == "0634" { return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku) }
+            if sku == "0634" || sku == "0636" {
+                return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku)
+            }
             return BpmA3MonitorSetupAssets.gifBundleSubdirectory(for: sku)
         }
         if a6BpmSkus.contains(sku) {
@@ -936,16 +941,29 @@ final class BpmSetupStore: ObservableObject {
 
     private func gifName(for step: BpmSetupStep, sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
+            let resolvedSku = BpmA3MonitorSetupAssets.resolvedAssetSku(sku)
+            let usePerSku = resolvedSku == sku // true for 0634, 0636
+
             switch step {
             case .prePairing:
-                if sku == "0634" { return "A3_0634_Pulse" }
+                if usePerSku {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.pulse)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.memButton)
             case .confirmUser:
-                if sku == "0634" { return "A3_0634_Pulse" }
+                if sku == "0636" {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.pulse)
+                }
                 return nil
             case .measureSetup:
+                if usePerSku {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.cuff)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.cuff)
             case .measureStart:
+                if usePerSku {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.start)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.start)
             default:
                 return nil
@@ -955,11 +973,11 @@ final class BpmSetupStore: ObservableObject {
         if a6BpmSkus.contains(sku) {
             switch step {
             case .prePairing:
-                return BpmA6MonitorSetupAssets.resourceName(BpmA6MonitorSetupAssets.ImageFile.pulse)
+                return BpmA6MonitorSetupAssets.resolvedResourceName(sku: sku, BpmA6MonitorSetupAssets.ImageFile.pulse)
             case .measureSetup:
-                return BpmA6MonitorSetupAssets.resourceName(BpmA6MonitorSetupAssets.ImageFile.cuff)
+                return BpmA6MonitorSetupAssets.resolvedResourceName(sku: sku, BpmA6MonitorSetupAssets.ImageFile.cuff)
             case .measureStart:
-                return BpmA6MonitorSetupAssets.resourceName(BpmA6MonitorSetupAssets.ImageFile.start)
+                return BpmA6MonitorSetupAssets.resolvedResourceName(sku: sku, BpmA6MonitorSetupAssets.ImageFile.start)
             default:
                 return nil
             }
@@ -974,6 +992,9 @@ final class BpmSetupStore: ObservableObject {
             case .setUser:
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.setUser)
             case .confirmUser:
+                if sku == "0634" {
+                    return BpmA3MonitorSetupAssets.perSkuResourceName(sku: sku, BpmA3MonitorSetupAssets.ImageFile.monitorOff)
+                }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.monitorStartStop)
             default:
                 return nil
