@@ -20,15 +20,11 @@ data class SegmentState(
   val maxTarget: Long? = null,
   val chartMinX: Double? = null,
   val chartMaxX: Double? = null,
-  val markerIndex: Double? = null,
   val isEmptyGraph: Boolean = false,
   val isSingleWindow: Boolean = false,
   val startTimestamp: Long? = null,
   val endTimestamp: Long? = null,
-) {
-  fun getStartTimestamp(): Long = startTimestamp ?: java.util.Calendar.getInstance().timeInMillis
-  fun getEndTimestamp(): Long = endTimestamp ?: java.util.Calendar.getInstance().timeInMillis
-}
+)
 
 /**
  * Base dashboard state interface. Pure chart infrastructure.
@@ -42,6 +38,7 @@ interface BaseDashboardState : IReducer.State {
   val selectedSegment: GraphSegment
   val scrollTarget: Double?
   val isRefreshing: Boolean
+  val markerIndex: Double?
 
   fun forSegment(segment: GraphSegment): SegmentState {
     return segmentStates[segment] ?: SegmentState()

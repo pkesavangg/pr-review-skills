@@ -28,6 +28,7 @@ data class WeightDashboardState(
   override val selectedSegment: GraphSegment = GraphSegment.WEEK,
   override val scrollTarget: Double? = null,
   override val isRefreshing: Boolean = false,
+  override val markerIndex: Double? = null,
   // Weight-specific
   val weightUnit: WeightUnit = WeightUnit.KG,
   val goal: Goal? = null,
@@ -61,6 +62,7 @@ sealed interface WeightDashboardIntent : IReducer.Intent {
   data class SetGoal(val goal: Goal?) : WeightDashboardIntent
   data class SetWeightUnit(val weightUnit: WeightUnit) : WeightDashboardIntent
   data class SetSecondaryKey(val key: DashboardKey?) : WeightDashboardIntent
+  data class UpdateMarkerIndex(val markerIndex: Double?) : WeightDashboardIntent
 }
 
 // ── Reducer ──
@@ -85,5 +87,6 @@ class WeightDashboardReducer : IReducer<WeightDashboardState, WeightDashboardInt
     is WeightDashboardIntent.SetGoal -> state.copy(goal = intent.goal)
     is WeightDashboardIntent.SetWeightUnit -> state.copy(weightUnit = intent.weightUnit)
     is WeightDashboardIntent.SetSecondaryKey -> state.copy(secondaryKey = intent.key)
+    is WeightDashboardIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
   }
 }

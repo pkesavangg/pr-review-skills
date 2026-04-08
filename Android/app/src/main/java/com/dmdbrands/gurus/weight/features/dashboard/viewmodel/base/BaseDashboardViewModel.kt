@@ -175,9 +175,8 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : IReducer.Inten
     }
   }
 
-  fun updateMarkerIndex(segment: GraphSegment, markerIndex: Double?) {
-    updateSegmentState(segment) { it.copy(markerIndex = markerIndex) }
-  }
+  /** Update marker index — product-level, not segment-level. */
+  abstract fun updateMarkerIndex(markerIndex: Double?)
 
   fun updateIsEmptyGraph(segment: GraphSegment, isEmpty: Boolean) {
     updateSegmentState(segment) { it.copy(isEmptyGraph = isEmpty) }

@@ -56,6 +56,10 @@ class BpDashboardViewModel @Inject constructor(
     subscribeProgress()
   }
 
+  override fun updateMarkerIndex(markerIndex: Double?) {
+    handleIntent(BpDashboardIntent.UpdateMarkerIndex(markerIndex))
+  }
+
   override fun setSelectedSegment(segment: GraphSegment) {
     handleIntent(BpDashboardIntent.SetSelectedSegment(segment))
   }

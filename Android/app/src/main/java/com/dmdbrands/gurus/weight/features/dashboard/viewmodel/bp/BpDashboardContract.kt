@@ -18,6 +18,7 @@ data class BpDashboardState(
   override val selectedSegment: GraphSegment = GraphSegment.WEEK,
   override val scrollTarget: Double? = null,
   override val isRefreshing: Boolean = false,
+  override val markerIndex: Double? = null,
   // BP-specific
   val progress: Progress = Progress(),
   val isEmpty: Boolean = false,
@@ -32,6 +33,7 @@ sealed interface BpDashboardIntent : IReducer.Intent {
   data class SetSelectedSegment(val segment: GraphSegment) : BpDashboardIntent
   data class SetProgress(val progress: Progress) : BpDashboardIntent
   data class SetIsEmpty(val isEmpty: Boolean) : BpDashboardIntent
+  data class UpdateMarkerIndex(val markerIndex: Double?) : BpDashboardIntent
 }
 
 // ── Reducer ──
@@ -47,5 +49,6 @@ class BpDashboardReducer : IReducer<BpDashboardState, BpDashboardIntent> {
     is BpDashboardIntent.SetSelectedSegment -> state.copy(selectedSegment = intent.segment)
     is BpDashboardIntent.SetProgress -> state.copy(progress = intent.progress)
     is BpDashboardIntent.SetIsEmpty -> state.copy(isEmpty = intent.isEmpty)
+    is BpDashboardIntent.UpdateMarkerIndex -> state.copy(markerIndex = intent.markerIndex)
   }
 }

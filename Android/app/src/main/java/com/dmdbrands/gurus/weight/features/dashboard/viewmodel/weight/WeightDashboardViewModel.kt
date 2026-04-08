@@ -95,6 +95,10 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
+  override fun updateMarkerIndex(markerIndex: Double?) {
+    handleIntent(WeightDashboardIntent.UpdateMarkerIndex(markerIndex))
+  }
+
   override fun setSelectedSegment(segment: GraphSegment) {
     handleIntent(WeightDashboardIntent.SetSelectedSegment(segment))
   }
