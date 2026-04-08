@@ -1070,6 +1070,7 @@ final class BpmSetupStore: ObservableObject {
     }
 
     private func setScanFailure() {
+        connectionState = .failure
         resetDiscoveryState()
         showConnectionErrorAlert()
     }
@@ -1147,6 +1148,26 @@ extension BpmSetupStore {
     @MainActor
     func testStartScanning() {
         startScanning()
+    }
+
+    @MainActor
+    func testSaveAndAdvanceFromNickname() async {
+        await saveAndAdvanceFromNickname()
+    }
+
+    @MainActor
+    func testSetDeviceToDelete(_ device: Device) {
+        self.deviceToDelete = device
+    }
+
+    @MainActor
+    func testUpdateDeviceFromPostConnectionInfo(_ device: Device) async {
+        await updateDeviceFromPostConnectionInfo(device)
+    }
+
+    @MainActor
+    func testCheckForPrePairingDuplicate() async {
+        await checkForPrePairingDuplicate()
     }
 }
 #endif
