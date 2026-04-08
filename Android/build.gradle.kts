@@ -15,6 +15,43 @@ plugins {
     alias(libs.plugins.owasp.dependency.check)
 }
 
+val ensureLefthookInstalled by tasks.registering {
+    // CI sets both CI and CIRCLECI — checking CI alone suffices but CIRCLECI is kept for clarity.
+    onlyIf { System.getenv("CIRCLECI") == null && System.getenv("CI") == null }
+
+    val repoRoot = rootDir.parentFile
+        ?: error("Cannot determine repo root from $rootDir")
+    val hookFile = File(repoRoot, ".git/hooks/pre-commit")
+    outputs.upToDateWhen {
+        hookFile.exists() && hookFile.readText().contains("lefthook")
+    }
+
+    doLast {
+        require(File(repoRoot, ".lefthook.yml").exists()) {
+            "Expected .lefthook.yml at $repoRoot — is this the correct repo root?"
+        }
+        val installHint = "Install with: brew install lefthook\nThen re-run your build."
+        try {
+            val process = ProcessBuilder("lefthook", "install")
+                .directory(repoRoot)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().readText()
+            val finished = process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)
+            if (output.isNotBlank()) logger.lifecycle(output)
+            if (!finished) {
+                process.destroyForcibly()
+                throw GradleException("Lefthook install timed out after 30 seconds.\n$installHint")
+            }
+            if (process.exitValue() != 0) {
+                throw GradleException("Lefthook failed to install git hooks (exit code ${process.exitValue()}).\n$installHint")
+            }
+        } catch (e: java.io.IOException) {
+            throw GradleException("Lefthook is required for local development but could not be found.\n$installHint")
+        }
+    }
+}
+
 subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
@@ -47,6 +84,10 @@ subprojects {
     tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
         jvmTarget = "11"
         exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+    }
+
+    tasks.matching { it.name == "preBuild" }.configureEach {
+        dependsOn(ensureLefthookInstalled)
     }
 }
 
