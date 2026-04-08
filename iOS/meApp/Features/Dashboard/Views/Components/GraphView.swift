@@ -146,20 +146,30 @@ struct GraphView: View {
 
     // MARK: - Chart View
 
-    private var selectedPeriod: TimePeriod {
-        dashboardStore.state.graph.selectedPeriod
-    }
-
-    // Keep all four graph views permanently in the tree so their @State (caches,
-    // scroll position, animation flags) survives period switches without a full remount.
-    // Only the active view is visible and interactive; the others are hidden and
-    // excluded from hit-testing so they don't consume touches or layout space.
     private var chartView: some View {
-        ZStack {
-            WeekGraphView(viewModel: weekSectionViewModel, dashboardStore: dashboardStore, isActive: selectedPeriod == .week)
-            MonthGraphView(viewModel: monthSectionViewModel, dashboardStore: dashboardStore, isActive: selectedPeriod == .month)
-            YearGraphView(viewModel: yearSectionViewModel, dashboardStore: dashboardStore, isActive: selectedPeriod == .year)
-            TotalGraphView(viewModel: totalSectionViewModel, dashboardStore: dashboardStore, isActive: selectedPeriod == .total)
+        HStack(spacing: 0) {
+            switch dashboardStore.state.graph.selectedPeriod {
+            case .week:
+                WeekGraphView(
+                    viewModel: weekSectionViewModel,
+                    dashboardStore: dashboardStore
+                )
+            case .month:
+                MonthGraphView(
+                    viewModel: monthSectionViewModel,
+                    dashboardStore: dashboardStore
+                )
+            case .year:
+                YearGraphView(
+                    viewModel: yearSectionViewModel,
+                    dashboardStore: dashboardStore
+                )
+            case .total:
+                TotalGraphView(
+                    viewModel: totalSectionViewModel,
+                    dashboardStore: dashboardStore
+                )
+            }
         }
     }
 
