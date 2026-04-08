@@ -24,6 +24,9 @@ data class SegmentState(
   val isSingleWindow: Boolean = false,
   val startTimestamp: Long? = null,
   val endTimestamp: Long? = null,
+  /** Current visible X range from scroll — updated on scroll stop. */
+  val visibleMin: Long? = null,
+  val visibleMax: Long? = null,
 )
 
 /**

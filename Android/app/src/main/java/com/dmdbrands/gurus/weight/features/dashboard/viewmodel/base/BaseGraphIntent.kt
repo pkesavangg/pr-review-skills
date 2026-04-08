@@ -14,7 +14,9 @@ import kotlinx.collections.immutable.toImmutableList
  */
 interface BaseGraphIntent : IReducer.Intent {
   data class UpdateSegment(val segment: GraphSegment, val update: (SegmentState) -> SegmentState) : BaseGraphIntent
-  data class SetProducers(val daily: CartesianChartModelProducer, val monthly: CartesianChartModelProducer) : BaseGraphIntent
+  data class SetProducers(val daily: CartesianChartModelProducer, val monthly: CartesianChartModelProducer) :
+    BaseGraphIntent
+
   data class SetRefreshing(val isRefreshing: Boolean) : BaseGraphIntent
   data class SetSelectedSegment(val segment: GraphSegment) : BaseGraphIntent
   data class UpdateMarkerIndex(val markerIndex: Double?) : BaseGraphIntent
@@ -52,19 +54,43 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
       copyBaseFields(state, segmentStates = state.segmentStates + (intent.segment to intent.update(current)))
     }
-    is BaseGraphIntent.SetProducers -> copyBaseFields(state, dailyProducer = intent.daily, monthlyProducer = intent.monthly)
+
+    is BaseGraphIntent.SetProducers -> copyBaseFields(
+      state,
+      dailyProducer = intent.daily,
+      monthlyProducer = intent.monthly,
+    )
+
     is BaseGraphIntent.SetRefreshing -> copyBaseFields(state, isRefreshing = intent.isRefreshing)
     is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment)
     is BaseGraphIntent.UpdateMarkerIndex -> copyBaseFields(state, markerIndex = intent.markerIndex)
-    is BaseGraphIntent.ScrollRange -> state // side effect handled in VM
+    is BaseGraphIntent.ScrollRange -> {
+      val current = state.segmentStates[intent.segment] ?: SegmentState()
+      copyBaseFields(
+        state,
+        segmentStates = state.segmentStates + (intent.segment to current.copy(
+          visibleMin = intent.min,
+          visibleMax = intent.max,
+        )),
+      )
+    }
+
     is BaseGraphIntent.UpdateIsEmptyGraph -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
-      copyBaseFields(state, segmentStates = state.segmentStates + (intent.segment to current.copy(isEmptyGraph = intent.isEmpty)))
+      copyBaseFields(
+        state,
+        segmentStates = state.segmentStates + (intent.segment to current.copy(isEmptyGraph = intent.isEmpty)),
+      )
     }
+
     is BaseGraphIntent.UpdateSegmentTarget -> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
-      copyBaseFields(state, segmentStates = state.segmentStates + (intent.segment to current.copy(target = intent.target.toImmutableList())))
+      copyBaseFields(
+        state,
+        segmentStates = state.segmentStates + (intent.segment to current.copy(target = intent.target.toImmutableList())),
+      )
     }
+
     else -> state // product-specific intents not handled here
   }
 }

@@ -17,8 +17,8 @@ import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphSnapHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
@@ -29,7 +29,6 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberChartSnapFlingBehavio
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -184,12 +183,12 @@ fun GraphView(
     },
   )
 
-  // LaunchedEffect(segmentState.markerIndex == null) {
-  //   if (segmentState.markerIndex == null && segmentState.minTarget != null && segmentState.maxTarget != null) {
-  //     delay(50)
-  //     if (!scrollState.isScrolling) onScrollUpdate(segmentState.minTarget, segmentState.maxTarget)
-  //   }
-  // }
+  LaunchedEffect(state.markerIndex == null) {
+    if (state.markerIndex == null && segmentState.minTarget != null && segmentState.maxTarget != null) {
+      delay(50)
+      if (!scrollState.isScrolling) onScrollUpdate(segmentState.minTarget, segmentState.maxTarget)
+    }
+  }
 
   val chart = rememberProductChart(
     config = chartConfig,
