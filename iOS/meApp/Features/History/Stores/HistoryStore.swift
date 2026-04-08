@@ -378,6 +378,7 @@ final class HistoryStore: ObservableObject {
             try await entryService.deleteBpmEntry(entryTimestamp: entry.entryTimestamp)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete BP entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
         }
         notificationService.dismissLoader()
     }
@@ -406,11 +407,13 @@ final class HistoryStore: ObservableObject {
             guard let entry = try await entryService.getEntry(byId: babyEntry.id) else {
                 logger.log(level: .error, tag: tag, message: "Baby entry not found for deletion: id=\(babyEntry.id)")
                 notificationService.dismissLoader()
+                notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
                 return
             }
             try await entryService.deleteEntry(entry)
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to delete baby entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorDeletingEntry))
         }
         notificationService.dismissLoader()
     }

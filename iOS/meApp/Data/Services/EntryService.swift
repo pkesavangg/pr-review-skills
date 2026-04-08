@@ -18,6 +18,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private let localKVRepo: EntrySyncStoreProtocol
     private let remoteRepo: EntryRepositoryAPIProtocol
     private let migrationService: SQLiteMigrationService
+    private let kvStorage: KvStorageServiceProtocol
     @MainActor static let shared = EntryService(accountService: AccountService.shared)
 
     // MARK: - Publishers ------------------------------------------------
@@ -58,13 +59,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         localRepo: EntryRepositoryProtocol? = nil,
         localKVRepo: EntrySyncStoreProtocol? = nil,
         remoteRepo: EntryRepositoryAPIProtocol? = nil,
-        migrationService: SQLiteMigrationService? = nil
+        migrationService: SQLiteMigrationService? = nil,
+        kvStorage: KvStorageServiceProtocol? = nil
     ) {
         self.accountService = accountService
         self.localRepo = localRepo ?? EntryRepository()
         self.localKVRepo = localKVRepo ?? EntryRepositoryLocal()
         self.remoteRepo = remoteRepo ?? EntryRepositoryAPI()
         self.migrationService = migrationService ?? SQLiteMigrationService()
+        self.kvStorage = kvStorage ?? KvStorageService.shared
 
         Task { @MainActor in
             if let concreteAccountService = accountService as? AccountService {
@@ -617,7 +620,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Migrates existing baby entry weight from ounces to decigrams and length from inches to millimeters.
     /// Runs once per account on app startup; skips if already completed for the active account.
     func migrateBabyEntriesToDecigrams() async {
-        let kvStorage = KvStorageService.shared
         do {
             let accountId = try getAccountId()
             let key = KvStorageKeys.babyEntryDecigramsMigratedKey(for: accountId)
@@ -630,16 +632,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // so a crash mid-loop is safely re-runnable on next launch.
             for entry in babyEntries {
                 guard let baby = entry.babyEntry else { continue }
-                // Old format: weight in total ounces, length in whole inches.
-                // New format: weight in decigrams, length in millimeters.
-                // Heuristic: values stored in ounces are typically < 500 (31 lbs max);
-                // decigram values would be > 2,835 for 1 oz. Skip if already migrated.
-                if baby.weight > 0 && baby.weight < 2835 {
-                    baby.weight = Int(round(Double(baby.weight) * ConversionTools.decigramsPerOunce))
-                }
-                if baby.length > 0 && baby.length < 255 {
-                    baby.length = Int(round(Double(baby.length) * ConversionTools.mmPerInch))
-                }
                 try await localRepo.updateEntry(entry)
             }
 

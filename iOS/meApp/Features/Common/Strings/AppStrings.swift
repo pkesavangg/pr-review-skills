@@ -114,6 +114,7 @@ struct ToastStrings {
     static let errorUpdatingWeightless = "Error updating Weightless Settings."
     static let restartAndTryAgain = "Restart the app and try again."
     static let csvExportError = "Error sending .CSV file. Please try again."
+    static let errorDeletingEntry = "Error deleting entry. Please try again."
     static let unitSettingUpdated = "Unit settings updated."
     static let notificationSettingUpdated = "Notification settings updated."
     static let streakSettingUpdated = "Streak settings updated."

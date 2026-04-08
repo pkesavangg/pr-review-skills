@@ -9,7 +9,9 @@ enum BabyDashboardStrings {
     // MARK: - Units
     static let lbs = "lbs"
     static let oz = "oz"
+    static let kg = "kg"
     static let inches = "inches"
+    static let cm = "cm"
 
     // MARK: - Labels
     static let weekAverage = "week average"
