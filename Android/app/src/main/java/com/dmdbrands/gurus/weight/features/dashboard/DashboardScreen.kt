@@ -5,6 +5,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
@@ -50,7 +51,6 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboar
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardIntent
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
@@ -173,6 +173,7 @@ fun DashboardScreen() {
           vm = vm,
           product = product,
           hasPercentile = true,
+          chartFillsHeight = true,
           onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -187,12 +188,7 @@ fun DashboardScreen() {
               avgLengthMillimeters = yValues.getOrNull(1)?.let { (it * 25.4).toInt() },
             )
           },
-        ) { s ->
-          BabyDashboardContent(
-            state = s as BabyDashboardState,
-            handleIntent = vm::handleIntent,
-          )
-        }
+        ) { _ -> }
       }
     }
   }
@@ -209,6 +205,7 @@ private fun <S : BaseDashboardState> DashboardPage(
   product: ProductSelection,
   goal: Goal? = null,
   hasPercentile: Boolean = false,
+  chartFillsHeight: Boolean = false,
   onRefresh: () -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   belowChart: @Composable (S) -> Unit,
@@ -225,20 +222,27 @@ private fun <S : BaseDashboardState> DashboardPage(
     if (targetPage != pagerState.currentPage) pagerState.scrollToPage(targetPage)
   }
 
+  val columnModifier = if (chartFillsHeight) {
+    Modifier.fillMaxSize()
+  } else {
+    Modifier.verticalScroll(rememberScrollState())
+  }
+
   PullToRefreshBox(
     isRefreshing = state.isRefreshing,
     onRefresh = onRefresh,
   ) {
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier = columnModifier) {
       GraphPagerView(
         pagerState = pagerState,
         state = state,
         selectedProduct = product,
         goal = goal,
         hasPercentile = hasPercentile,
+        chartFillsHeight = chartFillsHeight,
         handleGraphIntent = vm::handleIntent,
         createFallbackEntry = createFallbackEntry,
-        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product) },
+        header = { segment -> DashboardChartHeader(state = state, segment = segment, product = product, handleIntent = vm::handleIntent) },
         onSegmentChange = {
           val currentSegmentState = state.forSegment(state.selectedSegment)
           val anchorTimeStamp = if (currentSegmentState.visibleMin != null && currentSegmentState.visibleMax != null) {
