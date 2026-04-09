@@ -92,7 +92,7 @@ fun DashboardScreen() {
           onClick = {
             scope.launch {
               psm.setSnapshotMode(true)
-              navBackStack.addRoute(AppRoute.Main.DashboardSnapshot, AppRoute.Home, popUpTo = AppRoute.Main.Dashboard)
+              navBackStack.replaceStack(listOf(AppRoute.Main.DashboardSnapshot), AppRoute.Home)
             }
           },
         ) {

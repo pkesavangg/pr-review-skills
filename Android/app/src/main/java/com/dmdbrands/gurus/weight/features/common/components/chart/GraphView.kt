@@ -125,9 +125,21 @@ fun GraphView(
       handleGraphIntent(
         BaseGraphIntent.ScrollRange(segment, min, max) {
           // Fallback: no data in visible range — interpolate from chart lines
+          val dataStart = segmentState.startTimestamp
+          val dataEnd = segmentState.endTimestamp
+          val visibleRange = scrollState.visibleXRange
+
+          // Outside data range entirely → empty, no interpolation needed
+          if (dataStart == null || dataEnd == null || visibleRange == null ||
+            visibleRange.endInclusive < dataStart.toDouble() || visibleRange.start > dataEnd.toDouble()
+          ) {
+            handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, emptyList()))
+            return@ScrollRange
+          }
+
+          // Within data range — interpolate
           val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
-            val visibleRange = scrollState.visibleXRange
-            visibleRange != null && it in visibleRange
+            it in visibleRange && it in dataStart.toDouble()..dataEnd.toDouble()
           }
           if (visibleLabels.isNotEmpty()) {
             val fallbackValues = scrollState.getInterpolatedYValues(
@@ -213,8 +225,8 @@ fun GraphView(
   )
 
   LaunchedEffect(state.markerIndex == null) {
-    val vMin = segmentState.visibleMin ?: segmentState.chartMinX?.toLong()
-    val vMax = segmentState.visibleMax ?: segmentState.chartMaxX?.toLong()
+    val vMin = segmentState.visibleMin
+    val vMax = segmentState.visibleMax
     if (state.markerIndex == null && vMin != null && vMax != null) {
       delay(50)
       if (!scrollState.isScrolling) onScrollUpdate(vMin, vMax)

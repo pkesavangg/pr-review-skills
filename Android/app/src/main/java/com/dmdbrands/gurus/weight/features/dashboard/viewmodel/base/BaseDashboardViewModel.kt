@@ -111,6 +111,8 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
           isEmptyGraph = false,
           startTimestamp = initialTimeStamp,
           endTimestamp = endTimeStamp,
+          visibleMin = it.visibleMin ?: startX,
+          visibleMax = it.visibleMax ?: endX,
         )
       }
     }
@@ -155,6 +157,9 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
         @Suppress("UNCHECKED_CAST")
         super.handleIntent(BaseGraphIntent.UpdateSegmentTarget(intent.segment, filteredData) as I)
       } else {
+        // No data in visible range — try fallback interpolation, or clear target
+        @Suppress("UNCHECKED_CAST")
+        super.handleIntent(BaseGraphIntent.UpdateSegmentTarget(intent.segment, emptyList()) as I)
         intent.onFallback()
       }
     }

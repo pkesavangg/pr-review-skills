@@ -37,8 +37,9 @@ fun ChartHeader(
     ),
   ) {
     // Row 1: shared — "week average" / "day average" / "no entries"
+    val hasVisibleData = segmentState.target.isNotEmpty() && !segmentState.isEmptyGraph
     Text(
-      text = if (segmentState.isEmptyGraph) ChartHeaderStrings.NoEntries else "$headerText ${ChartHeaderStrings.AverageSuffix}",
+      text = if (hasVisibleData) "$headerText ${ChartHeaderStrings.AverageSuffix}" else ChartHeaderStrings.NoEntries,
       style = MeTheme.typography.subHeading1,
       color = MeTheme.colorScheme.textSubheading,
     )
