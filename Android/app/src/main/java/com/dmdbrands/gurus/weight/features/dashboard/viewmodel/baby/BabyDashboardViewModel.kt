@@ -46,9 +46,6 @@ class BabyDashboardViewModel @AssistedInject constructor(
     private const val TAG = "BabyDashboardVM"
   }
 
-  private var latestDailyEntries: List<PeriodBabySummary> = emptyList()
-  private var latestMonthlyEntries: List<PeriodBabySummary> = emptyList()
-
   override fun provideInitialState(): BabyDashboardState = BabyDashboardState()
 
   override fun onDependenciesReady() {
@@ -61,72 +58,92 @@ class BabyDashboardViewModel @AssistedInject constructor(
     if (intent is BabyDashboardIntent) {
       when (intent) {
         is BabyDashboardIntent.Refresh -> refresh()
-        is BabyDashboardIntent.SetSelectedMetric -> {
-          super.handleIntent(intent)
-          rebuildProducers()
-          return
-        }
         else -> {}
       }
     }
     super.handleIntent(intent)
   }
 
-  // ── 4 independent graph subscriptions (weight daily/monthly + height daily/monthly) ──
+  // ── 4 independent graph subscriptions ──
+  // Each pushes to its own metric's producer. No rebuild on metric switch.
 
   private fun startGraphSubscriptions() {
     val profileId = babyProduct.profile.id
     val dailyFlow = historyService.getBabyDailyGraphData(profileId)
     val monthlyFlow = historyService.getBabyMonthlyGraphData(profileId)
+    val dailySegments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
+    val monthlySegments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
 
-    // Weight daily (WEEK/MONTH)
+    // Weight daily
     viewModelScope.launch {
       dailyFlow.collect { entries ->
-        latestDailyEntries = entries
-        val segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
-        updateMetricSegments(BabyMetric.WEIGHT, entries, segments)
-        if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
-          pushBabyProducer(_state.value.dailyProducer, entries)
-        }
+        updateMetricSegments(BabyMetric.WEIGHT, entries, dailySegments)
+        pushToMetricProducer(BabyMetric.WEIGHT, entries, daily = true)
       }
     }
 
-    // Weight monthly (YEAR/TOTAL)
+    // Weight monthly
     viewModelScope.launch {
       monthlyFlow.collect { entries ->
-        latestMonthlyEntries = entries
-        val segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
-        updateMetricSegments(BabyMetric.WEIGHT, entries, segments)
-        if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
-          pushBabyProducer(_state.value.monthlyProducer, entries)
-        }
+        updateMetricSegments(BabyMetric.WEIGHT, entries, monthlySegments)
+        pushToMetricProducer(BabyMetric.WEIGHT, entries, daily = false)
       }
     }
 
-    // Height daily (WEEK/MONTH)
+    // Height daily
     viewModelScope.launch {
       dailyFlow.collect { entries ->
-        val segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
-        updateMetricSegments(BabyMetric.HEIGHT, entries, segments)
-        if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
-          pushBabyProducer(_state.value.dailyProducer, entries)
-        }
+        updateMetricSegments(BabyMetric.HEIGHT, entries, dailySegments)
+        pushToMetricProducer(BabyMetric.HEIGHT, entries, daily = true)
       }
     }
 
-    // Height monthly (YEAR/TOTAL)
+    // Height monthly
     viewModelScope.launch {
       monthlyFlow.collect { entries ->
-        val segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
-        updateMetricSegments(BabyMetric.HEIGHT, entries, segments)
-        if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
-          pushBabyProducer(_state.value.monthlyProducer, entries)
+        updateMetricSegments(BabyMetric.HEIGHT, entries, monthlySegments)
+        pushToMetricProducer(BabyMetric.HEIGHT, entries, daily = false)
+      }
+    }
+  }
+
+  // ── Push to a specific metric's producer ──
+
+  private fun pushToMetricProducer(
+    metric: BabyMetric,
+    entries: List<PeriodBabySummary>,
+    daily: Boolean,
+  ) {
+    val metricState = _state.value.metricState(metric)
+    val producer = if (daily) metricState.dailyProducer else metricState.monthlyProducer
+    val series = when (metric) {
+      BabyMetric.WEIGHT -> toWeightSeries(entries)
+      BabyMetric.HEIGHT -> toHeightSeries(entries)
+    }
+
+    if (series.isEmpty()) {
+      viewModelScope.launch { pushEmptyProducer(producer) }
+      return
+    }
+
+    val percentile = metricState.percentileSeries
+    viewModelScope.launch(Dispatchers.Main) {
+      producer.runTransaction(animate = false) {
+        if (percentile != null) {
+          lineSeries {
+            percentile.allBands().forEach { band ->
+              series(x = percentile.xTimestamps, y = band)
+            }
+          }
+        }
+        lineSeries {
+          series.forEach { s -> series(x = s.xValues, y = s.yValues) }
         }
       }
     }
   }
 
-  // ── Segment state update (targets a specific metric via UpdateMetricSegment) ──
+  // ── Segment state update ──
 
   private fun updateMetricSegments(
     metric: BabyMetric,
@@ -215,45 +232,6 @@ class BabyDashboardViewModel @AssistedInject constructor(
     }
     if (pairs.isEmpty()) return emptyList()
     return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
-  }
-
-  private fun activeSeriesFor(entries: List<PeriodBabySummary>): List<SeriesData> =
-    when (_state.value.selectedMetric) {
-      BabyMetric.WEIGHT -> toWeightSeries(entries)
-      BabyMetric.HEIGHT -> toHeightSeries(entries)
-    }
-
-  // ── Producer push (percentile + data) ──
-
-  private fun pushBabyProducer(
-    producer: CartesianChartModelProducer,
-    entries: List<PeriodBabySummary>,
-  ) {
-    val series = activeSeriesFor(entries)
-    if (series.isEmpty()) {
-      viewModelScope.launch { pushEmptyProducer(producer) }
-      return
-    }
-    val percentile = _state.value.activePercentileSeries
-    viewModelScope.launch(Dispatchers.Main) {
-      producer.runTransaction(animate = false) {
-        if (percentile != null) {
-          lineSeries {
-            percentile.allBands().forEach { band ->
-              series(x = percentile.xTimestamps, y = band)
-            }
-          }
-        }
-        lineSeries {
-          series.forEach { s -> series(x = s.xValues, y = s.yValues) }
-        }
-      }
-    }
-  }
-
-  private fun rebuildProducers() {
-    if (latestDailyEntries.isNotEmpty()) pushBabyProducer(_state.value.dailyProducer, latestDailyEntries)
-    if (latestMonthlyEntries.isNotEmpty()) pushBabyProducer(_state.value.monthlyProducer, latestMonthlyEntries)
   }
 
   // ── Percentiles ──
