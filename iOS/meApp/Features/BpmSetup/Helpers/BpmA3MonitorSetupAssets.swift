@@ -26,20 +26,29 @@ enum BpmA3MonitorSetupAssets {
         "\(deviceType)_\(file)"
     }
 
-    /// All A3 setup GIFs live under the `0603` asset folder.
+    /// Non-user setup GIFs (Cuff, Start, MEM_Button, etc.) all live under `0603`.
     static func resolvedAssetSku(_ sku: String) -> String {
         "0603"
     }
 
-    /// Subdirectory for `GifView` / bundle lookups, e.g. `Gifs/BpmMonitors/A3/0603`.
+    /// Subdirectory for general setup GIFs (Cuff, Start, etc.), e.g. `Gifs/BpmMonitors/A3/0603`.
     static func gifBundleSubdirectory(for sku: String) -> String {
         "Gifs/BpmMonitors/A3/\(resolvedAssetSku(sku))"
     }
 
+    /// Subdirectory for per-SKU user GIFs, e.g. `Gifs/BpmMonitors/A3/0604`.
+    static func userGifBundleSubdirectory(for sku: String) -> String {
+        "Gifs/BpmMonitors/A3/\(sku)"
+    }
+
     /// GIF name (no extension) for user confirmation animations.
-    /// All A3 SKUs share the same `A3_User_1` / `A3_User_2` GIFs under 0603.
+    /// 0603 uses numeric `User_1` / `User_2`; all others use `{deviceType}_{sku}_User_A` / `…_User_B`.
     static func userGifName(sku: String, slot: Int) -> String {
-        "\(deviceType)_User_\(slot)"
+        if sku == "0603" {
+            return "\(deviceType)_User_\(slot)"
+        }
+        let letter = slot == 1 ? "A" : "B"
+        return "\(deviceType)_\(sku)_User_\(letter)"
     }
 
     static func path(forResource name: String, extension ext: String) -> String? {

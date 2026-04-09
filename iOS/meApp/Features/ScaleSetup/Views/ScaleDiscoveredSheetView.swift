@@ -59,7 +59,7 @@ struct ScaleDiscoveredSheetView: View {
                 
                 // Title
                 VStack(spacing: .spacingXS) {
-                    Text(lang.title)
+                    Text(viewModel.discoveryEvent?.deviceCategory == .bpm ? lang.bpmTitle : lang.scaleTitle)
                         .fontOpenSans(.heading4)
                         .foregroundColor(theme.textHeading)
                         .multilineTextAlignment(.center)
