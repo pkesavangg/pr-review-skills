@@ -52,6 +52,7 @@ import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphInt
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyDashboardViewModel
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.bp.BpDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardIntent
@@ -169,30 +170,13 @@ fun DashboardScreen() {
           creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
         )
         val state by vm.state.collectAsStateWithLifecycle()
-        DashboardPage(
-          vm = vm,
-          product = product,
-          hasPercentile = state.activePercentileSeries != null,
-          onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
-          createFallbackEntry = { ts, yValues, seg ->
-            val y = yValues.firstOrNull() ?: return@DashboardPage null
-            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
-              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-            }
-            val selectedMetric = (state as? BabyDashboardState)?.selectedMetric
-            PeriodBabySummary(
-              period = period,
-              entryTimestamp = DateTimeConverter.timestampToIso(ts),
-              avgWeightDecigrams = if (selectedMetric == BabyMetric.WEIGHT) (y * 16.0 * 283.495).toInt() else null,
-              avgLengthMillimeters = if (selectedMetric == BabyMetric.HEIGHT) (y * 25.4).toInt() else null,
-            )
-          },
-        ) { s ->
-          BabyDashboardContent(
-            state = s as BabyDashboardState,
-            handleIntent = vm::handleIntent,
-          )
+        val babyState = state as BabyDashboardState
+
+        // Branch by selectedMetric — each branch is a separate Compose composition
+        // so CartesianChartHost always sees the same producer instance (no swap crash).
+        when (babyState.selectedMetric) {
+          BabyMetric.WEIGHT -> BabyDashboardPage(vm = vm, product = product, state = babyState, metric = BabyMetric.WEIGHT)
+          BabyMetric.HEIGHT -> BabyDashboardPage(vm = vm, product = product, state = babyState, metric = BabyMetric.HEIGHT)
         }
       }
     }
@@ -253,5 +237,42 @@ private fun <S : BaseDashboardState> DashboardPage(
 
       belowChart(state)
     }
+  }
+}
+
+/**
+ * Baby-specific dashboard page. Wraps [DashboardPage] with baby's fallback entry factory.
+ * Called per-metric branch so each CartesianChartHost always sees the same producer.
+ */
+@Composable
+private fun BabyDashboardPage(
+  vm: BabyDashboardViewModel,
+  product: ProductSelection,
+  state: BabyDashboardState,
+  metric: BabyMetric,
+) {
+  DashboardPage(
+    vm = vm,
+    product = product,
+    hasPercentile = state.metricState(metric).percentileSeries != null,
+    onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
+    createFallbackEntry = { ts, yValues, seg ->
+      val y = yValues.firstOrNull() ?: return@DashboardPage null
+      val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+        if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+      }
+      PeriodBabySummary(
+        period = period,
+        entryTimestamp = DateTimeConverter.timestampToIso(ts),
+        avgWeightDecigrams = (y * 10.0).toInt(),
+        avgLengthMillimeters = yValues.getOrNull(1)?.let { (it * 25.4).toInt() },
+      )
+    },
+  ) { s ->
+    BabyDashboardContent(
+      state = s as BabyDashboardState,
+      handleIntent = vm::handleIntent,
+    )
   }
 }

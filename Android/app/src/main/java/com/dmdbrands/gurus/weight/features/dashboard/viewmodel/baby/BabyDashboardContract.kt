@@ -15,26 +15,31 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProdu
 
 enum class BabyMetric { WEIGHT, HEIGHT }
 
-// ── Per-metric state (segments, scroll, marker, percentile) ──
+// ── Per-metric state (producers, segments, scroll, marker, percentile) ──
 
 @Stable
 data class BabyMetricState(
+  val dailyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
+  val monthlyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val segmentStates: Map<GraphSegment, SegmentState> = emptyMap(),
   val percentileSeries: BabyPercentileHelper.PercentileSeries? = null,
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val scrollTarget: Double? = null,
   val markerIndex: Double? = null,
-)
+) {
+  fun producerForSegment(segment: GraphSegment): CartesianChartModelProducer =
+    if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) dailyProducer else monthlyProducer
+}
 
 // ── State ──
 
 @Stable
 data class BabyDashboardState(
-  // Shared producers (stable, never swapped)
-  override val dailyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
-  override val monthlyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
-  // Per-metric state map
-  val metricStates: Map<BabyMetric, BabyMetricState> = emptyMap(),
+  // Per-metric state map (each has its own 2 producers)
+  val metricStates: Map<BabyMetric, BabyMetricState> = mapOf(
+    BabyMetric.WEIGHT to BabyMetricState(),
+    BabyMetric.HEIGHT to BabyMetricState(),
+  ),
   val selectedMetric: BabyMetric = BabyMetric.WEIGHT,
   // Shared
   override val isRefreshing: Boolean = false,
@@ -42,7 +47,9 @@ data class BabyDashboardState(
 ) : BaseDashboardState {
   val activeMetric: BabyMetricState get() = metricStates[selectedMetric] ?: BabyMetricState()
 
-  // Route to active metric
+  // Route to active metric (used by base VM for ScrollRange handling etc.)
+  override val dailyProducer: CartesianChartModelProducer get() = activeMetric.dailyProducer
+  override val monthlyProducer: CartesianChartModelProducer get() = activeMetric.monthlyProducer
   override val segmentStates: Map<GraphSegment, SegmentState> get() = activeMetric.segmentStates
   override val selectedSegment: GraphSegment get() = activeMetric.selectedSegment
   override val scrollTarget: Double? get() = activeMetric.scrollTarget
@@ -73,11 +80,6 @@ sealed interface BabyDashboardIntent : BaseGraphIntent {
 
 class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<BabyDashboardState, BaseGraphIntent> {
 
-  /**
-   * Routes base field updates to the active metric's BabyMetricState.
-   * selectedSegment, scrollTarget, markerIndex go into the active metric.
-   * isRefreshing, producers stay shared.
-   */
   override fun copyBaseFields(
     state: BabyDashboardState,
     segmentStates: Map<GraphSegment, SegmentState>,
