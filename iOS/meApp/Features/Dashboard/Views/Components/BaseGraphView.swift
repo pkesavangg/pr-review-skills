@@ -79,6 +79,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View {
         var hasher = Hasher()
         hasher.combine(dashboardStore.currentUnit.rawValue)
         hasher.combine(dashboardStore.isWeightlessModeEnabled)
+        hasher.combine(dashboardStore.goalWeightForDisplay?.bitPattern ?? 0)
         return hasher.finalize()
     }
 
