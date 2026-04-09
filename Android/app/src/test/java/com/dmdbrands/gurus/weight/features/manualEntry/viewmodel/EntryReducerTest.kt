@@ -365,10 +365,6 @@ class EntryReducerTest {
         assertThat(form.generalMetrics.controls.bodyWater.value).isEqualTo("550")
     }
 
-    // -------------------------------------------------------------------------
-    // MA-3185: Visceral Fat validation uses correct min/max (VisceralFat, not VisceralAge)
-    // -------------------------------------------------------------------------
-
     @Test
     fun `visceral fat field accepts value 1 as valid`() {
         val form = EntryForm.create(includeR4ScaleMetrics = true)
