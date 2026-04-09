@@ -19,6 +19,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -51,12 +52,11 @@ constructor(
   }
 
   init {
-    AppLog.d(TAG, "BabyScaleBLESetupViewModel initialized for SKU: $sku")
     lazyInit()
   }
 
-  private suspend fun saveScale() {
-    try {
+  private suspend fun saveScale(): Boolean {
+    return try {
       val scale = discoveredScale
       if (scale != null) {
         val nickname = state.value.nickname
@@ -72,21 +72,24 @@ constructor(
         )
         discoveredScale = updatedScale
         deviceService.saveScale(updatedScale)
-        AppLog.i(TAG, "Successfully saved Baby Scale with SKU: $sku")
+        AppLog.d(TAG, "Baby Scale saved: nickname=$nickname, sku=$sku")
+        true
       } else {
         AppLog.w(TAG, "No discovered Baby Scale to save")
+        false
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
       AppLog.e(TAG, "Error saving Baby Scale", e)
+      false
     }
   }
 
   override fun onNext() {
     val currentState = state.value
-    AppLog.d(TAG, "Moving to next step from: ${currentState.step}")
 
     if (currentState.isLastStep) {
-      AppLog.d(TAG, "Reached last step, completing setup")
       this.handleIntent(ScaleSetupIntent.ExitSetup(true))
     } else if (currentSetupState.step == BabyScaleSetupStep.SCALE_INFO) {
       if (isPermissionGranted) {
@@ -101,15 +104,25 @@ constructor(
   }
 
   override suspend fun onSetupFinished() {
+    AppLog.d(TAG, "Setup finished — saving scale with final nickname: ${state.value.nickname}")
+    val saved = saveScale()
+    if (!saved) {
+      AppLog.w(TAG, "Scale save failed during setup finish")
+    }
   }
 
   override fun onBack() {
     val currentState = state.value
     val currentStep = currentState.step
-    AppLog.d(TAG, "Moving to previous step from: $currentStep")
 
     if (currentState.isFirstStep) {
       navigateTo(AppRoute.AccountSettings.AddEditScales)
+      return
+    }
+
+    // Skip WAKEUP when going back from SCALE_NAME — go to PERMISSIONS
+    if (currentStep == BabyScaleSetupStep.SCALE_NAME) {
+      handleIntent(ScaleSetupIntent.SetNewStep(BabyScaleSetupStep.PERMISSIONS))
       return
     }
 
@@ -122,34 +135,27 @@ constructor(
   }
 
   override fun onSkip() {
-    AppLog.d(TAG, "Skipping current step: ${state.value.step}")
     onNext()
   }
 
   override fun onTryAgain() {
-    val currentStep = state.value.step
-    AppLog.d(TAG, "Trying again for step: $currentStep")
-
-    when (currentStep) {
+    when (state.value.step) {
       BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-      BabyScaleSetupStep.CONNECTING_BLUETOOTH -> connectToBluetooth()
-      else -> AppLog.w(TAG, "Try again called on unsupported step: $currentStep")
+      else -> {}
     }
   }
 
   override fun onStepChange(step: ScaleSetupStep) {
-    AppLog.d(TAG, "Step changed to: $step")
+    AppLog.d(TAG, "Step: $step")
     viewModelScope.launch {
       when (step) {
         BabyScaleSetupStep.WAKEUP -> wakeUpScale()
-        BabyScaleSetupStep.CONNECTING_BLUETOOTH -> connectToBluetooth()
         else -> AppLog.d(TAG, "No specific action for step: $step")
       }
     }
   }
 
   private fun wakeUpScale() {
-    AppLog.d(TAG, "Starting wake up scale process")
     handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
     clearBluetoothTimeout()
     stopObservingDevices()
@@ -157,64 +163,45 @@ constructor(
     bluetoothTimeoutJob = viewModelScope.launch {
       delay(bluetoothTimeout)
       if (discoveredScale == null) {
-        AppLog.d(TAG, "Bluetooth scan timeout reached")
         handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
       }
     }
 
     try {
-      AppLog.d(TAG, "Starting device scan for wake up")
+      AppLog.d(TAG, "BLE scan started for baby scale (sku=$sku)")
       ggDeviceService.scanForPairing()
       startObservingDevices { data ->
-        AppLog.d(TAG, "Baby Scale device found: ${data.deviceName}")
         viewModelScope.launch {
-          discoveredScale = Device(
-            device = data,
-            deviceType = ScaleSetupType.BabyScale.value,
-            sku = sku,
-          )
-          clearBluetoothTimeout()
-          delay(2000)
-          onNext()
+          try {
+            AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
+            discoveredScale = Device(
+              device = data,
+              deviceType = ScaleSetupType.BabyScale.value,
+              sku = sku,
+            )
+            clearBluetoothTimeout()
+            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+            delay(2000)
+            onNext()
+          } catch (e: CancellationException) {
+            throw e
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Error processing discovered device", e)
+            clearBluetoothTimeout()
+            handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
+          }
         }
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
-      AppLog.e(TAG, "Error during wake up process", e)
+      AppLog.e(TAG, "Error during BLE scan", e)
       clearBluetoothTimeout()
       handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
     }
   }
 
-  private fun connectToBluetooth() {
-    if (setupInit.initialStep == BabyScaleSetupStep.CONNECTING_BLUETOOTH) {
-      ggDeviceService.scanForPairing()
-    }
-    AppLog.d(TAG, "Starting Bluetooth connection process")
-    handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Loading))
-    clearBluetoothTimeout()
-    bluetoothTimeoutJob = viewModelScope.launch {
-      delay(bluetoothTimeout)
-      AppLog.d(TAG, "Bluetooth connection timeout reached")
-      handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
-    }
-    viewModelScope.launch {
-      try {
-        delay(3000)
-        clearBluetoothTimeout()
-        saveScale()
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
-        delay(1000)
-        onNext()
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error during bluetooth connection", e)
-        clearBluetoothTimeout()
-        handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Failed.ErrorWithMessage("BT_002")))
-      }
-    }
-  }
-
   override fun observePermissions() {
-    AppLog.d(TAG, "Starting permission observation for Baby Scale setup")
     viewModelScope.launch {
       try {
         subscribePermissions().collect { newPermissions: GGPermissionStatusMap ->
@@ -231,6 +218,8 @@ constructor(
           }
           handleIntent(ScaleSetupIntent.NextEnabled(areRequiredPermissionsEnabled))
         }
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         AppLog.e(TAG, "Error observing permissions", e)
       }

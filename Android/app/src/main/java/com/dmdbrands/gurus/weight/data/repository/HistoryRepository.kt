@@ -69,19 +69,19 @@ class HistoryRepository @Inject constructor(
 
     override fun getBabyWeeklyHistory(
         accountId: String,
-        babyProfileId: String,
+        babyId: String,
     ): Flow<List<BabyWeekGroup>> {
         if (USE_SAMPLE_DATA) return flowOf(groupByWeek(sampleBabyDailySummaries()))
-        return historyDao.getBabyWeeklyHistory(accountId, babyProfileId).map { groupByWeek(it) }
+        return historyDao.getBabyWeeklyHistory(accountId, babyId).map { groupByWeek(it) }
     }
 
     override fun getBabyDayDetail(
         accountId: String,
-        babyProfileId: String,
+        babyId: String,
         date: String,
     ): Flow<List<BabyEntry>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyEntries())
-        return historyDao.getBabyDayDetail(accountId, babyProfileId, date).map { entries ->
+        return historyDao.getBabyDayDetail(accountId, babyId, date).map { entries ->
             entries.mapNotNull { it.toEntry() }.filterIsInstance<BabyEntry>()
         }
     }
@@ -110,11 +110,11 @@ class HistoryRepository @Inject constructor(
     // Baby Graph
     // ---------------------------------------------------------------------------
 
-    override fun getBabyMonthlyGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>> =
-        historyDao.getBabyMonthlyGraphData(accountId, babyProfileId)
+    override fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> =
+        historyDao.getBabyMonthlyGraphData(accountId, babyId)
 
-    override fun getBabyDailyGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>> =
-        historyDao.getBabyDailyGraphData(accountId, babyProfileId)
+    override fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>> =
+        historyDao.getBabyDailyGraphData(accountId, babyId)
 
     // ---------------------------------------------------------------------------
     // Baby weekly grouping (converts BabyDailySummaryResult → BabyWeekGroup)
@@ -156,19 +156,19 @@ class HistoryRepository @Inject constructor(
     private fun sampleBpmEntries() = listOf(
         BpmEntry(
             entry = EntryEntity(id = 1001, accountId = "sample", entryTimestamp = "2025-08-07T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(id = 1001, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "This is where a note would go."),
+            bpmEntry = BpmEntryEntity(entryId = 1001, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "This is where a note would go."),
         ),
         BpmEntry(
             entry = EntryEntity(id = 1002, accountId = "sample", entryTimestamp = "2025-08-06T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(id = 1002, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "Another note here."),
+            bpmEntry = BpmEntryEntity(entryId = 1002, systolic = 115, diastolic = 75, pulse = 60, meanArterial = "88", note = "Another note here."),
         ),
         BpmEntry(
             entry = EntryEntity(id = 1003, accountId = "sample", entryTimestamp = "2025-08-05T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(id = 1003, systolic = 118, diastolic = 76, pulse = 72, meanArterial = "90", note = null),
+            bpmEntry = BpmEntryEntity(entryId = 1003, systolic = 118, diastolic = 76, pulse = 72, meanArterial = "90", note = null),
         ),
         BpmEntry(
             entry = EntryEntity(id = 1004, accountId = "sample", entryTimestamp = "2025-08-04T09:52:00.000Z", operationType = "create", deviceType = "bpm", deviceId = "bpm-1"),
-            bpmEntry = BpmEntryEntity(id = 1004, systolic = 120, diastolic = 78, pulse = 75, meanArterial = "92", note = null),
+            bpmEntry = BpmEntryEntity(entryId = 1004, systolic = 120, diastolic = 78, pulse = 75, meanArterial = "92", note = null),
         ),
     )
 
@@ -188,15 +188,15 @@ class HistoryRepository @Inject constructor(
     private fun sampleBabyEntries() = listOf(
         BabyEntry(
             entry = EntryEntity(id = 2001, accountId = "sample", entryTimestamp = "2025-08-07T14:30:00.000Z", operationType = "create", deviceType = "baby", deviceId = "baby-1"),
-            babyEntry = BabyEntryEntity(id = 2001, babyProfileId = "sample-1", babyWeightDecigrams = 40360, babyLengthMillimeters = 305, entryNote = "This is where a note would go."),
+            babyEntry = BabyEntryEntity(id = 2001, babyId = "sample-1", babyWeightDecigrams = 40360, babyLengthMillimeters = 305, entryNote = "This is where a note would go."),
         ),
         BabyEntry(
             entry = EntryEntity(id = 2002, accountId = "sample", entryTimestamp = "2025-08-07T09:52:00.000Z", operationType = "create", deviceType = "baby", deviceId = "baby-1"),
-            babyEntry = BabyEntryEntity(id = 2002, babyProfileId = "sample-1", babyWeightDecigrams = 40200, babyLengthMillimeters = 304, entryNote = "Another note here."),
+            babyEntry = BabyEntryEntity(id = 2002, babyId = "sample-1", babyWeightDecigrams = 40200, babyLengthMillimeters = 304, entryNote = "Another note here."),
         ),
         BabyEntry(
             entry = EntryEntity(id = 2003, accountId = "sample", entryTimestamp = "2025-08-06T11:00:00.000Z", operationType = "create", deviceType = "baby", deviceId = "baby-1"),
-            babyEntry = BabyEntryEntity(id = 2003, babyProfileId = "sample-1", babyWeightDecigrams = 40100, babyLengthMillimeters = 303, entryNote = null),
+            babyEntry = BabyEntryEntity(id = 2003, babyId = "sample-1", babyWeightDecigrams = 40100, babyLengthMillimeters = 303, entryNote = null),
         ),
     )
 }

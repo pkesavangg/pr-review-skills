@@ -12,3 +12,17 @@ updates:
       - "ios"
     commit-message:
       prefix: "MA-3424"
+
+  # Android — Gradle dependencies
+  - package-ecosystem: "gradle"
+    directory: "/Android"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    target-branch: "dev"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "android"
+    commit-message:
+      prefix: "MA-3589"

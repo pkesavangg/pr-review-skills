@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.goal.model
 
+import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -8,7 +9,6 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.Validator
-import androidx.compose.runtime.Stable
 
 /**
  * Controls for Goal form.
@@ -222,17 +222,21 @@ class GoalReducer : IReducer<GoalState, GoalIntent> {
       is GoalIntent.ChangeGoalType -> {
         // Update goal type and validators IN-PLACE so form remains dirty and Save stays enabled
         val controls = state.form.controls
-        // Mark goalType as changed (dirty) and set new value
-        controls.goalType.onValueChange(intent.goalType.value)
-        // Update startingWeight validators based on new goal type BEFORE changing goal type
-        // This prevents validation errors from showing when switching
+        // Update startingWeight validators based on new goal type BEFORE changing goal type value
         if (intent.goalType == GoalType.MAINTAIN) {
           // Remove required validator for maintain mode
           controls.startingWeight.removeValidator("required")
         } else {
           // Add required validator for lose/gain mode
           controls.startingWeight.addValidator(FormValidations.required())
+          // Mark weight controls as dirty so cross-field validation (weightMatchValidator)
+          // runs immediately when pre-filled values are equal after switching goal type
+          controls.startingWeight.markAsDirty()
+          controls.goalWeight.markAsDirty()
         }
+        // Change goal type value last — this triggers the onValueChangeListener which
+        // re-validates both weight controls (now marked dirty, so validation won't skip)
+        controls.goalType.onValueChange(intent.goalType.value)
         state.copy() // same form reference; UI observes updated controls
       }
 

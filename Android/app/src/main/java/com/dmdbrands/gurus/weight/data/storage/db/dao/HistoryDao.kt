@@ -155,7 +155,7 @@ interface HistoryDao {
             bp.pulse,
             strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period
         FROM entry_view e
-        INNER JOIN bpm_entry bp ON e.id = bp.id
+        INNER JOIN bpm_entry bp ON e.id = bp.entryId
         WHERE e.accountId = :accountId
           AND (e.operationType IS NULL OR e.operationType != 'delete')
     )
@@ -215,7 +215,7 @@ interface HistoryDao {
    * Returns [BabyDailySummaryResult] with raw DB values (decigrams, millimeters).
    * Repository converts to display format and groups by weekNumber into BabyWeekGroup.
    * @param accountId The account ID
-   * @param babyProfileId The baby profile ID
+   * @param babyId The baby ID
    * @return Flow of daily summaries ordered by most recent first
    */
   @Query(
@@ -230,7 +230,7 @@ interface HistoryDao {
     FROM entry_view e
     INNER JOIN baby_entry be ON e.id = be.id
     WHERE e.accountId = :accountId
-      AND be.babyProfileId = :babyProfileId
+      AND be.babyId = :babyId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
     ORDER BY datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}) DESC
@@ -238,13 +238,13 @@ interface HistoryDao {
   )
   fun getBabyWeeklyHistory(
     accountId: String,
-    babyProfileId: String,
+    babyId: String,
   ): Flow<List<BabyDailySummaryResult>>
 
   /**
    * Individual baby entries for a specific date.
    * @param accountId The account ID
-   * @param babyProfileId The baby profile ID
+   * @param babyId The baby ID
    * @param date The date in YYYY-MM-DD format
    * @return Flow of individual baby entries (convert via toEntry(), filter BabyEntry in repo)
    */
@@ -254,14 +254,14 @@ interface HistoryDao {
     SELECT * FROM entry_view
     WHERE accountId = :accountId
       AND (operationType IS NULL OR operationType != 'delete')
-      AND id IN (SELECT id FROM baby_entry WHERE babyProfileId = :babyProfileId)
+      AND id IN (SELECT id FROM baby_entry WHERE babyId = :babyId)
       AND strftime('%Y-%m-%d', datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME})) = :date
     ORDER BY datetime(entryTimestamp, ${UTC}, ${LOCAL_TIME}) DESC
     """,
   )
   fun getBabyDayDetail(
     accountId: String,
-    babyProfileId: String,
+    babyId: String,
     date: String,
   ): Flow<List<PopulatedActiveEntry>>
 
@@ -356,7 +356,7 @@ interface HistoryDao {
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
     FROM entry_view e
-    INNER JOIN bpm_entry bp ON e.id = bp.id
+    INNER JOIN bpm_entry bp ON e.id = bp.entryId
     WHERE e.accountId = :accountId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
@@ -378,7 +378,7 @@ interface HistoryDao {
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
     FROM entry_view e
-    INNER JOIN bpm_entry bp ON e.id = bp.id
+    INNER JOIN bpm_entry bp ON e.id = bp.entryId
     WHERE e.accountId = :accountId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
@@ -405,13 +405,13 @@ interface HistoryDao {
     FROM entry_view e
     INNER JOIN baby_entry be ON e.id = be.id
     WHERE e.accountId = :accountId
-      AND be.babyProfileId = :babyProfileId
+      AND be.babyId = :babyId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
     ORDER BY period DESC
     """,
   )
-  fun getBabyMonthlyGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>>
+  fun getBabyMonthlyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 
   /**
    * Baby daily averages for graph — avg weight/length grouped by day.
@@ -427,11 +427,11 @@ interface HistoryDao {
     FROM entry_view e
     INNER JOIN baby_entry be ON e.id = be.id
     WHERE e.accountId = :accountId
-      AND be.babyProfileId = :babyProfileId
+      AND be.babyId = :babyId
       AND (e.operationType IS NULL OR e.operationType != 'delete')
     GROUP BY strftime('%Y-%m-%d', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME}))
     ORDER BY period DESC
     """,
   )
-  fun getBabyDailyGraphData(accountId: String, babyProfileId: String): Flow<List<PeriodBabySummary>>
+  fun getBabyDailyGraphData(accountId: String, babyId: String): Flow<List<PeriodBabySummary>>
 }
