@@ -212,8 +212,8 @@ fun GraphView(
   )
 
   LaunchedEffect(state.markerIndex == null) {
-    val vMin = segmentState.visibleMin ?: segmentState.minTarget
-    val vMax = segmentState.visibleMax ?: segmentState.maxTarget
+    val vMin = segmentState.visibleMin ?: segmentState.chartMinX?.toLong()
+    val vMax = segmentState.visibleMax ?: segmentState.chartMaxX?.toLong()
     if (state.markerIndex == null && vMin != null && vMax != null) {
       delay(50)
       if (!scrollState.isScrolling) onScrollUpdate(vMin, vMax)

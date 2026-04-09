@@ -48,8 +48,8 @@ fun DashboardChartHeader(
   product: ProductSelection,
 ) {
   val segmentState = state.forSegment(segment)
-  val rangeText = (segmentState.visibleMin ?: segmentState.minTarget)?.let { min ->
-    (segmentState.visibleMax ?: segmentState.maxTarget)?.let { max -> GraphUtil.formatDateRange(min, max, segment) }
+  val rangeText = (segmentState.visibleMin ?: segmentState.chartMinX?.toLong())?.let { min ->
+    (segmentState.visibleMax ?: segmentState.chartMaxX?.toLong())?.let { max -> GraphUtil.formatDateRange(min, max, segment) }
   } ?: ""
 
   ChartHeader(

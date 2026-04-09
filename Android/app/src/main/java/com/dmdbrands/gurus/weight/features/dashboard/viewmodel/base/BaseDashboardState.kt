@@ -16,8 +16,6 @@ import kotlinx.collections.immutable.persistentListOf
 data class SegmentState(
   val data: ImmutableList<PeriodSummary> = persistentListOf(),
   val target: ImmutableList<PeriodSummary> = persistentListOf(),
-  val minTarget: Long? = null,
-  val maxTarget: Long? = null,
   val chartMinX: Double? = null,
   val chartMaxX: Double? = null,
   val isEmptyGraph: Boolean = false,

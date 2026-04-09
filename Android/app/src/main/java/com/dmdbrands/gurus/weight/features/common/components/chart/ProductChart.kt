@@ -60,10 +60,10 @@ fun rememberProductChart(
   val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
     remember(segment) { segment.visibleLabelsCount() }
   } else {
-    remember(segmentState.minTarget, segmentState.maxTarget) {
+    remember(segmentState.chartMinX, segmentState.chartMaxX) {
       GraphUtil.getTotalMonthsBetweenYears(
-        segmentState.minTarget ?: Calendar.getInstance().timeInMillis,
-        segmentState.maxTarget ?: Calendar.getInstance().timeInMillis,
+        segmentState.chartMinX?.toLong() ?: Calendar.getInstance().timeInMillis,
+        segmentState.chartMaxX?.toLong() ?: Calendar.getInstance().timeInMillis,
       ).toDouble().coerceAtLeast(1.0)
     }
   }
