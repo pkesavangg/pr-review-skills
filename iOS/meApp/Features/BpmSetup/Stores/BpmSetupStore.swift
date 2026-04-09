@@ -566,11 +566,19 @@ final class BpmSetupStore: ObservableObject {
                     tag: tag,
                     message: "SDK reports device exists with different user for BPM \(broadcastId)"
                 )
+                // Look up the existing device with same SKU but different user number,
+                // so we can delete it if the user chooses to replace.
+                if deviceToDelete == nil {
+                    let existingDevices = (try? await scaleService.getDevices()) ?? []
+                    let selectedUser = "\(selectedUserNumber ?? 1)"
+                    deviceToDelete = existingDevices.first(where: { existing in
+                        existing.sku == selectedSku && existing.userNumber != selectedUser
+                    })
+                }
                 showDifferentUserConflictAlert()
                 return
 
             case .creationCompleted:
-                canReplaceUser = false
                 connectionState = .success
                 LoggerService.shared.log(
                     level: .info,
@@ -633,6 +641,11 @@ final class BpmSetupStore: ObservableObject {
             if isSameUser {
                 deviceToDelete = existing
                 confirmUserAndPair(isDifferentUser: false)
+            } else if canReplaceUser {
+                // User explicitly chose "Replace User" — mark old entry for deletion
+                // so saveDevice removes it, leaving only the new user's entry.
+                deviceToDelete = existing
+                advanceFromScanning()
             } else {
                 // Different user on same physical device — both coexist in the list.
                 advanceFromScanning()
@@ -750,7 +763,7 @@ final class BpmSetupStore: ObservableObject {
         let lang = BpmSetupStrings.DeviceConflictAlert.DifferentUser.self
         let alert = AlertModel(
             title: lang.title,
-            message: lang.message,
+            message: lang.message(userLabelForConflict()),
             buttons: [
                 AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
                     self?.dismissAction?()
@@ -796,6 +809,7 @@ final class BpmSetupStore: ObservableObject {
             try? await scaleService.deleteSingleDeviceEntry(existingDevice.id)
             deviceToDelete = nil
         }
+        canReplaceUser = false
 
         // Check for existing device with same broadcastId or peripheralIdentifier AND userNumber.
         // If a duplicate is found, delete the old entry before saving the new one so the list
