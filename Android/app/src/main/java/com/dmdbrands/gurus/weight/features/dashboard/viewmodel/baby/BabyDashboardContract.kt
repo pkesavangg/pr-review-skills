@@ -15,27 +15,25 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProdu
 
 enum class BabyMetric { WEIGHT, HEIGHT }
 
-// ── Per-metric state (producers, segments, scroll, marker, percentile) ──
+// ── Per-metric state (segments, scroll, marker, percentile — no producers) ──
 
 @Stable
 data class BabyMetricState(
-  val dailyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
-  val monthlyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
   val segmentStates: Map<GraphSegment, SegmentState> = emptyMap(),
   val percentileSeries: BabyPercentileHelper.PercentileSeries? = null,
   val selectedSegment: GraphSegment = GraphSegment.WEEK,
   val scrollTarget: Double? = null,
   val markerIndex: Double? = null,
-) {
-  fun producerForSegment(segment: GraphSegment): CartesianChartModelProducer =
-    if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) dailyProducer else monthlyProducer
-}
+)
 
 // ── State ──
 
 @Stable
 data class BabyDashboardState(
-  // Per-metric state map (each has its own 2 producers)
+  // Shared producers (2 stable, decide which metric to show)
+  override val dailyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
+  override val monthlyProducer: CartesianChartModelProducer = CartesianChartModelProducer(),
+  // Per-metric state map
   val metricStates: Map<BabyMetric, BabyMetricState> = mapOf(
     BabyMetric.WEIGHT to BabyMetricState(),
     BabyMetric.HEIGHT to BabyMetricState(),
@@ -47,9 +45,7 @@ data class BabyDashboardState(
 ) : BaseDashboardState {
   val activeMetric: BabyMetricState get() = metricStates[selectedMetric] ?: BabyMetricState()
 
-  // Route to active metric (used by base VM for ScrollRange handling etc.)
-  override val dailyProducer: CartesianChartModelProducer get() = activeMetric.dailyProducer
-  override val monthlyProducer: CartesianChartModelProducer get() = activeMetric.monthlyProducer
+  // Route to active metric
   override val segmentStates: Map<GraphSegment, SegmentState> get() = activeMetric.segmentStates
   override val selectedSegment: GraphSegment get() = activeMetric.selectedSegment
   override val scrollTarget: Double? get() = activeMetric.scrollTarget
