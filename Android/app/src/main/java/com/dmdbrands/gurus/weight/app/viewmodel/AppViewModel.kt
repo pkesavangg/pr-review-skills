@@ -32,10 +32,12 @@ import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
+import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
@@ -101,6 +103,12 @@ constructor(
 ) {
   companion object {
     private const val TAG = "AppViewModel"
+    /** BLE protocol types eligible for the discovery popup. */
+    private val DISCOVERY_ELIGIBLE_PROTOCOLS = setOf(
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value,     // WiFi+BT scales (0412)
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,     // LCBT/Baby scales
+      GGDeviceProtocolType.GG_DEVICE_PROTOCOL_TK_BGM.value, // Blood pressure monitors
+    )
   }
 
   override fun provideInitialState(): AppState = AppState()
@@ -202,26 +210,40 @@ constructor(
       handleIntent(AppIntent.SetScaleDiscovered(false))
       // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
       dialogQueueService.clear()
-      if (sku == SKU_0412) {
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.BtWifiScaleSetup(
-            SKU_0412,
-            BtWifiSetupStep.CONNECTING_BLUETOOTH,
-            discoveredBroadcastId,
-          ),
-        )
-      } else if (sku != null) {
-        val localSku = sku ?: return@launch
-        val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
-        // Pass original SKU to routes (not mapped), setup will save original SKU
-        navigationService.navigateTo(
-          AppRoute.ScaleSetup.LcbtScaleSetup(
-            localSku,
-            discoveredBroadcastId,
-            LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
-            scaleInfo = scaleInfo,
-          ),
-        )
+      val localSku = sku ?: return@launch
+      val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
+      when {
+        localSku == SKU_0412 -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BtWifiScaleSetup(
+              SKU_0412,
+              BtWifiSetupStep.CONNECTING_BLUETOOTH,
+              discoveredBroadcastId,
+            ),
+          )
+        }
+        DeviceHelper.isBabyScale(localSku) -> {
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.BabyScaleSetup(
+              sku = localSku,
+              initialStep = BabyScaleSetupStep.WAKEUP,
+              broadcastId = discoveredBroadcastId,
+              scaleInfo = scaleInfo,
+            ),
+          )
+        }
+        else -> {
+          // BPM and LCBT devices both route through LcbtScaleSetup for now.
+          // TODO(MA-3481): Add dedicated BPM setup route once BPM pairing flow is implemented.
+          navigationService.navigateTo(
+            AppRoute.ScaleSetup.LcbtScaleSetup(
+              localSku,
+              discoveredBroadcastId,
+              LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
+              scaleInfo = scaleInfo,
+            ),
+          )
+        }
       }
       onPopUpDismiss()
     }
@@ -542,7 +564,7 @@ constructor(
       when (deviceResponse.type) {
         GGScanResponseType.NEW_DEVICE -> {
           AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
-          if (canShowScaleDiscoveredModal && (data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value || data.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value)) {
+          if (canShowScaleDiscoveredModal && data.protocolType in DISCOVERY_ELIGIBLE_PROTOCOLS) {
             val currentRoute = navigationService.getCurrentRoute()
             val isSetupInProgress = deviceService.isSetupInProgress()
             val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
@@ -559,7 +581,7 @@ constructor(
 
               // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
               val deviceSku = data.getSKU()
-              val shouldShow = if (deviceSku == "0412") {
+              val shouldShow = if (deviceSku == SKU_0412) {
                 val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
                 isAllow
               } else {
@@ -582,11 +604,24 @@ constructor(
                   }
                 }
 
-                val customizedDevice = if (sku == "0412") customizeDevice(data) else Device(
-                  device = data,
-                  deviceType = ScaleSetupType.Lcbt.value,
-                  sku = sku,
-                )
+                val customizedDevice = when {
+                  deviceSku == SKU_0412 -> customizeDevice(data)
+                  DeviceHelper.isBabyScale(deviceSku) -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.BabyScale.value,
+                    sku = deviceSku,
+                  )
+                  DeviceHelper.isBpmDevice(deviceSku) -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.Bluetooth.value,
+                    sku = deviceSku,
+                  )
+                  else -> Device(
+                    device = data,
+                    deviceType = ScaleSetupType.Lcbt.value,
+                    sku = deviceSku,
+                  )
+                }
                 ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
                 canShowScaleDiscoveredModal = false
               } else {

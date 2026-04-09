@@ -174,6 +174,7 @@ final class MockContentViewModelScaleService: ScaleServiceProtocol {
     }
 
     func updateAllScalesStatus(_ scales: [Device]?) async throws {}
+    func createScaleInLocal(_ device: Device) async throws -> Device { device }
 
     func syncAllScalesWithRemote() async {
         syncAllScalesWithRemoteCalls += 1

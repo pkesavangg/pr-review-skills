@@ -1,7 +1,6 @@
 package com.dmdbrands.gurus.weight.features.ScaleSetup.manager
 
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
@@ -236,13 +235,11 @@ class WiFiConfigManager(
     }
 
     private fun setGatheringNetworkFailed() {
-        if (getDiscoveredScale()?.connectionStatus == BLEStatus.CONNECTED) {
-            onIntent(
-                BtWifiScaleSetupIntent.SetStepConnectionState(
-                    BtWifiSetupStep.GATHERING_NETWORK,
-                    ConnectionState.Failed.Error,
-                ),
-            )
-        }
+        onIntent(
+            BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.GATHERING_NETWORK,
+                ConnectionState.Failed.Error,
+            ),
+        )
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,9 +99,15 @@ fun <T> AppDraggableList(
   val lazyListState = rememberLazyListState()
   val hapticFeedback = LocalHapticFeedback.current
 
-  val scroller =  rememberScroller(
+  val scroller = rememberScroller(
     scrollableState = scrollState ?: lazyListState,
-    pixelAmountProvider = { lazyListState.layoutInfo.mainAxisViewportSize * ScrollAmountMultiplier },
+    pixelAmountProvider = {
+      val viewportSize = when (scrollState) {
+        is LazyListState -> scrollState.layoutInfo.mainAxisViewportSize
+        else -> lazyListState.layoutInfo.mainAxisViewportSize
+      }
+      viewportSize * ScrollAmountMultiplier
+    },
   )
 
   val reorderableState =

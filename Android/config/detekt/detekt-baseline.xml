@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <SmellBaseline>
-  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>ForbiddenImport:AccountServiceTest.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:AuthTokenInterceptor.kt$import kotlinx.coroutines.runBlocking</ID>
@@ -21,13 +21,16 @@
     <ID>LargeClass:HealthConnectService.kt$HealthConnectService : BaseServiceIHealthConnectService</ID>
     <ID>LargeClass:HealthConnectServiceTest.kt$HealthConnectServiceTest</ID>
     <ID>LargeClass:MigrationServiceTest.kt$MigrationServiceTest</ID>
+    <ID>LargeClass:NotificationServiceTest.kt$NotificationServiceTest</ID>
     <ID>LargeClass:ScaleDetailsViewModel.kt$ScaleDetailsViewModel : BaseIntentViewModel</ID>
     <ID>LargeClass:WifiScaleSetupViewModel.kt$WifiScaleSetupViewModel : ScaleSetupViewmodelDefaultLifecycleObserver</ID>
     <ID>LongMethod:AccountRepository.kt$AccountRepository$override suspend fun addAccount(account: Account): Account</ID>
     <ID>LongMethod:AccountService.kt$AccountService$override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean</ID>
     <ID>LongMethod:AccountSwitchInfoModal.kt$@Composable fun AccountSwitchInfoModal( userInitial: String, onAddAccount: () -&gt; Unit, onClose: () -&gt; Unit )</ID>
+    <ID>LongMethod:AddBabyScreen.kt$@Composable fun AddBabyScreen(viewModel: MyKidsViewModel = hiltViewModel())</ID>
     <ID>LongMethod:AddHealthConnect.kt$@Composable fun AddHealthConnect( modifier: Modifier = Modifier, secondaryActionLabel: String? = null, onClose: () -&gt; Unit, onPrimaryAction: () -&gt; Unit, onSecondaryAction: (() -&gt; Unit)? = null )</ID>
     <ID>LongMethod:AddScaleScreen.kt$@Composable fun AddScaleScreenContent( state: AddScaleState, handleIntent: (AddScaleIntent) -&gt; Unit, )</ID>
+    <ID>LongMethod:BabyAddedStep.kt$@Composable fun BabyAddedStep( babies: List&lt;BabyProfile&gt;, onEditBaby: (BabyProfile) -&gt; Unit, onDeleteBaby: (BabyProfile) -&gt; Unit, onAddBaby: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:AdditionalSettingsScreen.kt$@Composable fun AdditionalSettingsScreen( state: ScaleDetailsState, handleIntent: (ScaleDetailsIntent) -&gt; Unit, onClose: () -&gt; Unit, )</ID>
     <ID>LongMethod:AppBottomBar.kt$@Composable fun PagerBottomAppBar( modifier: Modifier = Modifier, containerColor: Color = Color.Transparent, shouldCenterMiddleContent: Boolean = false, isBottomBarVisible: Boolean = true, hasMiddleContentOnly: Boolean = false, leadingContent: @Composable () -&gt; Unit, middleContent: @Composable () -&gt; Unit, trailingContent: @Composable () -&gt; Unit, content: @Composable (Modifier) -&gt; Unit, )</ID>
     <ID>LongMethod:AppBottomBar.kt$@PreviewTheme @Composable fun BottomAppBarPreview()</ID>
@@ -55,6 +58,9 @@
     <ID>LongMethod:AppsyncEntryPopup.kt$@Composable fun AppsyncEntryPopup( entry: ScaleEntry, onEdit: () -&gt; Unit, onSave: () -&gt; Unit, )</ID>
     <ID>LongMethod:AppsyncScaleSetupScreen.kt$@Composable fun AppsyncScaleSetupScreenContent( state: AppsyncScaleSetupState, onIntent: (AppsyncScaleSetupIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:BLEDiscoveryManager.kt$BLEDiscoveryManager$override fun handleScanResponse(response: GGScanResponse.DeviceDetail)</ID>
+    <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyListContent( babyProfiles: ImmutableList&lt;BabyProfile&gt;, onEditBaby: (Int) -&gt; Unit, onDeleteBaby: (Int) -&gt; Unit, onAddBaby: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
+    <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyProfileFormContent( profile: BabyProfile, onProfileChanged: (BabyProfile) -&gt; Unit, modifier: Modifier = Modifier, )</ID>
+    <ID>LongMethod:BabyScaleSetupScreen.kt$@Composable internal fun BabyScaleSetupScreenContent( state: BabyScaleSetupState, sku: String, onIntent: (ScaleSetupIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:BaseListItem.kt$@Composable fun BaseListItem( title: String, modifier: Modifier = Modifier, subTitle: String? = null, leadingContent: @Composable (() -&gt; Unit)? = null, trailingContent: @Composable (() -&gt; Unit)? = null, enableCheckbox: Boolean = false, checkboxDescription: String? = null, isChecked: Boolean = false, enabled: Boolean = true, trailingAction: ActionButton? = null, shape: Shape = RectangleShape, onClick: (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:BaseListItem.kt$@PreviewTheme @Composable fun BaseListItemAllCombinationsPreview()</ID>
     <ID>LongMethod:BaseModal.kt$@Composable fun BaseModal( modifier: Modifier = Modifier, primaryActionType: ButtonType = ButtonType.InlineTextPrimary, primaryAction: ActionButton? = null, title: String? = null, subtitle: String? = null, body: String? = null, error: String? = null, secondaryAction: ActionButton? = null, onDismiss: (() -&gt; Unit)? = null, content: @Composable (() -&gt; Unit)? = null, )</ID>
@@ -204,15 +210,5 @@
     <ID>SwallowedException:WebViewLauncher.kt$WebViewLauncher$e: Exception</ID>
     <ID>SwallowedException:WifiMacAddress.kt$e: Exception</ID>
     <ID>SwallowedException:WifiSmartConnectManager.kt$WifiSmartConnectManager$e: Exception</ID>
-    <ID>LargeClass:AccountRepositoryTest.kt$AccountRepositoryTest</ID>
-    <ID>LargeClass:AccountServiceTest.kt$AccountServiceTest</ID>
-    <ID>LargeClass:DeviceServiceTest.kt$DeviceServiceTest</ID>
-    <ID>LargeClass:FeedServiceTest.kt$FeedServiceTest</ID>
-    <ID>LargeClass:GoalServiceTest.kt$GoalServiceTest</ID>
-    <ID>LargeClass:HealthConnectServiceTest.kt$HealthConnectServiceTest</ID>
-    <ID>LargeClass:MigrationServiceTest.kt$MigrationServiceTest</ID>
-    <ID>LargeClass:NotificationServiceTest.kt$NotificationServiceTest</ID>
-    <ID>LongMethod:TokenMigrationHelper.kt$TokenMigrationHelper$suspend fun migrateIfNeeded()</ID>
-    <ID>LongMethod:SegmentButtonGroup.kt$@Composable fun &lt;T&gt; SegmentButtonGroup( modifier: Modifier = Modifier, data: List&lt;T&gt;, selectedData: T, key: (T) -&gt; String, contentPadding: PaddingValues = PaddingValues(0.dp), size: SegmentButtonSize = SegmentButtonSize.Small, type: SegmentButtonType = SegmentButtonType.Single, spacedBy: Dp = 0.dp, onSelected: (T) -&gt; Unit, )</ID>
   </CurrentIssues>
 </SmellBaseline>

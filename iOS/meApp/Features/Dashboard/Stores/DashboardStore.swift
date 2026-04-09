@@ -74,14 +74,14 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         selectedBabyProfile != nil
     }
 
-    private var selectedBabyProfile: BabyProfile? {
+    var selectedBabyProfile: BabyProfile? {
         if case .baby(let profile) = selectedProductItem {
             return profile
         }
         return nil
     }
 
-    private var selectedBabyMetric: BabyMetric {
+    var selectedBabyMetric: BabyMetric {
         state.ui.selectedMetricLabel == BabyMetric.height.rawValue ? .height : .weight
     }
 

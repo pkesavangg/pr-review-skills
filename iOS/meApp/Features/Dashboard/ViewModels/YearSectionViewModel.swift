@@ -19,6 +19,22 @@ final class YearSectionViewModel: BaseSectionViewModel {
         return .year
     }
 
+    /// Align plotted monthly points to the same month-start noon positions used by
+    /// year-view tick generation and selection snapping.
+    override func plotXDate(for original: Date) -> Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = Calendar.current.timeZone
+        cal.locale = Calendar.current.locale
+
+        var components = cal.dateComponents([.year, .month], from: original)
+        components.day = 1
+        components.hour = 12
+        components.minute = 0
+        components.second = 0
+
+        return cal.date(from: components) ?? super.plotXDate(for: original)
+    }
+
     /// Keep year scrolling quantized to month boundaries during drag updates so
     /// live drag behavior matches final settled snapping.
     override func handleScrollPositionChange(_ newPosition: Date?) {
@@ -56,13 +72,18 @@ final class YearSectionViewModel: BaseSectionViewModel {
             
             if snapped >= firstMonth && snapped <= lastMonth {
                 selectedDate = snapped
+                selectedPoint = chartOperations.first {
+                    Calendar.current.isDate($0.date, equalTo: snapped, toGranularity: .month)
+                }
                 showCrosshair = true
             } else {
                 selectedDate = nil
+                selectedPoint = nil
                 showCrosshair = false
             }
         } else {
             selectedDate = nil
+            selectedPoint = nil
             showCrosshair = false
         }
     }
