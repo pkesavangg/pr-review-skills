@@ -84,8 +84,6 @@ class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<Ba
     isRefreshing: Boolean,
     markerIndex: Double?,
     selectedSegment: GraphSegment,
-    dailyProducer: CartesianChartModelProducer,
-    monthlyProducer: CartesianChartModelProducer,
     scrollTarget: Double?,
   ): BabyDashboardState {
     val current = state.metricState(state.selectedMetric)
@@ -98,8 +96,6 @@ class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<Ba
     return state.copy(
       metricStates = state.metricStates + (state.selectedMetric to updated),
       isRefreshing = isRefreshing,
-      dailyProducer = dailyProducer,
-      monthlyProducer = monthlyProducer,
     )
   }
 

@@ -79,16 +79,12 @@ class WeightDashboardReducer : BaseGraphReducer<WeightDashboardState>(), IReduce
     isRefreshing: Boolean,
     markerIndex: Double?,
     selectedSegment: GraphSegment,
-    dailyProducer: CartesianChartModelProducer,
-    monthlyProducer: CartesianChartModelProducer,
     scrollTarget: Double?,
   ) = state.copy(
     segmentStates = segmentStates,
     isRefreshing = isRefreshing,
     markerIndex = markerIndex,
     selectedSegment = selectedSegment,
-    dailyProducer = dailyProducer,
-    monthlyProducer = monthlyProducer,
     scrollTarget = scrollTarget,
   )
 

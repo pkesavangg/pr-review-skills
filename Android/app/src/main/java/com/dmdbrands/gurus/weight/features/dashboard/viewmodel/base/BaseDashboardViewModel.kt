@@ -15,11 +15,11 @@ import android.icu.util.Calendar
 
 /**
  * Base ViewModel for all product dashboards. Provides:
- * - 2 stable producers (daily + monthly)
  * - Shared segment range computation
  * - Shared producer transaction helper
  * - ScrollRange intent handling
  *
+ * Producers live in the state (set via [initProducers]).
  * Each product VM subscribes to its own typed data flow, converts entries
  * to series inline, then calls [updateSegmentRanges] + [pushSeriesToProducer].
  */
@@ -31,32 +31,11 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
     private const val TAG = "BaseDashboardVM"
   }
 
-  // ── Stable producers — created once, never swapped ──
-
-  private val _dailyProducer = CartesianChartModelProducer()
-  private val _monthlyProducer = CartesianChartModelProducer()
-
-  val dailyProducer: CartesianChartModelProducer get() = _dailyProducer
-  val monthlyProducer: CartesianChartModelProducer get() = _monthlyProducer
-
-  fun producerForSegment(segment: GraphSegment): CartesianChartModelProducer =
-    if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) _dailyProducer else _monthlyProducer
-
-  /** Must be called from product VM's init/onDependenciesReady to set producers in state. */
-  protected fun initProducers() {
-    setProducers(_dailyProducer, _monthlyProducer)
-  }
-
   // ── Intent helpers ──
 
   @Suppress("UNCHECKED_CAST")
   protected fun updateSegmentState(segment: GraphSegment, update: (SegmentState) -> SegmentState) {
     super.handleIntent(BaseGraphIntent.UpdateSegment(segment, update) as I)
-  }
-
-  @Suppress("UNCHECKED_CAST")
-  private fun setProducers(daily: CartesianChartModelProducer, monthly: CartesianChartModelProducer) {
-    super.handleIntent(BaseGraphIntent.SetProducers(daily, monthly) as I)
   }
 
   @Suppress("UNCHECKED_CAST")
@@ -69,9 +48,6 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
   /**
    * Compute segment ranges (minTarget, maxTarget, chartMinX, chartMaxX, etc.)
    * from entries and update segment states. Same logic for all products.
-   *
-   * @param entries All entries as [PeriodSummary] (for timestamps + target filtering).
-   * @param segments Which segments to update (WEEK/MONTH for daily, YEAR/TOTAL for monthly).
    */
   protected fun updateSegmentRanges(
     entries: List<PeriodSummary>,
@@ -144,10 +120,6 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
 
   // ── Shared: push series to producer ──
 
-  /**
-   * Push line series data to a producer. Each product VM builds its own
-   * [SeriesData] list (1 series for weight, 3 for BP, etc.) and calls this.
-   */
   protected suspend fun pushSeriesToProducer(
     producer: CartesianChartModelProducer,
     vararg seriesBlocks: List<SeriesData>,
@@ -165,7 +137,6 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
     }
   }
 
-  /** Push empty placeholder to producer (for empty graph state). */
   protected suspend fun pushEmptyProducer(producer: CartesianChartModelProducer) {
     withContext(Dispatchers.Main) {
       producer.runTransaction(animate = false) {

@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import kotlinx.collections.immutable.toImmutableList
 
 // ── Base Intent ──
@@ -14,9 +13,6 @@ import kotlinx.collections.immutable.toImmutableList
  */
 interface BaseGraphIntent : IReducer.Intent {
   data class UpdateSegment(val segment: GraphSegment, val update: (SegmentState) -> SegmentState) : BaseGraphIntent
-  data class SetProducers(val daily: CartesianChartModelProducer, val monthly: CartesianChartModelProducer) :
-    BaseGraphIntent
-
   data class SetRefreshing(val isRefreshing: Boolean) : BaseGraphIntent
   data class SetSelectedSegment(val segment: GraphSegment, val anchorTimestamp: Double? = null) : BaseGraphIntent
   data class UpdateMarkerIndex(val markerIndex: Double?) : BaseGraphIntent
@@ -44,8 +40,6 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
     isRefreshing: Boolean = state.isRefreshing,
     markerIndex: Double? = state.markerIndex,
     selectedSegment: GraphSegment = state.selectedSegment,
-    dailyProducer: CartesianChartModelProducer = state.dailyProducer,
-    monthlyProducer: CartesianChartModelProducer = state.monthlyProducer,
     scrollTarget: Double? = state.scrollTarget,
   ): S
 
@@ -54,12 +48,6 @@ abstract class BaseGraphReducer<S : BaseDashboardState> {
       val current = state.segmentStates[intent.segment] ?: SegmentState()
       copyBaseFields(state, segmentStates = state.segmentStates + (intent.segment to intent.update(current)))
     }
-
-    is BaseGraphIntent.SetProducers -> copyBaseFields(
-      state,
-      dailyProducer = intent.daily,
-      monthlyProducer = intent.monthly,
-    )
 
     is BaseGraphIntent.SetRefreshing -> copyBaseFields(state, isRefreshing = intent.isRefreshing)
     is BaseGraphIntent.SetSelectedSegment -> copyBaseFields(state, selectedSegment = intent.segment, scrollTarget = intent.anchorTimestamp)
