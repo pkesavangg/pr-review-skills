@@ -32,16 +32,33 @@ struct BpmSetupStrings {
         static let title: (String) -> String = { userLabel in
             "Set the monitor to User \(userLabel)."
         }
-        static let description: (Bool) -> String = { isA6 in
-            isA6
-                ? "Change the user by tapping the A/B button."
-                : "Change the user by tapping the USER button."
+        static func description(for item: ScaleItemInfo) -> String {
+            if item.toggleButton {
+                return "With the monitor off, toggle the user switch to change users."
+            }
+            if item.hasNumericUsers {
+                return "Change the user by tapping the USER button."
+            }
+            return "Change the user by tapping the A/B button."
         }
     }
 
     struct ConfirmUser {
         static let title = "Press the START/STOP button to confirm user selection."
-        static let description = "The monitor will confirm and turn off."
+        static func description(for sku: String) -> String {
+            switch sku {
+            case "0603":
+                return "The monitor will confirm and turn off."
+            default:
+                return "The monitor will say done and turn off."
+            }
+        }
+    }
+
+    struct PowerSwitch {
+        static let title = "Set the monitor\u{2019}s power switch to ON."
+        static let description = "Keep the switch set to ON unless you need to reset the monitor. "
+            + "To enter sleep mode, press SET or let the monitor enter it automatically after one minute of non-use."
     }
 
     struct PrePairing {
@@ -91,18 +108,19 @@ struct BpmSetupStrings {
     }
 
     struct DeviceConflictAlert {
-        struct DifferentUser {
-            static let title = "Device Already Paired"
-            static let message: (String) -> String = { userLabel in
-                "This monitor is already paired to User \(userLabel). Would you like to replace the existing pairing?"
-            }
-            static let replaceButton = "Replace"
-        }
 
         struct SameUser {
-            static let title = "Device Already Paired"
-            static let message = "This monitor is already paired to this user. Please dismiss and use the existing pairing."
+            static let title = "Caution: User Already Paired"
+            static let message = "This monitor is already paired under the same User. By continuing the connection will be reset."
+            static let continueButton = "CONTINUE"
         }
 
-}
+    }
+
+    struct UserMismatchAlert {
+        static let title = "Unable to Connect"
+        static let message = "The user settings chosen on the monitor and in the app do not match. Please review and try again."
+        static let cancelSetupButton = "CANCEL SETUP"
+        static let reviewButton = "REVIEW"
+    }
 }
