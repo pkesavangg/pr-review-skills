@@ -61,6 +61,7 @@ fun GraphView(
   handleGraphIntent: (BaseGraphIntent) -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   onScrollTargetConsumed: (Boolean) -> Unit = {},
+  chartFillsHeight: Boolean = false,
 ) {
   val scope = rememberCoroutineScope()
   val currentDeviceType = getDeviceType()
@@ -253,7 +254,7 @@ fun GraphView(
   CartesianChartHost(
     chart = chart,
     modelProducer = modelProducer,
-    modifier = modifier.height(chartHeight),
+    modifier = if (chartFillsHeight) modifier else modifier.height(chartHeight),
     scrollState = scrollState,
     animateIn = false,
     zoomState = rememberVicoZoomState(zoomEnabled = false),

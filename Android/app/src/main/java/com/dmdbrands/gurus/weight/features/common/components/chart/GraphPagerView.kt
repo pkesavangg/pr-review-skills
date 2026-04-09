@@ -32,6 +32,7 @@ fun GraphPagerView(
   selectedProduct: ProductSelection,
   goal: Goal? = null,
   hasPercentile: Boolean = false,
+  chartFillsHeight: Boolean = false,
   handleGraphIntent: (BaseGraphIntent) -> Unit,
   createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary? = { _, _, _ -> null },
   header: @Composable (GraphSegment) -> Unit,
@@ -41,10 +42,15 @@ fun GraphPagerView(
   Column(
     modifier = Modifier.background(MeTheme.colorScheme.primaryBackground),
   ) {
+    val pagerModifier = if (chartFillsHeight) {
+      Modifier.fillMaxWidth().weight(1f)
+    } else {
+      Modifier.fillMaxWidth()
+    }
     HorizontalPager(
       state = pagerState,
       userScrollEnabled = false,
-      modifier = Modifier.fillMaxWidth(),
+      modifier = pagerModifier,
     ) { page ->
       val currentSegment = GraphSegment.entries.getOrNull(page) ?: GraphSegment.WEEK
       val segmentState = state.forSegment(currentSegment)
@@ -63,7 +69,7 @@ fun GraphPagerView(
         header(currentSegment)
 
         GraphView(
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().then(if (chartFillsHeight) Modifier.weight(1f) else Modifier),
           state = state,
           segmentState = segmentState,
           chartConfig = chartConfig,
@@ -74,6 +80,7 @@ fun GraphPagerView(
           handleGraphIntent = handleGraphIntent,
           createFallbackEntry = createFallbackEntry,
           onScrollTargetConsumed = onScrollTargetConsumed,
+          chartFillsHeight = chartFillsHeight,
         )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
