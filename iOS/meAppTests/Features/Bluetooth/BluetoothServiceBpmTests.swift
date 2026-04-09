@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -171,7 +171,7 @@ struct BluetoothServiceBpmTests {
     @Test("MockBluetoothService: connectBpm records broadcast ID")
     func mockConnectBpm() async {
         let mock = MockBluetoothService()
-        _ = await mock.connectBpm(broadcastId: "BPM001", userNumber: 1)
+        _ = await mock.connectBpm(broadcastId: "BPM001", userNumber: 1, replaceUser: false, pairedSKUMonitors: [])
 
         #expect(mock.connectBpmCalls == 1)
         #expect(mock.lastConnectBpmBroadcastId == "BPM001")
@@ -202,7 +202,7 @@ struct BluetoothServiceBpmTests {
     func connectBpmEmptyBroadcastId() async {
         let sut = makeSUT()
 
-        let result = await sut.connectBpm(broadcastId: "", userNumber: 1)
+        let result = await sut.connectBpm(broadcastId: "", userNumber: 1, replaceUser: false, pairedSKUMonitors: [])
 
         switch result {
         case .success:

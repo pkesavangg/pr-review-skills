@@ -18,7 +18,7 @@ extension BluetoothService {
         guard let accountData = await getProfileInfo(from: activeAccount) else {
             throw BluetoothServiceError.noProfileInfo
         }
-        ggBleSDK.scan(.WEIGHT_GURUS, accountData) { [weak self] result in
+        ggBleSDK.scan(.ME_HEALTH, accountData) { [weak self] result in
             Task { @MainActor in
                 switch result {
                 case .success(let scanResponse):
@@ -347,14 +347,14 @@ extension BluetoothService {
     /// Resolves the Device for the given broadcast ID from the paired bluetooth scales.
     private func resolveDevice(forBroadcastId broadcastId: String?) -> Device? {
         guard let broadcastId = broadcastId else { return nil }
-        return bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })
+        return bluetoothScales.first { $0.broadcastIdString == broadcastId }
     }
 
     /// Finds the Baby linked to the device broadcasting with the given ID.
     /// Chain: broadcastId → Device (bluetoothScales) → Device.id → Baby.deviceId → Baby
     private func resolveBaby(forBroadcastId broadcastId: String?) -> Baby? {
         guard let device = resolveDevice(forBroadcastId: broadcastId) else { return nil }
-        return babyService.currentBabies.first(where: { $0.deviceId == device.id })
+        return babyService.currentBabies.first { $0.deviceId == device.id }
     }
 
     /// Resolves the scale SKU for the device broadcasting with the given ID.

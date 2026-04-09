@@ -116,7 +116,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var receiveBpmReadingResult: Result<Void, BluetoothServiceError> = .success(())
 
     func scanForBpm() { scanForBpmCalls += 1 }
-    func connectBpm(broadcastId: String, userNumber: Int) async -> Result<UserCreationResponse, BluetoothServiceError> {
+    func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [Device]) async -> Result<UserCreationResponse, BluetoothServiceError> {
         connectBpmCalls += 1
         lastConnectBpmBroadcastId = broadcastId
         return connectBpmResult

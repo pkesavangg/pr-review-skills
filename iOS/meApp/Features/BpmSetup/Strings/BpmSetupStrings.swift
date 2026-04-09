@@ -117,6 +117,14 @@ struct BpmSetupStrings {
             static let continueButton = "CONTINUE"
         }
 
+        struct DifferentUser {
+            static let title = "Caution: Adding Second User"
+            static func message(_ user: String) -> String {
+                "This monitor has already been paired under User \(user). Balance cannot distinguish between multiple users on the same account."
+            }
+            static let replaceButton = "REPLACE USER"
+        }
+
     }
 
     struct UserMismatchAlert {

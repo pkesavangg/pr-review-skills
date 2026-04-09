@@ -33,6 +33,7 @@ final class BpmSetupStore: ObservableObject {
     private var isSaving: Bool = false
     private var deviceToDelete: Device?
     private var lastRetrievedDeviceInfo: DeviceInfo?
+    private var canReplaceUser: Bool = false
 
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
@@ -482,7 +483,6 @@ final class BpmSetupStore: ObservableObject {
                 return existingMac.lowercased() == discoveredMac.lowercased()
             }) {
                 let isSameUser = existing.userNumber == "\(selectedUserNumber ?? 1)"
-
                 if isSameUser {
                     LoggerService.shared.log(
                         level: .info, tag: tag,
@@ -503,14 +503,12 @@ final class BpmSetupStore: ObservableObject {
 
         // Check user mismatch before connecting — if the discovered device reports
         // a different user than what the app selected, show alert without pairing.
-        if let deviceUserStr = discoveredDevice?.userNumber,
-           let deviceUser = Int(deviceUserStr),
+        let deviceUserNumberStr = discoveredDevice?.userNumber
+        let deviceUserNumber = deviceUserNumberStr.flatMap { Int($0) }
+        if let deviceUser = deviceUserNumber,
            let expected = selectedUserNumber,
            deviceUser != expected {
-            LoggerService.shared.log(
-                level: .info, tag: tag,
-                message: "Pre-connection user mismatch: app selected \(expected), device reports \(deviceUser)"
-            )
+            LoggerService.shared.log(level: .info, tag: tag, message: "User mismatch before pairing: app selected \(expected), device reports \(deviceUser)")
             showUserMismatchAlert()
             return
         }
@@ -529,8 +527,16 @@ final class BpmSetupStore: ObservableObject {
         }
 
         let broadcastId = device.broadcastIdString ?? ""
+        let pairedSKUMonitors = scaleService.scales.filter { $0.sku == selectedSku }
 
-        let result = await bluetoothService.connectBpm(broadcastId: broadcastId, userNumber: selectedUserNumber ?? 1)
+        LoggerService.shared.log(level: .info, tag: tag, message: "Starting BPM pairing: \(broadcastId), user: \(String(describing: selectedUserNumber)), replaceUser: \(canReplaceUser)")
+
+        let result = await bluetoothService.connectBpm(
+            broadcastId: broadcastId,
+            userNumber: selectedUserNumber ?? 1,
+            replaceUser: canReplaceUser,
+            pairedSKUMonitors: pairedSKUMonitors
+        )
         switch result {
         case .success(let response):
             switch response {
@@ -545,8 +551,32 @@ final class BpmSetupStore: ObservableObject {
                 showUserMismatchAlert()
                 return
 
+            case .deviceExistsWithSameUser:
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "SDK reports device exists with same user for BPM \(broadcastId)"
+                )
+                showSameUserConflictAlert()
+                return
+
+            case .deviceExistsWithDifferentUser:
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "SDK reports device exists with different user for BPM \(broadcastId)"
+                )
+                showDifferentUserConflictAlert()
+                return
+
             case .creationCompleted:
+                canReplaceUser = false
                 connectionState = .success
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "creationCompleted for BPM \(broadcastId)"
+                )
 
                 // Fetch fresh device info after connection (matching Ionic pattern).
                 // The post-connection broadcastId may differ from the discovery broadcastId
@@ -563,7 +593,8 @@ final class BpmSetupStore: ObservableObject {
 
             default:
                 LoggerService.shared.log(
-                    level: .error, tag: tag,
+                    level: .error,
+                    tag: tag,
                     message: "BPM pairing returned unexpected status: \(response.rawValue)"
                 )
                 showConnectionErrorAlert()
@@ -686,6 +717,48 @@ final class BpmSetupStore: ObservableObject {
                     if let userIndex = self.steps.firstIndex(of: .selectUser) {
                         self.currentStepIndex = userIndex
                     }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    /// Shows an alert when the SDK reports the device is already paired to the same user.
+    /// Offers Cancel (close setup) or Continue (retry with replaceUser=true).
+    private func showSameUserConflictAlert() {
+        let lang = BpmSetupStrings.DeviceConflictAlert.SameUser.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
+                    self?.dismissAction?()
+                },
+                AlertButtonModel(title: lang.continueButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.canReplaceUser = true
+                    Task { @MainActor in await self.startPairing() }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    /// Shows an alert when the SDK reports the device is paired to a different user.
+    /// Offers Cancel (close setup) or Replace User (retry with replaceUser=true).
+    private func showDifferentUserConflictAlert() {
+        let lang = BpmSetupStrings.DeviceConflictAlert.DifferentUser.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
+                    self?.dismissAction?()
+                },
+                AlertButtonModel(title: lang.replaceButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.canReplaceUser = true
+                    Task { @MainActor in await self.startPairing() }
                 }
             ]
         )
@@ -966,6 +1039,7 @@ final class BpmSetupStore: ObservableObject {
         bpmReadingSubscription?.cancel()
         bpmReadingSubscription = nil
         lastRetrievedDeviceInfo = nil
+        canReplaceUser = false
         if !isDeviceSaved {
             discoveredDevice = nil
             discoveryEvent = nil
