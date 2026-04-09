@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -10,16 +9,17 @@ import com.dmdbrands.gurus.weight.features.common.components.chart.axis.endAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.startAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.axis.topAxis
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visibleLabelsCount
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
+import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.data.rememberScrollAwareRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
@@ -31,6 +31,7 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.rememberShapeComponent
 import java.util.Calendar
+import android.annotation.SuppressLint
 
 /**
  * Unified chart builder driven by [ChartConfig].
@@ -52,8 +53,16 @@ fun rememberProductChart(
   // ── Separators (shared) ──
   val separators = GraphUtil.periodStarts(
     segment = segment,
-    startMillis = segmentState.data.map { com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().firstOrNull(),
-    endMillis = segmentState.data.map { com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(it.entryTimestamp) }.sorted().lastOrNull(),
+    startMillis = segmentState.data.map {
+      com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(
+        it.entryTimestamp,
+      )
+    }.sorted().firstOrNull(),
+    endMillis = segmentState.data.map {
+      com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(
+        it.entryTimestamp,
+      )
+    }.sorted().lastOrNull(),
   ).map { it.toDouble() }
 
   // ── Visible labels count (shared) ──
@@ -85,7 +94,7 @@ fun rememberProductChart(
 
     val relativeMin = GraphUtil.getRelativeStart(segment, visibleXRange.start.toLong())
     val relativeMax = GraphUtil.getRelativeEnd(segment, visibleXRange.endInclusive.toLong())
-    val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
+    GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
 
     val axisMeta = generateNiceScale(
       minValue = yValues.min(),
@@ -143,9 +152,16 @@ fun rememberProductChart(
         pointProvider = null,
       )
     }
+    val percentileRangeProvider = remember(segmentState.chartMinX, segmentState.chartMaxX) {
+      CartesianLayerRangeProvider.fixed(
+        minX = segmentState.chartMinX ?: Double.NaN,
+        maxX = segmentState.chartMaxX ?: Double.NaN,
+      )
+    }
     rememberLineCartesianLayer(
       lineProvider = remember(bandLines) { LineCartesianLayer.LineProvider.series(bandLines) },
       verticalAxisPosition = Axis.Position.Vertical.End,
+      rangeProvider = percentileRangeProvider,
       markerTargetsEnabled = false,
     )
   } else null

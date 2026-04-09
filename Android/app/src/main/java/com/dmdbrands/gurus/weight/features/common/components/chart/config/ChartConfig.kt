@@ -58,8 +58,9 @@ fun rememberChartConfig(
 
       is ProductSelection.Baby -> ChartConfig(
         lines = listOf(LineSpec(color = SnapshotColors.Baby)),
-
-        )
+        hasPercentileLayer = hasPercentile,
+        percentileBandColor = SnapshotColors.PercentileBand,
+      )
     }
   }
 }
