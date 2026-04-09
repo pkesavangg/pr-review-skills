@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -36,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -313,7 +316,8 @@ fun AppButton(
   val buttonModifier = modifier
     .then(
       if (type != ButtonType.InlineTextPrimary || type != ButtonType.InlineTextSecondary) {
-        Modifier.height(height)
+        if (getDeviceType() != DeviceType.Phone) Modifier.heightIn(min = height)
+        else Modifier.height(height)
       } else {
         Modifier
       },

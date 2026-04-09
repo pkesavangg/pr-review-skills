@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -38,6 +39,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults.visualTransformation
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
+import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.form.DecimalInputVisualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.strings.AppInputStrings
@@ -344,7 +347,14 @@ fun <T> InputFieldBase(
         modifier =
             modifier
                 .fillMaxWidth()
-                .then(if (singleLine) Modifier.height(56.dp) else Modifier)
+                .then(
+                    if (singleLine) {
+                        if (getDeviceType() != DeviceType.Phone) Modifier.heightIn(min = 56.dp)
+                        else Modifier.height(56.dp)
+                    } else {
+                        Modifier
+                    },
+                )
                 .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->
                     if (!focusState.isFocused && isFocused) {
