@@ -30,6 +30,8 @@ final class BpmSetupStore: ObservableObject {
     private var discoveredDevice: Device?
     private var discoveryEvent: DeviceDiscoveryEvent?
     private var isDeviceSaved: Bool = false
+    private var deviceToDelete: Device?
+    private var lastRetrievedDeviceInfo: DeviceInfo?
 
     /// Callback used by the screen to dismiss itself.
     var dismissAction: (() -> Void)?
@@ -53,7 +55,13 @@ final class BpmSetupStore: ObservableObject {
     @Published var isReadingSynced: Bool = false
 
     @Published var selectedSku: String? {
-        didSet { updateNextEnabled() }
+        didSet {
+            updateNextEnabled()
+            // When user selects a model from the grid, reconfigure steps for that SKU.
+            if let sku = selectedSku, oldValue != sku {
+                reconfigureStepsForSku(sku)
+            }
+        }
     }
 
     @Published var selectedUserNumber: Int? {
@@ -71,6 +79,14 @@ final class BpmSetupStore: ObservableObject {
     var isA6Flow: Bool {
         guard let sku = bpmItem?.sku ?? selectedSku else { return false }
         return a6BpmSkus.contains(sku)
+    }
+
+    /// The BLE protocol type expected for the selected SKU.
+    private var expectedProtocolType: ProtocolType? {
+        guard let sku = selectedSku else { return nil }
+        if a6BpmSkus.contains(sku) { return .A6 }
+        if a3BpmSkus.contains(sku) { return .A3 }
+        return nil
     }
 
     private let tag = "BpmSetupStore"
@@ -102,7 +118,7 @@ final class BpmSetupStore: ObservableObject {
             case .selectUser:
                 return AnyView(
                     A3BpmUserSelectionView(
-                        sku: bpmItem.sku,
+                        bpmItem: bpmItem,
                         selectedUser: Binding(
                             get: { [weak self] in self?.selectedUserNumber },
                             set: { [weak self] in self?.selectedUserNumber = $0 }
@@ -113,14 +129,24 @@ final class BpmSetupStore: ObservableObject {
                     )
                 )
 
+            case .powerSwitch:
+                return AnyView(
+                    A3BpmInstructionView(
+                        title: BpmSetupStrings.PowerSwitch.title,
+                        description: BpmSetupStrings.PowerSwitch.description,
+                        imagePath: bpmItem.imgPath,
+                        mediaLayout: .top,
+                        mediaHorizontalPadding: 0
+                    )
+                )
             case .setUser:
                 return AnyView(
                     A3BpmInstructionView(
-                        title: BpmSetupStrings.SetUser.title(selectedUserNumber ?? 1),
-                        description: BpmSetupStrings.SetUser.description,
+                        title: BpmSetupStrings.SetUser.title(userLabel(for: selectedUserNumber ?? 1)),
+                        description: BpmSetupStrings.SetUser.description(for: bpmItem),
                         imagePath: bpmItem.imgPath,
                         gifName: userGifName(for: bpmItem.sku, selectedUserNumber: selectedUserNumber),
-                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        gifSubdirectory: userGifSubdirectory(for: bpmItem.sku),
                         resourceImageName: imageName(for: .setUser, sku: bpmItem.sku),
                         resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
                         mediaLayout: .bottom,
@@ -131,8 +157,10 @@ final class BpmSetupStore: ObservableObject {
                 return AnyView(
                     A3BpmInstructionView(
                         title: BpmSetupStrings.ConfirmUser.title,
-                        description: BpmSetupStrings.ConfirmUser.description,
+                        description: BpmSetupStrings.ConfirmUser.description(for: bpmItem.sku),
                         imagePath: bpmItem.imgPath,
+                        gifName: gifName(for: .confirmUser, sku: bpmItem.sku),
+                        gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
                         resourceImageName: imageName(for: .confirmUser, sku: bpmItem.sku),
                         resourceImageSubdirectory: gifSubdirectory(for: bpmItem.sku),
                         mediaLayout: .top,
@@ -146,7 +174,7 @@ final class BpmSetupStore: ObservableObject {
                         description: BpmSetupStrings.PrePairing.description,
                         imagePath: bpmItem.imgPath,
                         gifName: gifName(for: .prePairing, sku: bpmItem.sku),
-                        gifSubdirectory: gifSubdirectory(for: bpmItem.sku),
+                        gifSubdirectory: confirmUserGifSubdirectory(for: bpmItem.sku),
                         mediaLayout: .top,
                         mediaHorizontalPadding: 0
                     )
@@ -284,9 +312,29 @@ final class BpmSetupStore: ObservableObject {
         resetDiscoveryState()
         bluetoothService.isSetupInProgress = true
 
-        if bpmSkus.contains(sku) {
-            self.steps = BpmSetupStep.preSelectedSteps
-            self.currentStepIndex = 0
+        let preSelected = bpmSkus.contains(sku)
+        self.steps = BpmSetupStep.steps(for: primarySku, preSelected: preSelected)
+        self.currentStepIndex = 0
+    }
+
+    /// Re-builds the step array when the user picks a different model from the grid.
+    /// Preserves the current step index (model selection) so the UI doesn't jump.
+    private func reconfigureStepsForSku(_ sku: String) {
+        let primarySku = primaryBpmSetupSku(for: sku)
+        let resolved = BPMS.first { $0.sku == primarySku } ?? BPMS.first
+        self.bpmItem = resolved
+
+        let isPreSelected = steps.first == .intro
+        let newSteps = BpmSetupStep.steps(for: primarySku, preSelected: isPreSelected)
+
+        // Only update if the steps actually changed (avoids unnecessary re-renders).
+        if newSteps != steps {
+            let currentStep = self.currentStep
+            self.steps = newSteps
+            // Stay on the same logical step after reconfiguration.
+            if let idx = newSteps.firstIndex(of: currentStep) {
+                self.currentStepIndex = idx
+            }
         }
     }
 
@@ -367,53 +415,263 @@ final class BpmSetupStore: ObservableObject {
         guard currentStep == .scanning else { return }
         guard event.deviceInfo.setupType == .bpm else { return }
 
+        // Only accept devices whose protocol matches the selected SKU (A3 vs A6).
+        // Mismatched devices are silently ignored so scanning continues.
+        guard event.protocolType == expectedProtocolType else {
+            LoggerService.shared.log(
+                level: .info, tag: tag,
+                message: "Ignoring BPM device — protocol \(event.protocolType) does not match expected \(String(describing: expectedProtocolType))"
+            )
+            return
+        }
+
         deviceDiscoveryCancellable?.cancel()
         scanTimerTask?.cancel()
 
         self.discoveredDevice = event.device
         self.discoveryEvent = event
-        self.connectionState = .success
 
-        LoggerService.shared.log(level: .info, tag: tag, message: "BPM device discovered, starting pairing")
+        LoggerService.shared.log(level: .info, tag: tag, message: "BPM device discovered, checking for existing pairing")
 
         Task { @MainActor in
-            await self.startPairing()
+            await self.checkForPrePairingDuplicate()
         }
+    }
+
+    /// Checks whether the discovered device's MAC matches an already-paired device
+    /// BEFORE initiating BLE pairing. Same-user duplicates show "User Already Paired";
+    /// different-user duplicates on the same physical device proceed silently.
+    private func checkForPrePairingDuplicate() async {
+        guard let device = discoveredDevice else {
+            showConnectionErrorAlert()
+            return
+        }
+
+        let discoveredMac = device.mac ?? ""
+
+        if !discoveredMac.isEmpty {
+            let existingDevices = (try? await scaleService.getDevices()) ?? []
+
+            if let existing = existingDevices.first(where: {
+                guard let existingMac = $0.mac, !existingMac.isEmpty else { return false }
+                return existingMac.lowercased() == discoveredMac.lowercased()
+            }) {
+                let isSameUser = existing.userNumber == "\(selectedUserNumber ?? 1)"
+
+                if isSameUser {
+                    LoggerService.shared.log(
+                        level: .info, tag: tag,
+                        message: "Pre-pairing check: same-user duplicate found (MAC: \(discoveredMac)). Skipping pairing."
+                    )
+                    deviceToDelete = existing
+                    confirmUserAndPair(isDifferentUser: false)
+                    return
+                } else {
+                    LoggerService.shared.log(
+                        level: .info, tag: tag,
+                        message: "Pre-pairing check: different-user on same device (MAC: \(discoveredMac)). Allowing multi-user pairing."
+                    )
+                    // Different user slot on same physical device — allowed. Fall through to pairing.
+                }
+            }
+        }
+
+        // Check user mismatch before connecting — if the discovered device reports
+        // a different user than what the app selected, show alert without pairing.
+        if let deviceUserStr = discoveredDevice?.userNumber,
+           let deviceUser = Int(deviceUserStr),
+           let expected = selectedUserNumber,
+           deviceUser != expected {
+            LoggerService.shared.log(
+                level: .info, tag: tag,
+                message: "Pre-connection user mismatch: app selected \(expected), device reports \(deviceUser)"
+            )
+            showUserMismatchAlert()
+            return
+        }
+
+        connectionState = .success
+        await startPairing()
     }
 
     // MARK: - Pairing Logic
     private func startPairing() async {
         guard let device = discoveredDevice else {
             LoggerService.shared.log(level: .error, tag: tag, message: "startPairing - no discovered device")
-            connectionState = .failure
+            showConnectionErrorAlert()
             return
         }
 
         let broadcastId = device.broadcastIdString ?? ""
 
-        let result = await bluetoothService.connectBpm(broadcastId: broadcastId)
+        let result = await bluetoothService.connectBpm(broadcastId: broadcastId, userNumber: selectedUserNumber ?? 1)
         switch result {
-        case .success:
-            connectionState = .success
-
-            // Fetch fresh device info after connection (matching Ionic pattern).
-            // The post-connection broadcastId may differ from the discovery broadcastId
-            // for A3 BPM devices, so update the device with stable identifiers.
-            await updateDeviceFromPostConnectionInfo(device)
-
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
-                if self.currentStep == .scanning {
-                    self.moveToNextStep()
+        case .success(let response):
+            switch response {
+            case .differentUser:
+                LoggerService.shared.log(
+                    level: .info, tag: tag,
+                    message: "SDK reports different user for BPM \(broadcastId)"
+                )
+                if !broadcastId.isEmpty {
+                    _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId, considerForSession: false)
                 }
+                showUserMismatchAlert()
+                return
+
+            case .creationCompleted:
+                connectionState = .success
+
+                // Fetch fresh device info after connection (matching Ionic pattern).
+                // The post-connection broadcastId may differ from the discovery broadcastId
+                // for A3 BPM devices, so update the device with stable identifiers.
+                await updateDeviceFromPostConnectionInfo(device)
+
+                // Fallback: check if the monitor's active user matches the app selection.
+                if let deviceInfo = lastRetrievedDeviceInfo,
+                   await checkForUserMismatch(deviceInfo) {
+                    return
+                }
+
+                await checkForDuplicateAndAdvance(device)
+
+            default:
+                LoggerService.shared.log(
+                    level: .error, tag: tag,
+                    message: "BPM pairing returned unexpected status: \(response.rawValue)"
+                )
+                showConnectionErrorAlert()
             }
+
         case .failure(let error):
             LoggerService.shared.log(
                 level: .error,
                 tag: tag,
                 message: "BPM pairing failed: \(error.localizedDescription)"
             )
-            connectionState = .failure
+            showConnectionErrorAlert()
+        }
+    }
+
+    // MARK: - Device Conflict Detection
+
+    /// After a successful pair, checks whether a device with the same peripheralIdentifier
+    /// already exists. Same-user duplicates show "User Already Paired";
+    /// different-user duplicates proceed silently so both users appear in the list.
+    private func checkForDuplicateAndAdvance(_ device: Device) async {
+        // If pre-pairing check already identified a duplicate, use it directly.
+        if let existing = deviceToDelete {
+            let isSameUser = existing.userNumber == "\(selectedUserNumber ?? 1)"
+            confirmUserAndPair(isDifferentUser: !isSameUser)
+            return
+        }
+
+        let existingDevices = (try? await scaleService.getDevices()) ?? []
+        let peripheralId = device.peripheralIdentifier ?? ""
+
+        if !peripheralId.isEmpty,
+           let existing = existingDevices.first(where: { $0.peripheralIdentifier == peripheralId }) {
+            let isSameUser = existing.userNumber == "\(selectedUserNumber ?? 1)"
+            if isSameUser {
+                deviceToDelete = existing
+                confirmUserAndPair(isDifferentUser: false)
+            } else {
+                // Different user on same physical device — both coexist in the list.
+                advanceFromScanning()
+            }
+        } else {
+            advanceFromScanning()
+        }
+    }
+
+    /// Shows a confirmation alert when the discovered device conflicts with an existing pairing.
+    /// Same user → "Caution: User Already Paired" with Continue.
+    /// Different user → proceeds silently (both users coexist in the monitor list).
+    private func confirmUserAndPair(isDifferentUser: Bool) {
+        if isDifferentUser {
+            advanceFromScanning()
+            return
+        } else {
+            let lang = BpmSetupStrings.DeviceConflictAlert.SameUser.self
+            let alert = AlertModel(
+                title: lang.title,
+                message: lang.message,
+                buttons: [
+                    AlertButtonModel(title: CommonStrings.cancel, type: .secondary) { [weak self] _ in
+                        self?.deviceToDelete = nil
+                        self?.dismissAction?()
+                    },
+                    AlertButtonModel(title: lang.continueButton, type: .primary) { [weak self] _ in
+                        self?.advanceFromScanning()
+                    }
+                ]
+            )
+            notificationService.showAlert(alert)
+        }
+    }
+
+    /// Returns the display label ("A"/"B" or "1"/"2") for the existing user in a conflict alert.
+    private func userLabelForConflict() -> String {
+        guard let existing = deviceToDelete,
+              let userNumber = existing.userNumber else { return "1" }
+        // Only 0603 (hasNumericUsers) shows "1"/"2"; all others show "A"/"B".
+        let useNumeric = bpmItem?.hasNumericUsers ?? false
+        if useNumeric { return userNumber }
+        return userNumber == "1" ? "A" : "B"
+    }
+
+    /// Post-connection fallback: checks whether the monitor's active user matches the app selection.
+    /// Returns `true` if there is a mismatch (caller should abort pairing).
+    private func checkForUserMismatch(_ deviceInfo: DeviceInfo) async -> Bool {
+        guard let expected = selectedUserNumber,
+              let actual = deviceInfo.userNumber,
+              actual != expected else {
+            return false
+        }
+
+        LoggerService.shared.log(
+            level: .info, tag: tag,
+            message: "Post-connection user mismatch: app selected \(expected), monitor reports \(actual)"
+        )
+
+        let broadcastId = discoveredDevice?.broadcastIdString ?? ""
+        if !broadcastId.isEmpty {
+            _ = await bluetoothService.disconnectDevice(broadcastId: broadcastId, considerForSession: false)
+        }
+
+        showUserMismatchAlert()
+        return true
+    }
+
+    /// Displays the "User Mismatch" alert when app user and monitor user don't match.
+    private func showUserMismatchAlert() {
+        let lang = BpmSetupStrings.UserMismatchAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: lang.cancelSetupButton, type: .secondary) { [weak self] _ in
+                    self?.dismissAction?()
+                },
+                AlertButtonModel(title: lang.reviewButton, type: .primary) { [weak self] _ in
+                    guard let self else { return }
+                    self.resetDiscoveryState()
+                    if let userIndex = self.steps.firstIndex(of: .selectUser) {
+                        self.currentStepIndex = userIndex
+                    }
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
+    }
+
+    /// Advances from scanning to the nickname step after a successful pair.
+    private func advanceFromScanning() {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: stepTransitionDelayNs)
+            if self.currentStep == .scanning {
+                self.moveToNextStep()
+            }
         }
     }
 
@@ -429,14 +687,33 @@ final class BpmSetupStore: ObservableObject {
             return false
         }
 
-        // Check for existing device with same broadcastId to prevent duplicates
-        if let broadcastId = discoveredDevice?.broadcastIdString, !broadcastId.isEmpty {
-            let existingDevices = (try? await scaleService.getDevices()) ?? []
-            if existingDevices.contains(where: { $0.broadcastIdString == broadcastId }) {
-                LoggerService.shared.log(level: .info, tag: tag, message: "BPM device already exists, skipping save")
-                isDeviceSaved = true
-                return true
-            }
+        // If a previous device entry was marked for replacement (same-user re-pair or
+        // different-user replace), delete it before saving the new entry.
+        // This mirrors the Ionic pattern: deleteMonitor(deviceId) removes only that
+        // specific user's entry — other users' entries for the same physical device remain.
+        if let existingDevice = deviceToDelete, !existingDevice.id.isEmpty {
+            LoggerService.shared.log(level: .info, tag: tag, message: "Deleting previous device entry (id: \(existingDevice.id)) before saving new pairing")
+            try? await scaleService.deleteSingleDeviceEntry(existingDevice.id)
+            deviceToDelete = nil
+        }
+
+        // Check for existing device with same broadcastId or peripheralIdentifier AND userNumber.
+        // If a duplicate is found, delete the old entry before saving the new one so the list
+        // only ever shows one monitor per user number for a given physical device.
+        let selectedUser = "\(selectedUserNumber ?? 1)"
+        let existingDevices = (try? await scaleService.getDevices()) ?? []
+        let broadcastId = discoveredDevice?.broadcastIdString ?? ""
+        let peripheralId = discoveredDevice?.peripheralIdentifier ?? ""
+
+        let duplicate = existingDevices.first(where: { existing in
+            let matchesBroadcast = !broadcastId.isEmpty && existing.broadcastIdString == broadcastId
+            let matchesPeripheral = !peripheralId.isEmpty && existing.peripheralIdentifier == peripheralId
+            return (matchesBroadcast || matchesPeripheral) && existing.userNumber == selectedUser
+        })
+
+        if let duplicate, !duplicate.id.isEmpty {
+            LoggerService.shared.log(level: .info, tag: tag, message: "Removing duplicate BPM entry (id: \(duplicate.id)) before saving updated pairing")
+            try? await scaleService.deleteSingleDeviceEntry(duplicate.id)
         }
 
         let deviceToSave: Device
@@ -468,9 +745,9 @@ final class BpmSetupStore: ObservableObject {
                 deviceType: .bpm
             )
             isDeviceSaved = true
-            // Re-sync to reconcile any timing gap between push and pull
-            // inside createBluetoothScale (mirrors baby-scale pattern).
-            await scaleService.syncAllScalesWithRemote()
+            // createBluetoothScale already triggers syncDevices → syncAllScalesWithRemote
+            // internally, so an additional sync here is redundant and risks a SwiftData
+            // "This store went missing?" crash from rapid delete-then-save cycles.
             NotificationCenter.default.post(name: .scaleAddedOrUpdated, object: nil)
             LoggerService.shared.log(level: .info, tag: tag, message: "BPM device saved")
             return true
@@ -492,10 +769,11 @@ final class BpmSetupStore: ObservableObject {
             return
         }
 
-        let candidate = currentStepIndex + 1
-        let nextIndex = adjustedIndex(from: candidate, direction: 1)
-        guard nextIndex < steps.count else { return }
-        currentStepIndex = nextIndex
+        // Navigate explicitly to .paired to ensure "Your monitor is paired!" screen is shown,
+        // avoiding any index drift from async save operations.
+        if let pairedIndex = steps.firstIndex(of: .paired) {
+            currentStepIndex = pairedIndex
+        }
     }
 
     // MARK: - BPM Reading Subscription
@@ -532,8 +810,9 @@ final class BpmSetupStore: ObservableObject {
 
         switch deviceInfoResult {
         case .success(let deviceInfo):
+            lastRetrievedDeviceInfo = deviceInfo
             applyDeviceInfo(deviceInfo, to: device, protocolType: protocolType)
-            
+
         case .failure(let error):
             // For A3 BPMs, getDeviceInfo fails because the SDK can't find the device
             // by its CoreBluetooth UUID. Fall back to the DEVICE_CONNECTED event details.
@@ -588,12 +867,23 @@ final class BpmSetupStore: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    /// Returns "1"/"2" for monitors with numeric users (0603), "A"/"B" for all others.
+    private func userLabel(for userNumber: Int) -> String {
+        guard let bpmItem else { return "\(userNumber)" }
+        if bpmItem.hasNumericUsers {
+            return "\(userNumber)"
+        }
+        return userNumber == 1 ? "A" : "B"
+    }
+
     private func resetDiscoveryState() {
         deviceDiscoveryCancellable?.cancel()
         deviceDiscoveryCancellable = nil
         scanTimerTask?.cancel()
         bpmReadingSubscription?.cancel()
         bpmReadingSubscription = nil
+        lastRetrievedDeviceInfo = nil
         if !isDeviceSaved {
             discoveredDevice = nil
             discoveryEvent = nil
@@ -603,6 +893,19 @@ final class BpmSetupStore: ObservableObject {
     private func isBluetoothPermissionEnabled() -> Bool {
         permissionsService.getPermissionState(.BLUETOOTH) == .ENABLED &&
         permissionsService.getPermissionState(.BLUETOOTH_SWITCH) == .ENABLED
+    }
+
+    /// Subdirectory for `.confirmUser` and `.prePairing` steps that may have per-SKU GIFs.
+    private func confirmUserGifSubdirectory(for sku: String) -> String? {
+        if a3BpmSkus.contains(sku) {
+            // SKUs with their own Pulse GIF use the per-SKU folder.
+            if sku == "0634" { return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku) }
+            return BpmA3MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        if a6BpmSkus.contains(sku) {
+            return BpmA6MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        return nil
     }
 
     private func gifSubdirectory(for sku: String) -> String? {
@@ -615,11 +918,25 @@ final class BpmSetupStore: ObservableObject {
         return nil
     }
 
+    private func userGifSubdirectory(for sku: String) -> String? {
+        if a3BpmSkus.contains(sku) {
+            return BpmA3MonitorSetupAssets.userGifBundleSubdirectory(for: sku)
+        }
+        if a6BpmSkus.contains(sku) {
+            return BpmA6MonitorSetupAssets.gifBundleSubdirectory(for: sku)
+        }
+        return nil
+    }
+
     private func gifName(for step: BpmSetupStep, sku: String) -> String? {
         if a3BpmSkus.contains(sku) {
             switch step {
             case .prePairing:
+                if sku == "0634" { return "A3_0634_Pulse" }
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.memButton)
+            case .confirmUser:
+                if sku == "0634" { return "A3_0634_Pulse" }
+                return nil
             case .measureSetup:
                 return BpmA3MonitorSetupAssets.resourceName(BpmA3MonitorSetupAssets.ImageFile.cuff)
             case .measureStart:
@@ -675,7 +992,7 @@ final class BpmSetupStore: ObservableObject {
             return BpmA3MonitorSetupAssets.userGifName(sku: sku, slot: selectedUserNumber)
         }
         if a6BpmSkus.contains(sku) {
-            return BpmA6MonitorSetupAssets.userGifName(slot: selectedUserNumber)
+            return BpmA6MonitorSetupAssets.userGifName(sku: sku, slot: selectedUserNumber)
         }
         return nil
     }
@@ -705,8 +1022,6 @@ final class BpmSetupStore: ObservableObject {
             isNextEnabled = connectionState == .success
         case .nickname:
             isNextEnabled = !deviceNickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .measureStart:
-            isNextEnabled = isReadingSynced
         default:
             isNextEnabled = true
         }
@@ -749,8 +1064,25 @@ final class BpmSetupStore: ObservableObject {
     }
 
     private func setScanFailure() {
-        connectionState = .failure
         resetDiscoveryState()
+        showConnectionErrorAlert()
+    }
+
+    private func showConnectionErrorAlert() {
+        let lang = BpmSetupStrings.ConnectionErrorAlert.self
+        let alert = AlertModel(
+            title: lang.title,
+            message: lang.message,
+            buttons: [
+                AlertButtonModel(title: CommonStrings.dismiss, type: .secondary) { [weak self] _ in
+                    self?.dismissAction?()
+                },
+                AlertButtonModel(title: lang.tryAgainButton, type: .primary) { [weak self] _ in
+                    self?.retryScanning()
+                }
+            ]
+        )
+        notificationService.showAlert(alert)
     }
 
     func cleanUp() {
