@@ -112,12 +112,15 @@ class BabyDashboardViewModel @AssistedInject constructor(
       return
     }
     val birthDate = babyProduct.profile.birthDate ?: entries.first().getTimeStamp()
+    val firstDataTs = entries.minOf { it.getTimeStamp() }
     val endTs = entries.maxOf { it.getTimeStamp() }
     val targetData = entries.toImmutableList<PeriodSummary>()
 
     for (segment in segments) {
       val endX = GraphUtil.getEndRange(segment, endTs) ?: endTs
-      val filteredTarget = entries.filter { it.getTimeStamp() in birthDate..endX }
+      // Initial target: use rolling window (latest week/month) — not full range
+      val targetStartX = GraphUtil.getRollingWindowStart(segment, endTs) ?: firstDataTs
+      val filteredTarget = entries.filter { it.getTimeStamp() in targetStartX..endX }
 
       updateSegmentState(segment) {
         it.copy(
@@ -126,8 +129,10 @@ class BabyDashboardViewModel @AssistedInject constructor(
           chartMinX = birthDate.toDouble(),
           chartMaxX = endX.toDouble(),
           isEmptyGraph = false,
-          startTimestamp = birthDate,
+          startTimestamp = firstDataTs,
           endTimestamp = endTs,
+          visibleMin = it.visibleMin ?: targetStartX,
+          visibleMax = it.visibleMax ?: endX,
         )
       }
     }
