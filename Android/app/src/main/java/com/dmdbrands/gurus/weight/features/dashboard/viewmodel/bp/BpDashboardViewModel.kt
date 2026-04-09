@@ -32,7 +32,6 @@ class BpDashboardViewModel @Inject constructor(
   override fun provideInitialState(): BpDashboardState = BpDashboardState()
 
   override fun onDependenciesReady() {
-    initProducers()
     startGraphSubscriptions()
     subscribeProgress()
   }
@@ -57,9 +56,9 @@ class BpDashboardViewModel @Inject constructor(
           val series = toBpSeries(entries)
           updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
           if (series.isNotEmpty()) {
-            pushSeriesToProducer(dailyProducer, series)
+            pushSeriesToProducer(_state.value.dailyProducer, series)
           } else {
-            pushEmptyProducer(dailyProducer)
+            pushEmptyProducer(_state.value.dailyProducer)
           }
         }
     }
@@ -70,9 +69,9 @@ class BpDashboardViewModel @Inject constructor(
           val series = toBpSeries(entries)
           updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
           if (series.isNotEmpty()) {
-            pushSeriesToProducer(monthlyProducer, series)
+            pushSeriesToProducer(_state.value.monthlyProducer, series)
           } else {
-            pushEmptyProducer(monthlyProducer)
+            pushEmptyProducer(_state.value.monthlyProducer)
           }
         }
     }

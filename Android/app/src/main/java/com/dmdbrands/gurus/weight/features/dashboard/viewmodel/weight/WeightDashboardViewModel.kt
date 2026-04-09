@@ -74,7 +74,6 @@ class WeightDashboardViewModel @Inject constructor(
 
   init {
     initLoadData()
-    initProducers()
     subscribeWeightUnit()
     subscribeGoal()
   }
@@ -105,7 +104,7 @@ class WeightDashboardViewModel @Inject constructor(
         latestDailyData = entries
         val series = toWeightSeries(entries)
         updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
-        pushWeightProducer(dailyProducer, series)
+        pushWeightProducer(_state.value.dailyProducer, series)
       }
     }
     viewModelScope.launch {
@@ -113,7 +112,7 @@ class WeightDashboardViewModel @Inject constructor(
         latestMonthlyData = entries
         val series = toWeightSeries(entries)
         updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
-        pushWeightProducer(monthlyProducer, series)
+        pushWeightProducer(_state.value.monthlyProducer, series)
       }
     }
   }
@@ -134,7 +133,7 @@ class WeightDashboardViewModel @Inject constructor(
     primarySeries: List<SeriesData>,
   ) {
     val secondaryMetricKey = (_state.value.secondaryKey as? DashboardKey.Metric)?.key
-    val data = if (producer == dailyProducer) latestDailyData else latestMonthlyData
+    val data = if (producer == _state.value.dailyProducer) latestDailyData else latestMonthlyData
     val secondaryGraphLine = secondaryMetricKey?.let { data.toGraphPoints(it) }
 
     viewModelScope.launch(Dispatchers.Main) {
@@ -166,8 +165,8 @@ class WeightDashboardViewModel @Inject constructor(
     viewModelScope.launch {
       dashboardService.selectedKey.drop(1).collect { key ->
         handleIntent(WeightDashboardIntent.SetSecondaryKey(key))
-        pushWeightProducer(dailyProducer, toWeightSeries(latestDailyData))
-        pushWeightProducer(monthlyProducer, toWeightSeries(latestMonthlyData))
+        pushWeightProducer(_state.value.dailyProducer, toWeightSeries(latestDailyData))
+        pushWeightProducer(_state.value.monthlyProducer, toWeightSeries(latestMonthlyData))
       }
     }
   }

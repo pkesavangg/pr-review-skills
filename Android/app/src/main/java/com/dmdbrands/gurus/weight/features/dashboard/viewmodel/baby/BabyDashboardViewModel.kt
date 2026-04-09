@@ -57,7 +57,6 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   override fun onDependenciesReady() {
     handleIntent(BabyDashboardIntent.SetBabyProfile(babyProduct.profile))
-    initProducers()
     loadPercentiles()
     startGraphSubscriptions()
   }
@@ -91,7 +90,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
         val segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
         updateMetricSegments(BabyMetric.WEIGHT, entries, segments)
         if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
-          pushBabyProducer(dailyProducer, entries)
+          pushBabyProducer(_state.value.dailyProducer, entries)
         }
       }
     }
@@ -103,7 +102,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
         val segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
         updateMetricSegments(BabyMetric.WEIGHT, entries, segments)
         if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
-          pushBabyProducer(monthlyProducer, entries)
+          pushBabyProducer(_state.value.monthlyProducer, entries)
         }
       }
     }
@@ -114,7 +113,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
         val segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
         updateMetricSegments(BabyMetric.HEIGHT, entries, segments)
         if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
-          pushBabyProducer(dailyProducer, entries)
+          pushBabyProducer(_state.value.dailyProducer, entries)
         }
       }
     }
@@ -125,7 +124,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
         val segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
         updateMetricSegments(BabyMetric.HEIGHT, entries, segments)
         if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
-          pushBabyProducer(monthlyProducer, entries)
+          pushBabyProducer(_state.value.monthlyProducer, entries)
         }
       }
     }
@@ -257,8 +256,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
   }
 
   private fun rebuildProducers() {
-    if (latestDailyEntries.isNotEmpty()) pushBabyProducer(dailyProducer, latestDailyEntries)
-    if (latestMonthlyEntries.isNotEmpty()) pushBabyProducer(monthlyProducer, latestMonthlyEntries)
+    if (latestDailyEntries.isNotEmpty()) pushBabyProducer(_state.value.dailyProducer, latestDailyEntries)
+    if (latestMonthlyEntries.isNotEmpty()) pushBabyProducer(_state.value.monthlyProducer, latestMonthlyEntries)
   }
 
   // ── Percentiles ──
