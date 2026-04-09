@@ -6,9 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
-import com.dmdbrands.gurus.weight.domain.model.common.GraphData
-import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
+import com.dmdbrands.gurus.weight.domain.model.storage.Account.toGoal
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -16,11 +15,8 @@ import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphDataAdapter
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.toGraphPoints
-import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
-import kotlinx.coroutines.Dispatchers
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.WeightGraphDataAdapter
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -28,11 +24,10 @@ import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
-import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
@@ -55,29 +50,10 @@ class WeightDashboardViewModel @Inject constructor(
     private const val TAG = "WeightDashboardVM"
   }
 
-  override val adapter: GraphDataAdapter = WeightGraphDataAdapter()
-
-  /** Cached latest daily/monthly data for rebuilding producers when secondaryKey changes. */
   private var latestDailyData: List<PeriodBodyScaleSummary> = emptyList()
   private var latestMonthlyData: List<PeriodBodyScaleSummary> = emptyList()
 
-  override fun getDailyDataFlow(): Flow<GraphData> =
-    entryService.daywiseBodyScaleAverages.map { GraphData.Weight(it) }
-
-  override fun getMonthlyDataFlow(): Flow<GraphData> =
-    entryService.monthlyBodyScaleAverages.map { GraphData.Weight(it) }
-
-  override fun onGraphDataReceived(graphData: GraphData, segments: List<GraphSegment>) {
-    // Cache data for secondary line rebuild when selectedKey changes
-    val data = (graphData as? GraphData.Weight)?.data ?: return
-    if (segments.contains(GraphSegment.WEEK)) latestDailyData = data
-    if (segments.contains(GraphSegment.YEAR)) latestMonthlyData = data
-    // Rebuild producers with secondary line
-    rebuildProducersWithSecondary()
-  }
-
   override fun handleIntent(intent: BaseGraphIntent) {
-    // Weight action intents — side effects
     if (intent is WeightDashboardIntent) {
       when (intent) {
         is WeightDashboardIntent.Refresh -> refresh()
@@ -91,7 +67,6 @@ class WeightDashboardViewModel @Inject constructor(
         else -> {}
       }
     }
-    // Base handles graph intents + passes to reducer
     super.handleIntent(intent)
   }
 
@@ -99,6 +74,7 @@ class WeightDashboardViewModel @Inject constructor(
 
   init {
     initLoadData()
+    initProducers()
     subscribeWeightUnit()
     subscribeGoal()
   }
@@ -121,6 +97,82 @@ class WeightDashboardViewModel @Inject constructor(
     }
   }
 
+  // ── Graph subscriptions (direct, no adapter) ──
+
+  private fun startGraphSubscriptions() {
+    viewModelScope.launch {
+      entryService.daywiseBodyScaleAverages.collect { entries ->
+        latestDailyData = entries
+        val series = toWeightSeries(entries)
+        updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
+        pushWeightProducer(dailyProducer, series)
+      }
+    }
+    viewModelScope.launch {
+      entryService.monthlyBodyScaleAverages.collect { entries ->
+        latestMonthlyData = entries
+        val series = toWeightSeries(entries)
+        updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+        pushWeightProducer(monthlyProducer, series)
+      }
+    }
+  }
+
+  private fun toWeightSeries(entries: List<PeriodBodyScaleSummary>): List<SeriesData> {
+    val sorted = entries.sortedBy { it.getTimeStamp() }
+    val pairs = sorted.mapNotNull { e ->
+      val w = e.weight
+      if (w.isFinite()) e.getTimeStamp() to w else null
+    }
+    if (pairs.isEmpty()) return emptyList()
+    return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
+  }
+
+  /** Push weight primary + optional secondary metric line to producer. */
+  private fun pushWeightProducer(
+    producer: com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer,
+    primarySeries: List<SeriesData>,
+  ) {
+    val secondaryMetricKey = (_state.value.secondaryKey as? DashboardKey.Metric)?.key
+    val data = if (producer == dailyProducer) latestDailyData else latestMonthlyData
+    val secondaryGraphLine = secondaryMetricKey?.let { data.toGraphPoints(it) }
+
+    viewModelScope.launch(Dispatchers.Main) {
+      producer.runTransaction(animate = false) {
+        if (primarySeries.isNotEmpty()) {
+          lineSeries {
+            primarySeries.forEach { s -> series(x = s.xValues, y = s.yValues) }
+          }
+        } else {
+          lineSeries { series(listOf(0.0), listOf(0.0)) }
+        }
+        if (secondaryGraphLine != null && secondaryGraphLine.points.isNotEmpty()) {
+          val pairs = secondaryGraphLine.points.mapNotNull { point ->
+            val x = point.x.value as? Long
+            val y = (point.y.value as? Number)?.toDouble()
+            if (x != null && y != null && y.isFinite()) x to y else null
+          }
+          if (pairs.isNotEmpty()) {
+            lineSeries {
+              series(x = pairs.map { it.first }, y = pairs.map { it.second })
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private fun subscribeSelectedKey() {
+    viewModelScope.launch {
+      dashboardService.selectedKey.drop(1).collect { key ->
+        handleIntent(WeightDashboardIntent.SetSecondaryKey(key))
+        pushWeightProducer(dailyProducer, toWeightSeries(latestDailyData))
+        pushWeightProducer(monthlyProducer, toWeightSeries(latestMonthlyData))
+      }
+    }
+  }
+
+  // ── Other subscriptions (unchanged) ──
 
   private fun refresh() {
     viewModelScope.launch {
@@ -147,76 +199,6 @@ class WeightDashboardViewModel @Inject constructor(
     viewModelScope.launch {
       accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect { weightUnit ->
         if (weightUnit != null) handleIntent(WeightDashboardIntent.SetWeightUnit(weightUnit))
-      }
-    }
-  }
-
-  private fun subscribeSelectedKey() {
-    viewModelScope.launch {
-      dashboardService.selectedKey.drop(1).collect { key ->
-        handleIntent(WeightDashboardIntent.SetSecondaryKey(key))
-        rebuildProducersWithSecondary()
-      }
-    }
-  }
-
-  /**
-   * Rebuild daily + monthly producers with secondary metric line.
-   * Called when data arrives or selectedKey changes.
-   */
-  private fun rebuildProducersWithSecondary() {
-    val secondaryKey = _state.value.secondaryKey
-    val secondaryMetricKey = (secondaryKey as? DashboardKey.Metric)?.key
-
-    // Rebuild daily producer (WEEK/MONTH)
-    if (latestDailyData.isNotEmpty()) {
-      val primarySeries = adapter.toLineSeries(GraphData.Weight(latestDailyData))
-      val secondaryGraphLine = secondaryMetricKey?.let { latestDailyData.toGraphPoints(it) }
-
-      viewModelScope.launch(Dispatchers.Main) {
-        getProducerForSegment(GraphSegment.WEEK).runTransaction(animate = false) {
-          lineSeries {
-            primarySeries.forEach { s -> series(x = s.xValues, y = s.yValues) }
-          }
-          if (secondaryGraphLine != null && secondaryGraphLine.points.isNotEmpty()) {
-            val pairs = secondaryGraphLine.points.mapNotNull { point ->
-              val x = point.x.value as? Long
-              val y = (point.y.value as? Number)?.toDouble()
-              if (x != null && y != null && y.isFinite()) x to y else null
-            }
-            if (pairs.isNotEmpty()) {
-              lineSeries {
-                series(x = pairs.map { it.first }, y = pairs.map { it.second })
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Rebuild monthly producer (YEAR/TOTAL)
-    if (latestMonthlyData.isNotEmpty()) {
-      val primarySeries = adapter.toLineSeries(GraphData.Weight(latestMonthlyData))
-      val secondaryGraphLine = secondaryMetricKey?.let { latestMonthlyData.toGraphPoints(it) }
-
-      viewModelScope.launch(Dispatchers.Main) {
-        getProducerForSegment(GraphSegment.YEAR).runTransaction(animate = false) {
-          lineSeries {
-            primarySeries.forEach { s -> series(x = s.xValues, y = s.yValues) }
-          }
-          if (secondaryGraphLine != null && secondaryGraphLine.points.isNotEmpty()) {
-            val pairs = secondaryGraphLine.points.mapNotNull { point ->
-              val x = point.x.value as? Long
-              val y = (point.y.value as? Number)?.toDouble()
-              if (x != null && y != null && y.isFinite()) x to y else null
-            }
-            if (pairs.isNotEmpty()) {
-              lineSeries {
-                series(x = pairs.map { it.first }, y = pairs.map { it.second })
-              }
-            }
-          }
-        }
       }
     }
   }
@@ -293,11 +275,7 @@ class WeightDashboardViewModel @Inject constructor(
         message = string.Message,
         confirmText = string.ConfirmText,
         cancelText = string.CancelText,
-        onConfirm = {
-          viewModelScope.launch {
-            resetDashboard()
-          }
-        },
+        onConfirm = { viewModelScope.launch { resetDashboard() } },
       ),
     )
   }

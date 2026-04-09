@@ -36,4 +36,8 @@ interface IHistoryService {
     fun getBpmSnapshotGraphData(): Flow<List<PeriodBpmSummary>>
 
     fun getBabySnapshotGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>
+
+    fun getBabyDailyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>
+
+    fun getBabyMonthlyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>>
 }

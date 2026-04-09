@@ -3,14 +3,14 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby
 import android.content.Context
 import android.icu.util.Calendar
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHistoryService
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.BabyGraphDataAdapter
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.BabyHeightGraphDataAdapter
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphDataAdapter
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -25,10 +25,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @HiltViewModel(assistedFactory = BabyDashboardViewModel.Factory::class)
 class BabyDashboardViewModel @AssistedInject constructor(
@@ -49,35 +46,16 @@ class BabyDashboardViewModel @AssistedInject constructor(
     private const val TAG = "BabyDashboardVM"
   }
 
-  private val weightAdapter: GraphDataAdapter = BabyGraphDataAdapter()
-  private val heightAdapter: GraphDataAdapter = BabyHeightGraphDataAdapter()
-
-  override val adapter: GraphDataAdapter get() = adapterForMetric(_state.value.selectedMetric)
-
-  private fun adapterForMetric(metric: BabyMetric) = when (metric) {
-    BabyMetric.WEIGHT -> weightAdapter
-    BabyMetric.HEIGHT -> heightAdapter
-  }
-
-  // Cached raw data for rebuilding producers on metric switch
-  private var latestDailyData: GraphData? = null
-  private var latestMonthlyData: GraphData? = null
-
-  private var dailyDataJob: Job? = null
-  private var monthlyDataJob: Job? = null
-
-  override fun getDailyDataFlow(): Flow<GraphData> =
-    historyService.getDailyGraphData(babyProduct)
-
-  override fun getMonthlyDataFlow(): Flow<GraphData> =
-    historyService.getMonthlyGraphData(babyProduct)
+  private var latestDailyEntries: List<PeriodBabySummary> = emptyList()
+  private var latestMonthlyEntries: List<PeriodBabySummary> = emptyList()
 
   override fun provideInitialState(): BabyDashboardState = BabyDashboardState()
 
   override fun onDependenciesReady() {
     handleIntent(BabyDashboardIntent.SetBabyProfile(babyProduct.profile))
+    initProducers()
     loadPercentiles()
-    startBabyGraphSubscriptions()
+    startGraphSubscriptions()
   }
 
   override fun handleIntent(intent: BaseGraphIntent) {
@@ -85,9 +63,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
       when (intent) {
         is BabyDashboardIntent.Refresh -> refresh()
         is BabyDashboardIntent.SetSelectedMetric -> {
-          // Reduce first (flips selectedMetric), then rebuild producers
           super.handleIntent(intent)
-          rebuildProducersForMetric(intent.metric)
+          rebuildProducers()
           return
         }
         else -> {}
@@ -96,155 +73,191 @@ class BabyDashboardViewModel @AssistedInject constructor(
     super.handleIntent(intent)
   }
 
-  // ── Own subscriptions — push segment data to both metric maps ──
+  // ── 4 independent graph subscriptions (weight daily/monthly + height daily/monthly) ──
 
-  private fun startBabyGraphSubscriptions() {
-    // Producers come from provideInitialState() defaults — stable, never swapped.
-    dailyDataJob?.cancel()
-    dailyDataJob = viewModelScope.launch {
-      getDailyDataFlow().collect { graphData ->
-        latestDailyData = graphData
+  private fun startGraphSubscriptions() {
+    val profileId = babyProduct.profile.id
+    val dailyFlow = historyService.getBabyDailyGraphData(profileId)
+    val monthlyFlow = historyService.getBabyMonthlyGraphData(profileId)
+
+    // Weight daily (WEEK/MONTH)
+    viewModelScope.launch {
+      dailyFlow.collect { entries ->
+        latestDailyEntries = entries
         val segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
-        // Update segment data for BOTH metrics
-        updateMetricSegments(graphData, weightAdapter, BabyMetric.WEIGHT, segments)
-        updateMetricSegments(graphData, heightAdapter, BabyMetric.HEIGHT, segments)
-        // Push active metric to producer
-        pushToProducer(_state.value.dailyProducer, graphData, segments)
+        updateMetricSegments(BabyMetric.WEIGHT, entries, segments)
+        if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
+          pushBabyProducer(dailyProducer, entries)
+        }
       }
     }
-    monthlyDataJob?.cancel()
-    monthlyDataJob = viewModelScope.launch {
-      getMonthlyDataFlow().collect { graphData ->
-        latestMonthlyData = graphData
+
+    // Weight monthly (YEAR/TOTAL)
+    viewModelScope.launch {
+      monthlyFlow.collect { entries ->
+        latestMonthlyEntries = entries
         val segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
-        updateMetricSegments(graphData, weightAdapter, BabyMetric.WEIGHT, segments)
-        updateMetricSegments(graphData, heightAdapter, BabyMetric.HEIGHT, segments)
-        pushToProducer(_state.value.monthlyProducer, graphData, segments)
+        updateMetricSegments(BabyMetric.WEIGHT, entries, segments)
+        if (_state.value.selectedMetric == BabyMetric.WEIGHT) {
+          pushBabyProducer(monthlyProducer, entries)
+        }
+      }
+    }
+
+    // Height daily (WEEK/MONTH)
+    viewModelScope.launch {
+      dailyFlow.collect { entries ->
+        val segments = listOf(GraphSegment.WEEK, GraphSegment.MONTH)
+        updateMetricSegments(BabyMetric.HEIGHT, entries, segments)
+        if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
+          pushBabyProducer(dailyProducer, entries)
+        }
+      }
+    }
+
+    // Height monthly (YEAR/TOTAL)
+    viewModelScope.launch {
+      monthlyFlow.collect { entries ->
+        val segments = listOf(GraphSegment.YEAR, GraphSegment.TOTAL)
+        updateMetricSegments(BabyMetric.HEIGHT, entries, segments)
+        if (_state.value.selectedMetric == BabyMetric.HEIGHT) {
+          pushBabyProducer(monthlyProducer, entries)
+        }
       }
     }
   }
 
-  /** Update a metric's segment states (ranges, targets) without touching producers. */
+  // ── Segment state update (targets a specific metric via UpdateMetricSegment) ──
+
   private fun updateMetricSegments(
-    graphData: GraphData,
-    adapter: GraphDataAdapter,
     metric: BabyMetric,
+    entries: List<PeriodBabySummary>,
     segments: List<GraphSegment>,
   ) {
-    val seriesList = adapter.toLineSeries(graphData)
-    if (seriesList.isEmpty() || seriesList.all { it.xValues.isEmpty() }) {
+    if (entries.isEmpty()) {
       segments.forEach { seg ->
         handleIntent(BabyDashboardIntent.UpdateMetricSegment(metric, seg) { it.copy(isEmptyGraph = true) })
       }
       return
     }
-
-    val timestamps = adapter.getTimestamps(graphData).sorted()
-    val initialTimeStamp = timestamps.minOrNull()
-    val endTimeStamp = timestamps.maxOrNull()
-    val targetData = adapter.toTargetData(graphData)
+    val timestamps = entries.map { it.getTimeStamp() }.sorted()
+    val initialTs = timestamps.minOrNull()
+    val endTs = timestamps.maxOrNull()
     val calendar = Calendar.getInstance()
 
     for (segment in segments) {
-      val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
+      val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTs, endTs)
 
       val (startX, endX) = if (segment == GraphSegment.TOTAL) {
-        val start = (initialTimeStamp ?: calendar.timeInMillis).let {
+        val s = (initialTs ?: calendar.timeInMillis).let {
           Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
         }
-        val end = (endTimeStamp ?: calendar.timeInMillis).let {
+        val e = (endTs ?: calendar.timeInMillis).let {
           Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
         }
-        start to end
+        s to e
       } else {
-        val start = GraphUtil.getRollingWindowStart(segment, endTimeStamp)
-          ?: GraphUtil.getStartRange(segment, endTimeStamp)
+        val s = GraphUtil.getRollingWindowStart(segment, endTs)
+          ?: GraphUtil.getStartRange(segment, endTs)
           ?: calendar.timeInMillis
-        val end = endTimeStamp ?: calendar.timeInMillis
-        start to end
+        s to (endTs ?: calendar.timeInMillis)
       }
 
-      val chartMinX = if (segment == GraphSegment.TOTAL) {
-        startX.toDouble()
-      } else {
-        GraphUtil.getStartRange(segment, initialTimeStamp)?.toDouble() ?: startX.toDouble()
-      }
+      val chartMinX = if (segment == GraphSegment.TOTAL) startX.toDouble()
+      else GraphUtil.getStartRange(segment, initialTs)?.toDouble() ?: startX.toDouble()
+
       val chartMaxX = if (segment == GraphSegment.TOTAL) {
         endX.toDouble()
       } else if (segment == GraphSegment.MONTH) {
-        val paddedStart = GraphUtil.getStartRange(segment, calendar.timeInMillis) ?: calendar.timeInMillis
-        Calendar.getInstance().apply { timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30) }
-          .timeInMillis.toDouble()
+        val ps = GraphUtil.getStartRange(segment, calendar.timeInMillis) ?: calendar.timeInMillis
+        Calendar.getInstance().apply { timeInMillis = ps; add(Calendar.DAY_OF_YEAR, 30) }.timeInMillis.toDouble()
       } else {
         GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
       }
 
-      val filteredTarget = targetData.filter { it.getTimeStamp() in startX..endX }
+      val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
 
-      handleIntent(
-        BabyDashboardIntent.UpdateMetricSegment(metric, segment) {
-          it.copy(
-            data = targetData.toImmutableList(),
-            target = filteredTarget.toImmutableList(),
-            minTarget = startX,
-            maxTarget = endX,
-            chartMinX = chartMinX,
-            chartMaxX = chartMaxX,
-            isSingleWindow = isSingleWindow,
-            isEmptyGraph = false,
-            startTimestamp = initialTimeStamp,
-            endTimestamp = endTimeStamp,
-          )
-        },
-      )
+      handleIntent(BabyDashboardIntent.UpdateMetricSegment(metric, segment) {
+        it.copy(
+          data = entries.toImmutableList<PeriodSummary>(),
+          target = filteredTarget.toImmutableList<PeriodSummary>(),
+          minTarget = startX,
+          maxTarget = endX,
+          chartMinX = chartMinX,
+          chartMaxX = chartMaxX,
+          isSingleWindow = isSingleWindow,
+          isEmptyGraph = false,
+          startTimestamp = initialTs,
+          endTimestamp = endTs,
+        )
+      })
     }
   }
 
-  /** Push active metric's data + percentile to a producer. */
-  private fun pushToProducer(
-    producer: CartesianChartModelProducer,
-    graphData: GraphData,
-    segments: List<GraphSegment>,
-  ) {
-    val activeMetric = _state.value.selectedMetric
-    val activeAdapter = adapterForMetric(activeMetric)
-    val seriesList = activeAdapter.toLineSeries(graphData)
+  // ── Series conversion ──
 
-    if (seriesList.isEmpty() || seriesList.all { it.xValues.isEmpty() }) {
-      viewModelScope.launch(Dispatchers.Main) {
-        producer.runTransaction(animate = false) {
-          lineSeries { series(listOf(0.0), listOf(0.0)) }
-        }
-      }
-      return
+  private fun toWeightSeries(entries: List<PeriodBabySummary>): List<SeriesData> {
+    val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
+    val pairs = sorted.mapNotNull { e ->
+      val ts = DateTimeConverter.isoToTimestamp(e.entryTimestamp)
+      val w = e.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
+      if (w != null) ts to w else null
+    }
+    if (pairs.isEmpty()) return emptyList()
+    return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
+  }
+
+  private fun toHeightSeries(entries: List<PeriodBabySummary>): List<SeriesData> {
+    val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
+    val pairs = sorted.mapNotNull { e ->
+      val ts = DateTimeConverter.isoToTimestamp(e.entryTimestamp)
+      val h = e.avgLengthMillimeters?.let { it / 25.4 }
+      if (h != null) ts to h else null
+    }
+    if (pairs.isEmpty()) return emptyList()
+    return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
+  }
+
+  private fun activeSeriesFor(entries: List<PeriodBabySummary>): List<SeriesData> =
+    when (_state.value.selectedMetric) {
+      BabyMetric.WEIGHT -> toWeightSeries(entries)
+      BabyMetric.HEIGHT -> toHeightSeries(entries)
     }
 
-    val percentileSeries = _state.value.activePercentileSeries
+  // ── Producer push (percentile + data) ──
 
-    // Two lineSeries blocks → two Vico layers. Percentile behind, data on top.
+  private fun pushBabyProducer(
+    producer: CartesianChartModelProducer,
+    entries: List<PeriodBabySummary>,
+  ) {
+    val series = activeSeriesFor(entries)
+    if (series.isEmpty()) {
+      viewModelScope.launch { pushEmptyProducer(producer) }
+      return
+    }
+    val percentile = _state.value.activePercentileSeries
     viewModelScope.launch(Dispatchers.Main) {
       producer.runTransaction(animate = false) {
-        if (percentileSeries != null) {
+        if (percentile != null) {
           lineSeries {
-            percentileSeries.allBands().forEach { band ->
-              series(x = percentileSeries.xTimestamps, y = band)
+            percentile.allBands().forEach { band ->
+              series(x = percentile.xTimestamps, y = band)
             }
           }
         }
         lineSeries {
-          seriesList.forEach { s -> series(x = s.xValues, y = s.yValues) }
+          series.forEach { s -> series(x = s.xValues, y = s.yValues) }
         }
       }
     }
   }
 
-  /** Rebuild producers when switching between weight/height. */
-  private fun rebuildProducersForMetric(metric: BabyMetric) {
-    val daily = latestDailyData
-    val monthly = latestMonthlyData
-    if (daily != null) pushToProducer(_state.value.dailyProducer, daily, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
-    if (monthly != null) pushToProducer(_state.value.monthlyProducer, monthly, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+  private fun rebuildProducers() {
+    if (latestDailyEntries.isNotEmpty()) pushBabyProducer(dailyProducer, latestDailyEntries)
+    if (latestMonthlyEntries.isNotEmpty()) pushBabyProducer(monthlyProducer, latestMonthlyEntries)
   }
+
+  // ── Percentiles ──
 
   private fun loadPercentiles() {
     val profile = babyProduct.profile
