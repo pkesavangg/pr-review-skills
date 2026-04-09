@@ -172,7 +172,7 @@ fun DashboardScreen() {
         DashboardPage(
           vm = vm,
           product = product,
-          hasPercentile = (state as BabyDashboardState).activePercentileSeries != null,
+          hasPercentile = true,
           onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
