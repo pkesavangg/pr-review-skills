@@ -7,7 +7,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.GraphData
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -19,7 +19,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BpDashboardViewModel @Inject constructor(
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
   private val entryService: IEntryService,
 ) : BaseDashboardViewModel<BpDashboardState, BaseGraphIntent>(
   reducer = BpDashboardReducer(),
@@ -27,6 +27,7 @@ class BpDashboardViewModel @Inject constructor(
 
   companion object {
     private const val TAG = "BpDashboardVM"
+    private const val LAST_READINGS_COUNT = 3
   }
 
   override fun provideInitialState(): BpDashboardState = BpDashboardState()
@@ -34,6 +35,7 @@ class BpDashboardViewModel @Inject constructor(
   override fun onDependenciesReady() {
     startGraphSubscriptions()
     subscribeProgress()
+    subscribeLastReadings()
   }
 
   override fun handleIntent(intent: BaseGraphIntent) {
@@ -50,11 +52,15 @@ class BpDashboardViewModel @Inject constructor(
 
   private fun startGraphSubscriptions() {
     viewModelScope.launch {
-      historyService.getDailyGraphData(ProductSelection.BloodPressure)
+      entryReadService.getDailyGraphData(ProductSelection.BloodPressure)
         .map { (it as? GraphData.BloodPressure)?.data ?: emptyList() }
         .collect { entries ->
           val series = toBpSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
+          updateSegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH)) { data ->
+            data.filterIsInstance<PeriodBpmSummary>()
+              .flatMap { listOf(it.avgSystolic.toDouble(), it.avgDiastolic.toDouble(), it.avgPulse.toDouble()) }
+              .filter { it > 0.0 }
+          }
           if (series.isNotEmpty()) {
             pushSeriesToProducer(_state.value.dailyProducer, series)
           } else {
@@ -63,11 +69,15 @@ class BpDashboardViewModel @Inject constructor(
         }
     }
     viewModelScope.launch {
-      historyService.getMonthlyGraphData(ProductSelection.BloodPressure)
+      entryReadService.getMonthlyGraphData(ProductSelection.BloodPressure)
         .map { (it as? GraphData.BloodPressure)?.data ?: emptyList() }
         .collect { entries ->
           val series = toBpSeries(entries)
-          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+          updateSegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL)) { data ->
+            data.filterIsInstance<PeriodBpmSummary>()
+              .flatMap { listOf(it.avgSystolic.toDouble(), it.avgDiastolic.toDouble(), it.avgPulse.toDouble()) }
+              .filter { it > 0.0 }
+          }
           if (series.isNotEmpty()) {
             pushSeriesToProducer(_state.value.monthlyProducer, series)
           } else {
@@ -99,7 +109,30 @@ class BpDashboardViewModel @Inject constructor(
 
   private fun subscribeProgress() {
     viewModelScope.launch {
-      entryService.progress.collect { handleIntent(BpDashboardIntent.SetProgress(it)) }
+      entryReadService.bpProgress().collect { handleIntent(BpDashboardIntent.SetProgress(it)) }
+    }
+  }
+
+  /**
+   * Last N per-day BP averages for the three-reading-average card and sheet.
+   * Account-scoped (not window-scoped) — computes the sys/dia/pulse mean across the
+   * returned rows and pushes both rows + averages into state for the UI to consume.
+   */
+  private fun subscribeLastReadings() {
+    viewModelScope.launch {
+      entryReadService.getBpmLastNDayEntries(LAST_READINGS_COUNT).collect { rows ->
+        val readings = if (rows.isEmpty()) {
+          BpLastReadings()
+        } else {
+          BpLastReadings(
+            entries = rows,
+            averageSystolic = rows.map { it.avgSystolic }.average().toInt(),
+            averageDiastolic = rows.map { it.avgDiastolic }.average().toInt(),
+            averagePulse = rows.map { it.avgPulse }.average().toInt(),
+          )
+        }
+        handleIntent(BpDashboardIntent.SetLastReadings(readings))
+      }
     }
   }
 }

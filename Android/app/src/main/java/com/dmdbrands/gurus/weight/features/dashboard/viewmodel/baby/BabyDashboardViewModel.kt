@@ -8,10 +8,11 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
-import com.dmdbrands.gurus.weight.domain.services.IHistoryService
+import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
+import com.dmdbrands.gurus.weight.features.common.helper.ImprovedNiceScaleCalculator.generateNiceScale
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardViewModel
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -31,7 +32,7 @@ import android.content.Context
 class BabyDashboardViewModel @AssistedInject constructor(
   @Assisted val babyProduct: ProductSelection.Baby,
   @ApplicationContext private val context: Context,
-  private val historyService: IHistoryService,
+  private val entryReadService: IEntryReadService,
   private val entryService: IEntryService,
 ) : BaseDashboardViewModel<BabyDashboardState, BaseGraphIntent>(
   reducer = BabyDashboardReducer(),
@@ -44,10 +45,6 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   companion object {
     private const val TAG = "BabyDashboardVM"
-    // Note: selectedMetric (WEIGHT vs HEIGHT toggle) is not persisted across process death.
-    // This VM uses @AssistedInject (no SavedStateHandle), and the project does not use
-    // SavedStateHandle anywhere. Since the default is WEIGHT, losing this preference on
-    // process death is acceptable — the user just taps the toggle again.
   }
 
   // Cached raw entries
@@ -91,7 +88,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val profileId = babyProduct.profile.id
 
     viewModelScope.launch {
-      historyService.getBabyDailyGraphData(profileId).collect { entries ->
+      entryReadService.getBabyDailyGraphData(profileId).collect { entries ->
         latestDailyEntries = entries
         updateBabySegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
         rebuildProducer(_state.value.dailyProducer, entries)
@@ -99,7 +96,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
     }
 
     viewModelScope.launch {
-      historyService.getBabyMonthlyGraphData(profileId).collect { entries ->
+      entryReadService.getBabyMonthlyGraphData(profileId).collect { entries ->
         latestMonthlyEntries = entries
         updateBabySegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
         rebuildProducer(_state.value.monthlyProducer, entries)
@@ -126,6 +123,43 @@ class BabyDashboardViewModel @AssistedInject constructor(
       val targetStartX = GraphUtil.getRollingWindowStart(segment, endTs) ?: firstDataTs
       val filteredTarget = entries.filter { it.getTimeStamp() in targetStartX..endX }
 
+      // Match ScrollAwareRangeProvider padding (paddingEntries=1): include 1 entry just
+      // before and 1 entry just after the rolling window so seed Y range matches the
+      // runtime Y range exactly. Without this, an entry just outside the window would
+      // expand the runtime range and cause a frame-1 → frame-2 slide on initial load.
+      val seedSource = run {
+        val sorted = entries.sortedBy { it.getTimeStamp() }
+        val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= targetStartX }
+        val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
+        if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
+          filteredTarget
+        } else {
+          val from = (firstIdx - 1).coerceAtLeast(0)
+          val to = (lastIdx + 1).coerceAtMost(sorted.lastIndex)
+          sorted.subList(from, to + 1)
+        }
+      }
+
+      val yValues: List<Double> = when (_state.value.selectedMetric) {
+        BabyMetric.WEIGHT -> seedSource.mapNotNull { e ->
+          e.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
+        }
+        BabyMetric.HEIGHT -> seedSource.mapNotNull { e ->
+          e.avgLengthMillimeters?.let { it / 25.4 }
+        }
+      }.filter { it.isFinite() && it > 0.0 }
+
+      val seed: Pair<Double, Double>? = if (yValues.isNotEmpty()) {
+        val scale = generateNiceScale(
+          minValue = yValues.min(),
+          maxValue = yValues.max(),
+          goalWeight = 0.0,
+          isWeightLessMode = false,
+          targetTickCount = 4,
+        )
+        scale.min to scale.max
+      } else null
+
       updateSegmentState(segment) {
         it.copy(
           data = targetData,
@@ -137,6 +171,8 @@ class BabyDashboardViewModel @AssistedInject constructor(
           endTimestamp = endTs,
           visibleMin = it.visibleMin ?: targetStartX,
           visibleMax = it.visibleMax ?: endX,
+          seedMinY = seed?.first ?: it.seedMinY,
+          seedMaxY = seed?.second ?: it.seedMaxY,
         )
       }
     }
@@ -145,8 +181,6 @@ class BabyDashboardViewModel @AssistedInject constructor(
   // ── Producer rebuild ──
 
   private fun rebuildAllProducers() {
-    // Guard: if data hasn't loaded yet, skip — subscriptions will trigger rebuild when data arrives
-    if (latestDailyEntries.isEmpty() && latestMonthlyEntries.isEmpty()) return
     rebuildProducer(_state.value.dailyProducer, latestDailyEntries)
     rebuildProducer(_state.value.monthlyProducer, latestMonthlyEntries)
   }
