@@ -32,9 +32,6 @@ class HistoryDetailViewModel @AssistedInject constructor(
     @Assisted val productType: ProductType,
 ) : BaseIntentViewModel<HistoryDetailState, HistoryDetailIntent>(HistoryDetailReducer()) {
 
-    val isMetric: Boolean
-        get() = accountService.activeAccount.value?.isMetricUnit() ?: false
-
     @AssistedFactory
     interface Factory {
         fun create(month: String, productType: ProductType): HistoryDetailViewModel
@@ -44,6 +41,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
 
     override fun onDependenciesReady() {
         AppLog.d(TAG, "HistoryDetailViewModel ready for month: $month")
+        handleIntent(HistoryDetailIntent.SetMetric(accountService.activeAccount.value?.isMetricUnit() ?: false))
         loadDetail()
     }
 
