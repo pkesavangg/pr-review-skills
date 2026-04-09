@@ -23,6 +23,7 @@ if [[ -f "${LOCAL_PROPERTIES}" ]]; then
 fi
 case "$(uname -s)" in
   Linux*)  DEFAULT_SDK="${HOME}/Android/Sdk"; DEFAULT_HOST="linux-x86_64" ;;
+  # NDK ships only darwin-x86_64 prebuilts; Apple Silicon runs them via Rosetta 2
   *)       DEFAULT_SDK="${HOME}/Library/Android/sdk"; DEFAULT_HOST="darwin-x86_64" ;;
 esac
 SDK_ROOT="${LOCAL_SDK_DIR:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${DEFAULT_SDK}}}}"
