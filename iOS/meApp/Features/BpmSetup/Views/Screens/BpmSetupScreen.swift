@@ -71,7 +71,9 @@ struct BpmSetupScreen: View {
                 isBeingDismissed = true
                 dismiss()
             }
-            setupStore.configure(with: sku)
+            setupStore.configure(with: sku,
+                                 discoveredScale: discoveredScale,
+                                 discoveryEvent: discoveryEvent)
         }
         .onDisappear {
             if isBeingDismissed {

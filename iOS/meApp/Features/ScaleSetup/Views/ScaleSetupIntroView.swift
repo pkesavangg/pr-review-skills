@@ -11,6 +11,7 @@ struct ScaleSetupIntroView: View {
 
     /// Scale metadata retrieved from the central `SCALES` array.
     let scale: ScaleItemInfo
+    var troubleText: String = ScaleSetupStrings.troubleSettingUp
     var onClick: (() -> Void)?
     let scaleSetupLang = ScaleSetupStrings.self
 
@@ -20,7 +21,7 @@ struct ScaleSetupIntroView: View {
                 VStack(spacing: .spacingLG) {
                     headerSection
 
-                    Text(scaleSetupLang.troubleSettingUp)
+                    Text(troubleText)
                         .fontOpenSans(.body2)
                         .multilineTextAlignment(.leading)
                         .foregroundColor(theme.textBody)
