@@ -110,4 +110,14 @@ class HistoryService @Inject constructor(
         val acctId = requireNotNull(_accountId) { "accountId not set" }
         return historyRepository.getBabySnapshotGraphData(acctId, babyProfileId)
     }
+
+    override fun getBabyDailyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
+        val acctId = requireNotNull(_accountId) { "accountId not set" }
+        return historyRepository.getBabyDailyGraphData(acctId, babyProfileId)
+    }
+
+    override fun getBabyMonthlyGraphData(babyProfileId: String): Flow<List<PeriodBabySummary>> {
+        val acctId = requireNotNull(_accountId) { "accountId not set" }
+        return historyRepository.getBabyMonthlyGraphData(acctId, babyProfileId)
+    }
 }

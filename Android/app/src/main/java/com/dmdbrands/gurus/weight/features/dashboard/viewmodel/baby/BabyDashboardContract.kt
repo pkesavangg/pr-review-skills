@@ -15,12 +15,15 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProdu
 
 enum class BabyMetric { WEIGHT, HEIGHT }
 
-// ── Per-metric state (segment data + percentile — no producers) ──
+// ── Per-metric state (segments, scroll, marker, percentile) ──
 
 @Stable
 data class BabyMetricState(
   val segmentStates: Map<GraphSegment, SegmentState> = emptyMap(),
   val percentileSeries: BabyPercentileHelper.PercentileSeries? = null,
+  val selectedSegment: GraphSegment = GraphSegment.WEEK,
+  val scrollTarget: Double? = null,
+  val markerIndex: Double? = null,
 )
 
 // ── State ──
@@ -34,18 +37,19 @@ data class BabyDashboardState(
   val metricStates: Map<BabyMetric, BabyMetricState> = emptyMap(),
   val selectedMetric: BabyMetric = BabyMetric.WEIGHT,
   // Shared
-  override val selectedSegment: GraphSegment = GraphSegment.WEEK,
-  override val scrollTarget: Double? = null,
   override val isRefreshing: Boolean = false,
-  override val markerIndex: Double? = null,
   val babyProfile: BabyProfile? = null,
 ) : BaseDashboardState {
-  // Route segmentStates to active metric
-  override val segmentStates: Map<GraphSegment, SegmentState>
-    get() = metricStates[selectedMetric]?.segmentStates ?: emptyMap()
+  val activeMetric: BabyMetricState get() = metricStates[selectedMetric] ?: BabyMetricState()
+
+  // Route to active metric
+  override val segmentStates: Map<GraphSegment, SegmentState> get() = activeMetric.segmentStates
+  override val selectedSegment: GraphSegment get() = activeMetric.selectedSegment
+  override val scrollTarget: Double? get() = activeMetric.scrollTarget
+  override val markerIndex: Double? get() = activeMetric.markerIndex
 
   val activePercentileSeries: BabyPercentileHelper.PercentileSeries?
-    get() = metricStates[selectedMetric]?.percentileSeries
+    get() = activeMetric.percentileSeries
 
   fun metricState(metric: BabyMetric): BabyMetricState =
     metricStates[metric] ?: BabyMetricState()
@@ -57,7 +61,6 @@ sealed interface BabyDashboardIntent : BaseGraphIntent {
   data class SetBabyProfile(val profile: BabyProfile) : BabyDashboardIntent
   data class SetSelectedMetric(val metric: BabyMetric) : BabyDashboardIntent
   data class SetPercentile(val metric: BabyMetric, val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
-  /** Update a specific metric's segment state (used during data push to both metrics). */
   data class UpdateMetricSegment(
     val metric: BabyMetric,
     val segment: GraphSegment,
@@ -71,7 +74,9 @@ sealed interface BabyDashboardIntent : BaseGraphIntent {
 class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<BabyDashboardState, BaseGraphIntent> {
 
   /**
-   * Routes base field updates. segmentStates writes to the active metric's map.
+   * Routes base field updates to the active metric's BabyMetricState.
+   * selectedSegment, scrollTarget, markerIndex go into the active metric.
+   * isRefreshing, producers stay shared.
    */
   override fun copyBaseFields(
     state: BabyDashboardState,
@@ -83,16 +88,18 @@ class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<Ba
     monthlyProducer: CartesianChartModelProducer,
     scrollTarget: Double?,
   ): BabyDashboardState {
-    val activeMetric = state.metricState(state.selectedMetric)
-    val updatedMetric = activeMetric.copy(segmentStates = segmentStates)
-    return state.copy(
-      metricStates = state.metricStates + (state.selectedMetric to updatedMetric),
-      isRefreshing = isRefreshing,
-      markerIndex = markerIndex,
+    val current = state.metricState(state.selectedMetric)
+    val updated = current.copy(
+      segmentStates = segmentStates,
       selectedSegment = selectedSegment,
+      scrollTarget = scrollTarget,
+      markerIndex = markerIndex,
+    )
+    return state.copy(
+      metricStates = state.metricStates + (state.selectedMetric to updated),
+      isRefreshing = isRefreshing,
       dailyProducer = dailyProducer,
       monthlyProducer = monthlyProducer,
-      scrollTarget = scrollTarget,
     )
   }
 

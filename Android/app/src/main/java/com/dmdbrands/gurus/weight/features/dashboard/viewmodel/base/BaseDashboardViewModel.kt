@@ -1,10 +1,8 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base
 
-import androidx.lifecycle.viewModelScope
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
-import com.dmdbrands.gurus.weight.domain.model.common.GraphData
-import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.GraphDataAdapter
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
+import com.dmdbrands.gurus.weight.features.common.components.chart.viewmodel.SeriesData
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import kotlinx.collections.immutable.toImmutableList
 import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
@@ -12,20 +10,18 @@ import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.icu.util.Calendar
 
 /**
- * Base ViewModel for all product dashboards. Manages:
- * - 2 producers (daily + monthly) — stable, never recreated
- * - 4 segment states (chart UI: ranges, markers, empty flag)
- * - Graph data subscriptions via adapter pattern
+ * Base ViewModel for all product dashboards. Provides:
+ * - 2 stable producers (daily + monthly)
+ * - Shared segment range computation
+ * - Shared producer transaction helper
+ * - ScrollRange intent handling
  *
- * Subclasses provide data flows and handle product-specific content.
- * Product data (entries, targets) lives in product-specific state, not here.
+ * Each product VM subscribes to its own typed data flow, converts entries
+ * to series inline, then calls [updateSegmentRanges] + [pushSeriesToProducer].
  */
 abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphIntent>(
   reducer: IReducer<S, I>,
@@ -35,87 +31,62 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
     private const val TAG = "BaseDashboardVM"
   }
 
-  abstract val adapter: GraphDataAdapter
-  abstract fun getDailyDataFlow(): Flow<GraphData>
-  abstract fun getMonthlyDataFlow(): Flow<GraphData>
+  // ── Stable producers — created once, never swapped ──
 
-  /** Dispatches UpdateSegment intent to update a segment state entry. */
+  private val _dailyProducer = CartesianChartModelProducer()
+  private val _monthlyProducer = CartesianChartModelProducer()
+
+  val dailyProducer: CartesianChartModelProducer get() = _dailyProducer
+  val monthlyProducer: CartesianChartModelProducer get() = _monthlyProducer
+
+  fun producerForSegment(segment: GraphSegment): CartesianChartModelProducer =
+    if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) _dailyProducer else _monthlyProducer
+
+  /** Must be called from product VM's init/onDependenciesReady to set producers in state. */
+  protected fun initProducers() {
+    setProducers(_dailyProducer, _monthlyProducer)
+  }
+
+  // ── Intent helpers ──
+
   @Suppress("UNCHECKED_CAST")
   protected fun updateSegmentState(segment: GraphSegment, update: (SegmentState) -> SegmentState) {
     super.handleIntent(BaseGraphIntent.UpdateSegment(segment, update) as I)
   }
 
-  /** Dispatches SetProducers intent. */
   @Suppress("UNCHECKED_CAST")
-  protected fun setProducers(daily: CartesianChartModelProducer, monthly: CartesianChartModelProducer) {
+  private fun setProducers(daily: CartesianChartModelProducer, monthly: CartesianChartModelProducer) {
     super.handleIntent(BaseGraphIntent.SetProducers(daily, monthly) as I)
   }
 
-  /** Dispatches SetRefreshing intent. */
   @Suppress("UNCHECKED_CAST")
   protected fun setRefreshing(isRefreshing: Boolean) {
     super.handleIntent(BaseGraphIntent.SetRefreshing(isRefreshing) as I)
   }
 
+  // ── Shared: segment range computation ──
+
   /**
-   * Called when graph data arrives. Subclass handles product-specific data storage
-   * (e.g., weight stores PeriodBodyScaleSummary list, BP stores PeriodBpmSummary list).
-   * Base only handles chart ranges and producer transactions.
+   * Compute segment ranges (minTarget, maxTarget, chartMinX, chartMaxX, etc.)
+   * from entries and update segment states. Same logic for all products.
+   *
+   * @param entries All entries as [PeriodSummary] (for timestamps + target filtering).
+   * @param segments Which segments to update (WEEK/MONTH for daily, YEAR/TOTAL for monthly).
    */
-  open fun onGraphDataReceived(graphData: GraphData, segments: List<GraphSegment>) {}
-
-  private val _dailyProducer = CartesianChartModelProducer()
-  private val _monthlyProducer = CartesianChartModelProducer()
-  private var dailyDataJob: Job? = null
-  private var monthlyDataJob: Job? = null
-
-  protected fun startGraphSubscriptions() {
-    setProducers(_dailyProducer, _monthlyProducer)
-    observeDailyData()
-    observeMonthlyData()
-  }
-
-  private fun observeDailyData() {
-    dailyDataJob?.cancel()
-    dailyDataJob = viewModelScope.launch {
-      getDailyDataFlow().collect { graphData ->
-        pushGraphData(graphData, _dailyProducer, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
-      }
-    }
-  }
-
-  private fun observeMonthlyData() {
-    monthlyDataJob?.cancel()
-    monthlyDataJob = viewModelScope.launch {
-      getMonthlyDataFlow().collect { graphData ->
-        pushGraphData(graphData, _monthlyProducer, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
-      }
-    }
-  }
-
-  private suspend fun pushGraphData(
-    graphData: GraphData,
-    producer: CartesianChartModelProducer,
+  protected fun updateSegmentRanges(
+    entries: List<PeriodSummary>,
     segments: List<GraphSegment>,
   ) {
-    val seriesList = adapter.toLineSeries(graphData)
-
-    if (seriesList.isEmpty() || seriesList.all { it.xValues.isEmpty() }) {
+    if (entries.isEmpty()) {
       segments.forEach { segment ->
         updateSegmentState(segment) { it.copy(isEmptyGraph = true) }
-      }
-      withContext(Dispatchers.Main) {
-        producer.runTransaction(animate = false) {
-          lineSeries { series(listOf(0.0), listOf(0.0)) }
-        }
       }
       return
     }
 
-    val timestamps = adapter.getTimestamps(graphData).sorted()
+    val timestamps = entries.map { it.getTimeStamp() }.sorted()
     val initialTimeStamp = timestamps.minOrNull()
     val endTimeStamp = timestamps.maxOrNull()
-    val targetData = adapter.toTargetData(graphData)
     val calendar = Calendar.getInstance()
 
     for (segment in segments) {
@@ -152,11 +123,11 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
         GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
       }
 
-      val filteredTarget = targetData.filter { it.getTimeStamp() in startX..endX }
+      val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
 
       updateSegmentState(segment) {
         it.copy(
-          data = targetData.toImmutableList(),
+          data = entries.toImmutableList(),
           target = filteredTarget.toImmutableList(),
           minTarget = startX,
           maxTarget = endX,
@@ -169,28 +140,42 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
         )
       }
     }
+  }
 
-    // Let subclass handle product-specific data storage
-    onGraphDataReceived(graphData, segments)
+  // ── Shared: push series to producer ──
 
+  /**
+   * Push line series data to a producer. Each product VM builds its own
+   * [SeriesData] list (1 series for weight, 3 for BP, etc.) and calls this.
+   */
+  protected suspend fun pushSeriesToProducer(
+    producer: CartesianChartModelProducer,
+    vararg seriesBlocks: List<SeriesData>,
+  ) {
     withContext(Dispatchers.Main) {
       producer.runTransaction(animate = false) {
-        lineSeries {
-          seriesList.forEach { s -> series(x = s.xValues, y = s.yValues) }
+        seriesBlocks.forEach { block ->
+          if (block.isNotEmpty()) {
+            lineSeries {
+              block.forEach { s -> series(x = s.xValues, y = s.yValues) }
+            }
+          }
         }
       }
     }
   }
 
-  fun getProducerForSegment(segment: GraphSegment): CartesianChartModelProducer {
-    return if (segment == GraphSegment.WEEK || segment == GraphSegment.MONTH) _dailyProducer else _monthlyProducer
+  /** Push empty placeholder to producer (for empty graph state). */
+  protected suspend fun pushEmptyProducer(producer: CartesianChartModelProducer) {
+    withContext(Dispatchers.Main) {
+      producer.runTransaction(animate = false) {
+        lineSeries { series(listOf(0.0), listOf(0.0)) }
+      }
+    }
   }
 
-  /**
-   * Intercepts [BaseGraphIntent] for graph side effects (scroll filtering).
-   * State changes handled by the reducer via super.handleIntent().
-   * Product VMs override this, handle their own side effects, then call super.
-   */
+  // ── ScrollRange handling (shared) ──
+
   override fun handleIntent(intent: I) {
     if (intent is BaseGraphIntent.ScrollRange) {
       val adjMin = GraphUtil.getRelativeStart(intent.segment, intent.min)
@@ -204,7 +189,6 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
         intent.onFallback()
       }
     }
-    // Always pass to reducer for state changes
     super.handleIntent(intent)
   }
 }
