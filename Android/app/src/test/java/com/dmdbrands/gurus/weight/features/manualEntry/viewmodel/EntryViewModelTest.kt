@@ -347,21 +347,28 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `UpdateOnRelaunch uses account weight unit not stale state default`() = runTest {
-        // Account has KG, but EntryState defaults to LB — UpdateOnRelaunch should
-        // read the unit from accountService (source of truth), not state.weightMode.
+    fun `UpdateOnRelaunch recreates form from accountService even when state weightMode is stale`() = runTest {
         val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
             .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
         every { accountService.activeAccountFlow } returns flowOf(kgAccount)
 
         viewModel = createViewModel()
         advanceUntilIdle()
 
+        // Force weightMode to LB to simulate stale state
+        viewModel.handleIntent(EntryIntent.UpdateWeightUnit(WeightUnit.LB))
+        assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.LB)
+
+        val formBeforeRelaunch = viewModel.state.value.form
+
+        // UpdateOnRelaunch reads from accountService (KG) for form creation,
+        // regardless of stale state.weightMode (LB)
         viewModel.handleIntent(EntryIntent.UpdateOnRelaunch)
         advanceUntilIdle()
 
-        // The weight mode should be KG, matching the account
-        assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.KG)
+        // Form must be recreated (new instance) — using account's KG unit
+        assertThat(viewModel.state.value.form).isNotEqualTo(formBeforeRelaunch)
     }
 
     @Test
