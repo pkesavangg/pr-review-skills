@@ -93,13 +93,14 @@ object RepositoryModule {
     @Singleton
     fun provideAccountRepository(
       accountDao: AccountDao,
+      babyProfileDao: BabyProfileDao,
       userDataStore: UserDataStore,
       tokenManager: ITokenManager,
       secureTokenStore: ISecureTokenStore,
       authAPI: IAuthAPI,
       userAPI: IUserAPI,
     ): IAccountRepository =
-      AccountRepository(accountDao, userDataStore, tokenManager, secureTokenStore, authAPI, userAPI)
+      AccountRepository(accountDao, babyProfileDao, userDataStore, tokenManager, secureTokenStore, authAPI, userAPI)
 
     @Provides
     @Singleton

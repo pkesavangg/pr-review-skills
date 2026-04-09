@@ -283,4 +283,8 @@ interface IAccountRepository {
     dashboardType: DashboardType,
     isSynced: Boolean = true
   )
+
+  suspend fun setActiveBabyId(accountId: String, babyId: String)
+  suspend fun getActiveBabyId(): String?
+  suspend fun clearActiveBabyId(accountId: String)
 }

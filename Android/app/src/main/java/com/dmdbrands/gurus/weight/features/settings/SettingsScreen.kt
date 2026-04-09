@@ -83,7 +83,9 @@ fun SettingsScreenContent(
               SettingsItem(
                 title = SettingsScreenStrings.MyKids,
                 onClick = {
-                  handleIntent.invoke(SettingsIntent.OpenMyKids)
+                  coroutineScope.launch {
+                    backStack.addRoute(AppRoute.AccountSettings.MyKids)
+                  }
                 },
               ),
             )

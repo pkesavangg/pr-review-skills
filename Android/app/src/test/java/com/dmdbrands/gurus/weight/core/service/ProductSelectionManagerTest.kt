@@ -32,8 +32,8 @@ class ProductSelectionManagerTest {
 
     private lateinit var manager: ProductSelectionManager
 
-    private val baby1 = BabyProfile(id = BABY_ID_1, name = BABY_NAME_1, birthDate = null, accountId = ACCOUNT_ID)
-    private val baby2 = BabyProfile(id = BABY_ID_2, name = BABY_NAME_2, birthDate = null, accountId = ACCOUNT_ID)
+    private val baby1 = BabyProfile(id = BABY_ID_1, name = BABY_NAME_1, birthdate = null, accountId = ACCOUNT_ID)
+    private val baby2 = BabyProfile(id = BABY_ID_2, name = BABY_NAME_2, birthdate = null, accountId = ACCOUNT_ID)
 
     @Before
     fun setUp() {

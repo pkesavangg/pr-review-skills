@@ -13,6 +13,7 @@ struct BabyTrendView: View {
     @ObservedObject var dashboardStore: DashboardStore
     let babyProfile: BabyProfile
     @Environment(\.appTheme) private var theme
+    @State private var isGrowthPercentilesSheetPresented = false
     private let viewModel = BabyTrendViewModel()
 
     // TODO: Replace with ColorTokens.babyPrimary once color tokens are updated
@@ -33,24 +34,55 @@ struct BabyTrendView: View {
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             viewModel.handlePeriodChange(dashboardStore: dashboardStore)
         }
+        .sheet(isPresented: $isGrowthPercentilesSheetPresented) {
+            BabyGrowthPercentilesSheet(
+                state: viewModel.growthPercentilesSheetState(
+                    dashboardStore: dashboardStore,
+                    babyProfile: babyProfile
+                )
+            )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
+                .presentationCornerRadius(.radiusXL)
+                .presentationBackground(theme.backgroundSecondary)
+        }
     }
 
     // MARK: - Baby Info Section
 
+    private var isGraphLoading: Bool {
+        !dashboardStore.state.graph.isGraphReady
+    }
+
     @ViewBuilder
     private var babyInfoSection: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: .zero) {
-                Text(displayState.headlineLabel)
-                    .fontOpenSans(.subHeading1)
-                    .foregroundColor(theme.textSubheading)
+            Button {
+                isGrowthPercentilesSheetPresented = true
+            } label: {
+                VStack(alignment: .leading, spacing: .zero) {
+                    Text(displayState.headlineLabel)
+                        .fontOpenSans(.subHeading1)
+                        .foregroundColor(theme.textSubheading)
 
-                if displayState.selectedMetric == .weight {
-                    babyWeightDisplay
-                } else {
-                    babyHeightDisplay
+                    ZStack(alignment: .leading) {
+                        if isGraphLoading {
+                            babyValueSkeleton
+                        }
+
+                        Group {
+                            if displayState.selectedMetric == .weight {
+                                babyWeightDisplay
+                            } else {
+                                babyHeightDisplay
+                            }
+                        }
+                        .opacity(isGraphLoading ? 0 : 1)
+                    }
+                    .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
                 }
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -103,6 +135,26 @@ struct BabyTrendView: View {
                 .padding(.leading, 8)
         }
         .frame(height: 55)
+    }
+
+    // MARK: - Skeleton
+
+    @State private var isSkeletonAnimating = false
+
+    private var skeletonColor: Color {
+        theme.textSubheading.opacity(isSkeletonAnimating ? 0.4 : 0.2)
+    }
+
+    private var babyValueSkeleton: some View {
+        RoundedRectangle(cornerRadius: 6)
+            .fill(skeletonColor)
+            .frame(width: 180, height: 40)
+            .frame(height: 55, alignment: .leading)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                    isSkeletonAnimating = true
+                }
+            }
     }
 
     // MARK: - Weight / Height Toggle

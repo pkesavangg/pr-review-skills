@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Pure data transformation layer for graph rendering.

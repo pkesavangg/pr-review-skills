@@ -220,6 +220,7 @@ fun ScaleMetricsSettingScreen(
       modifier = Modifier
         .clip(shape = RoundedCornerShape(borderRadius.sm))
         .heightIn(max = 200.dp),
+      scrollState = scrollState,
       items = otherMetricsState,
       onMove = { from, to ->
         val newList = otherMetricsState.toMutableList()

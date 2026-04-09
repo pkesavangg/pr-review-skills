@@ -33,9 +33,9 @@ class ProductSelectionRepository @Inject constructor(
     override suspend fun getBabyProfiles(accountId: String): List<BabyProfile> =
         babyProfileDao.observeByAccountId(accountId).first().map { entity ->
             BabyProfile(
-                id = entity.id,
+                id = entity.babyId,
                 name = entity.name,
-                birthDate = entity.birthDate,
+                birthdate = entity.birthdate,
                 accountId = entity.accountId,
             )
         }

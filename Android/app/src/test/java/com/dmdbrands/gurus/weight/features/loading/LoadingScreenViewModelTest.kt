@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.google.common.truth.Truth.assertThat
@@ -68,6 +69,9 @@ class LoadingScreenViewModelTest {
     @MockK(relaxUnitFun = true)
     lateinit var productSelectionManager: IProductSelectionManager
 
+    @MockK(relaxed = true)
+    lateinit var historyService: IHistoryService
+
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
@@ -118,6 +122,7 @@ class LoadingScreenViewModelTest {
             deviceService = deviceService,
             deviceInfoService = deviceInfoService,
             productSelectionManager = productSelectionManager,
+            historyService = historyService,
         )
     }
 
