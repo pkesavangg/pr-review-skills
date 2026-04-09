@@ -20,5 +20,6 @@ data class NotificationSettingsEntity(
     val accountId: String,
     val shouldSendEntryNotifications: Boolean,
     val shouldSendWeightInEntryNotifications: Boolean,
-    val isSynced: Boolean
+    val isSynced: Boolean,
+    val willReceiveEmails: Boolean = false,
 )

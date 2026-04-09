@@ -21,7 +21,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     private let displayManager: DashboardDisplayManaging
     private let gridEditingManager: DashboardGridEditingManaging
 
-    @Injector var accountService: AccountService
+    @Injector var accountService: AccountServiceProtocol
     @Injector var notificationService: NotificationHelperServiceProtocol
     @Injector var logger: LoggerService
     @Injector private var entryService: EntryService
@@ -353,10 +353,18 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     func handleSettingsChange(shouldRefreshStreak: Bool = true) {
         guard let stateProvider else { return }
         Task {
-            do {
-                if shouldRefreshStreak {
+            if shouldRefreshStreak {
+                do {
                     try await self.streakManager.refreshStreakData()
+                } catch {
+                    self.logger.log(
+                        level: .error,
+                        tag: "DashboardLifecycleManager",
+                        message: "Failed to refresh streak data after settings change: \(error)"
+                    )
                 }
+            }
+            do {
                 try await self.goalManager.loadGoalData()
             } catch {
                 self.logger.log(
@@ -370,8 +378,9 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
                 self.gridEditingManager.syncRemovalStateFromMetricsManager()
                 self.gridEditingManager.syncRemovalStateFromStreakManager()
 
-                self.chartManager.updateYAxisCache(force: false)
-                stateProvider.scheduleUIUpdate()
+                self.cacheManager.invalidateChartSeriesCache()
+                self.chartManager.updateYAxisCache(force: true)
+                stateProvider.forceImmediateUIUpdate()
             }
 
             await gridEditingManager.loadProgressMetricsFromAccount()

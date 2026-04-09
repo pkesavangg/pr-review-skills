@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.Account as Enti
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
-import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
 import com.dmdbrands.gurus.weight.domain.model.api.auth.LoginResponse
@@ -22,6 +21,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import com.dmdbrands.gurus.weight.proto.UserAccount
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -36,6 +36,7 @@ import org.junit.Before
 import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
+import kotlin.test.assertFailsWith
 
 /**
  * Unit tests for [AccountRepository].
@@ -153,7 +154,7 @@ class AccountRepositoryTest {
         MockKAnnotations.init(this)
         // AccountRepository reads userDataStore.currentThemeModeFlow at construction time.
         every { userDataStore.currentThemeModeFlow } returns flowOf(ThemeMode.SYSTEM)
-        repository = AccountRepository(accountDao, userDataStore, tokenManager, mockk(relaxed = true), authAPI, userAPI)
+        repository = AccountRepository(accountDao, mockk(relaxed = true), userDataStore, tokenManager, mockk(relaxed = true), authAPI, userAPI)
     }
 
     // -------------------------------------------------------------------------
@@ -176,12 +177,10 @@ class AccountRepositoryTest {
     fun `login when API throws rethrows exception`() = runTest {
         coEvery { authAPI.login(any()) } throws RuntimeException("Network error")
 
-        try {
+        val e = assertFailsWith<RuntimeException> {
             repository.login(TEST_EMAIL, TEST_PASSWORD)
-            error("Expected exception not thrown")
-        } catch (e: RuntimeException) {
-            assertThat(e.message).isEqualTo("Network error")
         }
+        assertThat(e.message).isEqualTo("Network error")
     }
 
     // -------------------------------------------------------------------------
@@ -483,11 +482,8 @@ class AccountRepositoryTest {
         coEvery { userAPI.updateProfile(any()) } throws httpException
         coEvery { accountDao.getAccountEntity(any()) } returns accountEntity
 
-        try {
+        assertFailsWith<HttpException> {
             repository.updateProfile(buildProfileUpdateRequest())
-            error("Expected HttpException not thrown")
-        } catch (e: HttpException) {
-            // expected
         }
 
         coVerify { accountDao.updateAccount(match { !it.isSynced }) }
@@ -499,11 +495,8 @@ class AccountRepositoryTest {
         every { httpException.code() } returns 500
         coEvery { userAPI.updateProfile(any()) } throws httpException
 
-        try {
+        assertFailsWith<HttpException> {
             repository.updateProfile(buildProfileUpdateRequest())
-            error("Expected HttpException not thrown")
-        } catch (e: HttpException) {
-            // expected
         }
 
         coVerify(exactly = 0) { accountDao.updateAccount(any()) }

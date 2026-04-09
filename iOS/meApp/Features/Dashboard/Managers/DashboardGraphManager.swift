@@ -17,6 +17,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     let renderConfig  = GraphRenderingConfiguration()
     let interaction   = GraphInteractionHandler()
     let animationMgr  = GraphAnimationManager()
+    let selectionPresentationResolver = GraphSelectionPresentationResolver()
 
     // MARK: - Chart Series Cache (keyed on scrolling state, so lives here)
     private var cachedChartSeries: [GraphSeries] = []
@@ -492,6 +493,26 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             anchorWeight: anchorWeight,
             period: period,
             convertWeight: convertWeight
+        )
+    }
+
+    func resolveBabySelectionPresentation(
+        babyProfile: BabyProfile?,
+        metric: BabyMetric,
+        selectedCrosshairDate: Date?,
+        plottedPoints: [PlottedGraphSeries],
+        plotXDate: (Date) -> Date,
+        currentUnit: WeightUnit,
+        displayWeight: Double?
+    ) -> BabyGraphSelectionPresentation? {
+        selectionPresentationResolver.babySelectionPresentation(
+            babyProfile: babyProfile,
+            metric: metric,
+            selectedCrosshairDate: selectedCrosshairDate,
+            plottedPoints: plottedPoints,
+            plotXDate: plotXDate,
+            currentUnit: currentUnit,
+            displayWeight: displayWeight
         )
     }
 

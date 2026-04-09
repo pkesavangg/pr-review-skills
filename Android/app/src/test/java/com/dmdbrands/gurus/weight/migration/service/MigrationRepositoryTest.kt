@@ -31,9 +31,9 @@ import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MigrationRepositoryTest {
@@ -62,7 +62,7 @@ class MigrationRepositoryTest {
         private const val ENTRY_ERROR = "Entry insert failed"
     }
 
-    @Before
+    @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
 
@@ -80,7 +80,7 @@ class MigrationRepositoryTest {
         sut = MigrationRepository(context)
     }
 
-    @After
+    @AfterEach
     fun tearDown() {
         unmockkAll()
     }

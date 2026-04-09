@@ -3,9 +3,12 @@ package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
+import com.dmdbrands.gurus.weight.domain.services.IHistoryService
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -21,6 +24,7 @@ import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -46,8 +50,12 @@ class HistoryDetailViewModelTest {
     @MockK(relaxUnitFun = true)
     lateinit var healthConnectService: IHealthConnectService
 
+    @MockK(relaxed = true)
+    lateinit var historyService: IHistoryService
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
+    private lateinit var productSelectionManager: IProductSelectionManager
     private lateinit var viewModel: HistoryDetailViewModel
 
     @BeforeEach
@@ -55,21 +63,25 @@ class HistoryDetailViewModelTest {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
+        productSelectionManager = mockk(relaxed = true)
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
     }
 
     private fun createViewModel(
         month: String = TEST_MONTH,
         entries: List<ScaleEntry> = listOf(TestFixtures.weightEntry),
     ): HistoryDetailViewModel {
-        coEvery { entryService.monthDetails(month) } returns flowOf(entries)
+        every { historyService.getDetail(any(), eq(month)) } returns flowOf(HistoryDetail.Weight(entries))
         return HistoryDetailViewModel(
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
     }
 
@@ -438,34 +450,31 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `loadHistoryDetail calls entryService monthDetails with correct month`() = runTest {
+    fun `loadHistoryDetail calls historyService getDetail with correct month`() = runTest {
         viewModel = createViewModel(month = "2024-03")
         advanceUntilIdle()
 
-        coVerify { entryService.monthDetails("2024-03") }
+        verify { historyService.getDetail(any(), eq("2024-03")) }
     }
 
     @Test
-    fun `loadHistoryDetail navigates back when entries are empty`() = runTest {
-        // Use a MutableSharedFlow so it doesn't emit until after dependencies are injected
-        val entriesFlow = MutableSharedFlow<List<ScaleEntry>>()
-        coEvery { entryService.monthDetails(TEST_MONTH) } returns entriesFlow
+    fun `loadHistoryDetail sets error when entries are empty`() = runTest {
+        every { historyService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
 
         viewModel = HistoryDetailViewModel(
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
-
-        // Now emit empty entries after dependencies are initialized
-        entriesFlow.emit(emptyList())
         advanceUntilIdle()
 
-        coVerify { navigationService.navigateBack() }
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
     }
 
     @Test
@@ -482,29 +491,23 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail navigates back on exception`() = runTest {
-        // Use a MutableSharedFlow so the flow suspends during init (before dependencies are set),
-        // then we can cause an exception after dependencies are injected by emitting from
-        // the empty path which also calls navigateBack
-        val entriesFlow = MutableSharedFlow<List<ScaleEntry>>()
-        coEvery { entryService.monthDetails(any()) } returns entriesFlow
+    fun `loadHistoryDetail sets error on exception`() = runTest {
+        every { historyService.getDetail(any(), any()) } throws RuntimeException("test error")
 
         viewModel = HistoryDetailViewModel(
             entryService = entryService,
             healthConnectService = healthConnectService,
+            historyService = historyService,
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
         advanceUntilIdle()
 
-        // Emit empty list to trigger navigateBack (empty entries path)
-        entriesFlow.emit(emptyList())
-        advanceUntilIdle()
-
-        coVerify { navigationService.navigateBack() }
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
     }
 
     @Test

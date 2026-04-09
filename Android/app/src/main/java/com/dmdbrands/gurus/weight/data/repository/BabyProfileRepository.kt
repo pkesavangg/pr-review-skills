@@ -33,16 +33,40 @@ class BabyProfileRepository @Inject constructor(
         babyProfileDao.getById(profileId)?.toDomain()
 
     private fun BabyProfileEntity.toDomain() = BabyProfile(
-        id = id,
-        name = name,
-        birthDate = birthDate,
+        id = babyId,
         accountId = accountId,
+        name = name,
+        birthdate = birthdate,
+        sex = sex,
+        birthWeightDecigrams = birthWeightDecigrams,
+        birthLengthMillimeters = birthLengthMillimeters,
+        isBorn = isBorn,
+        isOwnedByAccount = isOwnedByAccount,
+        permissions = permissions,
+        createdAt = createdAt,
+        dueDate = dueDate,
+        lastUpdated = lastUpdated,
+        isSynced = isSynced,
+        isDeleted = isDeleted,
+        activeBabyId = activeBabyId,
     )
 
     private fun BabyProfile.toEntity() = BabyProfileEntity(
-        id = id,
-        name = name,
-        birthDate = birthDate,
+        babyId = id,
         accountId = accountId,
+        name = name,
+        birthdate = birthdate,
+        sex = sex,
+        birthWeightDecigrams = birthWeightDecigrams,
+        birthLengthMillimeters = birthLengthMillimeters,
+        isBorn = isBorn,
+        isOwnedByAccount = isOwnedByAccount,
+        permissions = permissions,
+        createdAt = createdAt,
+        dueDate = dueDate,
+        lastUpdated = lastUpdated,
+        isSynced = isSynced,
+        isDeleted = isDeleted,
+        activeBabyId = activeBabyId,
     )
 }

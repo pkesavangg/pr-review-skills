@@ -18,6 +18,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.ScaleUtility
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -27,6 +28,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 enum class ScaleImageSize { Small, Medium, Large }
 
 object ScaleImageDefaults {
+    val BABY_SCALE_SKUS = DeviceHelper.BABY_SCALE_SKUS
+
     fun size(size: ScaleImageSize): Dp =
         when (size) {
             ScaleImageSize.Small -> 75.dp
@@ -40,20 +43,27 @@ fun AppScaleImage(
   sku: String,
   modifier: Modifier = Modifier,
   scaleImageSize: ScaleImageSize = ScaleImageSize.Small,
+  showShadow: Boolean = sku !in ScaleImageDefaults.BABY_SCALE_SKUS,
 ) {
   Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
     Box(
       modifier =
         Modifier
           .size(ScaleImageDefaults.size(scaleImageSize))
-          .dropShadow(
-            shape = RoundedCornerShape(borderRadius.sm),
-            shadow = Shadow(
-              radius = spacing.sm,
-              spread = (-4).dp,
-              color = MeTheme.colorScheme.glow,
-              offset = DpOffset(x = 0.dp, 0.dp),
-            ),
+          .then(
+            if (showShadow) {
+              Modifier.dropShadow(
+                shape = RoundedCornerShape(borderRadius.sm),
+                shadow = Shadow(
+                  radius = spacing.sm,
+                  spread = (-4).dp,
+                  color = MeTheme.colorScheme.glow,
+                  offset = DpOffset(x = 0.dp, 0.dp),
+                ),
+              )
+            } else {
+              Modifier
+            },
           ).clip(RoundedCornerShape(borderRadius.xs)),
       contentAlignment = Alignment.Center,
     ) {
@@ -63,7 +73,7 @@ fun AppScaleImage(
           painterResource(
             id = ScaleUtility.scaleImageResource(context, sku),
           ),
-        contentDescription = "$sku scale",
+        contentDescription = if (DeviceHelper.isBpmDevice(sku)) "$sku monitor" else "$sku scale",
       )
     }
   }

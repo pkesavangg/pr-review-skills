@@ -133,6 +133,8 @@ final class ContentViewModel: ObservableObject {
     private func runAppInitialization() async {
         // Clear any lingering loader state from previous session (e.g., if app was force-closed during account switch)
         notificationService.dismissLoader()
+        // Stops any ongoing Bluetooth scan to prevent scan events from triggering alerts during the loading screen.
+        bluetoothService.stopScan()
         
         logger.log(level: .info, tag: tag, message: "App initialization started")
         contentViewState = .initializing
